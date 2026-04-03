@@ -1,27 +1,10 @@
+import type { RatePlanResolution, ResolveRatePlanInput } from "@tartware/schemas";
+
 import { findActiveRateByCode } from "../repositories/rate-repository.js";
 
 const FALLBACK_RATE_CODES = ["BAR", "RACK"] as const;
 
-/**
- * Rate plan resolution output including fallback metadata.
- */
-export type RatePlanResolution = {
-  appliedRateCode: string;
-  rateId?: string;
-  requestedRateCode?: string;
-  fallbackApplied: boolean;
-  reason?: string;
-  decidedAt: Date;
-};
-
-type ResolveRatePlanInput = {
-  tenantId: string;
-  propertyId: string;
-  roomTypeId: string;
-  stayStart: Date;
-  stayEnd: Date;
-  requestedRateCode?: string;
-};
+export type { RatePlanResolution };
 
 const normalizeRateCode = (value: string | undefined): string | undefined => {
   if (!value) {

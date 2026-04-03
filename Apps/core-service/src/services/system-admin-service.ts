@@ -1,9 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import {
-  type PublicSystemAdministrator,
+  type ImpersonationResult,
   PublicSystemAdministratorSchema,
+  type SystemAdminAuditEvent,
+  type SystemAdminAuthFailureReason,
+  type SystemAdminAuthResult,
+  type SystemAdminBreakGlassAuthResult,
+  type SystemAdminBreakGlassFailureReason,
+  type SystemAdminBreakGlassLoginInput,
   SystemAdministratorSchema,
+  type SystemAdminLoginInput,
   type SystemAdminRole,
   type UserTenantAssociationWithDetails,
 } from "@tartware/schemas";
@@ -28,6 +35,17 @@ import {
 import { hashIdentifier } from "../utils/hash.js";
 
 import { userCacheService } from "./user-cache-service.js";
+
+export type {
+  ImpersonationResult,
+  SystemAdminAuditEvent,
+  SystemAdminAuthFailureReason,
+  SystemAdminAuthResult,
+  SystemAdminBreakGlassAuthResult,
+  SystemAdminBreakGlassFailureReason,
+  SystemAdminBreakGlassLoginInput,
+  SystemAdminLoginInput,
+};
 
 type SystemAdministratorRow = {
   id: string;
@@ -335,26 +353,6 @@ const buildHashedIdentifiers = (
 };
 
 /**
- * System admin audit event payload.
- */
-export interface SystemAdminAuditEvent {
-  adminId: string;
-  action: string;
-  resourceType?: string;
-  resourceId?: string;
-  tenantId?: string;
-  requestMethod?: string;
-  requestPath?: string;
-  requestPayload?: Record<string, unknown> | null;
-  responseStatus?: number;
-  ipAddress?: string;
-  userAgent?: string;
-  sessionId?: string;
-  impersonatedUserId?: string;
-  ticketId?: string;
-}
-
-/**
  * Persist a system admin audit event with redacted payload.
  */
 export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
@@ -413,73 +411,6 @@ export const logSystemAdminEvent = async (event: SystemAdminAuditEvent) => {
     );
   }
 };
-
-export type SystemAdminAuthFailureReason =
-  | "INVALID_CREDENTIALS"
-  | "ACCOUNT_INACTIVE"
-  | "ACCOUNT_LOCKED"
-  | "IP_NOT_ALLOWED"
-  | "OUTSIDE_ALLOWED_HOURS"
-  | "DEVICE_NOT_TRUSTED"
-  | "MFA_REQUIRED"
-  | "MFA_INVALID"
-  | "MFA_MISCONFIGURED";
-
-export type SystemAdminBreakGlassFailureReason =
-  | "ADMIN_NOT_FOUND"
-  | "ACCOUNT_INACTIVE"
-  | "BREAK_GLASS_UNAVAILABLE"
-  | "BREAK_GLASS_CODE_INVALID";
-
-export type SystemAdminAuthResult =
-  | {
-      ok: true;
-      data: {
-        admin: PublicSystemAdministrator;
-        token: string;
-        expiresIn: number;
-        sessionId: string;
-      };
-    }
-  | {
-      ok: false;
-      reason: SystemAdminAuthFailureReason;
-      lockExpiresAt?: Date;
-    };
-
-export type SystemAdminBreakGlassAuthResult =
-  | {
-      ok: true;
-      data: {
-        admin: PublicSystemAdministrator;
-        token: string;
-        expiresIn: number;
-        sessionId: string;
-      };
-    }
-  | {
-      ok: false;
-      reason: SystemAdminBreakGlassFailureReason;
-    };
-
-export interface SystemAdminLoginInput {
-  username: string;
-  password: string;
-  mfaCode?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  deviceFingerprint?: string;
-}
-
-export interface SystemAdminBreakGlassLoginInput {
-  username: string;
-  code: string;
-  reason: string;
-  ticketId?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  deviceFingerprint?: string;
-}
 
 const findSystemAdministrator = async (username: string) => {
   const { rows } = await query<SystemAdministratorRow>(SYSTEM_ADMIN_LOOKUP_SQL, [username]);
@@ -661,19 +592,6 @@ export const authenticateSystemAdministratorWithBreakGlass = async (
     },
   };
 };
-
-export type ImpersonationResult =
-  | {
-      ok: true;
-      data: {
-        accessToken: string;
-        expiresIn: number;
-      };
-    }
-  | {
-      ok: false;
-      reason: "USER_NOT_FOUND" | "TENANT_ACCESS_DENIED" | "MEMBERSHIP_INACTIVE";
-    };
 
 const findMembership = (
   associations: UserTenantAssociationWithDetails[],

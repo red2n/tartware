@@ -1,24 +1,14 @@
+import type {
+  CancellationPolicy,
+  ReservationCancellationInfo,
+  ReservationStayRow,
+  ReservationStaySnapshot,
+} from "@tartware/schemas";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { query } from "../lib/db.js";
 
-type ReservationStayRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  room_type_id: string;
-  check_in_date: Date;
-  check_out_date: Date;
-};
-
-export type ReservationStaySnapshot = {
-  reservationId: string;
-  tenantId: string;
-  propertyId: string;
-  roomTypeId: string;
-  checkInDate: Date;
-  checkOutDate: Date;
-};
+export type { ReservationStaySnapshot, ReservationCancellationInfo, CancellationPolicy };
 
 type QueryRunner = <TRow extends QueryResultRow>(
   sql: string,
@@ -70,30 +60,6 @@ export const fetchReservationStaySnapshot = async (
     checkInDate: new Date(row.check_in_date),
     checkOutDate: new Date(row.check_out_date),
   };
-};
-
-/**
- * Cancellation-relevant reservation + rate data.
- */
-export type ReservationCancellationInfo = {
-  reservationId: string;
-  tenantId: string;
-  propertyId: string;
-  roomTypeId: string;
-  rateId: string | null;
-  roomRate: number;
-  totalAmount: number;
-  checkInDate: Date;
-  checkOutDate: Date;
-  status: string;
-  cancellationPolicy: CancellationPolicy | null;
-};
-
-/** JSONB shape stored on the rates table. */
-export type CancellationPolicy = {
-  type: string; // "flexible", "moderate", "strict", "non_refundable"
-  hours: number; // hours before check-in deadline
-  penalty: number; // fee amount (currency-relative)
 };
 
 /**

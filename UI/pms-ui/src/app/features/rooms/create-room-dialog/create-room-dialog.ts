@@ -9,9 +9,10 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { ToastService } from "../../../shared/toast/toast.service";
+import type { BuildingItem, RoomTypeItem } from "@tartware/schemas";
 
-type RoomType = { room_type_id: string; type_name: string };
-type Building = { building_id: string; building_code: string; building_name: string };
+type RoomType = Pick<RoomTypeItem, "room_type_id" | "type_name">;
+type Building = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;
 
 @Component({
 	selector: "app-create-room-dialog",
@@ -86,6 +87,7 @@ export class CreateRoomDialogComponent implements OnInit {
 				room_name: this.roomName.trim() || undefined,
 				floor: this.floor.trim() || undefined,
 				building: selectedBuilding?.building_name || undefined,
+				building_id: this.buildingId || undefined,
 				wing: this.wing.trim() || undefined,
 			});
 			this.dialogRef.close(true);

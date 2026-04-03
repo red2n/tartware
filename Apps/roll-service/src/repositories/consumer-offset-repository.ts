@@ -1,3 +1,4 @@
+import type { UpsertConsumerOffsetInput } from "@tartware/schemas";
 import type { QueryResult, QueryResultRow } from "pg";
 
 import { query } from "../lib/db.js";
@@ -14,17 +15,6 @@ const runQuery = async (text: string, params: unknown[], client?: QueryExecutor)
     return client.query(text, params);
   }
   return query(text, params);
-};
-
-type UpsertConsumerOffsetInput = {
-  consumerGroup: string;
-  topic: string;
-  partition: number;
-  offset: bigint | number | string;
-  highWatermark?: bigint | number | string;
-  eventId?: string;
-  eventCreatedAt?: Date;
-  tenantId: string;
 };
 
 export const upsertConsumerOffset = async (

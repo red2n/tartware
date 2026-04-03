@@ -6,17 +6,28 @@
 import {
   type BusinessCalendarEntry,
   BusinessCalendarEntrySchema,
+  type BusinessDateRow,
   type BusinessDateStatusResponse,
   BusinessDateStatusResponseSchema,
+  type GetBusinessDateStatusInput,
+  type GetNightAuditRunDetailInput,
+  type ListBusinessCalendarInput,
+  type ListNightAuditHistoryInput,
+  type ListOtaConnectionsInput,
+  type ListOtaSyncLogsInput,
   type NightAuditRunDetailResponse,
   NightAuditRunDetailResponseSchema,
   type NightAuditRunListItem,
   NightAuditRunListItemSchema,
+  type NightAuditRunRow,
   type NightAuditStep,
+  type NightAuditStepRow,
   NightAuditStepSchema,
   type OtaConnectionListItem,
   OtaConnectionListItemSchema,
+  type OtaConnectionRow,
   type OtaSyncLog,
+  type OtaSyncLogRow,
   OtaSyncLogSchema,
 } from "@tartware/schemas";
 
@@ -58,36 +69,6 @@ const formatDisplayLabel = (value: string | null | undefined): string => {
 // =====================================================
 // BUSINESS DATE STATUS
 // =====================================================
-
-type BusinessDateRow = {
-  business_date_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  business_date: Date | string;
-  system_date: Date | string;
-  date_status: string;
-  night_audit_status: string | null;
-  night_audit_started_at: Date | string | null;
-  night_audit_completed_at: Date | string | null;
-  is_locked: boolean | null;
-  allow_postings: boolean | null;
-  allow_check_ins: boolean | null;
-  allow_check_outs: boolean | null;
-  arrivals_count: number | null;
-  departures_count: number | null;
-  stayovers_count: number | null;
-  total_revenue: string | null;
-  audit_errors: number | null;
-  audit_warnings: number | null;
-  is_reconciled: boolean | null;
-  notes: string | null;
-};
-
-export type GetBusinessDateStatusInput = {
-  tenantId: string;
-  propertyId: string;
-};
 
 export const getBusinessDateStatus = async (
   options: GetBusinessDateStatusInput,
@@ -136,36 +117,6 @@ export const getBusinessDateStatus = async (
 // NIGHT AUDIT HISTORY
 // =====================================================
 
-type NightAuditRunRow = {
-  audit_run_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  business_date: Date | string;
-  next_business_date: Date | string | null;
-  audit_status: string;
-  execution_mode: string | null;
-  is_test_run: boolean | null;
-  started_at: Date | string;
-  completed_at: Date | string | null;
-  duration_seconds: number | null;
-  total_steps: number;
-  steps_completed: number;
-  steps_failed: number;
-  error_count: number | null;
-  warning_count: number | null;
-  is_successful: boolean | null;
-  requires_attention: boolean | null;
-  is_acknowledged: boolean | null;
-  initiated_by: string;
-  initiated_by_name: string | null;
-  occupancy_percent: string | null;
-  adr: string | null;
-  revpar: string | null;
-  total_revenue: string | null;
-  total_rooms_sold: number | null;
-};
-
 const mapNightAuditRunRow = (row: NightAuditRunRow): NightAuditRunListItem => {
   return NightAuditRunListItemSchema.parse({
     audit_run_id: row.audit_run_id,
@@ -200,13 +151,6 @@ const mapNightAuditRunRow = (row: NightAuditRunRow): NightAuditRunListItem => {
   });
 };
 
-export type ListNightAuditHistoryInput = {
-  tenantId: string;
-  propertyId?: string;
-  limit?: number;
-  offset?: number;
-};
-
 export const listNightAuditHistory = async (
   options: ListNightAuditHistoryInput,
 ): Promise<NightAuditRunListItem[]> => {
@@ -223,57 +167,6 @@ export const listNightAuditHistory = async (
 // =====================================================
 // NIGHT AUDIT RUN DETAIL
 // =====================================================
-
-type NightAuditStepRow = {
-  audit_log_id: string;
-  audit_run_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  business_date: Date | string;
-  next_business_date: Date | string | null;
-  started_at: Date | string;
-  completed_at: Date | string | null;
-  duration_seconds: number | null;
-  audit_status: string;
-  step_number: number;
-  step_name: string;
-  step_category: string | null;
-  step_status: string;
-  step_started_at: Date | string | null;
-  step_completed_at: Date | string | null;
-  step_duration_ms: number | null;
-  records_processed: number | null;
-  records_succeeded: number | null;
-  records_failed: number | null;
-  records_skipped: number | null;
-  amount_posted: string | null;
-  transactions_created: number | null;
-  error_count: number | null;
-  warning_count: number | null;
-  error_message: string | null;
-  initiated_by: string;
-  initiated_by_name: string | null;
-  execution_mode: string | null;
-  is_test_run: boolean | null;
-  occupancy_percent: string | null;
-  adr: string | null;
-  revpar: string | null;
-  total_revenue: string | null;
-  total_rooms_sold: number | null;
-  is_successful: boolean | null;
-  requires_attention: boolean | null;
-  is_acknowledged: boolean | null;
-  reports_generated: string[] | null;
-  actions_taken: string[] | null;
-  notes: string | null;
-  resolution_notes: string | null;
-};
-
-export type GetNightAuditRunDetailInput = {
-  runId: string;
-  tenantId: string;
-};
 
 export const getNightAuditRunDetail = async (
   options: GetNightAuditRunDetailInput,
@@ -358,29 +251,6 @@ export const getNightAuditRunDetail = async (
 // OTA CONNECTIONS
 // =====================================================
 
-type OtaConnectionRow = {
-  ota_connection_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  property_name: string | null;
-  channel_code: string;
-  channel_name: string;
-  channel_type: string | null;
-  connection_status: string;
-  is_active: boolean | null;
-  is_two_way_sync: boolean | null;
-  last_sync_at: Date | string | null;
-  last_sync_status: string | null;
-  last_error_message: string | null;
-  sync_frequency_minutes: number | null;
-  rooms_mapped: number | null;
-  rates_mapped: number | null;
-  pending_reservations: number | null;
-  api_version: string | null;
-  created_at: Date | string;
-  updated_at: Date | string | null;
-};
-
 const mapOtaConnectionRow = (row: OtaConnectionRow): OtaConnectionListItem => {
   return OtaConnectionListItemSchema.parse({
     ota_connection_id: row.ota_connection_id,
@@ -410,15 +280,6 @@ const mapOtaConnectionRow = (row: OtaConnectionRow): OtaConnectionListItem => {
   });
 };
 
-export type ListOtaConnectionsInput = {
-  tenantId: string;
-  propertyId?: string;
-  connectionStatus?: string;
-  isActive?: boolean;
-  limit?: number;
-  offset?: number;
-};
-
 export const listOtaConnections = async (
   options: ListOtaConnectionsInput,
 ): Promise<OtaConnectionListItem[]> => {
@@ -437,30 +298,6 @@ export const listOtaConnections = async (
 // =====================================================
 // OTA SYNC HISTORY
 // =====================================================
-
-type OtaSyncLogRow = {
-  sync_log_id: string;
-  ota_connection_id: string;
-  sync_type: string;
-  sync_direction: string;
-  sync_status: string;
-  started_at: Date | string;
-  completed_at: Date | string | null;
-  duration_ms: number | null;
-  records_processed: number | null;
-  records_created: number | null;
-  records_updated: number | null;
-  records_failed: number | null;
-  error_message: string | null;
-  triggered_by: string | null;
-};
-
-export type ListOtaSyncLogsInput = {
-  connectionId: string;
-  tenantId: string;
-  limit?: number;
-  offset?: number;
-};
 
 export const listOtaSyncLogs = async (options: ListOtaSyncLogsInput): Promise<OtaSyncLog[]> => {
   const { rows } = await query<OtaSyncLogRow>(OTA_SYNC_LOG_SQL, [
@@ -494,13 +331,6 @@ export const listOtaSyncLogs = async (options: ListOtaSyncLogsInput): Promise<Ot
 // =====================================================
 // BUSINESS CALENDAR HISTORY
 // =====================================================
-
-export type ListBusinessCalendarInput = {
-  tenantId: string;
-  propertyId?: string;
-  limit?: number;
-  offset?: number;
-};
 
 export const listBusinessCalendar = async (
   options: ListBusinessCalendarInput,

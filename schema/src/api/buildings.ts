@@ -97,6 +97,27 @@ export const UpdateBuildingBodySchema = CreateBuildingBodySchema.partial();
 
 export type UpdateBuildingBody = z.infer<typeof UpdateBuildingBodySchema>;
 
+// -----------------------------------------------------------------------------
+// Service-Layer Input Types
+// -----------------------------------------------------------------------------
+
+/** Service-layer input for creating a building (includes tenant_id and created_by). */
+export const CreateBuildingInputSchema = CreateBuildingBodySchema.extend({
+	tenant_id: uuid,
+	created_by: z.string().optional(),
+});
+
+export type CreateBuildingInput = z.infer<typeof CreateBuildingInputSchema>;
+
+/** Service-layer input for updating a building (includes tenant_id, building_id, updated_by). */
+export const UpdateBuildingInputSchema = UpdateBuildingBodySchema.extend({
+	tenant_id: uuid,
+	building_id: uuid,
+	updated_by: z.string().optional(),
+});
+
+export type UpdateBuildingInput = z.infer<typeof UpdateBuildingInputSchema>;
+
 /**
  * Building list query schema.
  */

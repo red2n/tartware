@@ -4,6 +4,7 @@
  * Maintains the loyalty_point_transactions ledger and updates program balance
  */
 
+import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
@@ -18,13 +19,6 @@ const APP_ACTOR = "COMMAND_CENTER";
 
 const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   initiatedBy?.userId ?? APP_ACTOR;
-
-type CommandContext = {
-  tenantId: string;
-  payload: unknown;
-  correlationId?: string;
-  initiatedBy?: { userId?: string } | null;
-};
 
 /**
  * Earn points: inserts a ledger row, increments program balance, returns new balance.

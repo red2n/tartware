@@ -1,89 +1,28 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import type {
-  CommandDispatchLookup,
-  InsertCommandDispatchInput,
-} from "../repositories/command-dispatches.js";
+  AcceptCommandInput,
+  AcceptedCommand,
+  CommandAcceptanceResult,
+  CommandDispatchDependencies,
+  CommandFeatureInfo,
+  CommandOutboxRecord,
+  CommandResolution,
+  CommandRouteInfo,
+  Initiator,
+} from "@tartware/schemas";
 
-export type Initiator = {
-  userId: string;
-  role: string;
-} | null;
-
-export type CommandRouteInfo = {
-  id: string;
-  command_name: string;
-  environment: string;
-  tenant_id: string | null;
-  service_id: string;
-  topic: string;
-  weight: number;
-  status: string;
-  metadata: Record<string, unknown>;
-  source: string;
+export type {
+  Initiator,
+  CommandRouteInfo,
+  CommandFeatureInfo,
+  CommandResolution,
+  AcceptCommandInput,
+  CommandOutboxRecord,
+  CommandDispatchDependencies,
+  CommandAcceptanceResult,
+  AcceptedCommand,
 };
-
-export type CommandFeatureInfo = {
-  status: string;
-  tenant_id: string | null;
-  max_per_minute?: number | null;
-  burst?: number | null;
-  metadata: Record<string, unknown>;
-};
-
-export type CommandResolution<Membership> =
-  | { status: "NOT_FOUND" }
-  | { status: "MODULES_MISSING"; missingModules: string[] }
-  | { status: "DISABLED"; reason: string }
-  | {
-      status: "RESOLVED";
-      route: CommandRouteInfo;
-      feature: CommandFeatureInfo | null;
-      template?: unknown;
-      membership?: Membership;
-    };
-
-export interface AcceptCommandInput<Membership> {
-  commandName: string;
-  tenantId: string;
-  payload: Record<string, unknown>;
-  correlationId?: string;
-  requestId: string;
-  initiatedBy: Initiator;
-  membership: Membership;
-}
-
-export interface CommandOutboxRecord {
-  eventId: string;
-  tenantId: string;
-  aggregateId: string;
-  aggregateType: string;
-  eventType: string;
-  payload: Record<string, unknown>;
-  headers: Record<string, string>;
-  correlationId?: string;
-  partitionKey?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface CommandDispatchDependencies<Membership> {
-  resolveCommandForTenant: (
-    args: Omit<AcceptCommandInput<Membership>, "payload" | "initiatedBy">,
-  ) => CommandResolution<Membership>;
-  enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
-  insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<void>;
-  findCommandDispatchByRequest: (
-    tenantId: string,
-    commandName: string,
-    requestId: string,
-  ) => Promise<CommandDispatchLookup | null>;
-  throttleCommand?: (input: {
-    commandName: string;
-    tenantId: string;
-    requestId: string;
-    feature: CommandFeatureInfo | null;
-  }) => Promise<boolean>;
-}
 
 /**
  * Error type for command dispatch failures.
@@ -98,28 +37,6 @@ export class CommandDispatchError extends Error {
     this.code = code;
   }
 }
-
-export type CommandAcceptanceResult = {
-  status: "accepted";
-  commandId: string;
-  commandName: string;
-  tenantId: string;
-  correlationId?: string;
-  targetService: string;
-  targetTopic: string;
-  issuedAt: string;
-  headers: Record<string, string>;
-  eventPayload: {
-    metadata: Record<string, unknown>;
-    payload: Record<string, unknown>;
-  };
-  featureStatus: string;
-  route: {
-    id: string;
-    source: string;
-    tenantId: string | null;
-  };
-};
 
 /**
  * Create a command dispatch service with provided dependencies.

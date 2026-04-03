@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 
+import type { SchedulerStatus } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 import { Kafka, type Producer } from "kafkajs";
 
 import { config } from "../config.js";
 import { query } from "../lib/db.js";
+
+export type { SchedulerStatus };
 
 // =====================================================
 // Types
@@ -18,14 +21,6 @@ type PropertySchedule = {
   lastAuditDate: string | null;
   currentBusinessDate: string | null;
   dateStatus: string | null;
-};
-
-export type SchedulerStatus = {
-  enabled: boolean;
-  running: boolean;
-  lastCheckAt: string | null;
-  scheduledProperties: PropertySchedule[];
-  lastDispatchResults: DispatchResult[];
 };
 
 type DispatchResult = {

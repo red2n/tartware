@@ -1,6 +1,5 @@
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
-
 import {
   type Client,
   credentials,
@@ -9,6 +8,7 @@ import {
   type ServiceError,
 } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
+import type { AvailabilityGuardMetadata } from "@tartware/schemas";
 
 import { availabilityGuardConfig } from "../config.js";
 import {
@@ -90,11 +90,7 @@ type LockReservationInput = {
   ttlSeconds?: number;
 };
 
-export type AvailabilityGuardMetadata = {
-  status: "SKIPPED" | "LOCKED" | "CONFLICT" | "ERROR";
-  lockId?: string;
-  message?: string;
-};
+export type { AvailabilityGuardMetadata };
 
 type ReleaseReservationInput = {
   tenantId: string;

@@ -22,6 +22,7 @@ export type RoomListRow = {
 	room_name: string | null;
 	floor: string | null;
 	building: string | null;
+	building_id: string | null;
 	wing: string | null;
 	status: string | null;
 	housekeeping_status: string | null;

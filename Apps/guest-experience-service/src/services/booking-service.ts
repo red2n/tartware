@@ -7,6 +7,7 @@ import type {
   BookingResult,
   CaptureResult,
   CreateBookingInput,
+  PaymentGateway,
   RefundResult,
   SearchAvailabilityInput,
 } from "@tartware/schemas";
@@ -17,25 +18,9 @@ import { query } from "../lib/db.js";
 import { internalGet } from "../lib/internal-api.js";
 import { appLogger } from "../lib/logger.js";
 
-export type { AuthorizationResult, CaptureResult, RefundResult };
+export type { AuthorizationResult, CaptureResult, PaymentGateway, RefundResult };
 
 const logger = appLogger.child({ module: "booking-service" });
-
-// ─── PaymentGateway Interface ──────────────────────────────────────
-
-/**
- * Payment gateway abstraction. Real implementations connect to Stripe, Adyen, etc.
- */
-export interface PaymentGateway {
-  /** Pre-authorize a payment amount. */
-  authorize(amount: number, currency: string, token: string): Promise<AuthorizationResult>;
-
-  /** Capture a previously authorized payment. */
-  capture(authorizationId: string): Promise<CaptureResult>;
-
-  /** Refund a captured payment (full or partial). */
-  refund(paymentId: string, amount: number): Promise<RefundResult>;
-}
 
 // ─── Stub PaymentGateway (dev/test) ────────────────────────
 

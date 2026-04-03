@@ -1,11 +1,7 @@
+import type { CommandContext } from "@tartware/schemas";
 import { query } from "../../lib/db.js";
 
-export type CommandContext = {
-  tenantId: string;
-  initiatedBy?: {
-    userId?: string;
-  } | null;
-};
+export type { CommandContext };
 
 export class BillingCommandError extends Error {
   code: string;

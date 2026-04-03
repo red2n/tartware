@@ -16,7 +16,12 @@ import {
 	SettingsValuesSchema,
 } from "../schemas/08-settings/index.js";
 import { uuid } from "../shared/base-schemas.js";
-import { SettingsScopeEnum } from "../shared/enums.js";
+import {
+	SettingsControlTypeEnum,
+	SettingsDataTypeEnum,
+	SettingsScopeEnum,
+	SettingsSensitivityEnum,
+} from "../shared/enums.js";
 
 export const SettingsCatalogResponseSchema = z.object({
 	data: z.object({
@@ -431,3 +436,324 @@ export const UpdateValueSchema = CreateValueSchema.partial().extend({
 	locked_until: z.string().datetime().optional(),
 });
 export type UpdateValue = z.infer<typeof UpdateValueSchema>;
+
+// =====================================================
+// SERVICE-LAYER INPUT TYPES (settings-service internal)
+// =====================================================
+
+/** Filters for querying settings values in the repository. */
+export type SettingsValueFilters = {
+	tenantId: string;
+	scopeLevel?: string;
+	settingId?: string;
+	propertyId?: string;
+	unitId?: string;
+	userId?: string;
+	activeOnly?: boolean;
+};
+
+/** Service-layer input for creating a settings value record. */
+export type CreateSettingsValueInput = {
+	tenantId: string;
+	settingId: string;
+	scopeLevel: string;
+	value: unknown;
+	propertyId?: string | null;
+	unitId?: string | null;
+	userId?: string | null;
+	status?: string | null;
+	notes?: string | null;
+	effectiveFrom?: Date | string | null;
+	effectiveTo?: Date | string | null;
+	context?: Record<string, unknown> | null;
+	metadata?: Record<string, unknown> | null;
+	createdBy?: string | null;
+};
+
+/** Service-layer input for updating a settings value record. */
+export type UpdateSettingsValueInput = {
+	valueId: string;
+	tenantId: string;
+	value?: unknown;
+	status?: string | null;
+	notes?: string | null;
+	effectiveFrom?: Date | string | null;
+	effectiveTo?: Date | string | null;
+	lockedUntil?: Date | string | null;
+	context?: Record<string, unknown> | null;
+	metadata?: Record<string, unknown> | null;
+	updatedBy?: string | null;
+};
+
+/** Filters for querying settings catalog entities. */
+export type SettingsCatalogFilters = {
+	activeOnly: boolean;
+	categoryId?: string;
+	sectionId?: string;
+	settingId?: string;
+	search?: string;
+};
+
+/** Service-layer input for creating a package record. */
+export type CreatePackageInput = {
+	tenantId: string;
+	propertyId?: string;
+	packageName: string;
+	packageCode: string;
+	packageType: string;
+	shortDescription?: string;
+	validFrom: string;
+	validTo: string;
+	minNights: number;
+	maxNights?: number;
+	minGuests: number;
+	maxGuests?: number;
+	pricingModel: string;
+	basePrice: number;
+	includesBreakfast: boolean;
+	includesLunch: boolean;
+	includesDinner: boolean;
+	includesParking: boolean;
+	includesWifi: boolean;
+	includesAirportTransfer: boolean;
+	refundable: boolean;
+	freeCancellationDays?: number;
+	totalInventory?: number;
+	createdBy?: string;
+};
+
+/** Service-layer input for updating a package record. */
+export type UpdatePackageInput = {
+	packageId: string;
+	tenantId: string;
+	isActive?: boolean;
+	includesBreakfast?: boolean;
+	includesLunch?: boolean;
+	includesDinner?: boolean;
+	includesParking?: boolean;
+	includesWifi?: boolean;
+	includesAirportTransfer?: boolean;
+	updatedBy?: string;
+};
+
+/** Service-layer input for creating a package component record. */
+export type CreatePackageComponentInput = {
+	packageId: string;
+	componentType: string;
+	componentName: string;
+	componentDescription?: string;
+	quantity: number;
+	pricingType: string;
+	unitPrice: number;
+	isIncluded: boolean;
+	isOptional: boolean;
+	isMandatory: boolean;
+	deliveryTiming?: string;
+	deliveryLocation?: string;
+	displayOrder: number;
+	createdBy?: string;
+};
+
+/** Seed data shape for a single settings definition in catalog data files. */
+export type RawDefinition = {
+	code: string;
+	name: string;
+	description: string;
+	controlType: keyof typeof SettingsControlTypeEnum.enum;
+	dataType: keyof typeof SettingsDataTypeEnum.enum;
+	defaultScope: keyof typeof SettingsScopeEnum.enum;
+	allowedScopes: Array<keyof typeof SettingsScopeEnum.enum>;
+	overrideScopes?: Array<keyof typeof SettingsScopeEnum.enum>;
+	defaultValue?: unknown;
+	valueConstraints?: Record<string, unknown>;
+	formSchema?: Record<string, unknown>;
+	tags?: string[];
+	moduleDependencies?: string[];
+	referenceDocs?: string[];
+	sensitivity?: keyof typeof SettingsSensitivityEnum.enum;
+	options?: Array<{
+		value: string;
+		label: string;
+		description?: string;
+		icon?: string;
+		color?: string;
+		isDefault?: boolean;
+	}>;
+};
+
+/** Seed data shape for a settings section containing definitions. */
+export type RawSection = {
+	code: string;
+	name: string;
+	description: string;
+	icon?: string;
+	tags?: string[];
+	definitions: RawDefinition[];
+};
+
+/** Seed data shape for a top-level settings category. */
+export type RawCategory = {
+	code: string;
+	name: string;
+	description: string;
+	icon: string;
+	color?: string;
+	tags?: string[];
+	sections: RawSection[];
+};
+
+// =====================================================
+// REPOSITORY INPUT TYPES — packages
+// =====================================================
+
+/** DB row shape returned by the packages list/detail SQL queries. */
+export type PackageRow = {
+	package_id: string;
+	tenant_id: string;
+	property_id: string | null;
+	property_name: string | null;
+	package_name: string;
+	package_code: string;
+	package_type: string;
+	short_description: string | null;
+	valid_from: string | Date;
+	valid_to: string | Date;
+	is_currently_valid: boolean;
+	min_nights: number;
+	max_nights: number | null;
+	min_guests: number;
+	max_guests: number | null;
+	pricing_model: string;
+	base_price: number | string;
+	discount_percentage: number | string | null;
+	includes_breakfast: boolean;
+	includes_lunch: boolean;
+	includes_dinner: boolean;
+	includes_parking: boolean;
+	includes_wifi: boolean;
+	includes_airport_transfer: boolean;
+	refundable: boolean;
+	free_cancellation_days: number | null;
+	available_inventory: number | null;
+	total_inventory: number | null;
+	sold_count: number;
+	is_active: boolean;
+	is_published: boolean;
+	is_featured: boolean;
+	total_bookings: number;
+	total_revenue: number | string | null;
+	average_rating: number | string | null;
+	badge_text: string | null;
+	image_urls: string[] | null;
+	created_at: string | Date;
+	updated_at: string | Date | null;
+};
+
+/** DB row shape returned by the package_components SQL query. */
+export type PackageComponentRow = {
+	component_id: string;
+	package_id: string;
+	component_type: string;
+	component_name: string;
+	component_description: string | null;
+	quantity: number;
+	pricing_type: string;
+	unit_price: number | string;
+	is_included: boolean;
+	is_optional: boolean;
+	is_mandatory: boolean;
+	delivery_timing: string | null;
+	delivery_location: string | null;
+	display_order: number;
+	is_active: boolean;
+};
+
+/** Query input for listing packages. */
+export type ListPackagesInput = {
+	limit?: number;
+	tenantId: string;
+	propertyId?: string;
+	packageType?: string;
+	isActive?: boolean;
+	isPublished?: boolean;
+	isFeatured?: boolean;
+	validOn?: string;
+};
+
+/** Query input for fetching a single package by ID. */
+export type GetPackageInput = {
+	packageId: string;
+	tenantId: string;
+};
+
+/** Query input for fetching components of a package. */
+export type GetPackageComponentsInput = {
+	packageId: string;
+};
+
+// =====================================================
+// REPOSITORY INPUT TYPES — settings values store
+// =====================================================
+
+/** Filter criteria for querying seed settings values. */
+export type SeedValueFilters = {
+	tenantId?: string;
+	scopeLevel?: string;
+	settingId?: string;
+	propertyId?: string;
+	unitId?: string;
+	userId?: string;
+	activeOnly?: boolean;
+};
+
+/** Input for creating a new seed settings value. */
+export type CreateSeedValueInput = {
+	tenantId: string;
+	settingId: string;
+	scopeLevel: string;
+	value?: unknown;
+	propertyId?: string | null;
+	unitId?: string | null;
+	userId?: string | null;
+	status?: "ACTIVE" | "PENDING" | "EXPIRED" | null;
+	notes?: string | null;
+	effectiveFrom?: Date | string | null;
+	effectiveTo?: Date | string | null;
+	context?: Record<string, unknown> | null;
+	metadata?: Record<string, unknown> | null;
+	createdBy?: string | null;
+};
+
+/** Input for updating an existing seed settings value. */
+export type UpdateSeedValueInput = {
+	valueId: string;
+	tenantId: string;
+	value?: unknown;
+	status?: "ACTIVE" | "PENDING" | "EXPIRED" | null;
+	notes?: string | null;
+	effectiveFrom?: Date | string | null;
+	effectiveTo?: Date | string | null;
+	lockedUntil?: Date | string | null;
+	context?: Record<string, unknown> | null;
+	metadata?: Record<string, unknown> | null;
+	updatedBy?: string | null;
+};
+
+// =====================================================
+// SERVICE-LAYER TYPES — settings command service
+// =====================================================
+
+/** DB scope fields used to identify a settings value row. */
+export type SettingsValueScope = {
+	setting_id: string;
+	scope_level: string;
+	property_id: string | null;
+	unit_id: string | null;
+	user_id: string | null;
+};
+
+/** DB row shape for a settings value including scope + id + status. */
+export type SettingsValueRow = SettingsValueScope & {
+	id: string;
+	status: string;
+};

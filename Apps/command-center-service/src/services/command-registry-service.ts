@@ -1,3 +1,4 @@
+import type { CommandDefinitionView } from "@tartware/schemas";
 import type { TenantMembership } from "@tartware/tenant-auth/membership";
 
 import { config } from "../config.js";
@@ -6,6 +7,8 @@ import {
   type CommandRegistrySnapshot,
   loadCommandRegistrySnapshot,
 } from "../sql/command-registry.js";
+
+export type { CommandDefinitionView };
 
 const LEGACY_MODULE_MAP: Record<string, string> = {
   reservations: "core",
@@ -152,17 +155,6 @@ type ResolveCommandOptions = {
   commandName: string;
   tenantId: string;
   membership: TenantMembership;
-};
-
-export type CommandDefinitionView = {
-  name: string;
-  label: string;
-  description: string;
-  samplePayload: Record<string, unknown>;
-  requiredModules: string[];
-  defaultTargetService: string;
-  defaultTopic: string;
-  version: string;
 };
 
 /**

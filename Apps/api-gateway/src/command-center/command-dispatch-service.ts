@@ -3,6 +3,7 @@ import {
   createCommandDispatchService,
   type AcceptCommandInput as SharedAcceptCommandInput,
 } from "@tartware/command-center-shared";
+import type { AcceptedCommand } from "@tartware/schemas";
 
 import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
@@ -19,26 +20,9 @@ import {
   updateCommandDispatchStatus,
 } from "./sql/command-dispatches.js";
 
-type CommandEnvelope = {
-  metadata: Record<string, unknown>;
-  payload: Record<string, unknown>;
-  headers: Record<string, string>;
-  targetTopic: string;
-};
-
 type AcceptCommandInput = SharedAcceptCommandInput<TenantMembership>;
 
-export type AcceptedCommand = {
-  status: "accepted";
-  commandId: string;
-  commandName: string;
-  tenantId: string;
-  correlationId?: string;
-  targetService: string;
-  requestedAt: string;
-  outboxEventId: string;
-  envelope: CommandEnvelope;
-};
+export type { AcceptedCommand };
 
 const logger = gatewayLogger.child({ module: "command-dispatch" });
 const COMMAND_OUTBOX_RETRY_BACKOFF_MS = Number(process.env.COMMAND_OUTBOX_RETRY_BACKOFF_MS ?? 1000);

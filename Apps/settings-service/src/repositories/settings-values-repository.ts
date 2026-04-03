@@ -1,4 +1,9 @@
-import { SettingsValuesSchema } from "@tartware/schemas";
+import {
+  type CreateSettingsValueInput,
+  SettingsValuesSchema,
+  type UpdateSettingsValueInput,
+  type SettingsValueFilters as ValueFilters,
+} from "@tartware/schemas";
 import { z } from "zod";
 
 import { query } from "../lib/db.js";
@@ -6,46 +11,7 @@ import { query } from "../lib/db.js";
 const SettingsValueArraySchema = z.array(SettingsValuesSchema);
 const SettingsValueSchema = SettingsValuesSchema;
 
-export type ValueFilters = {
-  tenantId: string;
-  scopeLevel?: string;
-  settingId?: string;
-  propertyId?: string;
-  unitId?: string;
-  userId?: string;
-  activeOnly?: boolean;
-};
-
-export type CreateSettingsValueInput = {
-  tenantId: string;
-  settingId: string;
-  scopeLevel: string;
-  value: unknown;
-  propertyId?: string | null;
-  unitId?: string | null;
-  userId?: string | null;
-  status?: string | null;
-  notes?: string | null;
-  effectiveFrom?: Date | string | null;
-  effectiveTo?: Date | string | null;
-  context?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
-  createdBy?: string | null;
-};
-
-export type UpdateSettingsValueInput = {
-  valueId: string;
-  tenantId: string;
-  value?: unknown;
-  status?: string | null;
-  notes?: string | null;
-  effectiveFrom?: Date | string | null;
-  effectiveTo?: Date | string | null;
-  lockedUntil?: Date | string | null;
-  context?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
-  updatedBy?: string | null;
-};
+export type { ValueFilters, CreateSettingsValueInput, UpdateSettingsValueInput };
 
 export const listValues = async (filters: ValueFilters) => {
   const conditions: string[] = ["tenant_id = $1"];

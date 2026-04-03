@@ -1,3 +1,4 @@
+import type { CreateReservationResult } from "@tartware/schemas";
 import { type ReservationUpdatedEvent, ReservationUpdatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
@@ -15,11 +16,7 @@ export class ReservationCommandError extends Error {
   }
 }
 
-export interface CreateReservationResult {
-  eventId: string;
-  correlationId?: string;
-  status: "accepted";
-}
+export type { CreateReservationResult };
 
 export const DEFAULT_CURRENCY = "USD";
 export const APP_ACTOR = "COMMAND_CENTER";

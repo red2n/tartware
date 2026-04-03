@@ -12,47 +12,12 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../../shared/badge-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
+import type { AmenityCatalogItem, BuildingItem, RoomItem, RoomTypeItem } from "@tartware/schemas";
 
-type RoomTypeRef = { room_type_id: string; type_name: string };
-type BuildingRef = { building_id: string; building_code: string; building_name: string };
-
-type RoomDetail = {
-	room_id: string;
-	tenant_id: string;
-	property_id: string;
-	property_name?: string;
-	room_type_id?: string;
-	room_type_name?: string;
-	room_type_amenities?: string[];
-	room_number: string;
-	room_name?: string;
-	floor?: string;
-	building?: string;
-	wing?: string;
-	status: string;
-	status_display: string;
-	housekeeping_status: string;
-	housekeeping_display: string;
-	maintenance_status: string;
-	maintenance_display: string;
-	features?: Record<string, unknown>;
-	amenities?: string[];
-	is_blocked: boolean;
-	block_reason?: string;
-	is_out_of_order: boolean;
-	out_of_order_reason?: string;
-	expected_ready_date?: string;
-	housekeeping_notes?: string;
-	updated_at?: string;
-	version: string;
-};
-
-type CatalogItem = {
-	amenity_code: string;
-	display_name: string;
-	category: string;
-	icon: string | null;
-};
+type RoomTypeRef = Pick<RoomTypeItem, "room_type_id" | "type_name">;
+type BuildingRef = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;
+type RoomDetail = RoomItem;
+type CatalogItem = AmenityCatalogItem;
 
 type DetailRow = { label: string; value: string; badge?: string };
 

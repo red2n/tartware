@@ -1,19 +1,14 @@
+import type {
+  RollComputationType,
+  RollLedgerEntry,
+  ShadowLedgerEntry,
+  ShadowLedgerRow,
+} from "@tartware/schemas";
 import type { QueryResult, QueryResultRow } from "pg";
 
 import { query } from "../lib/db.js";
 
-export type RollComputationType = "EOD" | "CHECKOUT" | "CANCEL" | "UNKNOWN";
-
-export type RollLedgerEntry = {
-  tenantId: string;
-  reservationId?: string;
-  lifecycleEventId: string;
-  rollType: RollComputationType;
-  rollDate: string;
-  occurredAt: Date;
-  sourceEventType: string;
-  payload: Record<string, unknown>;
-};
+export type { RollComputationType, RollLedgerEntry, ShadowLedgerEntry };
 
 type QueryExecutor = {
   query: <TRow extends QueryResultRow = QueryResultRow>(
@@ -136,30 +131,6 @@ export const upsertRollLedgerEntry = async (
   );
 
   return driftStatus;
-};
-
-type ShadowLedgerRow = {
-  ledger_id: string;
-  tenant_id: string;
-  reservation_id: string | null;
-  lifecycle_event_id: string;
-  roll_type: string;
-  roll_date: string;
-  occurred_at: string;
-  source_event_type: string;
-  event_payload: Record<string, unknown> | null;
-};
-
-export type ShadowLedgerEntry = {
-  ledgerId: string;
-  tenantId: string;
-  reservationId?: string;
-  lifecycleEventId: string;
-  rollType: string;
-  rollDate: string;
-  occurredAt: Date;
-  sourceEventType: string;
-  payload: Record<string, unknown>;
 };
 
 const toShadowLedgerEntry = (row: ShadowLedgerRow): ShadowLedgerEntry => ({

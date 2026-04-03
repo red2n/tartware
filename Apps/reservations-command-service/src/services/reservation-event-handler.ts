@@ -1,21 +1,15 @@
 import type {
+  CreateFolioParams,
   ReservationCancelledEvent,
   ReservationCreatedEvent,
   ReservationEvent,
+  ReservationEventHandlerResult,
   ReservationUpdatedEvent,
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
 import { dispatchNotificationCommand } from "./reservation-commands/notification-dispatch.js";
-
-/**
- * Result shape returned by reservation event handlers so the caller
- * can persist idempotency metadata (e.g., reservationId).
- */
-type ReservationEventHandlerResult = {
-  reservationId?: string;
-};
 
 class ReservationEventError extends Error {
   code: string;
@@ -349,15 +343,6 @@ const handleReservationCancelled = async (event: ReservationCancelledEvent): Pro
  * Uses ON CONFLICT to ensure idempotency — duplicate event replays won't
  * create extra folios.
  */
-type CreateFolioParams = {
-  reservationId: string;
-  tenantId: string;
-  propertyId: string;
-  guestId: string;
-  guestName: string;
-  currency: string;
-};
-
 const createFolioForReservation = async (params: CreateFolioParams): Promise<void> => {
   const folioNumber = `F-${params.reservationId.slice(0, 8).toUpperCase()}`;
   const systemActorId = "33333333-3333-3333-3333-333333333333";

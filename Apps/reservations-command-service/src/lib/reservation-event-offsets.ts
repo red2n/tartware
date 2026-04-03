@@ -1,25 +1,9 @@
+import type { UpsertReservationEventOffsetInput } from "@tartware/schemas";
+
 import { query } from "./db.js";
 
 /**
  * Payload required to upsert a reservation event offset entry.
- */
-type UpsertReservationEventOffsetInput = {
-  tenantId: string;
-  consumerGroup: string;
-  topic: string;
-  partition: number;
-  offset: string;
-  eventId?: string;
-  reservationId?: string;
-  correlationId?: string;
-  metadata?: Record<string, unknown>;
-};
-
-/**
- * Persists the highest processed offset per topic/partition so that stateless
- * Kubernetes deployments can safely resume consumption without duplicating work.
- *
- * Uses an UPSERT to keep the latest offset and contextual metadata.
  */
 export const upsertReservationEventOffset = async (
   input: UpsertReservationEventOffsetInput,

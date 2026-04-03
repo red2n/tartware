@@ -129,7 +129,10 @@ export class CreateGuestDialogComponent {
 			if (e instanceof ApiValidationError) {
 				const errors: Record<string, string> = {};
 				for (const fe of e.fieldErrors) {
-					errors[fe.path] = fe.message;
+					errors[fe.path] =
+						fe.path === "date_of_birth"
+							? "Please enter a valid date (DD/MM/YYYY)"
+							: fe.message;
 				}
 				this.fieldErrors.set(errors);
 				this.toast.error(e.message);

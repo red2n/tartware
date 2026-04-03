@@ -1,3 +1,4 @@
+import type { CommandContext, SettingsValueRow } from "@tartware/schemas";
 import { config } from "../config.js";
 import { createSeedValue, listSeedValues, updateSeedValue } from "../data/settings-values-store.js";
 import { query } from "../lib/db.js";
@@ -8,26 +9,6 @@ import {
   type SettingsValueSetCommand,
   SettingsValueSetCommandSchema,
 } from "../schemas/settings-commands.js";
-
-type CommandContext = {
-  tenantId: string;
-  initiatedBy?: {
-    userId?: string;
-  } | null;
-};
-
-type SettingsValueScope = {
-  setting_id: string;
-  scope_level: string;
-  property_id: string | null;
-  unit_id: string | null;
-  user_id: string | null;
-};
-
-type SettingsValueRow = SettingsValueScope & {
-  id: string;
-  status: string;
-};
 
 class SettingsCommandError extends Error {
   code: string;

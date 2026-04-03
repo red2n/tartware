@@ -212,3 +212,37 @@ export const SystemBootstrapTenantSchema = z.object({
 });
 
 export type SystemBootstrapTenant = z.infer<typeof SystemBootstrapTenantSchema>;
+
+// =====================================================
+// TENANT MODULE REGISTRY TYPES
+// =====================================================
+
+/** All available tenant module IDs. */
+export const MODULE_IDS = [
+	"core",
+	"finance-automation",
+	"tenant-owner-portal",
+	"facility-maintenance",
+	"analytics-bi",
+	"marketing-channel",
+	"enterprise-api",
+] as const;
+
+/** A valid module identifier. */
+export type ModuleId = (typeof MODULE_IDS)[number];
+
+/** Full module definition with metadata. */
+export interface ModuleDefinition {
+	id: ModuleId;
+	name: string;
+	description: string;
+	tier: "base" | "add-on" | "enterprise";
+	features: string[];
+	category: string;
+}
+
+/** Response payload listing which modules are enabled for a tenant. */
+export interface TenantModulesResponse {
+	tenantId: string;
+	modules: ModuleId[];
+}

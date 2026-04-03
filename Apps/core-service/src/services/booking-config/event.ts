@@ -1,8 +1,14 @@
 import {
   type EventBookingListItem,
   EventBookingListItemSchema,
+  type EventBookingRow,
+  type GetEventBookingInput,
+  type GetMeetingRoomInput,
+  type ListEventBookingsInput,
+  type ListMeetingRoomsInput,
   type MeetingRoomListItem,
   MeetingRoomListItemSchema,
+  type MeetingRoomRow,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -18,60 +24,6 @@ import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 // =====================================================
 // MEETING ROOM SERVICE
 // =====================================================
-
-type MeetingRoomRow = {
-  room_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  room_code: string;
-  room_name: string;
-  room_type: string;
-  room_status: string;
-  building: string | null;
-  floor: number | null;
-  location_description: string | null;
-  max_capacity: number;
-  theater_capacity: number | null;
-  classroom_capacity: number | null;
-  banquet_capacity: number | null;
-  reception_capacity: number | null;
-  u_shape_capacity: number | null;
-  boardroom_capacity: number | null;
-  area_sqm: number | string | null;
-  area_sqft: number | string | null;
-  length_meters: number | string | null;
-  width_meters: number | string | null;
-  ceiling_height_meters: number | string | null;
-  has_natural_light: boolean;
-  has_audio_visual: boolean;
-  has_video_conferencing: boolean;
-  has_wifi: boolean;
-  has_stage: boolean;
-  has_dance_floor: boolean;
-  wheelchair_accessible: boolean;
-  default_setup: string | null;
-  setup_time_minutes: number;
-  teardown_time_minutes: number;
-  turnover_time_minutes: number;
-  hourly_rate: number | string | null;
-  half_day_rate: number | string | null;
-  full_day_rate: number | string | null;
-  minimum_rental_hours: number;
-  currency_code: string;
-  operating_hours_start: string | null;
-  operating_hours_end: string | null;
-  catering_required: boolean;
-  in_house_catering_available: boolean;
-  external_catering_allowed: boolean;
-  primary_photo_url: string | null;
-  floor_plan_url: string | null;
-  virtual_tour_url: string | null;
-  is_active: boolean;
-  requires_approval: boolean;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 const mapMeetingRoomRow = (row: MeetingRoomRow): MeetingRoomListItem => {
   return MeetingRoomListItemSchema.parse({
@@ -131,17 +83,6 @@ const mapMeetingRoomRow = (row: MeetingRoomRow): MeetingRoomListItem => {
   });
 };
 
-export type ListMeetingRoomsInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  roomType?: string;
-  roomStatus?: string;
-  isActive?: boolean;
-  minCapacity?: number;
-  offset?: number;
-};
-
 export const listMeetingRooms = async (
   options: ListMeetingRoomsInput,
 ): Promise<MeetingRoomListItem[]> => {
@@ -156,11 +97,6 @@ export const listMeetingRooms = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapMeetingRoomRow);
-};
-
-export type GetMeetingRoomInput = {
-  roomId: string;
-  tenantId: string;
 };
 
 export const getMeetingRoomById = async (
@@ -181,57 +117,7 @@ export const getMeetingRoomById = async (
 // EVENT BOOKING SERVICE
 // =====================================================
 
-type EventBookingRow = {
-  event_id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  event_number: string | null;
-  event_name: string;
-  event_type: string;
-  meeting_room_id: string;
-  meeting_room_name: string | null;
-  event_date: string | Date;
-  start_time: string;
-  end_time: string;
-  setup_start_time: string | null;
-  actual_start_time: string | null;
-  actual_end_time: string | null;
-  organizer_name: string;
-  organizer_company: string | null;
-  organizer_email: string | null;
-  organizer_phone: string | null;
-  guest_id: string | null;
-  reservation_id: string | null;
-  company_id: string | null;
-  expected_attendees: number;
-  confirmed_attendees: number | null;
-  actual_attendees: number | null;
-  guarantee_number: number | null;
-  setup_type: string;
-  catering_required: boolean;
-  audio_visual_needed: boolean;
-  booking_status: string;
-  payment_status: string;
-  booked_date: string | Date;
-  confirmed_date: string | Date | null;
-  beo_due_date: string | Date | null;
-  final_count_due_date: string | Date | null;
-  rental_rate: number | string | null;
-  estimated_total: number | string | null;
-  actual_total: number | string | null;
-  deposit_required: number | string | null;
-  deposit_paid: number | string | null;
-  currency_code: string;
-  contract_signed: boolean;
-  beo_pdf_url: string | null;
-  post_event_rating: number | null;
-  attendee_satisfaction_score: number | string | null;
-  is_recurring: boolean;
-  followup_required: boolean;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
+// =====================================================
 
 const mapEventBookingRow = (row: EventBookingRow): EventBookingListItem => {
   return EventBookingListItemSchema.parse({
@@ -295,18 +181,6 @@ const mapEventBookingRow = (row: EventBookingRow): EventBookingListItem => {
   });
 };
 
-export type ListEventBookingsInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  eventType?: string;
-  bookingStatus?: string;
-  eventDateFrom?: string;
-  eventDateTo?: string;
-  meetingRoomId?: string;
-  offset?: number;
-};
-
 export const listEventBookings = async (
   options: ListEventBookingsInput,
 ): Promise<EventBookingListItem[]> => {
@@ -322,11 +196,6 @@ export const listEventBookings = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapEventBookingRow);
-};
-
-export type GetEventBookingInput = {
-  eventId: string;
-  tenantId: string;
 };
 
 export const getEventBookingById = async (

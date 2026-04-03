@@ -29,7 +29,8 @@ room_name VARCHAR(255), -- Optional marketing name (e.g., Presidential Suite)
 
 -- Location
 floor VARCHAR(20), -- Floor indicator
-building VARCHAR(100), -- Building or tower designation
+building VARCHAR(100), -- Building or tower display name (denormalised for queries)
+building_id UUID REFERENCES buildings(building_id) ON DELETE SET NULL, -- FK buildings.building_id (nullable — rooms without a building entity)
 wing VARCHAR(100), -- Wing or section within the property
 
 -- Status
@@ -113,6 +114,8 @@ COMMENT ON COLUMN rooms.room_number IS 'Unique room number within property (e.g.
 
 COMMENT ON COLUMN rooms.floor IS 'Floor location (e.g., Ground, 1, 2, Penthouse)';
 
+COMMENT ON COLUMN rooms.building IS 'Denormalised building display name for fast queries';
+
 COMMENT ON COLUMN rooms.status IS 'ENUM: available, occupied, reserved, blocked, maintenance';
 
 COMMENT ON COLUMN rooms.housekeeping_status IS 'ENUM: clean, dirty, inspected, in_progress, do_not_disturb';
@@ -135,6 +138,11 @@ COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between sc
 
 -- Idempotent column additions for existing tables
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS phone_extension VARCHAR(20);
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS building_id UUID;
+ALTER TABLE rooms ADD CONSTRAINT IF NOT EXISTS rooms_building_id_fkey
+    FOREIGN KEY (building_id) REFERENCES buildings(building_id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN rooms.building_id IS 'FK to buildings.building_id — links room to a physical building entity';
 
 -- Ensure status default is SETUP for existing environments (idempotent upgrade)
 ALTER TABLE rooms ALTER COLUMN status SET DEFAULT 'SETUP';

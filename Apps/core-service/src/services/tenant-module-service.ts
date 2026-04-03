@@ -1,19 +1,13 @@
+import type { TenantModulesResponse } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
   DEFAULT_ENABLED_MODULES,
   MODULE_DEFINITIONS,
-  type ModuleId,
   normalizeModuleList,
 } from "../modules/module-registry.js";
 import { TENANT_MODULES_SQL } from "../sql/tenant-module-queries.js";
 
-/**
- * Tenant module response payload.
- */
-export interface TenantModulesResponse {
-  tenantId: string;
-  modules: ModuleId[];
-}
+export type { TenantModulesResponse };
 
 /**
  * Fetch enabled modules for a tenant.

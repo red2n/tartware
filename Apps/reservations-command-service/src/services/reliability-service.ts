@@ -1,9 +1,13 @@
+import type { ReliabilitySnapshot } from "@tartware/schemas";
+
 import { kafkaConfig, reliabilityConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { query } from "../lib/db.js";
 import { setDlqDepth, setDlqThresholds } from "../lib/metrics.js";
 import { reservationsLogger } from "../logger.js";
 import { countPendingOutboxRows } from "../outbox/repository.js";
+
+export type { ReliabilitySnapshot };
 
 type ConsumerStats = {
   partitions: number;
@@ -23,33 +27,6 @@ type DlqStats = {
 };
 
 type ReliabilityStatus = "healthy" | "degraded" | "critical";
-
-/**
- * Reliability snapshot for reservation command pipeline.
- */
-export type ReliabilitySnapshot = {
-  status: ReliabilityStatus;
-  generatedAt: string;
-  issues: string[];
-  outbox: {
-    pending: number;
-    warnThreshold: number;
-    criticalThreshold: number;
-  };
-  consumer: ConsumerStats & {
-    staleThresholdSeconds: number;
-  };
-  lifecycle: LifecycleStats & {
-    stalledThresholdSeconds: number;
-  };
-  dlq: {
-    depth: number | null;
-    warnThreshold: number;
-    criticalThreshold: number;
-    topic: string;
-    error: string | null;
-  };
-};
 
 const STATUS_ORDER: ReliabilityStatus[] = ["healthy", "degraded", "critical"];
 

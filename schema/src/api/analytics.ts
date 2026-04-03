@@ -273,3 +273,154 @@ export const RevenueForecastReportSchema = z.object({
 });
 
 export type RevenueForecastReport = z.infer<typeof RevenueForecastReportSchema>;
+
+// -----------------------------------------------------------------------------
+// CG-14: Flash Report — Manager's real-time operational snapshot
+// -----------------------------------------------------------------------------
+
+/** Flash report data returned by the Manager's Flash Report endpoint. */
+export type FlashReportData = {
+	business_date: string;
+	rooms: {
+		total: number;
+		sold: number;
+		available: number;
+		out_of_order: number;
+		out_of_service: number;
+		complimentary: number;
+		occupancy_percent: number;
+	};
+	revenue: {
+		room_revenue: number;
+		total_revenue: number;
+		adr: number;
+		revpar: number;
+		currency: string;
+	};
+	arrivals: {
+		due_in: number;
+		checked_in: number;
+		vip_arrivals: number;
+		group_arrivals: number;
+	};
+	departures: {
+		due_out: number;
+		checked_out: number;
+		late_checkouts: number;
+	};
+	in_house: {
+		total_guests: number;
+		no_shows_today: number;
+		walk_ins_today: number;
+	};
+	housekeeping: {
+		dirty: number;
+		clean: number;
+		inspected: number;
+		in_progress: number;
+	};
+	maintenance: {
+		open_requests: number;
+		urgent_or_emergency: number;
+		completed_today: number;
+	};
+};
+
+// -----------------------------------------------------------------------------
+// CG-14: No-Show Report item
+// -----------------------------------------------------------------------------
+
+/** Single item in the no-show report. */
+export type NoShowReportItem = {
+	reservation_id: string;
+	confirmation_number: string;
+	guest_name: string;
+	room_type: string | null;
+	room_number: string | null;
+	check_in_date: string;
+	check_out_date: string;
+	source: string | null;
+	total_amount: number;
+	deposit_amount: number;
+};
+
+// -----------------------------------------------------------------------------
+// CG-14: Guest Statistics Report
+// -----------------------------------------------------------------------------
+
+/** Aggregated guest demographics and statistics. */
+export type GuestStatisticsReport = {
+	total_guests: number;
+	new_guests_period: number;
+	returning_guests: number;
+	vip_count: number;
+	nationality_breakdown: Array<{ nationality: string; count: number }>;
+	loyalty_tier_breakdown: Array<{ tier: string; count: number }>;
+};
+
+// -----------------------------------------------------------------------------
+// CG-14: Market Segment Production Report
+// -----------------------------------------------------------------------------
+
+/** Single market segment production row. */
+export type MarketSegmentProductionItem = {
+	market_segment: string;
+	room_nights: number;
+	revenue: number;
+	avg_rate: number;
+	percentage_of_total: number;
+};
+
+// -----------------------------------------------------------------------------
+// CG-14: Housekeeping Productivity Report
+// -----------------------------------------------------------------------------
+
+/** Housekeeping task productivity report with per-attendant breakdown. */
+export type HousekeepingProductivityReport = {
+	total_tasks: number;
+	completed: number;
+	in_progress: number;
+	pending: number;
+	completion_rate: number;
+	avg_duration_minutes: number;
+	by_attendant: Array<{
+		attendant_id: string;
+		attendant_name: string;
+		completed_tasks: number;
+		avg_duration_minutes: number;
+	}>;
+};
+
+// -----------------------------------------------------------------------------
+// CG-14: Maintenance SLA Report
+// -----------------------------------------------------------------------------
+
+/** Maintenance request SLA compliance and resolution metrics. */
+export type MaintenanceSlaReport = {
+	total_requests: number;
+	completed: number;
+	overdue: number;
+	avg_response_time_minutes: number;
+	avg_resolution_time_hours: number;
+	by_priority: Array<{
+		priority: string;
+		count: number;
+		completed: number;
+		avg_resolution_hours: number;
+	}>;
+};
+
+// -----------------------------------------------------------------------------
+// CG-14: Audit Trail Item
+// -----------------------------------------------------------------------------
+
+/** Single item in the command outbox audit trail report. */
+export type AuditTrailItem = {
+	id: string;
+	command_name: string;
+	initiated_by: string;
+	target_service: string;
+	status: string;
+	created_at: string;
+	payload_summary: string | null;
+};

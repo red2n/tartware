@@ -156,3 +156,52 @@ export const UpdateRateBodySchema = CreateRateBodySchema.partial().extend({
 });
 
 export type UpdateRateBody = z.infer<typeof UpdateRateBodySchema>;
+
+// -----------------------------------------------------------------------------
+// Service-Layer Input Types
+// -----------------------------------------------------------------------------
+
+/** Service-layer input for creating a rate (extends body with created_by). */
+export const CreateRateInputSchema = CreateRateBodySchema.extend({
+	created_by: z.string().optional(),
+});
+
+export type CreateRateInput = z.infer<typeof CreateRateInputSchema>;
+
+/** Service-layer input for updating a rate (extends body with rate_id and updated_by). */
+export const UpdateRateInputSchema = UpdateRateBodySchema.extend({
+	rate_id: uuid,
+	updated_by: z.string().optional(),
+});
+
+export type UpdateRateInput = z.infer<typeof UpdateRateInputSchema>;
+
+// =====================================================
+// REPOSITORY TYPES
+// =====================================================
+
+/** DB row shape returned when looking up an active rate. */
+export type ActiveRateRow = {
+	id: string;
+	rate_code: string;
+};
+
+/** Query input for looking up an active rate by room type and stay window. */
+export type RateQueryInput = {
+	tenantId: string;
+	propertyId: string;
+	roomTypeId: string;
+	rateCode: string;
+	stayStart: Date;
+	stayEnd: Date;
+};
+
+/** Service-layer input for resolving the applicable rate plan for a stay. */
+export type ResolveRatePlanInput = {
+	tenantId: string;
+	propertyId: string;
+	roomTypeId: string;
+	stayStart: Date;
+	stayEnd: Date;
+	requestedRateCode?: string;
+};

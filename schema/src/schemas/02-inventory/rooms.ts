@@ -38,6 +38,7 @@ export const RoomsSchema = z.object({
 	room_name: z.string().optional(),
 	floor: z.string().optional(),
 	building: z.string().optional(),
+	building_id: z.string().uuid().optional(),
 	wing: z.string().optional(),
 	status: RoomStatusEnum,
 	housekeeping_status: HousekeepingStatusEnum,

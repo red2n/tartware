@@ -1,20 +1,7 @@
+import type { ActiveRateRow, RateQueryInput } from "@tartware/schemas";
 import type { PoolClient, QueryResultRow } from "pg";
 
 import { query } from "../lib/db.js";
-
-type RateRow = {
-  id: string;
-  rate_code: string;
-};
-
-type RateQueryInput = {
-  tenantId: string;
-  propertyId: string;
-  roomTypeId: string;
-  rateCode: string;
-  stayStart: Date;
-  stayEnd: Date;
-};
 
 const runQuery = async <TRow extends QueryResultRow>(
   sql: string,
@@ -30,8 +17,8 @@ const runQuery = async <TRow extends QueryResultRow>(
 export const findActiveRateByCode = async (
   input: RateQueryInput,
   client?: PoolClient,
-): Promise<RateRow | null> => {
-  const result = await runQuery<RateRow>(
+): Promise<ActiveRateRow | null> => {
+  const result = await runQuery<ActiveRateRow>(
     `
       SELECT id, rate_code
       FROM rates

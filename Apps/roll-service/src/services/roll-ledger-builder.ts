@@ -1,19 +1,6 @@
-import type { ReservationEvent } from "@tartware/schemas";
+import type { LifecycleRow, ReservationEvent, RollLedgerEntry } from "@tartware/schemas";
 
-import type { RollLedgerEntry } from "../repositories/ledger-repository.js";
-
-/**
- * Lifecycle row shape used to build roll ledger entries.
- */
-export type LifecycleRow = {
-  event_id: string;
-  tenant_id: string;
-  reservation_id: string | null;
-  command_name: string;
-  current_state: string;
-  metadata: Record<string, unknown> | null;
-  created_at: Date;
-};
+export type { LifecycleRow };
 
 const toDate = (value: unknown): Date | null => {
   if (!value) {

@@ -5,7 +5,13 @@
  * Ownership: rooms-service
  */
 
-import { type RateItem, RateItemSchema, type RateRow } from "@tartware/schemas";
+import {
+  type CreateRateInput,
+  type RateItem,
+  RateItemSchema,
+  type RateRow,
+  type UpdateRateInput,
+} from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
@@ -87,44 +93,6 @@ const toJson = (value: unknown): string | null => {
     return null;
   }
   return JSON.stringify(value);
-};
-
-type CreateRateInput = {
-  tenant_id: string;
-  property_id: string;
-  room_type_id: string;
-  rate_name: string;
-  rate_code: string;
-  description?: string;
-  rate_type?: string;
-  strategy?: string;
-  priority?: number;
-  base_rate: number;
-  currency?: string;
-  single_occupancy_rate?: number;
-  double_occupancy_rate?: number;
-  extra_person_rate?: number;
-  extra_child_rate?: number;
-  valid_from: string;
-  valid_until?: string;
-  advance_booking_days_min?: number;
-  advance_booking_days_max?: number;
-  min_length_of_stay?: number;
-  max_length_of_stay?: number;
-  closed_to_arrival?: boolean;
-  closed_to_departure?: boolean;
-  meal_plan?: string;
-  meal_plan_cost?: number;
-  cancellation_policy?: unknown;
-  modifiers?: unknown;
-  channels?: unknown;
-  customer_segments?: unknown;
-  tax_inclusive?: boolean;
-  tax_rate?: number;
-  status?: string;
-  display_order?: number;
-  metadata?: unknown;
-  created_by?: string;
 };
 
 /**
@@ -216,45 +184,6 @@ export const createRate = async (input: CreateRateInput): Promise<RateItem> => {
     throw new Error("Failed to create rate");
   }
   return mapRowToRate(rows[0]);
-};
-
-type UpdateRateInput = {
-  tenant_id: string;
-  rate_id: string;
-  property_id?: string;
-  room_type_id?: string;
-  rate_name?: string;
-  rate_code?: string;
-  description?: string;
-  rate_type?: string;
-  strategy?: string;
-  priority?: number;
-  base_rate?: number;
-  currency?: string;
-  single_occupancy_rate?: number;
-  double_occupancy_rate?: number;
-  extra_person_rate?: number;
-  extra_child_rate?: number;
-  valid_from?: string;
-  valid_until?: string;
-  advance_booking_days_min?: number;
-  advance_booking_days_max?: number;
-  min_length_of_stay?: number;
-  max_length_of_stay?: number;
-  closed_to_arrival?: boolean;
-  closed_to_departure?: boolean;
-  meal_plan?: string;
-  meal_plan_cost?: number;
-  cancellation_policy?: unknown;
-  modifiers?: unknown;
-  channels?: unknown;
-  customer_segments?: unknown;
-  tax_inclusive?: boolean;
-  tax_rate?: number;
-  status?: string;
-  display_order?: number;
-  metadata?: unknown;
-  updated_by?: string;
 };
 
 /**

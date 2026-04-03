@@ -17,6 +17,8 @@ export * from "./billing.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./billing-rows.js";
 export * from "./booking-config.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./booking-config-rows.js";
 export * from "./buildings.js";
 export * from "./calculations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
@@ -36,14 +38,21 @@ export * from "./housekeeping-rows.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./notification-rows.js";
 export * from "./notifications.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./operations.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./operations-rows.js";
 export * from "./properties.js";
 export * from "./rate-calendar.js";
 export * from "./rates.js";
 export * from "./recommendations.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./report-rows.js";
 export * from "./reservations.js";
 export * from "./revenue.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./revenue-rows.js";
+export * from "./roll.js";
 export * from "./rooms.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./rooms-rows.js";

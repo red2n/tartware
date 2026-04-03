@@ -1,47 +1,15 @@
-import type { CommandFeatureStatus } from "@tartware/schemas";
+import type {
+  CommandFeatureListRow,
+  CommandFeatureRow,
+  CommandFeatureStatus,
+  CommandFeatureUpdateRow,
+  CommandRegistrySnapshot,
+  CommandRouteRow,
+  CommandTemplateRow,
+  QueryExecutor,
+} from "@tartware/schemas";
 
-import type { QueryExecutor } from "./command-dispatches.js";
-
-type CommandTemplateRow = {
-  command_name: string;
-  version: string;
-  description: string | null;
-  default_target_service: string;
-  default_topic: string;
-  required_modules: string[] | null;
-  payload_schema: Record<string, unknown> | null;
-  sample_payload: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-};
-
-type CommandRouteRow = {
-  id: string;
-  command_name: string;
-  environment: string;
-  tenant_id: string | null;
-  service_id: string;
-  topic: string;
-  weight: number;
-  status: "active" | "disabled";
-  metadata: Record<string, unknown> | null;
-};
-
-type CommandFeatureRow = {
-  id: string;
-  command_name: string;
-  environment: string;
-  tenant_id: string | null;
-  status: "enabled" | "disabled" | "observation";
-  max_per_minute: number | null;
-  burst: number | null;
-  metadata: Record<string, unknown> | null;
-};
-
-export type CommandRegistrySnapshot = {
-  templates: CommandTemplateRow[];
-  routes: CommandRouteRow[];
-  features: CommandFeatureRow[];
-};
+export type { CommandRegistrySnapshot };
 
 const COMMAND_TEMPLATES_SQL = `
   SELECT
@@ -94,19 +62,6 @@ const coerceObject = (value: Record<string, unknown> | null): Record<string, unk
   return {};
 };
 
-type CommandFeatureListRow = {
-  command_name: string;
-  label: string;
-  description: string;
-  default_target_service: string;
-  required_modules: string[] | null;
-  version: string;
-  feature_id: string | null;
-  status: "enabled" | "disabled" | "observation";
-  max_per_minute: number | null;
-  burst: number | null;
-};
-
 const COMMAND_FEATURES_LIST_SQL = `
   SELECT
     ct.command_name,
@@ -126,13 +81,6 @@ const COMMAND_FEATURES_LIST_SQL = `
     AND cf.tenant_id IS NULL
   ORDER BY ct.command_name
 `;
-
-type CommandFeatureUpdateRow = {
-  id: string;
-  command_name: string;
-  status: "enabled" | "disabled" | "observation";
-  updated_at: string;
-};
 
 const UPDATE_COMMAND_FEATURE_SQL = `
   UPDATE command_features

@@ -371,7 +371,7 @@ export const buildFastifyServer = (
 	if (enableMetricsEndpoint && metricsRegistry) {
 		app.get("/metrics", async (_request, reply) => {
 			const body = await metricsRegistry.metrics();
-			reply.header("Content-Type", metricsRegistry.contentType).send(body);
+			return reply.header("Content-Type", metricsRegistry.contentType).send(body);
 		});
 	}
 

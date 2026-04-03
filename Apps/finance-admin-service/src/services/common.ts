@@ -1,9 +1,6 @@
-export type CommandContext = {
-  tenantId: string;
-  initiatedBy?: {
-    userId?: string;
-  } | null;
-};
+import type { CommandContext } from "@tartware/schemas";
+
+export type { CommandContext };
 
 export class BillingCommandError extends Error {
   code: string;

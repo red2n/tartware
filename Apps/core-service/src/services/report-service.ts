@@ -1,22 +1,35 @@
 import {
+  type AuditTrailItem,
   type DemandForecastReport,
   DemandForecastReportSchema,
+  type FlashReportData,
   GuestListItemSchema,
   type GuestListReport,
   GuestListReportSchema,
+  type GuestListRow,
+  type GuestStatisticsReport,
+  type HousekeepingProductivityReport,
+  type MaintenanceSlaReport,
+  type MarketSegmentProductionItem,
+  type NoShowReportItem,
   type OccupancyReport,
   OccupancyReportSchema,
+  type OccupancyRow,
   type PaceReport,
   PaceReportSchema,
   type PerformanceReport,
   PerformanceReportSchema,
+  type ReservationSourceRow,
   ReservationSourceSummarySchema,
+  type ReservationStatusRow,
   type ReservationStatusSummary,
   ReservationStatusSummarySchema,
   type RevenueForecastReport,
   RevenueForecastReportSchema,
   type RevenueKpiReport,
   RevenueKpiReportSchema,
+  type RevenueKpiRow,
+  type RevenueSummaryRow,
   RevenueSummarySchema,
 } from "@tartware/schemas";
 
@@ -54,23 +67,6 @@ export {
 
 // Backward compatibility alias
 export const ReservationSourceSchema = ReservationSourceSummarySchema;
-
-type ReservationStatusRow = {
-  status: string | null;
-  count: string | number | null;
-};
-
-type RevenueSummaryRow = {
-  revenue_today: string | number | null;
-  revenue_month: string | number | null;
-  revenue_year: string | number | null;
-};
-
-type ReservationSourceRow = {
-  source: string | null;
-  reservations: string | number | null;
-  total_amount: string | number | null;
-};
 
 const normalizeStatusKey = (value: string | null): keyof ReservationStatusSummary | null => {
   if (!value || typeof value !== "string") {
@@ -172,17 +168,6 @@ export const getPerformanceReport = async (options: {
 
 // ─── S24: Occupancy Report ───────────────────────────────────────────────────
 
-type OccupancyRow = {
-  date: string;
-  total_rooms: number | string;
-  rooms_sold: number | string;
-  rooms_available: number | string;
-  occupancy_pct: number | string;
-};
-
-/**
- * Build an occupancy report for a date range.
- */
 export const getOccupancyReport = async (options: {
   tenantId: string;
   propertyId?: string;
@@ -221,20 +206,6 @@ export const getOccupancyReport = async (options: {
 
 // ─── S24: Revenue KPI Report ────────────────────────────────────────────────
 
-type RevenueKpiRow = {
-  total_room_revenue: string | number;
-  total_revenue: string | number;
-  rooms_sold: string | number;
-  available_room_nights: string | number;
-  occupancy_pct: string | number;
-  adr: string | number;
-  revpar: string | number;
-  trevpar: string | number;
-};
-
-/**
- * Build revenue KPIs (ADR, RevPAR, TRevPAR) for a date range.
- */
 export const getRevenueKpiReport = async (options: {
   tenantId: string;
   propertyId?: string;
@@ -266,25 +237,6 @@ export const getRevenueKpiReport = async (options: {
 };
 
 // ─── S24: Guest Lists (Arrivals / Departures / In-House) ────────────────────
-
-type GuestListRow = {
-  reservation_id: string;
-  confirmation_number: string;
-  guest_name: string;
-  guest_email: string | null;
-  guest_phone: string | null;
-  room_number: string | null;
-  room_type: string | null;
-  check_in_date: string;
-  check_out_date: string;
-  status: string;
-  source: string | null;
-  special_requests: string | null;
-  eta: string | null;
-  number_of_adults: number | string | null;
-  number_of_children: number | string | null;
-  vip: boolean;
-};
 
 const DEFAULT_PAGE_LIMIT = 100;
 const MAX_PAGE_LIMIT = 500;
@@ -618,53 +570,6 @@ export const getRevenueForecastReport = async (options: {
 // Manager's Flash Report
 // ──────────────────────────────────────────────────────────────────────────────
 
-export type FlashReportData = {
-  business_date: string;
-  rooms: {
-    total: number;
-    sold: number;
-    available: number;
-    out_of_order: number;
-    out_of_service: number;
-    complimentary: number;
-    occupancy_percent: number;
-  };
-  revenue: {
-    room_revenue: number;
-    total_revenue: number;
-    adr: number;
-    revpar: number;
-    currency: string;
-  };
-  arrivals: {
-    due_in: number;
-    checked_in: number;
-    vip_arrivals: number;
-    group_arrivals: number;
-  };
-  departures: {
-    due_out: number;
-    checked_out: number;
-    late_checkouts: number;
-  };
-  in_house: {
-    total_guests: number;
-    no_shows_today: number;
-    walk_ins_today: number;
-  };
-  housekeeping: {
-    dirty: number;
-    clean: number;
-    inspected: number;
-    in_progress: number;
-  };
-  maintenance: {
-    open_requests: number;
-    urgent_or_emergency: number;
-    completed_today: number;
-  };
-};
-
 /**
  * Generate a Manager's Flash Report — a real-time operational snapshot.
  */
@@ -873,19 +778,6 @@ export const getFlashReport = async (params: {
 
 // ─── CG-14: No-Show Report ──────────────────────────────────────────────────
 
-export type NoShowReportItem = {
-  reservation_id: string;
-  confirmation_number: string;
-  guest_name: string;
-  room_type: string | null;
-  room_number: string | null;
-  check_in_date: string;
-  check_out_date: string;
-  source: string | null;
-  total_amount: number;
-  deposit_amount: number;
-};
-
 /**
  * List reservations that were marked as no-show within a date range.
  */
@@ -1018,15 +910,6 @@ export const getVipArrivalsReport = async (params: {
 
 // ─── CG-14: Guest Statistics Report ─────────────────────────────────────────
 
-export type GuestStatisticsReport = {
-  total_guests: number;
-  new_guests_period: number;
-  returning_guests: number;
-  vip_count: number;
-  nationality_breakdown: Array<{ nationality: string; count: number }>;
-  loyalty_tier_breakdown: Array<{ tier: string; count: number }>;
-};
-
 /**
  * Aggregate guest demographics and statistics for the property.
  */
@@ -1086,14 +969,6 @@ export const getGuestStatisticsReport = async (params: {
 
 // ─── CG-14: Market Segment Production Report ────────────────────────────────
 
-export type MarketSegmentProductionItem = {
-  market_segment: string;
-  room_nights: number;
-  revenue: number;
-  avg_rate: number;
-  percentage_of_total: number;
-};
-
 /**
  * Revenue and room-night production by market segment.
  */
@@ -1145,21 +1020,6 @@ export const getMarketSegmentProductionReport = async (params: {
 };
 
 // ─── CG-14: Housekeeping Productivity Report ────────────────────────────────
-
-export type HousekeepingProductivityReport = {
-  total_tasks: number;
-  completed: number;
-  in_progress: number;
-  pending: number;
-  completion_rate: number;
-  avg_duration_minutes: number;
-  by_attendant: Array<{
-    attendant_id: string;
-    attendant_name: string;
-    completed_tasks: number;
-    avg_duration_minutes: number;
-  }>;
-};
 
 /**
  * Housekeeping task productivity statistics for a business date.
@@ -1236,20 +1096,6 @@ export const getHousekeepingProductivityReport = async (params: {
 
 // ─── CG-14: Maintenance SLA Report ──────────────────────────────────────────
 
-export type MaintenanceSlaReport = {
-  total_requests: number;
-  completed: number;
-  overdue: number;
-  avg_response_time_minutes: number;
-  avg_resolution_time_hours: number;
-  by_priority: Array<{
-    priority: string;
-    count: number;
-    completed: number;
-    avg_resolution_hours: number;
-  }>;
-};
-
 /**
  * Maintenance request SLA compliance and resolution metrics.
  */
@@ -1317,16 +1163,6 @@ export const getMaintenanceSlaReport = async (params: {
 };
 
 // ─── CG-14: Audit Trail Report ──────────────────────────────────────────────
-
-export type AuditTrailItem = {
-  id: string;
-  command_name: string;
-  initiated_by: string;
-  target_service: string;
-  status: string;
-  created_at: string;
-  payload_summary: string | null;
-};
 
 /**
  * Query the command outbox for an audit trail of user actions.

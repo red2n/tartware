@@ -1,3 +1,4 @@
+import type { CommandContext } from "@tartware/schemas";
 import { appLogger } from "../lib/logger.js";
 
 import {
@@ -11,11 +12,6 @@ import { createTemplate, deleteTemplate, updateTemplate } from "./template-servi
 const logger = appLogger.child({ module: "notification-command-service" });
 
 const SYSTEM_ACTOR = "NOTIFICATION_SERVICE";
-
-type CommandContext = {
-  tenantId: string;
-  initiatedBy?: { userId?: string } | null;
-};
 
 /** Extract a scalar actor id from the initiatedBy envelope field. */
 const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>

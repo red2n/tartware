@@ -1,20 +1,9 @@
+import type { GuardMetadataRow, ReservationGuardMetadata } from "@tartware/schemas";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { query } from "../lib/db.js";
 
-type GuardMetadataRow = {
-  lock_id: string | null;
-  status: string;
-  metadata: Record<string, unknown> | null;
-  updated_at: Date;
-};
-
-export type ReservationGuardMetadata = {
-  lockId: string | null;
-  status: string;
-  metadata: Record<string, unknown>;
-  updatedAt: Date;
-};
+export type { ReservationGuardMetadata };
 
 const runQuery = async <TRow extends QueryResultRow>(
   sql: string,

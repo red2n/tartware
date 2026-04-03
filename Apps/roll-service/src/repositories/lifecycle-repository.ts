@@ -2,6 +2,7 @@ import { query } from "../lib/db.js";
 import type { LifecycleRow } from "../services/roll-ledger-builder.js";
 
 type LifecycleRowRecord = {
+  [k: string]: unknown;
   event_id: string;
   tenant_id: string;
   reservation_id: string | null;

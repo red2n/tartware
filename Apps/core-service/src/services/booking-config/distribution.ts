@@ -1,10 +1,19 @@
 import {
   type BookingSourceListItem,
   BookingSourceListItemSchema,
+  type BookingSourceRow,
   type ChannelMappingListItem,
   ChannelMappingListItemSchema,
+  type ChannelMappingRow,
+  type GetBookingSourceInput,
+  type GetChannelMappingInput,
+  type GetMarketSegmentInput,
+  type ListBookingSourcesInput,
+  type ListChannelMappingsInput,
+  type ListMarketSegmentsInput,
   type MarketSegmentListItem,
   MarketSegmentListItemSchema,
+  type MarketSegmentRow,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -22,39 +31,6 @@ import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 // =====================================================
 // BOOKING SOURCE SERVICE
 // =====================================================
-
-type BookingSourceRow = {
-  source_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  property_name: string | null;
-  source_code: string;
-  source_name: string;
-  source_type: string;
-  category: string | null;
-  is_active: boolean;
-  is_bookable: boolean;
-  channel_name: string | null;
-  channel_website: string | null;
-  commission_type: string;
-  commission_percentage: number | string | null;
-  commission_fixed_amount: number | string | null;
-  total_bookings: number;
-  total_revenue: number | string | null;
-  total_room_nights: number;
-  average_booking_value: number | string | null;
-  conversion_rate: number | string | null;
-  cancellation_rate: number | string | null;
-  ranking: number | null;
-  is_preferred: boolean;
-  is_featured: boolean;
-  has_integration: boolean;
-  integration_type: string | null;
-  last_sync_at: string | Date | null;
-  display_name: string | null;
-  logo_url: string | null;
-  color_code: string | null;
-};
 
 const mapBookingSourceRow = (row: BookingSourceRow): BookingSourceListItem => {
   return BookingSourceListItemSchema.parse({
@@ -92,16 +68,6 @@ const mapBookingSourceRow = (row: BookingSourceRow): BookingSourceListItem => {
   });
 };
 
-export type ListBookingSourcesInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  sourceType?: string;
-  isActive?: boolean;
-  hasIntegration?: boolean;
-  offset?: number;
-};
-
 export const listBookingSources = async (
   options: ListBookingSourcesInput,
 ): Promise<BookingSourceListItem[]> => {
@@ -115,11 +81,6 @@ export const listBookingSources = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapBookingSourceRow);
-};
-
-export type GetBookingSourceInput = {
-  sourceId: string;
-  tenantId: string;
 };
 
 export const getBookingSourceById = async (
@@ -139,46 +100,6 @@ export const getBookingSourceById = async (
 // =====================================================
 // MARKET SEGMENT SERVICE
 // =====================================================
-
-type MarketSegmentRow = {
-  segment_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  property_name: string | null;
-  segment_code: string;
-  segment_name: string;
-  segment_type: string;
-  is_active: boolean;
-  is_bookable: boolean;
-  parent_segment_id: string | null;
-  segment_level: number;
-  average_daily_rate: number | string | null;
-  average_length_of_stay: number | string | null;
-  average_booking_value: number | string | null;
-  contribution_to_revenue: number | string | null;
-  booking_lead_time_days: number | null;
-  cancellation_rate: number | string | null;
-  no_show_rate: number | string | null;
-  repeat_guest_rate: number | string | null;
-  total_bookings: number;
-  total_room_nights: number;
-  total_revenue: number | string | null;
-  rate_multiplier: number | string;
-  discount_percentage: number | string | null;
-  premium_percentage: number | string | null;
-  pays_commission: boolean;
-  commission_percentage: number | string | null;
-  marketing_priority: number;
-  is_target_segment: boolean;
-  lifetime_value: number | string | null;
-  loyalty_program_eligible: boolean;
-  loyalty_points_multiplier: number | string;
-  ranking: number | null;
-  color_code: string | null;
-  description: string | null;
-  created_at: string | Date | null;
-  updated_at: string | Date | null;
-};
 
 const mapMarketSegmentRow = (row: MarketSegmentRow): MarketSegmentListItem => {
   return MarketSegmentListItemSchema.parse({
@@ -223,16 +144,6 @@ const mapMarketSegmentRow = (row: MarketSegmentRow): MarketSegmentListItem => {
   });
 };
 
-export type ListMarketSegmentsInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  segmentType?: string;
-  isActive?: boolean;
-  parentSegmentId?: string;
-  offset?: number;
-};
-
 export const listMarketSegments = async (
   options: ListMarketSegmentsInput,
 ): Promise<MarketSegmentListItem[]> => {
@@ -246,11 +157,6 @@ export const listMarketSegments = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapMarketSegmentRow);
-};
-
-export type GetMarketSegmentInput = {
-  segmentId: string;
-  tenantId: string;
 };
 
 export const getMarketSegmentById = async (
@@ -270,26 +176,6 @@ export const getMarketSegmentById = async (
 // =====================================================
 // CHANNEL MAPPING SERVICE
 // =====================================================
-
-type ChannelMappingRow = {
-  id: string;
-  tenant_id: string;
-  property_id: string;
-  property_name: string | null;
-  channel_name: string;
-  channel_code: string;
-  entity_type: string;
-  entity_id: string;
-  external_id: string;
-  external_code: string | null;
-  mapping_config: Record<string, unknown> | null;
-  last_sync_at: string | Date | null;
-  last_sync_status: string | null;
-  last_sync_error: string | null;
-  is_active: boolean;
-  created_at: string | Date;
-  updated_at: string | Date | null;
-};
 
 const mapChannelMappingRow = (row: ChannelMappingRow): ChannelMappingListItem => {
   return ChannelMappingListItemSchema.parse({
@@ -313,16 +199,6 @@ const mapChannelMappingRow = (row: ChannelMappingRow): ChannelMappingListItem =>
   });
 };
 
-export type ListChannelMappingsInput = {
-  limit?: number;
-  tenantId: string;
-  propertyId?: string;
-  channelCode?: string;
-  entityType?: string;
-  isActive?: boolean;
-  offset?: number;
-};
-
 export const listChannelMappings = async (
   options: ListChannelMappingsInput,
 ): Promise<ChannelMappingListItem[]> => {
@@ -336,11 +212,6 @@ export const listChannelMappings = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapChannelMappingRow);
-};
-
-export type GetChannelMappingInput = {
-  mappingId: string;
-  tenantId: string;
 };
 
 export const getChannelMappingById = async (

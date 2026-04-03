@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import type { ArrivingReservation, RoomNotificationCommandInput } from "@tartware/schemas";
+
 import { config } from "../config.js";
 import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
@@ -7,26 +9,9 @@ import { appLogger } from "../lib/logger.js";
 
 const logger = appLogger.child({ module: "room-notification-helper" });
 
-type NotificationPayload = {
-  tenantId: string;
-  propertyId: string;
-  guestId: string;
-  reservationId?: string;
-  templateCode: string;
-  recipientName?: string;
-  recipientEmail?: string;
-  context: Record<string, string | number | boolean | null>;
-  idempotencyKey: string;
-  initiatedBy?: { userId?: string } | null;
-};
-
-/**
- * Publish a `notification.send` command to the command center topic.
- *
- * Best-effort: failures are logged but do not propagate to the caller
- * since the primary room operation has already succeeded.
- */
-export const publishNotificationCommand = async (params: NotificationPayload): Promise<void> => {
+export const publishNotificationCommand = async (
+  params: RoomNotificationCommandInput,
+): Promise<void> => {
   const commandId = crypto.randomUUID();
   try {
     await publishEvent({
@@ -77,25 +62,6 @@ export const publishNotificationCommand = async (params: NotificationPayload): P
   }
 };
 
-type ArrivingReservation = {
-  id: string;
-  guest_id: string;
-  property_id: string;
-  confirmation_number: string;
-  room_type_name: string;
-  guest_name: string;
-  guest_email: string | null;
-  check_in_date: string;
-  check_out_date: string;
-};
-
-/**
- * Find today's arriving reservation assigned to a given room.
- *
- * Returns the first matching reservation with status CONFIRMED or PENDING
- * whose check-in date is today and whose room_number matches the supplied
- * room_number. Returns `null` when no match is found.
- */
 export const findArrivingReservation = async (
   tenantId: string,
   roomNumber: string,

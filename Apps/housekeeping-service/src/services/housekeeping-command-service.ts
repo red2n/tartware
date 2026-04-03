@@ -1,3 +1,4 @@
+import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
   type HousekeepingAssignCommand,
@@ -15,13 +16,6 @@ import {
   type HousekeepingTaskReopenCommand,
   HousekeepingTaskReopenCommandSchema,
 } from "../schemas/housekeeping-commands.js";
-
-type CommandContext = {
-  tenantId: string;
-  initiatedBy?: {
-    userId?: string;
-  } | null;
-};
 
 class HousekeepingCommandError extends Error {
   code: string;
