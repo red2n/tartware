@@ -2,6 +2,7 @@ import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
@@ -49,13 +50,19 @@ type GuestOption = {
 	first_name: string;
 	last_name: string;
 	email?: string;
+	phone?: string;
+	date_of_birth?: string | Date;
+	vip_status?: string;
+	loyalty_tier?: string;
+	total_revenue?: number;
+	lifetime_value?: number;
 	created_at?: string;
 };
 
 @Component({
 	selector: "app-create-reservation",
 	standalone: true,
-	imports: [FormsModule, MatIconModule, MatProgressSpinnerModule, PaginationComponent],
+		imports: [FormsModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, PaginationComponent],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
 })
@@ -272,6 +279,48 @@ export class CreateReservationComponent implements OnInit {
 
 	selectGuest(g: GuestOption): void {
 		this.guestId = g.id;
+	}
+
+	/** Derive human-readable customer type from vip_status. */
+	guestCustomerType(g: GuestOption): string | null {
+		const v = g.vip_status;
+		if (!v || v === "NONE") return null;
+		if (v === "VVIP") return "VVIP";
+		return `VIP${v.replace("VIP", "")}`;
+	}
+
+	/** Birthday offset in days relative to today (negative = ago, 0 = today, positive = upcoming). */
+	guestBirthdayOffset(g: GuestOption): number | null {
+		if (!g.date_of_birth) return null;
+		const dob = g.date_of_birth instanceof Date ? g.date_of_birth : new Date(g.date_of_birth);
+		if (Number.isNaN(dob.getTime())) return null;
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const thisBday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+		const diff = Math.round((thisBday.getTime() - today.getTime()) / 86_400_000);
+		if (diff < -5) {
+			const nextBday = new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
+			return Math.round((nextBday.getTime() - today.getTime()) / 86_400_000);
+		}
+		return diff;
+	}
+
+	/** Label to show for ±5-day birthday proximity. */
+	guestBirthdayHint(g: GuestOption): string | null {
+		const d = this.guestBirthdayOffset(g);
+		if (d === null) return null;
+		if (d === 0) return "🎂 Birthday today!";
+		if (d > 0 && d <= 5) return `🎂 Birthday in ${d}d`;
+		if (d < 0 && d >= -5) return `🎂 Birthday ${Math.abs(d)}d ago`;
+		return null;
+	}
+
+	/** Format guest DOB for display (e.g. "Apr 5, 1990"). */
+	guestDobDisplay(g: GuestOption): string | null {
+		if (!g.date_of_birth) return null;
+		const dob = g.date_of_birth instanceof Date ? g.date_of_birth : new Date(g.date_of_birth);
+		if (Number.isNaN(dob.getTime())) return null;
+		return dob.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 	}
 
 	guestDisplayName(g: GuestOption): string {

@@ -2,11 +2,18 @@ import process from "node:process";
 
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
-
+import {
+  shutdownAccountsCommandCenterConsumer,
+  startAccountsCommandCenterConsumer,
+} from "./commands/accounts-command-center-consumer.js";
 import {
   shutdownBillingCommandCenterConsumer,
   startBillingCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
+import {
+  shutdownFinanceAdminCommandCenterConsumer,
+  startFinanceAdminCommandCenterConsumer,
+} from "./commands/finance-admin-command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
@@ -62,6 +69,8 @@ const start = async () => {
 
     if (kafkaEnabled) {
       await startBillingCommandCenterConsumer();
+      await startAccountsCommandCenterConsumer();
+      await startFinanceAdminCommandCenterConsumer();
     } else {
       app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
     }
@@ -89,6 +98,8 @@ const shutdown = async (signal: NodeJS.Signals) => {
   try {
     if (kafkaEnabled) {
       await shutdownBillingCommandCenterConsumer();
+      await shutdownAccountsCommandCenterConsumer();
+      await shutdownFinanceAdminCommandCenterConsumer();
       await shutdownProducer();
     }
     await app.close();

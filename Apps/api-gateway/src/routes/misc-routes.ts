@@ -23,7 +23,6 @@ import {
   forwardGenericCommand,
 } from "./command-helpers.js";
 import {
-  COMMAND_CENTER_PROXY_TAG,
   commandAcceptedSchema,
   NOTIFICATION_COMMAND_TAG,
   NOTIFICATION_PROXY_TAG,
@@ -46,47 +45,10 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
     minRole: "VIEWER",
   });
 
-  const adminOnly = app.withTenantScope({
-    allowMissingTenantId: true,
-    minRole: "ADMIN",
-  });
-
-  // ─── Command Center Routes ──────────────────────────────────────
-
-  const proxyCommandCenter = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.commandCenterServiceUrl);
-
-  app.all(
-    "/v1/commands",
-    {
-      preHandler: adminOnly,
-      schema: buildRouteSchema({
-        tag: COMMAND_CENTER_PROXY_TAG,
-        summary: "Proxy command center calls to the command-center service.",
-        response: {
-          200: jsonObjectSchema,
-          202: commandAcceptedSchema,
-        },
-      }),
-    },
-    proxyCommandCenter,
-  );
-
-  app.all(
-    "/v1/commands/*",
-    {
-      preHandler: adminOnly,
-      schema: buildRouteSchema({
-        tag: COMMAND_CENTER_PROXY_TAG,
-        summary: "Proxy command center calls to the command-center service.",
-        response: {
-          200: jsonObjectSchema,
-          202: commandAcceptedSchema,
-        },
-      }),
-    },
-    proxyCommandCenter,
-  );
+  // ─── Tenant-scoped generic command dispatch ──────────────────────────────
+  // Specific command routes (guest.register, reservation.create, etc.) are each
+  // registered in their own route file.  This catch-all handles ad-hoc commands
+  // dispatched by name through the tenant URL schema.
 
   app.post(
     "/v1/tenants/:tenantId/commands/:commandName",
@@ -99,7 +61,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         },
       },
       schema: buildRouteSchema({
-        tag: COMMAND_CENTER_PROXY_TAG,
+        tag: "Command Center",
         summary: "Dispatch a command by name via the Command Center.",
         params: tenantCommandParamsSchema,
         body: jsonObjectSchema,
@@ -114,7 +76,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   // ─── Settings Routes ──────────────────────────────────────
 
   const proxySettings = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.settingsServiceUrl);
+    proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
   app.all(
     "/v1/settings",
@@ -179,7 +141,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   // ─── Recommendation Routes ──────────────────────────────────────
 
   const proxyRecommendations = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.recommendationServiceUrl);
+    proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
 
   app.get(
     "/v1/recommendations",

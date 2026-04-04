@@ -7,6 +7,7 @@ export {
 } from "./command-dispatch-service.js";
 
 export {
+  listCommandDefinitions,
   shutdownCommandRegistry,
   startCommandRegistry,
 } from "./command-registry.js";

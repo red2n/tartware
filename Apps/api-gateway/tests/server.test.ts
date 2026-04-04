@@ -42,6 +42,7 @@ vi.mock("../src/utils/proxy.js", () => ({
 
 vi.mock("../src/lib/db.js", () => ({
   query: vi.fn(async () => ({ rows: [{ "?column?": 1 }] })),
+  withTransaction: vi.fn(async (fn: (q: unknown) => Promise<unknown>) => fn(vi.fn(async () => ({ rows: [] })))),
   pool: { end: vi.fn() },
 }));
 
@@ -60,7 +61,7 @@ vi.mock("../src/services/membership-service.js", () => ({
 
 vi.mock("../src/lib/jwt.js", () => ({
   extractBearerToken: (header?: string) => header?.split(" ")[1] ?? null,
-  verifyAccessToken: vi.fn(() => ({ sub: "user-1" })),
+  verifyAccessToken: vi.fn(() => ({ sub: "user-1", scope: ["SYSTEM_ADMIN"] })),
 }));
 
 const fetchMock = vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 200 }));
@@ -179,7 +180,7 @@ describe("API Gateway server", () => {
     });
   });
 
-  it("proxies command definitions to the command-center service", async () => {
+  it("returns command definitions directly (system-admin scope required)", async () => {
     const response = await app.inject({
       method: "GET",
       url: "/v1/commands/definitions",
@@ -188,18 +189,13 @@ describe("API Gateway server", () => {
       },
     });
 
+    // Route is a direct implementation, not a proxy — SYSTEM_ADMIN scope required.
     expect(response.statusCode).toBe(200);
-    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
-    expect(proxyRequestMock.mock.calls[0][2]).toBe(
-      serviceTargets.commandCenterServiceUrl,
-    );
-    expect(response.json()).toEqual({
-      proxied: true,
-      targetUrl: serviceTargets.commandCenterServiceUrl,
-    });
+    expect(proxyRequestMock).not.toHaveBeenCalled();
+    expect(Array.isArray(response.json())).toBe(true);
   });
 
-  it("proxies settings catalog queries to the settings service", async () => {
+  it("proxies settings catalog queries to the core service (settings absorbed in Phase 5)", async () => {
     const response = await app.inject({
       method: "GET",
       url: "/v1/settings/catalog",
@@ -210,12 +206,13 @@ describe("API Gateway server", () => {
 
     expect(response.statusCode).toBe(200);
     expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    // Settings routes were absorbed into core-service in Phase 5; settingsServiceUrl removed.
     expect(proxyRequestMock.mock.calls[0][2]).toBe(
-      serviceTargets.settingsServiceUrl,
+      serviceTargets.coreServiceUrl,
     );
     expect(response.json()).toEqual({
       proxied: true,
-      targetUrl: serviceTargets.settingsServiceUrl,
+      targetUrl: serviceTargets.coreServiceUrl,
     });
   });
 });

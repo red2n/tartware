@@ -59,7 +59,13 @@
             <div class="service-row service-row-down">
               <div class="service-status-dot service-dot-down" matTooltip="DOWN"></div>
               <div class="service-info">
-                <span class="service-name">{{ svc.name }}</span>
+                <div class="service-name-row">
+                  <span class="service-name">{{ displayName(svc) }}</span>
+                  <code class="service-tag">{{ svc.name }}</code>
+                </div>
+                @if (description(svc); as desc) {
+                  <span class="service-description">{{ desc }}</span>
+                }
                 <span class="service-meta">
                   <code class="service-port">{{ formatPort(svc) }}</code>
                   <span class="service-version">v{{ svc.version }}</span>
@@ -84,7 +90,13 @@
             <div class="service-row">
               <div class="service-status-dot service-dot-up" matTooltip="UP"></div>
               <div class="service-info">
-                <span class="service-name">{{ svc.name }}</span>
+                <div class="service-name-row">
+                  <span class="service-name">{{ displayName(svc) }}</span>
+                  <code class="service-tag">{{ svc.name }}</code>
+                </div>
+                @if (description(svc); as desc) {
+                  <span class="service-description">{{ desc }}</span>
+                }
                 <span class="service-meta">
                   <code class="service-port">{{ formatPort(svc) }}</code>
                   <span class="service-version">v{{ svc.version }}</span>

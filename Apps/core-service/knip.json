@@ -4,6 +4,7 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
+    "@tartware/command-consumer-utils",
     "@tartware/schemas",
     "@tartware/config",
     "@tartware/telemetry",

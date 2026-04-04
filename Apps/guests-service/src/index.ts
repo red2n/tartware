@@ -4,7 +4,9 @@ import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartw
 import { initTelemetry } from "@tartware/telemetry";
 
 import {
+  shutdownGuestExperienceCommandConsumer,
   shutdownGuestsCommandCenterConsumer,
+  startGuestExperienceCommandConsumer,
   startGuestsCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
@@ -62,6 +64,7 @@ const start = async () => {
 
     if (kafkaEnabled) {
       await startGuestsCommandCenterConsumer();
+      await startGuestExperienceCommandConsumer();
     } else {
       app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
     }
@@ -91,6 +94,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
   try {
     if (kafkaEnabled) {
       await shutdownGuestsCommandCenterConsumer();
+      await shutdownGuestExperienceCommandConsumer();
       await shutdownProducer();
     }
     await app.close();

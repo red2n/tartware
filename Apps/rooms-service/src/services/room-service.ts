@@ -353,6 +353,10 @@ export const searchAvailableRooms = async (options: {
   checkOutDate: string;
   roomTypeId?: string;
   buildingId?: string;
+  /** When set, this reservation is excluded from the unassigned-count guard so
+   *  the room picker during check-in does not hide the slot the current reservation
+   *  is occupying in the availability math. */
+  reservationId?: string;
   adults?: number;
   limit?: number;
   offset?: number;
@@ -379,7 +383,9 @@ export const searchAvailableRooms = async (options: {
     size_sqm: number | string | null;
   }>(
     `WITH unassigned_reservations AS (
-       -- Pre-aggregate unassigned reservation counts per room type
+       -- Pre-aggregate unassigned reservation counts per room type.
+       -- Excludes the current reservation ($10) so its own vacant slot is
+       -- not hidden when the room picker is opened during check-in.
        SELECT ures.room_type_id, COUNT(*) AS unassigned_count
        FROM public.reservations ures
        WHERE ures.tenant_id = $1::uuid
@@ -388,6 +394,7 @@ export const searchAvailableRooms = async (options: {
          AND ures.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
          AND ures.check_in_date < $4::date
          AND ures.check_out_date > $3::date
+         AND ($10::uuid IS NULL OR ures.id != $10::uuid)
        GROUP BY ures.room_type_id
      ),
      available_rooms AS (
@@ -446,13 +453,17 @@ export const searchAvailableRooms = async (options: {
              AND res.check_out_date > $3::date
          )
      )
-     SELECT room_id, room_number, room_type_id, type_name, floor,
-            building_id, building_name,
-            status, housekeeping_status, max_occupancy, bed_type,
-            number_of_beds, size_sqm, base_rate, currency, features
+     SELECT ar.room_id, ar.room_number, ar.room_type_id, ar.type_name, ar.floor,
+            ar.building_id, ar.building_name,
+            ar.status, ar.housekeeping_status, ar.max_occupancy, ar.bed_type,
+            ar.number_of_beds, ar.size_sqm, ar.base_rate, ar.currency, ar.features
      FROM available_rooms ar
      LEFT JOIN unassigned_reservations ur ON ur.room_type_id = ar.room_type_id
-     WHERE ar.rn > COALESCE(ur.unassigned_count, 0)
+     -- When a reservation_id is provided (check-in use case) bypass the unassigned guard.
+     -- Staff manually picking a room for check-in need to see all physically available rooms;
+     -- actual double-booking is prevented by the NOT EXISTS room_number conflict check above.
+     -- For standard availability queries (no reservation_id), keep the guard to avoid overbooking.
+     WHERE ($10::uuid IS NOT NULL OR ar.rn > COALESCE(ur.unassigned_count, 0))
      ORDER BY type_name, room_number
      LIMIT $8
      OFFSET $9`,
@@ -466,6 +477,7 @@ export const searchAvailableRooms = async (options: {
       options.buildingId ?? null,
       limit,
       offset,
+      options.reservationId ?? null,
     ],
   );
 

@@ -139,8 +139,15 @@ COMMENT ON COLUMN rooms.deep_clean_interval_days IS 'Interval in days between sc
 -- Idempotent column additions for existing tables
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS phone_extension VARCHAR(20);
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS building_id UUID;
-ALTER TABLE rooms ADD CONSTRAINT IF NOT EXISTS rooms_building_id_fkey
-    FOREIGN KEY (building_id) REFERENCES buildings(building_id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rooms_building_id_fkey'
+  ) THEN
+    ALTER TABLE rooms ADD CONSTRAINT rooms_building_id_fkey
+      FOREIGN KEY (building_id) REFERENCES buildings(building_id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN rooms.building_id IS 'FK to buildings.building_id — links room to a physical building entity';
 

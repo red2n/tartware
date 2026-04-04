@@ -1,4 +1,5 @@
 import type { TenantModulesResponse } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import {
   DEFAULT_ENABLED_MODULES,

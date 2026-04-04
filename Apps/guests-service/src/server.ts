@@ -10,6 +10,7 @@ import { registerGuestRoutes } from "./routes/guests.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerLoyaltyRoutes } from "./routes/loyalty.js";
 import { registerPrivacyRoutes } from "./routes/privacy.js";
+import { registerSelfServiceRoutes } from "./routes/self-service.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureGuestEncryptionRequirementsMet();
@@ -29,6 +30,7 @@ export const buildServer = (): FastifyInstance => {
       registerGuestRoutes(app);
       registerLoyaltyRoutes(app);
       registerPrivacyRoutes(app);
+      registerSelfServiceRoutes(app);
     },
   });
 

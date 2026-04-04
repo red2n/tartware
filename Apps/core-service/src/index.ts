@@ -3,10 +3,19 @@ import process from "node:process";
 import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
+import {
+  shutdownSettingsCommandCenterConsumer,
+  startSettingsCommandCenterConsumer,
+} from "./commands/settings-command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownRetentionSweep, startRetentionSweep } from "./jobs/retention-sweep.js";
+import { shutdownSettingsProducer } from "./kafka/settings-kafka-producer.js";
 import { closeRedis, initRedis } from "./lib/redis.js";
 import { buildServer } from "./server.js";
+import {
+  startSweep as startRegistrySweep,
+  stopSweep as stopRegistrySweep,
+} from "./services/registry-store.js";
 import { userCacheService } from "./services/user-cache-service.js";
 
 const telemetry = await initTelemetry({
@@ -71,6 +80,16 @@ app
     // Start retention sweep
     startRetentionSweep();
 
+    // Start service registry sweep
+    startRegistrySweep();
+
+    // Start settings Kafka consumer (if Kafka brokers are configured)
+    if (config.settings.kafka.brokers.length > 0) {
+      startSettingsCommandCenterConsumer().catch((err: unknown) => {
+        app.log.error(err, "Failed to start settings command consumer");
+      });
+    }
+
     // Warm up Bloom filter with existing usernames
     if (redis) {
       try {
@@ -103,6 +122,9 @@ const shutdown = async (signal: string) => {
   app.log.info({ signal }, "Received shutdown signal");
   try {
     shutdownRetentionSweep();
+    stopRegistrySweep();
+    await shutdownSettingsCommandCenterConsumer();
+    await shutdownSettingsProducer();
     await closeRedis();
     await telemetry
       ?.shutdown()

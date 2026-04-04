@@ -14,6 +14,7 @@ import swaggerPlugin from "./plugins/swagger.js";
 import { registerBillingRoutes } from "./routes/billing-routes.js";
 import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
 import { registerCalculationRoutes } from "./routes/calculation-routes.js";
+import { registerCommandCenterRoutes } from "./routes/command-center-routes.js";
 import { registerCoreProxyRoutes } from "./routes/core-proxy-routes.js";
 import { registerGuestRoutes } from "./routes/guest-routes.js";
 import { registerHealthRoutes } from "./routes/health-routes.js";
@@ -120,6 +121,7 @@ export const buildServer = () => {
     // GET routes proxy to backend services; POST/PUT/PATCH/DELETE routes
     // dispatch Kafka commands via command-helpers (CQRS write path).
     registerHealthRoutes(app);
+    registerCommandCenterRoutes(app);
     registerCoreProxyRoutes(app);
     registerReservationRoutes(app);
     registerGuestRoutes(app);

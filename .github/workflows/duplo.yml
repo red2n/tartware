@@ -51,6 +51,23 @@ jobs:
           DUPLO_MIN_LINES: 60
           DUPLO_EXTENSIONS: ts,tsx,js
           DUPLO_IGNORE_SAME_NAME: "true"
+          # Deprecated service directories (retained for reference, absorbed into active services).
+          # Excluded to avoid false-positive duplicates against the absorbing service's copied code.
+          # Phase 2: guest-experience-service → guests-service
+          # Phase 3: recommendation-service → rooms-service
+          # Phase 4: cashier-service → housekeeping-service
+          # Phase 5: settings-service, service-registry → core-service
+          # Phase 6: accounts-service, finance-admin-service, calculation-service, roll-service → billing-service
+          DUPLO_EXCLUDE_DIRS: >-
+            guest-experience-service,
+            recommendation-service,
+            cashier-service,
+            settings-service,
+            service-registry,
+            accounts-service,
+            finance-admin-service,
+            calculation-service,
+            roll-service
           DUPLO_EXCLUDE_FILES: >-
             Apps/billing-service/src/services/billing-service.ts,
             Apps/billing-service/src/sql/billing-queries.ts,

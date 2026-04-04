@@ -91,22 +91,18 @@ export const devToolsConfig = {
 
 export const serviceTargets = {
   coreServiceUrl: env.CORE_SERVICE_URL ?? "http://localhost:3000",
-  settingsServiceUrl: env.SETTINGS_SERVICE_URL ?? "http://localhost:3005",
+  // settingsServiceUrl removed — routes absorbed into core-service (Phase 5)
   guestsServiceUrl: env.GUESTS_SERVICE_URL ?? "http://localhost:3010",
   roomsServiceUrl: env.ROOMS_SERVICE_URL ?? "http://localhost:3015",
   reservationCommandServiceUrl: env.RESERVATION_COMMAND_SERVICE_URL ?? "http://localhost:3020",
   billingServiceUrl: env.BILLING_SERVICE_URL ?? "http://localhost:3025",
   housekeepingServiceUrl: env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3030",
-  commandCenterServiceUrl: env.COMMAND_CENTER_SERVICE_URL ?? "http://localhost:3035",
-  recommendationServiceUrl: env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
   notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
   revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
-  guestExperienceServiceUrl: env.GUEST_EXPERIENCE_SERVICE_URL ?? "http://localhost:3065",
-  calculationServiceUrl: env.CALCULATION_SERVICE_URL ?? "http://localhost:3070",
-  serviceRegistryUrl: env.SERVICE_REGISTRY_URL ?? "http://localhost:3075",
-  cashierServiceUrl: env.CASHIER_SERVICE_URL ?? "http://localhost:3080",
-  accountsServiceUrl: env.ACCOUNTS_SERVICE_URL ?? "http://localhost:3085",
-  financeAdminServiceUrl: env.FINANCE_ADMIN_SERVICE_URL ?? "http://localhost:3090",
+  // calculationServiceUrl removed — calculation absorbed into billing-service (Phase 6)
+  // serviceRegistryUrl removed — registry absorbed into core-service (Phase 5)
+  // accountsServiceUrl removed — accounts absorbed into billing-service (Phase 6)
+  // financeAdminServiceUrl removed — finance-admin absorbed into billing-service (Phase 6)
 };
 
 export const dbConfig = {

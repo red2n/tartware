@@ -21,13 +21,13 @@ export type CreateHealthRoutesOptions = {
  */
 export function createHealthRoutes(options: CreateHealthRoutesOptions) {
 	return (app: FastifyInstance): void => {
-		app.get("/health", async () => ({
+		app.get("/health", { logLevel: "silent" }, async () => ({
 			status: "ok",
 			service: options.serviceName,
 			version: options.serviceVersion,
 		}));
 
-		app.get("/ready", async (_request: unknown, reply: FastifyReply) => {
+		app.get("/ready", { logLevel: "silent" }, async (_request: unknown, reply: FastifyReply) => {
 			const deps = options.dependencies ?? [];
 			const extras = options.readyExtras ?? {};
 

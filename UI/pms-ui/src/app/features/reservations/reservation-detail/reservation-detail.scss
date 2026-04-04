@@ -2,6 +2,28 @@
  * Reusable patterns (detail-card, detail-list, breadcrumb, etc.)
  * live in styles/shared.scss. */
 
+/* ── Guest detail value with inline icon ── */
+.guest-detail-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.birthday-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent-fg);
+  flex-shrink: 0;
+}
+
+.birthday-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-fg);
+  font-weight: var(--font-weight-medium);
+}
+
 .notes-section {
   margin-bottom: var(--space-3);
 
@@ -138,6 +160,19 @@
   color: var(--color-fg-muted);
   padding: var(--space-2);
   margin: 0;
+}
+
+.room-load-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-danger-fg);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
 }
 
 /* ── Building filter bar in check-in panel ── */

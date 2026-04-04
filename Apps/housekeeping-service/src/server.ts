@@ -5,6 +5,7 @@ import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import { registerCashierRoutes } from "./routes/cashier.js";
 import { registerDeepCleanRoutes } from "./routes/deep-clean.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping.js";
@@ -34,6 +35,7 @@ export const buildServer = (): FastifyInstance => {
       registerMaintenanceRoutes(app);
       registerIncidentRoutes(app);
       registerLostAndFoundRoutes(app);
+      registerCashierRoutes(app);
     },
   });
 

@@ -36,13 +36,13 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
   const proxyCashier = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.cashierServiceUrl);
+    proxyRequest(request, reply, serviceTargets.housekeepingServiceUrl);
 
   const proxyAccounts = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.accountsServiceUrl);
+    proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
   const proxyFinanceAdmin = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.financeAdminServiceUrl);
+    proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
   const tenantScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,

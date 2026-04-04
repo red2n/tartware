@@ -16,6 +16,11 @@ import {
   setCommandConsumerLag,
 } from "../lib/metrics.js";
 import {
+  cashierHandover,
+  closeCashierSession,
+  openCashierSession,
+} from "../services/cashier-commands.js";
+import {
   addHousekeepingTaskNote,
   assignHousekeepingTask,
   bulkUpdateHousekeepingStatus,
@@ -159,6 +164,24 @@ const routeHousekeepingCommand = async (
       return;
     case "operations.maintenance.escalate":
       await escalateMaintenanceRequest(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cashier.open":
+      await openCashierSession(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cashier.close":
+      await closeCashierSession(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cashier.handover":
+      await cashierHandover(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });
