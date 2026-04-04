@@ -19,24 +19,14 @@ A command-driven property management platform built as a TypeScript monorepo. Al
 |---------|--------|
 | API Gateway | [![CI · API Gateway](https://github.com/red2n/tartware/actions/workflows/ci-api-gateway.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-api-gateway.yml) |
 | Core Service | [![CI · Core Service](https://github.com/red2n/tartware/actions/workflows/ci-core-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-core-service.yml) |
-| Command Center Service | [![CI · Command Center Service](https://github.com/red2n/tartware/actions/workflows/ci-command-center-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-command-center-service.yml) |
 | Reservations Command Service | [![CI · Reservations Command Service](https://github.com/red2n/tartware/actions/workflows/ci-reservations-command-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-reservations-command-service.yml) |
 | Guests Service | [![CI · Guests Service](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml) |
 | Rooms Service | [![CI · Rooms Service](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml) |
 | Billing Service | [![CI · Billing Service](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml) |
-| Cashier Service | [![CI · Cashier Service](https://github.com/red2n/tartware/actions/workflows/ci-cashier-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-cashier-service.yml) |
-| Accounts Service | [![CI · Accounts Service](https://github.com/red2n/tartware/actions/workflows/ci-accounts-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-accounts-service.yml) |
-| Finance Admin Service | [![CI · Finance Admin Service](https://github.com/red2n/tartware/actions/workflows/ci-finance-admin-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-finance-admin-service.yml) |
 | Housekeeping Service | [![CI · Housekeeping Service](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml) |
-| Settings Service | [![CI · Settings Service](https://github.com/red2n/tartware/actions/workflows/ci-settings-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-settings-service.yml) |
 | Availability Guard Service | [![CI · Availability Guard Service](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml) |
-| Roll Service | [![CI · Roll Service](https://github.com/red2n/tartware/actions/workflows/ci-roll-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-roll-service.yml) |
-| Recommendation Service | [![CI · Recommendation Service](https://github.com/red2n/tartware/actions/workflows/ci-recommendation-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-recommendation-service.yml) |
 | Notification Service | [![CI · Notification Service](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml) |
 | Revenue Service | [![CI · Revenue Service](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml) |
-| Guest Experience Service | [![CI · Guest Experience Service](https://github.com/red2n/tartware/actions/workflows/ci-guest-experience-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guest-experience-service.yml) |
-| Calculation Service | [![CI · Calculation Service](https://github.com/red2n/tartware/actions/workflows/ci-calculation-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-calculation-service.yml) |
-| Service Registry | [![CI · Service Registry](https://github.com/red2n/tartware/actions/workflows/ci-service-registry.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-service-registry.yml) |
 
 ### UI
 
@@ -93,24 +83,14 @@ pnpm run clean:all    # Remove all build artifacts
 |------|---------|
 | 8080 | API Gateway |
 | 3000 | Core Service |
-| 3005 | Settings Service |
 | 3010 | Guests Service |
 | 3015 | Rooms Service |
 | 3020 | Reservations Command Service |
 | 3025 | Billing Service |
 | 3030 | Housekeeping Service |
-| 3035 | Command Center Service |
-| 3040 | Recommendation Service |
 | 3045 | Availability Guard Service |
-| 3050 | Roll Service |
 | 3055 | Notification Service |
 | 3060 | Revenue Service |
-| 3065 | Guest Experience Service |
-| 3070 | Calculation Service |
-| 3075 | Service Registry |
-| 3080 | Cashier Service |
-| 3085 | Accounts Service |
-| 3090 | Finance Admin Service |
 
 ## Production Readiness Scorecard
 
@@ -120,7 +100,7 @@ pnpm run clean:all    # Remove all build artifacts
 
 | Metric | Count |
 |--------|-------|
-| Microservices | 20 + API Gateway |
+| Microservices | 10 + API Gateway |
 | SQL Tables | 201 |
 | Registered Commands | 162 |
 | Zod Schemas | 250+ |
