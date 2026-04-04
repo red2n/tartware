@@ -33,6 +33,11 @@
       "inputs": ["default"],
       "cache": true
     },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": ["production"],
+      "cache": true
+    },
     "dev": {
       "cache": false
     }

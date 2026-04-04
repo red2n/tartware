@@ -12,7 +12,8 @@
   "ignoreBinaries": [
     "biome",
     "eslint",
-    "knip"
+    "knip",
+    "swc"
   ],
   "ignoreExportsUsedInFile": {
     "type": true,

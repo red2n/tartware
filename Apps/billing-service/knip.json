@@ -17,5 +17,8 @@
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server"
+  ],
+  "ignoreBinaries": [
+    "swc"
   ]
 }

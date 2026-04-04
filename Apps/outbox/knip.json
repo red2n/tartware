@@ -11,7 +11,7 @@
     "biome",
     "eslint",
     "knip",
-    "tsc"
+    "swc"
   ],
   "ignoreExportsUsedInFile": {
     "type": true,

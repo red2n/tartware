@@ -4,10 +4,10 @@
   "description": "Shared SQL helpers for command center components",
   "private": true,
   "type": "module",
-  "main": "dist/Apps/command-center-shared/src/index.js",
-  "types": "dist/Apps/command-center-shared/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "swc src -d dist --strip-leading-paths --config-file ../../.swcrc -q && tsc --project tsconfig.json --emitDeclarationOnly",
     "dev": "echo 'Shared library - no dev server'",
     "lint": "eslint --ext .ts src",
     "lint:fix": "eslint --ext .ts src --fix",
@@ -15,7 +15,7 @@
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
     "knip:fix": "knip --tsConfig tsconfig.json --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "clean": "rm -rf dist *.tsbuildinfo"
