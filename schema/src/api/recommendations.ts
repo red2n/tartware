@@ -92,6 +92,32 @@ export interface RoomRecommendationPipelineQuery {
 	budgetRange?: { min: number; max: number };
 }
 
+// =====================================================
+// ROOM FEEDBACK STATS (populated by FeedbackHydrator)
+// =====================================================
+
+/**
+ * Aggregate feedback statistics for a room or room type.
+ * Populated by FeedbackHydrator from the guest_feedback table.
+ */
+export interface RoomFeedbackStats {
+	/** Average overall rating (1-5 scale) */
+	avgRating: number;
+	/** Total number of reviews */
+	reviewCount: number;
+	/** Percentage of guests who said would_return (0-1) */
+	wouldReturnRate: number;
+	/** Average sentiment score (-1 to 1) */
+	avgSentiment: number;
+	/** Sub-dimension averages */
+	avgCleanliness: number;
+	avgComfort: number;
+	avgValue: number;
+	avgAmenities: number;
+	/** Conversion rate: booked / shown from recommendation_interactions (0-1) */
+	conversionRate: number;
+}
+
 /**
  * Room candidate — item flowing through the recommendation pipeline.
  *
@@ -136,6 +162,8 @@ export interface RoomCandidate {
 	isUpgrade?: boolean;
 	/** Upgrade discount percentage */
 	upgradeDiscount?: number;
+	/** Aggregate guest feedback stats (populated by FeedbackHydrator) */
+	feedbackStats?: RoomFeedbackStats;
 	/** Cumulative score (used for ranking) */
 	score?: number;
 	/** Individual scores from each scorer */

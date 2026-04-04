@@ -11,7 +11,7 @@ import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
 export class DiversityScorer extends BaseScorer<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "diversity";
-  override readonly weight = 0.15; // 15% of final score
+  override readonly weight = 0.1; // 10% of final score
 
   // Discount factor for each additional room of the same type
   private readonly attenuation = 0.7;
