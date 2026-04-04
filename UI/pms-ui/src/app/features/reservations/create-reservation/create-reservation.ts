@@ -60,28 +60,7 @@ type GuestOption = {
 	created_at?: string;
 };
 
-/** Recommendation API response (view-model — matches GET /v1/recommendations) */
-type RecommendationItem = {
-	roomId: string;
-	roomTypeId: string;
-	roomTypeName: string;
-	roomNumber: string;
-	relevanceScore: number;
-	isUpgrade: boolean;
-	source: string;
-	baseRate: number;
-	dynamicRate?: number;
-	amenities?: string[];
-	maxOccupancy?: number;
-	bedType?: string;
-};
-
-type RecommendationResponse = {
-	requestId: string;
-	recommendations: RecommendationItem[];
-	totalCandidates: number;
-	executionTimeMs: number;
-};
+import type { RoomRecommendation, RoomRecommendationResponse } from "@tartware/schemas";
 
 /** Aggregated recommendation stats per room type */
 type RoomTypeRecommendation = {
@@ -121,6 +100,9 @@ export class CreateReservationComponent implements OnInit {
 	readonly recommendations = signal<Map<string, RoomTypeRecommendation>>(new Map());
 	readonly loadingRecs = signal(false);
 	readonly hasRecommendations = computed(() => this.recommendations().size > 0);
+
+	/** Monotonically increasing counter to discard stale recommendation responses. */
+	private recRequestSeq = 0;
 
 	/** Room types sorted: recommended first (by best score desc), then the rest. */
 	readonly sortedRoomTypes = computed(() => {
@@ -303,19 +285,15 @@ export class CreateReservationComponent implements OnInit {
 	/** Fetch recommendations from the recommendation engine and aggregate by room type. */
 	async fetchRecommendations(): Promise<void> {
 		if (!this.checkInDate || !this.checkOutDate || this.nights <= 0) {
-			console.log("[recommendations] Skipped: dates not ready", { checkIn: this.checkInDate, checkOut: this.checkOutDate, nights: this.nights });
 			this.recommendations.set(new Map());
 			return;
 		}
 
 		const propertyId = this.ctx.propertyId();
 		const tenantId = this.auth.tenantId();
-		if (!propertyId || !tenantId) {
-			console.log("[recommendations] Skipped: missing context", { propertyId, tenantId });
-			return;
-		}
+		if (!propertyId || !tenantId) return;
 
-		console.log("[recommendations] Fetching...", { checkIn: this.checkInDate, checkOut: this.checkOutDate, propertyId });
+		const seq = ++this.recRequestSeq;
 		this.loadingRecs.set(true);
 		try {
 			const params: Record<string, string> = {
@@ -326,8 +304,10 @@ export class CreateReservationComponent implements OnInit {
 				limit: "50",
 			};
 
-			const resp = await this.api.get<RecommendationResponse>("/recommendations", params);
-			console.log("[recommendations] API returned", resp.recommendations.length, "items");
+			const resp = await this.api.get<RoomRecommendationResponse>("/recommendations", params);
+
+			// Discard stale response if a newer request was fired while awaiting
+			if (seq !== this.recRequestSeq) return;
 
 			// Aggregate recommendations by room type
 			const byType = new Map<string, RoomTypeRecommendation>();
@@ -337,25 +317,23 @@ export class CreateReservationComponent implements OnInit {
 					existing.roomCount++;
 					existing.avgScore = (existing.avgScore * (existing.roomCount - 1) + rec.relevanceScore) / existing.roomCount;
 					existing.bestScore = Math.max(existing.bestScore, rec.relevanceScore);
-					existing.hasUpgrade = existing.hasUpgrade || rec.isUpgrade;
+					existing.hasUpgrade = existing.hasUpgrade || (rec.isUpgrade ?? false);
 				} else {
 					byType.set(rec.roomTypeId, {
 						roomTypeId: rec.roomTypeId,
 						avgScore: rec.relevanceScore,
 						roomCount: 1,
-						hasUpgrade: rec.isUpgrade,
+						hasUpgrade: rec.isUpgrade ?? false,
 						bestScore: rec.relevanceScore,
 					});
 				}
 			}
-			console.log("[recommendations] Aggregated by room type:", byType.size, "types");
 			this.recommendations.set(byType);
-		} catch (err) {
+		} catch {
 			// Non-blocking — recommendations are a bonus, not a requirement
-			console.warn("[recommendations] Failed to fetch:", err);
-			this.recommendations.set(new Map());
+			if (seq === this.recRequestSeq) this.recommendations.set(new Map());
 		} finally {
-			this.loadingRecs.set(false);
+			if (seq === this.recRequestSeq) this.loadingRecs.set(false);
 		}
 	}
 
