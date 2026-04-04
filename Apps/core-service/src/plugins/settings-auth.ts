@@ -63,7 +63,10 @@ export const settingsAuthPlugin = fp(async (app: FastifyInstance) => {
         return reply.unauthorized("Unauthorized");
       }
 
-      // Resolve tenantId from JWT claim or query param
+      // Guard: sub must be a valid UUID before passing to DB ($1::uuid cast)
+      if (!isValidUuid(payload.sub)) {
+        return reply.unauthorized("Unauthorized");
+      }
       const rawTenantId =
         (payload.tenantId as string | undefined) ??
         (request.query as Record<string, string>).tenant_id ??

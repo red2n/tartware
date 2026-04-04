@@ -150,7 +150,7 @@ export const getTrialBalance = async (options: {
   let propFilter = "";
   if (propertyId) {
     params.push(propertyId);
-    propFilter = `AND cp.property_id = ${params.length}::uuid`;
+    propFilter = `AND cp.property_id = $${params.length}::uuid`;
   }
 
   const lineItemsResult = await query<{
@@ -255,7 +255,7 @@ export const getDepartmentalRevenue = async (options: {
   let propFilter = "";
   if (options.propertyId) {
     params.push(options.propertyId);
-    propFilter = `AND cp.property_id = ${params.length}::uuid`;
+    propFilter = `AND cp.property_id = $${params.length}::uuid`;
   }
 
   const { rows } = await query<{
@@ -313,7 +313,7 @@ export const getTaxSummary = async (options: {
   let propFilter = "";
   if (options.propertyId) {
     params.push(options.propertyId);
-    propFilter = `AND cp.property_id = ${params.length}::uuid`;
+    propFilter = `AND cp.property_id = $${params.length}::uuid`;
   }
 
   const { rows } = await query<{
@@ -374,7 +374,7 @@ export const getCommissionReport = async (options: {
   let propFilter = "";
   if (options.propertyId) {
     params.push(options.propertyId);
-    propFilter = `AND cp.property_id = ${params.length}::uuid`;
+    propFilter = `AND cp.property_id = $${params.length}::uuid`;
   }
 
   const { rows } = await query<{

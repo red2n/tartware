@@ -188,7 +188,11 @@ export const buildDateRollScheduler = (
         },
       };
 
-      await producer?.send({
+      if (!producer) {
+        throw new Error("Kafka producer is not initialized — cannot dispatch night audit command");
+      }
+
+      await producer.send({
         topic: options.commandTopic,
         messages: [message],
       });

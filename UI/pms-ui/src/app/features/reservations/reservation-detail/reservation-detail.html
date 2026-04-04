@@ -77,7 +77,13 @@
             <span>Loading available rooms...</span>
           </div>
         } @else if (availableRooms().length === 0) {
-          <p class="room-empty-note">No available rooms found for this room type. Auto-assign will attempt to find one.</p>
+          @if (roomLoadError()) {
+            <p class="room-empty-note room-load-error">
+              <mat-icon>warning</mat-icon> Could not load rooms: {{ roomLoadError() }}
+            </p>
+          } @else {
+            <p class="room-empty-note">No available rooms found for this room type. Auto-assign will attempt to find one.</p>
+          }
         } @else {
           @for (room of paginatedRooms(); track room.room_id) {
             <button

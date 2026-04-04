@@ -42,6 +42,7 @@ vi.mock("../src/utils/proxy.js", () => ({
 
 vi.mock("../src/lib/db.js", () => ({
   query: vi.fn(async () => ({ rows: [{ "?column?": 1 }] })),
+  withTransaction: vi.fn(async (fn: (q: unknown) => Promise<unknown>) => fn(vi.fn(async () => ({ rows: [] })))),
   pool: { end: vi.fn() },
 }));
 

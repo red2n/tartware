@@ -127,7 +127,7 @@ const screenPermissionsRoutes: FastifyPluginAsync = async (app) => {
         ? scopes.includes("settings:write")
         : scopes === "settings:write";
       if (!hasWriteAccess) {
-        return reply.forbidden("Only ADMIN or OWNER can update screen permissions");
+        return reply.forbidden("settings:write scope is required to update screen permissions");
       }
 
       const body = UpsertScreenPermissionsSchema.parse(request.body);

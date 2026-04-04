@@ -258,11 +258,15 @@ export const buildFastifyServer = (
 		const baseOptions = buildSecureRequestLoggingOptions(requestLoggingOptions);
 		withRequestLogging(app, {
 			...baseOptions,
-			skip: (request) =>
-				request.url === "/metrics" ||
-				request.url === "/health" ||
-				request.url === "/ready" ||
-				(baseOptions.skip?.(request) ?? false),
+			skip: (request) => {
+				const path = request.raw.url?.split("?")[0] ?? "";
+				return (
+					path === "/metrics" ||
+					path === "/health" ||
+					path === "/ready" ||
+					(baseOptions.skip?.(request) ?? false)
+				);
+			},
 		});
 	}
 

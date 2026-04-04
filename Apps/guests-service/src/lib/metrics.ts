@@ -32,6 +32,9 @@ export const recordCheckinOutcome = (
   checkinOutcomeCounter.labels(step, status).inc();
 };
 
-export const observeCheckinDuration = (step: string, durationSeconds: number): void => {
+export const observeCheckinDuration = (
+  step: "start" | "complete",
+  durationSeconds: number,
+): void => {
   checkinDurationHistogram.observe({ step }, durationSeconds);
 };

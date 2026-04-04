@@ -14,8 +14,7 @@
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
-    "ast-v8-to-istanbul",
-    "@fastify/sensible"
+    "ast-v8-to-istanbul"
   ],
   "ignoreExportsUsedInFile": true
 }

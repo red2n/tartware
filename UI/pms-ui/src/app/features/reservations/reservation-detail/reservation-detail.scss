@@ -140,6 +140,19 @@
   margin: 0;
 }
 
+.room-load-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-danger-fg);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
 /* ── Building filter bar in check-in panel ── */
 .building-filter-bar {
   display: flex;
