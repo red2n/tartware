@@ -246,7 +246,15 @@
           @for (row of guestRows(); track row.label) {
             <div class="detail-row">
               <dt class="detail-label">{{ row.label }}</dt>
-              <dd class="detail-value">{{ row.value }}</dd>
+              <dd class="detail-value guest-detail-value">
+                {{ row.value }}
+                @if (row.icon) {
+                  <mat-icon class="birthday-icon" [matTooltip]="row.hint ?? ''">{{ row.icon }}</mat-icon>
+                  @if (row.hint) {
+                    <span class="birthday-hint">{{ row.hint }}</span>
+                  }
+                }
+              </dd>
             </div>
           }
         </dl>

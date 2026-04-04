@@ -5,7 +5,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
-import type { AvailabilityResponse, AvailableRoom, ReservationDetail } from "@tartware/schemas";
+import type { AvailabilityResponse, AvailableRoom, GuestWithStats, ReservationDetail } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -14,7 +14,7 @@ import { formatCurrency, formatLongDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type DetailRow = { label: string; value: string; badge?: string };
+type DetailRow = { label: string; value: string; badge?: string; icon?: string; hint?: string };
 
 /** Statuses that allow front-desk check-in per PMS industry standard. */
 const CHECKIN_ALLOWED = new Set(["PENDING", "CONFIRMED"]);
@@ -38,6 +38,7 @@ export class ReservationDetailComponent implements OnInit {
 	private readonly toast = inject(ToastService);
 
 	readonly reservation = signal<ReservationDetail | null>(null);
+	readonly guestProfile = signal<GuestWithStats | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 
@@ -102,12 +103,66 @@ export class ReservationDetailComponent implements OnInit {
 
 	readonly guestRows = computed<DetailRow[]>(() => {
 		const r = this.reservation();
+		const p = this.guestProfile();
 		if (!r) return [];
-		return [
+
+		const rows: DetailRow[] = [
 			{ label: "Guest Name", value: r.guest_name ?? "—" },
 			{ label: "Email", value: r.guest_email ?? "—" },
-			{ label: "Phone", value: r.guest_phone ?? "—" },
+			{ label: "Phone", value: (p?.phone ?? r.guest_phone) || "—" },
 		];
+
+		if (p) {
+			// Customer type from vip_status
+			const vip = p.vip_status;
+			const customerType =
+				vip === "NONE" ? "Standard" :
+				vip === "VVIP" ? "VVIP" :
+				`VIP Level ${vip.replace("VIP", "")}`;
+			rows.push({ label: "Customer Type", value: customerType });
+
+			if (p.loyalty_tier) {
+				rows.push({ label: "Loyalty Tier", value: p.loyalty_tier });
+			}
+
+			// Date of birth with birthday proximity indicator
+			if (p.date_of_birth) {
+				const dob =
+					p.date_of_birth instanceof Date
+						? p.date_of_birth
+						: new Date(p.date_of_birth as unknown as string);
+				const dobDisplay = dob.toLocaleDateString("en-US", {
+					month: "long",
+					day: "numeric",
+					year: "numeric",
+				});
+				const diff = this.birthdayDaysOffset(dob);
+				let icon: string | undefined;
+				let hint: string | undefined;
+				if (diff === 0) {
+					icon = "cake";
+					hint = "Birthday today!";
+				} else if (diff > 0 && diff <= 5) {
+					icon = "cake";
+					hint = `Birthday in ${diff} day${diff === 1 ? "" : "s"}`;
+				} else if (diff < 0 && diff >= -5) {
+					icon = "cake";
+					hint = `Birthday was ${Math.abs(diff)} day${Math.abs(diff) === 1 ? "" : "s"} ago`;
+				}
+				rows.push({ label: "Date of Birth", value: dobDisplay, icon, hint });
+			}
+
+			// Lifetime revenue from that guest
+			const revenue = p.lifetime_value ?? p.total_revenue;
+			if (revenue != null) {
+				rows.push({
+					label: "Lifetime Revenue",
+					value: this.formatCurrency(Number(revenue), r.currency ?? "USD"),
+				});
+			}
+		}
+
+		return rows;
 	});
 
 	readonly financialRows = computed<DetailRow[]>(() => {
@@ -147,6 +202,9 @@ export class ReservationDetailComponent implements OnInit {
 				tenant_id: tenantId,
 			});
 			this.reservation.set(res);
+			if (res.guest_id) {
+				void this.loadGuestProfile(res.guest_id);
+			}
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load reservation");
 		} finally {
@@ -156,6 +214,36 @@ export class ReservationDetailComponent implements OnInit {
 
 	goBack(): void {
 		this.router.navigate(["/reservations"]);
+	}
+
+	/** Fetch the full guest profile to enrich the guest info panel. Non-critical — silently degrades on failure. */
+	private async loadGuestProfile(guestId: string): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		try {
+			const profile = await this.api.get<GuestWithStats>(`/guests/${guestId}`, {
+				tenant_id: tenantId,
+			});
+			this.guestProfile.set(profile);
+		} catch {
+			// Non-critical — guest enrichment failure gracefully degrades to reservation-only data
+		}
+	}
+
+	/**
+	 * Returns the number of days from today until the guest's next (or most recent past) birthday.
+	 * Negative = birthday was N days ago. Positive = birthday is in N days. 0 = today.
+	 */
+	private birthdayDaysOffset(dob: Date): number {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const thisBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+		const diff = Math.round((thisBirthday.getTime() - today.getTime()) / 86_400_000);
+		if (diff < -5) {
+			const nextBirthday = new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
+			return Math.round((nextBirthday.getTime() - today.getTime()) / 86_400_000);
+		}
+		return diff;
 	}
 
 	/* ── Action confirmations ── */
