@@ -228,9 +228,39 @@
               {{ g.first_name[0] }}{{ g.last_name[0] }}
             </div>
             <div class="guest-info">
-              <span class="guest-name">{{ g.first_name }} {{ g.last_name }}</span>
-              @if (g.email) {
-                <span class="guest-email">{{ g.email }}</span>
+              <div class="guest-name-row">
+                <span class="guest-name">{{ g.first_name }} {{ g.last_name }}</span>
+                @if (guestCustomerType(g); as ct) {
+                  <span class="guest-type-badge">{{ ct }}</span>
+                }
+                @if (g.loyalty_tier) {
+                  <span class="guest-loyalty-badge">{{ g.loyalty_tier }}</span>
+                }
+              </div>
+              <div class="guest-meta-row">
+                @if (g.email) {
+                  <span class="guest-meta-item">
+                    <mat-icon class="guest-meta-icon">email</mat-icon>{{ g.email }}
+                  </span>
+                }
+                @if (g.phone) {
+                  <span class="guest-meta-item">
+                    <mat-icon class="guest-meta-icon">phone</mat-icon>{{ g.phone }}
+                  </span>
+                }
+                @if (guestDobDisplay(g); as dob) {
+                  <span class="guest-meta-item" [matTooltip]="guestBirthdayHint(g) ?? ''">
+                    <mat-icon class="guest-meta-icon">cake</mat-icon>{{ dob }}
+                    @if (guestBirthdayHint(g); as hint) {
+                      <span class="guest-birthday-hint">{{ hint }}</span>
+                    }
+                  </span>
+                }
+              </div>
+              @if ((g.lifetime_value ?? g.total_revenue) != null) {
+                <span class="guest-revenue">
+                  Lifetime revenue: {{ fmtCurrency(+(g.lifetime_value ?? g.total_revenue ?? 0), 'USD') }}
+                </span>
               }
             </div>
             @if (guestId === g.id) {
