@@ -7,6 +7,17 @@ type TenantScopeResolver = (request: FastifyRequest) => string | null | undefine
 
 export type RolePriorityMap = Record<TenantRole, number>;
 
+// ─── Settings auth compatibility ───────────────────────────────────────────
+// Minimal JWT+tenant shape used by the absorbed settings-service routes.
+export type AuthScope = string | string[];
+export type AuthUser = {
+  sub: string;
+  tenantId?: string;
+  scope?: AuthScope;
+  permissions?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
 export interface TenantMembership {
   tenantId: string;
   tenantName?: string;

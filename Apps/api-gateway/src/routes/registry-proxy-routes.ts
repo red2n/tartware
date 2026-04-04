@@ -10,6 +10,7 @@
  */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
@@ -18,7 +19,7 @@ import { REGISTRY_PROXY_TAG } from "./schemas.js";
 /** Register service-registry proxy routes on the gateway. */
 export const registerRegistryProxyRoutes = (app: FastifyInstance): void => {
   const proxyRegistry = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.serviceRegistryUrl);
+    proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
   const adminOnly = app.withTenantScope({
     allowMissingTenantId: true,

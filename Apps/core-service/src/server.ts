@@ -10,6 +10,7 @@ import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import complianceMonitorPlugin from "./plugins/compliance-monitor.js";
+import { settingsAuthPlugin } from "./plugins/settings-auth.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -29,9 +30,14 @@ import {
   registerShiftHandoverRoutes,
 } from "./routes/operations.js";
 import { registerPropertyRoutes } from "./routes/properties.js";
+import { registerRegistryRoutes } from "./routes/registry.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerReservationRoutes } from "./routes/reservations.js";
 import { registerServiceStatusRoutes } from "./routes/service-status.js";
+import amenitiesRoutes from "./routes/settings-amenities.js";
+import catalogRoutes from "./routes/settings-catalog.js";
+import packagesRoutes from "./routes/settings-packages.js";
+import screenPermissionsRoutes from "./routes/settings-screen-permissions.js";
 import { registerSystemAuthRoutes } from "./routes/system-auth.js";
 import { registerSystemImpersonationRoutes } from "./routes/system-impersonation.js";
 import { registerSystemTenantRoutes } from "./routes/system-tenants.js";
@@ -71,6 +77,7 @@ export const buildServer = (): FastifyInstance => {
       app.register(authContextPlugin);
       app.register(systemAdminAuthPlugin);
       app.register(complianceMonitorPlugin);
+      app.register(settingsAuthPlugin);
     },
     registerRoutes: (app) => {
       registerHealthRoutes(app);
@@ -100,6 +107,18 @@ export const buildServer = (): FastifyInstance => {
       registerDirectBookingRoutes(app);
       registerUiPreferencesRoutes(app);
       registerServiceStatusRoutes(app);
+
+      // ─── Absorbed from service-registry ───────────────────────────────
+      registerRegistryRoutes(app);
+
+      // ─── Absorbed from settings-service ───────────────────────────────
+      void app.register(async (settingsScope) => {
+        settingsScope.addHook("onRequest", settingsScope.settingsAuthenticate);
+        await settingsScope.register(catalogRoutes);
+        await settingsScope.register(amenitiesRoutes);
+        await settingsScope.register(packagesRoutes);
+        await settingsScope.register(screenPermissionsRoutes);
+      });
     },
   });
 

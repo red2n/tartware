@@ -4,6 +4,7 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
+    "@tartware/command-consumer-utils",
     "@tartware/schemas",
     "@tartware/config",
     "@tartware/telemetry",
@@ -13,7 +14,8 @@
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
-    "ast-v8-to-istanbul"
+    "ast-v8-to-istanbul",
+    "@fastify/sensible"
   ],
   "ignoreExportsUsedInFile": true
 }

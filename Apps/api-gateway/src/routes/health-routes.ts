@@ -232,14 +232,11 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
     async (_request, reply) => {
       const checks = [
         { name: "core-service", url: serviceTargets.coreServiceUrl },
-        { name: "settings-service", url: serviceTargets.settingsServiceUrl },
         { name: "guests-service", url: serviceTargets.guestsServiceUrl },
         { name: "rooms-service", url: serviceTargets.roomsServiceUrl },
         { name: "reservations-command-service", url: serviceTargets.reservationCommandServiceUrl },
         { name: "billing-service", url: serviceTargets.billingServiceUrl },
         { name: "housekeeping-service", url: serviceTargets.housekeepingServiceUrl },
-        { name: "command-center-service", url: serviceTargets.commandCenterServiceUrl },
-        { name: "recommendation-service", url: serviceTargets.recommendationServiceUrl },
         { name: "notification-service", url: serviceTargets.notificationServiceUrl },
       ];
 

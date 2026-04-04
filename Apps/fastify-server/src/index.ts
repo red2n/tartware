@@ -114,6 +114,8 @@ export interface BuildFastifyServerOptions {
 		serviceVersion: string;
 		host: string;
 		port: number;
+		displayName?: string;
+		description?: string;
 	};
 }
 
@@ -253,10 +255,15 @@ export const buildFastifyServer = (
 
 	// Register request logging if enabled
 	if (enableRequestLogging) {
-		withRequestLogging(
-			app,
-			buildSecureRequestLoggingOptions(requestLoggingOptions),
-		);
+		const baseOptions = buildSecureRequestLoggingOptions(requestLoggingOptions);
+		withRequestLogging(app, {
+			...baseOptions,
+			skip: (request) =>
+				request.url === "/metrics" ||
+				request.url === "/health" ||
+				request.url === "/ready" ||
+				(baseOptions.skip?.(request) ?? false),
+		});
 	}
 
 	// Register core plugins
@@ -369,7 +376,7 @@ export const buildFastifyServer = (
 
 	// Register metrics endpoint if enabled
 	if (enableMetricsEndpoint && metricsRegistry) {
-		app.get("/metrics", async (_request, reply) => {
+		app.get("/metrics", { logLevel: "silent" }, async (_request, reply) => {
 			const body = await metricsRegistry.metrics();
 			return reply.header("Content-Type", metricsRegistry.contentType).send(body);
 		});
@@ -410,6 +417,8 @@ export const buildFastifyServer = (
 					serviceVersion: process.env.SERVICE_VERSION ?? "0.0.0",
 					host: process.env.HOST ?? "localhost",
 					port: registryPort,
+					displayName: process.env.SERVICE_DISPLAY_NAME,
+					description: process.env.SERVICE_DESCRIPTION,
 				}
 			: undefined);
 

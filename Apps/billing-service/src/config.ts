@@ -53,6 +53,60 @@ const commandCenter = {
   retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
 };
 
+// Accounts-service consumer group (absorbed Phase 6)
+const accountsCommandCenter = {
+  topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    process.env.ACCOUNTS_COMMAND_CENTER_CONSUMER_GROUP ?? "accounts-command-center-consumer",
+  targetServiceId: process.env.ACCOUNTS_COMMAND_CENTER_TARGET_SERVICE_ID ?? "accounts-service",
+  maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+  dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
+  maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
+  retryBackoffMs: parseNumberEnv(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
+  retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
+};
+
+// Finance-admin-service consumer group (absorbed Phase 6)
+const financeAdminCommandCenter = {
+  topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    process.env.FINANCE_ADMIN_COMMAND_CENTER_CONSUMER_GROUP ??
+    "finance-admin-command-center-consumer",
+  targetServiceId:
+    process.env.FINANCE_ADMIN_COMMAND_CENTER_TARGET_SERVICE_ID ?? "finance-admin-service",
+  maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+  dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
+  maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
+  retryBackoffMs: parseNumberEnv(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
+  retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
+};
+
+// Roll-service config (absorbed Phase 6)
+const rollKafka = resolveKafkaConfig({
+  clientId: process.env.ROLL_KAFKA_CLIENT_ID ?? "tartware-roll-service",
+  defaultPrimaryBroker: "localhost:29092",
+});
+
+const rollKafkaFull = {
+  ...rollKafka,
+  topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
+  consumerGroupId: process.env.ROLL_SERVICE_CONSUMER_GROUP ?? "roll-service-shadow",
+  maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+  consumerEnabled: parseBooleanEnv(process.env.ROLL_SERVICE_CONSUMER_ENABLED, true),
+};
+
+const rollBackfill = {
+  enabled: parseBooleanEnv(process.env.ROLL_SERVICE_BACKFILL_ENABLED, true),
+  batchSize: parseNumberEnv(process.env.ROLL_SERVICE_BACKFILL_BATCH_SIZE, 500),
+  intervalMs: parseNumberEnv(process.env.ROLL_SERVICE_BACKFILL_INTERVAL_MS, 60000),
+};
+
+const rollDateRollScheduler = {
+  enabled: parseBooleanEnv(process.env.DATE_ROLL_SCHEDULER_ENABLED, true),
+  checkIntervalMs: parseNumberEnv(process.env.DATE_ROLL_CHECK_INTERVAL_MS, 60000),
+  commandTopic: process.env.COMMAND_TOPIC ?? "commands.primary",
+};
+
 export const config = {
   service: {
     name: configValues.SERVICE_NAME,
@@ -94,4 +148,16 @@ export const config = {
   },
   kafka,
   commandCenter,
+  accounts: {
+    commandCenter: accountsCommandCenter,
+  },
+  finance: {
+    commandCenter: financeAdminCommandCenter,
+  },
+  roll: {
+    shadowMode: parseBooleanEnv(process.env.SHADOW_MODE, true),
+    kafka: rollKafkaFull,
+    backfill: rollBackfill,
+    dateRollScheduler: rollDateRollScheduler,
+  },
 };

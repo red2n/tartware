@@ -278,3 +278,28 @@ const resolveFeature = (commandName: string, tenantId: string): CommandFeatureRe
   const globalFeature = entries.find((feature) => feature.tenant_id === null);
   return globalFeature ?? null;
 };
+
+/**
+ * List all command definitions currently loaded in the registry.
+ * Returns a serialisable snapshot of each template's name, label,
+ * description, and sample payload for admin introspection.
+ */
+export const listCommandDefinitions = () => {
+  return Array.from(state.templates.values()).map((template) => {
+    const label =
+      typeof template.metadata.label === "string" && template.metadata.label.length > 0
+        ? template.metadata.label
+        : template.command_name;
+    const description =
+      typeof template.metadata.description === "string" && template.metadata.description.length > 0
+        ? template.metadata.description
+        : (template.description ?? template.command_name);
+
+    return {
+      name: template.command_name,
+      label,
+      description,
+      samplePayload: (template.sample_payload as Record<string, unknown>) ?? {},
+    };
+  });
+};

@@ -431,6 +431,9 @@ export const AvailabilityQuerySchema = z.object({
 		.regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
 	room_type_id: uuid.optional(),
 	building_id: uuid.optional(),
+	/** When provided, this reservation is excluded from the unassigned-count guard so its
+	 *  own "vacant slot" is not hidden from the room picker (check-in use case). */
+	reservation_id: uuid.optional(),
 	adults: z.coerce.number().int().min(1).max(20).optional(),
 	limit: z.coerce.number().int().positive().max(200).default(50),
 	offset: z.coerce.number().int().min(0).default(0),

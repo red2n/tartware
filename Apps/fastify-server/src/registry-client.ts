@@ -18,6 +18,10 @@ export interface RegistryConfig {
 	serviceVersion: string;
 	host: string;
 	port: number;
+	/** Human-readable display name (e.g. "Core Service"). Falls back to derived name in UI. */
+	displayName?: string;
+	/** Short description shown in the service dashboard. */
+	description?: string;
 }
 
 async function registryFetch(
@@ -45,15 +49,20 @@ export function startServiceRegistration(
 		warn: (...args: unknown[]) => void;
 	},
 ): { stop: () => Promise<void> } {
-	const { registryUrl, serviceName, serviceVersion, host, port } = config;
+	const { registryUrl, serviceName, serviceVersion, host, port, displayName, description } = config;
 	let heartbeatTimer: NodeJS.Timeout | undefined;
 
-	const registerPayload = {
+	const metadata: Record<string, string> = {};
+	if (displayName) metadata.displayName = displayName;
+	if (description) metadata.description = description;
+
+	const registerPayload: Record<string, unknown> = {
 		name: serviceName,
 		version: serviceVersion,
 		host: host === "0.0.0.0" ? "localhost" : host,
 		port,
 	};
+	if (Object.keys(metadata).length > 0) registerPayload.metadata = metadata;
 
 	// Register immediately
 	registryFetch(

@@ -353,6 +353,10 @@ export const searchAvailableRooms = async (options: {
   checkOutDate: string;
   roomTypeId?: string;
   buildingId?: string;
+  /** When set, this reservation is excluded from the unassigned-count guard so
+   *  the room picker during check-in does not hide the slot the current reservation
+   *  is occupying in the availability math. */
+  reservationId?: string;
   adults?: number;
   limit?: number;
   offset?: number;
@@ -379,7 +383,9 @@ export const searchAvailableRooms = async (options: {
     size_sqm: number | string | null;
   }>(
     `WITH unassigned_reservations AS (
-       -- Pre-aggregate unassigned reservation counts per room type
+       -- Pre-aggregate unassigned reservation counts per room type.
+       -- Excludes the current reservation ($10) so its own vacant slot is
+       -- not hidden when the room picker is opened during check-in.
        SELECT ures.room_type_id, COUNT(*) AS unassigned_count
        FROM public.reservations ures
        WHERE ures.tenant_id = $1::uuid
@@ -388,6 +394,7 @@ export const searchAvailableRooms = async (options: {
          AND ures.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
          AND ures.check_in_date < $4::date
          AND ures.check_out_date > $3::date
+         AND ($10::uuid IS NULL OR ures.id != $10::uuid)
        GROUP BY ures.room_type_id
      ),
      available_rooms AS (
@@ -466,6 +473,7 @@ export const searchAvailableRooms = async (options: {
       options.buildingId ?? null,
       limit,
       offset,
+      options.reservationId ?? null,
     ],
   );
 

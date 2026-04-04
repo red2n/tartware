@@ -18,7 +18,7 @@ import { CALCULATION_PROXY_TAG } from "./schemas.js";
 /** Register calculation service proxy routes on the gateway. */
 export const registerCalculationRoutes = (app: FastifyInstance): void => {
   const proxyCalculation = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.calculationServiceUrl);
+    proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
   app.all(
     "/v1/calculations/*",

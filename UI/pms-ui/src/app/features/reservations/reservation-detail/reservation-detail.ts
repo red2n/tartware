@@ -200,6 +200,7 @@ export class ReservationDetailComponent implements OnInit {
 				property_id: r.property_id,
 				check_in_date: r.check_in_date.substring(0, 10),
 				check_out_date: r.check_out_date.substring(0, 10),
+				reservation_id: r.id,
 			};
 			if (r.room_type_id) params["room_type_id"] = r.room_type_id;
 			if (this.buildingFilter()) params["building_id"] = this.buildingFilter();

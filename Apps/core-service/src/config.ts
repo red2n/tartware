@@ -4,7 +4,9 @@ import {
   loadServiceConfig,
   parseBooleanEnv,
   parseNumberEnv,
+  parseNumberList,
   redisSchema,
+  resolveKafkaConfig,
   validateProductionSecrets,
 } from "@tartware/config";
 
@@ -74,6 +76,28 @@ const membershipCacheHitDropCooldownMinutes = parseNumberEnv(
   process.env.COMPLIANCE_MEMBERSHIP_CACHE_HIT_DROP_COOLDOWN_MINUTES,
   15,
 );
+
+// ─── Service Registry ──────────────────────────────────────────────────────
+const registryHeartbeatTtlMs = Number(process.env.REGISTRY_HEARTBEAT_TTL_MS) || 120_000;
+const registrySweepIntervalMs = Number(process.env.REGISTRY_SWEEP_INTERVAL_MS) || 30_000;
+
+// ─── Settings Kafka consumer ───────────────────────────────────────────────
+const settingsKafka = resolveKafkaConfig({
+  clientId: process.env.SETTINGS_KAFKA_CLIENT_ID ?? "tartware-core-settings-consumer",
+  defaultPrimaryBroker: "localhost:29092",
+});
+
+const settingsCommandCenter = {
+  topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+  consumerGroupId:
+    process.env.SETTINGS_COMMAND_CENTER_CONSUMER_GROUP ?? "settings-command-center-consumer",
+  targetServiceId: process.env.SETTINGS_COMMAND_CENTER_TARGET_SERVICE_ID ?? "settings-service",
+  maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
+  dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
+  maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
+  retryBackoffMs: parseNumberEnv(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
+  retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
+};
 
 export const config = {
   service: {
@@ -185,5 +209,14 @@ export const config = {
       membershipCacheHitDropThreshold,
       membershipCacheHitDropCooldownMinutes,
     },
+  },
+  registry: {
+    heartbeatTtlMs: registryHeartbeatTtlMs,
+    sweepIntervalMs: registrySweepIntervalMs,
+  },
+  settings: {
+    dataSource: (process.env.SETTINGS_DATA_SOURCE ?? "seed").toLowerCase(),
+    kafka: settingsKafka,
+    commandCenter: settingsCommandCenter,
   },
 };

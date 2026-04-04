@@ -15,8 +15,7 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
-import { config } from "../config.js";
+import { rankRooms } from "../services/index.js";
 import {
   activateRoom,
   createRoom,
@@ -216,83 +215,60 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         offset,
       });
 
-      // If recommendation context is provided, fetch rankings from recommendation service
+      // If recommendation context is provided, rank rooms using local pipeline
       const hasRecommendationContext = property_id && check_in_date && check_out_date;
 
       if (hasRecommendationContext && rooms.length > 0) {
         try {
           const roomIds = rooms.map((r) => r.room_id);
-          const authHeader = request.headers.authorization;
-          const response = await fetch(
-            `${config.recommendationServiceUrl}/v1/recommendations/rank`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-tenant-id": tenant_id,
-                ...(authHeader ? { Authorization: authHeader } : {}),
-              },
-              body: JSON.stringify({
-                propertyId: property_id,
-                guestId: guest_id,
-                checkInDate: check_in_date,
-                checkOutDate: check_out_date,
-                adults: adults ?? 1,
-                children: children ?? 0,
-                roomIds,
-              }),
-              signal: AbortSignal.timeout(5_000),
-            },
-          );
+          const rankResult = await rankRooms({
+            tenantId: tenant_id,
+            propertyId: property_id,
+            guestId: guest_id,
+            checkInDate: check_in_date,
+            checkOutDate: check_out_date,
+            adults: adults ?? 1,
+            children: children ?? 0,
+            roomIds,
+          });
 
-          if (response.ok) {
-            const rankResult = (await response.json()) as {
-              rankedRooms: Array<{
-                roomId: string;
-                rank: number;
-                relevanceScore: number;
-                reasons: string[];
-              }>;
-            };
-
-            // Create a map of room rankings
-            const rankMap = new Map<string, { rank: number; score: number; reasons: string[] }>();
-            for (const ranked of rankResult.rankedRooms) {
-              rankMap.set(ranked.roomId, {
-                rank: ranked.rank,
-                score: ranked.relevanceScore,
-                reasons: ranked.reasons,
-              });
-            }
-
-            // Merge recommendation data into rooms and sort by rank
-            const enrichedRooms = rooms.map((room) => {
-              const ranking = rankMap.get(room.room_id);
-              return {
-                ...room,
-                recommendation_rank: ranking?.rank,
-                recommendation_score: ranking?.score,
-                recommendation_reasons: ranking?.reasons,
-              };
+          // Create a map of room rankings
+          const rankMap = new Map<string, { rank: number; score: number; reasons: string[] }>();
+          for (const ranked of rankResult.rankedRooms) {
+            rankMap.set(ranked.roomId, {
+              rank: ranked.rank,
+              score: ranked.relevanceScore,
+              reasons: ranked.reasons,
             });
-
-            // Sort by recommendation rank (rooms with rank first, then unranked)
-            enrichedRooms.sort((a, b) => {
-              if (a.recommendation_rank && b.recommendation_rank) {
-                return a.recommendation_rank - b.recommendation_rank;
-              }
-              if (a.recommendation_rank) return -1;
-              if (b.recommendation_rank) return 1;
-              return 0;
-            });
-
-            return RoomListResponseSchema.parse(enrichedRooms);
           }
+
+          // Merge recommendation data into rooms and sort by rank
+          const enrichedRooms = rooms.map((room) => {
+            const ranking = rankMap.get(room.room_id);
+            return {
+              ...room,
+              recommendation_rank: ranking?.rank,
+              recommendation_score: ranking?.score,
+              recommendation_reasons: ranking?.reasons,
+            };
+          });
+
+          // Sort by recommendation rank (rooms with rank first, then unranked)
+          enrichedRooms.sort((a, b) => {
+            if (a.recommendation_rank && b.recommendation_rank) {
+              return a.recommendation_rank - b.recommendation_rank;
+            }
+            if (a.recommendation_rank) return -1;
+            if (b.recommendation_rank) return 1;
+            return 0;
+          });
+
+          return RoomListResponseSchema.parse(enrichedRooms);
         } catch (error) {
           // Log error but don't fail the request - return unranked rooms
           request.log.warn(
             { err: error },
-            "Failed to fetch room recommendations, returning unranked",
+            "Failed to rank room recommendations, returning unranked",
           );
         }
       }
@@ -341,60 +317,37 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         return reply.notFound("Room not found");
       }
 
-      // If recommendation context is provided, fetch ranking from recommendation service
+      // If recommendation context is provided, fetch ranking using local pipeline
       const hasRecommendationContext = check_in_date && check_out_date;
 
       if (hasRecommendationContext) {
         try {
-          const authHeader = request.headers.authorization;
-          const response = await fetch(
-            `${config.recommendationServiceUrl}/v1/recommendations/rank`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-tenant-id": tenant_id,
-                ...(authHeader ? { Authorization: authHeader } : {}),
-              },
-              body: JSON.stringify({
-                propertyId: room.property_id,
-                guestId: guest_id,
-                checkInDate: check_in_date,
-                checkOutDate: check_out_date,
-                adults: adults ?? 1,
-                children: children ?? 0,
-                roomIds: [room.room_id],
-              }),
-              signal: AbortSignal.timeout(5_000),
-            },
-          );
+          const rankResult = await rankRooms({
+            tenantId: tenant_id,
+            propertyId: room.property_id,
+            guestId: guest_id,
+            checkInDate: check_in_date,
+            checkOutDate: check_out_date,
+            adults: adults ?? 1,
+            children: children ?? 0,
+            roomIds: [room.room_id],
+          });
 
-          if (response.ok) {
-            const rankResult = (await response.json()) as {
-              rankedRooms: Array<{
-                roomId: string;
-                rank: number;
-                relevanceScore: number;
-                reasons: string[];
-              }>;
+          const ranking = rankResult.rankedRooms.find((r) => r.roomId === room.room_id);
+
+          if (ranking) {
+            return {
+              ...room,
+              recommendation_rank: ranking.rank,
+              recommendation_score: ranking.relevanceScore,
+              recommendation_reasons: ranking.reasons,
             };
-
-            const ranking = rankResult.rankedRooms.find((r) => r.roomId === room.room_id);
-
-            if (ranking) {
-              return {
-                ...room,
-                recommendation_rank: ranking.rank,
-                recommendation_score: ranking.relevanceScore,
-                recommendation_reasons: ranking.reasons,
-              };
-            }
           }
         } catch (error) {
           // Log error but don't fail the request - return room without ranking
           request.log.warn(
             { err: error },
-            "Failed to fetch room recommendation, returning unranked",
+            "Failed to rank room recommendation, returning unranked",
           );
         }
       }
@@ -631,6 +584,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         checkOutDate: q.check_out_date,
         roomTypeId: q.room_type_id,
         buildingId: q.building_id,
+        reservationId: q.reservation_id,
         adults: q.adults,
         limit: q.limit,
         offset: q.offset,

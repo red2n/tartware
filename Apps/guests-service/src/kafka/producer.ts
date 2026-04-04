@@ -8,4 +8,6 @@ const producer = createKafkaProducer(kafka, {
   dlqTopic: config.commandCenter.dlqTopic,
 });
 
+/** Publish a command to the command center topic or a custom topic. */
+export const publishCommand = producer.publishEvent;
 export const { publishDlqEvent, shutdown: shutdownProducer } = producer;

@@ -6,6 +6,20 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 
 import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
 
+/** Hardcoded descriptions for known services — presentation data owned by the UI. */
+const SERVICE_DESCRIPTIONS: Record<string, string> = {
+	"@tartware/core-service": "Authentication, tenants, users, and service registry",
+	"@tartware/api-gateway": "Unified entry point for all API requests",
+	"@tartware/guests-service": "Guest profiles, history, and preferences",
+	"@tartware/rooms-service": "Room inventory, types, and availability",
+	"@tartware/reservations-command-service": "Reservation creation and lifecycle management",
+	"@tartware/billing-service": "Charges, payments, and financial statements",
+	"@tartware/housekeeping-service": "Room cleaning schedules and task management",
+	"@tartware/availability-guard-service": "Room inventory locking and overbooking prevention",
+	"@tartware/notification-service": "Booking confirmations and guest communications",
+	"@tartware/revenue-service": "Revenue analytics and performance reporting",
+};
+
 @Component({
 	selector: "app-service-dashboard",
 	standalone: true,
@@ -39,6 +53,22 @@ export class ServiceDashboardComponent {
 		if (event.key === "Escape") {
 			this.close.emit();
 		}
+	}
+
+	/** Human-readable service name. Uses backend metadata if available, else derives from package name. */
+	displayName(svc: ServiceInstance): string {
+		const meta = svc.metadata?.["displayName"];
+		if (typeof meta === "string" && meta) return meta;
+		// Derive from package name: "@tartware/api-gateway" → "Api Gateway"
+		const base = svc.name.replace(/^@[^/]+\//, "").replace(/-/g, " ");
+		return base.replace(/\b\w/g, (c) => c.toUpperCase());
+	}
+
+	/** Short service description. Uses backend metadata if available, else falls back to known map. */
+	description(svc: ServiceInstance): string | null {
+		const meta = svc.metadata?.["description"];
+		if (typeof meta === "string" && meta) return meta;
+		return SERVICE_DESCRIPTIONS[svc.name] ?? null;
 	}
 
 	relativeTime(iso: string): string {

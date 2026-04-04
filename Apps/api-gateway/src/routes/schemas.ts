@@ -22,8 +22,6 @@ export const HEALTH_TAG = "Gateway Health";
 export const RESERVATION_PROXY_TAG = "Reservation Proxy";
 /** @internal Core service proxy endpoints (tenants, properties, auth, users). */
 export const CORE_PROXY_TAG = "Core Proxy";
-/** @internal Command center admin and dispatch endpoints. */
-export const COMMAND_CENTER_PROXY_TAG = "Command Center Proxy";
 /** @internal Settings and package proxy endpoints. */
 export const SETTINGS_PROXY_TAG = "Settings Proxy";
 /** @internal Guest management endpoints. */

@@ -4,7 +4,6 @@
     "src/**/*.ts"
   ],
   "ignoreDependencies": [
-    "zod",
     "@tartware/openapi",
     "@tartware/telemetry",
     "@tartware/config",

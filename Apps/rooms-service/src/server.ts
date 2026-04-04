@@ -9,10 +9,14 @@ import { registerBuildingRoutes } from "./routes/buildings.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerRateCalendarRoutes } from "./routes/rate-calendar.js";
 import { registerRateRoutes } from "./routes/rates.js";
+import { registerRecommendationRoutes } from "./routes/recommendations.js";
 import { registerRoomTypeRoutes } from "./routes/room-types.js";
 import { registerRoomRoutes } from "./routes/rooms.js";
+import { initializePipeline } from "./services/index.js";
 
 export const buildServer = (): FastifyInstance => {
+  initializePipeline();
+
   const app = buildFastifyServer({
     logger: appLogger,
     enableRequestLogging: config.log.requestLogging,
@@ -30,6 +34,7 @@ export const buildServer = (): FastifyInstance => {
       registerBuildingRoutes(app);
       registerRateRoutes(app);
       registerRateCalendarRoutes(app);
+      registerRecommendationRoutes(app);
     },
   });
 

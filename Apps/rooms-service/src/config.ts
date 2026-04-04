@@ -54,7 +54,12 @@ export const config = {
     pretty: configValues.LOG_PRETTY,
     requestLogging: configValues.LOG_REQUESTS,
   },
-  recommendationServiceUrl: process.env.RECOMMENDATION_SERVICE_URL ?? "http://localhost:3040",
+  recommendation: {
+    defaultResultSize: Number(process.env.RECOMMENDATION_DEFAULT_RESULT_SIZE ?? "10"),
+    maxResultSize: Number(process.env.RECOMMENDATION_MAX_RESULT_SIZE ?? "50"),
+    enableMlScoring: process.env.RECOMMENDATION_ENABLE_ML_SCORING !== "false",
+    phoenixServiceUrl: process.env.PHOENIX_SERVICE_URL ?? "http://localhost:5000",
+  },
   db: {
     host: configValues.DB_HOST,
     port: configValues.DB_PORT,
