@@ -7,13 +7,13 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "swc src -d dist --strip-leading-paths --config-file ../../.swcrc -q && tsc --project tsconfig.json --emitDeclarationOnly",
     "lint": "eslint --ext .ts src",
     "lint:fix": "eslint --ext .ts src --fix",
     "biome": "biome check src",
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
     "clean": "rm -rf dist dist-tests *.tsbuildinfo",
     "build:tests": "tsc --project tsconfig.tests.json",
     "test": "npm run build:tests && node --test dist-tests/tests/*.js"

@@ -5,13 +5,27 @@
  * each room appears only once, keeping the first occurrence.
  */
 
-import { PredicateFilter } from "@tartware/candidate-pipeline";
+import {
+  type FilterResult,
+  type PipelineContext,
+  PredicateFilter,
+} from "@tartware/candidate-pipeline";
 
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
 
 class DuplicateFilter extends PredicateFilter<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "duplicate";
   private seenRoomIds = new Set<string>();
+
+  override async filter(
+    query: RoomRecommendationQuery,
+    candidates: RoomCandidate[],
+    context: PipelineContext,
+  ): Promise<FilterResult<RoomCandidate>> {
+    // Reset per-execution state so the filter works correctly across pipeline reuse
+    this.seenRoomIds.clear();
+    return super.filter(query, candidates, context);
+  }
 
   shouldKeep(_query: RoomRecommendationQuery, candidate: RoomCandidate): boolean {
     if (this.seenRoomIds.has(candidate.roomId)) {

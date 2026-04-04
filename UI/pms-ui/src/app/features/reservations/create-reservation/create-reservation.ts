@@ -1,4 +1,5 @@
-import { Component, inject, type OnInit, signal } from "@angular/core";
+import { NgClass } from "@angular/common";
+import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
@@ -59,10 +60,21 @@ type GuestOption = {
 	created_at?: string;
 };
 
+import type { RoomRecommendation, RoomRecommendationResponse } from "@tartware/schemas";
+
+/** Aggregated recommendation stats per room type */
+type RoomTypeRecommendation = {
+	roomTypeId: string;
+	avgScore: number;
+	roomCount: number;
+	hasUpgrade: boolean;
+	bestScore: number;
+};
+
 @Component({
 	selector: "app-create-reservation",
 	standalone: true,
-		imports: [FormsModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, PaginationComponent],
+		imports: [NgClass, FormsModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, PaginationComponent],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
 })
@@ -84,6 +96,29 @@ export class CreateReservationComponent implements OnInit {
 	readonly guestPage = signal(1);
 	readonly guestPageSize = 5;
 
+	// Recommendation engine state
+	readonly recommendations = signal<Map<string, RoomTypeRecommendation>>(new Map());
+	readonly loadingRecs = signal(false);
+	readonly hasRecommendations = computed(() => this.recommendations().size > 0);
+
+	/** Monotonically increasing counter to discard stale recommendation responses. */
+	private recRequestSeq = 0;
+
+	/** Room types sorted: recommended first (by best score desc), then the rest. */
+	readonly sortedRoomTypes = computed(() => {
+		const recs = this.recommendations();
+		const types = this.roomTypes();
+		if (recs.size === 0) return types;
+		return [...types].sort((a, b) => {
+			const ra = recs.get(a.room_type_id);
+			const rb = recs.get(b.room_type_id);
+			if (ra && !rb) return -1;
+			if (!ra && rb) return 1;
+			if (ra && rb) return rb.bestScore - ra.bestScore;
+			return 0;
+		});
+	});
+
 	touched: Record<string, boolean> = {};
 
 	// Step 1: Dates & Room Type
@@ -102,11 +137,17 @@ export class CreateReservationComponent implements OnInit {
 		return this.toDateString(d);
 	}
 
-	/** When check-in changes, auto-correct check-out if it's now invalid. */
+	/** When check-in changes, auto-correct check-out if it's now invalid, then refresh recommendations. */
 	onCheckInChange(): void {
 		if (this.checkOutDate && this.checkOutDate <= this.checkInDate) {
 			this.checkOutDate = this.minCheckOut;
 		}
+		this.fetchRecommendations();
+	}
+
+	/** When check-out changes, refresh recommendations. */
+	onCheckOutChange(): void {
+		this.fetchRecommendations();
 	}
 
 	// Step 2: Rate selection
@@ -238,6 +279,80 @@ export class CreateReservationComponent implements OnInit {
 		tomorrow.setDate(tomorrow.getDate() + 1);
 		this.checkInDate = this.toDateString(today);
 		this.checkOutDate = this.toDateString(tomorrow);
+		this.fetchRecommendations();
+	}
+
+	/** Fetch recommendations from the recommendation engine and aggregate by room type. */
+	async fetchRecommendations(): Promise<void> {
+		if (!this.checkInDate || !this.checkOutDate || this.nights <= 0) {
+			this.recommendations.set(new Map());
+			return;
+		}
+
+		const propertyId = this.ctx.propertyId();
+		const tenantId = this.auth.tenantId();
+		if (!propertyId || !tenantId) return;
+
+		const seq = ++this.recRequestSeq;
+		this.loadingRecs.set(true);
+		try {
+			const params: Record<string, string> = {
+				tenant_id: tenantId,
+				propertyId,
+				checkInDate: this.checkInDate,
+				checkOutDate: this.checkOutDate,
+				limit: "50",
+			};
+
+			const resp = await this.api.get<RoomRecommendationResponse>("/recommendations", params);
+
+			// Discard stale response if a newer request was fired while awaiting
+			if (seq !== this.recRequestSeq) return;
+
+			// Aggregate recommendations by room type
+			const byType = new Map<string, RoomTypeRecommendation>();
+			for (const rec of resp.recommendations) {
+				const existing = byType.get(rec.roomTypeId);
+				if (existing) {
+					existing.roomCount++;
+					existing.avgScore = (existing.avgScore * (existing.roomCount - 1) + rec.relevanceScore) / existing.roomCount;
+					existing.bestScore = Math.max(existing.bestScore, rec.relevanceScore);
+					existing.hasUpgrade = existing.hasUpgrade || (rec.isUpgrade ?? false);
+				} else {
+					byType.set(rec.roomTypeId, {
+						roomTypeId: rec.roomTypeId,
+						avgScore: rec.relevanceScore,
+						roomCount: 1,
+						hasUpgrade: rec.isUpgrade ?? false,
+						bestScore: rec.relevanceScore,
+					});
+				}
+			}
+			this.recommendations.set(byType);
+		} catch {
+			// Non-blocking — recommendations are a bonus, not a requirement
+			if (seq === this.recRequestSeq) this.recommendations.set(new Map());
+		} finally {
+			if (seq === this.recRequestSeq) this.loadingRecs.set(false);
+		}
+	}
+
+	/** Get recommendation data for a room type (if available). */
+	recForType(roomTypeId: string): RoomTypeRecommendation | undefined {
+		return this.recommendations().get(roomTypeId);
+	}
+
+	/** Format score as percentage. */
+	recScorePercent(score: number): number {
+		return Math.round(score * 100);
+	}
+
+	/** CSS class for recommendation score tier. */
+	recScoreClass(score: number): string {
+		const pct = this.recScorePercent(score);
+		if (pct >= 80) return "rec-score-high";
+		if (pct >= 50) return "rec-score-medium";
+		return "rec-score-low";
 	}
 
 	async loadReferenceData(): Promise<void> {

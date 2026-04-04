@@ -17,5 +17,8 @@
     "pg",
     "zod"
   ],
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": [
+    "swc"
+  ]
 }

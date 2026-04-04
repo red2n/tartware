@@ -7,15 +7,11 @@
     ".eslintrc.cjs"
   ],
   "ignoreDependencies": [
-    "@biomejs/biome",
     "@vitest/coverage-v8"
   ],
   "ignoreBinaries": [
-    "biome",
-    "eslint",
     "knip",
-    "tsc",
-    "vitest"
+    "swc"
   ],
   "ignoreExportsUsedInFile": {
     "type": true,

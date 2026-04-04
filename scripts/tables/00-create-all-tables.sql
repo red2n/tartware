@@ -226,6 +226,7 @@
 \ir 07-analytics/79_revenue_attribution.sql
 \ir 07-analytics/80_forecasting_models.sql
 \ir 07-analytics/81_ab_test_results.sql
+\ir 07-analytics/82_recommendation_interactions.sql
 \ir 07-analytics/98_sustainability_metrics.sql
 
 -- =========================================================================

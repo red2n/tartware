@@ -8,6 +8,7 @@ export type {
   GuestBookingHistory,
   RecommendationGuestPreferences as GuestPreferences,
   RoomCandidate,
+  RoomFeedbackStats,
   RoomRecommendation,
   RoomRecommendationPipelineQuery as RoomRecommendationQuery,
   RoomRecommendationResponse,

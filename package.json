@@ -24,7 +24,7 @@
     "dev:full": "FORCE_COLOR=1 concurrently --raw -n backend,ui \"pnpm run dev:backend\" \"pnpm run dev:ui\"",
     "kafka:topics": "node ./scripts/dev/bootstrap-kafka-topics.mjs",
     "start": "pnpm run dev",
-    "build": "pnpm run check && npx nx run-many -t build",
+    "build": "pnpm run check && npx nx run-many -t build && npx nx run-many -t typecheck --exclude=@tartware/pms-ui --exclude=@tartware/schemas",
     "build:core": "npx nx run @tartware/core-service:build",
     "build:schema": "npx nx run @tartware/schemas:build",
     "build:ui": "npx nx run @tartware/schemas:build && npx nx run @tartware/pms-ui:build",
@@ -59,6 +59,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.12",
+    "@swc/cli": "^0.8.1",
+    "@swc/core": "^1.15.24",
     "@types/node": "^25.2.0",
     "concurrently": "^9.2.1",
     "eslint": "8.57.0",

@@ -59,6 +59,7 @@
           <input id="cr-checkout" type="date" class="field-input"
                  [min]="minCheckOut"
                  [(ngModel)]="checkOutDate"
+                 (ngModelChange)="onCheckOutChange()"
                  (blur)="markTouched('checkOutDate')" />
         </div>
       </div>
@@ -72,13 +73,37 @@
         <span class="field-hint-error">Check-out must be after check-in</span>
       }
 
-      <h3 class="section-header mt-6">Select room type</h3>
+      <h3 class="section-header mt-6">
+        Select room type
+        @if (loadingRecs()) {
+          <mat-spinner diameter="14" class="rec-inline-spinner"></mat-spinner>
+        } @else if (hasRecommendations()) {
+          <span class="rec-hint">
+            <mat-icon>auto_awesome</mat-icon>
+            AI-ranked by recommendation engine
+          </span>
+        }
+      </h3>
 
       <div class="room-type-grid">
-        @for (rt of roomTypes(); track rt.room_type_id) {
+        @for (rt of sortedRoomTypes(); track rt.room_type_id) {
           <button class="room-type-card"
                   [class.selected]="roomTypeId === rt.room_type_id"
+                  [class.rt-recommended]="recForType(rt.room_type_id) != null"
                   (click)="onRoomTypeSelect(rt.room_type_id)">
+            @if (recForType(rt.room_type_id); as rec) {
+              <div class="rt-rec-bar">
+                <span class="rt-rec-score" [ngClass]="recScoreClass(rec.bestScore)">
+                  {{ recScorePercent(rec.bestScore) }}% match
+                </span>
+                <span class="rt-rec-rooms">{{ rec.roomCount }} room{{ rec.roomCount > 1 ? 's' : '' }}</span>
+                @if (rec.hasUpgrade) {
+                  <span class="rt-rec-upgrade" matTooltip="Upgrade opportunity">
+                    <mat-icon>trending_up</mat-icon>
+                  </span>
+                }
+              </div>
+            }
             <div class="rt-header">
               <span class="rt-name">{{ rt.type_name }}</span>
               <span class="rt-code">{{ rt.type_code }}</span>

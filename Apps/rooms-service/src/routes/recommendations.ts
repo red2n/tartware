@@ -1,10 +1,6 @@
-import {
-  type RankRoomsBody,
-  RankRoomsBodySchema,
-  type RecommendationQuery,
-  RecommendationQuerySchema,
-} from "@tartware/schemas";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { RankRoomsBodySchema, RecommendationQuerySchema } from "@tartware/schemas";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 
 import { getRecommendations, rankRooms } from "../services/index.js";
 
@@ -17,13 +13,19 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
   app.get(
     "/v1/recommendations",
     {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
       schema: {
         description: "Get personalized room recommendations",
         tags: ["recommendations"],
         querystring: {
           type: "object",
-          required: ["propertyId", "checkInDate", "checkOutDate"],
+          required: ["tenant_id", "propertyId", "checkInDate", "checkOutDate"],
           properties: {
+            tenant_id: { type: "string", format: "uuid" },
             propertyId: { type: "string", format: "uuid" },
             guestId: { type: "string", format: "uuid" },
             checkInDate: { type: "string", format: "date" },
@@ -71,12 +73,8 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request: FastifyRequest<{ Querystring: RecommendationQuery }>, reply: FastifyReply) => {
-      const authContext = (request as unknown as { authContext?: { tenantId: string } })
-        .authContext;
-      if (!authContext?.tenantId) {
-        return reply.unauthorized("Unauthorized");
-      }
+    async (request, reply) => {
+      const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
 
       const parsed = RecommendationQuerySchema.safeParse(request.query);
       if (!parsed.success) {
@@ -86,7 +84,7 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
       const query = parsed.data;
 
       const result = await getRecommendations({
-        tenantId: authContext.tenantId,
+        tenantId: tenant_id,
         propertyId: query.propertyId,
         guestId: query.guestId,
         checkInDate: query.checkInDate,
@@ -109,13 +107,19 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
   app.post(
     "/v1/recommendations/rank",
     {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
       schema: {
         description: "Rank a list of rooms for a guest (personalized ordering)",
         tags: ["recommendations"],
         body: {
           type: "object",
-          required: ["propertyId", "checkInDate", "checkOutDate", "roomIds"],
+          required: ["tenant_id", "propertyId", "checkInDate", "checkOutDate", "roomIds"],
           properties: {
+            tenant_id: { type: "string", format: "uuid" },
             propertyId: { type: "string", format: "uuid" },
             guestId: { type: "string", format: "uuid" },
             checkInDate: { type: "string", format: "date" },
@@ -157,12 +161,8 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request: FastifyRequest<{ Body: RankRoomsBody }>, reply: FastifyReply) => {
-      const authContext = (request as unknown as { authContext?: { tenantId: string } })
-        .authContext;
-      if (!authContext?.tenantId) {
-        return reply.unauthorized("Unauthorized");
-      }
+    async (request, reply) => {
+      const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.body);
 
       const parsed = RankRoomsBodySchema.safeParse(request.body);
       if (!parsed.success) {
@@ -172,7 +172,7 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
       const body = parsed.data;
 
       const result = await rankRooms({
-        tenantId: authContext.tenantId,
+        tenantId: tenant_id,
         propertyId: body.propertyId,
         guestId: body.guestId,
         checkInDate: body.checkInDate,
