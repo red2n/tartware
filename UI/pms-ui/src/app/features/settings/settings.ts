@@ -1,14 +1,12 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute, Router } from "@angular/router";
-import { type Subscription } from "rxjs";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatTooltipModule } from "@angular/material/tooltip";
-
+import { ActivatedRoute, Router } from "@angular/router";
 import type {
 	SettingsCategory,
 	SettingsDefinition,
@@ -16,6 +14,7 @@ import type {
 	SettingsSection,
 	SettingsValue,
 } from "@tartware/schemas";
+import { type Subscription } from "rxjs";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -269,6 +268,27 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
 	isMultiSelectValue(def: SettingsDefinition): boolean {
 		return def.control_type === "MULTI_SELECT" || def.data_type === "MULTI_ENUM";
+	}
+
+	/** Returns true when the given option value is currently selected in the MULTI_SELECT editor */
+	isMultiSelectChecked(defId: string, optionValue: string): boolean {
+		const arr = this.getEditState(defId).editValue;
+		return Array.isArray(arr) && (arr as string[]).includes(optionValue);
+	}
+
+	/** Toggles an option value into or out of the MULTI_SELECT editor array */
+	onMultiSelectToggle(defId: string, optionValue: string, checked: boolean): void {
+		this.editStates.update((s) => {
+			const state = this.getEditState(defId);
+			const current = Array.isArray(state.editValue) ? [...(state.editValue as string[])] : [];
+			if (checked) {
+				if (!current.includes(optionValue)) current.push(optionValue);
+			} else {
+				const idx = current.indexOf(optionValue);
+				if (idx !== -1) current.splice(idx, 1);
+			}
+			return { ...s, [defId]: { ...state, editValue: current, dirty: true } };
+		});
 	}
 
 	isArrayDisplayValue(def: SettingsDefinition): boolean {
@@ -562,6 +582,20 @@ export class SettingsComponent implements OnInit, OnDestroy {
 		let editValue: unknown;
 		if (this.isJsonValue(def) && typeof currentValue === "object" && currentValue !== null) {
 			editValue = structuredClone(currentValue);
+		} else if (this.isMultiSelectValue(def)) {
+			// Normalize stored value to a string array for the checkbox group
+			if (Array.isArray(currentValue)) {
+				editValue = [...currentValue];
+			} else if (typeof currentValue === "string" && currentValue.trim().startsWith("[")) {
+				try {
+					const parsed = JSON.parse(currentValue);
+					editValue = Array.isArray(parsed) ? parsed : [];
+				} catch {
+					editValue = [];
+				}
+			} else {
+				editValue = [];
+			}
 		} else {
 			editValue = currentValue;
 		}

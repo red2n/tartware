@@ -234,6 +234,19 @@
                                       <option [value]="opt.value">{{ opt.label }}</option>
                                     }
                                   </select>
+                                } @else if (isMultiSelectValue(def)) {
+                                  <div class="multi-select-group">
+                                    @for (opt of getOptions(def.id); track opt.id) {
+                                      <label class="multi-select-option">
+                                        <input type="checkbox" class="multi-select-checkbox"
+                                          [ngModel]="isMultiSelectChecked(def.id, opt.value)"
+                                          (ngModelChange)="onMultiSelectToggle(def.id, opt.value, $event)" />
+                                        {{ opt.label }}
+                                      </label>
+                                    } @empty {
+                                      <span class="text-muted">{{ 'No options available' | translate }}</span>
+                                    }
+                                  </div>
                                 } @else if (isNumberValue(def)) {
                                   <input
                                     type="number"
