@@ -29,11 +29,20 @@ CREATE TABLE IF NOT EXISTS settings_options (
 -- INDEXES
 -- =====================================================
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_settings_options_setting_value
+    ON settings_options (setting_id, value);
+
 CREATE INDEX IF NOT EXISTS idx_settings_options_setting_active_sort
     ON settings_options (setting_id, is_active, sort_order);
 
 CREATE INDEX IF NOT EXISTS idx_settings_options_setting_default
     ON settings_options (setting_id, is_default);
+
+-- Unique constraint via index (supports ON CONFLICT)
+ALTER TABLE settings_options
+    DROP CONSTRAINT IF EXISTS uq_options_setting_value;
+ALTER TABLE settings_options
+    ADD CONSTRAINT uq_options_setting_value UNIQUE USING INDEX uq_settings_options_setting_value;
 
 -- =====================================================
 -- TABLE & COLUMN COMMENTS

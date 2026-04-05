@@ -26,11 +26,20 @@ CREATE TABLE IF NOT EXISTS settings_sections (
 -- INDEXES
 -- =====================================================
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_settings_sections_category_code
+    ON settings_sections (category_id, code);
+
 CREATE INDEX IF NOT EXISTS idx_settings_sections_category_active_sort
     ON settings_sections (category_id, is_active, sort_order);
 
 CREATE INDEX IF NOT EXISTS idx_settings_sections_code
     ON settings_sections (code);
+
+-- Unique constraint via index (supports ON CONFLICT)
+ALTER TABLE settings_sections
+    DROP CONSTRAINT IF EXISTS uq_sections_category_code;
+ALTER TABLE settings_sections
+    ADD CONSTRAINT uq_sections_category_code UNIQUE USING INDEX uq_settings_sections_category_code;
 
 -- =====================================================
 -- TABLE & COLUMN COMMENTS

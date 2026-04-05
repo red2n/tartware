@@ -238,6 +238,7 @@
 \ir 08-settings/12_settings_definitions.sql
 \ir 08-settings/13_settings_options.sql
 \ir 08-settings/14_settings_values.sql
+\ir 08-settings/15_settings_seed.sql
 
 -- =========================================================================
 -- CATEGORY 9: REFERENCE DATA (Dynamic enum lookup tables)
