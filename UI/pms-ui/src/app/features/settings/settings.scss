@@ -19,10 +19,20 @@
 }
 
 .content-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-fg-default);
   margin: 0;
+}
+
+.content-title-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: var(--color-accent-fg);
 }
 
 .content-description {
@@ -34,7 +44,7 @@
 .sections-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-8, 2rem);
 }
 
 .settings-section {
@@ -54,6 +64,7 @@
   font-size: 18px;
   width: 18px;
   height: 18px;
+  color: var(--color-fg-muted);
 }
 
 .section-title {
@@ -79,9 +90,9 @@
 .definition-card {
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-5, 1.25rem);
   background: var(--color-canvas-default);
-  transition: border-color var(--duration-fast);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
 
   &:hover {
     border-color: var(--color-border-muted);
@@ -92,30 +103,71 @@
 .definition-card-editing {
   border-color: var(--color-accent-muted);
   background: var(--color-canvas-default);
+  box-shadow: 0 0 0 1px var(--color-accent-muted);
 
   &:hover {
     background: var(--color-canvas-default);
   }
 }
 
+/* ── Definition header ── */
 .def-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .def-title-area {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+}
+
+.def-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .def-name {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-fg-default);
+}
+
+.def-tooltip-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-fg-muted);
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity var(--duration-fast), color var(--duration-fast);
+  flex-shrink: 0;
+
+  &:hover {
+    opacity: 1;
+    color: var(--color-accent-fg);
+  }
+}
+
+.badge-saved {
+  animation: fadeIn 200ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .def-code {
@@ -125,6 +177,7 @@
   background: var(--color-accent-subtle);
   padding: 1px 6px;
   border-radius: var(--radius-sm);
+  width: fit-content;
 }
 
 .def-badges {
@@ -135,22 +188,53 @@
   justify-content: flex-end;
 }
 
+/* ── Description ── */
 .def-description {
   margin: 0 0 var(--space-3);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
+  color: var(--color-fg-muted);
 }
 
+/* ── Value area ── */
+.def-value-area {
+  margin-bottom: var(--space-2);
+}
+
+.def-value-display {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.def-value-text {
+  flex: 1;
+}
+
+.def-edit-btn {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+
+  .definition-card:hover & {
+    opacity: 1;
+  }
+}
+
+/* ── Meta row ── */
 .def-meta {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-muted);
+  margin-top: var(--space-2);
 }
 
 .def-meta-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   font-size: var(--font-size-xs);
   color: var(--color-fg-muted);
 }
@@ -162,9 +246,22 @@
   flex-shrink: 0;
 }
 
+/* ── Tooltip overrides (Material) ── */
+::ng-deep .settings-tooltip {
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  max-width: 360px !important;
+  white-space: normal !important;
+  padding: 8px 12px !important;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .content-header {
     flex-direction: column;
+  }
+
+  .def-edit-btn {
+    opacity: 1;
   }
 }

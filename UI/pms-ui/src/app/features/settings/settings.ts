@@ -18,6 +18,7 @@ import { type Subscription } from "rxjs";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
@@ -95,6 +96,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
+	private readonly i18n = inject(I18nService);
 	readonly globalSearch = inject(GlobalSearchService);
 	private paramSub?: Subscription;
 
@@ -769,5 +771,232 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	scopeLabel(scopes: string[]): string {
 		if (!scopes?.length) return "—";
 		return scopes.map((s) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ")).join(", ");
+	}
+
+	// ── Industry-standard tooltips ──────────────────────────────────────────
+
+	/** PMS-industry tooltip text keyed by setting code. */
+	private static readonly TOOLTIPS: Record<string, string> = {
+		// Admin & Users
+		"admin.max_staff_users":
+			"Caps the number of active staff logins. Increase when onboarding seasonal staff. Opera PMS and Mews both enforce user-count licensing.",
+		"admin.require_email_verification":
+			"Forces new users to verify email before first login, preventing typosquatted accounts. Aligns with HTNG identity-verification best practice.",
+		"admin.auto_deactivate_days":
+			"Automatically deactivates users after N days of inactivity. Reduces attack surface per PCI-DSS 8.1.4 (remove inactive accounts within 90 days).",
+		"admin.default_role":
+			"Role auto-assigned to new users. Best practice: use the least-privileged role (Front Desk) and escalate only when needed.",
+		"admin.allow_multi_role":
+			"Allows one user to hold multiple roles (e.g., Front Desk + Night Auditor). Common in small properties where staff multitask.",
+		"admin.password_min_length":
+			"Minimum characters for staff passwords. NIST 800-63B recommends at least 8; PCI-DSS requires 7+.",
+		"admin.password_requires_upper":
+			"Requires at least one uppercase letter. Part of complexity rules recommended by most PMS security frameworks.",
+		"admin.password_requires_number":
+			"Requires at least one digit. Standard practice alongside uppercase requirement per PCI-DSS.",
+		"admin.password_expiry_days":
+			"Forces password reset every N days. Set to 0 for no expiry (NIST 800-63B now recommends no forced rotation unless compromised).",
+		"admin.session_idle_timeout_mins":
+			"Logs out idle sessions after N minutes. PCI-DSS requires 15 min for payment terminals. 30 min is standard for PMS workstations.",
+		"admin.max_concurrent_sessions":
+			"Limits simultaneous logins per user. Prevents credential sharing. Set 0 for unlimited (not recommended).",
+
+		// Property & Tenant
+		"property.timezone":
+			"IANA timezone for all date/time calculations. Critical for night audit roll-over, check-in/out times, and rate calendar display.",
+		"property.check_in_time":
+			"Standard time rooms become available. Industry norm: 14:00–16:00. Displayed on booking confirmations and the guest app.",
+		"property.check_out_time":
+			"Deadline for guest departure. Industry norm: 10:00–12:00. Used for late-checkout fee calculations and housekeeping scheduling.",
+		"property.star_rating":
+			"Official hotel classification (1–5 stars). Influences OTA listing grade, guest expectations, and rack-rate positioning.",
+		"property.base_currency":
+			"ISO 4217 code for all financial transactions. Changing mid-operation requires full revenue re-reconciliation — set correctly at go-live.",
+		"property.locale":
+			"BCP 47 locale tag controlling number grouping (1,000 vs 1.000), date display, and currency symbol placement.",
+		"property.logo_url":
+			"HTTPS URL to property logo. Used on registration cards, folios, emails, and the guest portal header.",
+		"property.brand_color":
+			"Primary HEX colour (#RRGGBB) applied to guest-facing communications, PDF folios, and the PMS sidebar accent.",
+
+		// Rooms & Inventory
+		"rooms.default_status_on_checkout":
+			"Housekeeping status assigned when a guest checks out. DIRTY triggers automatic HK task creation. INSPECTED skips cleaning.",
+		"rooms.allow_same_day_reassign":
+			"Allows front desk to reassign a room on arrival day. Needed when upgrades or maintenance changes occur after initial assignment.",
+		"rooms.hk_priority_order":
+			"Determines housekeeping queue sort. DUE_OUT_FIRST prioritises departing guests for fastest turnaround — industry best practice.",
+		"rooms.dnd_max_days":
+			"Maximum consecutive Do-Not-Disturb days before supervisors are alerted. Health & safety codes typically require access within 48–72 hours.",
+		"rooms.stayover_clean_interval":
+			"How often stayover rooms are scheduled for cleaning. Daily (1) is luxury standard; every 2–3 days reduces costs for economy properties.",
+		"rooms.ooo_requires_approval":
+			"Requires manager approval to mark a room Out-Of-Order. Prevents inventory loss from unapproved maintenance holds.",
+
+		// Rates & Pricing
+		"rates.default_rounding":
+			"Rounding rule for nightly rate calculations. ROUND_HALF_UP is the accounting standard; ROUND_DOWN favours the guest.",
+		"rates.max_discount_percent":
+			"Maximum discount agents can apply without manager override. Prevents unauthorised deep discounting. Opera uses 'Max Allowable Discount'.",
+		"rates.show_rack_rate":
+			"Displays the rack (published) rate crossed out next to the offer rate. Common anchoring technique in revenue management.",
+		"rates.deposit_required":
+			"Enables deposit collection at booking. Standard for prepaid, non-refundable, and group reservations.",
+		"rates.deposit_percent":
+			"Percentage of total booking collected as deposit. Industry range: 10–50%. Groups often require 25–50%.",
+		"rates.non_refundable_cutoff_days":
+			"Days before arrival after which deposits cannot be refunded. Critical for revenue protection on non-refundable rates.",
+		"rates.tax_inclusive":
+			"Whether published rates already include taxes. Common in Europe (VAT-inclusive); North America typically shows tax-exclusive rates.",
+		"rates.city_tax_per_night":
+			"Fixed per-night city/tourist tax in base currency. Many jurisdictions require this as a separate line item on the folio.",
+
+		// Approvals
+		"approvals.rate_override_threshold":
+			"Discount percentage above which a manager approval is required. Prevents revenue leakage from unapproved rate overrides.",
+		"approvals.complimentary_requires":
+			"Role that must approve complimentary (free) nights. Best practice: require GM or Revenue Manager approval.",
+		"approvals.refund_threshold":
+			"Refund amounts exceeding this value (base currency) require manager sign-off. Protects against fraudulent refunds.",
+		"approvals.writeoff_requires":
+			"Role required to approve balance write-offs. Should be GM or higher to prevent hidden revenue loss.",
+		"approvals.late_checkout_threshold":
+			"Late checkout fees above this amount need manager approval. Ensures premium late-checkouts are properly authorised.",
+		"approvals.early_checkin_allow":
+			"When enabled, front desk can offer early check-in without seeking approval. Disable for properties with tight housekeeping schedules.",
+
+		// Integrations
+		"integrations.ota_sync_interval_mins":
+			"Minutes between OTA inventory pushes. Lower values reduce overbooking risk but increase API costs. 15–60 min is standard.",
+		"integrations.ota_min_los":
+			"Minimum length-of-stay restriction pushed to OTA channels. Helps protect direct bookings for short stays.",
+		"integrations.channel_rate_offset":
+			"Percentage markup/markdown on rates sent to channel manager. Positive = markup, negative = discount vs direct rate.",
+		"integrations.stop_sell_threshold":
+			"When available rooms drop to this count, OTA bookings are automatically blocked. Reserves last rooms for direct/walk-in sales.",
+		"integrations.pos_auto_post":
+			"Automatically posts POS charges (restaurant, spa, minibar) to the guest folio. Standard in full-service hotels.",
+		"integrations.keycard_system":
+			"Electronic lock system in use. Determines the keycard encoding method for guest room access.",
+
+		// Booking & Guests
+		"booking.max_advance_days":
+			"Maximum days in advance guests can book. 365 is standard; increase for group/event properties that book 2+ years ahead.",
+		"booking.min_advance_hours":
+			"Minimum hours of lead time for online bookings. Prevents last-second bookings that housekeeping can't prepare for.",
+		"booking.cutoff_time":
+			"Daily cutoff for same-day bookings. After this time, guests must book for the next day. Aligns with night-audit roll-over.",
+		"booking.require_phone":
+			"Makes phone number mandatory in the booking process. Required for SMS confirmations and call-ahead properties.",
+		"booking.auto_enroll_loyalty":
+			"Automatically enrols new guests in the loyalty programme on first booking. Increases membership with zero friction.",
+		"booking.free_cancel_hours":
+			"Hours before arrival within which cancellation is free. Industry norm: 24–72 hours. Shorter windows improve revenue protection.",
+		"booking.no_show_charge_percent":
+			"Percentage of booking total charged for no-show. 100% (full first night) is industry standard. Some properties use 50%.",
+
+		// Operations (HK & Maintenance)
+		"ops.hk_shift_start":
+			"Time housekeeping shift begins and the cleaning queue activates. Standard: 08:00. Aligns with checkout time + buffer.",
+		"ops.inspections_required":
+			"When enabled, cleaned rooms must pass supervisor inspection before status changes to CLEAN. Required by luxury brands (Forbes 5-Star).",
+		"ops.turndown_enabled":
+			"Enables evening turndown service scheduling. Standard in 4-5 star properties. Auto-creates PM HK tasks for occupied rooms.",
+		"ops.maintenance_default_priority":
+			"Default priority for new maintenance work orders. NORMAL is standard; adjust to HIGH for properties with stricter SLAs.",
+		"ops.maintenance_sla_hours":
+			"Target resolution time for normal-priority maintenance. Industry norm: 4h for guest-impacting, 24h for non-critical items.",
+		"ops.auto_task_on_checkout":
+			"Automatically creates a housekeeping task when a guest checks out. Essential for same-day turnover and rooms management.",
+
+		// Night Audit & Reporting
+		"audit.night_audit_time":
+			"Local time for nightly audit roll-over. Industry standard: 23:00–02:00. Must be after last possible check-in and before first morning check-out.",
+		"audit.auto_run_enabled":
+			"Runs night audit automatically at the scheduled time. Reduces manual steps. Disable if your property requires pre-audit checks.",
+		"audit.block_checkin_during_audit":
+			"Prevents new check-ins while night audit is processing. Avoids posting errors from transactions crossing the date boundary.",
+		"audit.daily_report_recipients":
+			"Comma-separated email addresses that receive the morning operations report. Include GM, Revenue Manager, and Front Office Manager.",
+		"audit.report_format":
+			"Default file format for automated report delivery. PDF is standard for management; Excel for finance and revenue teams.",
+		"audit.reservation_archive_years":
+			"Years before completed reservations are archived. Legal requirements vary: 7 years (tax), 3 years (credit card disputes).",
+		"audit.pii_deletion_months":
+			"Months after last stay before guest Personally Identifiable Information is anonymised. GDPR requires data minimisation.",
+
+		// Notifications
+		"comms.email_provider":
+			"Transactional email service for booking confirmations, folios, and alerts. SMTP for self-hosted; SendGrid/SES for cloud delivery.",
+		"comms.email_from_name":
+			"Sender display name on outbound emails. Should be the property name (e.g., 'Grand Hotel Tartware') for brand recognition.",
+		"comms.email_reply_to":
+			"Reply-to address for guest emails. Use a monitored inbox (reservations@hotel.com), not noreply. Improves guest communication.",
+		"comms.sms_enabled":
+			"Enables SMS notifications for booking confirmations, check-in alerts, and service requests. Requires an active SMS provider.",
+		"comms.sms_provider":
+			"Third-party SMS gateway. Twilio is the most common. Choose based on coverage in your property's guest origin markets.",
+		"comms.low_occupancy_alert_pct":
+			"Triggers a staff alert when occupancy falls below this percentage. Enables proactive revenue management and promotional actions.",
+		"comms.maintenance_escalation_hours":
+			"Hours before an unresolved work order is escalated to the supervisor. Shorter values for guest-impacting maintenance.",
+
+		// Security
+		"security.mfa_required":
+			"Enforces two-factor authentication for all staff. Strongly recommended per PCI-DSS and GDPR. Required for POS-integrated terminals.",
+		"security.mfa_method":
+			"Preferred MFA delivery method. TOTP (authenticator app) is most secure. SMS is convenient but vulnerable to SIM-swapping.",
+		"security.max_login_attempts":
+			"Account locks after this many consecutive failed logins. PCI-DSS requires lockout after 6 attempts max.",
+		"security.mask_pii_in_logs":
+			"Redacts guest PII (email, phone, payment card) from all application logs. Required for PCI-DSS and GDPR compliance.",
+		"security.gdpr_consent_required":
+			"Captures explicit marketing consent during booking. Required for EU properties under GDPR Article 7. Non-EU properties may opt out.",
+		"security.backup_frequency":
+			"How often full database snapshots are taken. Daily is standard; hourly for high-transaction properties. RPO should match business needs.",
+		"security.backup_retention_days":
+			"Days backup snapshots are retained before automatic deletion. 30 days minimum; extend for regulatory or audit requirements.",
+
+		// UI & Localization
+		"ui.date_format":
+			"Date display format across all screens. MM/DD/YYYY (US), DD/MM/YYYY (EU/UK), YYYY-MM-DD (ISO 8601 / Asia). Match your property's locale.",
+		"ui.time_format":
+			"12-hour (AM/PM) or 24-hour clock. US properties typically use 12h; European and Asian properties use 24h.",
+		"ui.week_starts_on":
+			"First day of week in calendars and date pickers. Sunday (Americas) or Monday (Europe, Asia). Affects rate calendar grid alignment.",
+		"ui.default_language":
+			"Default UI language for staff who haven't set a personal preference. Does not affect guest-facing communications.",
+		"ui.guest_language":
+			"Language used in guest-facing emails, registration cards, and receipts. Should match the primary guest demographic.",
+		"ui.reservation_custom_fields":
+			"JSON schema defining extra fields on the reservation form. Use for property-specific data like loyalty tier, group code, or special requests.",
+		"ui.guest_custom_fields":
+			"JSON schema defining extra fields on the guest profile. Use for country-specific requirements like tax ID, passport number, or visa information.",
+
+		// Advanced
+		"advanced.enable_dynamic_pricing":
+			"Enables AI-driven rate adjustment based on demand, competitor rates, and historical data. Requires the Revenue Management module.",
+		"advanced.enable_mobile_checkin":
+			"Allows guests to complete check-in via the mobile app or web portal before arrival. Reduces front-desk queue at peak times.",
+		"advanced.enable_revenue_forecast":
+			"Shows AI-generated revenue projections on the dashboard. Based on booking pace, seasonality, and historical performance.",
+		"advanced.db_pool_size":
+			"Maximum database connections per service instance. Increase for high-transaction properties; default 10 handles ~500 concurrent users.",
+		"advanced.api_rate_limit_rpm":
+			"API requests per minute per tenant before throttling. Protects against runaway integrations. 1000 RPM suits most properties.",
+		"advanced.cache_ttl_seconds":
+			"Default Redis cache TTL for read-heavy endpoints. Lower values = fresher data; higher values = less DB load. 300s is a good balance.",
+	};
+
+	/** Returns the localised industry tooltip for a setting code. Falls back to the DB description. */
+	getTooltip(def: SettingsDefinition): string {
+		const tooltip = SettingsComponent.TOOLTIPS[def.code];
+		if (tooltip) return this.i18n.t(tooltip);
+		return def.description ?? "";
+	}
+
+	/** Returns true if the setting has a tooltip */
+	hasTooltip(def: SettingsDefinition): boolean {
+		return !!(SettingsComponent.TOOLTIPS[def.code] || def.description);
 	}
 }
