@@ -232,3 +232,41 @@ Before every commit intended for push, run on **all affected services**:
 - **NEVER push without asking the user first.** Commits are fine; pushes need explicit approval.
 - **Always use GitHub CLI (`gh`)** for PR creation, reviews, issue management, comment replies, and thread resolution.
 - Use `gh api graphql` for operations that require GraphQL (e.g., resolving review threads).
+
+### Issue Tracking — Always Use GitHub, Never TODO.md
+
+**When the user asks any variant of "what bugs are left", "what's open", "what issues remain", "what's next", or "show me the backlog":**
+1. Run `gh issue list --state open --limit 50` to fetch current open issues from GitHub.
+2. Do NOT read `TODO.md` for open work — TODO.md is a historical log, not the live backlog.
+3. Group and summarize the issues by label (e.g., `bug`, `settings`, `folio-routing`, `billing-ui`, `production-readiness`) and priority label (`p0`, `p1`, `p2`, `p3`).
+4. When starting work on an issue, reference the GH issue number in commit messages and close it with `gh issue close <number>` when done.
+
+```bash
+# Fetch all open issues
+gh issue list --state open --limit 100 --json number,title,labels
+
+# Filter to bugs only
+gh issue list --state open --label bug
+
+# Filter by priority
+gh issue list --state open --label p0
+gh issue list --state open --label p1
+```
+
+## Bug Fix Tracking
+
+**Workflow — always follow this order:**
+1. Run `gh issue list --state open --label bug --json number,title,labels` to get the current bug queue.
+2. Work on the highest-priority open bug (P0 first, then P1, then P2).
+3. When a bug is fixed and committed, close it: `gh issue close <number> --comment "<resolution notes>"`.
+4. Update AGENTS.md and this file: move the bug from **Active** to **Completed** and set *Active* to the next bug.
+
+### Active Bug
+| # | Title | Priority |
+|---|-------|----------|
+| [#181](https://github.com/red2n/tartware/issues/181) | SETTINGS-BUG-2: MULTI_SELECT control falls back to text input in edit mode | P1 |
+
+### Completed Bugs
+| # | Title | Fixed In | Notes |
+|---|-------|----------|-------|
+| [#180](https://github.com/red2n/tartware/issues/180) | SETTINGS-BUG-1: GET /settings/values returns empty in DB mode | `0c0e6c88` | settingsAuthPlugin: added request.auth.memberships fallback for tenantId |
