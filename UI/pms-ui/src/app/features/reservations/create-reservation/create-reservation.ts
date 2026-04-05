@@ -9,7 +9,8 @@ import { Router } from "@angular/router";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
-import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
+import { SettingsService } from "../../../core/settings/settings.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
@@ -60,7 +61,7 @@ type GuestOption = {
 	created_at?: string;
 };
 
-import type { RoomRecommendation, RoomRecommendationResponse } from "@tartware/schemas";
+import type { RoomRecommendationResponse } from "@tartware/schemas";
 
 /** Aggregated recommendation stats per room type */
 type RoomTypeRecommendation = {
@@ -74,7 +75,15 @@ type RoomTypeRecommendation = {
 @Component({
 	selector: "app-create-reservation",
 	standalone: true,
-		imports: [NgClass, FormsModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, PaginationComponent],
+	imports: [
+		NgClass,
+		FormsModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		MatTooltipModule,
+		PaginationComponent,
+		TranslatePipe,
+	],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
 })
@@ -87,6 +96,50 @@ export class CreateReservationComponent implements OnInit {
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
+	readonly settings = inject(SettingsService);
+
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** Whether the guest's phone number is required before confirming. */
+	readonly requirePhone = computed(() => this.settings.getBool("booking.require_phone", false));
+	/** Furthest future check-in date the booking engine allows, in days from today. */
+	readonly maxAdvanceDays = computed(() =>
+		this.settings.getNumber("booking.max_advance_days", 365),
+	);
+	/** Minimum lead time in hours before check-in. */
+	readonly minAdvanceHours = computed(() =>
+		this.settings.getNumber("booking.min_advance_hours", 0),
+	);
+	/** Free cancellation window in hours before arrival. */
+	readonly freeCancelHours = computed(() =>
+		this.settings.getNumber("booking.free_cancel_hours", 24),
+	);
+	/** Percentage of total booking charged for a no-show. */
+	readonly noShowChargePercent = computed(() =>
+		this.settings.getNumber("booking.no_show_charge_percent", 100),
+	);
+	/** Booking cutoff time (e.g. "18:00" — last time a same-day booking is accepted). */
+	readonly cutoffTime = computed(() =>
+		this.settings.formatTime(this.settings.getString("booking.cutoff_time", "18:00")),
+	);
+	/** Whether guests are automatically enrolled in the loyalty program on booking. */
+	readonly autoEnrollLoyalty = computed(() =>
+		this.settings.getBool("booking.auto_enroll_loyalty", false),
+	);
+
+	/** Earliest allowed check-in: today + floor(minAdvanceHours/24) days. */
+	readonly minCheckInDate = computed(() => {
+		const d = new Date();
+		const advanceDays = Math.floor(this.minAdvanceHours() / 24);
+		if (advanceDays > 0) d.setDate(d.getDate() + advanceDays);
+		return this.toDateString(d);
+	});
+
+	/** Latest allowed check-in date based on max advance booking days setting. */
+	readonly maxCheckInDate = computed(() => {
+		const d = new Date();
+		d.setDate(d.getDate() + this.maxAdvanceDays());
+		return this.toDateString(d);
+	});
 
 	readonly roomTypes = signal<RoomType[]>([]);
 	readonly allRates = signal<RateDetail[]>([]);
@@ -126,12 +179,12 @@ export class CreateReservationComponent implements OnInit {
 	checkOutDate = "";
 	roomTypeId = "";
 
-	/** Today's date as YYYY-MM-DD — earliest allowed check-in (night audit closes past days). */
+	/** Today's date as YYYY-MM-DD — used as a floor for minCheckOut. */
 	readonly todayStr = this.toDateString(new Date());
 
 	/** Earliest allowed check-out: day after the selected check-in date. */
 	get minCheckOut(): string {
-		if (!this.checkInDate) return this.todayStr;
+		if (!this.checkInDate) return this.minCheckInDate();
 		const d = new Date(`${this.checkInDate}T00:00:00`);
 		d.setDate(d.getDate() + 1);
 		return this.toDateString(d);
@@ -249,7 +302,10 @@ export class CreateReservationComponent implements OnInit {
 	}
 
 	get guestComplete(): boolean {
-		return !!this.guestId;
+		if (!this.guestId) return false;
+		// If phone is required by settings, the selected guest must have a phone number
+		if (this.requirePhone() && !this.selectedGuest?.phone) return false;
+		return true;
 	}
 
 	nextStep(): void {
@@ -315,7 +371,9 @@ export class CreateReservationComponent implements OnInit {
 				const existing = byType.get(rec.roomTypeId);
 				if (existing) {
 					existing.roomCount++;
-					existing.avgScore = (existing.avgScore * (existing.roomCount - 1) + rec.relevanceScore) / existing.roomCount;
+					existing.avgScore =
+						(existing.avgScore * (existing.roomCount - 1) + rec.relevanceScore) /
+						existing.roomCount;
 					existing.bestScore = Math.max(existing.bestScore, rec.relevanceScore);
 					existing.hasUpgrade = existing.hasUpgrade || (rec.isUpgrade ?? false);
 				} else {
@@ -435,7 +493,11 @@ export class CreateReservationComponent implements OnInit {
 		if (!g.date_of_birth) return null;
 		const dob = g.date_of_birth instanceof Date ? g.date_of_birth : new Date(g.date_of_birth);
 		if (Number.isNaN(dob.getTime())) return null;
-		return dob.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+		return dob.toLocaleDateString(this.settings.locale() || "en-US", {
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
 	}
 
 	guestDisplayName(g: GuestOption): string {
@@ -443,11 +505,11 @@ export class CreateReservationComponent implements OnInit {
 	}
 
 	fmtCurrency(amount: number, currency: string): string {
-		return formatCurrency(amount, currency);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	fmtDate(dateStr: string): string {
-		return formatShortDate(dateStr);
+		return this.settings.formatDate(dateStr);
 	}
 
 	mealPlanLabel(code: string): string {

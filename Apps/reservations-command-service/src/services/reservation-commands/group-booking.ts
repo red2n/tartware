@@ -333,6 +333,28 @@ export const uploadGroupRoomingList = async (
       const arrivalDate = new Date(guest.arrival_date).toISOString().slice(0, 10);
       const departureDate = new Date(guest.departure_date).toISOString().slice(0, 10);
 
+      // Find or create a guest record for this rooming list entry.
+      // guest_id is NOT NULL on reservations, so we must have a valid guest row.
+      // If no email is supplied, generate a stable placeholder so subsequent re-uploads
+      // of the same guest (same reservation UUID seed) don't proliferate duplicate rows.
+      const nameParts = guest.guest_name.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? guest.guest_name;
+      const lastName = nameParts.slice(1).join(" ") || firstName;
+      const guestEmail = guest.guest_email ?? `noreply+${reservationId}@group.internal`;
+      const confirmationNumber = `GRP-${reservationId.slice(0, 8).toUpperCase()}`;
+
+      const { rows: guestRows } = await client.query<{ id: string }>(
+        `INSERT INTO guests (id, tenant_id, first_name, last_name, email, created_by, updated_by)
+         VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $5)
+         ON CONFLICT (tenant_id, email) WHERE deleted_at IS NULL
+         DO UPDATE SET first_name = EXCLUDED.first_name,
+                       last_name  = EXCLUDED.last_name,
+                       updated_at = NOW()
+         RETURNING id`,
+        [tenantId, firstName, lastName, guestEmail, SYSTEM_ACTOR_ID],
+      );
+      const guestId = guestRows[0].id;
+
       // Verify and decrement block availability
       const { rowCount } = await client.query(
         `UPDATE group_room_blocks
@@ -358,31 +380,41 @@ export const uploadGroupRoomingList = async (
         );
       }
 
-      // Create individual reservation linked to the group
+      // Create individual reservation linked to the group.
+      // All NOT NULL columns (guest_id, guest_name, guest_email, room_rate,
+      // confirmation_number) are populated to satisfy DB constraints.
       await client.query(
         `INSERT INTO reservations (
           id, tenant_id, property_id, room_type_id,
+          guest_id,
           check_in_date, check_out_date, booking_date,
           status, reservation_type, source,
-          total_amount, currency,
+          room_rate, total_amount, currency,
+          guest_name, guest_email, confirmation_number,
           special_requests, group_booking_id,
           created_by, updated_by
         ) VALUES (
           $1, $2, $3, $4,
-          $5, $6, NOW(),
+          $5,
+          $6, $7, NOW(),
           'CONFIRMED', 'GROUP', 'DIRECT',
-          $7, 'USD',
-          $8, $9,
-          $10, $10
+          $8, $8, 'USD',
+          $9, $10, $11,
+          $12, $13,
+          $14, $14
         )`,
         [
           reservationId,
           tenantId,
           group.property_id,
           guest.room_type_id,
+          guestId,
           arrivalDate,
           departureDate,
           group.negotiated_rate ?? 0,
+          guest.guest_name,
+          guestEmail,
+          confirmationNumber,
           guest.special_requests ?? null,
           command.group_booking_id,
           SYSTEM_ACTOR_ID,
@@ -620,15 +652,13 @@ export const setupGroupBilling = async (
         folio_number, folio_type, folio_status,
         guest_name, company_name,
         tax_exempt, tax_id,
-        notes,
         created_by, updated_by
       ) VALUES (
         $1, $2, $3,
         $4, 'MASTER', 'OPEN',
         $5, $6,
         $7, $8,
-        $9,
-        $10, $10
+        $9, $9
       )`,
       [
         folioId,
@@ -639,10 +669,58 @@ export const setupGroupBilling = async (
         group.organization_name ?? group.group_name,
         command.tax_exempt ?? false,
         command.tax_id ?? null,
-        JSON.stringify({ routing_rules: routingRules }),
         SYSTEM_ACTOR_ID,
       ],
     );
+
+    // Insert folio_routing_rules rows — one per routing rule.
+    // is_template = FALSE: these are active rules bound to this group booking.
+    // source_folio_id = NULL: rule applies to all member folios (matched via group_booking_id).
+    // When target is "master": destination_folio_id = master folio.
+    // When target is "individual": destination_folio_id = NULL, destination_folio_type = 'GUEST'.
+    for (let i = 0; i < routingRules.length; i++) {
+      const rule = routingRules[i];
+      const ruleId = uuid();
+      const isToMaster = rule.target === "master";
+      await client.query(
+        `INSERT INTO folio_routing_rules (
+          rule_id, tenant_id, property_id,
+          rule_name, rule_code,
+          is_template,
+          source_folio_id,
+          destination_folio_id, destination_folio_type,
+          transaction_type,
+          routing_type, priority,
+          group_booking_id,
+          is_active,
+          created_by, updated_by
+        ) VALUES (
+          $1, $2, $3,
+          $4, $5,
+          FALSE,
+          NULL,
+          $6, $7,
+          $8,
+          'FULL', $9,
+          $10,
+          TRUE,
+          $11, $11
+        )`,
+        [
+          ruleId,
+          tenantId,
+          group.property_id,
+          `${group.group_code ?? group.group_booking_id.slice(0, 8).toUpperCase()} — ${rule.charge_type} → ${rule.target}`,
+          `GRP-${group.group_booking_id.slice(0, 8).toUpperCase()}-${rule.charge_type}`,
+          isToMaster ? folioId : null, // destination_folio_id
+          isToMaster ? null : "GUEST", // destination_folio_type
+          rule.charge_type, // transaction_type
+          (i + 1) * 10, // priority (10, 20, 30…)
+          command.group_booking_id,
+          SYSTEM_ACTOR_ID,
+        ],
+      );
+    }
 
     // Link folio to group booking and update billing details
     await client.query(

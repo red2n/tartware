@@ -9,6 +9,7 @@
 
 CREATE TABLE IF NOT EXISTS settings_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique category identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
     code VARCHAR(64) NOT NULL UNIQUE,                             -- Machine-readable category key
     name VARCHAR(120) NOT NULL,                                   -- Display name
     description TEXT,                                             -- Optional category description
@@ -22,6 +23,10 @@ CREATE TABLE IF NOT EXISTS settings_categories (
     updated_at TIMESTAMPTZ                                        -- Last modification timestamp
 );
 
+-- Add tenant_id to existing installations (idempotent)
+ALTER TABLE settings_categories ADD COLUMN IF NOT EXISTS
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+
 -- =====================================================
 -- INDEXES
 -- =====================================================
@@ -34,6 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_settings_categories_active_sort
 -- =====================================================
 
 COMMENT ON TABLE settings_categories IS 'Top-level grouping for system settings. Categories organize sections and definitions into logical UI groups (e.g., Reservations, Billing, Operations).';
+COMMENT ON COLUMN settings_categories.tenant_id IS 'Owning tenant — all catalog rows are tenant-scoped';
 COMMENT ON COLUMN settings_categories.code IS 'Unique identifier code for programmatic access (e.g., RESERVATIONS, BILLING)';
 COMMENT ON COLUMN settings_categories.sort_order IS 'Display order in settings UI navigation';
 COMMENT ON COLUMN settings_categories.tags IS 'Searchable tags for filtering categories';

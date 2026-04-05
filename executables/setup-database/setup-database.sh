@@ -789,6 +789,18 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
         echo -e "${YELLOW}⚠  Default data script not found at $DEFAULT_DATA_SCRIPT - skipping${NC}"
     fi
 
+    # Seed settings catalog (requires tenant rows created by seed-default-data.mjs above)
+    SETTINGS_SEED_SCRIPT="$SCRIPTS_DIR/tables/08-settings/15_settings_seed.sql"
+    if [ -f "$SETTINGS_SEED_SCRIPT" ]; then
+        echo -e "${CYAN}Seeding settings catalog (categories, sections, definitions, options)...${NC}"
+        if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+            -f "$SETTINGS_SEED_SCRIPT" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Settings catalog seeded${NC}"
+        else
+            echo -e "${YELLOW}⚠  Settings catalog seed failed — run manually: psql ... -f $SETTINGS_SEED_SCRIPT${NC}"
+        fi
+    fi
+
     # Reset passwords to match AUTH_DEFAULT_PASSWORD
     RESET_PASSWORD_SCRIPT="$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
     DEFAULT_PASSWORD="${AUTH_DEFAULT_PASSWORD:-TempPass123}"

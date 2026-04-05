@@ -11,13 +11,20 @@ import { RouterLink } from "@angular/router";
 import type { PackageListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
-import { GlobalSearchService } from "../../core/search/global-search.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "FEATURED";
@@ -49,6 +56,7 @@ export class PackagesComponent {
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	readonly packages = signal<PackageListItem[]>([]);
 	readonly loading = signal(false);
@@ -223,20 +231,11 @@ export class PackagesComponent {
 	}
 
 	formatCurrency(amount: number, currency?: string): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency ?? "USD",
-			minimumFractionDigits: 2,
-		}).format(amount);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	formatDate(dateStr: string): string {
-		const d = new Date(dateStr);
-		return d.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(dateStr);
 	}
 
 	validityTooltip(pkg: PackageListItem): string {

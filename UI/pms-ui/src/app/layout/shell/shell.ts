@@ -1,10 +1,11 @@
-import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
+import { Component, computed, effect, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { filter, type Subscription } from "rxjs";
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { NotificationService } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { ToastContainerComponent } from "../../shared/toast/toast-container";
 import type { NavItem } from "../nav-config";
 import { findActiveParent } from "../nav-config";
@@ -35,6 +36,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 	private readonly registry = inject(RegistryService);
 	private readonly notificationService = inject(NotificationService);
 	private readonly screenPerms = inject(ScreenPermissionsService);
+	private readonly settings = inject(SettingsService);
 	readonly sidebarCollapsed = signal(this.loadSidebarState());
 	readonly rightDockCollapsed = signal(this.loadRightDockState());
 	readonly statusBarVisible = this.registry.statusBarVisible;
@@ -48,6 +50,17 @@ export class ShellComponent implements OnInit, OnDestroy {
 	});
 
 	private routerSub?: Subscription;
+
+	/** Apply brand color as a CSS custom property on the document root. */
+	private readonly _brandColorEffect = effect(() => {
+		const color = this.settings.getString("property.brand_color", "");
+		if (color && /^#[0-9a-fA-F]{3,8}$/.test(color)) {
+			document.documentElement.style.setProperty("--brand-color", color);
+		}
+	});
+
+	/** Apply logo URL as a CSS custom property for sidebar branding. */
+	readonly logoUrl = computed(() => this.settings.getString("property.logo_url", ""));
 
 	ngOnInit(): void {
 		this.notificationService.connect();

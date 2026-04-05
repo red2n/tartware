@@ -6,13 +6,17 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
-import { type GroupBlockStatus, GroupBlockStatusDescriptions, type GroupBookingListItem } from "@tartware/schemas";
+import {
+	type GroupBlockStatus,
+	GroupBlockStatusDescriptions,
+	type GroupBookingListItem,
+} from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { groupBlockStatusClass } from "../../../shared/badge-utils";
-import { formatCurrency, formatLongDate } from "../../../shared/format-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string; description?: string };
@@ -38,6 +42,7 @@ export class GroupDetailComponent implements OnInit {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
+	readonly settings = inject(SettingsService);
 
 	readonly group = signal<GroupBookingListItem | null>(null);
 	readonly loading = signal(false);
@@ -51,8 +56,12 @@ export class GroupDetailComponent implements OnInit {
 	readonly preferredFloor = signal<number | null>(null);
 
 	statusClass = groupBlockStatusClass;
-	formatDate = formatLongDate;
-	formatCurrency = formatCurrency;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
+	}
 
 	/** Group can be checked in when status is active (not cancelled/completed) and rooms have been picked. */
 	readonly canCheckIn = computed(() => {
@@ -91,7 +100,8 @@ export class GroupDetailComponent implements OnInit {
 				label: "Status",
 				value: g.block_status_display,
 				badge: this.statusClass(g.block_status),
-				description: GroupBlockStatusDescriptions[g.block_status.toUpperCase() as GroupBlockStatus] ?? "",
+				description:
+					GroupBlockStatusDescriptions[g.block_status.toUpperCase() as GroupBlockStatus] ?? "",
 			},
 			{ label: "Organization", value: g.organization_name ?? "—" },
 			{ label: "Event", value: g.event_name ?? "—" },

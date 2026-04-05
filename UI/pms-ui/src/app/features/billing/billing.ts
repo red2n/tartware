@@ -22,8 +22,8 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 
@@ -55,6 +55,7 @@ export class BillingComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	readonly activeView = signal<BillingView>("payments");
 
@@ -424,8 +425,12 @@ export class BillingComponent {
 		}
 	}
 
-	formatDate = formatShortDate;
-	formatCurrency = formatCurrency;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
+	}
 
 	// ── Data loading ──
 	loadAll(): void {

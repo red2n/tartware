@@ -9,6 +9,7 @@
 
 CREATE TABLE IF NOT EXISTS settings_options (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique option identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
     setting_id UUID NOT NULL REFERENCES settings_definitions(id) ON DELETE CASCADE, -- Parent setting definition
     value VARCHAR(128) NOT NULL,                                  -- Stored value when selected
     label VARCHAR(160) NOT NULL,                                  -- Display label in UI
@@ -29,17 +30,32 @@ CREATE TABLE IF NOT EXISTS settings_options (
 -- INDEXES
 -- =====================================================
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_settings_options_setting_value
+    ON settings_options (setting_id, value);
+
 CREATE INDEX IF NOT EXISTS idx_settings_options_setting_active_sort
     ON settings_options (setting_id, is_active, sort_order);
 
 CREATE INDEX IF NOT EXISTS idx_settings_options_setting_default
     ON settings_options (setting_id, is_default);
 
+-- Unique constraint via index (supports ON CONFLICT)
+ALTER TABLE settings_options
+    DROP CONSTRAINT IF EXISTS uq_options_setting_value;
+ALTER TABLE settings_options
+    ADD CONSTRAINT uq_options_setting_value UNIQUE USING INDEX uq_settings_options_setting_value;
+
 -- =====================================================
 -- TABLE & COLUMN COMMENTS
 -- =====================================================
 
 COMMENT ON TABLE settings_options IS 'Predefined options for SELECT/MULTISELECT/RADIO control types. Defines the allowed values for enumerated settings.';
+
+-- Add tenant_id to existing installations before referencing it in COMMENT ON COLUMN
+ALTER TABLE settings_options ADD COLUMN IF NOT EXISTS
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+
+COMMENT ON COLUMN settings_options.tenant_id IS 'Owning tenant — all catalog rows are tenant-scoped';
 COMMENT ON COLUMN settings_options.setting_id IS 'Parent setting definition this option belongs to';
 COMMENT ON COLUMN settings_options.value IS 'Internal value stored when this option is selected';
 COMMENT ON COLUMN settings_options.label IS 'Display label shown in UI';

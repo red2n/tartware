@@ -13,10 +13,16 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../../shared/sort-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type SessionStatusFilter = "ALL" | "OPEN" | "CLOSED" | "RECONCILED" | "PENDING_APPROVAL";
@@ -44,6 +50,7 @@ export class CashieringComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	// ── State ──
 	readonly sessions = signal<CashierSessionListItem[]>([]);
@@ -165,8 +172,12 @@ export class CashieringComponent {
 		}
 	}
 
-	formatDate = formatShortDate;
-	formatCurrency = formatCurrency;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
+	}
 
 	// ── Open Session ──
 	toggleOpenForm(): void {
@@ -195,7 +206,12 @@ export class CashieringComponent {
 			});
 			this.toast.success("Cashier session opened.");
 			this.showOpenForm.set(false);
-			this.openForm.set({ cashier_name: "", terminal_id: "", shift_type: "full_day", opening_float: 0 });
+			this.openForm.set({
+				cashier_name: "",
+				terminal_id: "",
+				shift_type: "full_day",
+				opening_float: 0,
+			});
 			await this.loadSessions();
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to open session");

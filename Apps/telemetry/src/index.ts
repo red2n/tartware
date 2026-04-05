@@ -585,7 +585,6 @@ export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK 
   }
 
   try {
-    await sdk.start();
     _sdkInstance = sdk;
     console.info(`[telemetry] OpenTelemetry SDK started for ${options.serviceName}`);
     return sdk;
