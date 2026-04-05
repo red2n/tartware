@@ -289,11 +289,12 @@ gh issue list --state open --label p1
 ### Active Bug
 | # | Title | Priority |
 |---|-------|----------|
-| [#132](https://github.com/red2n/tartware/issues/132) | Group reservation did not have check-in | — |
+| [#121](https://github.com/red2n/tartware/issues/121) | Bug: Resolve remaining unresolved review findings from PR #117 | — |
 
 ### Completed Bugs
 | # | Title | Fixed In | Notes |
 |---|-------|----------|-------|
+| [#132](https://github.com/red2n/tartware/issues/132) | Group reservation did not have check-in | `0dfea299` | uploadGroupRoomingList INSERT missing guest_id, guest_name, guest_email, room_rate, confirmation_number (all NOT NULL); upsert guest + populate all required fields |
 | [#127](https://github.com/red2n/tartware/issues/127) | Failed to process reservation event notification | `a089dfdd` | NULLIF($3, '')::uuid in GET_TEMPLATE_BY_CODE_SQL prevents invalid UUID cast for empty propertyId |
 | [#128](https://github.com/red2n/tartware/issues/128) | column reference "room_type_id" is ambiguous | pre-existing | Already fixed — availability SQL uses qualified aliases throughout |
 | [#193](https://github.com/red2n/tartware/issues/193) | FR-6: Fix group billing — store routing rules as proper DB rows | `710dd7b3` | Removed JSON blob from folio.notes; INSERT folio_routing_rules rows inside transaction |
