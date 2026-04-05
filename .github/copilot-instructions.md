@@ -264,10 +264,11 @@ gh issue list --state open --label p1
 ### Active Bug
 | # | Title | Priority |
 |---|-------|----------|
-| [#193](https://github.com/red2n/tartware/issues/193) | FR-6: Fix group billing — store routing rules as proper DB rows | P2 |
+| [#128](https://github.com/red2n/tartware/issues/128) | column reference "room_type_id" is ambiguous | P0 |
 
 ### Completed Bugs
 | # | Title | Fixed In | Notes |
 |---|-------|----------|-------|
+| [#193](https://github.com/red2n/tartware/issues/193) | FR-6: Fix group billing — store routing rules as proper DB rows | `710dd7b3` | Removed JSON blob from folio.notes; INSERT folio_routing_rules rows inside transaction |
 | [#181](https://github.com/red2n/tartware/issues/181) | SETTINGS-BUG-2: MULTI_SELECT control falls back to text input in edit mode | `5d55f93d` | Added checkbox-group edit branch in settings.html; isMultiSelectChecked + onMultiSelectToggle in settings.ts; startEdit normalises stored value to string[] |
 | [#180](https://github.com/red2n/tartware/issues/180) | SETTINGS-BUG-1: GET /settings/values returns empty in DB mode | `0c0e6c88` | settingsAuthPlugin: added request.auth.memberships fallback for tenantId |
