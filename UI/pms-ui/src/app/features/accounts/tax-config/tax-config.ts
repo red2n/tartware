@@ -13,10 +13,16 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
-import { formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../../shared/sort-utils";
 
 type TaxTypeFilter =
 	| "ALL"
@@ -49,6 +55,7 @@ export class TaxConfigComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	// ── State ──
 	readonly taxConfigs = signal<TaxConfigurationListItem[]>([]);
@@ -150,7 +157,9 @@ export class TaxConfigComponent {
 	sortIcon = (col: string) => getSortIcon(this.sort(), col);
 	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
-	formatDate = formatShortDate;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
 
 	formatRate(item: TaxConfigurationListItem): string {
 		if (item.is_percentage) return `${item.tax_rate}%`;

@@ -17,9 +17,15 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../../shared/sort-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 /** Tabs for the main content area. */
@@ -46,6 +52,7 @@ export class NightAuditComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
+	readonly settings = inject(SettingsService);
 
 	// ── Tab state ──
 	readonly activeTab = signal<AuditTab>("status");
@@ -167,8 +174,12 @@ export class NightAuditComponent {
 	historySortIcon = (col: string) => getSortIcon(this.historySort(), col);
 	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
-	formatDate = formatShortDate;
-	formatCurrency = formatCurrency;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
+	}
 
 	statusBadgeClass(status: string): string {
 		switch (status) {
@@ -317,10 +328,10 @@ export class NightAuditComponent {
 
 		this.statusLoading.set(true);
 		try {
-			const res = await this.api.get<{ data: BusinessDateStatusResponse }>(
-				"/night-audit/status",
-				{ tenant_id: tenantId, property_id: propertyId },
-			);
+			const res = await this.api.get<{ data: BusinessDateStatusResponse }>("/night-audit/status", {
+				tenant_id: tenantId,
+				property_id: propertyId,
+			});
 			this.businessDateStatus.set(res.data);
 		} catch {
 			this.businessDateStatus.set(null);

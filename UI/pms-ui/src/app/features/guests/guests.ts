@@ -14,6 +14,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
@@ -56,6 +57,7 @@ export class GuestsComponent {
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	readonly guests = signal<GuestListItem[]>([]);
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
@@ -203,20 +205,15 @@ export class GuestsComponent {
 	/** Format currency amount for display. */
 	formatCurrency(amount: number | null | undefined): string {
 		if (amount == null) return "—";
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-		}).format(amount);
+		return this.settings.formatCurrency(amount);
 	}
 
 	/** Format date for display. */
 	formatDate(date: string | Date | null | undefined): string {
 		if (!date) return "—";
-		return new Date(date).toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(
+			typeof date === "string" ? date : date.toISOString().slice(0, 10),
+		);
 	}
 
 	/** Guest initials for avatar. */

@@ -10,7 +10,6 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { SettingsService } from "../../../core/settings/settings.service";
-import { formatCurrency } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
@@ -484,7 +483,11 @@ export class CreateReservationComponent implements OnInit {
 		if (!g.date_of_birth) return null;
 		const dob = g.date_of_birth instanceof Date ? g.date_of_birth : new Date(g.date_of_birth);
 		if (Number.isNaN(dob.getTime())) return null;
-		return dob.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+		return dob.toLocaleDateString(this.settings.locale() || "en-US", {
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
 	}
 
 	guestDisplayName(g: GuestOption): string {
@@ -492,7 +495,7 @@ export class CreateReservationComponent implements OnInit {
 	}
 
 	fmtCurrency(amount: number, currency: string): string {
-		return formatCurrency(amount, currency);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	fmtDate(dateStr: string): string {

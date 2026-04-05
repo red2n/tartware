@@ -14,11 +14,17 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { reservationStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED" | "CHECKED_OUT";
 
@@ -45,6 +51,7 @@ export class ReservationsComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	readonly reservations = signal<ReservationListItem[]>([]);
 	readonly loading = signal(false);
@@ -170,8 +177,12 @@ export class ReservationsComponent {
 	}
 
 	statusClass = reservationStatusClass;
-	formatDate = formatShortDate;
-	formatCurrency = formatCurrency;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
+	}
 
 	readonly reservationTypeIcon: Record<string, { icon: string; tooltip: string }> = {
 		TRANSIENT: { icon: "person", tooltip: "Transient" },
