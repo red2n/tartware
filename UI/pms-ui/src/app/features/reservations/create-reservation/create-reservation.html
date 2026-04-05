@@ -50,6 +50,7 @@
           <label class="field-label" for="cr-checkin">Check-in</label>
           <input id="cr-checkin" type="date" class="field-input"
                  [min]="todayStr"
+                 [max]="maxCheckInDate()"
                  [(ngModel)]="checkInDate"
                  (ngModelChange)="onCheckInChange()"
                  (blur)="markTouched('checkInDate')" />
@@ -238,6 +239,24 @@
       </h2>
     </div>
     <div class="card-body">
+
+      <!-- Cancellation & no-show policy info from settings -->
+      <div class="booking-policy-note">
+        <mat-icon>event_busy</mat-icon>
+        <span>
+          Free cancellation within <strong>{{ freeCancelHours() }}h</strong> of arrival.
+          No-show charge: <strong>{{ noShowChargePercent() }}%</strong> of booking total.
+        </span>
+      </div>
+
+      <!-- Phone required warning -->
+      @if (requirePhone() && guestId && !selectedGuest?.phone) {
+        <div class="booking-policy-warn">
+          <mat-icon>phone_missed</mat-icon>
+          <span>This booking requires a guest with a phone number on file.</span>
+        </div>
+      }
+
       <div class="field-group mb-3">
         <input type="text" class="field-input"
                placeholder="Search by name or email…"

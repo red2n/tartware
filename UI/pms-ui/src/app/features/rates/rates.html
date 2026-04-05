@@ -67,6 +67,24 @@
     </div>
   }
 
+  <!-- Settings-driven policy banners -->
+  @if (depositRequired() || taxInclusive()) {
+    <div class="policy-banners">
+      @if (depositRequired()) {
+        <div class="policy-banner policy-banner-info">
+          <mat-icon>savings</mat-icon>
+          <span>{{ 'Deposit required at time of booking' | translate }}: <strong>{{ depositPercent() }}%</strong></span>
+        </div>
+      }
+      @if (taxInclusive()) {
+        <div class="policy-banner policy-banner-success">
+          <mat-icon>receipt_long</mat-icon>
+          <span>{{ 'All published rates are tax-inclusive' | translate }}</span>
+        </div>
+      }
+    </div>
+  }
+
   <!-- Filter tabs + type filter + search -->
   <div class="filter-bar">
     <nav class="filter-tabs" aria-label="Rate status filters">
@@ -87,7 +105,7 @@
       <select class="field-input type-select"
               [ngModel]="activeTypeFilter()"
               (ngModelChange)="setTypeFilter($event)">
-        @for (t of rateTypes; track t.key) {
+        @for (t of visibleRateTypes(); track t.key) {
           <option [value]="t.key">{{ t.label }}</option>
         }
       </select>

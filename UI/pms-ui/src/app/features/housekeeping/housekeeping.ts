@@ -11,10 +11,11 @@ import { Router, RouterLink } from "@angular/router";
 import type { HousekeepingTaskListItem, RoomItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
-import { GlobalSearchService } from "../../core/search/global-search.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
@@ -52,6 +53,19 @@ export class HousekeepingComponent {
 	private readonly router = inject(Router);
 	private readonly toastService = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
+
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** Whether turndown service is enabled for this property. */
+	readonly turndownEnabled = computed(() => this.settings.getBool("ops.turndown_enabled", false));
+	/** Whether rooms must pass inspection before being marked CLEAN. */
+	readonly inspectionsRequired = computed(() =>
+		this.settings.getBool("ops.inspections_required", false),
+	);
+	/** Priority sort order shown in the queue header. */
+	readonly hkPriorityOrder = computed(() =>
+		this.settings.getString("rooms.hk_priority_order", "DUE_OUT_FIRST"),
+	);
 
 	// ── View state ──
 	readonly activeView = signal<ViewTab>("rooms");

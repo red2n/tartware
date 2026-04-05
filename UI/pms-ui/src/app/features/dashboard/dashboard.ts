@@ -11,6 +11,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { formatCurrency as fmtCurrency, formatTime as fmtTime } from "../../shared/format-utils";
 
@@ -33,12 +34,29 @@ export class DashboardComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
+	readonly settings = inject(SettingsService);
 
 	readonly stats = signal<DashboardStats | null>(null);
 	readonly activity = signal<ActivityItem[]>([]);
 	readonly tasks = signal<TaskItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
+
+	// ── Settings-driven feature flags ────────────────────────────────────────
+	/** Show AI-generated revenue forecast card on the dashboard. */
+	readonly revenueForecastEnabled = computed(() =>
+		this.settings.getBool("advanced.enable_revenue_forecast", false),
+	);
+	/** Show mobile check-in feature chip. */
+	readonly mobileCheckinEnabled = computed(() =>
+		this.settings.getBool("advanced.enable_mobile_checkin", true),
+	);
+	/** Property check-in time for display (e.g. "15:00"). */
+	readonly checkInTime = computed(() => this.settings.getString("property.check_in_time", "15:00"));
+	/** Property check-out time for display (e.g. "11:00"). */
+	readonly checkOutTime = computed(() =>
+		this.settings.getString("property.check_out_time", "11:00"),
+	);
 
 	/** SVG sparkline path from reservation_sparkline weekly buckets. */
 	readonly sparkline = computed(() => {

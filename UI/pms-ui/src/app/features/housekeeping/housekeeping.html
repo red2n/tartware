@@ -5,6 +5,24 @@
     </button>
   </app-page-header>
 
+  <!-- Settings-driven operation flags -->
+  @if (inspectionsRequired() || turndownEnabled()) {
+    <div class="hk-policy-flags">
+      @if (inspectionsRequired()) {
+        <span class="hk-policy-flag hk-policy-flag-warn">
+          <mat-icon>verified</mat-icon>
+          {{ 'Inspections required before CLEAN' | translate }}
+        </span>
+      }
+      @if (turndownEnabled()) {
+        <span class="hk-policy-flag hk-policy-flag-info">
+          <mat-icon>bedtime</mat-icon>
+          {{ 'Turndown service active' | translate }}
+        </span>
+      }
+    </div>
+  }
+
   <!-- ═════════════════════════════════════════════ -->
   <!-- KPI SUMMARY STRIP                           -->
   <!-- ═════════════════════════════════════════════ -->
@@ -103,7 +121,10 @@
           </button>
         }
       </nav>
-
+      <span class="hk-priority-badge" [matTooltip]="'HK queue priority order' | translate">
+        <mat-icon>sort</mat-icon>
+        {{ hkPriorityOrder().replace(/_/g, ' ') | translate }}
+      </span>
     </div>
 
     @defer (on idle) {
