@@ -333,6 +333,28 @@ export const uploadGroupRoomingList = async (
       const arrivalDate = new Date(guest.arrival_date).toISOString().slice(0, 10);
       const departureDate = new Date(guest.departure_date).toISOString().slice(0, 10);
 
+      // Find or create a guest record for this rooming list entry.
+      // guest_id is NOT NULL on reservations, so we must have a valid guest row.
+      // If no email is supplied, generate a stable placeholder so subsequent re-uploads
+      // of the same guest (same reservation UUID seed) don't proliferate duplicate rows.
+      const nameParts = guest.guest_name.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? guest.guest_name;
+      const lastName = nameParts.slice(1).join(" ") || firstName;
+      const guestEmail = guest.guest_email ?? `noreply+${reservationId}@group.internal`;
+      const confirmationNumber = `GRP-${reservationId.slice(0, 8).toUpperCase()}`;
+
+      const { rows: guestRows } = await client.query<{ id: string }>(
+        `INSERT INTO guests (id, tenant_id, first_name, last_name, email, created_by, updated_by)
+         VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $5)
+         ON CONFLICT (tenant_id, email) WHERE deleted_at IS NULL
+         DO UPDATE SET first_name = EXCLUDED.first_name,
+                       last_name  = EXCLUDED.last_name,
+                       updated_at = NOW()
+         RETURNING id`,
+        [tenantId, firstName, lastName, guestEmail, SYSTEM_ACTOR_ID],
+      );
+      const guestId = guestRows[0].id;
+
       // Verify and decrement block availability
       const { rowCount } = await client.query(
         `UPDATE group_room_blocks
@@ -358,31 +380,41 @@ export const uploadGroupRoomingList = async (
         );
       }
 
-      // Create individual reservation linked to the group
+      // Create individual reservation linked to the group.
+      // All NOT NULL columns (guest_id, guest_name, guest_email, room_rate,
+      // confirmation_number) are populated to satisfy DB constraints.
       await client.query(
         `INSERT INTO reservations (
           id, tenant_id, property_id, room_type_id,
+          guest_id,
           check_in_date, check_out_date, booking_date,
           status, reservation_type, source,
-          total_amount, currency,
+          room_rate, total_amount, currency,
+          guest_name, guest_email, confirmation_number,
           special_requests, group_booking_id,
           created_by, updated_by
         ) VALUES (
           $1, $2, $3, $4,
-          $5, $6, NOW(),
+          $5,
+          $6, $7, NOW(),
           'CONFIRMED', 'GROUP', 'DIRECT',
-          $7, 'USD',
-          $8, $9,
-          $10, $10
+          $8, $8, 'USD',
+          $9, $10, $11,
+          $12, $13,
+          $14, $14
         )`,
         [
           reservationId,
           tenantId,
           group.property_id,
           guest.room_type_id,
+          guestId,
           arrivalDate,
           departureDate,
           group.negotiated_rate ?? 0,
+          guest.guest_name,
+          guestEmail,
+          confirmationNumber,
           guest.special_requests ?? null,
           command.group_booking_id,
           SYSTEM_ACTOR_ID,
