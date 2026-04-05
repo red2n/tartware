@@ -87,6 +87,18 @@
           <mat-icon>logout</mat-icon>
           {{ 'Check-out' | translate }}: <strong>{{ checkOutTime() }}</strong>
         </span>
+        @if (timezone()) {
+          <span class="dashboard-meta-item">
+            <mat-icon>schedule</mat-icon>
+            {{ timezone() }}
+          </span>
+        }
+        @if (starRating()) {
+          <span class="dashboard-meta-item">
+            <mat-icon>star</mat-icon>
+            {{ '★'.repeat(starRating()) }}
+          </span>
+        }
         @if (mobileCheckinEnabled()) {
           <span class="dashboard-meta-item dashboard-meta-active">
             <mat-icon>smartphone</mat-icon>
@@ -97,6 +109,12 @@
           <span class="dashboard-meta-item dashboard-meta-active">
             <mat-icon>auto_graph</mat-icon>
             {{ 'Revenue Forecast' | translate }}
+          </span>
+        }
+        @if (dynamicPricingEnabled()) {
+          <span class="dashboard-meta-item dashboard-meta-active">
+            <mat-icon>dynamic_feed</mat-icon>
+            {{ 'Dynamic Pricing' | translate }}
           </span>
         }
       </div>

@@ -50,6 +50,10 @@ export class DashboardComponent {
 	readonly mobileCheckinEnabled = computed(() =>
 		this.settings.getBool("advanced.enable_mobile_checkin", true),
 	);
+	/** Show dynamic-pricing feature chip. */
+	readonly dynamicPricingEnabled = computed(() =>
+		this.settings.getBool("advanced.enable_dynamic_pricing", false),
+	);
 	/** Property check-in time formatted per ui.time_format (e.g. "3:00 PM" or "15:00"). */
 	readonly checkInTime = computed(() =>
 		this.settings.formatTime(this.settings.getString("property.check_in_time", "15:00")),
@@ -57,6 +61,14 @@ export class DashboardComponent {
 	/** Property check-out time formatted per ui.time_format (e.g. "11:00 AM" or "11:00"). */
 	readonly checkOutTime = computed(() =>
 		this.settings.formatTime(this.settings.getString("property.check_out_time", "11:00")),
+	);
+	/** Property timezone (e.g. "America/New_York"). */
+	readonly timezone = computed(() =>
+		this.settings.getString("property.timezone", ""),
+	);
+	/** Property star rating (e.g. "4", "5"). */
+	readonly starRating = computed(() =>
+		this.settings.getNumber("property.star_rating", 0),
 	);
 
 	/** SVG sparkline path from reservation_sparkline weekly buckets. */

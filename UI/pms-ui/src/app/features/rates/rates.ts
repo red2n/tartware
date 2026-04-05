@@ -64,6 +64,26 @@ export class RatesComponent {
 	readonly taxInclusive = computed(() => this.settings.getBool("rates.tax_inclusive", false));
 	/** Deposit percentage configured for this tenant. */
 	readonly depositPercent = computed(() => this.settings.getNumber("rates.deposit_percent", 25));
+	/** Maximum discount percentage allowed on rate adjustments. */
+	readonly maxDiscountPercent = computed(() =>
+		this.settings.getNumber("rates.max_discount_percent", 50),
+	);
+	/** City/tourist tax per night. */
+	readonly cityTaxPerNight = computed(() =>
+		this.settings.getNumber("rates.city_tax_per_night", 0),
+	);
+	/** Non-refundable cutoff in days before arrival. */
+	readonly nonRefundableCutoffDays = computed(() =>
+		this.settings.getNumber("rates.non_refundable_cutoff_days", 7),
+	);
+	/** Default rounding method for rate calculations. */
+	readonly defaultRounding = computed(() =>
+		this.settings.getString("rates.default_rounding", "ROUND_HALF_UP"),
+	);
+	/** Whether dynamic pricing is enabled. */
+	readonly dynamicPricingEnabled = computed(() =>
+		this.settings.getBool("advanced.enable_dynamic_pricing", false),
+	);
 
 	readonly rates = signal<RateItem[]>([]);
 	readonly loading = signal(false);

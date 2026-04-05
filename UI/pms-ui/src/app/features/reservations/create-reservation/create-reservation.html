@@ -246,8 +246,16 @@
         <span>
           Free cancellation within <strong>{{ freeCancelHours() }}h</strong> of arrival.
           No-show charge: <strong>{{ noShowChargePercent() }}%</strong> of booking total.
+          Same-day cutoff: <strong>{{ cutoffTime() }}</strong>.
         </span>
       </div>
+
+      @if (autoEnrollLoyalty()) {
+        <div class="booking-policy-note">
+          <mat-icon>loyalty</mat-icon>
+          <span>{{ 'Guest will be auto-enrolled in loyalty program' | translate }}</span>
+        </div>
+      }
 
       <!-- Phone required warning -->
       @if (requirePhone() && guestId && !selectedGuest?.phone) {

@@ -10,6 +10,7 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
@@ -81,6 +82,7 @@ type RoomTypeRecommendation = {
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
@@ -114,6 +116,14 @@ export class CreateReservationComponent implements OnInit {
 	/** Percentage of total booking charged for a no-show. */
 	readonly noShowChargePercent = computed(() =>
 		this.settings.getNumber("booking.no_show_charge_percent", 100),
+	);
+	/** Booking cutoff time (e.g. "18:00" — last time a same-day booking is accepted). */
+	readonly cutoffTime = computed(() =>
+		this.settings.formatTime(this.settings.getString("booking.cutoff_time", "18:00")),
+	);
+	/** Whether guests are automatically enrolled in the loyalty program on booking. */
+	readonly autoEnrollLoyalty = computed(() =>
+		this.settings.getBool("booking.auto_enroll_loyalty", false),
 	);
 
 	/** Earliest allowed check-in: today + floor(minAdvanceHours/24) days. */

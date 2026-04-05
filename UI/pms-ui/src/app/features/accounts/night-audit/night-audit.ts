@@ -54,6 +54,20 @@ export class NightAuditComponent {
 	private readonly toast = inject(ToastService);
 	readonly settings = inject(SettingsService);
 
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** Scheduled night audit time (e.g. "02:00"). */
+	readonly auditTime = computed(() =>
+		this.settings.formatTime(this.settings.getString("audit.night_audit_time", "02:00")),
+	);
+	/** Whether the night audit runs automatically at the scheduled time. */
+	readonly autoRunEnabled = computed(() =>
+		this.settings.getBool("audit.auto_run_enabled", false),
+	);
+	/** Whether check-ins are blocked during the audit process. */
+	readonly blockCheckinDuringAudit = computed(() =>
+		this.settings.getBool("audit.block_checkin_during_audit", false),
+	);
+
 	// ── Tab state ──
 	readonly activeTab = signal<AuditTab>("status");
 

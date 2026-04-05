@@ -68,7 +68,7 @@
   }
 
   <!-- Settings-driven policy banners -->
-  @if (depositRequired() || taxInclusive()) {
+  @if (depositRequired() || taxInclusive() || cityTaxPerNight() || dynamicPricingEnabled()) {
     <div class="policy-banners">
       @if (depositRequired()) {
         <div class="policy-banner policy-banner-info">
@@ -82,6 +82,22 @@
           <span>{{ 'All published rates are tax-inclusive' | translate }}</span>
         </div>
       }
+      @if (cityTaxPerNight()) {
+        <div class="policy-banner policy-banner-info">
+          <mat-icon>location_city</mat-icon>
+          <span>{{ 'City tax' | translate }}: <strong>{{ formatCurrency(cityTaxPerNight(), summary().currency) }}</strong> {{ 'per night' | translate }}</span>
+        </div>
+      }
+      @if (dynamicPricingEnabled()) {
+        <div class="policy-banner policy-banner-success">
+          <mat-icon>dynamic_feed</mat-icon>
+          <span>{{ 'Dynamic pricing active' | translate }}</span>
+        </div>
+      }
+      <div class="policy-banner">
+        <mat-icon>percent</mat-icon>
+        <span>{{ 'Max discount' | translate }}: <strong>{{ maxDiscountPercent() }}%</strong> · {{ 'Non-refundable cutoff' | translate }}: <strong>{{ nonRefundableCutoffDays() }}d</strong> · {{ 'Rounding' | translate }}: <strong>{{ defaultRounding() }}</strong></span>
+      </div>
     </div>
   }
 

@@ -66,6 +66,34 @@ export class HousekeepingComponent {
 	readonly hkPriorityOrder = computed(() =>
 		this.settings.getString("rooms.hk_priority_order", "DUE_OUT_FIRST"),
 	);
+	/** Shift start time for housekeeping staff. */
+	readonly hkShiftStart = computed(() =>
+		this.settings.formatTime(this.settings.getString("ops.hk_shift_start", "08:00")),
+	);
+	/** Auto-create cleaning task on checkout. */
+	readonly autoTaskOnCheckout = computed(() =>
+		this.settings.getBool("ops.auto_task_on_checkout", true),
+	);
+	/** Default priority for maintenance requests. */
+	readonly maintenanceDefaultPriority = computed(() =>
+		this.settings.getString("ops.maintenance_default_priority", "MEDIUM"),
+	);
+	/** SLA hours for maintenance resolution. */
+	readonly maintenanceSlaHours = computed(() =>
+		this.settings.getNumber("ops.maintenance_sla_hours", 24),
+	);
+	/** Default room status after checkout (e.g. DIRTY). */
+	readonly defaultStatusOnCheckout = computed(() =>
+		this.settings.getString("rooms.default_status_on_checkout", "DIRTY"),
+	);
+	/** Maximum consecutive DND days before override. */
+	readonly dndMaxDays = computed(() =>
+		this.settings.getNumber("rooms.dnd_max_days", 3),
+	);
+	/** Stayover cleaning interval in days. */
+	readonly stayoverCleanInterval = computed(() =>
+		this.settings.getNumber("rooms.stayover_clean_interval", 1),
+	);
 
 	// ── View state ──
 	readonly activeView = signal<ViewTab>("rooms");

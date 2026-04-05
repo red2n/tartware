@@ -6,7 +6,7 @@
   </app-page-header>
 
   <!-- Settings-driven operation flags -->
-  @if (inspectionsRequired() || turndownEnabled()) {
+  @if (inspectionsRequired() || turndownEnabled() || autoTaskOnCheckout() || hkShiftStart()) {
     <div class="hk-policy-flags">
       @if (inspectionsRequired()) {
         <span class="hk-policy-flag hk-policy-flag-warn">
@@ -20,6 +20,32 @@
           {{ 'Turndown service active' | translate }}
         </span>
       }
+      @if (autoTaskOnCheckout()) {
+        <span class="hk-policy-flag hk-policy-flag-info">
+          <mat-icon>playlist_add_check</mat-icon>
+          {{ 'Auto-task on checkout' | translate }}
+        </span>
+      }
+      <span class="hk-policy-flag">
+        <mat-icon>schedule</mat-icon>
+        {{ 'Shift start' | translate }}: <strong>{{ hkShiftStart() }}</strong>
+      </span>
+      <span class="hk-policy-flag">
+        <mat-icon>cleaning_services</mat-icon>
+        {{ 'Post-checkout status' | translate }}: <strong>{{ defaultStatusOnCheckout() }}</strong>
+      </span>
+      <span class="hk-policy-flag">
+        <mat-icon>do_not_disturb</mat-icon>
+        {{ 'DND max' | translate }}: <strong>{{ dndMaxDays() }}d</strong>
+      </span>
+      <span class="hk-policy-flag">
+        <mat-icon>event_repeat</mat-icon>
+        {{ 'Stayover clean every' | translate }}: <strong>{{ stayoverCleanInterval() }}d</strong>
+      </span>
+      <span class="hk-policy-flag">
+        <mat-icon>build</mat-icon>
+        {{ 'Maintenance SLA' | translate }}: <strong>{{ maintenanceSlaHours() }}h</strong> ({{ maintenanceDefaultPriority() }})
+      </span>
     </div>
   }
 

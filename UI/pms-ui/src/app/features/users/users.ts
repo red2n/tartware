@@ -46,6 +46,20 @@ export class UsersComponent {
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** Session idle timeout in minutes. */
+	readonly sessionIdleTimeoutMins = computed(() =>
+		this.settings.getNumber("admin.session_idle_timeout_mins", 30),
+	);
+	/** Minimum password length for new users. */
+	readonly passwordMinLength = computed(() =>
+		this.settings.getNumber("admin.password_min_length", 8),
+	);
+	/** Maximum concurrent sessions per user. */
+	readonly maxConcurrentSessions = computed(() =>
+		this.settings.getNumber("admin.max_concurrent_sessions", 3),
+	);
+
 	readonly users = signal<UserRow[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);

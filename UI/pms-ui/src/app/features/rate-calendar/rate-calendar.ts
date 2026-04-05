@@ -81,6 +81,13 @@ export class RateCalendarComponent {
 	private readonly toast = inject(ToastService);
 	readonly settings = inject(SettingsService);
 
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** First day of the week: 0 = Sunday, 1 = Monday. */
+	readonly weekStartDay = computed(() => {
+		const val = this.settings.getString("ui.week_starts_on", "SUNDAY");
+		return val === "MONDAY" ? 1 : 0;
+	});
+
 	readonly loading = signal(false);
 	readonly saving = signal(false);
 

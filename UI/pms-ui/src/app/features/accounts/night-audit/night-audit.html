@@ -112,6 +112,26 @@
     </div>
   }
 
+  <!-- Settings-driven audit config strip -->
+  <div class="hk-policy-flags">
+    <span class="hk-policy-flag">
+      <mat-icon>schedule</mat-icon>
+      {{ 'Scheduled time' | translate }}: <strong>{{ auditTime() }}</strong>
+    </span>
+    @if (autoRunEnabled()) {
+      <span class="hk-policy-flag hk-policy-flag-info">
+        <mat-icon>play_circle</mat-icon>
+        {{ 'Auto-run enabled' | translate }}
+      </span>
+    }
+    @if (blockCheckinDuringAudit()) {
+      <span class="hk-policy-flag hk-policy-flag-warn">
+        <mat-icon>block</mat-icon>
+        {{ 'Check-ins blocked during audit' | translate }}
+      </span>
+    }
+  </div>
+
   <!-- ═══ TAB NAVIGATION ═══ -->
   <div class="filter-bar">
     <button class="filter-tab" [class.active]="activeTab() === 'status'" (click)="setTab('status')">{{ 'Overview' | translate }}</button>
