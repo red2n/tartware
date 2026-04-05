@@ -10,7 +10,7 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { SettingsService } from "../../../core/settings/settings.service";
-import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
+import { formatCurrency } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 
@@ -61,7 +61,7 @@ type GuestOption = {
 	created_at?: string;
 };
 
-import type { RoomRecommendation, RoomRecommendationResponse } from "@tartware/schemas";
+import type { RoomRecommendationResponse } from "@tartware/schemas";
 
 /** Aggregated recommendation stats per room type */
 type RoomTypeRecommendation = {
@@ -104,6 +104,10 @@ export class CreateReservationComponent implements OnInit {
 	readonly maxAdvanceDays = computed(() =>
 		this.settings.getNumber("booking.max_advance_days", 365),
 	);
+	/** Minimum lead time in hours before check-in. */
+	readonly minAdvanceHours = computed(() =>
+		this.settings.getNumber("booking.min_advance_hours", 0),
+	);
 	/** Free cancellation window in hours before arrival. */
 	readonly freeCancelHours = computed(() =>
 		this.settings.getNumber("booking.free_cancel_hours", 24),
@@ -112,6 +116,14 @@ export class CreateReservationComponent implements OnInit {
 	readonly noShowChargePercent = computed(() =>
 		this.settings.getNumber("booking.no_show_charge_percent", 100),
 	);
+
+	/** Earliest allowed check-in: today + floor(minAdvanceHours/24) days. */
+	readonly minCheckInDate = computed(() => {
+		const d = new Date();
+		const advanceDays = Math.floor(this.minAdvanceHours() / 24);
+		if (advanceDays > 0) d.setDate(d.getDate() + advanceDays);
+		return this.toDateString(d);
+	});
 
 	/** Latest allowed check-in date based on max advance booking days setting. */
 	readonly maxCheckInDate = computed(() => {
@@ -158,12 +170,12 @@ export class CreateReservationComponent implements OnInit {
 	checkOutDate = "";
 	roomTypeId = "";
 
-	/** Today's date as YYYY-MM-DD — earliest allowed check-in (night audit closes past days). */
+	/** Today's date as YYYY-MM-DD — used as a floor for minCheckOut. */
 	readonly todayStr = this.toDateString(new Date());
 
 	/** Earliest allowed check-out: day after the selected check-in date. */
 	get minCheckOut(): string {
-		if (!this.checkInDate) return this.todayStr;
+		if (!this.checkInDate) return this.minCheckInDate();
 		const d = new Date(`${this.checkInDate}T00:00:00`);
 		d.setDate(d.getDate() + 1);
 		return this.toDateString(d);
@@ -484,7 +496,7 @@ export class CreateReservationComponent implements OnInit {
 	}
 
 	fmtDate(dateStr: string): string {
-		return formatShortDate(dateStr);
+		return this.settings.formatDate(dateStr);
 	}
 
 	mealPlanLabel(code: string): string {

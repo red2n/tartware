@@ -265,20 +265,11 @@ export class RatesComponent {
 	}
 
 	formatCurrency(amount: number, currency?: string): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency ?? "USD",
-			minimumFractionDigits: 2,
-		}).format(amount);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	formatDate(dateStr: string): string {
-		const d = new Date(dateStr);
-		return d.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(dateStr);
 	}
 
 	validityTooltip(rate: RateItem): string {

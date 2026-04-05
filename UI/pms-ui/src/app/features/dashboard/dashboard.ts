@@ -13,7 +13,6 @@ import { TenantContextService } from "../../core/context/tenant-context.service"
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
-import { formatCurrency as fmtCurrency, formatTime as fmtTime } from "../../shared/format-utils";
 
 @Component({
 	selector: "app-dashboard",
@@ -51,11 +50,13 @@ export class DashboardComponent {
 	readonly mobileCheckinEnabled = computed(() =>
 		this.settings.getBool("advanced.enable_mobile_checkin", true),
 	);
-	/** Property check-in time for display (e.g. "15:00"). */
-	readonly checkInTime = computed(() => this.settings.getString("property.check_in_time", "15:00"));
-	/** Property check-out time for display (e.g. "11:00"). */
+	/** Property check-in time formatted per ui.time_format (e.g. "3:00 PM" or "15:00"). */
+	readonly checkInTime = computed(() =>
+		this.settings.formatTime(this.settings.getString("property.check_in_time", "15:00")),
+	);
+	/** Property check-out time formatted per ui.time_format (e.g. "11:00 AM" or "11:00"). */
 	readonly checkOutTime = computed(() =>
-		this.settings.getString("property.check_out_time", "11:00"),
+		this.settings.formatTime(this.settings.getString("property.check_out_time", "11:00")),
 	);
 
 	/** SVG sparkline path from reservation_sparkline weekly buckets. */
@@ -152,11 +153,9 @@ export class DashboardComponent {
 		}
 	}
 
-	formatCurrency(amount: number, currency: string): string {
-		return fmtCurrency(amount, currency, { min: 0, max: 0 });
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
 	}
-
-	formatTime = fmtTime;
 
 	navigateToReservations(): void {
 		this.router.navigate(["/reservations"]);

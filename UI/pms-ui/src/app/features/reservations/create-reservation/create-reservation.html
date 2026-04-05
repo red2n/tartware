@@ -49,7 +49,7 @@
         <div class="field-group field-required" [class.field-error]="touched['checkInDate'] && !checkInDate">
           <label class="field-label" for="cr-checkin">Check-in</label>
           <input id="cr-checkin" type="date" class="field-input"
-                 [min]="todayStr"
+                 [min]="minCheckInDate()"
                  [max]="maxCheckInDate()"
                  [(ngModel)]="checkInDate"
                  (ngModelChange)="onCheckInChange()"
