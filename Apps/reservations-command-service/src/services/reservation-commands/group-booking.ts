@@ -620,15 +620,13 @@ export const setupGroupBilling = async (
         folio_number, folio_type, folio_status,
         guest_name, company_name,
         tax_exempt, tax_id,
-        notes,
         created_by, updated_by
       ) VALUES (
         $1, $2, $3,
         $4, 'MASTER', 'OPEN',
         $5, $6,
         $7, $8,
-        $9,
-        $10, $10
+        $9, $9
       )`,
       [
         folioId,
@@ -639,10 +637,58 @@ export const setupGroupBilling = async (
         group.organization_name ?? group.group_name,
         command.tax_exempt ?? false,
         command.tax_id ?? null,
-        JSON.stringify({ routing_rules: routingRules }),
         SYSTEM_ACTOR_ID,
       ],
     );
+
+    // Insert folio_routing_rules rows — one per routing rule.
+    // is_template = FALSE: these are active rules bound to this group booking.
+    // source_folio_id = NULL: rule applies to all member folios (matched via group_booking_id).
+    // When target is "master": destination_folio_id = master folio.
+    // When target is "individual": destination_folio_id = NULL, destination_folio_type = 'GUEST'.
+    for (let i = 0; i < routingRules.length; i++) {
+      const rule = routingRules[i];
+      const ruleId = uuid();
+      const isToMaster = rule.target === "master";
+      await client.query(
+        `INSERT INTO folio_routing_rules (
+          rule_id, tenant_id, property_id,
+          rule_name, rule_code,
+          is_template,
+          source_folio_id,
+          destination_folio_id, destination_folio_type,
+          transaction_type,
+          routing_type, priority,
+          group_booking_id,
+          is_active,
+          created_by, updated_by
+        ) VALUES (
+          $1, $2, $3,
+          $4, $5,
+          FALSE,
+          NULL,
+          $6, $7,
+          $8,
+          'FULL', $9,
+          $10,
+          TRUE,
+          $11, $11
+        )`,
+        [
+          ruleId,
+          tenantId,
+          group.property_id,
+          `${group.group_code ?? group.group_booking_id.slice(0, 8).toUpperCase()} — ${rule.charge_type} → ${rule.target}`,
+          `GRP-${group.group_booking_id.slice(0, 8).toUpperCase()}-${rule.charge_type}`,
+          isToMaster ? folioId : null, // destination_folio_id
+          isToMaster ? null : "GUEST", // destination_folio_type
+          rule.charge_type, // transaction_type
+          (i + 1) * 10, // priority (10, 20, 30…)
+          command.group_booking_id,
+          SYSTEM_ACTOR_ID,
+        ],
+      );
+    }
 
     // Link folio to group booking and update billing details
     await client.query(
