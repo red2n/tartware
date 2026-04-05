@@ -9,6 +9,7 @@
 
 CREATE TABLE IF NOT EXISTS settings_sections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique section identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
     category_id UUID NOT NULL REFERENCES settings_categories(id) ON DELETE CASCADE, -- Parent category
     code VARCHAR(64) NOT NULL,                                    -- Machine-readable section key
     name VARCHAR(160) NOT NULL,                                   -- Display name
@@ -21,6 +22,10 @@ CREATE TABLE IF NOT EXISTS settings_sections (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                -- Row creation timestamp
     updated_at TIMESTAMPTZ                                        -- Last modification timestamp
 );
+
+-- Add tenant_id to existing installations (idempotent)
+ALTER TABLE settings_sections ADD COLUMN IF NOT EXISTS
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
 
 -- =====================================================
 -- INDEXES
@@ -46,6 +51,7 @@ ALTER TABLE settings_sections
 -- =====================================================
 
 COMMENT ON TABLE settings_sections IS 'Logical grouping within a settings category. Sections organize related settings definitions (e.g., Check-in Rules, Rate Policies).';
+COMMENT ON COLUMN settings_sections.tenant_id IS 'Owning tenant — all catalog rows are tenant-scoped';
 COMMENT ON COLUMN settings_sections.category_id IS 'Parent category this section belongs to';
 COMMENT ON COLUMN settings_sections.code IS 'Unique identifier within category for programmatic access';
 COMMENT ON COLUMN settings_sections.sort_order IS 'Display order within the parent category';

@@ -9,6 +9,7 @@
 
 CREATE TABLE IF NOT EXISTS settings_definitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique definition identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
     category_id UUID NOT NULL REFERENCES settings_categories(id) ON DELETE CASCADE, -- Parent category
     section_id UUID NOT NULL REFERENCES settings_sections(id) ON DELETE CASCADE,    -- Parent section
     code VARCHAR(96) NOT NULL UNIQUE,                             -- Dot-notation setting key
@@ -64,6 +65,12 @@ CREATE INDEX IF NOT EXISTS idx_settings_definitions_feature_flag
 -- =====================================================
 
 COMMENT ON TABLE settings_definitions IS 'Master catalog of all configurable settings. Defines data type, validation rules, scopes, and UI rendering for each setting.';
+
+-- Add tenant_id to existing installations before referencing it in COMMENT ON COLUMN
+ALTER TABLE settings_definitions ADD COLUMN IF NOT EXISTS
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+
+COMMENT ON COLUMN settings_definitions.tenant_id IS 'Owning tenant — all catalog rows are tenant-scoped';
 COMMENT ON COLUMN settings_definitions.code IS 'Unique dot-notation setting key (e.g., reservations.check_in.default_time)';
 COMMENT ON COLUMN settings_definitions.data_type IS 'Data type: STRING, INTEGER, DECIMAL, BOOLEAN, DATE, TIME, DATETIME, JSON, ARRAY';
 COMMENT ON COLUMN settings_definitions.control_type IS 'UI control: TEXT, TEXTAREA, SELECT, MULTISELECT, CHECKBOX, RADIO, DATE_PICKER, TIME_PICKER, SLIDER, COLOR_PICKER';
