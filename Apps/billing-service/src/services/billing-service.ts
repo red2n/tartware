@@ -35,15 +35,14 @@ const formatEnumDisplay = (
   fallback: string,
 ): { value: string; display: string } => {
   if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
+    return { value: fallback, display: fallback };
   }
-  const normalized = value.toLowerCase();
-  const display = normalized
+  const display = value
+    .toLowerCase()
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  return { value: normalized, display };
+  return { value, display };
 };
 
 const toIsoString = (value: string | Date | null): string | undefined => {

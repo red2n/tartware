@@ -103,7 +103,7 @@ export const closeCashierSession = async (
   // 1. Verify session exists and is open
   const { rows: sessionRows } = await runQuery<Record<string, unknown>>(
     client,
-    `SELECT session_id, session_status, property_id, cashier_id, business_date, opening_float_declared
+    `SELECT session_id, session_status, property_id, cashier_id, business_date, opening_float_declared, opened_at
      FROM cashier_sessions
      WHERE session_id = $1 AND tenant_id = $2`,
     [command.session_id, tenantId],
@@ -122,7 +122,7 @@ export const closeCashierSession = async (
     );
   }
 
-  // 2. Aggregate transactions for this session's property + business date
+  // 2. Aggregate transactions for this session (only payments processed after session opened)
   const { rows: aggRows } = await runQuery<Record<string, unknown>>(
     client,
     `SELECT
@@ -135,15 +135,15 @@ export const closeCashierSession = async (
        COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'REFUND'), 0) AS total_refunds
      FROM payments
      WHERE tenant_id = $1 AND property_id = $2
-       AND processed_at::date = $3::date`,
-    [tenantId, session.property_id, session.business_date],
+       AND processed_at::date = $3::date
+       AND processed_at >= $4::timestamptz`,
+    [tenantId, session.property_id, session.business_date, session.opened_at],
   );
   const agg = aggRows[0] ?? {};
 
-  const openingFloat = Number(session.opening_float_declared ?? 0);
   const cashReceived = Number(agg.total_cash_received ?? 0);
-  const expectedCash = openingFloat + cashReceived;
-  const cashVariance = command.closing_cash_counted - expectedCash;
+  // cash_variance = declared − counted (reconciliation variance)
+  const cashVariance = command.closing_cash_declared - command.closing_cash_counted;
   const hasVariance = Math.abs(cashVariance) > 0.01;
 
   // 3. Update session with reconciliation data
