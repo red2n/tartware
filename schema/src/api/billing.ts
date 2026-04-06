@@ -1052,3 +1052,34 @@ export type CancellationFeeResult = {
 	/** Policy deadline hours. */
 	policyDeadlineHours: number;
 };
+
+/* ── Folio Routing Evaluation ── */
+
+/** Input to the routing rule evaluation engine. */
+export type EvaluateRoutingInput = {
+	tenantId: string;
+	propertyId: string;
+	folioId: string;
+	chargeCode: string;
+	transactionType?: string;
+	chargeCategory?: string;
+	amount: number;
+};
+
+/** A single routing decision produced by evaluateRoutingRules(). */
+export type RoutingDecision = {
+	/** Destination folio UUID where this portion of the charge should be posted. */
+	destinationFolioId: string;
+	/** Dollar amount routed to this destination. */
+	routedAmount: number;
+	/** The routing rule that matched. */
+	ruleId: string;
+};
+
+/** Full result of the routing engine evaluation. */
+export type RoutingEvaluationResult = {
+	/** List of routing decisions (may be empty if no rules matched). */
+	decisions: RoutingDecision[];
+	/** Amount remaining on the source folio after routing. */
+	remainderAmount: number;
+};

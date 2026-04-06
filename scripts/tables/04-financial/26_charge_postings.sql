@@ -97,6 +97,9 @@ CREATE TABLE charge_postings (
     transfer_from_folio_id UUID,
     transfer_to_folio_id UUID,
 
+    -- Routing Rule (if charge was auto-routed by folio routing engine)
+    routing_rule_id UUID, -- FK to folio_routing_rules.rule_id
+
     -- Staff Information
     server_name VARCHAR(100), -- Waiter/server name
     cashier_name VARCHAR(100),
@@ -155,6 +158,7 @@ COMMENT ON COLUMN charge_postings.source_system IS 'Origin of charge: PMS, POS, 
 COMMENT ON COLUMN charge_postings.is_voided IS 'Whether this transaction has been voided/reversed';
 COMMENT ON COLUMN charge_postings.void_posting_id IS 'Reference to the void transaction if this was voided';
 COMMENT ON COLUMN charge_postings.gl_account IS 'General ledger account code for accounting integration';
+COMMENT ON COLUMN charge_postings.routing_rule_id IS 'FK to folio_routing_rules — set when charge was auto-routed by the routing engine';
 
 
 GRANT SELECT, INSERT, UPDATE ON charge_postings TO tartware_app;
