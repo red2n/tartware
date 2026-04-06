@@ -39,6 +39,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@tartware/config": "workspace:*",
     "kafkajs": "^2.2.4",
     "prom-client": "^15.1.3"
   },

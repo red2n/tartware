@@ -408,6 +408,9 @@ importers:
 
   Apps/command-consumer-utils:
     dependencies:
+      '@tartware/config':
+        specifier: workspace:*
+        version: link:../config
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
