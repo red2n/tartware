@@ -13,7 +13,8 @@
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
-    "@tartware/fastify-server"
+    "@tartware/fastify-server",
+    "kafkajs"
   ],
   "ignoreBinaries": [
     "swc"

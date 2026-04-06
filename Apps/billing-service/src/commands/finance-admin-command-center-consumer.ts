@@ -4,10 +4,7 @@
  * Handles commands targeted at `finance-admin-service` consumer group.
  * Reuses billing's Kafka client, producer, and metrics.
  */
-import {
-  type CommandEnvelope,
-  type CommandMetadata,
-} from "@tartware/command-consumer-utils";
+import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 
 import { config } from "../config.js";

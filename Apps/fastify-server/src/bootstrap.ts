@@ -11,7 +11,11 @@
  * This module encapsulates all of that into a single `bootstrapService()` call.
  */
 import process from "node:process";
-import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
+import {
+	ensureDependencies,
+	parseHostPort,
+	resolveOtelDependency,
+} from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 import type { FastifyInstance } from "fastify";
 
@@ -38,7 +42,9 @@ export type BootstrapServiceInput = {
  * Bootstrap a Fastify service with telemetry, dependency checks,
  * Kafka consumer lifecycle, and graceful shutdown.
  */
-export async function bootstrapService(input: BootstrapServiceInput): Promise<void> {
+export async function bootstrapService(
+	input: BootstrapServiceInput,
+): Promise<void> {
 	const { app, config } = input;
 	const proc = process;
 	const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";
@@ -72,7 +78,9 @@ export async function bootstrapService(input: BootstrapServiceInput): Promise<vo
 				app.log.warn("Dependencies missing; exiting without starting service");
 				await telemetry
 					?.shutdown()
-					.catch((e: unknown) => app.log.error(e, "Failed to shutdown telemetry"));
+					.catch((e: unknown) =>
+						app.log.error(e, "Failed to shutdown telemetry"),
+					);
 				proc?.exit(0);
 				return;
 			}
@@ -82,7 +90,9 @@ export async function bootstrapService(input: BootstrapServiceInput): Promise<vo
 					await starter();
 				}
 			} else if (!kafkaEnabled) {
-				app.log.warn("Kafka disabled via DISABLE_KAFKA; skipping consumer start");
+				app.log.warn(
+					"Kafka disabled via DISABLE_KAFKA; skipping consumer start",
+				);
 			}
 
 			await app.listen({ port: config.port, host: config.host });
@@ -99,7 +109,9 @@ export async function bootstrapService(input: BootstrapServiceInput): Promise<vo
 			await app.close();
 			await telemetry
 				?.shutdown()
-				.catch((e: unknown) => app.log.error(e, "failed to shutdown telemetry"));
+				.catch((e: unknown) =>
+					app.log.error(e, "failed to shutdown telemetry"),
+				);
 			proc?.exit(1);
 		}
 	};
@@ -118,7 +130,9 @@ export async function bootstrapService(input: BootstrapServiceInput): Promise<vo
 			await app.close();
 			await telemetry
 				?.shutdown()
-				.catch((e: unknown) => app.log.error(e, "failed to shutdown telemetry"));
+				.catch((e: unknown) =>
+					app.log.error(e, "failed to shutdown telemetry"),
+				);
 			proc?.exit(0);
 		} catch (error) {
 			app.log.error(error, "error during shutdown");

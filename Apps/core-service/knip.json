@@ -12,6 +12,7 @@
     "@fastify/cors",
     "@fastify/helmet",
     "@tartware/fastify-server",
+    "@tartware/command-consumer-utils",
     "ast-v8-to-istanbul"
   ],
   "ignoreExportsUsedInFile": true,

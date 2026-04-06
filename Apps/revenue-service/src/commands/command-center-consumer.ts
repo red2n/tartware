@@ -1,7 +1,4 @@
-import {
-  type CommandEnvelope,
-  type CommandMetadata,
-} from "@tartware/command-consumer-utils";
+import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { createServiceLogger } from "@tartware/telemetry";
 import { config } from "../config.js";

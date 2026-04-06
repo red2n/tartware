@@ -1,3 +1,4 @@
+import { toNumberOrFallback } from "@tartware/config";
 import {
   type CommissionReportItem,
   type DepartmentalRevenueItem,
@@ -7,13 +8,11 @@ import {
   type TaxSummaryItem,
   type TrialBalanceResponse,
 } from "@tartware/schemas";
-
 import { query } from "../lib/db.js";
 import {
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/finance-admin-queries.js";
-import { toNumberOrFallback } from "@tartware/config";
 
 const formatEnumDisplay = (
   value: string | null,

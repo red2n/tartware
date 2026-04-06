@@ -49,7 +49,15 @@ export function startServiceRegistration(
 		warn: (...args: unknown[]) => void;
 	},
 ): { stop: () => Promise<void> } {
-	const { registryUrl, serviceName, serviceVersion, host, port, displayName, description } = config;
+	const {
+		registryUrl,
+		serviceName,
+		serviceVersion,
+		host,
+		port,
+		displayName,
+		description,
+	} = config;
 	let heartbeatTimer: NodeJS.Timeout | undefined;
 
 	const metadata: Record<string, string> = {};

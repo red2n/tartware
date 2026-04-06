@@ -1,9 +1,8 @@
+import { toNonNegativeInt, toOptionalNumber } from "@tartware/config";
 import { PropertyWithStatsSchema } from "@tartware/schemas";
 import { z } from "zod";
-
 import { query } from "../lib/db.js";
 import { PROPERTY_LIST_SQL, PROPERTY_OPERATIONAL_STATS_SQL } from "../sql/property-queries.js";
-import { toNonNegativeInt, toOptionalNumber } from "@tartware/config";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 // API response type with version as string (BigInt serialized for JSON)

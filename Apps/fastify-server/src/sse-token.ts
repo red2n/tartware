@@ -19,7 +19,8 @@ const sseTokenPlugin: FastifyPluginAsync = async (fastify) => {
 		if (request.headers.authorization) return;
 
 		const query = request.query as Record<string, unknown> | undefined;
-		const token = query && typeof query.token === "string" ? query.token : undefined;
+		const token =
+			query && typeof query.token === "string" ? query.token : undefined;
 		if (token) {
 			request.headers.authorization = `Bearer ${token}`;
 			// Remove token from parsed query to reduce logging/leakage risk

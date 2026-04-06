@@ -1,10 +1,12 @@
-import { buildFastifyServer, type FastifyInstance } from "@tartware/fastify-server";
-
+import {
+  buildFastifyServer,
+  type FastifyInstance,
+  sseTokenPromotePlugin,
+} from "@tartware/fastify-server";
 import { config } from "./config.js";
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
-import { sseTokenPromotePlugin } from "@tartware/fastify-server";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerInAppNotificationRoutes } from "./routes/in-app-notifications.js";

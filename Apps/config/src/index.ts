@@ -318,11 +318,11 @@ export {
 export { toNonNegativeInt, toNumberOrFallback, toOptionalNumber } from "./numbers.js";
 
 export {
-	buildAuthConfig,
-	buildCommandCenterConfig,
-	buildDbConfig,
-	buildLogConfig,
-	buildServiceInfo,
-	ensureAuthDefaults,
-	initServiceIdentity,
+  buildAuthConfig,
+  buildCommandCenterConfig,
+  buildDbConfig,
+  buildLogConfig,
+  buildServiceInfo,
+  ensureAuthDefaults,
+  initServiceIdentity,
 } from "./service-config-helpers.js";

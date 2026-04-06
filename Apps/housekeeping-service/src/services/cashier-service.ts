@@ -1,17 +1,16 @@
+import { toNumberOrFallback } from "@tartware/config";
 import {
   type CashierSessionListItem,
   CashierSessionListItemSchema,
   type CashierSessionRow,
   type ShiftSummaryResponse,
 } from "@tartware/schemas";
-
 import { query } from "../lib/db.js";
 import {
   CASHIER_SESSION_BY_ID_SQL,
   CASHIER_SESSION_LIST_SQL,
   SHIFT_SUMMARY_SQL,
 } from "../sql/cashier-queries.js";
-import { toNumberOrFallback } from "@tartware/config";
 
 const formatEnumDisplay = (
   value: string | null,

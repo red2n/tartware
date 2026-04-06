@@ -5,10 +5,7 @@
  * Reuses billing's Kafka client, producer, and metrics.
  * All handler implementations live in billing-command-service / billing-commands.
  */
-import {
-  type CommandEnvelope,
-  type CommandMetadata,
-} from "@tartware/command-consumer-utils";
+import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 
 import { config } from "../config.js";
