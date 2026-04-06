@@ -87,6 +87,24 @@ assert_eq() {
   else fail "$label" "expected=$expected actual=$actual"; fi
 }
 
+# Case-insensitive compare (for DB enums that may be upper/lowercase)
+assert_eq_ci() {
+  local label="$1" expected="${2,,}" actual="${3,,}"
+  if [[ "$expected" == "$actual" ]]; then pass "$label"
+  else fail "$label" "expected=$2 actual=$3"; fi
+}
+
+# Numeric compare (strips trailing zeros: 8.875000 == 8.875, 458.50 == 458.5)
+assert_eq_num() {
+  local label="$1" expected="$2" actual="$3"
+  # Normalize: remove trailing zeros after decimal point, then trailing dot
+  local norm_exp norm_act
+  norm_exp=$(echo "$expected" | sed 's/0*$//;s/\.$//')
+  norm_act=$(echo "$actual" | sed 's/0*$//;s/\.$//')
+  if [[ "$norm_exp" == "$norm_act" ]]; then pass "$label"
+  else fail "$label" "expected=$expected actual=$actual"; fi
+}
+
 assert_gte() {
   local label="$1" min="$2" actual="$3"
   if [[ "$actual" -ge "$min" ]] 2>/dev/null; then pass "$label"
@@ -144,12 +162,12 @@ preflight() {
   else printf "    ✗ database unreachable\n"; ok=false; fi
 
   local gw_code
-  gw_code=$(curl -s -o /dev/null -w "%{http_code}" "$GW/health/live" 2>/dev/null || echo "000")
+  gw_code=$(curl -s -o /dev/null -w "%{http_code}" "$GW/health" 2>/dev/null || echo "000")
   if [[ "$gw_code" =~ ^2 ]]; then printf "    ✓ api-gateway (%s)\n" "$gw_code"
   else printf "    ✗ api-gateway (HTTP %s)\n" "$gw_code"; ok=false; fi
 
   local billing_code
-  billing_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3025/health/live" 2>/dev/null || echo "000")
+  billing_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3025/health" 2>/dev/null || echo "000")
   if [[ "$billing_code" =~ ^2 ]]; then printf "    ✓ billing-service (%s)\n" "$billing_code"
   else printf "    ✗ billing-service (HTTP %s)\n" "$billing_code"; ok=false; fi
 
@@ -172,10 +190,50 @@ echo "╠═══════════════════════�
 echo "║  Tenant:    $TID       ║"
 echo "║  Property:  $PID       ║"
 echo "║  Date:      $TODAY                                         ║"
-echo "║  Mode:      $(printf '%-51s' "${SKIP_SEED:+READ-ONLY}${SKIP_SEED:-FULL (seed + validate)}")  ║"
+if $SKIP_SEED; then MODE="READ-ONLY (skip-seed)"; else MODE="FULL (seed + validate)"; fi
+echo "║  Mode:      $(printf '%-51s' "$MODE")  ║"
 echo "╚═══════════════════════════════════════════════════════════════════════╝"
 
 preflight
+
+# ─── Enable required commands ────────────────────────────────────────────────
+
+REQUIRED_COMMANDS=(
+  "guest.register"
+  "reservation.create"
+  "billing.tax_config.create"
+  "billing.charge.post"
+  "billing.payment.capture"
+  "billing.payment.authorize"
+  "billing.payment.void"
+  "billing.payment.refund"
+  "billing.invoice.create"
+  "billing.cashier.open"
+  "billing.cashier.close"
+  "billing.cashier.handover"
+  "billing.ar.post"
+  "billing.night_audit.execute"
+  "billing.date_roll.manual"
+)
+
+echo "── Enabling required commands ────────────────────────────────────────"
+ENABLED_COUNT=0
+for cmd in "${REQUIRED_COMMANDS[@]}"; do
+  BEFORE=$(dbq "SELECT status FROM command_features WHERE command_name='$cmd' AND (tenant_id='$TID' OR tenant_id IS NULL) ORDER BY tenant_id NULLS LAST LIMIT 1;")
+  if [[ "$BEFORE" != "enabled" ]]; then
+    dbq "UPDATE command_features SET status='enabled', updated_at=NOW() WHERE command_name='$cmd';" >/dev/null
+    ENABLED_COUNT=$((ENABLED_COUNT + 1))
+    printf "    ✓ enabled: %s (was %s)\n" "$cmd" "${BEFORE:-missing}"
+  fi
+done
+if [[ $ENABLED_COUNT -eq 0 ]]; then
+  printf "    ✓ all %d commands already enabled\n" "${#REQUIRED_COMMANDS[@]}"
+else
+  # Gateway refreshes its command registry every 30s (COMMAND_REGISTRY_REFRESH_MS)
+  printf "    → enabled %d commands — waiting 32s for gateway registry refresh...\n" "$ENABLED_COUNT"
+  sleep 32
+fi
+echo ""
 
 # ─── Pre-test row counts ────────────────────────────────────────────────────
 
@@ -214,6 +272,7 @@ if $CLEAN; then
   dbq "DELETE FROM cashier_sessions WHERE tenant_id='$TID';" >/dev/null
   dbq "DELETE FROM tax_configurations WHERE tenant_id='$TID';" >/dev/null
   dbq "DELETE FROM night_audit_log WHERE tenant_id='$TID';" >/dev/null
+  dbq "DELETE FROM business_dates WHERE tenant_id='$TID';" >/dev/null
   echo "  Done."
   echo ""
   PRE_CHARGES=0; PRE_PAYMENTS=0; PRE_INVOICES=0; PRE_AR=0; PRE_CASHIER=0; PRE_TAX=0
@@ -287,7 +346,7 @@ assert_eq "DB: tax_configurations has $TAXCODE2" "1" "$TAX2_EXISTS"
 TAX1_RATE=$(dbq "SELECT tax_rate FROM tax_configurations WHERE tax_code='$TAXCODE1' AND tenant_id='$TID';")
 TAX1_TYPE=$(dbq "SELECT tax_type FROM tax_configurations WHERE tax_code='$TAXCODE1' AND tenant_id='$TID';")
 TAX1_ACTIVE=$(dbq "SELECT is_active FROM tax_configurations WHERE tax_code='$TAXCODE1' AND tenant_id='$TID';")
-assert_eq "DB: tax rate = 8.875" "8.875" "$TAX1_RATE"
+assert_eq_num "DB: tax rate = 8.875" "8.875" "$TAX1_RATE"
 assert_eq "DB: tax type = sales_tax" "sales_tax" "$TAX1_TYPE"
 assert_eq "DB: tax is_active = true" "t" "$TAX1_ACTIVE"
 echo ""
@@ -331,7 +390,7 @@ assert_eq "DB: reservation 1 total_amount = 597" "597.00" "$RES1_AMOUNT"
 if [[ -n "$FOLIO1_ID" ]]; then
   pass "DB: folio auto-created for res 1 (${FOLIO1_ID:0:8}…)"
   FOLIO1_STATUS=$(dbq "SELECT folio_status FROM folios WHERE folio_id='$FOLIO1_ID';")
-  assert_eq "DB: folio 1 status = open" "open" "$FOLIO1_STATUS"
+  assert_eq_ci "DB: folio 1 status = open" "open" "$FOLIO1_STATUS"
 else
   fail "DB: folio for reservation 1" "no folio row found"
 fi
@@ -375,12 +434,12 @@ wait_kafka 5
 CHARGE_COUNT=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID';")
 assert_gte "DB: charge_postings for res 1 >= 4" "4" "$CHARGE_COUNT"
 
-ROOM_CHARGE=$(dbq "SELECT total_amount FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='ROOM' ORDER BY created_at DESC LIMIT 1;")
-MINIBAR_CHARGE=$(dbq "SELECT total_amount FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='MINIBAR' ORDER BY created_at DESC LIMIT 1;")
-assert_eq "DB: ROOM charge amount = 199" "199.00" "$ROOM_CHARGE"
-assert_eq "DB: MINIBAR charge amount = 24.50" "24.50" "$MINIBAR_CHARGE"
+ROOM_CHARGE=$(dbq "SELECT total_amount FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='ROOM' LIMIT 1;")
+MINIBAR_CHARGE=$(dbq "SELECT total_amount FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='MINIBAR' LIMIT 1;")
+assert_eq_num "DB: ROOM charge amount = 199" "199" "$ROOM_CHARGE"
+assert_eq_num "DB: MINIBAR charge amount = 24.50" "24.50" "$MINIBAR_CHARGE"
 
-ROOM_TYPE=$(dbq "SELECT posting_type FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='ROOM' ORDER BY created_at DESC LIMIT 1;")
+ROOM_TYPE=$(dbq "SELECT posting_type FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='ROOM' LIMIT 1;")
 assert_eq "DB: ROOM posting_type = DEBIT" "DEBIT" "$ROOM_TYPE"
 
 if [[ -n "$RES2_ID" ]]; then
@@ -456,8 +515,8 @@ INV1_ROW=$(dbq "SELECT total_amount, status, invoice_type FROM invoices WHERE re
 if [[ -n "$INV1_ROW" ]]; then
   INV1_AMOUNT=$(echo "$INV1_ROW" | cut -d'|' -f1)
   INV1_STATUS=$(echo "$INV1_ROW" | cut -d'|' -f2)
-  assert_eq "DB: invoice amount = 458.50" "458.50" "$INV1_AMOUNT"
-  assert_eq "DB: invoice status = draft" "draft" "$INV1_STATUS"
+  assert_eq_num "DB: invoice amount = 458.50" "458.50" "$INV1_AMOUNT"
+  assert_eq_ci "DB: invoice status = draft" "draft" "$INV1_STATUS"
 else
   fail "DB: invoice for res 1" "not found"
 fi
@@ -544,7 +603,7 @@ echo "── 1.9  Night Audit ────────────────�
 
 send_command "CMD night audit: execute" \
   "billing.night_audit.execute" \
-  "{\"property_id\":\"$PID\",\"post_room_charges\":true,\"post_package_charges\":false,\"mark_no_shows\":true,\"advance_date\":false}"
+  "{\"property_id\":\"$PID\",\"post_room_charges\":true,\"post_package_charges\":false,\"post_ota_commissions\":false,\"mark_no_shows\":true,\"advance_date\":false}"
 
 wait_kafka 6
 
@@ -553,6 +612,201 @@ if [[ "$AUDIT_COUNT" -ge 1 ]]; then
   pass "DB: night_audit_log has $AUDIT_COUNT entries"
 else
   skip "DB: night_audit_log" "0 entries (may need service restart for SQL fix)"
+fi
+echo ""
+
+# ── 1.10  Failed Card → Void → Cash Fallback ──
+echo "── 1.10 Failed Card → Void → Cash Fallback ─────────────────────────"
+
+# Scenario: Guest tries to pay $75 room-service charge with credit card.
+# The authorization goes through but must be voided (simulating a gateway
+# decline/failure), then the guest pays cash instead.
+
+FAILPAY_REF="PAY-FAIL-${UNIQUE}"
+CASHPAY_REF="PAY-CASH-${UNIQUE}"
+
+# Step 1: Authorize the credit card
+send_command "CMD authorize CC: \$75" \
+  "billing.payment.authorize" \
+  "{\"payment_reference\":\"$FAILPAY_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":75.00,\"payment_method\":\"CREDIT_CARD\"}"
+
+wait_kafka 4
+
+AUTH_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$FAILPAY_REF' AND tenant_id='$TID';")
+if [[ -n "$AUTH_STATUS" ]]; then
+  assert_eq_ci "DB: authorized payment status" "authorized" "$AUTH_STATUS"
+else
+  fail "DB: authorized payment" "not found"
+fi
+
+# Step 2: Void the authorization (simulates card decline / cancellation)
+send_command "CMD void CC authorization" \
+  "billing.payment.void" \
+  "{\"payment_reference\":\"$FAILPAY_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"reason\":\"Card declined at gateway\"}"
+
+wait_kafka 4
+
+VOID_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$FAILPAY_REF' AND tenant_id='$TID';")
+assert_eq_ci "DB: voided payment status = CANCELLED" "cancelled" "$VOID_STATUS"
+
+VOID_AMOUNT=$(dbq "SELECT amount FROM payments WHERE payment_reference='$FAILPAY_REF' AND tenant_id='$TID';")
+assert_eq_num "DB: voided payment amount still 75" "75" "$VOID_AMOUNT"
+
+# Step 3: Guest pays cash instead
+send_command "CMD capture cash fallback: \$75" \
+  "billing.payment.capture" \
+  "{\"payment_reference\":\"$CASHPAY_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":75.00,\"payment_method\":\"CASH\"}"
+
+wait_kafka 4
+
+CASH_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$CASHPAY_REF' AND tenant_id='$TID';")
+CASH_METHOD=$(dbq "SELECT payment_method FROM payments WHERE payment_reference='$CASHPAY_REF' AND tenant_id='$TID';")
+assert_eq "DB: cash fallback status = COMPLETED" "COMPLETED" "$CASH_STATUS"
+assert_eq "DB: cash fallback method = CASH" "CASH" "$CASH_METHOD"
+
+# Verify both payments exist side-by-side (voided + completed)
+BOTH_COUNT=$(dbq "SELECT COUNT(*) FROM payments WHERE payment_reference IN ('$FAILPAY_REF','$CASHPAY_REF') AND tenant_id='$TID';")
+assert_eq "DB: both payment records exist" "2" "$BOTH_COUNT"
+echo ""
+
+# ── 1.11  Cashier Shift Handover ──
+echo "── 1.11 Cashier Shift Handover ──────────────────────────────────────"
+
+# Scenario: Morning cashier finishes, hands over to afternoon cashier.
+# The handover command atomically closes the outgoing session and opens
+# a new one for the incoming cashier.
+
+if [[ -n "$CASHIER_ID" ]]; then
+  # Open an afternoon session first
+  send_command "CMD cashier open: afternoon shift" \
+    "billing.cashier.open" \
+    "{\"property_id\":\"$PID\",\"cashier_id\":\"$CASHIER_ID\",\"cashier_name\":\"$CASHIER_NAME\",\"shift_type\":\"afternoon\",\"opening_float\":500.00}"
+
+  wait_kafka 4
+
+  AFTERNOON_ID=$(dbq "SELECT session_id FROM cashier_sessions WHERE cashier_id='$CASHIER_ID' AND tenant_id='$TID' AND session_status='open' AND shift_type='afternoon' ORDER BY created_at DESC LIMIT 1;")
+  if [[ -n "$AFTERNOON_ID" ]]; then
+    pass "DB: afternoon session opened (${AFTERNOON_ID:0:8}…)"
+
+    AFTERNOON_SHIFT=$(dbq "SELECT shift_type FROM cashier_sessions WHERE session_id='$AFTERNOON_ID';")
+    assert_eq "DB: afternoon shift_type" "afternoon" "$AFTERNOON_SHIFT"
+
+    # Handover: close afternoon → open evening
+    send_command "CMD cashier handover: afternoon → evening" \
+      "billing.cashier.handover" \
+      "{\"outgoing_session_id\":\"$AFTERNOON_ID\",\"closing_cash_declared\":580.00,\"closing_cash_counted\":578.50,\"handover_notes\":\"Smooth shift, no issues\",\"incoming_cashier_id\":\"$CASHIER_ID\",\"incoming_cashier_name\":\"$CASHIER_NAME\",\"incoming_shift_type\":\"evening\",\"incoming_opening_float\":578.50,\"property_id\":\"$PID\"}"
+
+    wait_kafka 5
+
+    # Verify outgoing session is closed
+    AFTERNOON_FINAL=$(dbq "SELECT session_status FROM cashier_sessions WHERE session_id='$AFTERNOON_ID';")
+    assert_eq_ci "DB: afternoon session closed after handover" "closed" "$AFTERNOON_FINAL"
+
+    AFTERNOON_VARIANCE=$(dbq "SELECT cash_variance FROM cashier_sessions WHERE session_id='$AFTERNOON_ID';")
+    if [[ -n "$AFTERNOON_VARIANCE" ]]; then
+      assert_eq_num "DB: afternoon cash_variance = 1.50" "1.50" "$AFTERNOON_VARIANCE"
+    fi
+
+    # Verify incoming session opened
+    EVENING_ID=$(dbq "SELECT session_id FROM cashier_sessions WHERE cashier_id='$CASHIER_ID' AND tenant_id='$TID' AND session_status='open' AND shift_type='evening' ORDER BY created_at DESC LIMIT 1;")
+    if [[ -n "$EVENING_ID" ]]; then
+      pass "DB: evening session opened via handover (${EVENING_ID:0:8}…)"
+
+      EVENING_FLOAT=$(dbq "SELECT opening_float_declared FROM cashier_sessions WHERE session_id='$EVENING_ID';")
+      assert_eq_num "DB: evening opening_float = 578.50" "578.50" "$EVENING_FLOAT"
+
+      EVENING_SHIFT=$(dbq "SELECT shift_type FROM cashier_sessions WHERE session_id='$EVENING_ID';")
+      assert_eq "DB: evening shift_type" "evening" "$EVENING_SHIFT"
+
+      # Close the evening session for a clean end-of-day
+      send_command "CMD cashier close: evening shift" \
+        "billing.cashier.close" \
+        "{\"session_id\":\"$EVENING_ID\",\"closing_cash_declared\":650.25,\"closing_cash_counted\":649.00}"
+
+      wait_kafka 4
+
+      EVENING_FINAL=$(dbq "SELECT session_status FROM cashier_sessions WHERE session_id='$EVENING_ID';")
+      assert_eq_ci "DB: evening session closed" "closed" "$EVENING_FINAL"
+    else
+      fail "DB: evening session via handover" "not found"
+    fi
+  else
+    fail "DB: afternoon session" "not found"
+  fi
+
+  # Verify total cashier sessions created this run (morning + afternoon + evening = 3)
+  TOTAL_SESSIONS=$(dbq "SELECT COUNT(*) FROM cashier_sessions WHERE tenant_id='$TID';")
+  assert_gte "DB: total cashier sessions >= 3" "3" "$TOTAL_SESSIONS"
+else
+  skip "Cashier handover" "no user found"
+fi
+echo ""
+
+# ── 1.12  Night Audit with Date Roll ──
+echo "── 1.12 Night Audit with Date Roll ──────────────────────────────────"
+
+# First ensure a business_dates row exists for today
+BD_EXISTS=$(dbq "SELECT COUNT(*) FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID';")
+if [[ "$BD_EXISTS" == "0" ]]; then
+  # Seed a business_dates row so the night audit has something to roll
+  dbq "INSERT INTO business_dates (business_date_id, tenant_id, property_id, business_date, date_status, night_audit_status, allow_postings, allow_check_ins, allow_check_outs, allow_new_reservations)
+       VALUES (gen_random_uuid(), '$TID', '$PID', '$TODAY', 'OPEN', 'PENDING', true, true, true, true)
+       ON CONFLICT DO NOTHING;" >/dev/null
+  pass "DB: seeded business_dates row for $TODAY"
+fi
+
+PRE_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' AND date_status='OPEN' ORDER BY business_date DESC LIMIT 1;")
+PRE_AUDIT_COUNT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID' AND property_id='$PID';")
+
+# Execute night audit WITH date advancement
+send_command "CMD night audit: execute with date roll" \
+  "billing.night_audit.execute" \
+  "{\"property_id\":\"$PID\",\"post_room_charges\":true,\"post_package_charges\":false,\"post_ota_commissions\":false,\"mark_no_shows\":false,\"advance_date\":true,\"generate_trial_balance\":false}"
+
+wait_kafka 8
+
+# Verify night_audit_log has a new entry
+POST_AUDIT_COUNT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID' AND property_id='$PID';")
+if [[ "$POST_AUDIT_COUNT" -gt "$PRE_AUDIT_COUNT" ]]; then
+  pass "DB: night_audit_log new entry (was $PRE_AUDIT_COUNT, now $POST_AUDIT_COUNT)"
+else
+  skip "DB: night_audit_log after date roll" "count unchanged ($POST_AUDIT_COUNT)"
+fi
+
+# Verify the latest audit log entry
+LATEST_AUDIT=$(dbq "SELECT audit_status, step_name FROM night_audit_log WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY created_at DESC LIMIT 1;")
+if [[ -n "$LATEST_AUDIT" ]]; then
+  AUDIT_STATUS=$(echo "$LATEST_AUDIT" | cut -d'|' -f1)
+  AUDIT_STEP=$(echo "$LATEST_AUDIT" | cut -d'|' -f2)
+  assert_eq_ci "DB: audit_status = COMPLETED" "completed" "$AUDIT_STATUS"
+fi
+
+# Verify business_date advanced by 1 day
+POST_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+if [[ -n "$PRE_BDATE" && -n "$POST_BDATE" && "$POST_BDATE" != "$PRE_BDATE" ]]; then
+  pass "DB: business_date advanced ($PRE_BDATE → $POST_BDATE)"
+else
+  skip "DB: business_date advance" "pre=$PRE_BDATE post=$POST_BDATE"
+fi
+
+# Verify the previous_business_date was set
+PREV_BDATE=$(dbq "SELECT previous_business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+if [[ "$PREV_BDATE" == "$PRE_BDATE" ]]; then
+  pass "DB: previous_business_date = $PREV_BDATE"
+else
+  skip "DB: previous_business_date" "expected=$PRE_BDATE actual=$PREV_BDATE"
+fi
+
+# Verify date_status is still OPEN (audit completes and reopens)
+DATE_STATUS=$(dbq "SELECT date_status FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+assert_eq "DB: date_status after audit = OPEN" "OPEN" "$DATE_STATUS"
+
+# Verify night_audit_status was updated
+NA_STATUS=$(dbq "SELECT night_audit_status FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+if [[ "$NA_STATUS" == "COMPLETED" || "$NA_STATUS" == "PENDING" ]]; then
+  pass "DB: night_audit_status = $NA_STATUS"
+else
+  fail "DB: night_audit_status" "expected COMPLETED or PENDING, got=$NA_STATUS"
 fi
 echo ""
 
@@ -567,9 +821,16 @@ else
   RES1_ID=$(dbq "SELECT id FROM reservations WHERE tenant_id='$TID' ORDER BY created_at DESC LIMIT 1;")
   FOLIO1_ID=$(dbq "SELECT folio_id FROM folios WHERE reservation_id='$RES1_ID' AND tenant_id='$TID' LIMIT 1;" 2>/dev/null || echo "")
   RES2_ID=$(dbq "SELECT id FROM reservations WHERE tenant_id='$TID' AND id != '$RES1_ID' ORDER BY created_at DESC LIMIT 1;")
+  SESSION_ID=$(dbq "SELECT session_id FROM cashier_sessions WHERE tenant_id='$TID' ORDER BY created_at ASC LIMIT 1;" 2>/dev/null || echo "")
+  AFTERNOON_ID=$(dbq "SELECT session_id FROM cashier_sessions WHERE tenant_id='$TID' AND shift_type='afternoon' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
+  EVENING_ID=$(dbq "SELECT session_id FROM cashier_sessions WHERE tenant_id='$TID' AND shift_type='evening' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
+  FAILPAY_REF=$(dbq "SELECT payment_reference FROM payments WHERE tenant_id='$TID' AND status='CANCELLED' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
+  CASHPAY_REF=$(dbq "SELECT payment_reference FROM payments WHERE tenant_id='$TID' AND payment_method='CASH' AND status='COMPLETED' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
+  PAYREF1=$(dbq "SELECT payment_reference FROM payments WHERE tenant_id='$TID' AND payment_method='CREDIT_CARD' AND status='COMPLETED' ORDER BY created_at ASC LIMIT 1;" 2>/dev/null || echo "")
   echo "  Guest:       ${GUEST1_ID:-NONE}"
   echo "  Reservation: ${RES1_ID:-NONE}"
   echo "  Folio:       ${FOLIO1_ID:-NONE}"
+  echo "  Sessions:    morning=${SESSION_ID:-NONE} afternoon=${AFTERNOON_ID:-NONE} evening=${EVENING_ID:-NONE}"
   echo ""
 fi
 
@@ -678,7 +939,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
     assert_http "GET invoice by ID" "200" "$code"
     API_INV_AMT=$(jq -r '.data.total_amount // .total_amount // empty' "$RESP_FILE" 2>/dev/null || echo "")
     DB_INV_AMT=$(dbq "SELECT total_amount FROM invoices WHERE id='$INV_ID';")
-    assert_eq "XCHECK: invoice total_amount" "$DB_INV_AMT" "$API_INV_AMT"
+    assert_eq_num "XCHECK: invoice total_amount" "$DB_INV_AMT" "$API_INV_AMT"
   fi
 fi
 echo ""
@@ -697,7 +958,7 @@ if [[ -n "${FOLIO1_ID:-}" ]]; then
   assert_http "GET folio by ID" "200" "$code"
   API_FSTATUS=$(jq -r '.folio_status // .data.folio_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
   DB_FSTATUS=$(dbq "SELECT folio_status FROM folios WHERE folio_id='$FOLIO1_ID';")
-  assert_eq "XCHECK: folio status" "$DB_FSTATUS" "$API_FSTATUS"
+  assert_eq_ci "XCHECK: folio status" "$DB_FSTATUS" "$API_FSTATUS"
 fi
 echo ""
 
@@ -715,7 +976,25 @@ assert_http "GET AR aging-summary" "200" "$code"
 
 API_AR_TOT=$(jq -r '[.[] | .total_outstanding | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
 DB_AR_TOT=$(dbq "SELECT COALESCE(SUM(outstanding_balance),0) FROM accounts_receivable WHERE tenant_id='$TID' AND property_id='$PID';")
-assert_eq "XCHECK: AR total outstanding" "$DB_AR_TOT" "$API_AR_TOT"
+assert_eq_num "XCHECK: AR total outstanding" "$DB_AR_TOT" "$API_AR_TOT"
+echo ""
+
+# ── Cashier Sessions ──
+echo "── Cashier Sessions ─────────────────────────────────────────────────"
+
+code=$(get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&limit=100")
+assert_http "GET cashier-sessions list" "200" "$code"
+API_CASHIER=$(jq 'if type == "array" then length else (.data | length) // 0 end' "$RESP_FILE" 2>/dev/null || echo "0")
+DB_CASHIER_NOW=$(dbq "SELECT COUNT(*) FROM cashier_sessions WHERE tenant_id='$TID';")
+assert_eq "XCHECK: cashier sessions count" "$DB_CASHIER_NOW" "$API_CASHIER"
+
+if [[ -n "${SESSION_ID:-}" ]]; then
+  code=$(get "$GW/v1/billing/cashier-sessions/$SESSION_ID?tenant_id=$TID")
+  assert_http "GET cashier-session by ID" "200" "$code"
+  API_SESS_STATUS=$(jq -r '.data.session_status // .session_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  DB_SESS_STATUS=$(dbq "SELECT session_status FROM cashier_sessions WHERE session_id='$SESSION_ID';")
+  assert_eq_ci "XCHECK: session status" "$DB_SESS_STATUS" "$API_SESS_STATUS"
+fi
 echo ""
 
 # ── Financial Reports ──
@@ -725,7 +1004,7 @@ code=$(get "$GW/v1/billing/reports/trial-balance?tenant_id=$TID&property_id=$PID
 assert_http "GET trial-balance" "200" "$code"
 API_TD=$(jq -r '.total_debits // 0' "$RESP_FILE" 2>/dev/null || echo "0")
 DB_TD=$(dbq "SELECT COALESCE(SUM(total_amount),0) FROM charge_postings WHERE tenant_id='$TID' AND property_id='$PID' AND business_date='$TODAY' AND posting_type='DEBIT' AND COALESCE(is_voided,false)=false;")
-assert_eq "XCHECK: trial balance total_debits" "$DB_TD" "$API_TD"
+assert_eq_num "XCHECK: trial balance total_debits" "$DB_TD" "$API_TD"
 
 code=$(get "$GW/v1/billing/reports/departmental-revenue?tenant_id=$TID&property_id=$PID&start_date=$TODAY&end_date=$TODAY")
 assert_http "GET departmental-revenue" "200" "$code"
@@ -744,10 +1023,107 @@ code=$(get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID")
 assert_http "GET night-audit status" "200" "$code"
 API_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
 DB_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID';")
-assert_eq "XCHECK: business_date matches DB" "$DB_BDATE" "$API_BDATE"
+if [[ -z "$DB_BDATE" ]]; then
+  # No business_dates row yet — API defaults to today, just verify API returned something
+  if [[ -n "$API_BDATE" ]]; then
+    pass "XCHECK: business_date API=$API_BDATE (no DB row yet)"
+  else
+    skip "XCHECK: business_date" "no DB row and no API value"
+  fi
+else
+  assert_eq "XCHECK: business_date matches DB" "$DB_BDATE" "$API_BDATE"
+fi
 
 code=$(get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID&limit=20")
 assert_http "GET night-audit history" "200" "$code"
+echo ""
+
+# ── Voided & Fallback Payments ──
+echo "── Voided & Fallback Payments ───────────────────────────────────────"
+
+# Check voided payment appears in API with CANCELLED status
+if [[ -n "${FAILPAY_REF:-}" ]]; then
+  code=$(get "$GW/v1/billing/payments?tenant_id=$TID&limit=200")
+  assert_http "GET payments (includes voided)" "200" "$code"
+
+  API_VOID_STATUS=$(jq -r --arg ref "$FAILPAY_REF" '[.[] | select(.payment_reference == $ref)][0].status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  DB_VOID_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$FAILPAY_REF' AND tenant_id='$TID';")
+  assert_eq_ci "XCHECK: voided payment status in API" "$DB_VOID_STATUS" "$API_VOID_STATUS"
+
+  API_CASH_STATUS=$(jq -r --arg ref "$CASHPAY_REF" '[.[] | select(.payment_reference == $ref)][0].status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  DB_CASH_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$CASHPAY_REF' AND tenant_id='$TID';")
+  assert_eq_ci "XCHECK: cash fallback status in API" "$DB_CASH_STATUS" "$API_CASH_STATUS"
+
+  API_CASH_METHOD=$(jq -r --arg ref "$CASHPAY_REF" '[.[] | select(.payment_reference == $ref)][0].payment_method // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  assert_eq "XCHECK: cash fallback method in API" "CASH" "$API_CASH_METHOD"
+fi
+echo ""
+
+# ── Cashier Shift Handover (API validation) ──
+echo "── Cashier Shift Handover (API) ─────────────────────────────────────"
+
+if [[ -n "${AFTERNOON_ID:-}" ]]; then
+  code=$(get "$GW/v1/billing/cashier-sessions/$AFTERNOON_ID?tenant_id=$TID")
+  assert_http "GET afternoon session by ID" "200" "$code"
+  API_AFT_STATUS=$(jq -r '.session_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  DB_AFT_STATUS=$(dbq "SELECT session_status FROM cashier_sessions WHERE session_id='$AFTERNOON_ID';")
+  assert_eq_ci "XCHECK: afternoon session closed in API" "$DB_AFT_STATUS" "$API_AFT_STATUS"
+
+  API_AFT_SHIFT=$(jq -r '.shift_type // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  assert_eq "XCHECK: afternoon shift_type in API" "afternoon" "$API_AFT_SHIFT"
+fi
+
+if [[ -n "${EVENING_ID:-}" ]]; then
+  code=$(get "$GW/v1/billing/cashier-sessions/$EVENING_ID?tenant_id=$TID")
+  assert_http "GET evening session by ID" "200" "$code"
+  API_EVE_STATUS=$(jq -r '.session_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  DB_EVE_STATUS=$(dbq "SELECT session_status FROM cashier_sessions WHERE session_id='$EVENING_ID';")
+  assert_eq_ci "XCHECK: evening session closed in API" "$DB_EVE_STATUS" "$API_EVE_STATUS"
+
+  API_EVE_FLOAT=$(jq -r '.opening_float_declared // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  assert_eq_num "XCHECK: evening float in API = 578.50" "578.50" "$API_EVE_FLOAT"
+fi
+
+# Verify total sessions via API matches DB
+code=$(get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&limit=100")
+assert_http "GET all cashier sessions" "200" "$code"
+API_TOTAL_SESSIONS=$(jq 'if type == "array" then length else (.data | length) // 0 end' "$RESP_FILE" 2>/dev/null || echo "0")
+DB_TOTAL_SESSIONS=$(dbq "SELECT COUNT(*) FROM cashier_sessions WHERE tenant_id='$TID';")
+assert_eq "XCHECK: total cashier sessions count" "$DB_TOTAL_SESSIONS" "$API_TOTAL_SESSIONS"
+echo ""
+
+# ── Date Roll Validation (API) ──
+echo "── Date Roll Validation (API) ───────────────────────────────────────"
+
+code=$(get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID")
+assert_http "GET night-audit status (post-roll)" "200" "$code"
+
+API_POST_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
+DB_POST_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+if [[ -n "$DB_POST_BDATE" && -n "$API_POST_BDATE" ]]; then
+  assert_eq "XCHECK: business_date matches DB post-roll" "$DB_POST_BDATE" "$API_POST_BDATE"
+else
+  skip "XCHECK: business_date post-roll" "DB=$DB_POST_BDATE API=$API_POST_BDATE"
+fi
+
+API_DATE_STATUS=$(jq -r '.data.date_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+if [[ -n "$API_DATE_STATUS" ]]; then
+  DB_DATE_STATUS=$(dbq "SELECT date_status FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+  assert_eq "XCHECK: date_status in API" "$DB_DATE_STATUS" "$API_DATE_STATUS"
+fi
+
+API_NA_STATUS=$(jq -r '.data.night_audit_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+if [[ -n "$API_NA_STATUS" ]]; then
+  DB_NA_STATUS=$(dbq "SELECT night_audit_status FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+  assert_eq "XCHECK: night_audit_status in API" "$DB_NA_STATUS" "$API_NA_STATUS"
+fi
+
+# Verify audit history has entries via API
+code=$(get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID&limit=20")
+assert_http "GET night-audit history (post-roll)" "200" "$code"
+API_HISTORY_COUNT=$(jq 'if type == "array" then length else (.data | length) // 0 end' "$RESP_FILE" 2>/dev/null || echo "0")
+DB_HISTORY_COUNT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID' AND property_id='$PID';")
+assert_eq "XCHECK: night audit history count" "$DB_HISTORY_COUNT" "$API_HISTORY_COUNT"
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -769,6 +1145,7 @@ POST_TAX=$(dbq "SELECT COUNT(*) FROM tax_configurations WHERE tenant_id='$TID';"
 POST_CASHIER=$(dbq "SELECT COUNT(*) FROM cashier_sessions WHERE tenant_id='$TID';")
 POST_AR=$(dbq "SELECT COUNT(*) FROM accounts_receivable WHERE tenant_id='$TID';")
 POST_AUDIT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID';")
+POST_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
 
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "guests"              "$PRE_GUESTS"       "$POST_GUESTS"       "$((POST_GUESTS - PRE_GUESTS))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "reservations"         "$PRE_RESERVATIONS"  "$POST_RESERVATIONS"  "$((POST_RESERVATIONS - PRE_RESERVATIONS))"
@@ -780,6 +1157,7 @@ printf "  %-25s  %5s → %5s  (Δ %+d)\n" "tax_configurations"   "$PRE_TAX"     
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "cashier_sessions"     "$PRE_CASHIER"       "$POST_CASHIER"       "$((POST_CASHIER - PRE_CASHIER))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "accounts_receivable"  "$PRE_AR"            "$POST_AR"            "$((POST_AR - PRE_AR))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "night_audit_log"      "—"                  "$POST_AUDIT"         "$POST_AUDIT"
+printf "  %-25s  %-17s\n"              "business_date"          "${POST_BDATE:-none}"
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════

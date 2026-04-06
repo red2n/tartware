@@ -201,6 +201,25 @@ export const tenantInvoiceParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + folio routes. */
+export const tenantFolioParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    folioId: {
+      type: "string",
+      format: "uuid",
+      description: "Folio identifier.",
+    },
+  },
+  required: ["tenantId", "folioId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 /** Path params schema for tenant + generic command dispatch routes. */
 export const tenantCommandParamsSchema = {
   type: "object",

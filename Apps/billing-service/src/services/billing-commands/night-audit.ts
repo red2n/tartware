@@ -472,21 +472,21 @@ async function postOtaCommissions(
     commission_percentage: string;
     booking_source_id: string;
   }>(
-    `SELECT r.id AS reservation_id, r.room_rate, r.source,
-            bs.commission_percentage, bs.id AS booking_source_id
+    `SELECT r.id AS reservation_id, r.room_rate, r.source::text,
+            bs.commission_percentage, bs.source_id AS booking_source_id
      FROM reservations r
      INNER JOIN booking_sources bs
        ON bs.tenant_id = r.tenant_id
-       AND bs.source_code = r.source
+       AND bs.source_code = r.source::text
        AND bs.commission_type = 'PERCENTAGE'
        AND bs.commission_percentage > 0
      WHERE r.tenant_id = $1 AND r.property_id = $2 AND r.status = 'CHECKED_IN'
        AND r.is_deleted = false
-       AND r.source IN ('ota', 'channel_manager')
+       AND r.source IN ('OTA'::reservation_source, 'CORPORATE'::reservation_source)
        AND NOT EXISTS (
          SELECT 1 FROM commission_tracking ct
          WHERE ct.reservation_id = r.id AND ct.tenant_id = r.tenant_id
-           AND ct.business_date = $3::date
+           AND ct.transaction_date = $3::date
        )`,
     [tenantId, propertyId, auditDate],
   );
@@ -497,19 +497,20 @@ async function postOtaCommissions(
     if (roomRate <= 0 || commPct <= 0) continue;
 
     const commissionAmount = Number(((roomRate * commPct) / 100).toFixed(2));
+    const commissionNumber = `COMM-${ota.reservation_id.slice(0, 8)}-${auditDate}`;
 
     try {
       await query(
         `INSERT INTO commission_tracking (
-           tenant_id, property_id, reservation_id, booking_source_id,
-           commission_amount, commission_percentage, commission_base_amount,
-           business_date, status, commission_type,
-           notes, created_by, updated_by
+           tenant_id, property_id, reservation_id, source_id,
+           commission_number, commission_amount, commission_percent, base_amount,
+           transaction_date, commission_status, commission_type,
+           calculation_method, notes, created_by, updated_by
          ) VALUES (
            $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-           $5, $6, $7,
-           $8::date, 'pending', 'PERCENTAGE',
-           'Auto-accrued by night audit', $9::uuid, $9::uuid
+           $5, $6, $7, $8,
+           $9::date, 'pending', 'ota',
+           'percentage', 'Auto-accrued by night audit', $10::uuid, $10::uuid
          )
          ON CONFLICT DO NOTHING`,
         [
@@ -517,6 +518,7 @@ async function postOtaCommissions(
           propertyId,
           ota.reservation_id,
           ota.booking_source_id,
+          commissionNumber,
           commissionAmount,
           commPct,
           roomRate,

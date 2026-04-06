@@ -531,6 +531,43 @@ export type AnalyticsStatus = z.infer<typeof AnalyticsStatusEnum>;
 // =====================================================
 
 /**
+ * Folio Type - Classification of billing folios
+ * Matches the CHECK constraint on the folios table.
+ */
+export const FolioTypeEnum = z.enum([
+	"GUEST",
+	"MASTER",
+	"CITY_LEDGER",
+	"INCIDENTAL",
+	"HOUSE_ACCOUNT",
+]);
+export type FolioType = z.infer<typeof FolioTypeEnum>;
+
+/**
+ * Folio Status - Folio lifecycle states
+ * Matches the CHECK constraint on the folios table.
+ */
+export const FolioStatusEnum = z.enum([
+	"OPEN",
+	"CLOSED",
+	"TRANSFERRED",
+	"SETTLED",
+]);
+export type FolioStatus = z.infer<typeof FolioStatusEnum>;
+
+/**
+ * Invoice Type - Document classification for invoices
+ * Standard: standard invoice, proforma, credit_note (reversal), debit_note.
+ */
+export const InvoiceTypeEnum = z.enum([
+	"STANDARD",
+	"PROFORMA",
+	"CREDIT_NOTE",
+	"DEBIT_NOTE",
+]);
+export type InvoiceType = z.infer<typeof InvoiceTypeEnum>;
+
+/**
  * Invoice Status - Billing lifecycle
  * @database invoice_status
  */
@@ -544,6 +581,8 @@ export const InvoiceStatusEnum = z.enum([
 	"CANCELLED",
 	"REFUNDED",
 	"FINALIZED",
+	"VOIDED",
+	"WRITTEN_OFF",
 ]);
 export type InvoiceStatus = z.infer<typeof InvoiceStatusEnum>;
 
@@ -1224,6 +1263,9 @@ export const AllEnums = {
 	MetricTypeEnum,
 	TimeGranularityEnum,
 	AnalyticsStatusEnum,
+	FolioTypeEnum,
+	FolioStatusEnum,
+	InvoiceTypeEnum,
 	InvoiceStatusEnum,
 	CompanyTypeEnum,
 	CreditStatusEnum,

@@ -365,7 +365,9 @@ CREATE TYPE invoice_status AS ENUM (
     'OVERDUE',          -- Payment overdue
     'CANCELLED',        -- Invoice cancelled
     'REFUNDED',         -- Invoice refunded
-    'FINALIZED'         -- Invoice finalized, locked from edits
+    'FINALIZED',        -- Invoice finalized, locked from edits
+    'VOIDED',           -- Draft invoice voided (never issued)
+    'WRITTEN_OFF'       -- Balance written off (uncollectable)
 );
 
 -- =====================================================

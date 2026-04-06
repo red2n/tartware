@@ -49,6 +49,8 @@ import {
 import {
   cashierHandover,
   closeFiscalPeriod,
+  createCreditNote,
+  createFolio,
   createFolioWindow,
   createTaxConfig,
   deleteTaxConfig,
@@ -56,6 +58,7 @@ import {
   lockFiscalPeriod,
   reopenFiscalPeriod,
   updateTaxConfig,
+  voidInvoice,
 } from "../services/billing-commands/index.js";
 
 let consumer: Consumer | null = null;
@@ -335,6 +338,24 @@ const routeBillingCommand = async (
       return;
     case "billing.cashier.handover":
       await cashierHandover(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.create":
+      await createFolio(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.invoice.void":
+      await voidInvoice(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.credit_note.create":
+      await createCreditNote(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

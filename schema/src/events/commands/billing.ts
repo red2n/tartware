@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-import { PaymentMethodEnum } from "../../shared/enums.js";
+import { FolioTypeEnum, PaymentMethodEnum } from "../../shared/enums.js";
 
 export const BillingPaymentCaptureCommandSchema = z.object({
 	payment_reference: z.string().trim().min(3).max(100),
@@ -856,4 +856,79 @@ export const BillingCashierHandoverCommandSchema = z.object({
 
 export type BillingCashierHandoverCommand = z.infer<
 	typeof BillingCashierHandoverCommandSchema
+>;
+
+// ─── Folio Create ───────────────────────────────────────────────────────
+
+/**
+ * Create a standalone folio (house account, city ledger, walk-in, incidental).
+ * Industry standard: PMS systems support folios independent of reservations
+ * for walk-in POS charges, company direct-bill, internal house accounts, etc.
+ * reservation_id is optional — only required for GUEST-type folios.
+ */
+export const BillingFolioCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	folio_type: FolioTypeEnum,
+	/** Required for GUEST folios, optional for others. */
+	reservation_id: z.string().uuid().optional(),
+	/** Guest or company contact. */
+	guest_id: z.string().uuid().optional(),
+	/** Descriptive label for the folio (e.g., "Acme Corp City Ledger"). */
+	folio_name: z.string().max(200).optional(),
+	/** Billing address for the folio. */
+	billing_address: z.record(z.unknown()).optional(),
+	/** Tax exemption reference, if applicable. */
+	tax_exempt_id: z.string().max(100).optional(),
+	currency: z.string().length(3).default("USD"),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioCreateCommand = z.infer<
+	typeof BillingFolioCreateCommandSchema
+>;
+
+// ─── Invoice Void ───────────────────────────────────────────────────────
+
+/**
+ * Void a DRAFT invoice that was never issued.
+ * Industry standard: Only DRAFT invoices can be voided (deleted).
+ * Issued invoices must be corrected via credit notes, never voided.
+ */
+export const BillingInvoiceVoidCommandSchema = z.object({
+	invoice_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingInvoiceVoidCommand = z.infer<
+	typeof BillingInvoiceVoidCommandSchema
+>;
+
+// ─── Credit Note ────────────────────────────────────────────────────────
+
+/**
+ * Create a credit note against a finalized/sent/paid invoice.
+ * Industry standard (EU VAT, US GAAP, HMRC): Issued invoices are never
+ * modified or deleted. Corrections are always a separate credit note
+ * document that references the original invoice. Full or partial amounts.
+ */
+export const BillingCreditNoteCreateCommandSchema = z.object({
+	/** The original invoice being corrected. */
+	original_invoice_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	/** Amount to credit — must be positive, cannot exceed original total. */
+	credit_amount: z.coerce.number().positive(),
+	/** Reason for the credit note (required for audit trail). */
+	reason: z.string().min(3).max(1000),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCreditNoteCreateCommand = z.infer<
+	typeof BillingCreditNoteCreateCommandSchema
 >;
