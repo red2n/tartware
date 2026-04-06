@@ -139,14 +139,35 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
 
   const shouldProcess = (metadata: CommandEnvelope["metadata"]): metadata is CommandMetadata => {
     if (!metadata) {
+      input.logger.debug?.(
+        { label: input.commandLabel },
+        "shouldProcess: metadata is null/undefined",
+      );
       return false;
     }
     if (metadata.targetService && metadata.targetService !== input.targetServiceId) {
+      input.logger.debug?.(
+        {
+          label: input.commandLabel,
+          target: metadata.targetService,
+          expected: input.targetServiceId,
+          command: metadata.commandName,
+        },
+        "shouldProcess: target mismatch — skipping",
+      );
       return false;
     }
     if (typeof metadata.commandName !== "string" || typeof metadata.tenantId !== "string") {
+      input.logger.debug?.(
+        { label: input.commandLabel },
+        "shouldProcess: missing commandName or tenantId",
+      );
       return false;
     }
+    input.logger.debug?.(
+      { label: input.commandLabel, command: metadata.commandName, target: metadata.targetService },
+      "shouldProcess: WILL PROCESS",
+    );
     return metadata.commandName.length > 0 && metadata.tenantId.length > 0;
   };
 

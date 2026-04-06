@@ -437,7 +437,7 @@ export const BillingArPostCommandSchema = z.object({
 	account_id: z.string().uuid(),
 	account_name: z.string().max(255),
 	amount: z.number().positive(),
-	payment_terms: z.string().max(50).default("NET_30"),
+	payment_terms: z.string().max(50).default("net_30"),
 	notes: z.string().max(2000).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -499,7 +499,7 @@ export const BillingCashierOpenCommandSchema = z.object({
 	cashier_name: z.string().max(200),
 	terminal_id: z.string().max(50).optional(),
 	shift_type: z
-		.enum(["morning", "afternoon", "night", "full_day"])
+		.enum(["morning", "afternoon", "evening", "night", "full_day", "custom"])
 		.default("full_day"),
 	opening_float: z.coerce.number().nonnegative().default(0),
 	business_date: z.coerce.date().optional(),
@@ -709,7 +709,7 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 	city: z.string().max(100).optional(),
 	jurisdiction_name: z.string().max(200).optional(),
 	jurisdiction_level: z
-		.enum(["federal", "state", "county", "city", "district", "special"])
+		.enum(["federal", "state", "county", "city", "local", "special"])
 		.optional(),
 	tax_rate: z.coerce.number().min(0).max(100),
 	is_percentage: z.boolean().default(true),
@@ -723,17 +723,11 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 	compound_order: z.coerce.number().int().min(0).optional(),
 	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
 	calculation_method: z
-		.enum(["standard", "reverse", "inclusive", "tiered"])
-		.default("standard"),
+		.enum(["inclusive", "exclusive", "compound", "cascading", "additive", "tiered", "progressive", "flat", "custom"])
+		.default("exclusive"),
 	rounding_method: z
-		.enum([
-			"round_half_up",
-			"round_half_down",
-			"round_up",
-			"round_down",
-			"bankers",
-		])
-		.default("round_half_up"),
+		.enum(["standard", "up", "down", "nearest", "none"])
+		.default("standard"),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -780,16 +774,10 @@ export const BillingTaxConfigUpdateCommandSchema = z.object({
 	compound_order: z.coerce.number().int().min(0).optional(),
 	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
 	calculation_method: z
-		.enum(["standard", "reverse", "inclusive", "tiered"])
+		.enum(["inclusive", "exclusive", "compound", "cascading", "additive", "tiered", "progressive", "flat", "custom"])
 		.optional(),
 	rounding_method: z
-		.enum([
-			"round_half_up",
-			"round_half_down",
-			"round_up",
-			"round_down",
-			"bankers",
-		])
+		.enum(["standard", "up", "down", "nearest", "none"])
 		.optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -857,7 +845,7 @@ export const BillingCashierHandoverCommandSchema = z.object({
 	incoming_cashier_name: z.string().max(200),
 	incoming_terminal_id: z.string().max(50).optional(),
 	incoming_shift_type: z
-		.enum(["morning", "afternoon", "night", "full_day"])
+		.enum(["morning", "afternoon", "evening", "night", "full_day", "custom"])
 		.default("full_day"),
 	/** Opening float for the incoming session (defaults to counted cash). */
 	incoming_opening_float: z.coerce.number().nonnegative().optional(),

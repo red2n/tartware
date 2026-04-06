@@ -555,7 +555,7 @@ async function computeTrialBalance(
        COALESCE(SUM(CASE WHEN posting_type = 'CREDIT' THEN total_amount ELSE 0 END), 0) -
        COALESCE((SELECT SUM(amount) FROM payments
                  WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-                   AND business_date = $3::date AND status = 'COMPLETED'
+                   AND processed_at::date = $3::date AND status = 'COMPLETED'
                    AND transaction_type IN ('CAPTURE', 'REFUND', 'PARTIAL_REFUND')), 0) AS variance
      FROM charge_postings
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid

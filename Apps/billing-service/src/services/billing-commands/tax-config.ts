@@ -67,8 +67,8 @@ export const createTaxConfig = async (payload: unknown, context: CommandContext)
       command.is_compound_tax ?? false,
       command.compound_order ?? null,
       command.compound_on_tax_codes ?? null,
-      command.calculation_method ?? "standard",
-      command.rounding_method ?? "round_half_up",
+      command.calculation_method ?? "exclusive",
+      command.rounding_method ?? "standard",
       asUuid(actorId),
     ],
   );

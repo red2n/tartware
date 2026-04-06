@@ -135,7 +135,7 @@ export const closeCashierSession = async (
        COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'REFUND'), 0) AS total_refunds
      FROM payments
      WHERE tenant_id = $1 AND property_id = $2
-       AND payment_date::date = $3::date`,
+       AND processed_at::date = $3::date`,
     [tenantId, session.property_id, session.business_date],
   );
   const agg = aggRows[0] ?? {};
