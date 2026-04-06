@@ -1,5 +1,9 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { CashierSessionListItemSchema, ShiftSummaryResponseSchema } from "@tartware/schemas";
+import {
+  CashierSessionListItemSchema,
+  CashierSessionListResponseSchema,
+  ShiftSummaryResponseSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -28,7 +32,6 @@ export const registerCashierRoutes = (app: FastifyInstance): void => {
 
   type CashierSessionListQuery = z.infer<typeof CashierSessionListQuerySchema>;
 
-  const CashierSessionListResponseSchema = z.array(CashierSessionListItemSchema);
   const CashierSessionListQueryJsonSchema = schemaFromZod(
     CashierSessionListQuerySchema,
     "CashierSessionListQuery",
@@ -73,7 +76,10 @@ export const registerCashierRoutes = (app: FastifyInstance): void => {
         offset,
       });
 
-      return CashierSessionListResponseSchema.parse(sessions);
+      return CashierSessionListResponseSchema.parse({
+        data: sessions,
+        meta: { count: sessions.length },
+      });
     },
   );
 

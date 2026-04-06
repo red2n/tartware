@@ -1,6 +1,7 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   TaxConfigurationListItemSchema,
+  TaxConfigurationListResponseSchema,
   TaxTypeEnum,
   TrialBalanceResponseSchema,
 } from "@tartware/schemas";
@@ -43,13 +44,12 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
 
   type TaxConfigListQuery = z.infer<typeof TaxConfigListQuerySchema>;
 
-  const TaxConfigListResponseSchema = z.array(TaxConfigurationListItemSchema);
   const TaxConfigListQueryJsonSchema = schemaFromZod(
     TaxConfigListQuerySchema,
     "TaxConfigListQuery",
   );
   const TaxConfigListResponseJsonSchema = schemaFromZod(
-    TaxConfigListResponseSchema,
+    TaxConfigurationListResponseSchema,
     "TaxConfigListResponse",
   );
   const TaxConfigDetailJsonSchema = schemaFromZod(
@@ -99,7 +99,10 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
         offset,
       });
 
-      return TaxConfigListResponseSchema.parse(configs);
+      return TaxConfigurationListResponseSchema.parse({
+        data: configs,
+        meta: { count: configs.length },
+      });
     },
   );
 

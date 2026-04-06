@@ -4,6 +4,7 @@ import {
   AccountsReceivableListItemSchema,
   ArAgingSummarySchema,
   InvoiceListItemSchema,
+  InvoiceListResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -35,7 +36,6 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
 
   type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
 
-  const InvoiceListResponseSchema = z.array(InvoiceListItemSchema);
   const InvoiceListQueryJsonSchema = schemaFromZod(InvoiceListQuerySchema, "InvoiceListQuery");
   const InvoiceListResponseJsonSchema = schemaFromZod(
     InvoiceListResponseSchema,
@@ -60,7 +60,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const { tenant_id, property_id, status, reservation_id, guest_id, limit, offset } =
         InvoiceListQuerySchema.parse(request.query);
-      return listInvoices({
+      const invoices = await listInvoices({
         tenantId: tenant_id,
         propertyId: property_id,
         status,
@@ -68,6 +68,10 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
         guestId: guest_id,
         limit,
         offset,
+      });
+      return InvoiceListResponseSchema.parse({
+        data: invoices,
+        meta: { count: invoices.length },
       });
     },
   );
@@ -121,7 +125,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
     status: z.string().optional(),
     account_type: z.string().optional(),
     aging_bucket: z.string().optional(),
-    limit: z.coerce.number().int().positive().max(200).default(100),
+    limit: z.coerce.number().int().positive().max(500).default(100),
     offset: z.coerce.number().int().min(0).default(0),
   });
 
