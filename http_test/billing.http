@@ -1,8 +1,19 @@
 ###############################################################################
-# BILLING SERVICE - Payments & Invoices
+# BILLING SERVICE - Payments, Invoices, Accounts Receivable, Reports
 # Routes via API Gateway (localhost:8080) -> billing-service (port 3025)
+#                                        -> housekeeping-service (port 3030) [cashier-sessions]
 #
-# Content: Payment Listing and Filtering (READ OPERATIONS)
+# Content:
+#   1. Login
+#   2. Payment Listing & Filtering
+#   3. Invoices
+#   4. Folios
+#   5. Charge Postings
+#   6. Tax Configurations
+#   7. Accounts Receivable (AR)
+#   8. Financial Reports (Trial Balance, Revenue, Tax Summary, Commissions)
+#   9. Cashier Sessions
+#  10. REST-Style Command Dispatch (Writes)
 #
 # WRITE OPERATIONS: All billing write operations go through the
 # Command Center. See command-center.http for:
@@ -308,7 +319,7 @@ Authorization: Bearer {{authToken}}
 
 ###
 # Filter by tax type - SALES
-GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=SALES
+GET {{baseUrl}}/v1/billing/tax-configurations?tenant_id={{tenantId}}&tax_type=sales_tax
 Authorization: Bearer {{authToken}}
 
 ###
@@ -343,7 +354,104 @@ GET {{baseUrl}}/v1/billing/tax-configurations/{{taxConfigId}}?tenant_id={{tenant
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 7. BILLING CASHIER SESSIONS - READ
+# 7. ACCOUNTS RECEIVABLE - LIST WITH FILTERS
+###############################################################################
+
+# List all accounts receivable for tenant
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# List AR for specific property
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by AR status - OPEN
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&status=open&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by AR status - OVERDUE
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&status=overdue&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by account type - CORPORATE
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&account_type=corporate&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by account type - TRAVEL_AGENT
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&account_type=travel_agent&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by aging bucket - CURRENT
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&aging_bucket=current&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by aging bucket - 30_DAYS
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&aging_bucket=30_days&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by aging bucket - 60_DAYS
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&aging_bucket=60_days&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# AR with UI-matching limit (500)
+GET {{baseUrl}}/v1/billing/accounts-receivable?tenant_id={{tenantId}}&limit=500
+Authorization: Bearer {{authToken}}
+
+###
+# Get AR aging summary
+GET {{baseUrl}}/v1/billing/accounts-receivable/aging-summary?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get AR aging summary for specific property
+GET {{baseUrl}}/v1/billing/accounts-receivable/aging-summary?tenant_id={{tenantId}}&property_id={{propertyId}}
+Authorization: Bearer {{authToken}}
+
+###
+# Get AR account by ID
+@arAccountId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+GET {{baseUrl}}/v1/billing/accounts-receivable/{{arAccountId}}?tenant_id={{tenantId}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 8. FINANCIAL REPORTS
+###############################################################################
+
+# Trial balance for today
+GET {{baseUrl}}/v1/billing/reports/trial-balance?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-04-06
+Authorization: Bearer {{authToken}}
+
+###
+# Trial balance for a past date
+GET {{baseUrl}}/v1/billing/reports/trial-balance?tenant_id={{tenantId}}&property_id={{propertyId}}&business_date=2026-04-05
+Authorization: Bearer {{authToken}}
+
+###
+# Departmental revenue - current month
+GET {{baseUrl}}/v1/billing/reports/departmental-revenue?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-04-01&end_date=2026-04-06
+Authorization: Bearer {{authToken}}
+
+###
+# Tax summary - current month
+GET {{baseUrl}}/v1/billing/reports/tax-summary?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-04-01&end_date=2026-04-06
+Authorization: Bearer {{authToken}}
+
+###
+# Commissions report - current month
+GET {{baseUrl}}/v1/billing/reports/commissions?tenant_id={{tenantId}}&property_id={{propertyId}}&start_date=2026-04-01&end_date=2026-04-06
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 9. BILLING CASHIER SESSIONS - READ
 ###############################################################################
 
 # List all cashier sessions (billing-service)
@@ -362,7 +470,7 @@ GET {{baseUrl}}/v1/billing/cashier-sessions/{{cashierSessionId}}?tenant_id={{ten
 Authorization: Bearer {{authToken}}
 
 ###############################################################################
-# 8. REST-STYLE COMMAND DISPATCH
+# 10. REST-STYLE COMMAND DISPATCH
 # Alternative to /v1/commands/{name}/execute pattern
 # These routes dispatch commands via the gateway
 ###############################################################################
