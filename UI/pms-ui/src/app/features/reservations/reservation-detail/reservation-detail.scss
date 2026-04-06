@@ -175,12 +175,33 @@
   }
 }
 
-/* ── Building filter bar in check-in panel ── */
+/* ── Filter bar in check-in panel ── */
+.room-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .building-filter-bar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-1);
+}
+
+.room-type-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+
+  input[type="checkbox"] {
+    cursor: pointer;
+  }
 }
 
 .building-filter-label {

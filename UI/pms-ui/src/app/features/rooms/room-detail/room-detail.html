@@ -51,7 +51,7 @@
               <select class="field-input" [ngModel]="editBuilding()" (ngModelChange)="editBuilding.set($event)">
                 <option value="">— No building —</option>
                 @for (b of buildings(); track b.building_id) {
-                  <option [value]="b.building_name">{{ b.building_name }} ({{ b.building_code }})</option>
+                  <option [value]="b.building_id">{{ b.building_name }} ({{ b.building_code }})</option>
                 }
               </select>
             </div>

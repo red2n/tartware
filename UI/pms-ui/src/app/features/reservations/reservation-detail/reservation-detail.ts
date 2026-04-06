@@ -73,6 +73,7 @@ export class ReservationDetailComponent implements OnInit {
 	readonly roomPageSize = 5;
 	readonly buildings = signal<{ building_id: string; building_name: string }[]>([]);
 	readonly buildingFilter = signal("");
+	readonly showAllRoomTypes = signal(false);
 
 	statusClass = reservationStatusClass;
 
@@ -270,6 +271,7 @@ export class ReservationDetailComponent implements OnInit {
 		this.useAutoAssign.set(true);
 		this.roomPage.set(1);
 		this.buildingFilter.set("");
+		this.showAllRoomTypes.set(false);
 		this.buildings.set([]);
 		void this.loadBuildings();
 		this.loadAvailableRooms();
@@ -287,6 +289,7 @@ export class ReservationDetailComponent implements OnInit {
 
 	cancelAction(): void {
 		this.confirmingCheckIn.set(false);
+		this.showAllRoomTypes.set(false);
 		this.confirmingCheckOut.set(false);
 		this.confirmingCancel.set(false);
 	}
@@ -307,7 +310,7 @@ export class ReservationDetailComponent implements OnInit {
 				check_out_date: r.check_out_date.substring(0, 10),
 				reservation_id: r.id,
 			};
-			if (r.room_type_id) params["room_type_id"] = r.room_type_id;
+			if (r.room_type_id && !this.showAllRoomTypes()) params["room_type_id"] = r.room_type_id;
 			if (this.buildingFilter()) params["building_id"] = this.buildingFilter();
 
 			const res = await this.api.get<AvailabilityResponse>("/rooms/availability", params);
@@ -339,6 +342,14 @@ export class ReservationDetailComponent implements OnInit {
 	/** Apply building filter and reload available rooms. */
 	filterByBuilding(buildingId: string): void {
 		this.buildingFilter.set(buildingId);
+		this.roomPage.set(1);
+		this.selectedRoomId.set(null);
+		this.useAutoAssign.set(true);
+		void this.loadAvailableRooms();
+	}
+
+	toggleShowAllRoomTypes(): void {
+		this.showAllRoomTypes.update((v) => !v);
 		this.roomPage.set(1);
 		this.selectedRoomId.set(null);
 		this.useAutoAssign.set(true);
