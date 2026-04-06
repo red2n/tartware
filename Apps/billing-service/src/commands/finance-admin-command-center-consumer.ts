@@ -7,11 +7,8 @@
 import {
   type CommandEnvelope,
   type CommandMetadata,
-  createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
-import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
-import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
-import type { Consumer } from "kafkajs";
+import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -24,68 +21,20 @@ import {
 } from "../lib/metrics.js";
 import {
   approveCommission,
-  calculateCommission,
-  generateCommissionStatement,
-  markCommissionPaid,
-} from "../services/finance-admin-commands/commission.js";
-import {
-  closeFiscalPeriod,
-  lockFiscalPeriod,
-  reopenFiscalPeriod,
-} from "../services/finance-admin-commands/fiscal-period.js";
-import {
   bulkGeneratePricingRecommendations,
-  evaluatePricingRules,
-} from "../services/finance-admin-commands/pricing.js";
-import {
+  calculateCommission,
+  closeFiscalPeriod,
   createTaxConfig,
   deleteTaxConfig,
+  evaluatePricingRules,
+  generateCommissionStatement,
+  lockFiscalPeriod,
+  markCommissionPaid,
+  reopenFiscalPeriod,
   updateTaxConfig,
-} from "../services/finance-admin-commands/tax-config.js";
+} from "../services/billing-commands/index.js";
 
-let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "finance-admin-command-consumer" });
-
-export const startFinanceAdminCommandCenterConsumer = async (): Promise<void> => {
-  if (consumer) return;
-
-  consumer = kafka.consumer({
-    groupId: config.finance.commandCenter.consumerGroupId,
-    allowAutoTopicCreation: false,
-    maxBytesPerPartition: config.finance.commandCenter.maxBatchBytes,
-  });
-
-  const c = consumer;
-  await c.connect();
-  await c.subscribe({
-    topic: config.finance.commandCenter.topic,
-    fromBeginning: false,
-  });
-  await c.run({
-    autoCommit: false,
-    eachBatchAutoResolve: false,
-    eachBatch: handleBatch,
-  });
-
-  logger.info(
-    {
-      topic: config.finance.commandCenter.topic,
-      groupId: config.finance.commandCenter.consumerGroupId,
-      targetService: config.finance.commandCenter.targetServiceId,
-    },
-    "finance-admin command consumer started",
-  );
-};
-
-export const shutdownFinanceAdminCommandCenterConsumer = async (): Promise<void> => {
-  if (!consumer) return;
-  try {
-    await consumer.disconnect();
-    logger.info("finance-admin command consumer disconnected");
-  } finally {
-    consumer = null;
-  }
-};
 
 const routeFinanceAdminCommand = async (
   envelope: CommandEnvelope,
@@ -138,27 +87,20 @@ const routeFinanceAdminCommand = async (
   }
 };
 
-const { handleBatch } = createCommandCenterHandlers({
-  targetServiceId: config.finance.commandCenter.targetServiceId,
+const { start, shutdown } = createConsumerLifecycle({
+  kafka,
+  commandCenterConfig: config.finance.commandCenter,
   serviceName: config.service.name,
-  logger,
-  retry: {
-    maxRetries: config.finance.commandCenter.maxRetries,
-    baseDelayMs: config.finance.commandCenter.retryBackoffMs,
-    delayScheduleMs:
-      config.finance.commandCenter.retryScheduleMs.length > 0
-        ? config.finance.commandCenter.retryScheduleMs
-        : undefined,
-  },
-  processWithRetry,
-  RetryExhaustedError,
-  publishDlqEvent,
-  buildDlqPayload,
-  routeCommand: routeFinanceAdminCommand,
   commandLabel: "finance-admin",
+  logger,
+  routeCommand: routeFinanceAdminCommand,
+  publishDlqEvent,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
     setConsumerLag: setCommandConsumerLag,
   },
 });
+
+export const startFinanceAdminCommandCenterConsumer = start;
+export const shutdownFinanceAdminCommandCenterConsumer = shutdown;

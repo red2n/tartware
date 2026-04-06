@@ -487,3 +487,5 @@ export type { HttpError, HttpErrors } from "@fastify/sensible";
 export type { FastifyBaseLogger, FastifyInstance } from "fastify";
 export type { CreateHealthRoutesOptions, HealthDependency } from "./health.js";
 export { createHealthRoutes } from "./health.js";
+export { sseTokenPromotePlugin } from "./sse-token.js";
+export { bootstrapService, type BootstrapServiceInput } from "./bootstrap.js";

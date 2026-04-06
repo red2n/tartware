@@ -11,7 +11,7 @@ import {
   CASHIER_SESSION_LIST_SQL,
   SHIFT_SUMMARY_SQL,
 } from "../sql/cashier-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
+import { toNumberOrFallback } from "@tartware/config";
 
 const formatEnumDisplay = (
   value: string | null,

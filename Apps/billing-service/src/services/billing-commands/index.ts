@@ -39,6 +39,7 @@ export { recordChargeback } from "./chargeback.js";
 export {
   approveCommission,
   calculateCommission,
+  generateCommissionStatement,
   markCommissionPaid,
 } from "./commission.js";
 export { manualDateRoll } from "./date-roll.js";

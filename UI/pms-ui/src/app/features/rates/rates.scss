@@ -176,35 +176,5 @@
   }
 }
 
-.filter-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.type-select {
-  padding: 4px var(--space-3);
-  font-size: var(--font-size-xs);
-  min-width: 120px;
-}
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-controls {
-    flex-direction: column;
-  }
-
-  .search-input {
-    width: 100%;
-  }
-
-  .table-container {
-    overflow-x: auto;
-  }
-}
+/* ── Responsive overrides: see shared.scss ── */
 

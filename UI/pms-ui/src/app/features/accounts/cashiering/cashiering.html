@@ -147,10 +147,14 @@
               <td>
                 <span class="badge" [ngClass]="statusClass(session.session_status)">{{ session.session_status_display }}</span>
               </td>
-              <td>
+              <td class="cell-actions">
                 @if (session.session_status === 'OPEN') {
                   <button class="btn btn-outline btn-xs" (click)="showCloseForm(session.session_id); $event.stopPropagation()">
                     <mat-icon>lock</mat-icon> {{ 'Close' | translate }}
+                  </button>
+                  <button class="btn btn-outline btn-xs" (click)="showHandoverForm(session.session_id); $event.stopPropagation()"
+                          [matTooltip]="'Hand over to next shift' | translate">
+                    <mat-icon>swap_horiz</mat-icon> {{ 'Handover' | translate }}
                   </button>
                 }
               </td>
@@ -184,6 +188,70 @@
                         {{ 'Close & Reconcile' | translate }}
                       </button>
                       <button class="btn btn-outline btn-sm" (click)="cancelClose()">{{ 'Cancel' | translate }}</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+            <!-- Inline handover form for this session -->
+            @if (handoveringSessionId() === session.session_id) {
+              <tr class="close-form-row">
+                <td colspan="10">
+                  <div class="inline-close-form">
+                    <span class="form-label">{{ 'Shift Handover' | translate }} — {{ session.session_number }}</span>
+                    <p class="form-hint">{{ 'Close outgoing session and open incoming session atomically.' | translate }}</p>
+                    <div class="form-section-title">{{ 'Outgoing Reconciliation' | translate }}</div>
+                    <div class="form-inline-fields">
+                      <div class="form-field">
+                        <label>{{ 'Cash Declared' | translate }}</label>
+                        <input type="number" class="field-input field-sm" min="0" step="0.01"
+                               [ngModel]="handoverForm().closing_cash_declared" (ngModelChange)="updateHandoverForm({ closing_cash_declared: +$event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Cash Counted' | translate }}</label>
+                        <input type="number" class="field-input field-sm" min="0" step="0.01"
+                               [ngModel]="handoverForm().closing_cash_counted" (ngModelChange)="updateHandoverForm({ closing_cash_counted: +$event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Handover Notes' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="Notes for the next shift"
+                               [ngModel]="handoverForm().handover_notes" (ngModelChange)="updateHandoverForm({ handover_notes: $event })" />
+                      </div>
+                    </div>
+                    <div class="form-section-title" style="margin-top: var(--space-3)">{{ 'Incoming Shift' | translate }}</div>
+                    <div class="form-inline-fields">
+                      <div class="form-field">
+                        <label>{{ 'Incoming Cashier Name' | translate }} *</label>
+                        <input type="text" class="field-input field-sm" placeholder="Next cashier name"
+                               [ngModel]="handoverForm().incoming_cashier_name" (ngModelChange)="updateHandoverForm({ incoming_cashier_name: $event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Terminal ID' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="e.g. POS-01"
+                               [ngModel]="handoverForm().incoming_terminal_id" (ngModelChange)="updateHandoverForm({ incoming_terminal_id: $event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Shift' | translate }}</label>
+                        <select class="field-input field-sm" [ngModel]="handoverForm().incoming_shift_type" (ngModelChange)="updateHandoverForm({ incoming_shift_type: $event })">
+                          <option value="morning">{{ 'Morning' | translate }}</option>
+                          <option value="afternoon">{{ 'Afternoon' | translate }}</option>
+                          <option value="night">{{ 'Night' | translate }}</option>
+                          <option value="full_day">{{ 'Full Day' | translate }}</option>
+                        </select>
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Opening Float' | translate }}</label>
+                        <input type="number" class="field-input field-sm" min="0" step="0.01"
+                               [ngModel]="handoverForm().incoming_opening_float" (ngModelChange)="updateHandoverForm({ incoming_opening_float: +$event })" />
+                      </div>
+                    </div>
+                    <div class="form-actions">
+                      <button class="btn btn-primary btn-sm" (click)="handoverSession()"
+                              [disabled]="handoveringSession() || !handoverForm().incoming_cashier_name">
+                        @if (handoveringSession()) { <mat-spinner diameter="16"></mat-spinner> }
+                        {{ 'Complete Handover' | translate }}
+                      </button>
+                      <button class="btn btn-outline btn-sm" (click)="cancelHandover()">{{ 'Cancel' | translate }}</button>
                     </div>
                   </div>
                 </td>

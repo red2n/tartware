@@ -29,6 +29,7 @@ import {
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
+  tenantTaxConfigParamsSchema,
 } from "./schemas.js";
 
 /** Register billing read-proxy and command-dispatch routes on the gateway. */
@@ -655,6 +656,106 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     proxyFinanceAdmin,
+  );
+
+  // ============================================================================
+  // CASHIER HANDOVER (shift transition)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/cashier-sessions/handover",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Handover a cashier session to the next shift atomically.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.cashier.handover",
+      }),
+  );
+
+  // ============================================================================
+  // TAX CONFIGURATION COMMANDS (CRUD)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/tax-configurations",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Create a tax configuration via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.tax_config.create",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/tax-configurations/:taxConfigId/update",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Update a tax configuration via the Command Center.",
+        params: tenantTaxConfigParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.tax_config.update",
+        paramKey: "taxConfigId",
+        payloadKey: "tax_config_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/tax-configurations/:taxConfigId/delete",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Delete a tax configuration via the Command Center.",
+        params: tenantTaxConfigParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.tax_config.delete",
+        paramKey: "taxConfigId",
+        payloadKey: "tax_config_id",
+      }),
   );
 
   // ============================================================================

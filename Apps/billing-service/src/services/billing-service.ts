@@ -22,7 +22,7 @@ import {
   FOLIO_BY_ID_SQL,
   FOLIO_LIST_SQL,
 } from "../sql/billing-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
+import { toNumberOrFallback } from "@tartware/config";
 
 /**
  * Re-export for backward compatibility.

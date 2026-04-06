@@ -228,17 +228,10 @@
   </div>
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
-  <button
-    class="btn btn-primary"
-    [disabled]="!isValid || saving()"
-    (click)="save()">
-    @if (saving()) {
-      <mat-spinner diameter="16" />
-      Creating…
-    } @else {
-      Create guest
-    }
-  </button>
-</mat-dialog-actions>
+<app-dialog-actions
+  [saving]="saving()"
+  [valid]="isValid"
+  saveLabel="Create guest"
+  savingLabel="Creating…"
+  (cancel)="cancel()"
+  (save)="save()" />

@@ -9,7 +9,7 @@ import {
 
 import { query } from "../lib/db.js";
 import { RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
-import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
+import { toNonNegativeInt, toNumberOrFallback } from "@tartware/config";
 
 export { ReservationDetailSchema, type ReservationDetail };
 export { CheckInBriefSchema, type CheckInBrief };

@@ -625,8 +625,10 @@ textarea.field-input {
 }
 
 .cell-actions {
-  text-align: right;
-  width: 40px;
+  white-space: nowrap;
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 .data-table .badge {
@@ -2435,4 +2437,236 @@ textarea.field-input {
   color: var(--color-accent-fg);
   background: var(--color-accent-subtle);
   border-color: var(--color-accent-emphasis);
+}
+
+/* ═══════════════════════════════════════════
+   Inline action forms — table-embedded
+   forms for void / refund / edit / delete
+   ═══════════════════════════════════════════ */
+
+/* Panel form (above tables) */
+.action-form {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-subtle);
+
+  h3 {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
+/* Form button row */
+.form-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* Panel header with close button */
+.close-form-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Table row containing an inline form (void, refund, edit, handover, etc.) */
+.action-row-form td,
+.detail-expansion-row td {
+  padding: 0 !important;
+  border-top: none !important;
+}
+
+/* Inline form inside a table row */
+.inline-action-form,
+.inline-close-form {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-canvas-subtle);
+  border-top: 1px dashed var(--color-border-muted);
+
+  .form-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-fg-muted);
+    display: block;
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* Horizontal field layout inside inline forms */
+.form-inline-fields {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+
+  .form-field {
+    flex: 1;
+    min-width: 160px;
+
+    label {
+      display: block;
+      font-size: var(--font-size-xs);
+      color: var(--color-fg-muted);
+      margin-bottom: 4px;
+    }
+  }
+}
+
+/* Compact input variant */
+.field-sm {
+  height: 32px;
+  font-size: var(--font-size-sm);
+}
+
+/* Form hint text */
+.form-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+  margin: 0 0 var(--space-2) 0;
+}
+
+/* ═══════════════════════════════════════════
+   Clickable / expandable table rows
+   ═══════════════════════════════════════════ */
+.clickable-row {
+  cursor: pointer;
+  transition: background var(--duration-fast);
+
+  &:hover {
+    background: var(--color-canvas-subtle);
+  }
+}
+
+.row-selected {
+  background: var(--color-canvas-subtle);
+}
+
+.cell-chevron {
+  width: 32px;
+  text-align: center;
+}
+
+.chevron-icon {
+  font-size: 18px;
+  color: var(--color-fg-muted);
+  transition: transform var(--duration-fast);
+}
+
+.chevron-open {
+  transform: rotate(90deg);
+}
+
+/* Detail panel inside an expansion row */
+.folio-detail-panel {
+  padding: var(--space-4);
+  background: var(--color-canvas-subtle);
+  border-top: 1px dashed var(--color-border-muted);
+
+  h4 {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-fg-muted);
+  }
+}
+
+/* Nested table inside an expansion row */
+.data-table-nested {
+  background: var(--color-canvas-default);
+  border-radius: var(--radius-sm);
+}
+
+/* Small empty state (for nested panels) */
+.empty-state-sm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-sm);
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Button modifiers
+   ═══════════════════════════════════════════ */
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-fg-muted);
+  padding: 2px;
+
+  &:hover {
+    color: var(--color-fg-default);
+    background: var(--color-canvas-subtle);
+  }
+}
+
+.btn-xs {
+  padding: 2px var(--space-2);
+  font-size: 11px;
+  line-height: 18px;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.btn-danger-text { color: var(--color-danger-fg); }
+
+/* Delete confirmation label */
+.delete-confirm-label { color: var(--color-danger-fg); font-weight: var(--font-weight-semibold); }
+
+/* Filter bar with action button (e.g. "New Folio") */
+.filter-bar-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════
+   Filter controls (search + type select)
+   ═══════════════════════════════════════════ */
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.type-select {
+  padding: 4px var(--space-3);
+  font-size: var(--font-size-xs);
+  min-width: 120px;
+}
+
+/* ═══════════════════════════════════════════
+   Common responsive overrides
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-controls {
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
 }

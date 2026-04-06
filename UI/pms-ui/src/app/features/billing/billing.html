@@ -109,6 +109,7 @@
                 <th [attr.aria-sort]="ariaSort(paymentSort, 'created_at')">
                   <button type="button" class="th-sort-btn" (click)="onPaymentSort('created_at')">{{ 'Date' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(paymentSort, 'created_at') }}</mat-icon></button>
                 </th>
+                <th>{{ 'Actions' | translate }}</th>
               </tr>
             </thead>
             <tbody>
@@ -126,7 +127,72 @@
                   <td class="col-right cell-amount">{{ formatCurrency(pay.amount, pay.currency) }}</td>
                   <td><span class="badge" [ngClass]="paymentStatusClass(pay.status)">{{ pay.status_display }}</span></td>
                   <td>{{ formatDate(pay.created_at) }}</td>
+                  <td class="cell-actions">
+                    @if (canVoid(pay)) {
+                      <button class="btn btn-outline btn-xs" (click)="showVoidPayment(pay.id); $event.stopPropagation()" [matTooltip]="'Void this payment' | translate">
+                        <mat-icon>block</mat-icon> {{ 'Void' | translate }}
+                      </button>
+                    }
+                    @if (canRefund(pay)) {
+                      <button class="btn btn-outline btn-xs" (click)="showRefundPayment(pay); $event.stopPropagation()" [matTooltip]="'Refund this payment' | translate">
+                        <mat-icon>undo</mat-icon> {{ 'Refund' | translate }}
+                      </button>
+                    }
+                  </td>
                 </tr>
+                <!-- Void form -->
+                @if (voidingPaymentId() === pay.id) {
+                  <tr class="action-row-form">
+                    <td colspan="8">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Void payment' | translate }} {{ pay.payment_reference }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }}</label>
+                            <input type="text" class="field-input field-sm" placeholder="Optional reason"
+                                   [ngModel]="voidPaymentReason()" (ngModelChange)="voidPaymentReason.set($event)" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-danger btn-sm" (click)="voidPayment(pay)" [disabled]="processingVoid()">
+                            @if (processingVoid()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Void Payment' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelVoidPayment()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                <!-- Refund form -->
+                @if (refundingPaymentId() === pay.id) {
+                  <tr class="action-row-form">
+                    <td colspan="8">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Refund payment' | translate }} {{ pay.payment_reference }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Amount' | translate }}</label>
+                            <input type="number" class="field-input field-sm" min="0" step="0.01"
+                                   [ngModel]="refundForm().amount" (ngModelChange)="refundForm.set({ ...refundForm(), amount: +$event })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }}</label>
+                            <input type="text" class="field-input field-sm" placeholder="Reason for refund"
+                                   [ngModel]="refundForm().reason" (ngModelChange)="refundForm.set({ ...refundForm(), reason: $event })" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-danger btn-sm" (click)="refundPayment(pay)" [disabled]="processingRefund() || refundForm().amount <= 0">
+                            @if (processingRefund()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Submit Refund' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelRefundPayment()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -181,6 +247,7 @@
                 <th [attr.aria-sort]="ariaSort(invoiceSort, 'status')">
                   <button type="button" class="th-sort-btn" (click)="onInvoiceSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(invoiceSort, 'status') }}</mat-icon></button>
                 </th>
+                <th>{{ 'Actions' | translate }}</th>
               </tr>
             </thead>
             <tbody>
@@ -199,7 +266,80 @@
                   <td class="col-right cell-amount" [class.text-danger]="inv.balance_due > 0">{{ formatCurrency(inv.balance_due, inv.currency) }}</td>
                   <td>{{ inv.due_date ? formatDate(inv.due_date) : '—' }}</td>
                   <td><span class="badge" [ngClass]="invoiceStatusClass(inv.status)">{{ inv.status_display }}</span></td>
+                  <td class="cell-actions">
+                    @if (canFinalizeInvoice(inv)) {
+                      <button class="btn btn-outline btn-xs" (click)="finalizeInvoice(inv); $event.stopPropagation()"
+                              [disabled]="processingInvoiceAction() === inv.id" [matTooltip]="'Lock invoice from edits' | translate">
+                        @if (processingInvoiceAction() === inv.id) { <mat-spinner diameter="14"></mat-spinner> }
+                        <mat-icon>lock</mat-icon> {{ 'Finalize' | translate }}
+                      </button>
+                    }
+                    @if (canVoidInvoice(inv)) {
+                      <button class="btn btn-outline btn-xs" (click)="showVoidInvoice(inv.id); $event.stopPropagation()" [matTooltip]="'Void this draft invoice' | translate">
+                        <mat-icon>block</mat-icon> {{ 'Void' | translate }}
+                      </button>
+                    }
+                    @if (canCreditNote(inv)) {
+                      <button class="btn btn-outline btn-xs" (click)="showCreditNote(inv); $event.stopPropagation()" [matTooltip]="'Create credit note' | translate">
+                        <mat-icon>note_add</mat-icon> {{ 'Credit Note' | translate }}
+                      </button>
+                    }
+                  </td>
                 </tr>
+                <!-- Void invoice form -->
+                @if (voidInvoiceId() === inv.id) {
+                  <tr class="action-row-form">
+                    <td colspan="9">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Void invoice' | translate }} {{ inv.invoice_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }}</label>
+                            <input type="text" class="field-input field-sm" placeholder="Reason for voiding"
+                                   [ngModel]="voidInvoiceReason()" (ngModelChange)="voidInvoiceReason.set($event)" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-danger btn-sm" (click)="voidInvoice()" [disabled]="processingInvoiceVoid()">
+                            @if (processingInvoiceVoid()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Void Invoice' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelVoidInvoice()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                <!-- Credit note form -->
+                @if (creditNoteInvoiceId() === inv.id) {
+                  <tr class="action-row-form">
+                    <td colspan="9">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Credit note for' | translate }} {{ inv.invoice_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Credit Amount' | translate }}</label>
+                            <input type="number" class="field-input field-sm" min="0" step="0.01"
+                                   [ngModel]="creditNoteForm().credit_amount" (ngModelChange)="creditNoteForm.set({ ...creditNoteForm(), credit_amount: +$event })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }} *</label>
+                            <input type="text" class="field-input field-sm" placeholder="Reason for credit note (required)"
+                                   [ngModel]="creditNoteForm().reason" (ngModelChange)="creditNoteForm.set({ ...creditNoteForm(), reason: $event })" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-danger btn-sm" (click)="createCreditNote()"
+                                  [disabled]="processingCreditNote() || creditNoteForm().credit_amount <= 0 || creditNoteForm().reason.length < 3">
+                            @if (processingCreditNote()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Create Credit Note' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelCreditNote()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -215,7 +355,7 @@
   <!-- FOLIOS TAB                                   -->
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'folios') {
-    <div class="filter-bar">
+    <div class="filter-bar filter-bar-with-action">
       <nav class="filter-tabs" aria-label="Folio status filters">
         @for (f of folioStatusFilters; track f.key) {
           <button class="filter-tab" [class.filter-tab-active]="activeFolioFilter() === f.key" (click)="setFolioFilter(f.key)">
@@ -224,7 +364,45 @@
           </button>
         }
       </nav>
+      <button class="btn btn-primary btn-sm" (click)="toggleCreateFolioForm()" [matTooltip]="'Create standalone folio' | translate">
+        <mat-icon>add</mat-icon> {{ 'New Folio' | translate }}
+      </button>
     </div>
+
+    <!-- Create Folio Form -->
+    @if (showCreateFolioForm()) {
+      <div class="action-form">
+        <h3>{{ 'Create Standalone Folio' | translate }}</h3>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>{{ 'Folio Type' | translate }}</label>
+            <select class="field-input" [ngModel]="createFolioForm().folio_type" (ngModelChange)="updateCreateFolioForm({ folio_type: $event })">
+              <option value="HOUSE_ACCOUNT">{{ 'House Account' | translate }}</option>
+              <option value="CITY_LEDGER">{{ 'City Ledger' | translate }}</option>
+              <option value="MASTER">{{ 'Master Folio' | translate }}</option>
+              <option value="INCIDENTAL">{{ 'Incidental' | translate }}</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>{{ 'Folio Name' | translate }}</label>
+            <input type="text" class="field-input" placeholder="e.g. Conference Room A"
+                   [ngModel]="createFolioForm().folio_name" (ngModelChange)="updateCreateFolioForm({ folio_name: $event })" />
+          </div>
+          <div class="form-field full-width">
+            <label>{{ 'Notes' | translate }}</label>
+            <input type="text" class="field-input" placeholder="Optional notes"
+                   [ngModel]="createFolioForm().notes" (ngModelChange)="updateCreateFolioForm({ notes: $event })" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary btn-sm" (click)="createFolio()" [disabled]="creatingFolio()">
+            @if (creatingFolio()) { <mat-spinner diameter="16"></mat-spinner> }
+            {{ 'Create Folio' | translate }}
+          </button>
+          <button class="btn btn-outline btn-sm" (click)="toggleCreateFolioForm()">{{ 'Cancel' | translate }}</button>
+        </div>
+      </div>
+    }
 
     @defer (on idle) {
     @if (foliosLoading()) {
@@ -252,11 +430,12 @@
                   <button type="button" class="th-sort-btn" (click)="onFolioSort('folio_status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(folioSort, 'folio_status') }}</mat-icon></button>
                 </th>
                 <th>{{ 'Opened' | translate }}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               @for (fol of paginatedFolios(); track fol.id) {
-                <tr>
+                <tr class="clickable-row" [class.row-selected]="selectedFolioId() === fol.id" (click)="selectFolio(fol)">
                   <td class="cell-primary">
                     <span class="ref-code">{{ fol.folio_number }}</span>
                     @if (fol.confirmation_number) {
@@ -277,7 +456,50 @@
                   <td class="col-right cell-amount" [class.text-danger]="fol.balance > 0">{{ formatCurrency(fol.balance, fol.currency) }}</td>
                   <td><span class="badge" [ngClass]="folioStatusClass(fol.folio_status)">{{ fol.folio_status_display }}</span></td>
                   <td>{{ formatDate(fol.opened_at) }}</td>
+                  <td class="cell-chevron">
+                    <mat-icon class="chevron-icon" [class.chevron-open]="selectedFolioId() === fol.id">chevron_right</mat-icon>
+                  </td>
                 </tr>
+                <!-- Folio detail expansion -->
+                @if (selectedFolioId() === fol.id) {
+                  <tr class="detail-expansion-row">
+                    <td colspan="9">
+                      <div class="folio-detail-panel">
+                        <h4>{{ 'Folio Ledger' | translate }} — {{ fol.folio_number }}</h4>
+                        @if (folioChargesLoading()) {
+                          <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span class="text-muted">{{ 'Loading ledger...' | translate }}</span></div>
+                        } @else if (folioCharges().length === 0) {
+                          <div class="empty-state-sm"><mat-icon>receipt_long</mat-icon><span>{{ 'No transactions on this folio' | translate }}</span></div>
+                        } @else {
+                          <table class="data-table data-table-nested">
+                            <thead>
+                              <tr>
+                                <th>{{ 'Date' | translate }}</th>
+                                <th>{{ 'Code' | translate }}</th>
+                                <th>{{ 'Description' | translate }}</th>
+                                <th>{{ 'Type' | translate }}</th>
+                                <th class="col-right">{{ 'Amount' | translate }}</th>
+                                <th></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (chg of folioCharges(); track chg.id) {
+                                <tr [class.row-voided]="chg.is_voided">
+                                  <td>{{ formatDate(chg.posting_date) }}</td>
+                                  <td><span class="charge-code">{{ chg.charge_code }}</span></td>
+                                  <td>{{ chg.charge_description }}</td>
+                                  <td><span class="badge" [ngClass]="chargeTypeClass(chg.transaction_type)">{{ chg.transaction_type_display }}</span></td>
+                                  <td class="col-right cell-amount">{{ formatCurrency(chg.total_amount, chg.currency) }}</td>
+                                  <td>@if (chg.is_voided) { <span class="badge badge-danger">{{ 'Voided' | translate }}</span> }</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>

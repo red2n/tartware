@@ -24,7 +24,7 @@ import {
   MAINTENANCE_REQUEST_BY_ID_SQL,
   MAINTENANCE_REQUEST_LIST_SQL,
 } from "../sql/housekeeping-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
+import { toNumberOrFallback } from "@tartware/config";
 
 /**
  * Re-export for backward compatibility.

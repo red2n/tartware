@@ -1,4 +1,5 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
+import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
@@ -37,7 +38,7 @@ const ROOM_CATEGORIES = [
 @Component({
 	selector: "app-create-room-type-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
+	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
 	templateUrl: "./create-room-type-dialog.html",
 	styleUrl: "./create-room-type-dialog.scss",
 })

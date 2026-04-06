@@ -3,6 +3,7 @@ import { FormsModule } from "@angular/forms";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 
 import type { CreatePackageBody } from "@tartware/schemas";
 
@@ -52,23 +53,7 @@ export class CreatePackageDialogComponent {
 	includesWifi = false;
 	includesAirportTransfer = false;
 
-	readonly packageTypes = [
-		{ key: "room_only", label: "Room Only" },
-		{ key: "bed_and_breakfast", label: "Bed & Breakfast" },
-		{ key: "half_board", label: "Half Board" },
-		{ key: "full_board", label: "Full Board" },
-		{ key: "all_inclusive", label: "All Inclusive" },
-		{ key: "romance", label: "Romance" },
-		{ key: "spa", label: "Spa" },
-		{ key: "golf", label: "Golf" },
-		{ key: "ski", label: "Ski" },
-		{ key: "family", label: "Family" },
-		{ key: "business", label: "Business" },
-		{ key: "weekend_getaway", label: "Weekend Getaway" },
-		{ key: "extended_stay", label: "Extended Stay" },
-		{ key: "seasonal", label: "Seasonal" },
-		{ key: "custom", label: "Custom" },
-	];
+	readonly packageTypes = PACKAGE_TYPE_OPTIONS;
 
 	readonly pricingModels = [
 		{ key: "per_night", label: "Per Night" },

@@ -1,4 +1,5 @@
 import { Component, inject, signal } from "@angular/core";
+import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
@@ -7,6 +8,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { getFieldError, hasFieldError, validateEmail, validatePhone } from "../guest-form-utils";
 import {
 	GUEST_TITLES,
 	LOYALTY_TIERS,
@@ -33,7 +35,7 @@ export interface EditGuestDialogData {
 @Component({
 	selector: "app-edit-guest-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
+	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
 	templateUrl: "./edit-guest-dialog.html",
 	styleUrl: "./edit-guest-dialog.scss",
 })
@@ -85,21 +87,11 @@ export class EditGuestDialogComponent {
 	}
 
 	get emailError(): string | null {
-		const val = this.email.trim();
-		if (!val) return "Email is required";
-		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return "Enter a valid email address";
-		return null;
+		return validateEmail(this.email);
 	}
 
 	get phoneError(): string | null {
-		const val = this.phone.trim();
-		if (!val) return null;
-		if (!/^\+?[\d\s()\-.]+$/.test(val))
-			return "Phone may only contain digits, spaces, +, -, (, ), and .";
-		const digits = val.replace(/\D/g, "");
-		if (digits.length < 10 || digits.length > 15)
-			return "Phone must contain 10\u201315 digits (e.g. +1 415-555-1234)";
-		return null;
+		return validatePhone(this.phone);
 	}
 
 	get isValid(): boolean {
@@ -113,11 +105,11 @@ export class EditGuestDialogComponent {
 	}
 
 	hasFieldError(field: string): boolean {
-		return !!this.fieldErrors()[field];
+		return hasFieldError(this.fieldErrors(), field);
 	}
 
 	getFieldError(field: string): string {
-		return this.fieldErrors()[field] ?? "";
+		return getFieldError(this.fieldErrors(), field);
 	}
 
 	async save(): Promise<void> {

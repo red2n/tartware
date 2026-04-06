@@ -27,7 +27,7 @@ import {
   GUEST_RESERVATION_STATS_SQL,
   GUEST_SUMMARY_STATS_SQL,
 } from "../sql/guest-queries.js";
-import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
+import { toNonNegativeInt, toNumberOrFallback } from "@tartware/config";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 const DEFAULT_ADDRESS = {

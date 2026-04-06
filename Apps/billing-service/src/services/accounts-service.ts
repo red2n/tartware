@@ -18,7 +18,7 @@ import {
   INVOICE_BY_ID_SQL,
   INVOICE_LIST_SQL,
 } from "../sql/accounts-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
+import { toNumberOrFallback } from "@tartware/config";
 
 const formatEnumDisplay = (
   value: string | null,

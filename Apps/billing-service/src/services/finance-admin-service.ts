@@ -13,7 +13,7 @@ import {
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/finance-admin-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
+import { toNumberOrFallback } from "@tartware/config";
 
 const formatEnumDisplay = (
   value: string | null,

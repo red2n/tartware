@@ -50,6 +50,7 @@
     "postinstall": "echo 'Monorepo dependencies installed successfully'",
     "bootstrap:modules": "pnpm --filter @tartware/core-service run bootstrap:modules",
     "duplo:templates": "bash ./executables/run-duplo/run-duplo.sh",
+    "duplo:ui": "DUPLO_BIN=./executables/duplo DUPLO_TARGET_DIR=UI DUPLO_EXTENSIONS=ts,html,scss DUPLO_MIN_LINES=15 bash ./executables/run-duplo/run-duplo.sh",
     "telemetry:start": "docker compose up -d opensearch-node otel-collector",
     "telemetry:stop": "docker compose stop otel-collector opensearch-node",
     "export:openapi": "node scripts/export-openapi.mjs",

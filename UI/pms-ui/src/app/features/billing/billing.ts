@@ -26,6 +26,7 @@ import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
+import { ToastService } from "../../shared/toast/toast.service";
 
 type BillingView = "payments" | "invoices" | "folios" | "charges";
 type PaymentStatusFilter = "ALL" | "completed" | "pending" | "failed" | "refunded";
@@ -54,6 +55,7 @@ export class BillingComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
@@ -430,6 +432,248 @@ export class BillingComponent {
 	}
 	formatCurrency(amount: number, currency?: string): string {
 		return this.settings.formatCurrency(amount, currency);
+	}
+
+	// ── Payment action state ──
+	readonly voidingPaymentId = signal<string | null>(null);
+	readonly voidPaymentReason = signal("");
+	readonly processingVoid = signal(false);
+	readonly refundingPaymentId = signal<string | null>(null);
+	readonly refundForm = signal({ amount: 0, reason: "" });
+	readonly processingRefund = signal(false);
+
+	// ── Invoice action state ──
+	readonly processingInvoiceAction = signal<string | null>(null);
+	readonly creditNoteInvoiceId = signal<string | null>(null);
+	readonly creditNoteForm = signal({ credit_amount: 0, reason: "" });
+	readonly processingCreditNote = signal(false);
+	readonly voidInvoiceId = signal<string | null>(null);
+	readonly voidInvoiceReason = signal("");
+	readonly processingInvoiceVoid = signal(false);
+
+	// ── Folio action state ──
+	readonly showCreateFolioForm = signal(false);
+	readonly createFolioForm = signal({
+		folio_type: "HOUSE_ACCOUNT" as string,
+		folio_name: "",
+		notes: "",
+	});
+	readonly creatingFolio = signal(false);
+	readonly selectedFolioId = signal<string | null>(null);
+	readonly folioCharges = signal<ChargePostingListItem[]>([]);
+	readonly folioChargesLoading = signal(false);
+
+	// ── Payment actions ──
+	showVoidPayment(paymentId: string): void {
+		this.voidingPaymentId.set(paymentId);
+		this.voidPaymentReason.set("");
+	}
+	cancelVoidPayment(): void {
+		this.voidingPaymentId.set(null);
+	}
+	async voidPayment(payment: BillingPaymentListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.processingVoid.set(true);
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/billing/payments/${payment.id}/void`,
+				{
+					payment_reference: payment.payment_reference,
+					property_id: this.ctx.propertyId(),
+					reservation_id: payment.reservation_id,
+					reason: this.voidPaymentReason() || undefined,
+				},
+			);
+			this.toast.success("Payment voided.");
+			this.voidingPaymentId.set(null);
+			await this.loadPayments();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to void payment");
+		} finally {
+			this.processingVoid.set(false);
+		}
+	}
+
+	showRefundPayment(payment: BillingPaymentListItem): void {
+		this.refundingPaymentId.set(payment.id);
+		this.refundForm.set({ amount: payment.amount, reason: "" });
+	}
+	cancelRefundPayment(): void {
+		this.refundingPaymentId.set(null);
+	}
+	async refundPayment(payment: BillingPaymentListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.processingRefund.set(true);
+		try {
+			const form = this.refundForm();
+			await this.api.post(
+				`/tenants/${tenantId}/billing/payments/${payment.id}/refund`,
+				{
+					payment_id: payment.id,
+					property_id: this.ctx.propertyId(),
+					reservation_id: payment.reservation_id,
+					guest_id: payment.guest_id,
+					amount: form.amount,
+					reason: form.reason || undefined,
+				},
+			);
+			this.toast.success("Refund submitted.");
+			this.refundingPaymentId.set(null);
+			await this.loadPayments();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to refund payment");
+		} finally {
+			this.processingRefund.set(false);
+		}
+	}
+
+	canVoid(payment: BillingPaymentListItem): boolean {
+		return payment.status === "authorized" || payment.status === "pending";
+	}
+	canRefund(payment: BillingPaymentListItem): boolean {
+		return payment.status === "completed";
+	}
+
+	// ── Invoice actions ──
+	async finalizeInvoice(invoice: InvoiceListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.processingInvoiceAction.set(invoice.id);
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/billing/invoices/${invoice.id}/finalize`,
+				{},
+			);
+			this.toast.success("Invoice finalized.");
+			await this.loadInvoices();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to finalize invoice");
+		} finally {
+			this.processingInvoiceAction.set(null);
+		}
+	}
+
+	showVoidInvoice(invoiceId: string): void {
+		this.voidInvoiceId.set(invoiceId);
+		this.voidInvoiceReason.set("");
+	}
+	cancelVoidInvoice(): void {
+		this.voidInvoiceId.set(null);
+	}
+	async voidInvoice(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const invoiceId = this.voidInvoiceId();
+		if (!tenantId || !invoiceId) return;
+		this.processingInvoiceVoid.set(true);
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`,
+				{ reason: this.voidInvoiceReason() || undefined },
+			);
+			this.toast.success("Invoice voided.");
+			this.voidInvoiceId.set(null);
+			await this.loadInvoices();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to void invoice");
+		} finally {
+			this.processingInvoiceVoid.set(false);
+		}
+	}
+
+	showCreditNote(invoice: InvoiceListItem): void {
+		this.creditNoteInvoiceId.set(invoice.id);
+		this.creditNoteForm.set({ credit_amount: invoice.total_amount, reason: "" });
+	}
+	cancelCreditNote(): void {
+		this.creditNoteInvoiceId.set(null);
+	}
+	async createCreditNote(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const invoiceId = this.creditNoteInvoiceId();
+		if (!tenantId || !invoiceId) return;
+		this.processingCreditNote.set(true);
+		try {
+			const form = this.creditNoteForm();
+			await this.api.post(
+				`/tenants/${tenantId}/billing/invoices/${invoiceId}/credit-note`,
+				{
+					property_id: this.ctx.propertyId(),
+					credit_amount: form.credit_amount,
+					reason: form.reason,
+				},
+			);
+			this.toast.success("Credit note created.");
+			this.creditNoteInvoiceId.set(null);
+			await this.loadInvoices();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to create credit note");
+		} finally {
+			this.processingCreditNote.set(false);
+		}
+	}
+
+	canVoidInvoice(invoice: InvoiceListItem): boolean {
+		return invoice.status === "draft";
+	}
+	canFinalizeInvoice(invoice: InvoiceListItem): boolean {
+		return invoice.status === "draft";
+	}
+	canCreditNote(invoice: InvoiceListItem): boolean {
+		return invoice.status === "issued" || invoice.status === "paid";
+	}
+
+	// ── Folio actions ──
+	toggleCreateFolioForm(): void {
+		this.showCreateFolioForm.set(!this.showCreateFolioForm());
+	}
+	updateCreateFolioForm(partial: Partial<{ folio_type: string; folio_name: string; notes: string }>): void {
+		this.createFolioForm.set({ ...this.createFolioForm(), ...partial });
+	}
+	async createFolio(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.creatingFolio.set(true);
+		try {
+			const form = this.createFolioForm();
+			await this.api.post(`/tenants/${tenantId}/billing/folios`, {
+				property_id: propertyId,
+				folio_type: form.folio_type,
+				folio_name: form.folio_name || undefined,
+				notes: form.notes || undefined,
+			});
+			this.toast.success("Folio created.");
+			this.showCreateFolioForm.set(false);
+			this.createFolioForm.set({ folio_type: "HOUSE_ACCOUNT", folio_name: "", notes: "" });
+			await this.loadFolios();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to create folio");
+		} finally {
+			this.creatingFolio.set(false);
+		}
+	}
+
+	async selectFolio(folio: FolioListItem): Promise<void> {
+		if (this.selectedFolioId() === folio.id) {
+			this.selectedFolioId.set(null);
+			return;
+		}
+		this.selectedFolioId.set(folio.id);
+		this.folioChargesLoading.set(true);
+		try {
+			const tenantId = this.auth.tenantId();
+			const params: Record<string, string> = { tenant_id: tenantId ?? "", folio_id: folio.id, limit: "200" };
+			const propertyId = this.ctx.propertyId();
+			if (propertyId) params["property_id"] = propertyId;
+			const res = await this.api.get<ChargePostingListResponse>("/billing/charges", params);
+			this.folioCharges.set(res.data ?? []);
+		} catch {
+			this.folioCharges.set([]);
+		} finally {
+			this.folioChargesLoading.set(false);
+		}
 	}
 
 	// ── Data loading ──

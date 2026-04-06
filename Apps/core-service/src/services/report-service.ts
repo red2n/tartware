@@ -47,7 +47,7 @@ import {
   REVENUE_KPI_SQL,
   REVENUE_SUMMARY_SQL,
 } from "../sql/report-queries.js";
-import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
+import { toNonNegativeInt, toNumberOrFallback } from "@tartware/config";
 
 // Re-export for consumers that import from this module
 export {

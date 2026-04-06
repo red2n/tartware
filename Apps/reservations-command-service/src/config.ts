@@ -1,5 +1,7 @@
 import {
+  buildDbConfig,
   databaseSchema,
+  initServiceIdentity,
   loadServiceConfig,
   parseBooleanEnv,
   parseNumberEnv,
@@ -7,8 +9,7 @@ import {
   resolveKafkaConfig,
 } from "@tartware/config";
 
-process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/reservations-command-service";
-process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
+initServiceIdentity("@tartware/reservations-command-service");
 
 const configValues = loadServiceConfig(databaseSchema);
 
@@ -58,17 +59,7 @@ export const reliabilityConfig = {
   dlqCriticalThreshold: parseNumberEnv(process.env.RELIABILITY_DLQ_CRITICAL_THRESHOLD, 50),
 };
 
-export const databaseConfig = {
-  host: configValues.DB_HOST,
-  port: configValues.DB_PORT,
-  database: configValues.DB_NAME,
-  user: configValues.DB_USER,
-  password: configValues.DB_PASSWORD,
-  ssl: configValues.DB_SSL,
-  max: configValues.DB_POOL_MAX,
-  idleTimeoutMillis: configValues.DB_POOL_IDLE_TIMEOUT_MS,
-  statementTimeoutMs: configValues.DB_STATEMENT_TIMEOUT_MS,
-};
+export const databaseConfig = buildDbConfig(configValues);
 
 export const commandCenterConfig = {
   topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",

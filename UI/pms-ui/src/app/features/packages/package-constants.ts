@@ -1,0 +1,17 @@
+export const PACKAGE_TYPE_OPTIONS = [
+	{ key: "room_only", label: "Room Only" },
+	{ key: "bed_and_breakfast", label: "Bed & Breakfast" },
+	{ key: "half_board", label: "Half Board" },
+	{ key: "full_board", label: "Full Board" },
+	{ key: "all_inclusive", label: "All Inclusive" },
+	{ key: "romance", label: "Romance" },
+	{ key: "spa", label: "Spa" },
+	{ key: "golf", label: "Golf" },
+	{ key: "ski", label: "Ski" },
+	{ key: "family", label: "Family" },
+	{ key: "business", label: "Business" },
+	{ key: "weekend_getaway", label: "Weekend Getaway" },
+	{ key: "extended_stay", label: "Extended Stay" },
+	{ key: "seasonal", label: "Seasonal" },
+	{ key: "custom", label: "Custom" },
+] as const;

@@ -1,11 +1,8 @@
 import {
   type CommandEnvelope,
   type CommandMetadata,
-  createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
-import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
-import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
-import type { Consumer } from "kafkajs";
+import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -61,53 +58,7 @@ import {
   voidInvoice,
 } from "../services/billing-commands/index.js";
 
-let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "billing-command-consumer" });
-
-export const startBillingCommandCenterConsumer = async (): Promise<void> => {
-  if (consumer) {
-    return;
-  }
-
-  consumer = kafka.consumer({
-    groupId: config.commandCenter.consumerGroupId,
-    allowAutoTopicCreation: false,
-    maxBytesPerPartition: config.commandCenter.maxBatchBytes,
-  });
-
-  await consumer.connect();
-  await consumer.subscribe({
-    topic: config.commandCenter.topic,
-    fromBeginning: false,
-  });
-
-  await consumer.run({
-    autoCommit: false,
-    eachBatchAutoResolve: false,
-    eachBatch: handleBatch,
-  });
-
-  logger.info(
-    {
-      topic: config.commandCenter.topic,
-      groupId: config.commandCenter.consumerGroupId,
-      targetService: config.commandCenter.targetServiceId,
-    },
-    "billing command consumer started",
-  );
-};
-
-export const shutdownBillingCommandCenterConsumer = async (): Promise<void> => {
-  if (!consumer) {
-    return;
-  }
-  try {
-    await consumer.disconnect();
-    logger.info("billing command consumer disconnected");
-  } finally {
-    consumer = null;
-  }
-};
 
 const routeBillingCommand = async (
   envelope: CommandEnvelope,
@@ -368,27 +319,20 @@ const routeBillingCommand = async (
   }
 };
 
-const { handleBatch } = createCommandCenterHandlers({
-  targetServiceId: config.commandCenter.targetServiceId,
+const { start, shutdown } = createConsumerLifecycle({
+  kafka,
+  commandCenterConfig: config.commandCenter,
   serviceName: config.service.name,
-  logger,
-  retry: {
-    maxRetries: config.commandCenter.maxRetries,
-    baseDelayMs: config.commandCenter.retryBackoffMs,
-    delayScheduleMs:
-      config.commandCenter.retryScheduleMs.length > 0
-        ? config.commandCenter.retryScheduleMs
-        : undefined,
-  },
-  processWithRetry,
-  RetryExhaustedError,
-  publishDlqEvent,
-  buildDlqPayload,
-  routeCommand: routeBillingCommand,
   commandLabel: "billing",
+  logger,
+  routeCommand: routeBillingCommand,
+  publishDlqEvent,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
     setConsumerLag: setCommandConsumerLag,
   },
 });
+
+export const startBillingCommandCenterConsumer = start;
+export const shutdownBillingCommandCenterConsumer = shutdown;

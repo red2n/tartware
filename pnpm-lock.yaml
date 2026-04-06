@@ -578,6 +578,9 @@ importers:
       '@fastify/swagger-ui':
         specifier: ^5.2.3
         version: 5.2.5
+      '@tartware/config':
+        specifier: workspace:*
+        version: link:../config
       '@tartware/telemetry':
         specifier: workspace:*
         version: link:../telemetry
