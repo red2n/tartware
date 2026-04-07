@@ -37,7 +37,7 @@ FROM (VALUES
   ('UI_LOCALIZATION_CUSTOM',               'UI & Localization',     'Date/time formats, languages, display preferences, and custom fields.',       'palette',             '#14b8a6', 120),
   ('ADVANCED_TRENDING',                    'Advanced',              'Feature flags, experimental features, and system-level tuning options.',      'rocket_launch',       '#9333ea', 130)
 ) AS v(code, name, description, icon, color, sort_order)
-ON CONFLICT (code) DO UPDATE SET
+ON CONFLICT (tenant_id, code) DO UPDATE SET
   name        = EXCLUDED.name,
   description = EXCLUDED.description,
   icon        = EXCLUDED.icon,
@@ -130,7 +130,7 @@ JOIN (VALUES
   ('ADMIN_USER_MANAGEMENT','session_policy',   'admin.max_concurrent_sessions',   'Max Concurrent Sessions',    'Maximum active sessions per user (0 = unlimited).',                 'INTEGER','NUMBER_INPUT','3',           ARRAY['TENANT'],'TENANT',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── PROPERTY_TENANT_PROFILE ───────────────────────────────────────
 INSERT INTO settings_definitions
@@ -152,7 +152,7 @@ JOIN (VALUES
   ('PROPERTY_TENANT_PROFILE','branding',       'property.brand_color',   'Brand Colour',          'Primary HEX colour code used in guest-facing communications.', 'STRING','TEXT_INPUT', '"#1e40af"',         ARRAY['PROPERTY'],'PROPERTY',FALSE,'PUBLIC',  20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── ROOM_UNIT_INVENTORY ───────────────────────────────────────────
 INSERT INTO settings_definitions
@@ -172,7 +172,7 @@ JOIN (VALUES
   ('ROOM_UNIT_INVENTORY','ooo_oos_policy',   'rooms.ooo_requires_approval',     'OOO Requires Approval',      'Out-Of-Order status change requires manager approval.',            'BOOLEAN','TOGGLE',    'true',           ARRAY['PROPERTY'],'PROPERTY',FALSE,'INTERNAL',10)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── RATE_PRICING_FINANCIAL ────────────────────────────────────────
 INSERT INTO settings_definitions
@@ -194,7 +194,7 @@ JOIN (VALUES
   ('RATE_PRICING_FINANCIAL','tax_configuration','rates.city_tax_per_night',        'City Tax per Night',         'Fixed per-night city/tourist tax amount in base currency.',       'DECIMAL','NUMBER_INPUT','0',             ARRAY['PROPERTY'],         'PROPERTY',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── APPROVAL_WORKFLOWS ────────────────────────────────────────────
 INSERT INTO settings_definitions
@@ -214,7 +214,7 @@ JOIN (VALUES
   ('APPROVAL_WORKFLOWS','operational_approval','approvals.early_checkin_allow',    'Allow Early Check-In',      'Permit front-desk to offer early check-in without approval.',    'BOOLEAN','TOGGLE',     'true',     ARRAY['PROPERTY'],         'PROPERTY',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── INTEGRATION_CHANNEL_MANAGEMENT ───────────────────────────────
 INSERT INTO settings_definitions
@@ -234,7 +234,7 @@ JOIN (VALUES
   ('INTEGRATION_CHANNEL_MANAGEMENT','pos_keycard',   'integrations.keycard_system',         'Keycard System',          'Brand of electronic keycard system in use at this property.', 'ENUM',  'SELECT',     '"none"', ARRAY['PROPERTY'],'PROPERTY',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── BOOKING_ENGINE_GUEST ──────────────────────────────────────────
 INSERT INTO settings_definitions
@@ -255,7 +255,7 @@ JOIN (VALUES
   ('BOOKING_ENGINE_GUEST','cancellation_policy','booking.no_show_charge_percent', 'No-Show Charge %',           'Percentage of total booking charged for a no-show.',              'DECIMAL','SLIDER',    '100',   ARRAY['PROPERTY'],'PROPERTY',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── HOUSEKEEPING_MAINTENANCE_OPERATIONS ──────────────────────────
 INSERT INTO settings_definitions
@@ -275,7 +275,7 @@ JOIN (VALUES
   ('HOUSEKEEPING_MAINTENANCE_OPERATIONS','task_automation',  'ops.auto_task_on_checkout',       'Auto Task on Checkout',    'Automatically create a HK task when guest checks out.',         'BOOLEAN','TOGGLE',      'true',    ARRAY['PROPERTY'],'PROPERTY',FALSE,'INTERNAL',10)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── REPORTING_ANALYTICS_NIGHT_AUDIT ──────────────────────────────
 INSERT INTO settings_definitions
@@ -296,7 +296,7 @@ JOIN (VALUES
   ('REPORTING_ANALYTICS_NIGHT_AUDIT','data_retention', 'audit.pii_deletion_months',       'PII Deletion Period (months)','Months after last stay before anonymising guest PII.',         'INTEGER','NUMBER_INPUT','26',      ARRAY['TENANT'],  'TENANT', FALSE,'CONFIDENTIAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── COMMUNICATION_NOTIFICATIONS ──────────────────────────────────
 INSERT INTO settings_definitions
@@ -317,7 +317,7 @@ JOIN (VALUES
   ('COMMUNICATION_NOTIFICATIONS','alert_preferences','comms.maintenance_escalation_hours','Escalation After (hours)', 'Alert supervisor if a work order is unresolved after N hours.',   'INTEGER','NUMBER_INPUT','4',     ARRAY['PROPERTY'],'PROPERTY',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── SECURITY_COMPLIANCE_BACKUP ────────────────────────────────────
 INSERT INTO settings_definitions
@@ -338,7 +338,7 @@ JOIN (VALUES
   ('SECURITY_COMPLIANCE_BACKUP','backup_recovery','security.backup_retention_days', 'Backup Retention (days)', 'Number of days backup snapshots are retained before deletion.',   'INTEGER','NUMBER_INPUT','30',      ARRAY['TENANT'],'TENANT',FALSE,'INTERNAL',    20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── UI_LOCALIZATION_CUSTOM ────────────────────────────────────────
 INSERT INTO settings_definitions
@@ -359,7 +359,7 @@ JOIN (VALUES
   ('UI_LOCALIZATION_CUSTOM','custom_fields',   'ui.guest_custom_fields',       'Guest Custom Fields',     'JSON schema defining extra fields on the guest profile form.',     'JSON',  'JSON_EDITOR','[]',          ARRAY['TENANT'],           'TENANT',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- ── ADVANCED_TRENDING ─────────────────────────────────────────────
 INSERT INTO settings_definitions
@@ -379,7 +379,7 @@ JOIN (VALUES
   ('ADVANCED_TRENDING','performance_tuning','advanced.cache_ttl_seconds',      'Cache TTL (seconds)',     'Default Redis cache TTL for read-heavy endpoints.',                 'INTEGER','NUMBER_INPUT','300', ARRAY['TENANT'],   'TENANT', FALSE,'INTERNAL',30)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
-ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
+ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
 
 -- =====================================================
 -- SETTINGS_OPTIONS

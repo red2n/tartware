@@ -94,7 +94,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         },
       }),
     },
-    async () => {
+    async (request) => {
       if (!isDbEnabled()) {
         return {
           data: settingsCatalogData,
@@ -110,11 +110,12 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         };
       }
 
+      const tenantId = request.authUser?.tenantId;
       const [categories, sections, definitions, options] = await Promise.all([
-        listDbCategories({ activeOnly: false }),
-        listDbSections({ activeOnly: false }),
-        listDbDefinitions({ activeOnly: false }),
-        listDbOptions({ activeOnly: false }),
+        listDbCategories({ tenantId, activeOnly: false }),
+        listDbSections({ tenantId, activeOnly: false }),
+        listDbDefinitions({ tenantId, activeOnly: false }),
+        listDbOptions({ tenantId, activeOnly: false }),
       ]);
       const lastUpdated =
         definitions
@@ -153,7 +154,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const { active_only } = ActiveOnlyQuerySchema.parse(request.query ?? {});
       const categories = isDbEnabled()
-        ? await listDbCategories({ activeOnly: active_only })
+        ? await listDbCategories({ tenantId: request.authUser?.tenantId, activeOnly: active_only })
         : active_only
           ? settingsCatalogData.categories.filter((item) => item.is_active)
           : settingsCatalogData.categories;
@@ -179,7 +180,11 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         request.query ?? {},
       );
       let sections = isDbEnabled()
-        ? await listDbSections({ activeOnly: active_only, categoryId: category_id })
+        ? await listDbSections({
+            tenantId: request.authUser?.tenantId,
+            activeOnly: active_only,
+            categoryId: category_id,
+          })
         : settingsCatalogData.sections;
       if (active_only) {
         sections = sections.filter((item) => item.is_active);
@@ -215,6 +220,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         DefinitionsQuerySchema.parse(request.query ?? {});
       let definitions = isDbEnabled()
         ? await listDbDefinitions({
+            tenantId: request.authUser?.tenantId,
             activeOnly: active_only,
             categoryId: category_id,
             sectionId: section_id,
@@ -274,7 +280,11 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         request.query ?? {},
       );
       let options = isDbEnabled()
-        ? await listDbOptions({ activeOnly: active_only, settingId: setting_id })
+        ? await listDbOptions({
+            tenantId: request.authUser?.tenantId,
+            activeOnly: active_only,
+            settingId: setting_id,
+          })
         : settingsCatalogData.options;
       if (active_only) {
         options = options.filter((item) => item.is_active);
@@ -311,8 +321,11 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const { categoryCode } = request.params as { categoryCode: string };
       const normalized = categoryCode.toUpperCase();
+      const tenantId = request.authUser?.tenantId;
       const category = isDbEnabled()
-        ? (await listDbCategories({ activeOnly: false })).find((item) => item.code === normalized)
+        ? (await listDbCategories({ tenantId, activeOnly: false })).find(
+            (item) => item.code === normalized,
+          )
         : settingsCatalogData.categories.find((item) => item.code === normalized);
 
       if (!category) {
@@ -320,19 +333,19 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const sections = isDbEnabled()
-        ? await listDbSections({ activeOnly: false, categoryId: category.id })
+        ? await listDbSections({ tenantId, activeOnly: false, categoryId: category.id })
         : settingsCatalogData.sections.filter((section) => section.category_id === category.id);
       const sectionIds = new Set(sections.map((section) => section.id));
       const definitions = isDbEnabled()
-        ? (await listDbDefinitions({ activeOnly: false, categoryId: category.id })).filter(
-            (definition) => sectionIds.has(definition.section_id),
-          )
+        ? (
+            await listDbDefinitions({ tenantId, activeOnly: false, categoryId: category.id })
+          ).filter((definition) => sectionIds.has(definition.section_id))
         : settingsCatalogData.definitions.filter((definition) =>
             sectionIds.has(definition.section_id),
           );
       const definitionIds = new Set(definitions.map((definition) => definition.id));
       const options = isDbEnabled()
-        ? (await listDbOptions({ activeOnly: false })).filter((option) =>
+        ? (await listDbOptions({ tenantId, activeOnly: false })).filter((option) =>
             definitionIds.has(option.setting_id),
           )
         : settingsCatalogData.options.filter((option) => definitionIds.has(option.setting_id));

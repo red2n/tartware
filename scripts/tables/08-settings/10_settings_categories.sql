@@ -10,7 +10,7 @@
 CREATE TABLE IF NOT EXISTS settings_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique category identifier
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
-    code VARCHAR(64) NOT NULL UNIQUE,                             -- Machine-readable category key
+    code VARCHAR(64) NOT NULL,                                    -- Machine-readable category key
     name VARCHAR(120) NOT NULL,                                   -- Display name
     description TEXT,                                             -- Optional category description
     icon VARCHAR(64),                                             -- Icon identifier for UI display
@@ -26,6 +26,20 @@ CREATE TABLE IF NOT EXISTS settings_categories (
 -- Add tenant_id to existing installations (idempotent)
 ALTER TABLE settings_categories ADD COLUMN IF NOT EXISTS
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- Backfill NULL tenant_id with the system tenant for existing rows
+UPDATE settings_categories
+   SET tenant_id = (SELECT id FROM tenants ORDER BY created_at LIMIT 1)
+ WHERE tenant_id IS NULL;
+
+-- Enforce NOT NULL after backfill (idempotent — no-op if already NOT NULL)
+ALTER TABLE settings_categories ALTER COLUMN tenant_id SET NOT NULL;
+
+-- Migrate from global UNIQUE(code) to tenant-scoped UNIQUE(tenant_id, code)
+ALTER TABLE settings_categories DROP CONSTRAINT IF EXISTS settings_categories_code_key;
+DROP INDEX IF EXISTS settings_categories_code_key;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_settings_categories_tenant_code
+    ON settings_categories (tenant_id, code);
 
 -- =====================================================
 -- INDEXES

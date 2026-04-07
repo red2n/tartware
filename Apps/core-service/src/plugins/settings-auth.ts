@@ -70,15 +70,27 @@ export const settingsAuthPlugin = fp(async (app: FastifyInstance) => {
       // Resolve tenant ID in priority order:
       //   1. JWT payload field (legacy / future-proofing)
       //   2. Explicit query param (e.g. ?tenant_id=...)
-      //   3. First active membership from the authContextPlugin (already verified)
+      //   3. The single active membership from the authContextPlugin
       //
       // The authContextPlugin runs its onRequest hook at the root scope before
       // this child-scope hook, so request.auth.memberships is already populated.
-      const rawTenantId =
+      // When more than one active membership exists, require an explicit tenant
+      // instead of selecting one based on array ordering.
+      const explicitTenantId =
         (payload.tenantId as string | undefined) ??
-        (request.query as Record<string, string>).tenant_id ??
-        request.auth?.memberships?.find((m) => m.isActive)?.tenantId ??
-        undefined;
+        (request.query as Record<string, string>).tenant_id;
+      const activeMemberships =
+        request.auth?.memberships?.filter((membership) => membership.isActive) ?? [];
+
+      if (!explicitTenantId && activeMemberships.length > 1) {
+        return reply.badRequest(
+          "Explicit tenant_id is required when multiple active tenant memberships exist",
+        );
+      }
+
+      const rawTenantId =
+        explicitTenantId ??
+        (activeMemberships.length === 1 ? activeMemberships[0]?.tenantId : undefined);
 
       const tenantId = rawTenantId && isValidUuid(rawTenantId) ? rawTenantId : undefined;
 

@@ -55,6 +55,22 @@ COMMENT ON TABLE settings_options IS 'Predefined options for SELECT/MULTISELECT/
 ALTER TABLE settings_options ADD COLUMN IF NOT EXISTS
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- Backfill NULL tenant_id with the system tenant for existing rows
+UPDATE settings_options
+   SET tenant_id = (SELECT id FROM tenants ORDER BY created_at LIMIT 1)
+ WHERE tenant_id IS NULL;
+
+-- Enforce NOT NULL after backfill (idempotent — no-op if already NOT NULL)
+ALTER TABLE settings_options ALTER COLUMN tenant_id SET NOT NULL;
+
+-- Backfill NULL tenant_id with the system tenant for existing rows
+UPDATE settings_options
+   SET tenant_id = (SELECT id FROM tenants ORDER BY created_at LIMIT 1)
+ WHERE tenant_id IS NULL;
+
+-- Enforce NOT NULL after backfill (idempotent — no-op if already NOT NULL)
+ALTER TABLE settings_options ALTER COLUMN tenant_id SET NOT NULL;
+
 COMMENT ON COLUMN settings_options.tenant_id IS 'Owning tenant — all catalog rows are tenant-scoped';
 COMMENT ON COLUMN settings_options.setting_id IS 'Parent setting definition this option belongs to';
 COMMENT ON COLUMN settings_options.value IS 'Internal value stored when this option is selected';

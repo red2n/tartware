@@ -27,6 +27,14 @@ CREATE TABLE IF NOT EXISTS settings_sections (
 ALTER TABLE settings_sections ADD COLUMN IF NOT EXISTS
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- Backfill NULL tenant_id with the system tenant for existing rows
+UPDATE settings_sections
+   SET tenant_id = (SELECT id FROM tenants ORDER BY created_at LIMIT 1)
+ WHERE tenant_id IS NULL;
+
+-- Enforce NOT NULL after backfill (idempotent — no-op if already NOT NULL)
+ALTER TABLE settings_sections ALTER COLUMN tenant_id SET NOT NULL;
+
 -- =====================================================
 -- INDEXES
 -- =====================================================

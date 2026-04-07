@@ -487,6 +487,7 @@ export type UpdateSettingsValueInput = {
 
 /** Filters for querying settings catalog entities. */
 export type SettingsCatalogFilters = {
+	tenantId?: string;
 	activeOnly: boolean;
 	categoryId?: string;
 	sectionId?: string;

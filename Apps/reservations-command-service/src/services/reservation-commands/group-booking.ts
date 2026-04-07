@@ -711,7 +711,7 @@ export const setupGroupBilling = async (
           tenantId,
           group.property_id,
           `${group.group_code ?? group.group_booking_id.slice(0, 8).toUpperCase()} — ${rule.charge_type} → ${rule.target}`,
-          `GRP-${group.group_booking_id.slice(0, 8).toUpperCase()}-${rule.charge_type}`,
+          null, // rule_code — left NULL for auto-generated rows (unique constraint allows multiple NULLs)
           isToMaster ? folioId : null, // destination_folio_id
           isToMaster ? null : "GUEST", // destination_folio_type
           rule.charge_type, // transaction_type

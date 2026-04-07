@@ -142,8 +142,11 @@ export const closeCashierSession = async (
   const agg = aggRows[0] ?? {};
 
   const cashReceived = Number(agg.total_cash_received ?? 0);
-  // cash_variance = declared − counted (reconciliation variance)
-  const cashVariance = command.closing_cash_declared - command.closing_cash_counted;
+  const openingFloat = Number(session.opening_float_declared ?? 0);
+  // expected = opening float + cash received during shift
+  const expectedCashBalance = openingFloat + cashReceived;
+  // cash_variance = counted − expected (positive = overage, negative = shortage)
+  const cashVariance = command.closing_cash_counted - expectedCashBalance;
   const hasVariance = Math.abs(cashVariance) > 0.01;
 
   // 3. Update session with reconciliation data
