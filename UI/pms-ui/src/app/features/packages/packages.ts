@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { PACKAGE_TYPE_OPTIONS } from "./package-constants";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -11,13 +12,20 @@ import { RouterLink } from "@angular/router";
 import type { PackageListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
-import { GlobalSearchService } from "../../core/search/global-search.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "FEATURED";
@@ -49,6 +57,7 @@ export class PackagesComponent {
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	readonly packages = signal<PackageListItem[]>([]);
 	readonly loading = signal(false);
@@ -72,21 +81,7 @@ export class PackagesComponent {
 
 	readonly packageTypes: { key: string; label: string }[] = [
 		{ key: "ALL", label: "All types" },
-		{ key: "room_only", label: "Room Only" },
-		{ key: "bed_and_breakfast", label: "Bed & Breakfast" },
-		{ key: "half_board", label: "Half Board" },
-		{ key: "full_board", label: "Full Board" },
-		{ key: "all_inclusive", label: "All Inclusive" },
-		{ key: "romance", label: "Romance" },
-		{ key: "spa", label: "Spa" },
-		{ key: "golf", label: "Golf" },
-		{ key: "ski", label: "Ski" },
-		{ key: "family", label: "Family" },
-		{ key: "business", label: "Business" },
-		{ key: "weekend_getaway", label: "Weekend Getaway" },
-		{ key: "extended_stay", label: "Extended Stay" },
-		{ key: "seasonal", label: "Seasonal" },
-		{ key: "custom", label: "Custom" },
+		...PACKAGE_TYPE_OPTIONS,
 	];
 
 	readonly filteredPackages = computed(() => {
@@ -223,20 +218,11 @@ export class PackagesComponent {
 	}
 
 	formatCurrency(amount: number, currency?: string): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency ?? "USD",
-			minimumFractionDigits: 2,
-		}).format(amount);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	formatDate(dateStr: string): string {
-		const d = new Date(dateStr);
-		return d.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(dateStr);
 	}
 
 	validityTooltip(pkg: PackageListItem): string {

@@ -23,6 +23,22 @@
     </nav>
   </div>
 
+  <!-- Settings-driven admin policy strip -->
+  <div class="hk-policy-flags">
+    <span class="hk-policy-flag">
+      <mat-icon>timer</mat-icon>
+      {{ 'Session timeout' | translate }}: <strong>{{ sessionIdleTimeoutMins() }}min</strong>
+    </span>
+    <span class="hk-policy-flag">
+      <mat-icon>password</mat-icon>
+      {{ 'Min password length' | translate }}: <strong>{{ passwordMinLength() }}</strong>
+    </span>
+    <span class="hk-policy-flag">
+      <mat-icon>devices</mat-icon>
+      {{ 'Max concurrent sessions' | translate }}: <strong>{{ maxConcurrentSessions() }}</strong>
+    </span>
+  </div>
+
   <!-- Content -->
   @defer (on idle) {
     @if (loading()) {

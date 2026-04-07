@@ -1,7 +1,10 @@
+import { randomUUID } from "node:crypto";
+
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingFolioCloseCommandSchema,
+  BillingFolioCreateCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
 } from "../../schemas/billing-commands.js";
@@ -14,6 +17,59 @@ import {
   resolveFolioId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+
+// ─── Folio Create ───────────────────────────────────────────────────────
+
+/**
+ * Create a standalone folio (house account, city ledger, walk-in, etc.).
+ * Supports folios without a reservation — industry standard for POS,
+ * company direct-bill, and internal house accounts.
+ */
+export const createFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingFolioCreateCommandSchema.parse(payload);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  const folioNumber = `FOL-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+  const currency = command.currency ?? "USD";
+
+  const result = await query<{ folio_id: string }>(
+    `INSERT INTO public.folios (
+       tenant_id, property_id, folio_number, folio_type, folio_status,
+       reservation_id, guest_id, currency_code,
+       tax_exempt, tax_id,
+       notes, created_by, updated_by
+     ) VALUES (
+       $1::uuid, $2::uuid, $3, $4, 'OPEN',
+       $5, $6, UPPER($7),
+       $8, $9,
+       $10, $11, $11
+     ) RETURNING folio_id`,
+    [
+      context.tenantId,
+      command.property_id,
+      folioNumber,
+      command.folio_type,
+      command.reservation_id ?? null,
+      command.guest_id ?? null,
+      currency,
+      command.tax_exempt_id ? true : false,
+      command.tax_exempt_id ?? null,
+      command.notes ?? null,
+      actor,
+    ],
+  );
+
+  const folioId = result.rows[0]?.folio_id;
+  if (!folioId) {
+    throw new BillingCommandError("FOLIO_CREATE_FAILED", "Failed to create folio.");
+  }
+
+  appLogger.info(
+    { folioId, folioType: command.folio_type, folioNumber },
+    "Standalone folio created",
+  );
+  return folioId;
+};
 
 /**
  * Transfer folio balance between reservations.

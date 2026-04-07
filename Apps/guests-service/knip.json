@@ -14,6 +14,7 @@
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
+    "kafkajs",
     "pg"
   ],
   "ignoreBinaries": [

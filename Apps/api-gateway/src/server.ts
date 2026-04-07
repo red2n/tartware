@@ -1,15 +1,13 @@
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
-import { buildFastifyServer } from "@tartware/fastify-server";
+import { buildFastifyServer, sseTokenPromotePlugin } from "@tartware/fastify-server";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { Redis } from "ioredis";
-
 import { devToolsConfig, gatewayConfig } from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
-import sseTokenPlugin from "./plugins/sse-token.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerBillingRoutes } from "./routes/billing-routes.js";
 import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
@@ -39,7 +37,7 @@ export const buildServer = () => {
   });
 
   app.register(swaggerPlugin);
-  app.register(sseTokenPlugin);
+  app.register(sseTokenPromotePlugin);
   app.register(authContextPlugin);
 
   const rateLimitOptions: RateLimitPluginOptions = {

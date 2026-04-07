@@ -1,4 +1,5 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
+import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
@@ -17,7 +18,7 @@ type Building = Pick<BuildingItem, "building_id" | "building_code" | "building_n
 @Component({
 	selector: "app-create-room-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
+	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
 	templateUrl: "./create-room-dialog.html",
 	styleUrl: "./create-room-dialog.scss",
 })

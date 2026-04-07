@@ -1,9 +1,88 @@
 <div class="tax-config-page">
   <app-page-header title="Tax Configuration" description="Tax rules, jurisdictions, and rate configuration">
+    <button class="btn btn-primary btn-sm" (click)="toggleCreateForm()" [matTooltip]="'Add new tax rule' | translate">
+      <mat-icon>add</mat-icon> {{ 'Add Tax Rule' | translate }}
+    </button>
     <button class="btn btn-invisible" (click)="loadTaxConfigs()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh tax configurations' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </app-page-header>
+
+  <!-- ═══ CREATE FORM ═══ -->
+  @if (showCreateForm()) {
+    <div class="action-form">
+      <div class="close-form-row"><h3>{{ 'Create Tax Rule' | translate }}</h3><button class="btn btn-ghost btn-sm" (click)="toggleCreateForm()"><mat-icon>close</mat-icon></button></div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>{{ 'Tax Code' | translate }} *</label>
+          <input type="text" class="field-input" placeholder="e.g. OCCUPANCY-TAX"
+                 [ngModel]="createForm().tax_code" (ngModelChange)="updateCreateForm({ tax_code: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Tax Name' | translate }} *</label>
+          <input type="text" class="field-input" placeholder="e.g. City Occupancy Tax"
+                 [ngModel]="createForm().tax_name" (ngModelChange)="updateCreateForm({ tax_name: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Tax Type' | translate }} *</label>
+          <select class="field-input" [ngModel]="createForm().tax_type" (ngModelChange)="updateCreateForm({ tax_type: $event })">
+            @for (t of taxTypeOptions; track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{{ 'Tax Rate' | translate }} *</label>
+          <input type="number" class="field-input" min="0" step="0.01"
+                 [ngModel]="createForm().tax_rate" (ngModelChange)="updateCreateForm({ tax_rate: +$event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Rate Type' | translate }}</label>
+          <select class="field-input" [ngModel]="createForm().is_percentage" (ngModelChange)="updateCreateForm({ is_percentage: $event === 'true' })">
+            <option [value]="true">{{ 'Percentage' | translate }}</option>
+            <option [value]="false">{{ 'Flat Amount' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{{ 'Calculation Method' | translate }}</label>
+          <select class="field-input" [ngModel]="createForm().calculation_method" (ngModelChange)="updateCreateForm({ calculation_method: $event })">
+            @for (m of calcMethodOptions; track m) { <option [value]="m">{{ m }}</option> }
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{{ 'Country Code' | translate }} *</label>
+          <input type="text" class="field-input" maxlength="2" placeholder="US"
+                 [ngModel]="createForm().country_code" (ngModelChange)="updateCreateForm({ country_code: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'State / Province' | translate }}</label>
+          <input type="text" class="field-input" placeholder="e.g. CA"
+                 [ngModel]="createForm().state_province" (ngModelChange)="updateCreateForm({ state_province: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Jurisdiction' | translate }}</label>
+          <input type="text" class="field-input" placeholder="e.g. San Francisco"
+                 [ngModel]="createForm().jurisdiction_name" (ngModelChange)="updateCreateForm({ jurisdiction_name: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Description' | translate }}</label>
+          <input type="text" class="field-input" placeholder="Optional description"
+                 [ngModel]="createForm().tax_description" (ngModelChange)="updateCreateForm({ tax_description: $event })" />
+        </div>
+        <div class="form-field">
+          <label>{{ 'Effective From' | translate }} *</label>
+          <input type="date" class="field-input"
+                 [ngModel]="createForm().effective_from" (ngModelChange)="updateCreateForm({ effective_from: $event })" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary btn-sm" (click)="createTaxConfig()"
+                [disabled]="creating() || !createForm().tax_code || !createForm().tax_name || !createForm().tax_rate">
+          @if (creating()) { <mat-spinner diameter="16"></mat-spinner> }
+          {{ 'Create Tax Rule' | translate }}
+        </button>
+        <button class="btn btn-outline btn-sm" (click)="toggleCreateForm()">{{ 'Cancel' | translate }}</button>
+      </div>
+    </div>
+  }
 
   <!-- ═══ KPI OVERVIEW ═══ -->
   @if (taxConfigs().length > 0) {
@@ -89,6 +168,7 @@
               <button type="button" class="th-sort-btn" (click)="onSort('effective_from')">{{ 'Effective From' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('effective_from') }}</mat-icon></button>
             </th>
             <th>{{ 'Status' | translate }}</th>
+            <th>{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -120,7 +200,85 @@
                   {{ tax.is_active ? 'Active' : 'Inactive' }}
                 </span>
               </td>
+              <td class="cell-actions">
+                <button class="btn btn-ghost btn-xs" (click)="startEdit(tax)" [matTooltip]="'Edit' | translate"><mat-icon>edit</mat-icon></button>
+                <button class="btn btn-ghost btn-xs btn-danger-text" (click)="showDelete(tax.tax_config_id)" [matTooltip]="'Delete' | translate"><mat-icon>delete</mat-icon></button>
+              </td>
             </tr>
+            <!-- Inline edit form -->
+            @if (editingTaxId() === tax.tax_config_id) {
+              <tr class="close-form-row">
+                <td colspan="9">
+                  <div class="inline-close-form">
+                    <span class="form-label">{{ 'Edit' | translate }} — {{ tax.tax_code }}</span>
+                    <div class="form-inline-fields">
+                      <div class="form-field">
+                        <label>{{ 'Tax Code' | translate }}</label>
+                        <input type="text" class="field-input field-sm" [ngModel]="editForm().tax_code" (ngModelChange)="updateEditForm({ tax_code: $event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Tax Name' | translate }}</label>
+                        <input type="text" class="field-input field-sm" [ngModel]="editForm().tax_name" (ngModelChange)="updateEditForm({ tax_name: $event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Type' | translate }}</label>
+                        <select class="field-input field-sm" [ngModel]="editForm().tax_type" (ngModelChange)="updateEditForm({ tax_type: $event })">
+                          @for (t of taxTypeOptions; track t) { <option [value]="t">{{ t }}</option> }
+                        </select>
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Rate' | translate }}</label>
+                        <input type="number" class="field-input field-sm" min="0" step="0.01" [ngModel]="editForm().tax_rate" (ngModelChange)="updateEditForm({ tax_rate: +$event })" />
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Method' | translate }}</label>
+                        <select class="field-input field-sm" [ngModel]="editForm().calculation_method" (ngModelChange)="updateEditForm({ calculation_method: $event })">
+                          @for (m of calcMethodOptions; track m) { <option [value]="m">{{ m }}</option> }
+                        </select>
+                      </div>
+                      <div class="form-field">
+                        <label>{{ 'Active' | translate }}</label>
+                        <select class="field-input field-sm" [ngModel]="editForm().is_active" (ngModelChange)="updateEditForm({ is_active: $event === 'true' })">
+                          <option [value]="true">{{ 'Active' | translate }}</option>
+                          <option [value]="false">{{ 'Inactive' | translate }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-actions">
+                      <button class="btn btn-primary btn-sm" (click)="saveEdit()" [disabled]="editing()">
+                        @if (editing()) { <mat-spinner diameter="16"></mat-spinner> }
+                        {{ 'Save Changes' | translate }}
+                      </button>
+                      <button class="btn btn-outline btn-sm" (click)="cancelEdit()">{{ 'Cancel' | translate }}</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+            <!-- Inline delete confirmation -->
+            @if (deletingTaxId() === tax.tax_config_id) {
+              <tr class="close-form-row">
+                <td colspan="9">
+                  <div class="inline-close-form">
+                    <span class="form-label delete-confirm-label">{{ 'Delete' | translate }} {{ tax.tax_code }}?</span>
+                    <div class="form-inline-fields">
+                      <div class="form-field">
+                        <label>{{ 'Reason (optional)' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="Reason for deletion"
+                               [ngModel]="deleteReason()" (ngModelChange)="deleteReason.set($event)" />
+                      </div>
+                    </div>
+                    <div class="form-actions">
+                      <button class="btn btn-danger btn-sm" (click)="deleteTaxConfig()" [disabled]="deleting()">
+                        @if (deleting()) { <mat-spinner diameter="16"></mat-spinner> }
+                        {{ 'Delete' | translate }}
+                      </button>
+                      <button class="btn btn-outline btn-sm" (click)="cancelDelete()">{{ 'Cancel' | translate }}</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>

@@ -67,6 +67,7 @@ export const ChargePostingsSchema = z.object({
 	void_posting_id: uuid.optional(),
 	transfer_from_folio_id: uuid.optional(),
 	transfer_to_folio_id: uuid.optional(),
+	routing_rule_id: uuid.optional(),
 	server_name: z.string().optional(),
 	cashier_name: z.string().optional(),
 	notes: z.string().optional(),

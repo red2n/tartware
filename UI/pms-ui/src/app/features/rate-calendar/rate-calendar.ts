@@ -9,8 +9,8 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 /** Minimal rate plan reference. */
@@ -79,6 +79,14 @@ export class RateCalendarComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
+	readonly settings = inject(SettingsService);
+
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** First day of the week: 0 = Sunday, 1 = Monday. */
+	readonly weekStartDay = computed(() => {
+		const val = this.settings.getString("ui.week_starts_on", "SUNDAY");
+		return val === "MONDAY" ? 1 : 0;
+	});
 
 	readonly loading = signal(false);
 	readonly saving = signal(false);
@@ -237,7 +245,7 @@ export class RateCalendarComponent {
 		if (!cell) return "—";
 		if (cell.status === "CLOSED" || cell.status === "STOP_SELL") return "—";
 		const amount = cell.amount ?? cell.baseRate;
-		return formatCurrency(amount, cell.currency, { min: 0, max: 0 });
+		return this.fmtCurrency(amount, cell.currency);
 	}
 
 	/** CSS class for a cell based on its state. */
@@ -260,11 +268,11 @@ export class RateCalendarComponent {
 		const parts: string[] = [];
 		if (cell.amount !== null) {
 			const diff = cell.amount - cell.baseRate;
-			if (diff > 0) parts.push(`+${formatCurrency(diff, cell.currency)} vs base`);
-			else if (diff < 0) parts.push(`${formatCurrency(diff, cell.currency)} vs base`);
+			if (diff > 0) parts.push(`+${this.fmtCurrency(diff, cell.currency)} vs base`);
+			else if (diff < 0) parts.push(`${this.fmtCurrency(diff, cell.currency)} vs base`);
 			else parts.push("At base rate");
 		} else {
-			parts.push(`Base: ${formatCurrency(cell.baseRate, cell.currency)}`);
+			parts.push(`Base: ${this.fmtCurrency(cell.baseRate, cell.currency)}`);
 		}
 		if (cell.cta) parts.push("CTA: Closed to Arrival");
 		if (cell.ctd) parts.push("CTD: Closed to Departure");
@@ -404,12 +412,12 @@ export class RateCalendarComponent {
 	// ── Helpers ──
 
 	formatDate(dateStr: string): string {
-		return formatShortDate(dateStr);
+		return this.settings.formatDate(dateStr);
 	}
 
 	dayOfWeek(dateStr: string): string {
 		const d = new Date(`${dateStr}T00:00:00`);
-		return d.toLocaleDateString("en-US", { weekday: "short" });
+		return d.toLocaleDateString(this.settings.locale() || "en-US", { weekday: "short" });
 	}
 
 	dayNum(dateStr: string): string {
@@ -435,7 +443,7 @@ export class RateCalendarComponent {
 	}
 
 	fmtCurrency(amount: number, currency: string): string {
-		return formatCurrency(amount, currency);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	private toDateStr(d: Date): string {

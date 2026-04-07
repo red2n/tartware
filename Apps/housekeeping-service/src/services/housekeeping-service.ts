@@ -1,3 +1,4 @@
+import { toNumberOrFallback } from "@tartware/config";
 import {
   type DeepCleanDueItem,
   DeepCleanDueItemSchema,
@@ -12,7 +13,6 @@ import {
   MaintenanceRequestListItemSchema,
   type MaintenanceRequestRow,
 } from "@tartware/schemas";
-
 import { query } from "../lib/db.js";
 import {
   DEEP_CLEAN_DUE_SQL,
@@ -24,7 +24,6 @@ import {
   MAINTENANCE_REQUEST_BY_ID_SQL,
   MAINTENANCE_REQUEST_LIST_SQL,
 } from "../sql/housekeeping-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
 
 /**
  * Re-export for backward compatibility.

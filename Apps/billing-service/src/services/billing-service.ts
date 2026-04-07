@@ -1,3 +1,4 @@
+import { toNumberOrFallback } from "@tartware/config";
 import {
   type BillingPaymentListItem,
   BillingPaymentListItemSchema,
@@ -11,16 +12,16 @@ import {
   type FolioRow,
   type PreAuditCheckItem,
 } from "@tartware/schemas";
-
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
 import {
   BILLING_PAYMENT_LIST_SQL,
+  CASHIER_SESSION_BY_ID_SQL,
+  CASHIER_SESSION_LIST_SQL,
   CHARGE_POSTING_LIST_SQL,
   FOLIO_BY_ID_SQL,
   FOLIO_LIST_SQL,
 } from "../sql/billing-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
 
 /**
  * Re-export for backward compatibility.
@@ -33,15 +34,14 @@ const formatEnumDisplay = (
   fallback: string,
 ): { value: string; display: string } => {
   if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
+    return { value: fallback, display: fallback };
   }
-  const normalized = value.toLowerCase();
-  const display = normalized
+  const display = value
+    .toLowerCase()
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  return { value: normalized, display };
+  return { value, display };
 };
 
 const toIsoString = (value: string | Date | null): string | undefined => {
@@ -295,6 +295,7 @@ export const listChargePostings = async (options: {
   chargeCode?: string;
   includeVoided?: boolean;
   offset?: number;
+  reservationId?: string;
 }): Promise<ChargePostingListItem[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -306,6 +307,7 @@ export const listChargePostings = async (options: {
   const chargeCode = options.chargeCode ?? null;
   const includeVoided = options.includeVoided ?? null;
   const offset = options.offset ?? 0;
+  const reservationId = options.reservationId ?? null;
 
   const { rows } = await query<ChargePostingRow>(CHARGE_POSTING_LIST_SQL, [
     limit,
@@ -316,6 +318,7 @@ export const listChargePostings = async (options: {
     chargeCode,
     includeVoided === true ? null : false,
     offset,
+    reservationId,
   ]);
 
   return rows.map(mapRowToChargePosting);
@@ -591,4 +594,35 @@ export const getBucketCheck = async (options: {
   const isBalanced = items.every((i) => i.matched);
 
   return { business_date: businessDate, items, is_balanced: isBalanced };
+};
+
+// ============================================================================
+// CASHIER SESSIONS
+// ============================================================================
+
+export const listCashierSessions = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  sessionStatus?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  const { tenantId, limit = 100, offset = 0 } = options;
+  const propertyId = options.propertyId ?? null;
+  const sessionStatus = options.sessionStatus ?? null;
+
+  const { rows } = await query(CASHIER_SESSION_LIST_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    sessionStatus,
+    offset,
+  ]);
+
+  return rows;
+};
+
+export const getCashierSessionById = async (sessionId: string, tenantId: string) => {
+  const { rows } = await query(CASHIER_SESSION_BY_ID_SQL, [sessionId, tenantId]);
+  return rows[0] ?? null;
 };

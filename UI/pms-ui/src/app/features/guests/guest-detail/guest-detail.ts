@@ -11,6 +11,7 @@ import type { GuestWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { loyaltyTierClass, vipStatusClass } from "../../../shared/badge-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
@@ -74,6 +75,7 @@ export class GuestDetailComponent implements OnInit {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
+	readonly settings = inject(SettingsService);
 
 	readonly guest = signal<GuestDetail | null>(null);
 	readonly loading = signal(false);
@@ -227,19 +229,14 @@ export class GuestDetailComponent implements OnInit {
 
 	formatDate(date: string | Date | null | undefined): string {
 		if (!date) return "—";
-		return new Date(date).toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(
+			typeof date === "string" ? date : date.toISOString().slice(0, 10),
+		);
 	}
 
 	formatCurrency(amount: number | null | undefined): string {
 		if (amount == null) return "—";
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-		}).format(amount);
+		return this.settings.formatCurrency(amount);
 	}
 
 	tierLabel(tier: string): string {

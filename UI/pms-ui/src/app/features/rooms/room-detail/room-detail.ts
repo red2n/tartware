@@ -203,7 +203,7 @@ export class RoomDetailComponent implements OnInit {
 		if (!r) return false;
 		return (
 			this.editRoomTypeId() !== (r.room_type_id ?? "") ||
-			this.editBuilding() !== (r.building ?? "") ||
+			this.editBuilding() !== (r.building_id ?? "") ||
 			this.editFloor() !== (r.floor ?? "") ||
 			this.editWing() !== (r.wing ?? "")
 		);
@@ -227,7 +227,7 @@ export class RoomDetailComponent implements OnInit {
 		const r = this.room();
 		if (!r) return;
 		this.editRoomTypeId.set(r.room_type_id ?? "");
-		this.editBuilding.set(r.building ?? "");
+		this.editBuilding.set(r.building_id ?? "");
 		this.editFloor.set(r.floor ?? "");
 		this.editWing.set(r.wing ?? "");
 		this.editingInfo.set(true);
@@ -245,10 +245,15 @@ export class RoomDetailComponent implements OnInit {
 
 		this.savingInfo.set(true);
 		try {
+			const selectedBuildingId = this.editBuilding() || undefined;
+			const selectedBuilding = selectedBuildingId
+				? this.buildings().find((b) => b.building_id === selectedBuildingId)
+				: undefined;
 			await this.api.put(`/rooms/${r.room_id}`, {
 				tenant_id: tenantId,
 				room_type_id: this.editRoomTypeId() || undefined,
-				building: this.editBuilding() || undefined,
+				building: selectedBuilding?.building_name ?? undefined,
+				building_id: selectedBuildingId,
 				floor: this.editFloor() || undefined,
 				wing: this.editWing() || undefined,
 			});

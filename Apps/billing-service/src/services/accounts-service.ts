@@ -1,3 +1,4 @@
+import { toNumberOrFallback } from "@tartware/config";
 import {
   type AccountsReceivableDetail,
   AccountsReceivableDetailSchema,
@@ -9,7 +10,6 @@ import {
   InvoiceListItemSchema,
   type InvoiceRow,
 } from "@tartware/schemas";
-
 import { query } from "../lib/db.js";
 import {
   AR_AGING_SUMMARY_SQL,
@@ -18,7 +18,6 @@ import {
   INVOICE_BY_ID_SQL,
   INVOICE_LIST_SQL,
 } from "../sql/accounts-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
 
 const formatEnumDisplay = (
   value: string | null,

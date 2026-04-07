@@ -13,6 +13,7 @@ import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
@@ -43,6 +44,21 @@ export class UsersComponent {
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
+
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** Session idle timeout in minutes. */
+	readonly sessionIdleTimeoutMins = computed(() =>
+		this.settings.getNumber("admin.session_idle_timeout_mins", 30),
+	);
+	/** Minimum password length for new users. */
+	readonly passwordMinLength = computed(() =>
+		this.settings.getNumber("admin.password_min_length", 8),
+	);
+	/** Maximum concurrent sessions per user. */
+	readonly maxConcurrentSessions = computed(() =>
+		this.settings.getNumber("admin.max_concurrent_sessions", 3),
+	);
 
 	readonly users = signal<UserRow[]>([]);
 	readonly loading = signal(false);
@@ -179,7 +195,7 @@ export class UsersComponent {
 
 	formatDate(date: Date | string | undefined): string {
 		if (!date) return "—";
-		return new Date(date).toLocaleDateString(undefined, {
+		return new Date(date).toLocaleDateString(this.settings.locale() || "en-US", {
 			year: "numeric",
 			month: "short",
 			day: "numeric",

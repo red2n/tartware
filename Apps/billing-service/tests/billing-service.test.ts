@@ -49,9 +49,9 @@ describe("Billing Service", () => {
     });
 
     expect(results).toHaveLength(1);
-    expect(results[0]?.transaction_type).toBe("unknown");
-    expect(results[0]?.payment_method).toBe("unknown");
-    expect(results[0]?.status).toBe("unknown");
+    expect(results[0]?.transaction_type).toBe("Unknown");
+    expect(results[0]?.payment_method).toBe("Unknown");
+    expect(results[0]?.status).toBe("Unknown");
     expect(results[0]?.currency).toBe("USD");
   });
 });

@@ -29,6 +29,7 @@ import { registerTaxRoutes } from "./routes/calculations/tax.js";
 import { registerYieldRoutes } from "./routes/calculations/yield.js";
 import { registerFinanceAdminRoutes } from "./routes/finance-admin.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerNightAuditRoutes } from "./routes/night-audit.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureBillingEncryptionRequirementsMet();
@@ -50,6 +51,8 @@ export const buildServer = (): FastifyInstance => {
       registerAccountsRoutes(app);
       // Absorbed from finance-admin-service (Phase 6)
       registerFinanceAdminRoutes(app);
+      // Night audit read endpoints
+      registerNightAuditRoutes(app);
       // Absorbed from calculation-service (Phase 6)
       registerAllowanceRoutes(app);
       registerAuthorizationRoutes(app);

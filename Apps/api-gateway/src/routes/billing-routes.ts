@@ -26,8 +26,10 @@ import {
   commandAcceptedSchema,
   paginationQuerySchema,
   reservationParamsSchema,
+  tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
+  tenantTaxConfigParamsSchema,
 } from "./schemas.js";
 
 /** Register billing read-proxy and command-dispatch routes on the gateway. */
@@ -36,7 +38,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
   const proxyCashier = async (request: FastifyRequest, reply: FastifyReply) =>
-    proxyRequest(request, reply, serviceTargets.housekeepingServiceUrl);
+    proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
   const proxyAccounts = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
@@ -317,7 +319,153 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   // ============================================================================
-  // CASHIER SERVICE PROXY (cashier-sessions → cashier-service :3080)
+  // FOLIO & INVOICE INDUSTRY-STANDARD ROUTES (standalone folios, void, credit notes)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Create a standalone folio (house account, city ledger, walk-in).",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.folio.create",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/:folioId/split",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Split charges within a folio via the Command Center.",
+        params: tenantFolioParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.folio.split",
+        paramKey: "folioId",
+        payloadKey: "folio_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/:folioId/windows",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Create a folio window (split billing by date range).",
+        params: tenantFolioParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.folio_window.create",
+        paramKey: "folioId",
+        payloadKey: "folio_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/invoices/:invoiceId/finalize",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Finalize an invoice, locking it from further edits.",
+        params: tenantInvoiceParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.invoice.finalize",
+        paramKey: "invoiceId",
+        payloadKey: "invoice_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/invoices/:invoiceId/void",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Void a DRAFT invoice. Issued invoices require a credit note instead.",
+        params: tenantInvoiceParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.invoice.void",
+        paramKey: "invoiceId",
+        payloadKey: "invoice_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/invoices/:invoiceId/credit-note",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Create a credit note against a finalized/issued invoice.",
+        params: tenantInvoiceParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.credit_note.create",
+        paramKey: "invoiceId",
+        payloadKey: "original_invoice_id",
+      }),
+  );
+
+  // ============================================================================
+  // CASHIER SESSION PROXY (cashier-sessions → billing-service :3025)
   // ============================================================================
 
   app.get(
@@ -508,6 +656,106 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     proxyFinanceAdmin,
+  );
+
+  // ============================================================================
+  // CASHIER HANDOVER (shift transition)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/cashier-sessions/handover",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Handover a cashier session to the next shift atomically.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.cashier.handover",
+      }),
+  );
+
+  // ============================================================================
+  // TAX CONFIGURATION COMMANDS (CRUD)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/tax-configurations",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Create a tax configuration via the Command Center.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.tax_config.create",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/tax-configurations/:taxConfigId/update",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Update a tax configuration via the Command Center.",
+        params: tenantTaxConfigParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.tax_config.update",
+        paramKey: "taxConfigId",
+        payloadKey: "tax_config_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/tax-configurations/:taxConfigId/delete",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Delete a tax configuration via the Command Center.",
+        params: tenantTaxConfigParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.tax_config.delete",
+        paramKey: "taxConfigId",
+        payloadKey: "tax_config_id",
+      }),
   );
 
   // ============================================================================

@@ -5,14 +5,8 @@
  * Reuses billing's Kafka client, producer, and metrics.
  * All handler implementations live in billing-command-service / billing-commands.
  */
-import {
-  type CommandEnvelope,
-  type CommandMetadata,
-  createCommandCenterHandlers,
-} from "@tartware/command-consumer-utils";
-import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
-import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
-import type { Consumer } from "kafkajs";
+import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -35,49 +29,7 @@ import {
   finalizeInvoice,
 } from "../services/billing-commands/invoice.js";
 
-let consumer: Consumer | null = null;
 const logger = appLogger.child({ module: "accounts-command-consumer" });
-
-export const startAccountsCommandCenterConsumer = async (): Promise<void> => {
-  if (consumer) return;
-
-  consumer = kafka.consumer({
-    groupId: config.accounts.commandCenter.consumerGroupId,
-    allowAutoTopicCreation: false,
-    maxBytesPerPartition: config.accounts.commandCenter.maxBatchBytes,
-  });
-
-  const c = consumer;
-  await c.connect();
-  await c.subscribe({
-    topic: config.accounts.commandCenter.topic,
-    fromBeginning: false,
-  });
-  await c.run({
-    autoCommit: false,
-    eachBatchAutoResolve: false,
-    eachBatch: handleBatch,
-  });
-
-  logger.info(
-    {
-      topic: config.accounts.commandCenter.topic,
-      groupId: config.accounts.commandCenter.consumerGroupId,
-      targetService: config.accounts.commandCenter.targetServiceId,
-    },
-    "accounts command consumer started",
-  );
-};
-
-export const shutdownAccountsCommandCenterConsumer = async (): Promise<void> => {
-  if (!consumer) return;
-  try {
-    await consumer.disconnect();
-    logger.info("accounts command consumer disconnected");
-  } finally {
-    consumer = null;
-  }
-};
 
 const routeAccountsCommand = async (
   envelope: CommandEnvelope,
@@ -115,27 +67,20 @@ const routeAccountsCommand = async (
   }
 };
 
-const { handleBatch } = createCommandCenterHandlers({
-  targetServiceId: config.accounts.commandCenter.targetServiceId,
+const { start, shutdown } = createConsumerLifecycle({
+  kafka,
+  commandCenterConfig: config.accounts.commandCenter,
   serviceName: config.service.name,
-  logger,
-  retry: {
-    maxRetries: config.accounts.commandCenter.maxRetries,
-    baseDelayMs: config.accounts.commandCenter.retryBackoffMs,
-    delayScheduleMs:
-      config.accounts.commandCenter.retryScheduleMs.length > 0
-        ? config.accounts.commandCenter.retryScheduleMs
-        : undefined,
-  },
-  processWithRetry,
-  RetryExhaustedError,
-  publishDlqEvent,
-  buildDlqPayload,
-  routeCommand: routeAccountsCommand,
   commandLabel: "accounts",
+  logger,
+  routeCommand: routeAccountsCommand,
+  publishDlqEvent,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
     setConsumerLag: setCommandConsumerLag,
   },
 });
+
+export const startAccountsCommandCenterConsumer = start;
+export const shutdownAccountsCommandCenterConsumer = shutdown;

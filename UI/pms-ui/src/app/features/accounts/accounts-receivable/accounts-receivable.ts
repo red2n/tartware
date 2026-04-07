@@ -17,15 +17,43 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../../shared/sort-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type StatusFilter = "ALL" | "open" | "partial" | "paid" | "overdue" | "in_collection" | "written_off" | "disputed";
-type AccountTypeFilter = "ALL" | "guest" | "corporate" | "travel_agent" | "group" | "direct_bill" | "city_ledger";
-type AgingFilter = "ALL" | "current" | "1_30_days" | "31_60_days" | "61_90_days" | "91_120_days" | "over_120_days";
+type StatusFilter =
+	| "ALL"
+	| "open"
+	| "partial"
+	| "paid"
+	| "overdue"
+	| "in_collection"
+	| "written_off"
+	| "disputed";
+type AccountTypeFilter =
+	| "ALL"
+	| "guest"
+	| "corporate"
+	| "travel_agent"
+	| "group"
+	| "direct_bill"
+	| "city_ledger";
+type AgingFilter =
+	| "ALL"
+	| "current"
+	| "1_30_days"
+	| "31_60_days"
+	| "61_90_days"
+	| "91_120_days"
+	| "over_120_days";
 
 @Component({
 	selector: "app-accounts-receivable",
@@ -50,6 +78,7 @@ export class AccountsReceivableComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	// ── State ──
 	readonly arItems = signal<AccountsReceivableListItem[]>([]);
@@ -159,7 +188,15 @@ export class AccountsReceivableComponent {
 	readonly agingTotals = computed(() => {
 		const summaries = this.agingSummary();
 		if (summaries.length === 0)
-			return { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_91_120: 0, over_120: 0, total: 0 };
+			return {
+				current: 0,
+				days_1_30: 0,
+				days_31_60: 0,
+				days_61_90: 0,
+				days_91_120: 0,
+				over_120: 0,
+				total: 0,
+			};
 		return summaries.reduce(
 			(acc, s) => ({
 				current: acc.current + Number.parseFloat(s.current || "0"),
@@ -170,7 +207,15 @@ export class AccountsReceivableComponent {
 				over_120: acc.over_120 + Number.parseFloat(s.over_120 || "0"),
 				total: acc.total + Number.parseFloat(s.total_outstanding || "0"),
 			}),
-			{ current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_91_120: 0, over_120: 0, total: 0 },
+			{
+				current: 0,
+				days_1_30: 0,
+				days_31_60: 0,
+				days_61_90: 0,
+				days_91_120: 0,
+				over_120: 0,
+				total: 0,
+			},
 		);
 	});
 
@@ -203,10 +248,12 @@ export class AccountsReceivableComponent {
 	sortIcon = (col: string) => getSortIcon(this.sort(), col);
 	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
-	formatDate = formatShortDate;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
 
 	fmtMoney(amount: number, currency = "USD"): string {
-		return formatCurrency(amount, currency);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	statusClass(status: string): string {
@@ -259,7 +306,9 @@ export class AccountsReceivableComponent {
 		}
 	}
 
-	updatePaymentForm(partial: Partial<typeof this.paymentForm extends () => infer T ? T : never>): void {
+	updatePaymentForm(
+		partial: Partial<typeof this.paymentForm extends () => infer T ? T : never>,
+	): void {
 		this.paymentForm.set({ ...this.paymentForm(), ...partial });
 	}
 
@@ -302,7 +351,9 @@ export class AccountsReceivableComponent {
 		}
 	}
 
-	updateWriteOffForm(partial: Partial<typeof this.writeOffForm extends () => infer T ? T : never>): void {
+	updateWriteOffForm(
+		partial: Partial<typeof this.writeOffForm extends () => infer T ? T : never>,
+	): void {
 		this.writeOffForm.set({ ...this.writeOffForm(), ...partial });
 	}
 

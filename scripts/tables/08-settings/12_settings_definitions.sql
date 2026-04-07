@@ -9,9 +9,10 @@
 
 CREATE TABLE IF NOT EXISTS settings_definitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),               -- Unique definition identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Owning tenant
     category_id UUID NOT NULL REFERENCES settings_categories(id) ON DELETE CASCADE, -- Parent category
     section_id UUID NOT NULL REFERENCES settings_sections(id) ON DELETE CASCADE,    -- Parent section
-    code VARCHAR(96) NOT NULL UNIQUE,                             -- Dot-notation setting key
+    code VARCHAR(96) NOT NULL,                                    -- Dot-notation setting key
     name VARCHAR(160) NOT NULL,                                   -- Display name
     description TEXT NOT NULL,                                    -- Detailed setting description
     help_text TEXT,                                               -- Extended help for users
@@ -64,6 +65,26 @@ CREATE INDEX IF NOT EXISTS idx_settings_definitions_feature_flag
 -- =====================================================
 
 COMMENT ON TABLE settings_definitions IS 'Master catalog of all configurable settings. Defines data type, validation rules, scopes, and UI rendering for each setting.';
+
+-- Add tenant_id to existing installations before referencing it in COMMENT ON COLUMN
+ALTER TABLE settings_definitions ADD COLUMN IF NOT EXISTS
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- Backfill NULL tenant_id with the system tenant for existing rows
+UPDATE settings_definitions
+   SET tenant_id = (SELECT id FROM tenants ORDER BY created_at LIMIT 1)
+ WHERE tenant_id IS NULL;
+
+-- Enforce NOT NULL after backfill (idempotent — no-op if already NOT NULL)
+ALTER TABLE settings_definitions ALTER COLUMN tenant_id SET NOT NULL;
+
+-- Migrate from global UNIQUE(code) to tenant-scoped UNIQUE(tenant_id, code)
+ALTER TABLE settings_definitions DROP CONSTRAINT IF EXISTS settings_definitions_code_key;
+DROP INDEX IF EXISTS settings_definitions_code_key;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_settings_definitions_tenant_code
+    ON settings_definitions (tenant_id, code);
+
+COMMENT ON COLUMN settings_definitions.tenant_id IS 'Owning tenant — all catalog rows are tenant-scoped';
 COMMENT ON COLUMN settings_definitions.code IS 'Unique dot-notation setting key (e.g., reservations.check_in.default_time)';
 COMMENT ON COLUMN settings_definitions.data_type IS 'Data type: STRING, INTEGER, DECIMAL, BOOLEAN, DATE, TIME, DATETIME, JSON, ARRAY';
 COMMENT ON COLUMN settings_definitions.control_type IS 'UI control: TEXT, TEXTAREA, SELECT, MULTISELECT, CHECKBOX, RADIO, DATE_PICKER, TIME_PICKER, SLIDER, COLOR_PICKER';

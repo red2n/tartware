@@ -229,17 +229,10 @@
   </div>
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
-  <button
-    class="btn btn-primary"
-    [disabled]="!isValid || saving()"
-    (click)="save()">
-    @if (saving()) {
-      <mat-spinner diameter="16" />
-      {{ isEditMode ? 'Saving…' : 'Creating…' }}
-    } @else {
-      {{ isEditMode ? 'Save changes' : 'Create room type' }}
-    }
-  </button>
-</mat-dialog-actions>
+<app-dialog-actions
+  [saving]="saving()"
+  [valid]="isValid"
+  [saveLabel]="isEditMode ? 'Save changes' : 'Create room type'"
+  [savingLabel]="isEditMode ? 'Saving…' : 'Creating…'"
+  (cancel)="cancel()"
+  (save)="save()" />

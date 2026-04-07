@@ -52,7 +52,7 @@ const GET_TEMPLATE_BY_CODE_SQL = `
     AND COALESCE(is_deleted, false) = false
     AND is_active = true
   ORDER BY
-    CASE WHEN property_id = $3::uuid THEN 0 ELSE 1 END,
+    CASE WHEN property_id = NULLIF($3, '')::uuid THEN 0 ELSE 1 END,
     send_priority DESC
   LIMIT 1
 `;

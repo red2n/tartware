@@ -1,6 +1,14 @@
-const toOptionalNumber = (value: unknown): number | undefined => {
+/**
+ * Shared number parsing utilities.
+ * Extracted from service-local utils/numbers.ts files.
+ */
+
+export const toOptionalNumber = (value: unknown): number | undefined => {
   if (value === null || value === undefined) {
     return undefined;
+  }
+  if (typeof value === "bigint") {
+    return Number(value);
   }
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : undefined;
@@ -19,4 +27,15 @@ const toOptionalNumber = (value: unknown): number | undefined => {
 export const toNumberOrFallback = (value: unknown, fallback = 0): number => {
   const numeric = toOptionalNumber(value);
   return numeric ?? fallback;
+};
+
+export const toNonNegativeInt = (value: unknown, fallback = 0): number => {
+  const numeric = toOptionalNumber(value);
+  if (numeric === undefined) {
+    return fallback;
+  }
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.max(0, Math.trunc(numeric));
 };

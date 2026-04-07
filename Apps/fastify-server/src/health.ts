@@ -27,51 +27,55 @@ export function createHealthRoutes(options: CreateHealthRoutesOptions) {
 			version: options.serviceVersion,
 		}));
 
-		app.get("/ready", { logLevel: "silent" }, async (_request: unknown, reply: FastifyReply) => {
-			const deps = options.dependencies ?? [];
-			const extras = options.readyExtras ?? {};
+		app.get(
+			"/ready",
+			{ logLevel: "silent" },
+			async (_request: unknown, reply: FastifyReply) => {
+				const deps = options.dependencies ?? [];
+				const extras = options.readyExtras ?? {};
 
-			if (deps.length === 0) {
-				return {
-					status: "ready",
+				if (deps.length === 0) {
+					return {
+						status: "ready",
+						service: options.serviceName,
+						version: options.serviceVersion,
+						...extras,
+					};
+				}
+
+				const results = await Promise.allSettled(
+					deps.map(async (dep) => {
+						await dep.check();
+						return dep.name;
+					}),
+				);
+
+				const checks: Record<string, "up" | "down"> = {};
+				for (let i = 0; i < results.length; i++) {
+					const result = results[i]!;
+					if (result.status === "fulfilled") {
+						checks[result.value] = "up";
+					} else {
+						checks[deps[i]?.name ?? "unknown"] = "down";
+					}
+				}
+
+				const allHealthy = Object.values(checks).every((s) => s === "up");
+
+				const response = {
+					status: allHealthy ? "ready" : "degraded",
 					service: options.serviceName,
 					version: options.serviceVersion,
+					dependencies: checks,
 					...extras,
 				};
-			}
 
-			const results = await Promise.allSettled(
-				deps.map(async (dep) => {
-					await dep.check();
-					return dep.name;
-				}),
-			);
-
-			const checks: Record<string, "up" | "down"> = {};
-			for (let i = 0; i < results.length; i++) {
-				const result = results[i]!;
-				if (result.status === "fulfilled") {
-					checks[result.value] = "up";
-				} else {
-					checks[deps[i]?.name ?? "unknown"] = "down";
+				if (!allHealthy) {
+					return reply.status(503).send(response);
 				}
-			}
 
-			const allHealthy = Object.values(checks).every((s) => s === "up");
-
-			const response = {
-				status: allHealthy ? "ready" : "degraded",
-				service: options.serviceName,
-				version: options.serviceVersion,
-				dependencies: checks,
-				...extras,
-			};
-
-			if (!allHealthy) {
-				return reply.status(503).send(response);
-			}
-
-			return response;
-		});
+				return response;
+			},
+		);
 	};
 }

@@ -6,6 +6,7 @@ import {
   CommissionApproveCommandSchema,
   CommissionCalculateCommandSchema,
   CommissionMarkPaidCommandSchema,
+  CommissionStatementGenerateCommandSchema,
 } from "../../schemas/billing-commands.js";
 import {
   asUuid,
@@ -283,4 +284,118 @@ export const markCommissionPaid = async (
     "Commission marked as paid",
   );
   return command.commission_id;
+};
+
+export const generateCommissionStatement = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = CommissionStatementGenerateCommandSchema.parse(payload);
+  const tenantId = context.tenantId;
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  const filterConditions: string[] = [];
+  const filterParams: unknown[] = [
+    tenantId,
+    command.property_id,
+    command.period_start,
+    command.period_end,
+  ];
+  if (command.agent_id) {
+    filterParams.push(command.agent_id);
+    filterConditions.push(`AND tac.agent_id = $${filterParams.length}::uuid`);
+  } else if (command.company_id) {
+    filterParams.push(command.company_id);
+    filterConditions.push(`AND tac.company_id = $${filterParams.length}::uuid`);
+  }
+  const agentFilter = filterConditions.join(" ");
+
+  const statsResult = await query<{
+    total_bookings: number;
+    total_room_nights: number;
+    total_revenue: number;
+    total_gross: number;
+    company_id: string | null;
+    agent_id: string | null;
+  }>(
+    `SELECT
+       COUNT(DISTINCT tac.reservation_id) AS total_bookings,
+       COALESCE(SUM(r.nights), 0) AS total_room_nights,
+       COALESCE(SUM(tac.room_revenue), 0) AS total_revenue,
+       COALESCE(SUM(tac.gross_commission_amount), 0) AS total_gross,
+       tac.company_id, tac.agent_id
+     FROM travel_agent_commissions tac
+     LEFT JOIN reservations r ON r.id = tac.reservation_id AND r.tenant_id = tac.tenant_id
+     WHERE tac.tenant_id = $1
+       AND tac.property_id = $2
+       AND tac.created_at >= $3
+       AND tac.created_at < $4
+       ${agentFilter}
+     GROUP BY tac.company_id, tac.agent_id`,
+    filterParams,
+  );
+
+  if (statsResult.rows.length === 0) {
+    appLogger.info(
+      {
+        propertyId: command.property_id,
+        periodStart: command.period_start,
+        periodEnd: command.period_end,
+      },
+      "No commissions found for statement period",
+    );
+    return "NO_COMMISSIONS";
+  }
+
+  const statementsCreated: string[] = [];
+
+  for (const stats of statsResult.rows) {
+    const statementId = randomUUID();
+    const statementNumber = `CS-${new Date().getFullYear()}-${statementId.slice(0, 8).toUpperCase()}`;
+
+    await query(
+      `INSERT INTO commission_statements (
+         statement_id, tenant_id, property_id, company_id, agent_id,
+         statement_number, statement_date, period_start, period_end,
+         total_bookings, total_room_nights, total_revenue,
+         gross_commission, net_commission,
+         currency_code, statement_status,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+         $6, CURRENT_DATE, $7, $8,
+         $9, $10, $11, $12, $12,
+         $13, 'DRAFT',
+         $14::uuid, $14::uuid
+       )`,
+      [
+        statementId,
+        tenantId,
+        command.property_id,
+        stats.company_id,
+        stats.agent_id,
+        statementNumber,
+        command.period_start,
+        command.period_end,
+        stats.total_bookings,
+        stats.total_room_nights,
+        stats.total_revenue,
+        stats.total_gross,
+        command.metadata?.currency ?? "USD",
+        actorId,
+      ],
+    );
+    statementsCreated.push(statementId);
+  }
+
+  appLogger.info(
+    {
+      count: statementsCreated.length,
+      propertyId: command.property_id,
+      periodStart: command.period_start,
+      periodEnd: command.period_end,
+    },
+    "Commission statements generated",
+  );
+  return statementsCreated[0] ?? "NO_STATEMENTS";
 };

@@ -3,11 +3,13 @@ import { randomUUID } from "node:crypto";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
+  BillingCreditNoteCreateCommandSchema,
   type BillingInvoiceAdjustCommand,
   BillingInvoiceAdjustCommandSchema,
   type BillingInvoiceCreateCommand,
   BillingInvoiceCreateCommandSchema,
   BillingInvoiceFinalizeCommandSchema,
+  BillingInvoiceVoidCommandSchema,
 } from "../../schemas/billing-commands.js";
 import {
   asUuid,
@@ -196,4 +198,152 @@ const applyInvoiceFinalize = async (
   );
 
   return command.invoice_id;
+};
+
+// ─── Void Invoice ─────────────────────────────────────────────────────
+
+/**
+ * Void a DRAFT invoice. Only DRAFT invoices can be voided;
+ * once an invoice has been sent or finalized, a credit note is required instead.
+ */
+export const voidInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingInvoiceVoidCommandSchema.parse(payload);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  const { rows } = await query<{ id: string; status: string }>(
+    `SELECT id, status FROM public.invoices
+     WHERE tenant_id = $1::uuid AND id = $2::uuid
+     LIMIT 1`,
+    [context.tenantId, command.invoice_id],
+  );
+
+  const invoice = rows[0];
+  if (!invoice) {
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for voiding.");
+  }
+  if (invoice.status !== "DRAFT") {
+    throw new BillingCommandError(
+      "INVALID_INVOICE_STATUS",
+      `Only DRAFT invoices can be voided. This invoice is ${invoice.status}. Use a credit note instead.`,
+    );
+  }
+
+  await query(
+    `UPDATE public.invoices
+     SET status = 'VOIDED',
+         notes = CASE
+           WHEN $3 IS NULL THEN notes
+           WHEN notes IS NULL THEN CONCAT('VOIDED: ', $3)
+           ELSE CONCAT_WS(E'\\n', notes, CONCAT('VOIDED: ', $3))
+         END,
+         updated_at = NOW(),
+         updated_by = $4
+     WHERE tenant_id = $1::uuid
+       AND id = $2::uuid`,
+    [context.tenantId, command.invoice_id, command.reason ?? null, actor],
+  );
+
+  appLogger.info({ invoiceId: command.invoice_id }, "Invoice voided");
+  return command.invoice_id;
+};
+
+// ─── Credit Note ──────────────────────────────────────────────────────
+
+/**
+ * Create a credit note against a finalized/sent/paid invoice.
+ * Inserts a new invoice row with negative amounts and type CREDIT_NOTE,
+ * linked to the original invoice via original_invoice_id.
+ */
+export const createCreditNote = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = BillingCreditNoteCreateCommandSchema.parse(payload);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  // Fetch original invoice
+  const { rows } = await query<{
+    id: string;
+    status: string;
+    total_amount: string;
+    property_id: string;
+    reservation_id: string | null;
+    guest_id: string | null;
+    currency: string;
+  }>(
+    `SELECT id, status, total_amount, property_id, reservation_id, guest_id, currency
+     FROM public.invoices
+     WHERE tenant_id = $1::uuid AND id = $2::uuid
+     LIMIT 1`,
+    [context.tenantId, command.original_invoice_id],
+  );
+
+  const original = rows[0];
+  if (!original) {
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Original invoice not found.");
+  }
+
+  const allowedStatuses = ["FINALIZED", "SENT", "VIEWED", "PAID", "PARTIALLY_PAID", "OVERDUE"];
+  if (!allowedStatuses.includes(original.status)) {
+    throw new BillingCommandError(
+      "INVALID_INVOICE_STATUS",
+      `Cannot issue credit note against ${original.status} invoice. Invoice must be issued first.`,
+    );
+  }
+
+  const originalAmount = Number.parseFloat(original.total_amount);
+  if (command.credit_amount > originalAmount) {
+    throw new BillingCommandError(
+      "CREDIT_EXCEEDS_ORIGINAL",
+      `Credit amount (${command.credit_amount}) exceeds original invoice total (${originalAmount}).`,
+    );
+  }
+
+  const creditNoteNumber = `CN-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+  const currency = command.currency ?? original.currency ?? "USD";
+
+  const result = await query<{ id: string }>(
+    `INSERT INTO public.invoices (
+       tenant_id, property_id, reservation_id, guest_id,
+       invoice_number, invoice_date, subtotal, total_amount,
+       currency, notes, status, invoice_type,
+       original_invoice_id, correction_type,
+       metadata, created_by, updated_by
+     ) VALUES (
+       $1::uuid, $2::uuid, $3, $4,
+       $5, CURRENT_DATE, -$6, -$6,
+       UPPER($7), $8, 'FINALIZED', 'CREDIT_NOTE',
+       $9::uuid, 'FULL_REVERSAL',
+       $10::jsonb, $11, $11
+     ) RETURNING id`,
+    [
+      context.tenantId,
+      command.property_id,
+      original.reservation_id,
+      original.guest_id,
+      creditNoteNumber,
+      command.credit_amount,
+      currency,
+      command.reason ?? null,
+      command.original_invoice_id,
+      JSON.stringify(command.metadata ?? {}),
+      actor,
+    ],
+  );
+
+  const creditNoteId = result.rows[0]?.id;
+  if (!creditNoteId) {
+    throw new BillingCommandError("CREDIT_NOTE_FAILED", "Failed to create credit note.");
+  }
+
+  appLogger.info(
+    {
+      creditNoteId,
+      originalInvoiceId: command.original_invoice_id,
+      creditAmount: command.credit_amount,
+    },
+    "Credit note created",
+  );
+
+  return creditNoteId;
 };

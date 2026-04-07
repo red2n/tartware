@@ -21,6 +21,9 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
+  const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
+    proxyRequest(request, reply, serviceTargets.billingServiceUrl);
+
   const tenantScopeFromQuery = app.withTenantScope({
     resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "STAFF",
@@ -289,7 +292,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  // Night Audit - EOD processing and business date management
+  // Night Audit - EOD processing and business date management → billing-service
   app.get(
     "/v1/night-audit/status",
     {
@@ -300,7 +303,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         response: { 200: jsonObjectSchema },
       }),
     },
-    proxyCore,
+    proxyBilling,
   );
 
   app.get(
@@ -313,7 +316,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         response: { 200: jsonObjectSchema },
       }),
     },
-    proxyCore,
+    proxyBilling,
   );
 
   app.all(
@@ -322,11 +325,11 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
-        summary: "Proxy night audit operations to core service.",
+        summary: "Proxy night audit operations to billing service.",
         response: { 200: jsonObjectSchema },
       }),
     },
-    proxyCore,
+    proxyBilling,
   );
 
   // OTA/Channel Connections - third-party booking integrations

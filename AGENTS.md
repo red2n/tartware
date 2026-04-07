@@ -212,6 +212,7 @@ Every entry in `pnpm.overrides` (root `package.json`) must have a documented rea
 - **@fastify/swagger ^9.6.1** — Align version across all Fastify services.
 - **@fastify/swagger-ui ^5.2.3** — Align version across all Fastify services.
 - **esbuild 0.27.2** — Pin for tsx; prevents unexpected binary re-downloads.
+- **fastify ^5.8.3** — Security fix: CVE-2026-3419 (incorrect regex, CVSS 6.9) + CVE-2026-3635 (less trusted source, CVSS 6.0).
 
 ## Service Port Map
 Canonical dev port assignments (set via `PORT=` env var in root `package.json` dev scripts). Ports increment by 5.
@@ -255,5 +256,50 @@ Canonical dev port assignments (set via `PORT=` env var in root `package.json` d
 - If any check fails, fix the issues before committing.
 - **Never push to git without explicit user confirmation.** Always ask the user before running `git push`.
 
+## Git & GitHub — Issue Tracking
+
+**When the user asks any variant of "what bugs are left", "what's open", "what issues remain", "what's next", or "show me the backlog":**
+1. Run `gh issue list --state open --limit 50` to fetch current open issues from GitHub.
+2. Do NOT read `TODO.md` for open work — TODO.md is a historical log, not the live backlog.
+3. Group and summarize the issues by label (e.g., `bug`, `settings`, `folio-routing`, `billing-ui`, `production-readiness`) and priority label (`p0`, `p1`, `p2`, `p3`).
+4. When starting work on an issue, reference the GH issue number in commit messages and close it with `gh issue close <number>` when done.
+
+```bash
+# Fetch all open issues
+gh issue list --state open --limit 100 --json number,title,labels
+
+# Filter to bugs only
+gh issue list --state open --label bug
+
+# Filter by priority
+gh issue list --state open --label p0
+gh issue list --state open --label p1
+```
+
 ## UI Scope
 - Unless explicitly asked, ignore UI changes.
+
+## Bug Fix Tracking
+
+**Workflow — always follow this order:**
+1. Run `gh issue list --state open --label bug --json number,title,labels` to get the current bug queue.
+2. Work on the highest-priority open bug (P0 first, then P1, then P2).
+3. When a bug is fixed and committed, close it: `gh issue close <number> --comment "<resolution notes>"`.
+4. Update this section: move the bug from **Active** to **Completed** and set *Active* to the next bug.
+
+### Active Bug
+| # | Title | Priority |
+|---|-------|----------|
+| [#135](https://github.com/red2n/tartware/issues/135) | Unified Architecture Onboarding | — |
+
+### Completed Bugs
+| # | Title | Fixed In | Notes |
+|---|-------|----------|-------|
+| [#133](https://github.com/red2n/tartware/issues/133) | Settings screen should be usable | `7180bb45` | Seeded settings catalog: 13 categories, 39 sections, 92 definitions, 86 options; added unique constraints; fixed repository SELECTs to include tenant_id |
+| [#121](https://github.com/red2n/tartware/issues/121) | Bug: Resolve remaining unresolved review findings from PR #117 | pre-existing | Already closed |
+| [#132](https://github.com/red2n/tartware/issues/132) | Group reservation did not have check-in | `0dfea299` | uploadGroupRoomingList INSERT missing guest_id, guest_name, guest_email, room_rate, confirmation_number (all NOT NULL); upsert guest + populate all required fields |
+| [#127](https://github.com/red2n/tartware/issues/127) | Failed to process reservation event notification | `a089dfdd` | NULLIF($3, '')::uuid in GET_TEMPLATE_BY_CODE_SQL prevents invalid UUID cast for empty UUID cast for empty propertyId |
+| [#128](https://github.com/red2n/tartware/issues/128) | column reference "room_type_id" is ambiguous | pre-existing | Already fixed — availability SQL uses qualified aliases throughout |
+| [#193](https://github.com/red2n/tartware/issues/193) | FR-6: Fix group billing — store routing rules as proper DB rows | `710dd7b3` | Removed JSON blob from folio.notes; INSERT folio_routing_rules rows inside transaction |
+| [#181](https://github.com/red2n/tartware/issues/181) | SETTINGS-BUG-2: MULTI_SELECT control falls back to text input in edit mode | `5d55f93d` | Added checkbox-group edit branch in settings.html; isMultiSelectChecked + onMultiSelectToggle in settings.ts; startEdit normalises stored value to string[] |
+| [#180](https://github.com/red2n/tartware/issues/180) | SETTINGS-BUG-1: GET /settings/values returns empty in DB mode | `0c0e6c88` | settingsAuthPlugin: added request.auth.memberships fallback for tenantId |

@@ -10,13 +10,20 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import type { RateItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
-import { GlobalSearchService } from "../../core/search/global-search.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "EXPIRED" | "FUTURE";
@@ -46,6 +53,37 @@ export class RatesComponent {
 	private readonly dialog = inject(MatDialog);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
+
+	// ── Settings-driven signals ───────────────────────────────────────────────
+	/** When false, the RACK rate type is hidden from the type filter dropdown. */
+	readonly showRackRate = computed(() => this.settings.getBool("rates.show_rack_rate", true));
+	/** When true, display a deposit-required policy banner. */
+	readonly depositRequired = computed(() => this.settings.getBool("rates.deposit_required", false));
+	/** When true, display a tax policy banner indicating rates are tax-inclusive. */
+	readonly taxInclusive = computed(() => this.settings.getBool("rates.tax_inclusive", false));
+	/** Deposit percentage configured for this tenant. */
+	readonly depositPercent = computed(() => this.settings.getNumber("rates.deposit_percent", 25));
+	/** Maximum discount percentage allowed on rate adjustments. */
+	readonly maxDiscountPercent = computed(() =>
+		this.settings.getNumber("rates.max_discount_percent", 50),
+	);
+	/** City/tourist tax per night. */
+	readonly cityTaxPerNight = computed(() =>
+		this.settings.getNumber("rates.city_tax_per_night", 0),
+	);
+	/** Non-refundable cutoff in days before arrival. */
+	readonly nonRefundableCutoffDays = computed(() =>
+		this.settings.getNumber("rates.non_refundable_cutoff_days", 7),
+	);
+	/** Default rounding method for rate calculations. */
+	readonly defaultRounding = computed(() =>
+		this.settings.getString("rates.default_rounding", "ROUND_HALF_UP"),
+	);
+	/** Whether dynamic pricing is enabled. */
+	readonly dynamicPricingEnabled = computed(() =>
+		this.settings.getBool("advanced.enable_dynamic_pricing", false),
+	);
 
 	readonly rates = signal<RateItem[]>([]);
 	readonly loading = signal(false);
@@ -84,6 +122,11 @@ export class RatesComponent {
 		{ key: "COMP", label: "Comp" },
 		{ key: "HOUSE", label: "House" },
 	];
+
+	/** Rate type options filtered by settings (hides RACK when show_rack_rate=false). */
+	readonly visibleRateTypes = computed(() =>
+		this.showRackRate() ? this.rateTypes : this.rateTypes.filter((t) => t.key !== "RACK"),
+	);
 
 	readonly filteredRates = computed(() => {
 		let list = this.rates();
@@ -242,20 +285,11 @@ export class RatesComponent {
 	}
 
 	formatCurrency(amount: number, currency?: string): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency ?? "USD",
-			minimumFractionDigits: 2,
-		}).format(amount);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	formatDate(dateStr: string): string {
-		const d = new Date(dateStr);
-		return d.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(dateStr);
 	}
 
 	validityTooltip(rate: RateItem): string {

@@ -11,6 +11,7 @@ import type { PackageComponentListItem, PackageListItem } from "@tartware/schema
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string; badgeClass?: string };
@@ -43,6 +44,7 @@ export class PackageDetailComponent {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
+	readonly settings = inject(SettingsService);
 
 	readonly pkg = signal<PackageListItem | null>(null);
 	readonly components = signal<PackageComponentListItem[]>([]);
@@ -218,19 +220,11 @@ export class PackageDetailComponent {
 	// ── Display helpers ──
 
 	formatCurrency(amount: number, currency?: string): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency ?? "USD",
-			minimumFractionDigits: 2,
-		}).format(amount);
+		return this.settings.formatCurrency(amount, currency);
 	}
 
 	formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
+		return this.settings.formatDate(dateStr);
 	}
 
 	componentTypeIcon(type: string): string {

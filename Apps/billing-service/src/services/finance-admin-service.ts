@@ -1,3 +1,4 @@
+import { toNumberOrFallback } from "@tartware/config";
 import {
   type CommissionReportItem,
   type DepartmentalRevenueItem,
@@ -7,13 +8,11 @@ import {
   type TaxSummaryItem,
   type TrialBalanceResponse,
 } from "@tartware/schemas";
-
 import { query } from "../lib/db.js";
 import {
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/finance-admin-queries.js";
-import { toNumberOrFallback } from "../utils/numbers.js";
 
 const formatEnumDisplay = (
   value: string | null,
@@ -328,11 +327,11 @@ export const getTaxSummary = async (options: {
        COALESCE(tc.tax_name, cp.charge_code) AS tax_name,
        COALESCE(tc.tax_type, 'OTHER')::text AS tax_type,
        COALESCE(tc.jurisdiction_level, 'N/A')::text AS jurisdiction,
-       COALESCE(SUM(cp.base_amount), 0)::text AS taxable_amount,
+       COALESCE(SUM(cp.subtotal), 0)::text AS taxable_amount,
        COALESCE(SUM(cp.tax_amount), 0)::text AS tax_collected,
        COUNT(*)::text AS tx_count
      FROM charge_postings cp
-     LEFT JOIN tax_configurations tc ON tc.charge_code = cp.charge_code AND tc.tenant_id = cp.tenant_id
+     LEFT JOIN tax_configurations tc ON tc.tax_code = cp.tax_code AND tc.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid
        AND cp.business_date >= $2::date AND cp.business_date <= $3::date
        AND COALESCE(cp.is_voided, false) = false
@@ -390,7 +389,7 @@ export const getCommissionReport = async (options: {
        COALESCE(SUM(CASE WHEN cc.department_code = 'COMMISSION' OR cp.charge_code LIKE '%COMM%' THEN cp.total_amount ELSE 0 END), 0)::text AS commission_amount
      FROM charge_postings cp
      LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
-     LEFT JOIN folios f ON f.id = cp.folio_id AND f.tenant_id = cp.tenant_id
+     LEFT JOIN folios f ON f.folio_id = cp.folio_id AND f.tenant_id = cp.tenant_id
      LEFT JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid
        AND cp.business_date >= $2::date AND cp.business_date <= $3::date

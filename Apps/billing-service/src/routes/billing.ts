@@ -1,12 +1,23 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import type {
+  BillingPaymentListQuery,
+  BucketCheckQuery,
+  CashierSessionListQuery,
+  ChargePostingListQuery,
+  FolioListQuery,
+  PreAuditQuery,
+} from "@tartware/schemas";
 import {
+  BillingPaymentListQuerySchema,
+  BucketCheckQuerySchema,
   BucketCheckResponseSchema,
+  CashierSessionListQuerySchema,
   ChargePostingListItemSchema,
+  ChargePostingListQuerySchema,
   FolioListItemSchema,
-  PaymentMethodEnum,
-  PaymentStatusEnum,
+  FolioListQuerySchema,
+  PreAuditQuerySchema,
   PreAuditResponseSchema,
-  TransactionTypeEnum,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -14,89 +25,29 @@ import { z } from "zod";
 import {
   BillingPaymentSchema,
   getBucketCheck,
+  getCashierSessionById,
   getFolioById,
   getPreAuditChecklist,
   listBillingPayments,
+  listCashierSessions,
   listChargePostings,
   listFolios,
 } from "../services/billing-service.js";
 
-const BillingListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  status: z
-    .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value || PaymentStatusEnum.options.map((status) => status.toLowerCase()).includes(value),
-      { message: "Invalid payment status" },
-    ),
-  transaction_type: z
-    .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value ||
-        TransactionTypeEnum.options.map((transaction) => transaction.toLowerCase()).includes(value),
-      { message: "Invalid transaction type" },
-    ),
-  payment_method: z
-    .string()
-    .toLowerCase()
-    .optional()
-    .refine(
-      (value) =>
-        !value || PaymentMethodEnum.options.map((method) => method.toLowerCase()).includes(value),
-      { message: "Invalid payment method" },
-    ),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type BillingListQuery = z.infer<typeof BillingListQuerySchema>;
-
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
-const BillingListQueryJsonSchema = schemaFromZod(BillingListQuerySchema, "BillingPaymentsQuery");
+const BillingListQueryJsonSchema = schemaFromZod(
+  BillingPaymentListQuerySchema,
+  "BillingPaymentsQuery",
+);
 const BillingListResponseJsonSchema = schemaFromZod(
   BillingListResponseSchema,
   "BillingPaymentsResponse",
 );
 
-// Folio schemas
-const FolioListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  folio_status: z.string().optional(),
-  folio_type: z.string().optional(),
-  reservation_id: z.string().uuid().optional(),
-  guest_id: z.string().uuid().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type FolioListQuery = z.infer<typeof FolioListQuerySchema>;
-
 const FolioListResponseSchema = z.array(FolioListItemSchema);
 const FolioListQueryJsonSchema = schemaFromZod(FolioListQuerySchema, "FolioListQuery");
 const FolioListResponseJsonSchema = schemaFromZod(FolioListResponseSchema, "FolioListResponse");
 const FolioDetailJsonSchema = schemaFromZod(FolioListItemSchema, "FolioDetail");
-
-// Charge posting schemas
-const ChargePostingListQuerySchema = z.object({
-  tenant_id: z.string().uuid(),
-  property_id: z.string().uuid().optional(),
-  folio_id: z.string().uuid().optional(),
-  transaction_type: z.string().optional(),
-  charge_code: z.string().optional(),
-  include_voided: z.coerce.boolean().optional(),
-  limit: z.coerce.number().int().positive().max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
-type ChargePostingListQuery = z.infer<typeof ChargePostingListQuerySchema>;
 
 const ChargePostingListResponseSchema = z.array(ChargePostingListItemSchema);
 const ChargePostingListQueryJsonSchema = schemaFromZod(
@@ -111,11 +62,11 @@ const ChargePostingListResponseJsonSchema = schemaFromZod(
 const BILLING_TAG = "Billing";
 
 export const registerBillingRoutes = (app: FastifyInstance): void => {
-  app.get<{ Querystring: BillingListQuery }>(
+  app.get<{ Querystring: BillingPaymentListQuery }>(
     "/v1/billing/payments",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as BillingListQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as BillingPaymentListQuery).tenant_id,
         minRole: "ADMIN",
         requiredModules: "finance-automation",
       }),
@@ -130,7 +81,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     },
     async (request) => {
       const { tenant_id, property_id, status, transaction_type, payment_method, limit, offset } =
-        BillingListQuerySchema.parse(request.query);
+        BillingPaymentListQuerySchema.parse(request.query);
 
       const payments = await listBillingPayments({
         tenantId: tenant_id,
@@ -256,6 +207,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         tenant_id,
         property_id,
         folio_id,
+        reservation_id,
         transaction_type,
         charge_code,
         include_voided,
@@ -267,6 +219,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         tenantId: tenant_id,
         propertyId: property_id,
         folioId: folio_id,
+        reservationId: reservation_id,
         transactionType: transaction_type,
         chargeCode: charge_code,
         includeVoided: include_voided,
@@ -279,13 +232,6 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
   // PRE-AUDIT CHECKLIST
   // ============================================================================
-
-  const PreAuditQuerySchema = z.object({
-    tenant_id: z.string().uuid(),
-    property_id: z.string().uuid(),
-  });
-
-  type PreAuditQuery = z.infer<typeof PreAuditQuerySchema>;
 
   app.get<{ Querystring: PreAuditQuery }>(
     "/v1/billing/pre-audit-checklist",
@@ -314,14 +260,6 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   // BUCKET CHECK (OCCUPANCY VERIFICATION)
   // ============================================================================
 
-  const BucketCheckQuerySchema = z.object({
-    tenant_id: z.string().uuid(),
-    property_id: z.string().uuid(),
-    business_date: z.string().optional(),
-  });
-
-  type BucketCheckQuery = z.infer<typeof BucketCheckQuerySchema>;
-
   app.get<{ Querystring: BucketCheckQuery }>(
     "/v1/billing/bucket-check",
     {
@@ -346,6 +284,72 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         propertyId: property_id,
         businessDate: business_date,
       });
+    },
+  );
+
+  // ============================================================================
+  // CASHIER SESSIONS
+  // ============================================================================
+
+  app.get<{ Querystring: CashierSessionListQuery }>(
+    "/v1/billing/cashier-sessions",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as CashierSessionListQuery).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "List cashier sessions",
+        querystring: schemaFromZod(CashierSessionListQuerySchema, "CashierListQuery"),
+        response: { 200: { type: "array", items: { type: "object", additionalProperties: true } } },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, session_status, limit, offset } =
+        CashierSessionListQuerySchema.parse(request.query);
+      return listCashierSessions({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        sessionStatus: session_status,
+        limit,
+        offset,
+      });
+    },
+  );
+
+  app.get<{ Params: { sessionId: string }; Querystring: { tenant_id: string } }>(
+    "/v1/billing/cashier-sessions/:sessionId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Get cashier session by ID",
+        params: schemaFromZod(z.object({ sessionId: z.string().uuid() }), "CashierSessionIdParam"),
+        querystring: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "TenantIdQueryCashier",
+        ),
+        response: { 200: { type: "object", additionalProperties: true } },
+      }),
+    },
+    async (request, reply) => {
+      const { sessionId } = request.params;
+      const { tenant_id } = request.query;
+
+      const session = await getCashierSessionById(sessionId, tenant_id);
+
+      if (!session) {
+        reply.notFound("CASHIER_SESSION_NOT_FOUND");
+        return;
+      }
+
+      return session;
     },
   );
 };

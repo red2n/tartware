@@ -77,7 +77,47 @@
         </div>
       </div>
 
-      <!-- Reservation Activity Sparkline -->
+      <!-- Property times & feature flags strip -->
+      <div class="dashboard-meta-strip">
+        <span class="dashboard-meta-item">
+          <mat-icon>login</mat-icon>
+          {{ 'Check-in' | translate }}: <strong>{{ checkInTime() }}</strong>
+        </span>
+        <span class="dashboard-meta-item">
+          <mat-icon>logout</mat-icon>
+          {{ 'Check-out' | translate }}: <strong>{{ checkOutTime() }}</strong>
+        </span>
+        @if (timezone()) {
+          <span class="dashboard-meta-item">
+            <mat-icon>schedule</mat-icon>
+            {{ timezone() }}
+          </span>
+        }
+        @if (starRating()) {
+          <span class="dashboard-meta-item">
+            <mat-icon>star</mat-icon>
+            {{ '★'.repeat(starRating()) }}
+          </span>
+        }
+        @if (mobileCheckinEnabled()) {
+          <span class="dashboard-meta-item dashboard-meta-active">
+            <mat-icon>smartphone</mat-icon>
+            {{ 'Mobile Check-In' | translate }}
+          </span>
+        }
+        @if (revenueForecastEnabled()) {
+          <span class="dashboard-meta-item dashboard-meta-active">
+            <mat-icon>auto_graph</mat-icon>
+            {{ 'Revenue Forecast' | translate }}
+          </span>
+        }
+        @if (dynamicPricingEnabled()) {
+          <span class="dashboard-meta-item dashboard-meta-active">
+            <mat-icon>dynamic_feed</mat-icon>
+            {{ 'Dynamic Pricing' | translate }}
+          </span>
+        }
+      </div>
       @if (sparkline(); as spark) {
         <div class="dashboard-sparkline" matTooltip="Reservations · last 12 weeks">
           <span class="sparkline-label text-muted">{{ 'Booking Activity' | translate }}</span>

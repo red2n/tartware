@@ -19,15 +19,21 @@ const escapeLike = (value: string) => value.replace(/([\\%_])/g, "\\$1");
 export type { CatalogFilters };
 
 export const listCategories = async (filters: CatalogFilters) => {
+  const conditions: string[] = [];
   const params: unknown[] = [];
-  let where = "";
+
+  if (filters.tenantId) {
+    params.push(filters.tenantId);
+    conditions.push(`tenant_id = $${params.length}`);
+  }
   if (filters.activeOnly) {
     params.push(true);
-    where = "WHERE is_active = $1";
+    conditions.push(`is_active = $${params.length}`);
   }
 
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT id, code, name, description, icon, color, sort_order, is_active, tags, metadata, created_at, updated_at
+    `SELECT id, tenant_id, code, name, description, icon, color, sort_order, is_active, tags, metadata, created_at, updated_at
      FROM settings_categories ${where} ORDER BY sort_order ASC, name ASC`,
     params,
   );
@@ -38,6 +44,10 @@ export const listSections = async (filters: CatalogFilters) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
+  if (filters.tenantId) {
+    params.push(filters.tenantId);
+    conditions.push(`tenant_id = $${params.length}`);
+  }
   if (filters.activeOnly) {
     params.push(true);
     conditions.push(`is_active = $${params.length}`);
@@ -49,7 +59,7 @@ export const listSections = async (filters: CatalogFilters) => {
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT id, category_id, code, name, description, icon, sort_order, is_active, tags, metadata, created_at, updated_at
+    `SELECT id, tenant_id, category_id, code, name, description, icon, sort_order, is_active, tags, metadata, created_at, updated_at
      FROM settings_sections ${where} ORDER BY sort_order ASC, name ASC`,
     params,
   );
@@ -60,6 +70,10 @@ export const listDefinitions = async (filters: CatalogFilters) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
+  if (filters.tenantId) {
+    params.push(filters.tenantId);
+    conditions.push(`tenant_id = $${params.length}`);
+  }
   if (filters.activeOnly) {
     params.push(true);
     conditions.push(`is_active = $${params.length}`);
@@ -83,7 +97,7 @@ export const listDefinitions = async (filters: CatalogFilters) => {
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT id, category_id, section_id, code, name, description, help_text, placeholder, tooltip,
+    `SELECT id, tenant_id, category_id, section_id, code, name, description, help_text, placeholder, tooltip,
             data_type, control_type, default_value, value_constraints, allowed_scopes, default_scope,
             override_scopes, is_required, is_advanced, is_readonly, is_deprecated, sensitivity,
             module_dependencies, feature_flag, compliance_tags, related_settings, labels, tags,
@@ -99,6 +113,10 @@ export const listOptions = async (filters: CatalogFilters) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
+  if (filters.tenantId) {
+    params.push(filters.tenantId);
+    conditions.push(`tenant_id = $${params.length}`);
+  }
   if (filters.activeOnly) {
     params.push(true);
     conditions.push(`is_active = $${params.length}`);
@@ -110,7 +128,7 @@ export const listOptions = async (filters: CatalogFilters) => {
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT id, setting_id, value, label, description, icon, color, sort_order, is_default, is_active,
+    `SELECT id, tenant_id, setting_id, value, label, description, icon, color, sort_order, is_default, is_active,
             metadata, created_at, updated_at, created_by, updated_by
      FROM settings_options ${where} ORDER BY sort_order ASC, label ASC`,
     params,

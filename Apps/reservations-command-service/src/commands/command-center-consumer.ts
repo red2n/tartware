@@ -1,11 +1,5 @@
-import {
-  type CommandEnvelope,
-  type CommandMetadata,
-  createCommandCenterHandlers,
-} from "@tartware/command-consumer-utils";
-import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
-import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
-import type { Consumer } from "kafkajs";
+import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { commandCenterConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishCommandDlqEvent } from "../kafka/producer.js";
@@ -103,50 +97,7 @@ import {
   webhookRetry,
 } from "../services/reservation-command-service.js";
 
-let commandConsumer: Consumer | null = null;
 const logger = reservationsLogger.child({ module: "command-center-consumer" });
-
-export const startCommandCenterConsumer = async (): Promise<void> => {
-  if (commandConsumer) {
-    return;
-  }
-
-  const newConsumer = kafka.consumer({
-    groupId: commandCenterConfig.consumerGroupId,
-    allowAutoTopicCreation: false,
-    maxBytesPerPartition: commandCenterConfig.maxBatchBytes,
-  });
-
-  await newConsumer.connect();
-  await newConsumer.subscribe({
-    topic: commandCenterConfig.topic,
-    fromBeginning: false,
-  });
-
-  await newConsumer.run({
-    autoCommit: false,
-    eachBatchAutoResolve: false,
-    eachBatch: handleBatch,
-  });
-
-  commandConsumer = newConsumer;
-
-  logger.info(
-    {
-      topic: commandCenterConfig.topic,
-      groupId: commandCenterConfig.consumerGroupId,
-      targetService: commandCenterConfig.targetServiceId,
-    },
-    "reservation command consumer started",
-  );
-};
-
-export const shutdownCommandCenterConsumer = async (): Promise<void> => {
-  if (commandConsumer) {
-    await commandConsumer.disconnect();
-    commandConsumer = null;
-  }
-};
 
 /**
  * Routes a validated command envelope to the appropriate reservation handler.
@@ -369,24 +320,14 @@ const routeReservationCommand = async (
   }
 };
 
-const { handleBatch } = createCommandCenterHandlers({
-  targetServiceId: commandCenterConfig.targetServiceId,
+const { start, shutdown } = createConsumerLifecycle({
+  kafka,
+  commandCenterConfig,
   serviceName: "reservations-command-service",
-  logger,
-  retry: {
-    maxRetries: commandCenterConfig.maxRetries,
-    baseDelayMs: commandCenterConfig.retryBackoffMs,
-    delayScheduleMs:
-      commandCenterConfig.retryScheduleMs.length > 0
-        ? commandCenterConfig.retryScheduleMs
-        : undefined,
-  },
-  processWithRetry,
-  RetryExhaustedError,
-  publishDlqEvent: publishCommandDlqEvent,
-  buildDlqPayload,
-  routeCommand: routeReservationCommand,
   commandLabel: "reservation",
+  logger,
+  routeCommand: routeReservationCommand,
+  publishDlqEvent: publishCommandDlqEvent,
   checkIdempotency: checkCommandIdempotency,
   recordIdempotency: recordCommandIdempotency,
   idempotencyFailureMode: "fail-open",
@@ -396,3 +337,6 @@ const { handleBatch } = createCommandCenterHandlers({
     setConsumerLag: setCommandConsumerLag,
   },
 });
+
+export const startCommandCenterConsumer = start;
+export const shutdownCommandCenterConsumer = shutdown;

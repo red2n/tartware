@@ -1,15 +1,9 @@
-import {
-  type CommandEnvelope,
-  type CommandMetadata,
-  createCommandCenterHandlers,
-} from "@tartware/command-consumer-utils";
-import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
-import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
+import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import {
   ReservationMobileCheckinCompleteCommandSchema,
   ReservationMobileCheckinStartCommandSchema,
 } from "@tartware/schemas";
-import type { Consumer } from "kafkajs";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -41,53 +35,6 @@ import {
 const consumerLogger = appLogger.child({
   module: "guests-command-center-consumer",
 });
-
-let consumer: Consumer | null = null;
-
-export const startGuestsCommandCenterConsumer = async (): Promise<void> => {
-  if (consumer) {
-    return;
-  }
-
-  consumer = kafka.consumer({
-    groupId: config.commandCenter.consumerGroupId,
-    allowAutoTopicCreation: false,
-    maxBytesPerPartition: config.commandCenter.maxBatchBytes,
-  });
-
-  await consumer.connect();
-  await consumer.subscribe({
-    topic: config.commandCenter.topic,
-    fromBeginning: false,
-  });
-
-  await consumer.run({
-    autoCommit: false,
-    eachBatchAutoResolve: false,
-    eachBatch: handleBatch,
-  });
-
-  consumerLogger.info(
-    {
-      topic: config.commandCenter.topic,
-      groupId: config.commandCenter.consumerGroupId,
-      targetService: config.commandCenter.targetServiceId,
-    },
-    "guests command consumer connected",
-  );
-};
-
-export const shutdownGuestsCommandCenterConsumer = async (): Promise<void> => {
-  if (!consumer) {
-    return;
-  }
-  try {
-    await consumer.disconnect();
-    consumerLogger.info("guests command consumer disconnected");
-  } finally {
-    consumer = null;
-  }
-};
 
 const routeCommand = async (
   envelope: CommandEnvelope,
@@ -195,30 +142,23 @@ const routeCommand = async (
   }
 };
 
-const { handleBatch } = createCommandCenterHandlers({
-  targetServiceId: config.commandCenter.targetServiceId,
+const { start: startGuests, shutdown: shutdownGuests } = createConsumerLifecycle({
+  kafka,
+  commandCenterConfig: config.commandCenter,
   serviceName: config.service.name,
-  logger: consumerLogger,
-  retry: {
-    maxRetries: config.commandCenter.maxRetries,
-    baseDelayMs: config.commandCenter.retryBackoffMs,
-    delayScheduleMs:
-      config.commandCenter.retryScheduleMs.length > 0
-        ? config.commandCenter.retryScheduleMs
-        : undefined,
-  },
-  processWithRetry,
-  RetryExhaustedError,
-  publishDlqEvent,
-  buildDlqPayload,
-  routeCommand,
   commandLabel: "guest",
+  logger: consumerLogger,
+  routeCommand,
+  publishDlqEvent,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
     setConsumerLag: setCommandConsumerLag,
   },
 });
+
+export const startGuestsCommandCenterConsumer = startGuests;
+export const shutdownGuestsCommandCenterConsumer = shutdownGuests;
 
 const handleGuestRegisterCommand = async (
   payload: unknown,
@@ -238,8 +178,6 @@ const handleGuestRegisterCommand = async (
 const guestExperienceLogger = appLogger.child({
   module: "guest-experience-command-consumer",
 });
-
-let guestExperienceConsumer: Consumer | null = null;
 
 /**
  * Route guest-experience commands (mobile check-in) to their handlers.
@@ -287,24 +225,18 @@ const routeGuestExperienceCommand = async (
   }
 };
 
-const { handleBatch: handleGuestExperienceBatch } = createCommandCenterHandlers({
-  targetServiceId: config.guestExperienceCommandCenter.targetServiceId,
-  serviceName: config.service.name,
-  logger: guestExperienceLogger,
-  retry: {
-    maxRetries: config.commandCenter.maxRetries,
-    baseDelayMs: config.commandCenter.retryBackoffMs,
-    delayScheduleMs:
-      config.commandCenter.retryScheduleMs.length > 0
-        ? config.commandCenter.retryScheduleMs
-        : undefined,
+const { start: startGE, shutdown: shutdownGE } = createConsumerLifecycle({
+  kafka,
+  commandCenterConfig: {
+    ...config.commandCenter,
+    consumerGroupId: config.guestExperienceCommandCenter.consumerGroupId,
+    targetServiceId: config.guestExperienceCommandCenter.targetServiceId,
   },
-  processWithRetry,
-  RetryExhaustedError,
-  publishDlqEvent,
-  buildDlqPayload,
-  routeCommand: routeGuestExperienceCommand,
+  serviceName: config.service.name,
   commandLabel: "guest-experience",
+  logger: guestExperienceLogger,
+  routeCommand: routeGuestExperienceCommand,
+  publishDlqEvent,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
@@ -312,47 +244,5 @@ const { handleBatch: handleGuestExperienceBatch } = createCommandCenterHandlers(
   },
 });
 
-export const startGuestExperienceCommandConsumer = async (): Promise<void> => {
-  if (guestExperienceConsumer) {
-    return;
-  }
-
-  guestExperienceConsumer = kafka.consumer({
-    groupId: config.guestExperienceCommandCenter.consumerGroupId,
-    allowAutoTopicCreation: false,
-    maxBytesPerPartition: config.commandCenter.maxBatchBytes,
-  });
-
-  await guestExperienceConsumer.connect();
-  await guestExperienceConsumer.subscribe({
-    topic: config.commandCenter.topic,
-    fromBeginning: false,
-  });
-
-  await guestExperienceConsumer.run({
-    autoCommit: false,
-    eachBatchAutoResolve: false,
-    eachBatch: handleGuestExperienceBatch,
-  });
-
-  guestExperienceLogger.info(
-    {
-      topic: config.commandCenter.topic,
-      groupId: config.guestExperienceCommandCenter.consumerGroupId,
-      targetService: config.guestExperienceCommandCenter.targetServiceId,
-    },
-    "guest-experience command consumer connected",
-  );
-};
-
-export const shutdownGuestExperienceCommandConsumer = async (): Promise<void> => {
-  if (!guestExperienceConsumer) {
-    return;
-  }
-  try {
-    await guestExperienceConsumer.disconnect();
-    guestExperienceLogger.info("guest-experience command consumer disconnected");
-  } finally {
-    guestExperienceConsumer = null;
-  }
-};
+export const startGuestExperienceCommandConsumer = startGE;
+export const shutdownGuestExperienceCommandConsumer = shutdownGE;

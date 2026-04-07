@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-import { PaymentMethodEnum } from "../../shared/enums.js";
+import { FolioTypeEnum, PaymentMethodEnum } from "../../shared/enums.js";
 
 export const BillingPaymentCaptureCommandSchema = z.object({
 	payment_reference: z.string().trim().min(3).max(100),
@@ -437,7 +437,7 @@ export const BillingArPostCommandSchema = z.object({
 	account_id: z.string().uuid(),
 	account_name: z.string().max(255),
 	amount: z.number().positive(),
-	payment_terms: z.string().max(50).default("NET_30"),
+	payment_terms: z.string().max(50).default("net_30"),
 	notes: z.string().max(2000).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -499,7 +499,7 @@ export const BillingCashierOpenCommandSchema = z.object({
 	cashier_name: z.string().max(200),
 	terminal_id: z.string().max(50).optional(),
 	shift_type: z
-		.enum(["morning", "afternoon", "night", "full_day"])
+		.enum(["morning", "afternoon", "evening", "night", "full_day", "custom"])
 		.default("full_day"),
 	opening_float: z.coerce.number().nonnegative().default(0),
 	business_date: z.coerce.date().optional(),
@@ -709,7 +709,7 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 	city: z.string().max(100).optional(),
 	jurisdiction_name: z.string().max(200).optional(),
 	jurisdiction_level: z
-		.enum(["federal", "state", "county", "city", "district", "special"])
+		.enum(["federal", "state", "county", "city", "local", "special"])
 		.optional(),
 	tax_rate: z.coerce.number().min(0).max(100),
 	is_percentage: z.boolean().default(true),
@@ -723,17 +723,11 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 	compound_order: z.coerce.number().int().min(0).optional(),
 	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
 	calculation_method: z
-		.enum(["standard", "reverse", "inclusive", "tiered"])
-		.default("standard"),
+		.enum(["inclusive", "exclusive", "compound", "cascading", "additive", "tiered", "progressive", "flat", "custom"])
+		.default("exclusive"),
 	rounding_method: z
-		.enum([
-			"round_half_up",
-			"round_half_down",
-			"round_up",
-			"round_down",
-			"bankers",
-		])
-		.default("round_half_up"),
+		.enum(["standard", "up", "down", "nearest", "none"])
+		.default("standard"),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -780,16 +774,10 @@ export const BillingTaxConfigUpdateCommandSchema = z.object({
 	compound_order: z.coerce.number().int().min(0).optional(),
 	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
 	calculation_method: z
-		.enum(["standard", "reverse", "inclusive", "tiered"])
+		.enum(["inclusive", "exclusive", "compound", "cascading", "additive", "tiered", "progressive", "flat", "custom"])
 		.optional(),
 	rounding_method: z
-		.enum([
-			"round_half_up",
-			"round_half_down",
-			"round_up",
-			"round_down",
-			"bankers",
-		])
+		.enum(["standard", "up", "down", "nearest", "none"])
 		.optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
@@ -857,7 +845,7 @@ export const BillingCashierHandoverCommandSchema = z.object({
 	incoming_cashier_name: z.string().max(200),
 	incoming_terminal_id: z.string().max(50).optional(),
 	incoming_shift_type: z
-		.enum(["morning", "afternoon", "night", "full_day"])
+		.enum(["morning", "afternoon", "evening", "night", "full_day", "custom"])
 		.default("full_day"),
 	/** Opening float for the incoming session (defaults to counted cash). */
 	incoming_opening_float: z.coerce.number().nonnegative().optional(),
@@ -868,4 +856,79 @@ export const BillingCashierHandoverCommandSchema = z.object({
 
 export type BillingCashierHandoverCommand = z.infer<
 	typeof BillingCashierHandoverCommandSchema
+>;
+
+// ─── Folio Create ───────────────────────────────────────────────────────
+
+/**
+ * Create a standalone folio (house account, city ledger, walk-in, incidental).
+ * Industry standard: PMS systems support folios independent of reservations
+ * for walk-in POS charges, company direct-bill, internal house accounts, etc.
+ * reservation_id is optional — only required for GUEST-type folios.
+ */
+export const BillingFolioCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	folio_type: FolioTypeEnum,
+	/** Required for GUEST folios, optional for others. */
+	reservation_id: z.string().uuid().optional(),
+	/** Guest or company contact. */
+	guest_id: z.string().uuid().optional(),
+	/** Descriptive label for the folio (e.g., "Acme Corp City Ledger"). */
+	folio_name: z.string().max(200).optional(),
+	/** Billing address for the folio. */
+	billing_address: z.record(z.unknown()).optional(),
+	/** Tax exemption reference, if applicable. */
+	tax_exempt_id: z.string().max(100).optional(),
+	currency: z.string().length(3).default("USD"),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioCreateCommand = z.infer<
+	typeof BillingFolioCreateCommandSchema
+>;
+
+// ─── Invoice Void ───────────────────────────────────────────────────────
+
+/**
+ * Void a DRAFT invoice that was never issued.
+ * Industry standard: Only DRAFT invoices can be voided (deleted).
+ * Issued invoices must be corrected via credit notes, never voided.
+ */
+export const BillingInvoiceVoidCommandSchema = z.object({
+	invoice_id: z.string().uuid(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingInvoiceVoidCommand = z.infer<
+	typeof BillingInvoiceVoidCommandSchema
+>;
+
+// ─── Credit Note ────────────────────────────────────────────────────────
+
+/**
+ * Create a credit note against a finalized/sent/paid invoice.
+ * Industry standard (EU VAT, US GAAP, HMRC): Issued invoices are never
+ * modified or deleted. Corrections are always a separate credit note
+ * document that references the original invoice. Full or partial amounts.
+ */
+export const BillingCreditNoteCreateCommandSchema = z.object({
+	/** The original invoice being corrected. */
+	original_invoice_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	/** Amount to credit — must be positive, cannot exceed original total. */
+	credit_amount: z.coerce.number().positive(),
+	/** Reason for the credit note (required for audit trail). */
+	reason: z.string().min(3).max(1000),
+	currency: z.string().length(3).optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCreditNoteCreateCommand = z.infer<
+	typeof BillingCreditNoteCreateCommandSchema
 >;

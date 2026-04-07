@@ -13,10 +13,17 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
-import { formatShortDate } from "../../../shared/format-utils";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../../shared/sort-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type TaxTypeFilter =
 	| "ALL"
@@ -48,7 +55,9 @@ export class TaxConfigComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	// ── State ──
 	readonly taxConfigs = signal<TaxConfigurationListItem[]>([]);
@@ -150,11 +159,190 @@ export class TaxConfigComponent {
 	sortIcon = (col: string) => getSortIcon(this.sort(), col);
 	ariaSort = (col: string) => getAriaSort(this.sort(), col);
 
-	formatDate = formatShortDate;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
 
 	formatRate(item: TaxConfigurationListItem): string {
 		if (item.is_percentage) return `${item.tax_rate}%`;
 		return `$${item.tax_rate.toFixed(2)}`;
+	}
+
+	readonly taxTypeOptions = [
+		"SALES_TAX", "VAT", "GST", "OCCUPANCY_TAX", "TOURISM_TAX", "CITY_TAX",
+		"STATE_TAX", "FEDERAL_TAX", "RESORT_FEE", "SERVICE_CHARGE", "EXCISE_TAX", "OTHER",
+	];
+	readonly calcMethodOptions = [
+		"INCLUSIVE", "EXCLUSIVE", "COMPOUND", "CASCADING", "ADDITIVE", "TIERED", "FLAT",
+	];
+
+	// ── Create form ──
+	readonly showCreateForm = signal(false);
+	readonly creating = signal(false);
+	readonly createForm = signal({
+		tax_code: "",
+		tax_name: "",
+		tax_description: "",
+		tax_type: "OCCUPANCY_TAX",
+		country_code: "US",
+		state_province: "",
+		jurisdiction_name: "",
+		tax_rate: 0,
+		is_percentage: true,
+		effective_from: new Date().toISOString().split("T")[0],
+		calculation_method: "EXCLUSIVE",
+		is_active: true,
+	});
+
+	// ── Edit form ──
+	readonly editingTaxId = signal<string | null>(null);
+	readonly editing = signal(false);
+	readonly editForm = signal({
+		tax_code: "",
+		tax_name: "",
+		tax_description: "",
+		tax_type: "OCCUPANCY_TAX",
+		tax_rate: 0,
+		is_percentage: true,
+		effective_from: "",
+		calculation_method: "EXCLUSIVE",
+		is_active: true,
+	});
+
+	// ── Delete ──
+	readonly deletingTaxId = signal<string | null>(null);
+	readonly deleting = signal(false);
+	readonly deleteReason = signal("");
+
+	toggleCreateForm(): void {
+		this.showCreateForm.set(!this.showCreateForm());
+		this.editingTaxId.set(null);
+	}
+
+	updateCreateForm(partial: Record<string, unknown>): void {
+		this.createForm.set({ ...this.createForm(), ...partial } as typeof this.createForm extends () => infer T ? T : never);
+	}
+
+	async createTaxConfig(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.creating.set(true);
+		try {
+			const form = this.createForm();
+			await this.api.post(`/tenants/${tenantId}/billing/tax-configurations`, {
+				property_id: propertyId,
+				tax_code: form.tax_code,
+				tax_name: form.tax_name,
+				tax_description: form.tax_description || undefined,
+				tax_type: form.tax_type,
+				country_code: form.country_code,
+				state_province: form.state_province || undefined,
+				jurisdiction_name: form.jurisdiction_name || undefined,
+				tax_rate: form.tax_rate,
+				is_percentage: form.is_percentage,
+				effective_from: form.effective_from,
+				calculation_method: form.calculation_method.toLowerCase(),
+				is_active: form.is_active,
+			});
+			this.toast.success("Tax configuration created.");
+			this.showCreateForm.set(false);
+			this.createForm.set({
+				tax_code: "", tax_name: "", tax_description: "", tax_type: "OCCUPANCY_TAX",
+				country_code: "US", state_province: "", jurisdiction_name: "",
+				tax_rate: 0, is_percentage: true, effective_from: new Date().toISOString().split("T")[0],
+				calculation_method: "EXCLUSIVE", is_active: true,
+			});
+			await this.loadTaxConfigs();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to create tax config");
+		} finally {
+			this.creating.set(false);
+		}
+	}
+
+	startEdit(tax: TaxConfigurationListItem): void {
+		this.editingTaxId.set(tax.tax_config_id);
+		this.showCreateForm.set(false);
+		this.editForm.set({
+			tax_code: tax.tax_code,
+			tax_name: tax.tax_name,
+			tax_description: tax.tax_description ?? "",
+			tax_type: tax.tax_type,
+			tax_rate: tax.tax_rate,
+			is_percentage: tax.is_percentage,
+			effective_from: tax.effective_from,
+			calculation_method: tax.calculation_method ?? "EXCLUSIVE",
+			is_active: tax.is_active,
+		});
+	}
+
+	cancelEdit(): void {
+		this.editingTaxId.set(null);
+	}
+
+	updateEditForm(partial: Record<string, unknown>): void {
+		this.editForm.set({ ...this.editForm(), ...partial } as typeof this.editForm extends () => infer T ? T : never);
+	}
+
+	async saveEdit(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		const taxConfigId = this.editingTaxId();
+		if (!tenantId || !propertyId || !taxConfigId) return;
+		this.editing.set(true);
+		try {
+			const form = this.editForm();
+			await this.api.post(`/tenants/${tenantId}/billing/tax-configurations/${taxConfigId}/update`, {
+				property_id: propertyId,
+				tax_code: form.tax_code,
+				tax_name: form.tax_name,
+				tax_description: form.tax_description || undefined,
+				tax_type: form.tax_type,
+				tax_rate: form.tax_rate,
+				is_percentage: form.is_percentage,
+				effective_from: form.effective_from,
+				calculation_method: form.calculation_method.toLowerCase(),
+				is_active: form.is_active,
+			});
+			this.toast.success("Tax configuration updated.");
+			this.editingTaxId.set(null);
+			await this.loadTaxConfigs();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to update tax config");
+		} finally {
+			this.editing.set(false);
+		}
+	}
+
+	showDelete(taxConfigId: string): void {
+		this.deletingTaxId.set(taxConfigId);
+		this.deleteReason.set("");
+	}
+
+	cancelDelete(): void {
+		this.deletingTaxId.set(null);
+	}
+
+	async deleteTaxConfig(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		const taxConfigId = this.deletingTaxId();
+		if (!tenantId || !propertyId || !taxConfigId) return;
+		this.deleting.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/tax-configurations/${taxConfigId}/delete`, {
+				property_id: propertyId,
+				reason: this.deleteReason() || undefined,
+			});
+			this.toast.success("Tax configuration deleted.");
+			this.deletingTaxId.set(null);
+			await this.loadTaxConfigs();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to delete tax config");
+		} finally {
+			this.deleting.set(false);
+		}
 	}
 
 	// ── Data loading ──

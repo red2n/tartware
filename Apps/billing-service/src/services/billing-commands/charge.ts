@@ -9,6 +9,7 @@ import {
   BillingFolioSplitCommandSchema,
 } from "../../schemas/billing-commands.js";
 import { addMoney, parseDbMoneyOrZero } from "../../utils/money.js";
+import { evaluateRoutingRules } from "../routing-rule-service.js";
 import {
   asUuid,
   BillingCommandError,
@@ -386,96 +387,138 @@ const applyChargePost = async (
     throw new BillingCommandError("FOLIO_NOT_FOUND", "No folio found for reservation.");
   }
 
-  const postingId = await withTransaction(async (client) => {
-    const unitPrice = command.amount;
-    const subtotal = unitPrice * command.quantity;
-    const result = await queryWithClient<{ posting_id: string }>(
-      client,
-      `
-        INSERT INTO public.charge_postings (
-          tenant_id,
-          property_id,
-          folio_id,
-          reservation_id,
-          transaction_type,
-          posting_type,
-          charge_code,
-          department_code,
-          charge_description,
-          quantity,
-          unit_price,
-          subtotal,
-          total_amount,
-          currency_code,
-          posting_time,
-          business_date,
-          notes,
-          created_by,
-          updated_by
-        ) VALUES (
-          $1::uuid,
-          $2::uuid,
-          $3::uuid,
-          $4::uuid,
-          'CHARGE',
-          $5,
-          $6,
-          $7,
-          $8,
-          $9,
-          $10,
-          $11,
-          $11,
-          UPPER($12),
-          COALESCE($13::timestamptz, NOW()),
-          CURRENT_DATE,
-          $14,
-          $15::uuid,
-          $15::uuid
-        )
-        RETURNING posting_id
-      `,
-      [
-        context.tenantId,
-        command.property_id,
-        folioId,
-        command.reservation_id,
-        command.posting_type,
-        command.charge_code,
-        command.department_code ?? null,
-        command.description ?? "Charge",
-        command.quantity,
-        unitPrice,
-        subtotal,
-        currency,
-        command.posted_at ?? null,
-        command.description ?? null,
-        actorId,
-      ],
-    );
+  // Evaluate routing rules for the source folio
+  const routing = await evaluateRoutingRules({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    folioId,
+    chargeCode: command.charge_code,
+    transactionType: command.posting_type,
+    chargeCategory: command.metadata?.charge_category as string | undefined,
+    amount: command.amount * command.quantity,
+  });
 
-    const id = result.rows[0]?.posting_id;
-    if (!id) {
-      throw new BillingCommandError("CHARGE_POST_FAILED", "Unable to post charge.");
+  const postingId = await withTransaction(async (client) => {
+    // Post routed portions to destination folios
+    for (const decision of routing.decisions) {
+      const routedSubtotal = decision.routedAmount;
+      await queryWithClient(
+        client,
+        `
+          INSERT INTO public.charge_postings (
+            tenant_id, property_id, folio_id, reservation_id,
+            transaction_type, posting_type, charge_code, department_code,
+            charge_description, quantity, unit_price, subtotal, total_amount,
+            currency_code, posting_time, business_date, notes,
+            routing_rule_id, created_by, updated_by
+          ) VALUES (
+            $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+            'CHARGE', $5, $6, $7,
+            $8, 1, $9, $9, $9,
+            UPPER($10), COALESCE($11::timestamptz, NOW()), CURRENT_DATE, $12,
+            $13::uuid, $14::uuid, $14::uuid
+          )
+        `,
+        [
+          context.tenantId,
+          command.property_id,
+          decision.destinationFolioId,
+          command.reservation_id,
+          command.posting_type,
+          command.charge_code,
+          command.department_code ?? null,
+          command.description ?? "Charge",
+          routedSubtotal,
+          currency,
+          command.posted_at ?? null,
+          `Routed from folio ${folioId}: ${command.description ?? "Charge"}`,
+          decision.ruleId,
+          actorId,
+        ],
+      );
+
+      // Update destination folio totals
+      await queryWithClient(
+        client,
+        `
+          UPDATE public.folios
+          SET total_charges = total_charges + $2,
+              balance = balance + $2,
+              updated_at = NOW(), updated_by = $3::uuid
+          WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
+        `,
+        [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId],
+      );
     }
 
-    // G3: Update folio totals — must satisfy CHECK (balance = total_charges - total_payments - total_credits)
-    await queryWithClient(
-      client,
-      `
-        UPDATE public.folios
-        SET
-          total_charges = total_charges + $2,
-          balance = balance + $2,
-          updated_at = NOW(),
-          updated_by = $3::uuid
-        WHERE tenant_id = $1::uuid
-          AND folio_id = $4::uuid
-      `,
-      [context.tenantId, command.amount, actorId, folioId],
-    );
+    // Post remainder (or full amount if no routing) on the source folio
+    let sourcePostingId: string | undefined;
+    const remainderAmount = routing.remainderAmount;
 
-    return id;
+    if (remainderAmount > 0 || routing.decisions.length === 0) {
+      const unitPrice = routing.decisions.length === 0 ? command.amount : remainderAmount;
+      const qty = routing.decisions.length === 0 ? command.quantity : 1;
+      const subtotal =
+        routing.decisions.length === 0 ? command.amount * command.quantity : remainderAmount;
+
+      const result = await queryWithClient<{ posting_id: string }>(
+        client,
+        `
+          INSERT INTO public.charge_postings (
+            tenant_id, property_id, folio_id, reservation_id,
+            transaction_type, posting_type, charge_code, department_code,
+            charge_description, quantity, unit_price, subtotal, total_amount,
+            currency_code, posting_time, business_date, notes,
+            created_by, updated_by
+          ) VALUES (
+            $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+            'CHARGE', $5, $6, $7,
+            $8, $9, $10, $11, $11,
+            UPPER($12), COALESCE($13::timestamptz, NOW()), CURRENT_DATE, $14,
+            $15::uuid, $15::uuid
+          )
+          RETURNING posting_id
+        `,
+        [
+          context.tenantId,
+          command.property_id,
+          folioId,
+          command.reservation_id,
+          command.posting_type,
+          command.charge_code,
+          command.department_code ?? null,
+          command.description ?? "Charge",
+          qty,
+          unitPrice,
+          subtotal,
+          currency,
+          command.posted_at ?? null,
+          command.description ?? null,
+          actorId,
+        ],
+      );
+
+      sourcePostingId = result.rows[0]?.posting_id;
+      if (!sourcePostingId) {
+        throw new BillingCommandError("CHARGE_POST_FAILED", "Unable to post charge.");
+      }
+
+      // G3: Update source folio totals
+      await queryWithClient(
+        client,
+        `
+          UPDATE public.folios
+          SET total_charges = total_charges + $2,
+              balance = balance + $2,
+              updated_at = NOW(), updated_by = $3::uuid
+          WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
+        `,
+        [context.tenantId, subtotal, actorId, folioId],
+      );
+    }
+
+    // Return the source folio posting ID (or the first routed posting for audit)
+    return sourcePostingId ?? routing.decisions[0]?.ruleId ?? "";
   });
 
   return postingId;

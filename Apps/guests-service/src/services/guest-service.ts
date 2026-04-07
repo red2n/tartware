@@ -1,3 +1,4 @@
+import { toNonNegativeInt, toNumberOrFallback } from "@tartware/config";
 import {
   type GuestCommunicationListItem,
   GuestCommunicationListItemSchema,
@@ -15,7 +16,6 @@ import {
   type GuestWithStats,
   GuestWithStatsSchema,
 } from "@tartware/schemas";
-
 import { applyGuestRetentionPolicy } from "../lib/compliance.js";
 import { query } from "../lib/db.js";
 import {
@@ -27,7 +27,6 @@ import {
   GUEST_RESERVATION_STATS_SQL,
   GUEST_SUMMARY_STATS_SQL,
 } from "../sql/guest-queries.js";
-import { toNonNegativeInt, toNumberOrFallback } from "../utils/numbers.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 const DEFAULT_ADDRESS = {

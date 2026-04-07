@@ -9,6 +9,11 @@ import { z } from "zod";
 
 import { BillingPricingBulkRecommendCommandSchema } from "../events/commands/billing.js";
 import { uuid } from "../shared/base-schemas.js";
+import {
+	PaymentMethodEnum,
+	PaymentStatusEnum,
+	TransactionTypeEnum,
+} from "../shared/enums.js";
 
 /**
  * Billing payment list item schema for API responses.
@@ -1052,3 +1057,147 @@ export type CancellationFeeResult = {
 	/** Policy deadline hours. */
 	policyDeadlineHours: number;
 };
+
+/* ── Folio Routing Evaluation ── */
+
+/** Input to the routing rule evaluation engine. */
+export type EvaluateRoutingInput = {
+	tenantId: string;
+	propertyId: string;
+	folioId: string;
+	chargeCode: string;
+	transactionType?: string;
+	chargeCategory?: string;
+	amount: number;
+};
+
+/** A single routing decision produced by evaluateRoutingRules(). */
+export type RoutingDecision = {
+	/** Destination folio UUID where this portion of the charge should be posted. */
+	destinationFolioId: string;
+	/** Dollar amount routed to this destination. */
+	routedAmount: number;
+	/** The routing rule that matched. */
+	ruleId: string;
+};
+
+/** Full result of the routing engine evaluation. */
+export type RoutingEvaluationResult = {
+	/** List of routing decisions (may be empty if no rules matched). */
+	decisions: RoutingDecision[];
+	/** Amount remaining on the source folio after routing. */
+	remainderAmount: number;
+};
+
+// ============================================================================
+// BILLING ROUTE QUERY SCHEMAS
+// ============================================================================
+
+/** Query parameters for listing billing payments. */
+export const BillingPaymentListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	status: z
+		.string()
+		.toLowerCase()
+		.optional()
+		.refine(
+			(value) =>
+				!value ||
+				PaymentStatusEnum.options
+					.map((s) => s.toLowerCase())
+					.includes(value),
+			{ message: "Invalid payment status" },
+		),
+	transaction_type: z
+		.string()
+		.toLowerCase()
+		.optional()
+		.refine(
+			(value) =>
+				!value ||
+				TransactionTypeEnum.options
+					.map((t) => t.toLowerCase())
+					.includes(value),
+			{ message: "Invalid transaction type" },
+		),
+	payment_method: z
+		.string()
+		.toLowerCase()
+		.optional()
+		.refine(
+			(value) =>
+				!value ||
+				PaymentMethodEnum.options
+					.map((m) => m.toLowerCase())
+					.includes(value),
+			{ message: "Invalid payment method" },
+		),
+	limit: z.coerce.number().int().positive().max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type BillingPaymentListQuery = z.infer<
+	typeof BillingPaymentListQuerySchema
+>;
+
+/** Query parameters for listing folios. */
+export const FolioListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	folio_status: z.string().optional(),
+	folio_type: z.string().optional(),
+	reservation_id: uuid.optional(),
+	guest_id: uuid.optional(),
+	limit: z.coerce.number().int().positive().max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type FolioListQuery = z.infer<typeof FolioListQuerySchema>;
+
+/** Query parameters for listing charge postings. */
+export const ChargePostingListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	folio_id: uuid.optional(),
+	reservation_id: uuid.optional(),
+	transaction_type: z.string().optional(),
+	charge_code: z.string().optional(),
+	include_voided: z.coerce.boolean().optional(),
+	limit: z.coerce.number().int().positive().max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type ChargePostingListQuery = z.infer<
+	typeof ChargePostingListQuerySchema
+>;
+
+/** Query parameters for listing cashier sessions. */
+export const CashierSessionListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	session_status: z.string().optional(),
+	limit: z.coerce.number().int().positive().max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type CashierSessionListQuery = z.infer<
+	typeof CashierSessionListQuerySchema
+>;
+
+/** Query parameters for the pre-audit checklist. */
+export const PreAuditQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+});
+
+export type PreAuditQuery = z.infer<typeof PreAuditQuerySchema>;
+
+/** Query parameters for the bucket check (occupancy verification). */
+export const BucketCheckQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	business_date: z.string().optional(),
+});
+
+export type BucketCheckQuery = z.infer<typeof BucketCheckQuerySchema>;

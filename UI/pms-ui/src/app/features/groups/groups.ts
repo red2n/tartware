@@ -7,18 +7,28 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import { type GroupBlockStatus, GroupBlockStatusDescriptions, type GroupBookingListItem } from "@tartware/schemas";
+import {
+	type GroupBlockStatus,
+	GroupBlockStatusDescriptions,
+	type GroupBookingListItem,
+} from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
+import { SettingsService } from "../../core/settings/settings.service";
 import { groupBlockStatusClass } from "../../shared/badge-utils";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
-import { formatCurrency, formatShortDate } from "../../shared/format-utils";
 import { PaginationComponent } from "../../shared/pagination/pagination";
-import { createSortState, getAriaSort, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
+import {
+	createSortState,
+	getAriaSort,
+	getSortIcon,
+	sortBy,
+	toggleSort,
+} from "../../shared/sort-utils";
 
 type StatusFilter = "ALL" | GroupBlockStatus;
 
@@ -45,6 +55,7 @@ export class GroupsComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
 	readonly globalSearch = inject(GlobalSearchService);
+	readonly settings = inject(SettingsService);
 
 	readonly groups = signal<GroupBookingListItem[]>([]);
 	readonly loading = signal(false);
@@ -60,14 +71,46 @@ export class GroupsComponent {
 
 	readonly statusFilters: { key: StatusFilter; label: string; description: string }[] = [
 		{ key: "ALL", label: "All", description: "All group bookings regardless of status" },
-		{ key: "INQUIRY", label: "Inquiry", description: "Initial contact — guest or planner is asking about availability" },
-		{ key: "PROSPECT", label: "Prospect", description: "Qualified lead — sales team is actively working the deal" },
-		{ key: "TENTATIVE", label: "Tentative", description: "Space held with a cutoff date, pending a signed contract" },
-		{ key: "DEFINITE", label: "Definite", description: "Contract signed — the group booking is confirmed" },
-		{ key: "CONFIRMED", label: "Confirmed", description: "Rooms have been picked and assigned to the group" },
-		{ key: "CANCELLED", label: "Cancelled", description: "Group booking was cancelled by the guest or planner" },
-		{ key: "TURNDOWN", label: "Turndown", description: "Hotel declined the business (capacity, rate, or fit)" },
-		{ key: "COMPLETED", label: "Completed", description: "Group stay is finished and all folios are closed" },
+		{
+			key: "INQUIRY",
+			label: "Inquiry",
+			description: "Initial contact — guest or planner is asking about availability",
+		},
+		{
+			key: "PROSPECT",
+			label: "Prospect",
+			description: "Qualified lead — sales team is actively working the deal",
+		},
+		{
+			key: "TENTATIVE",
+			label: "Tentative",
+			description: "Space held with a cutoff date, pending a signed contract",
+		},
+		{
+			key: "DEFINITE",
+			label: "Definite",
+			description: "Contract signed — the group booking is confirmed",
+		},
+		{
+			key: "CONFIRMED",
+			label: "Confirmed",
+			description: "Rooms have been picked and assigned to the group",
+		},
+		{
+			key: "CANCELLED",
+			label: "Cancelled",
+			description: "Group booking was cancelled by the guest or planner",
+		},
+		{
+			key: "TURNDOWN",
+			label: "Turndown",
+			description: "Hotel declined the business (capacity, rate, or fit)",
+		},
+		{
+			key: "COMPLETED",
+			label: "Completed",
+			description: "Group stay is finished and all folios are closed",
+		},
 	];
 
 	readonly groupTypeIcon: Record<string, { icon: string; tooltip: string }> = {
@@ -188,8 +231,12 @@ export class GroupsComponent {
 	}
 
 	statusClass = groupBlockStatusClass;
-	formatDate = formatShortDate;
-	formatCurrency = formatCurrency;
+	formatDate(dateStr: string): string {
+		return this.settings.formatDate(dateStr);
+	}
+	formatCurrency(amount: number, currency?: string): string {
+		return this.settings.formatCurrency(amount, currency);
+	}
 	statusDescription = (status: string) =>
 		GroupBlockStatusDescriptions[status.toUpperCase() as GroupBlockStatus] ?? "";
 

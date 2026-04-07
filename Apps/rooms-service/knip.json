@@ -13,6 +13,7 @@
     "@fastify/cors",
     "@fastify/helmet",
     "@tartware/fastify-server",
+    "kafkajs",
     "pg"
   ],
   "ignoreBinaries": [

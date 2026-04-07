@@ -25,8 +25,13 @@ CREATE TABLE IF NOT EXISTS invoices (
     property_id UUID NOT NULL,
 
     -- Foreign Keys
-    reservation_id UUID NOT NULL,
+    reservation_id UUID,                       -- NULL for city ledger / house account invoices
     guest_id UUID NOT NULL,
+    folio_id UUID,                             -- Reference to folios.folio_id (if invoice originated from a folio)
+
+    -- Credit Note / Correction Reference
+    original_invoice_id UUID,                  -- For credit notes: references the original invoice being corrected
+    correction_type VARCHAR(20),               -- FULL_REVERSAL, PARTIAL_REVERSAL, ADJUSTMENT
 
     -- Invoice Number (human-readable)
     invoice_number VARCHAR(100) UNIQUE NOT NULL,

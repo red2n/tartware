@@ -21,7 +21,6 @@ import {
   BatchUpdateCommandFeaturesResponseSchema,
   CommandDefinitionSchema,
   CommandExecuteRequestSchema,
-  CommandExecuteResponseSchema,
   CommandFeatureListItemSchema,
   UpdateCommandFeatureRequestSchema,
   UpdateCommandFeatureResponseSchema,
@@ -38,6 +37,8 @@ import {
 import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { submitCommand } from "../utils/command-publisher.js";
 
+import { commandAcceptedSchema } from "./schemas.js";
+
 const environment = process.env.NODE_ENV ?? "development";
 
 const CommandParamSchema = z.object({ commandName: z.string().min(1) });
@@ -50,10 +51,6 @@ const CommandDefinitionListJsonSchema = schemaFromZod(
 const CommandExecuteBodyJsonSchema = schemaFromZod(
   CommandExecuteRequestSchema,
   "CommandExecuteBody",
-);
-const CommandExecuteResponseJsonSchema = schemaFromZod(
-  CommandExecuteResponseSchema,
-  "CommandExecuteResponse",
 );
 const CommandFeatureListJsonSchema = schemaFromZod(
   z.array(CommandFeatureListItemSchema),
@@ -213,7 +210,7 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         summary: "Submit a named command for asynchronous execution",
         params: CommandParamJsonSchema,
         body: CommandExecuteBodyJsonSchema,
-        response: { 202: CommandExecuteResponseJsonSchema },
+        response: { 202: commandAcceptedSchema },
       }),
     },
     async (request, reply) => {

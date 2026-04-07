@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./lifecycle": {
+      "types": "./dist/consumer-lifecycle.d.ts",
+      "import": "./dist/consumer-lifecycle.js"
+    },
     "./producer": {
       "types": "./dist/producer.d.ts",
       "import": "./dist/producer.js"
@@ -35,6 +39,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@tartware/config": "workspace:*",
     "kafkajs": "^2.2.4",
     "prom-client": "^15.1.3"
   },

@@ -11,7 +11,8 @@
     "@tartware/outbox",
     "esbuild",
     "@fastify/helmet",
-    "@tartware/fastify-server"
+    "@tartware/fastify-server",
+    "@tartware/command-consumer-utils"
   ],
   "ignoreBinaries": [
     "swc"

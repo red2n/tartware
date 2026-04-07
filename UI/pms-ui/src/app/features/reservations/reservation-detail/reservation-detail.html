@@ -43,17 +43,23 @@
     <div class="confirm-body">
       <p>Select a room to assign, or let the system auto-assign the best available room.</p>
 
-      @if (buildings().length > 0) {
-        <div class="building-filter-bar">
-          <label for="building-filter" class="building-filter-label">Filter by building</label>
-          <select id="building-filter" class="building-filter-select" [value]="buildingFilter()" (change)="filterByBuilding($any($event.target).value)">
-            <option value="">All Buildings</option>
-            @for (b of buildings(); track b.building_id) {
-              <option [value]="b.building_id">{{ b.building_name }}</option>
-            }
-          </select>
-        </div>
-      }
+      <div class="room-filter-bar">
+        @if (buildings().length > 0) {
+          <div class="building-filter-bar">
+            <label for="building-filter" class="building-filter-label">Filter by building</label>
+            <select id="building-filter" class="building-filter-select" [value]="buildingFilter()" (change)="filterByBuilding($any($event.target).value)">
+              <option value="">All Buildings</option>
+              @for (b of buildings(); track b.building_id) {
+                <option [value]="b.building_id">{{ b.building_name }}</option>
+              }
+            </select>
+          </div>
+        }
+        <label class="room-type-toggle">
+          <input type="checkbox" [checked]="showAllRoomTypes()" (change)="toggleShowAllRoomTypes()" />
+          Show all room types
+        </label>
+      </div>
 
       <!-- Room selection -->
       <div class="room-selection">

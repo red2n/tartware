@@ -1,15 +1,16 @@
 ###############################################################################
 # NIGHT AUDIT & OPERATIONS API TEST FILE
-# Core Service (Port 3000)
-# Gateway: http://localhost:8080 (preferred)
+# Night Audit routes: Gateway (8080) -> billing-service (port 3025)
+# OTA/Group/Promo routes: Gateway (8080) -> core-service (port 3000)
 ###############################################################################
 #
-# This file contains test requests for operations endpoints:
-# - Night Audit / Business Date Status
-# - Night Audit History
-# - OTA Connections
-# - Group Bookings
-# - Promotional Codes
+# This file contains test requests for:
+# - Night Audit / Business Date Status  (billing-service)
+# - Night Audit History                  (billing-service)
+# - Night Audit Run Detail               (billing-service)
+# - OTA Connections                       (core-service)
+# - Group Bookings                        (core-service)
+# - Promotional Codes                     (core-service)
 #
 ###############################################################################
 
@@ -42,6 +43,8 @@ Content-Type: application/json
 
 ###############################################################################
 # NIGHT AUDIT - BUSINESS DATE STATUS
+# Backed by: billing-service (port 3025)
+# Table: business_dates
 ###############################################################################
 
 ### Get current business date status for property
@@ -52,9 +55,11 @@ Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # NIGHT AUDIT - HISTORY
+# Backed by: billing-service (port 3025)
+# Table: night_audit_log
 ###############################################################################
 
-### List night audit history
+### List night audit history (all properties)
 GET {{baseUrl}}/v1/night-audit/history
     ?tenant_id={{tenantId}}
     &limit=20
@@ -67,6 +72,12 @@ GET {{baseUrl}}/v1/night-audit/history
     &limit=50
 Authorization: Bearer {{authToken}}
 
+###############################################################################
+# NIGHT AUDIT - RUN DETAIL
+# Backed by: billing-service (port 3025)
+# Table: night_audit_log (grouped by audit_run_id)
+###############################################################################
+
 ### Get night audit run detail
 GET {{baseUrl}}/v1/night-audit/runs/{{auditRunId}}
     ?tenant_id={{tenantId}}
@@ -74,6 +85,7 @@ Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # OTA CONNECTIONS
+# Backed by: core-service (port 3000)
 ###############################################################################
 
 ### List all OTA/channel connections
@@ -118,6 +130,7 @@ Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # GROUP BOOKINGS
+# Backed by: core-service (port 3000)
 ###############################################################################
 
 ### List all group bookings
@@ -190,6 +203,7 @@ Authorization: Bearer {{authToken}}
 
 ###############################################################################
 # PROMOTIONAL CODES
+# Backed by: core-service (port 3000)
 ###############################################################################
 
 ### List all promotional codes

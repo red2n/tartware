@@ -182,7 +182,97 @@ export const CHARGE_POSTING_LIST_SQL = `
     AND ($5::text IS NULL OR c.transaction_type = UPPER($5::text))
     AND ($6::text IS NULL OR c.charge_code = $6::text)
     AND ($7::boolean IS NULL OR c.is_voided = $7::boolean)
+    AND ($9::uuid IS NULL OR c.reservation_id = $9::uuid)
   ORDER BY c.posting_date DESC, c.posting_time DESC
   LIMIT $1
   OFFSET $8
+`;
+
+export const CASHIER_SESSION_LIST_SQL = `
+  SELECT
+    session_id,
+    tenant_id,
+    property_id,
+    session_number,
+    session_name,
+    cashier_id,
+    cashier_name,
+    terminal_id,
+    location,
+    session_status,
+    opened_at,
+    closed_at,
+    session_duration_minutes,
+    business_date,
+    shift_type,
+    opening_float_declared,
+    closing_cash_declared,
+    closing_cash_counted,
+    total_transactions,
+    total_revenue,
+    total_refunds,
+    net_revenue,
+    cash_variance,
+    has_variance,
+    created_at,
+    updated_at
+  FROM cashier_sessions
+  WHERE tenant_id = $2::uuid
+    AND ($3::uuid IS NULL OR property_id = $3::uuid)
+    AND ($4::text IS NULL OR session_status = $4::text)
+  ORDER BY opened_at DESC
+  LIMIT $1
+  OFFSET $5
+`;
+
+export const CASHIER_SESSION_BY_ID_SQL = `
+  SELECT
+    session_id,
+    tenant_id,
+    property_id,
+    session_number,
+    session_name,
+    cashier_id,
+    cashier_name,
+    terminal_id,
+    terminal_name,
+    till_id,
+    register_id,
+    location,
+    session_status,
+    opened_at,
+    closed_at,
+    session_duration_minutes,
+    business_date,
+    shift_type,
+    opening_float_declared,
+    opening_float_counted,
+    opening_float_variance,
+    base_currency,
+    total_transactions,
+    cash_transactions,
+    card_transactions,
+    other_transactions,
+    refund_transactions,
+    void_transactions,
+    total_cash_received,
+    total_card_received,
+    total_revenue,
+    total_refunds,
+    total_voids,
+    net_revenue,
+    closing_cash_declared,
+    closing_cash_counted,
+    expected_cash_balance,
+    cash_variance,
+    cash_variance_percent,
+    total_variance,
+    variance_reason,
+    has_variance,
+    has_material_variance,
+    created_at,
+    updated_at
+  FROM cashier_sessions
+  WHERE session_id = $1::uuid
+    AND tenant_id = $2::uuid
 `;

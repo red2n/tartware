@@ -14,6 +14,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -24,7 +25,7 @@ import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./referen
 @Component({
 	selector: "app-create-property-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
+	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
 	templateUrl: "./create-property-dialog.html",
 	styleUrl: "./create-property-dialog.scss",
 })
