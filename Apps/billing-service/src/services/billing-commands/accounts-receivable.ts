@@ -162,12 +162,12 @@ export const applyArPayment = async (
       `UPDATE accounts_receivable
        SET outstanding_balance = $3,
            paid_amount = $4,
-           ar_status = $5,
+           ar_status = $5::varchar,
            payment_count = payment_count + 1,
            last_payment_date = $6::date,
            last_payment_amount = $7,
            payments = $8::jsonb,
-           is_overdue = CASE WHEN $5 = 'paid' THEN false ELSE is_overdue END,
+           is_overdue = CASE WHEN $5::varchar = 'paid' THEN false ELSE is_overdue END,
            updated_at = NOW(), updated_by = $9::uuid
        WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
       [
@@ -274,8 +274,8 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
          written_off_by = $5::uuid,
          write_off_approved_by = $6,
          outstanding_balance = $7,
-         ar_status = $8,
-         is_bad_debt = CASE WHEN $8 = 'written_off' THEN TRUE ELSE is_bad_debt END,
+         ar_status = $8::varchar,
+         is_bad_debt = CASE WHEN $8::varchar = 'written_off' THEN TRUE ELSE is_bad_debt END,
          updated_at = NOW(), updated_by = $5::uuid
      WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
     [

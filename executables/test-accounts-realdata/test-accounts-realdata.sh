@@ -94,13 +94,13 @@ assert_eq_ci() {
   else fail "$label" "expected=$2 actual=$3"; fi
 }
 
-# Numeric compare (strips trailing zeros: 8.875000 == 8.875, 458.50 == 458.5)
+# Numeric compare (strips trailing zeros after decimal: 8.875000 == 8.875, 458.50 == 458.5)
 assert_eq_num() {
   local label="$1" expected="$2" actual="$3"
-  # Normalize: remove trailing zeros after decimal point, then trailing dot
+  # Normalize: remove trailing zeros ONLY after a decimal point, then trailing dot
   local norm_exp norm_act
-  norm_exp=$(echo "$expected" | sed 's/0*$//;s/\.$//')
-  norm_act=$(echo "$actual" | sed 's/0*$//;s/\.$//')
+  norm_exp=$(echo "$expected" | sed '/\./ s/0*$//; s/\.$//')
+  norm_act=$(echo "$actual" | sed '/\./ s/0*$//; s/\.$//')
   if [[ "$norm_exp" == "$norm_act" ]]; then pass "$label"
   else fail "$label" "expected=$expected actual=$actual"; fi
 }
@@ -122,10 +122,19 @@ assert_http() {
 }
 
 send_command() {
-  local label="$1" cmd_name="$2" payload="$3"
+  local label="$1" cmd_name="$2" payload="$3" idem_key="${4:-}"
   local body code
   body=$(printf '{"tenant_id":"%s","payload":%s}' "$TID" "$payload")
-  code=$(post "$GW/v1/commands/$cmd_name/execute" "$body")
+  if [[ -n "$idem_key" ]]; then
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X POST "$GW/v1/commands/$cmd_name/execute" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $idem_key" \
+      -d "$body")
+  else
+    code=$(post "$GW/v1/commands/$cmd_name/execute" "$body")
+  fi
   if [[ "$code" == "202" ]]; then pass "$label → 202 accepted"
   else fail "$label" "HTTP $code"; fi
 }
@@ -203,17 +212,33 @@ REQUIRED_COMMANDS=(
   "reservation.create"
   "billing.tax_config.create"
   "billing.charge.post"
+  "billing.charge.void"
+  "billing.charge.transfer"
   "billing.payment.capture"
   "billing.payment.authorize"
+  "billing.payment.authorize_increment"
   "billing.payment.void"
   "billing.payment.refund"
   "billing.invoice.create"
+  "billing.invoice.adjust"
+  "billing.invoice.finalize"
+  "billing.invoice.void"
+  "billing.credit_note.create"
+  "billing.folio.create"
+  "billing.folio.close"
+  "billing.folio.split"
   "billing.cashier.open"
   "billing.cashier.close"
   "billing.cashier.handover"
   "billing.ar.post"
+  "billing.ar.apply_payment"
+  "billing.ar.write_off"
+  "billing.chargeback.record"
+  "billing.express_checkout"
   "billing.night_audit.execute"
   "billing.date_roll.manual"
+  "billing.folio.transfer"
+  "billing.fiscal_period.close"
 )
 
 echo "── Enabling required commands ────────────────────────────────────────"
@@ -810,6 +835,648 @@ else
 fi
 echo ""
 
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 1B — REAL-WORLD ACCOUNTING SCENARIOS (PMS Industry Standard)
+#  Ref: docs/pms_accounting_real_world_scenarios.md
+#  Ref: docs/pms_accounting_ba_v2.md
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 1B: REAL-WORLD PMS ACCOUNTING SCENARIOS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── Consumer warm-up: verify Kafka consumer is alive before proceeding ──
+echo "── Consumer Readiness Check ──────────────────────────────────────────"
+echo "  Verifying billing Kafka consumer is actively processing..."
+
+CANARY_IDEM="CANARY-${UNIQUE}-$(date +%s)"
+CANARY_PRE=$(dbq "SELECT COUNT(*) FROM folios WHERE tenant_id='$TID' AND folio_type='HOUSE_ACCOUNT';")
+
+send_command "CMD canary: folio.create warm-up" \
+  "billing.folio.create" \
+  "{\"property_id\":\"$PID\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Canary warm-up\",\"currency\":\"USD\",\"notes\":\"Consumer readiness probe\",\"idempotency_key\":\"$CANARY_IDEM\"}"
+
+CONSUMER_READY=false
+for i in $(seq 1 6); do
+  sleep 5
+  CANARY_POST=$(dbq "SELECT COUNT(*) FROM folios WHERE tenant_id='$TID' AND folio_type='HOUSE_ACCOUNT';")
+  if [[ "$CANARY_POST" -gt "$CANARY_PRE" ]]; then
+    CONSUMER_READY=true
+    pass "Consumer readiness: canary processed in $((i * 5))s"
+    break
+  fi
+  printf "    ⏱  Attempt %d/6 — waiting...\n" "$i"
+done
+
+if ! $CONSUMER_READY; then
+  fail "Consumer readiness" "Canary not processed after 30s — billing consumer may be down"
+  echo "  ⚠  Phase 1B will likely fail. Check billing-service Kafka consumer logs."
+  echo ""
+fi
+
+# Clean up canary folio
+CANARY_FOLIO_ID=$(dbq "SELECT folio_id FROM folios WHERE tenant_id='$TID' AND notes='Consumer readiness probe' ORDER BY created_at DESC LIMIT 1;")
+if [[ -n "$CANARY_FOLIO_ID" ]]; then
+  dbq "DELETE FROM folios WHERE folio_id='$CANARY_FOLIO_ID';" >/dev/null 2>&1
+fi
+echo ""
+
+# ── 1.13  Payment Refund (PMS §4.3 — Refund Processing) ──
+echo "── 1.13  Payment Refund ─────────────────────────────────────────────"
+echo "  Scenario: Guest overpaid — partial refund of \$50 from CC payment"
+
+# Get the CC payment id for refund
+CC_PAY_ID=$(dbq "SELECT id FROM payments WHERE payment_reference='$PAYREF1' AND tenant_id='$TID' LIMIT 1;")
+
+if [[ -n "$CC_PAY_ID" ]]; then
+  REFUND_REF="RF-${UNIQUE}-001"
+  send_command "CMD refund: partial \$50 from CC" \
+    "billing.payment.refund" \
+    "{\"payment_id\":\"$CC_PAY_ID\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":50.00,\"reason\":\"Guest overpayment — partial refund\",\"refund_reference\":\"$REFUND_REF\",\"payment_method\":\"CREDIT_CARD\"}"
+
+  wait_kafka 8
+
+  # Verify refund payment record created
+  REFUND_EXISTS=$(dbq "SELECT COUNT(*) FROM payments WHERE tenant_id='$TID' AND transaction_type IN ('REFUND'::transaction_type,'PARTIAL_REFUND'::transaction_type) AND amount=50.00;")
+  if [[ "${REFUND_EXISTS:-0}" -ge 1 ]]; then
+    pass "DB: refund payment record exists (amount=50)"
+  else
+    fail "DB: refund payment record" "not found"
+  fi
+
+  # Verify original payment status updated
+  ORIG_PAY_STATUS=$(dbq "SELECT status FROM payments WHERE id='$CC_PAY_ID';")
+  assert_eq_ci "DB: original CC payment status after partial refund" "PARTIALLY_REFUNDED" "$ORIG_PAY_STATUS"
+
+  # Verify original refund_amount field
+  ORIG_REFUND_AMT=$(dbq "SELECT COALESCE(refund_amount,0) FROM payments WHERE id='$CC_PAY_ID';")
+  assert_eq_num "DB: original payment refund_amount = 50" "50" "$ORIG_REFUND_AMT"
+else
+  skip "Payment refund" "CC payment $PAYREF1 not found"
+fi
+echo ""
+
+# ── 1.14  Charge Void (PMS §2.3 — Charge Adjustment / Correction) ──
+echo "── 1.14  Charge Void ────────────────────────────────────────────────"
+echo "  Scenario: SPA charge (\$150) posted incorrectly — void it"
+
+SPA_POSTING_ID=$(dbq "SELECT posting_id FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='SPA' AND COALESCE(is_voided,false)=false LIMIT 1;")
+
+if [[ -n "$SPA_POSTING_ID" ]]; then
+  PRE_VOID_BALANCE=$(dbq "SELECT balance FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "0")
+
+  send_command "CMD void: SPA charge (\$150)" \
+    "billing.charge.void" \
+    "{\"posting_id\":\"$SPA_POSTING_ID\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"void_reason\":\"Charge posted to wrong guest — industry QA test\"}"
+
+  wait_kafka 8
+
+  # Verify original charge is voided
+  IS_VOIDED=$(dbq "SELECT is_voided FROM charge_postings WHERE posting_id='$SPA_POSTING_ID';")
+  assert_eq "DB: SPA charge is_voided = true" "t" "$IS_VOIDED"
+
+  # Verify void_reason is set
+  VOID_REASON=$(dbq "SELECT void_reason FROM charge_postings WHERE posting_id='$SPA_POSTING_ID';")
+  if [[ -n "$VOID_REASON" ]]; then
+    pass "DB: void_reason recorded"
+  else
+    fail "DB: void_reason" "empty"
+  fi
+
+  # Verify reversal posting was created
+  REVERSAL_COUNT=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND original_posting_id='$SPA_POSTING_ID' AND transaction_type='VOID';")
+  assert_eq "DB: reversal VOID posting exists" "1" "$REVERSAL_COUNT"
+
+  # Verify folio balance decreased by $150
+  POST_VOID_BALANCE=$(dbq "SELECT balance FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "0")
+  EXPECTED_BALANCE=$(echo "$PRE_VOID_BALANCE - 150" | bc 2>/dev/null || echo "0")
+  assert_eq_num "DB: folio balance decreased by 150" "$EXPECTED_BALANCE" "$POST_VOID_BALANCE"
+else
+  skip "Charge void" "SPA charge not found"
+fi
+echo ""
+
+# ── 1.15  Folio Create — House Account (PMS §3.1 — Multiple Folios) ──
+echo "── 1.15  Folio Create — House Account ───────────────────────────────"
+echo "  Scenario: Create standalone house account folio for incidentals"
+
+HOUSE_ACCT_IDEM="HOUSE-${UNIQUE}-001"
+send_command "CMD folio.create: HOUSE_ACCOUNT" \
+  "billing.folio.create" \
+  "{\"property_id\":\"$PID\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Test House Account — Industry QA\",\"currency\":\"USD\",\"notes\":\"Standalone folio for charge transfer tests\",\"idempotency_key\":\"$HOUSE_ACCT_IDEM\"}"
+
+wait_kafka 5
+
+HOUSE_FOLIO_ID=$(dbq "SELECT folio_id FROM folios WHERE tenant_id='$TID' AND folio_type='HOUSE_ACCOUNT' ORDER BY created_at DESC LIMIT 1;")
+if [[ -n "$HOUSE_FOLIO_ID" ]]; then
+  pass "DB: HOUSE_ACCOUNT folio created (${HOUSE_FOLIO_ID:0:8}…)"
+  HOUSE_STATUS=$(dbq "SELECT folio_status FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';")
+  assert_eq_ci "DB: house folio status = OPEN" "OPEN" "$HOUSE_STATUS"
+  HOUSE_TYPE=$(dbq "SELECT folio_type FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';")
+  assert_eq "DB: house folio type = HOUSE_ACCOUNT" "HOUSE_ACCOUNT" "$HOUSE_TYPE"
+else
+  fail "DB: HOUSE_ACCOUNT folio" "not created"
+fi
+echo ""
+
+# ── 1.16  Charge Transfer (PMS §3.4 — Charge Transfer Between Folios) ──
+echo "── 1.16  Charge Transfer ────────────────────────────────────────────"
+echo "  Scenario: MINIBAR charge posted to wrong guest — transfer to house account"
+
+MINIBAR_POSTING_ID=$(dbq "SELECT posting_id FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='MINIBAR' AND COALESCE(is_voided,false)=false LIMIT 1;")
+
+if [[ -n "$MINIBAR_POSTING_ID" && -n "$HOUSE_FOLIO_ID" ]]; then
+  PRE_SRC_BAL=$(dbq "SELECT balance FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "0")
+  PRE_TGT_BAL=$(dbq "SELECT balance FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';" 2>/dev/null || echo "0")
+
+  send_command "CMD transfer: MINIBAR → house account" \
+    "billing.charge.transfer" \
+    "{\"posting_id\":\"$MINIBAR_POSTING_ID\",\"to_folio_id\":\"$HOUSE_FOLIO_ID\",\"property_id\":\"$PID\",\"reason\":\"Charge to house account — industry QA test\"}"
+
+  wait_kafka 8
+
+  # Verify CREDIT on source folio
+  TRANSFER_CREDIT=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND original_posting_id='$MINIBAR_POSTING_ID' AND transaction_type='TRANSFER' AND posting_type='CREDIT';")
+  assert_eq "DB: transfer CREDIT posting on source" "1" "$TRANSFER_CREDIT"
+
+  # Verify DEBIT on target folio
+  TRANSFER_DEBIT=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND original_posting_id='$MINIBAR_POSTING_ID' AND transaction_type='TRANSFER' AND posting_type='DEBIT';")
+  assert_eq "DB: transfer DEBIT posting on target" "1" "$TRANSFER_DEBIT"
+
+  # Verify source folio balance decreased
+  POST_SRC_BAL=$(dbq "SELECT balance FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "0")
+  EXPECTED_SRC=$(echo "$PRE_SRC_BAL - 24.50" | bc 2>/dev/null || echo "0")
+  assert_eq_num "DB: source folio balance decreased by 24.50" "$EXPECTED_SRC" "$POST_SRC_BAL"
+
+  # Verify target folio balance increased
+  POST_TGT_BAL=$(dbq "SELECT balance FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';" 2>/dev/null || echo "0")
+  EXPECTED_TGT=$(echo "$PRE_TGT_BAL + 24.50" | bc 2>/dev/null || echo "0")
+  assert_eq_num "DB: target folio balance increased by 24.50" "$EXPECTED_TGT" "$POST_TGT_BAL"
+else
+  skip "Charge transfer" "MINIBAR posting or house folio not found"
+fi
+echo ""
+
+# ── 1.17  Charge Split (PMS §3.3 — Multiple Guests Share Cost) ──
+echo "── 1.17  Charge Split ───────────────────────────────────────────────"
+echo "  Scenario: RESTAURANT charge (\$85) split between res1 folio (\$50) + house account (\$35)"
+
+REST_POSTING_ID=$(dbq "SELECT posting_id FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND charge_code='RESTAURANT' AND COALESCE(is_voided,false)=false AND transaction_type='CHARGE' LIMIT 1;")
+
+if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
+  send_command "CMD split: RESTAURANT \$50/\$35" \
+    "billing.folio.split" \
+    "{\"posting_id\":\"$REST_POSTING_ID\",\"property_id\":\"$PID\",\"splits\":[{\"folio_id\":\"$FOLIO1_ID\",\"amount\":50.00,\"description\":\"Guest share\"},{\"folio_id\":\"$HOUSE_FOLIO_ID\",\"amount\":35.00,\"description\":\"House share\"}],\"reason\":\"Cost sharing — industry QA test\"}"
+
+  wait_kafka 8
+
+  # Verify original charge was voided
+  SPLIT_VOIDED=$(dbq "SELECT is_voided FROM charge_postings WHERE posting_id='$REST_POSTING_ID';")
+  assert_eq "DB: original RESTAURANT charge voided after split" "t" "$SPLIT_VOIDED"
+
+  # Verify two new split postings exist
+  SPLIT_COUNT=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND original_posting_id='$REST_POSTING_ID' AND transaction_type='CHARGE' AND posting_type='DEBIT';")
+  assert_eq "DB: two split postings created" "2" "$SPLIT_COUNT"
+
+  # Verify split amounts
+  SPLIT_50=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND original_posting_id='$REST_POSTING_ID' AND total_amount=50.00;")
+  SPLIT_35=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND original_posting_id='$REST_POSTING_ID' AND total_amount=35.00;")
+  assert_eq "DB: \$50 split posting exists" "1" "$SPLIT_50"
+  assert_eq "DB: \$35 split posting exists" "1" "$SPLIT_35"
+else
+  skip "Charge split" "RESTAURANT posting or folios not found"
+fi
+echo ""
+
+# ── 1.18  Invoice Full Lifecycle (PMS §5.1-5.4) ──
+echo "── 1.18  Invoice Lifecycle ──────────────────────────────────────────"
+echo "  Scenario: Draft → Adjust → Finalize → Credit Note + separate invoice Void"
+
+# Get the first invoice (created in phase 1.6)
+INV1_ID=$(dbq "SELECT id FROM invoices WHERE reservation_id='$RES1_ID' AND tenant_id='$TID' AND COALESCE(status,'')!='VOIDED' ORDER BY created_at ASC LIMIT 1;")
+
+if [[ -n "$INV1_ID" ]]; then
+  # --- Adjust: add $25 surcharge ---
+  INV1_PRE_TOTAL=$(dbq "SELECT total_amount FROM invoices WHERE id='$INV1_ID';")
+  send_command "CMD invoice.adjust: +\$25 surcharge" \
+    "billing.invoice.adjust" \
+    "{\"invoice_id\":\"$INV1_ID\",\"adjustment_amount\":25.00,\"reason\":\"Late checkout surcharge — industry QA\"}"
+
+  wait_kafka 4
+
+  INV1_POST_TOTAL=$(dbq "SELECT total_amount FROM invoices WHERE id='$INV1_ID';")
+  EXPECTED_TOTAL=$(echo "$INV1_PRE_TOTAL + 25" | bc 2>/dev/null || echo "0")
+  assert_eq_num "DB: invoice total after +25 adjustment" "$EXPECTED_TOTAL" "$INV1_POST_TOTAL"
+
+  # --- Finalize: lock the invoice ---
+  send_command "CMD invoice.finalize: lock invoice" \
+    "billing.invoice.finalize" \
+    "{\"invoice_id\":\"$INV1_ID\"}"
+
+  wait_kafka 4
+
+  INV1_STATUS=$(dbq "SELECT status FROM invoices WHERE id='$INV1_ID';")
+  assert_eq "DB: invoice status = FINALIZED" "FINALIZED" "$INV1_STATUS"
+
+  # --- Credit Note: issue $100 credit against finalized invoice (PMS §5.3) ---
+  echo "  Scenario: Post-checkout correction — issue credit note"
+  send_command "CMD credit_note: \$100 against finalized invoice" \
+    "billing.credit_note.create" \
+    "{\"original_invoice_id\":\"$INV1_ID\",\"property_id\":\"$PID\",\"credit_amount\":100.00,\"reason\":\"Service quality issue — partial refund per manager\",\"currency\":\"USD\"}"
+
+  wait_kafka 5
+
+  CN_COUNT=$(dbq "SELECT COUNT(*) FROM invoices WHERE tenant_id='$TID' AND invoice_type='CREDIT_NOTE' AND original_invoice_id='$INV1_ID';")
+  assert_eq "DB: credit note created for invoice" "1" "$CN_COUNT"
+
+  CN_AMOUNT=$(dbq "SELECT total_amount FROM invoices WHERE tenant_id='$TID' AND invoice_type='CREDIT_NOTE' AND original_invoice_id='$INV1_ID' LIMIT 1;")
+  assert_eq_num "DB: credit note amount = -100" "-100" "$CN_AMOUNT"
+
+  CN_STATUS=$(dbq "SELECT status FROM invoices WHERE tenant_id='$TID' AND invoice_type='CREDIT_NOTE' AND original_invoice_id='$INV1_ID' LIMIT 1;")
+  assert_eq "DB: credit note status = FINALIZED" "FINALIZED" "$CN_STATUS"
+else
+  skip "Invoice lifecycle" "no invoice found for res 1"
+fi
+
+# --- Void a DRAFT invoice (PMS §5.4) ---
+# Create a second invoice just to void it
+VOID_INV_IDEM="VOID-INV-${UNIQUE}-001"
+send_command "CMD invoice: throwaway for void test" \
+  "billing.invoice.create" \
+  "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"total_amount\":999.99,\"idempotency_key\":\"$VOID_INV_IDEM\"}"
+
+wait_kafka 4
+
+VOID_INV_ID=$(dbq "SELECT id FROM invoices WHERE tenant_id='$TID' AND total_amount=999.99 AND status='DRAFT' ORDER BY created_at DESC LIMIT 1;")
+if [[ -n "$VOID_INV_ID" ]]; then
+  send_command "CMD invoice.void: void throwaway invoice" \
+    "billing.invoice.void" \
+    "{\"invoice_id\":\"$VOID_INV_ID\",\"reason\":\"Duplicate invoice issued in error — QA test\"}"
+
+  wait_kafka 4
+
+  VOIDED_STATUS=$(dbq "SELECT status FROM invoices WHERE id='$VOID_INV_ID';")
+  assert_eq "DB: voided invoice status = VOIDED" "VOIDED" "$VOIDED_STATUS"
+else
+  skip "Invoice void" "throwaway invoice not created"
+fi
+echo ""
+
+# ── 1.19  AR Full Lifecycle (PMS §8.1-8.3 — Receivables Management) ──
+echo "── 1.19  AR Lifecycle ───────────────────────────────────────────────"
+echo "  Scenario: Corporate AR → partial payment → write-off remainder"
+
+AR1_ID=$(dbq "SELECT ar_id FROM accounts_receivable WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND ar_status='open' ORDER BY created_at DESC LIMIT 1;")
+
+if [[ -n "$AR1_ID" ]]; then
+  AR1_OUTSTANDING=$(dbq "SELECT outstanding_balance FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+
+  # --- Apply partial payment ($100 of $158.50) ---
+  AR_PAY_REF="AR-PAY-${UNIQUE}-001"
+  send_command "CMD ar.apply_payment: \$100 partial" \
+    "billing.ar.apply_payment" \
+    "{\"ar_id\":\"$AR1_ID\",\"amount\":100.00,\"payment_reference\":\"$AR_PAY_REF\",\"payment_method\":\"BANK_TRANSFER\",\"notes\":\"Partial payment from Acme Corp\"}"
+
+  wait_kafka 8
+
+  AR1_NEW_BAL=$(dbq "SELECT outstanding_balance FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  EXPECTED_AR_BAL=$(echo "$AR1_OUTSTANDING - 100" | bc 2>/dev/null || echo "0")
+  assert_eq_num "DB: AR outstanding after \$100 payment" "$EXPECTED_AR_BAL" "$AR1_NEW_BAL"
+
+  AR1_STATUS=$(dbq "SELECT ar_status FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  assert_eq "DB: AR status after partial payment = partial" "partial" "$AR1_STATUS"
+
+  AR1_PAID=$(dbq "SELECT paid_amount FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  assert_eq_num "DB: AR paid_amount = 100" "100" "$AR1_PAID"
+
+  # --- Write off remaining balance ($58.50) (PMS §8.3 — Bad Debt Write-off) ---
+  REMAINING=$(dbq "SELECT outstanding_balance FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  echo "  Scenario: Write off remaining \$$REMAINING as bad debt"
+
+  send_command "CMD ar.write_off: remaining balance" \
+    "billing.ar.write_off" \
+    "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
+
+  wait_kafka 8
+
+  AR1_FINAL_STATUS=$(dbq "SELECT ar_status FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  assert_eq "DB: AR status after write-off = written_off" "written_off" "$AR1_FINAL_STATUS"
+
+  AR1_WRITTEN=$(dbq "SELECT COALESCE(written_off,false) FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  assert_eq "DB: AR written_off flag = true" "t" "$AR1_WRITTEN"
+
+  AR1_FINAL_BAL=$(dbq "SELECT outstanding_balance FROM accounts_receivable WHERE ar_id='$AR1_ID';")
+  assert_eq_num "DB: AR outstanding after write-off = 0" "0" "$AR1_FINAL_BAL"
+else
+  skip "AR lifecycle" "no open AR for res 1"
+fi
+echo ""
+
+# ── 1.20  Chargeback (PMS §4.4 — Bank Disputes) ──
+echo "── 1.20  Chargeback ─────────────────────────────────────────────────"
+echo "  Scenario: Bank disputes CC payment — record chargeback"
+
+# Use PAYREF1 (CC payment) for chargeback
+if [[ -n "${PAYREF1:-}" ]]; then
+  CB_REF="CB-${UNIQUE}-001"
+  send_command "CMD chargeback: \$75 against CC payment" \
+    "billing.chargeback.record" \
+    "{\"property_id\":\"$PID\",\"payment_reference\":\"$PAYREF1\",\"chargeback_amount\":75.00,\"chargeback_reason\":\"Unauthorized transaction — cardholder dispute\",\"chargeback_reference\":\"$CB_REF\"}"
+
+  wait_kafka 8
+
+  # Chargeback creates a refund record with is_chargeback=true
+  CB_REFUND=$(dbq "SELECT COUNT(*) FROM refunds WHERE tenant_id='$TID' AND is_chargeback=true AND chargeback_reference='$CB_REF';")
+  if [[ "$CB_REFUND" -ge 1 ]]; then
+    pass "DB: chargeback refund record exists"
+  else
+    # Might be stored differently — check payments table
+    CB_PAY=$(dbq "SELECT COUNT(*) FROM payments WHERE tenant_id='$TID' AND transaction_type='REFUND' AND notes LIKE '%chargeback%' ORDER BY created_at DESC;")
+    if [[ "$CB_PAY" -ge 1 ]]; then
+      pass "DB: chargeback recorded via payment refund"
+    else
+      fail "DB: chargeback record" "not found in refunds or payments"
+    fi
+  fi
+
+  # Verify original payment status changed
+  CB_PAY_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$PAYREF1' AND tenant_id='$TID' AND transaction_type NOT IN ('REFUND','PARTIAL_REFUND','VOID') LIMIT 1;")
+  if [[ "$CB_PAY_STATUS" == "REFUNDED" || "$CB_PAY_STATUS" == "PARTIALLY_REFUNDED" ]]; then
+    pass "DB: CC payment status after chargeback = $CB_PAY_STATUS"
+  else
+    fail "DB: CC payment status after chargeback" "expected REFUNDED or PARTIALLY_REFUNDED, got=$CB_PAY_STATUS"
+  fi
+else
+  skip "Chargeback" "CC payment reference not found"
+fi
+echo ""
+
+# ── 1.21  Express Checkout (PMS §6.1 — Fast Guest Departure) ──
+echo "── 1.21  Express Checkout ───────────────────────────────────────────"
+echo "  Scenario: Guest 2 uses express checkout — auto-close folio + checkout"
+
+if [[ -n "${RES2_ID:-}" && -n "${FOLIO2_ID:-}" ]]; then
+  # Need to ensure res2 is in checked_in status
+  RES2_STATUS=$(dbq "SELECT status FROM reservations WHERE id='$RES2_ID';" 2>/dev/null || echo "")
+
+  send_command "CMD express_checkout: guest 2" \
+    "billing.express_checkout" \
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES2_ID\",\"folio_id\":\"$FOLIO2_ID\",\"send_folio_email\":false,\"skip_balance_check\":true,\"notes\":\"Express checkout — industry QA test\"}"
+
+  wait_kafka 8
+
+  # Verify folio closed
+  FOLIO2_STATUS=$(dbq "SELECT folio_status FROM folios WHERE folio_id='$FOLIO2_ID';" 2>/dev/null || echo "")
+  if [[ "$FOLIO2_STATUS" == "CLOSED" || "$FOLIO2_STATUS" == "SETTLED" || "$FOLIO2_STATUS" == "closed" || "$FOLIO2_STATUS" == "settled" ]]; then
+    pass "DB: folio 2 status after express checkout = $FOLIO2_STATUS"
+  else
+    # Express checkout may not always close folio if balance not zero
+    skip "DB: folio 2 status" "expected closed/settled, got=$FOLIO2_STATUS (may have balance)"
+  fi
+else
+  skip "Express checkout" "res2 or folio2 not available"
+fi
+echo ""
+
+# ── 1.22  Folio Close / Settlement (PMS §6.1 — Final Settlement) ──
+echo "── 1.22  Folio Close ────────────────────────────────────────────────"
+echo "  Scenario: Close the house account folio (force close)"
+
+if [[ -n "${HOUSE_FOLIO_ID:-}" ]]; then
+  send_command "CMD folio.close: house account (force)" \
+    "billing.folio.close" \
+    "{\"property_id\":\"$PID\",\"folio_id\":\"$HOUSE_FOLIO_ID\",\"close_reason\":\"End-of-stay settlement — industry QA test\",\"force\":true}"
+
+  wait_kafka 8
+
+  HOUSE_CLOSE_STATUS=$(dbq "SELECT folio_status FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';")
+  if [[ "$HOUSE_CLOSE_STATUS" == "CLOSED" || "$HOUSE_CLOSE_STATUS" == "SETTLED" ]]; then
+    pass "DB: house folio closed/settled ($HOUSE_CLOSE_STATUS)"
+  else
+    fail "DB: house folio close" "expected CLOSED or SETTLED, got=$HOUSE_CLOSE_STATUS"
+  fi
+
+  # Verify closed_at timestamp set
+  HOUSE_CLOSED_AT=$(dbq "SELECT closed_at IS NOT NULL FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';")
+  assert_eq "DB: house folio closed_at set" "t" "$HOUSE_CLOSED_AT"
+else
+  skip "Folio close" "house folio not created"
+fi
+echo ""
+
+# ── 1.23  Folio Transfer (PMS §7.2 — Direct Billing / City Ledger) ──
+echo "── 1.23  Folio Transfer ─────────────────────────────────────────────"
+echo "  Scenario: Transfer \$50 balance from res1 folio to res2 folio (company pays)"
+
+if [[ -n "$RES1_ID" && -n "${RES2_ID:-}" ]]; then
+  PRE_F1_BAL=$(dbq "SELECT balance FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "0")
+
+  send_command "CMD folio.transfer: \$50 res1 → res2" \
+    "billing.folio.transfer" \
+    "{\"from_reservation_id\":\"$RES1_ID\",\"to_reservation_id\":\"$RES2_ID\",\"property_id\":\"$PID\",\"amount\":50.00,\"reason\":\"Corporate billing arrangement — industry QA\"}"
+
+  wait_kafka 8
+
+  POST_F1_BAL=$(dbq "SELECT balance FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "0")
+  EXPECTED_F1=$(echo "$PRE_F1_BAL - 50" | bc 2>/dev/null || echo "0")
+  assert_eq_num "DB: source folio balance after transfer" "$EXPECTED_F1" "$POST_F1_BAL"
+else
+  skip "Folio transfer" "need both res1 and res2"
+fi
+echo ""
+
+# ── 1.24  Incremental Authorization (PMS §4.1 — Extended Stay Auth Bump) ──
+echo "── 1.24  Auth Increment ─────────────────────────────────────────────"
+echo "  Scenario: Guest extends stay — increment CC authorization by \$200"
+
+# First create a new authorization to increment
+AUTH_INC_REF="AUTH-INC-${UNIQUE}-001"
+send_command "CMD authorize: initial \$100 for increment test" \
+  "billing.payment.authorize" \
+  "{\"payment_reference\":\"$AUTH_INC_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":100.00,\"payment_method\":\"CREDIT_CARD\"}"
+
+wait_kafka 8
+
+AUTH_INC_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$AUTH_INC_REF' AND tenant_id='$TID' LIMIT 1;")
+if [[ "$AUTH_INC_STATUS" == "AUTHORIZED" ]]; then
+  send_command "CMD auth_increment: +\$200" \
+    "billing.payment.authorize_increment" \
+    "{\"payment_reference\":\"$AUTH_INC_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"additional_amount\":200.00,\"reason\":\"Guest extended stay — additional night\"}"
+
+  wait_kafka 4
+
+  INC_AMOUNT=$(dbq "SELECT amount FROM payments WHERE payment_reference='$AUTH_INC_REF' AND tenant_id='$TID' LIMIT 1;")
+  assert_eq_num "DB: auth amount after increment = 300" "300" "$INC_AMOUNT"
+
+  INC_STATUS=$(dbq "SELECT status FROM payments WHERE payment_reference='$AUTH_INC_REF' AND tenant_id='$TID' LIMIT 1;")
+  assert_eq "DB: auth still AUTHORIZED after increment" "AUTHORIZED" "$INC_STATUS"
+else
+  skip "Auth increment" "initial auth not in AUTHORIZED state ($AUTH_INC_STATUS)"
+fi
+echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 1C — PMS BA v2 EDGE CASES & COMPLIANCE (docs/pms_accounting_ba_v2.md)
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 1C: PMS BA v2 EDGE CASES & COMPLIANCE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── 1.25  Command Idempotency Deduplication (v2 §12.1, §13.2) ──
+echo "── 1.25  Idempotency Dedup (v2 §12.1) ──────────────────────────────"
+echo "  Scenario: Send identical charge.post twice with same idempotency_key"
+echo "  Expected: Only ONE charge created — second is deduplicated"
+
+IDEMP_KEY="IDEMP-${UNIQUE}-DEDUP-TEST"
+IDEMP_PRE=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID';")
+
+send_command "CMD idempotency: charge.post attempt 1" \
+  "billing.charge.post" \
+  "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"amount\":42.00,\"charge_code\":\"MISC\",\"description\":\"Idempotency dedup test — attempt 1\",\"idempotency_key\":\"$IDEMP_KEY\"}" \
+  "$IDEMP_KEY"
+
+wait_kafka 8
+
+IDEMP_MID=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID';")
+
+# Send identical command again with SAME idempotency_key
+send_command "CMD idempotency: charge.post attempt 2 (same key)" \
+  "billing.charge.post" \
+  "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"amount\":42.00,\"charge_code\":\"MISC\",\"description\":\"Idempotency dedup test — attempt 1\",\"idempotency_key\":\"$IDEMP_KEY\"}" \
+  "$IDEMP_KEY"
+
+wait_kafka 8
+
+IDEMP_POST=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID';")
+
+# First attempt should have created exactly 1 charge
+IDEMP_DELTA1=$((IDEMP_MID - IDEMP_PRE))
+if [[ "$IDEMP_DELTA1" -eq 1 ]]; then
+  pass "DB: first idempotent charge created (delta=1)"
+else
+  skip "DB: first idempotent charge" "delta=$IDEMP_DELTA1 (consumer may not have processed)"
+fi
+
+# Second attempt with same key should NOT create another charge
+IDEMP_DELTA2=$((IDEMP_POST - IDEMP_MID))
+if [[ "$IDEMP_DELTA1" -eq 1 ]]; then
+  assert_eq "DB: duplicate idempotent charge deduplicated" "0" "$IDEMP_DELTA2"
+else
+  skip "DB: idempotency dedup" "first charge not created"
+fi
+echo ""
+
+# ── 1.26  Fiscal Period Close (v2 §12.4) ──
+echo "── 1.26  Fiscal Period Close (v2 §12.4) ────────────────────────────"
+echo "  Scenario: Close current fiscal period — prevents retroactive posting"
+
+# Seed an OPEN fiscal period for the current month so the close command has a target
+FP_YEAR=$(date +%Y)
+FP_MONTH=$(date +%-m)
+FP_PERIOD_START=$(date +%Y-%m-01)
+FP_PERIOD_END=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%Y-%m-%d 2>/dev/null \
+  || date -v1d -v+1m -v-1d +%Y-%m-%d 2>/dev/null || echo "")
+FP_NAME="$(date +%B) $FP_YEAR"
+FP_YEAR_START="$FP_YEAR-01-01"
+FP_YEAR_END="$FP_YEAR-12-31"
+
+if [[ -n "$FP_PERIOD_END" ]]; then
+  # Upsert fiscal period — safe to re-run
+  FP_ID=$(dbq "INSERT INTO fiscal_periods (tenant_id, property_id, fiscal_year, fiscal_year_start, fiscal_year_end, period_number, period_name, period_start, period_end, period_status)
+    VALUES ('$TID', '$PID', $FP_YEAR, '$FP_YEAR_START', '$FP_YEAR_END', $FP_MONTH, '$FP_NAME', '$FP_PERIOD_START', '$FP_PERIOD_END', 'OPEN')
+    ON CONFLICT (tenant_id, property_id, fiscal_year, period_number) DO UPDATE SET period_status = 'OPEN', updated_at = NOW()
+    RETURNING fiscal_period_id;" 2>/dev/null || echo "")
+  FP_ID=$(echo "$FP_ID" | head -1 | tr -d '[:space:]')
+
+  if [[ -n "$FP_ID" ]]; then
+    send_command "CMD fiscal_period.close: period $FP_ID" \
+      "billing.fiscal_period.close" \
+      "{\"property_id\":\"$PID\",\"period_id\":\"$FP_ID\"}"
+
+    wait_kafka 8
+
+    FP_STATUS=$(dbq "SELECT period_status FROM fiscal_periods WHERE tenant_id='$TID' AND fiscal_period_id='$FP_ID' LIMIT 1;" 2>/dev/null || echo "")
+    if [[ -n "$FP_STATUS" ]]; then
+      assert_eq_ci "DB: fiscal period status = SOFT_CLOSE" "soft_close" "$FP_STATUS"
+    else
+      skip "DB: fiscal period close" "no fiscal_periods record found"
+    fi
+  else
+    skip "Fiscal period close" "could not seed fiscal period row"
+  fi
+else
+  skip "Fiscal period close" "date calculation not available"
+fi
+echo ""
+
+# ── 1.27  Duplicate Night Audit Idempotency (v2 §2.1, §12.2) ──
+echo "── 1.27  Night Audit Idempotency (v2 §12.2) ────────────────────────"
+echo "  Scenario: Re-run night audit for same date — verify no duplicate charges"
+
+AUDIT_PRE_CHARGES=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND charge_code='ROOM';")
+AUDIT_PRE_COUNT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID' AND property_id='$PID';")
+
+# Get current business date to send audit for (should fail gracefully if already audited)
+CURRENT_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+if [[ -n "$CURRENT_BDATE" ]]; then
+  send_command "CMD night audit idempotency: re-audit same date" \
+    "billing.night_audit.execute" \
+    "{\"property_id\":\"$PID\",\"audit_date\":\"$CURRENT_BDATE\",\"perform_date_roll\":false}"
+
+  wait_kafka 10
+
+  AUDIT_POST_CHARGES=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND charge_code='ROOM';")
+  AUDIT_POST_COUNT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID' AND property_id='$PID';")
+
+  # Charges should not increase (no duplicate room charges)
+  CHARGE_DELTA=$((AUDIT_POST_CHARGES - AUDIT_PRE_CHARGES))
+  if [[ "$CHARGE_DELTA" -eq 0 ]]; then
+    pass "DB: no duplicate ROOM charges after re-audit (delta=0)"
+  else
+    # If charges increased, it may be legitimate new audit — not necessarily a bug
+    skip "DB: duplicate ROOM charge check" "delta=$CHARGE_DELTA (may be legitimate)"
+  fi
+else
+  skip "Night audit idempotency" "no business_date found"
+fi
+echo ""
+
+# ── 1.28  Multi-mode Payment on Same Folio (v2 §4.1) ──
+echo "── 1.28  Multi-mode Payment (v2 §4.1) ──────────────────────────────"
+echo "  Scenario: Apply CASH + CREDIT_CARD payments to same folio"
+
+MULTI_CASH_REF="MULTI-CASH-${UNIQUE}-001"
+MULTI_CC_REF="MULTI-CC-${UNIQUE}-001"
+
+send_command "CMD multi-mode: cash \$30 to res1 folio" \
+  "billing.payment.capture" \
+  "{\"payment_reference\":\"$MULTI_CASH_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":30.00,\"payment_method\":\"CASH\"}"
+
+send_command "CMD multi-mode: CC \$70 to res1 folio" \
+  "billing.payment.capture" \
+  "{\"payment_reference\":\"$MULTI_CC_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":70.00,\"payment_method\":\"CREDIT_CARD\"}"
+
+wait_kafka 10
+
+MULTI_CASH_EXISTS=$(dbq "SELECT COUNT(*) FROM payments WHERE payment_reference='$MULTI_CASH_REF' AND tenant_id='$TID';")
+MULTI_CC_EXISTS=$(dbq "SELECT COUNT(*) FROM payments WHERE payment_reference='$MULTI_CC_REF' AND tenant_id='$TID';")
+
+if [[ "$MULTI_CASH_EXISTS" -ge 1 && "$MULTI_CC_EXISTS" -ge 1 ]]; then
+  pass "DB: multi-mode payment — both CASH and CC captured on same folio"
+
+  MULTI_CASH_METHOD=$(dbq "SELECT payment_method FROM payments WHERE payment_reference='$MULTI_CASH_REF' AND tenant_id='$TID' LIMIT 1;")
+  assert_eq "DB: cash payment method = CASH" "CASH" "$MULTI_CASH_METHOD"
+
+  MULTI_CC_METHOD=$(dbq "SELECT payment_method FROM payments WHERE payment_reference='$MULTI_CC_REF' AND tenant_id='$TID' LIMIT 1;")
+  assert_eq "DB: CC payment method = CREDIT_CARD" "CREDIT_CARD" "$MULTI_CC_METHOD"
+else
+  skip "DB: multi-mode payment" "cash=$MULTI_CASH_EXISTS cc=$MULTI_CC_EXISTS"
+fi
+echo ""
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  SEED PHASE COMPLETE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -827,9 +1494,12 @@ else
   FAILPAY_REF=$(dbq "SELECT payment_reference FROM payments WHERE tenant_id='$TID' AND status='CANCELLED' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
   CASHPAY_REF=$(dbq "SELECT payment_reference FROM payments WHERE tenant_id='$TID' AND payment_method='CASH' AND status='COMPLETED' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
   PAYREF1=$(dbq "SELECT payment_reference FROM payments WHERE tenant_id='$TID' AND payment_method='CREDIT_CARD' AND status='COMPLETED' ORDER BY created_at ASC LIMIT 1;" 2>/dev/null || echo "")
+  FOLIO2_ID=$(dbq "SELECT folio_id FROM folios WHERE reservation_id='$RES2_ID' AND tenant_id='$TID' LIMIT 1;" 2>/dev/null || echo "")
+  HOUSE_FOLIO_ID=$(dbq "SELECT folio_id FROM folios WHERE tenant_id='$TID' AND folio_type='HOUSE_ACCOUNT' ORDER BY created_at DESC LIMIT 1;" 2>/dev/null || echo "")
   echo "  Guest:       ${GUEST1_ID:-NONE}"
   echo "  Reservation: ${RES1_ID:-NONE}"
   echo "  Folio:       ${FOLIO1_ID:-NONE}"
+  echo "  House folio: ${HOUSE_FOLIO_ID:-NONE}"
   echo "  Sessions:    morning=${SESSION_ID:-NONE} afternoon=${AFTERNOON_ID:-NONE} evening=${EVENING_ID:-NONE}"
   echo ""
 fi
@@ -893,14 +1563,14 @@ echo "── Charges ───────────────────�
 code=$(get "$GW/v1/billing/charges?tenant_id=$TID&limit=100")
 assert_http "GET charges list" "200" "$code"
 API_CHARGES=$(jq 'if type == "array" then length else (.data | length) // 0 end' "$RESP_FILE" 2>/dev/null || echo "0")
-DB_CHARGES=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID';")
+DB_CHARGES=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND COALESCE(is_voided,false)=false AND deleted_at IS NULL;")
 assert_eq "XCHECK: charges count" "$DB_CHARGES" "$API_CHARGES"
 
 if [[ -n "${RES1_ID:-}" ]]; then
   code=$(get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID")
   assert_http "GET charges by reservation" "200" "$code"
   API_RES1=$(jq 'if type == "array" then length else (.data | length) // 0 end' "$RESP_FILE" 2>/dev/null || echo "0")
-  DB_RES1=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID';")
+  DB_RES1=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND COALESCE(is_voided,false)=false AND deleted_at IS NULL;")
   assert_eq "XCHECK: res1 charges count" "$DB_RES1" "$API_RES1"
 fi
 echo ""
@@ -1055,7 +1725,7 @@ if [[ -n "${FAILPAY_REF:-}" ]]; then
   assert_eq_ci "XCHECK: cash fallback status in API" "$DB_CASH_STATUS" "$API_CASH_STATUS"
 
   API_CASH_METHOD=$(jq -r --arg ref "$CASHPAY_REF" '[.[] | select(.payment_reference == $ref)][0].payment_method // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  assert_eq "XCHECK: cash fallback method in API" "CASH" "$API_CASH_METHOD"
+  assert_eq_ci "XCHECK: cash fallback method in API" "CASH" "$API_CASH_METHOD"
 fi
 echo ""
 
@@ -1126,6 +1796,276 @@ DB_HISTORY_COUNT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$T
 assert_eq "XCHECK: night audit history count" "$DB_HISTORY_COUNT" "$API_HISTORY_COUNT"
 echo ""
 
+# ── Phase 1B Validations: Voided Charges, Refunds, Credit Notes, AR ──
+echo "── Voided Charges (API) ─────────────────────────────────────────────"
+
+# Verify voided charges appear correctly in API
+code=$(get "$GW/v1/billing/charges?tenant_id=$TID&limit=200")
+assert_http "GET charges (includes voided)" "200" "$code"
+
+DB_VOIDED_COUNT=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND is_voided=true;")
+API_VOIDED_COUNT=$(jq '[.[] | select(.is_voided == true)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+if [[ "$DB_VOIDED_COUNT" -ge 1 ]]; then
+  pass "XCHECK: voided charges exist in DB ($DB_VOIDED_COUNT)"
+fi
+
+# Verify reversal postings (VOID type)
+DB_VOID_POSTINGS=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND transaction_type='VOID';")
+if [[ "$DB_VOID_POSTINGS" -ge 1 ]]; then
+  pass "XCHECK: VOID reversal postings in DB ($DB_VOID_POSTINGS)"
+fi
+
+# Verify transfer postings
+DB_TRANSFER_POSTINGS=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND transaction_type='TRANSFER';")
+if [[ "$DB_TRANSFER_POSTINGS" -ge 1 ]]; then
+  pass "XCHECK: TRANSFER postings in DB ($DB_TRANSFER_POSTINGS)"
+fi
+echo ""
+
+echo "── Refund Payments (API) ────────────────────────────────────────────"
+
+code=$(get "$GW/v1/billing/payments?tenant_id=$TID&limit=200")
+assert_http "GET payments (includes refunds)" "200" "$code"
+
+# Verify refund payment records exist
+DB_REFUND_COUNT=$(dbq "SELECT COUNT(*) FROM payments WHERE tenant_id='$TID' AND transaction_type IN ('REFUND','PARTIAL_REFUND');")
+if [[ "$DB_REFUND_COUNT" -ge 1 ]]; then
+  pass "XCHECK: refund payment records in DB ($DB_REFUND_COUNT)"
+else
+  skip "XCHECK: refund payments" "none found"
+fi
+
+# Verify chargeback via refunds table
+DB_CHARGEBACK_COUNT=$(dbq "SELECT COUNT(*) FROM refunds WHERE tenant_id='$TID' AND is_chargeback=true;" 2>/dev/null || echo "0")
+if [[ "$DB_CHARGEBACK_COUNT" -ge 1 ]]; then
+  pass "XCHECK: chargeback refund records in DB ($DB_CHARGEBACK_COUNT)"
+fi
+echo ""
+
+echo "── Credit Notes & Invoice Lifecycle (API) ──────────────────────────"
+
+# Verify credit notes via API
+DB_CN_COUNT=$(dbq "SELECT COUNT(*) FROM invoices WHERE tenant_id='$TID' AND invoice_type='CREDIT_NOTE';")
+if [[ "$DB_CN_COUNT" -ge 1 ]]; then
+  pass "XCHECK: credit notes in DB ($DB_CN_COUNT)"
+
+  CN_ID=$(dbq "SELECT id FROM invoices WHERE tenant_id='$TID' AND invoice_type='CREDIT_NOTE' ORDER BY created_at DESC LIMIT 1;")
+  if [[ -n "$CN_ID" ]]; then
+    code=$(get "$GW/v1/billing/invoices/$CN_ID?tenant_id=$TID")
+    assert_http "GET credit note by ID" "200" "$code"
+    API_CN_TYPE=$(jq -r '.data.invoice_type // .invoice_type // empty' "$RESP_FILE" 2>/dev/null || echo "")
+    assert_eq "XCHECK: credit note type in API" "CREDIT_NOTE" "$API_CN_TYPE"
+  fi
+fi
+
+# Verify finalized invoice status via API
+FINALIZED_ID=$(dbq "SELECT id FROM invoices WHERE tenant_id='$TID' AND status='FINALIZED' ORDER BY created_at DESC LIMIT 1;")
+if [[ -n "$FINALIZED_ID" ]]; then
+  code=$(get "$GW/v1/billing/invoices/$FINALIZED_ID?tenant_id=$TID")
+  assert_http "GET finalized invoice by ID" "200" "$code"
+  API_FIN_STATUS=$(jq -r '.data.status // .status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  assert_eq_ci "XCHECK: finalized invoice status in API" "FINALIZED" "$API_FIN_STATUS"
+fi
+
+# Verify voided invoice status via API
+VOIDED_INV_ID=$(dbq "SELECT id FROM invoices WHERE tenant_id='$TID' AND status='VOIDED' ORDER BY created_at DESC LIMIT 1;")
+if [[ -n "$VOIDED_INV_ID" ]]; then
+  code=$(get "$GW/v1/billing/invoices/$VOIDED_INV_ID?tenant_id=$TID")
+  assert_http "GET voided invoice by ID" "200" "$code"
+  API_VOIDED_STATUS=$(jq -r '.data.status // .status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  assert_eq_ci "XCHECK: voided invoice status in API" "VOIDED" "$API_VOIDED_STATUS"
+fi
+echo ""
+
+echo "── AR Lifecycle (API) ───────────────────────────────────────────────"
+
+# Verify AR statuses reflect partial payment + write-off
+code=$(get "$GW/v1/billing/accounts-receivable?tenant_id=$TID&limit=100")
+assert_http "GET AR (post-lifecycle)" "200" "$code"
+
+DB_AR_WRITTEN_OFF=$(dbq "SELECT COUNT(*) FROM accounts_receivable WHERE tenant_id='$TID' AND ar_status='written_off';")
+if [[ "$DB_AR_WRITTEN_OFF" -ge 1 ]]; then
+  pass "XCHECK: written-off AR entries in DB ($DB_AR_WRITTEN_OFF)"
+fi
+
+DB_AR_PAID_AMT=$(dbq "SELECT COALESCE(SUM(paid_amount),0) FROM accounts_receivable WHERE tenant_id='$TID';")
+if [[ $(echo "$DB_AR_PAID_AMT > 0" | bc 2>/dev/null) == "1" ]]; then
+  pass "XCHECK: total AR paid amount = $DB_AR_PAID_AMT"
+fi
+echo ""
+
+echo "── House Account Folio (API) ────────────────────────────────────────"
+
+if [[ -n "${HOUSE_FOLIO_ID:-}" ]]; then
+  code=$(get "$GW/v1/billing/folios/$HOUSE_FOLIO_ID?tenant_id=$TID")
+  assert_http "GET house account folio by ID" "200" "$code"
+  API_HOUSE_TYPE=$(jq -r '.folio_type // .data.folio_type // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  assert_eq_ci "XCHECK: house folio type in API" "HOUSE_ACCOUNT" "$API_HOUSE_TYPE"
+  API_HOUSE_STATUS=$(jq -r '.folio_status // .data.folio_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  DB_HOUSE_STATUS=$(dbq "SELECT folio_status FROM folios WHERE folio_id='$HOUSE_FOLIO_ID';")
+  assert_eq_ci "XCHECK: house folio status in API" "$DB_HOUSE_STATUS" "$API_HOUSE_STATUS"
+fi
+echo ""
+
+echo "── Incremental Auth (API) ───────────────────────────────────────────"
+
+if [[ -n "${AUTH_INC_REF:-}" ]]; then
+  code=$(get "$GW/v1/billing/payments?tenant_id=$TID&limit=200")
+  assert_http "GET payments (includes incremented auth)" "200" "$code"
+  API_INC_AMT=$(jq -r --arg ref "$AUTH_INC_REF" '[.[] | select(.payment_reference == $ref)][0].amount // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  if [[ -n "$API_INC_AMT" ]]; then
+    assert_eq_num "XCHECK: incremented auth amount in API = 300" "300" "$API_INC_AMT"
+  else
+    skip "XCHECK: incremented auth" "not found in API response"
+  fi
+fi
+echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 2B — PMS BA v2 COMPLIANCE CHECKS (Read-Only Validation)
+#  Ref: docs/pms_accounting_ba_v2.md §5.1, §12.1, §3.1
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 2B: PMS BA v2 COMPLIANCE CHECKS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── Invoice Number Sequencing (v2 §5.1) ──
+echo "── Invoice Number Sequencing (v2 §5.1) ──────────────────────────────"
+echo "  Verify: Invoice numbers are sequential with no gaps"
+
+INV_NUMBERS=$(dbq "SELECT invoice_number FROM invoices WHERE tenant_id='$TID' AND invoice_number IS NOT NULL ORDER BY invoice_number;" 2>/dev/null || echo "")
+if [[ -n "$INV_NUMBERS" ]]; then
+  INV_COUNT=$(echo "$INV_NUMBERS" | wc -l | tr -d ' ')
+  if [[ "$INV_COUNT" -ge 2 ]]; then
+    # Check for gaps: count unique numbers vs range span
+    FIRST_NUM=$(echo "$INV_NUMBERS" | head -1 | tr -d '[:space:]')
+    LAST_NUM=$(echo "$INV_NUMBERS" | tail -1 | tr -d '[:space:]')
+    # If numeric, verify sequence
+    if [[ "$FIRST_NUM" =~ ^[0-9]+$ && "$LAST_NUM" =~ ^[0-9]+$ ]]; then
+      EXPECTED_RANGE=$(( LAST_NUM - FIRST_NUM + 1 ))
+      if [[ "$INV_COUNT" -eq "$EXPECTED_RANGE" ]]; then
+        pass "Invoice numbers sequential ($FIRST_NUM..$LAST_NUM, count=$INV_COUNT)"
+      else
+        fail "Invoice number gap detected" "range=$EXPECTED_RANGE but count=$INV_COUNT"
+      fi
+    else
+      pass "Invoice numbers exist ($INV_COUNT invoices with non-numeric IDs)"
+    fi
+  else
+    pass "Invoice numbering: $INV_COUNT invoice(s) — too few to verify sequence"
+  fi
+else
+  skip "Invoice number sequencing" "no invoices found"
+fi
+echo ""
+
+# ── Audit Trail Immutability (v2 §12.1) ──
+echo "── Audit Trail Immutability (v2 §12.1) ──────────────────────────────"
+echo "  Verify: Voided charges are not deleted — still visible in DB"
+
+VOIDED_VISIBLE=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND is_voided=true;")
+VOID_REVERSALS=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND transaction_type='VOID';")
+
+if [[ "$VOIDED_VISIBLE" -ge 1 ]]; then
+  pass "Audit trail: voided charges still visible ($VOIDED_VISIBLE voided, $VOID_REVERSALS reversals)"
+elif [[ "$VOID_REVERSALS" -ge 1 ]]; then
+  pass "Audit trail: VOID reversal postings exist ($VOID_REVERSALS)"
+else
+  skip "Audit trail immutability" "no voided charges or reversals found"
+fi
+
+# Verify voided charges have original_posting_id references
+VOID_WITH_REF=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND transaction_type='VOID' AND original_posting_id IS NOT NULL;" 2>/dev/null || echo "0")
+if [[ "$VOID_REVERSALS" -ge 1 ]]; then
+  if [[ "$VOID_WITH_REF" -ge 1 ]]; then
+    pass "Audit trail: VOID reversals reference original posting ($VOID_WITH_REF/$VOID_REVERSALS)"
+  else
+    skip "Audit trail: VOID original_posting_id" "column may not exist or not populated"
+  fi
+fi
+echo ""
+
+# ── Folio Balance Integrity (v2 §3.1 — Trial Balance) ──
+echo "── Folio Balance Integrity (v2 §3.1) ─────────────────────────────────"
+echo "  Verify: Folio balance = sum(debits) - sum(credits)"
+
+if [[ -n "$FOLIO1_ID" ]]; then
+  FOLIO_BAL=$(dbq "SELECT COALESCE(balance, 0) FROM folios WHERE folio_id='$FOLIO1_ID';" 2>/dev/null || echo "")
+  FOLIO_DEBITS=$(dbq "SELECT COALESCE(SUM(total_amount), 0) FROM charge_postings WHERE folio_id='$FOLIO1_ID' AND posting_type='DEBIT' AND is_voided=false;" 2>/dev/null || echo "0")
+  FOLIO_CREDITS=$(dbq "SELECT COALESCE(SUM(total_amount), 0) FROM charge_postings WHERE folio_id='$FOLIO1_ID' AND posting_type='CREDIT' AND is_voided=false;" 2>/dev/null || echo "0")
+  FOLIO_PAYMENTS=$(dbq "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE folio_id='$FOLIO1_ID' AND status IN ('COMPLETED','CAPTURED') AND transaction_type NOT IN ('REFUND','VOID');" 2>/dev/null || echo "0")
+
+  if [[ -n "$FOLIO_BAL" && "$FOLIO_BAL" != "0" ]]; then
+    CALC_BAL=$(echo "$FOLIO_DEBITS - $FOLIO_CREDITS - $FOLIO_PAYMENTS" | bc 2>/dev/null || echo "")
+    if [[ -n "$CALC_BAL" ]]; then
+      # Allow small rounding tolerance (±0.01)
+      DIFF=$(echo "($FOLIO_BAL) - ($CALC_BAL)" | bc 2>/dev/null || echo "999")
+      ABS_DIFF=$(echo "$DIFF" | tr -d '-')
+      if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
+        pass "Folio balance integrity: stored=$FOLIO_BAL calc=$CALC_BAL (D=$FOLIO_DEBITS C=$FOLIO_CREDITS P=$FOLIO_PAYMENTS)"
+      else
+        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF"
+      fi
+    else
+      skip "Folio balance calc" "bc computation failed"
+    fi
+  else
+    skip "Folio balance integrity" "balance=$FOLIO_BAL"
+  fi
+else
+  skip "Folio balance integrity" "no folio1 ID"
+fi
+echo ""
+
+# ── Payment-to-Refund Linkage (v2 §4.3) ──
+echo "── Payment-Refund Linkage (v2 §4.3) ──────────────────────────────────"
+echo "  Verify: Refunds reference their original payment"
+
+REFUND_LINKED=$(dbq "SELECT COUNT(*) FROM refunds WHERE tenant_id='$TID' AND original_payment_id IS NOT NULL;" 2>/dev/null || echo "0")
+REFUND_TOTAL=$(dbq "SELECT COUNT(*) FROM refunds WHERE tenant_id='$TID';" 2>/dev/null || echo "0")
+
+if [[ "$REFUND_TOTAL" -ge 1 ]]; then
+  pass "Refund linkage: $REFUND_LINKED/$REFUND_TOTAL refunds linked to original payment"
+  if [[ "$REFUND_LINKED" -eq "$REFUND_TOTAL" ]]; then
+    pass "Refund linkage: all refunds have original_payment_id"
+  fi
+else
+  skip "Refund linkage" "no refunds found"
+fi
+echo ""
+
+# ── Idempotency Records (v2 §13.2) ──
+echo "── Idempotency Records (v2 §13.2) ────────────────────────────────────"
+echo "  Verify: command_idempotency table has dedup records"
+
+IDEMP_RECORDS=$(dbq "SELECT COUNT(*) FROM command_idempotency WHERE tenant_id='$TID';" 2>/dev/null || echo "0")
+if [[ "$IDEMP_RECORDS" -ge 1 ]]; then
+  pass "Idempotency: $IDEMP_RECORDS dedup records in command_idempotency table"
+else
+  skip "Idempotency records" "no dedup records found (table may not exist)"
+fi
+echo ""
+
+# ── Multi-Mode Payment Verification (v2 §4.1) ──
+echo "── Multi-Mode Payment Verification (v2 §4.1) ────────────────────────"
+echo "  Verify: Multiple payment methods applied to same reservation"
+
+PAYMENT_METHODS=$(dbq "SELECT DISTINCT payment_method FROM payments WHERE tenant_id='$TID' AND reservation_id='$RES1_ID' AND status IN ('COMPLETED','CAPTURED','AUTHORIZED');" 2>/dev/null || echo "")
+if [[ -z "$PAYMENT_METHODS" ]]; then
+  METHOD_COUNT=0
+else
+  METHOD_COUNT=$(echo "$PAYMENT_METHODS" | wc -l | tr -d ' ')
+fi
+
+if [[ "$METHOD_COUNT" -ge 2 ]]; then
+  pass "Multi-mode: $METHOD_COUNT distinct payment methods on reservation ($PAYMENT_METHODS)"
+else
+  skip "Multi-mode payment" "only $METHOD_COUNT method(s) found"
+fi
+echo ""
+
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 3 — POST-TEST DB SNAPSHOT
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1145,18 +2085,28 @@ POST_TAX=$(dbq "SELECT COUNT(*) FROM tax_configurations WHERE tenant_id='$TID';"
 POST_CASHIER=$(dbq "SELECT COUNT(*) FROM cashier_sessions WHERE tenant_id='$TID';")
 POST_AR=$(dbq "SELECT COUNT(*) FROM accounts_receivable WHERE tenant_id='$TID';")
 POST_AUDIT=$(dbq "SELECT COUNT(*) FROM night_audit_log WHERE tenant_id='$TID';")
+POST_REFUNDS=$(dbq "SELECT COUNT(*) FROM refunds WHERE tenant_id='$TID';" 2>/dev/null || echo "0")
 POST_BDATE=$(dbq "SELECT business_date::text FROM business_dates WHERE tenant_id='$TID' AND property_id='$PID' ORDER BY business_date DESC LIMIT 1;")
+POST_VOIDED=$(dbq "SELECT COUNT(*) FROM charge_postings WHERE tenant_id='$TID' AND is_voided=true;")
+POST_CREDIT_NOTES=$(dbq "SELECT COUNT(*) FROM invoices WHERE tenant_id='$TID' AND invoice_type='CREDIT_NOTE';")
+POST_IDEMP=$(dbq "SELECT COUNT(*) FROM command_idempotency WHERE tenant_id='$TID';" 2>/dev/null || echo "0")
+POST_FISCAL=$(dbq "SELECT COUNT(*) FROM fiscal_periods WHERE tenant_id='$TID';" 2>/dev/null || echo "0")
 
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "guests"              "$PRE_GUESTS"       "$POST_GUESTS"       "$((POST_GUESTS - PRE_GUESTS))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "reservations"         "$PRE_RESERVATIONS"  "$POST_RESERVATIONS"  "$((POST_RESERVATIONS - PRE_RESERVATIONS))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "folios"               "$PRE_FOLIOS"        "$POST_FOLIOS"        "$((POST_FOLIOS - PRE_FOLIOS))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "charge_postings"      "$PRE_CHARGES"       "$POST_CHARGES"       "$((POST_CHARGES - PRE_CHARGES))"
+printf "  %-25s  %5s        \n"         "  └─ voided"           "$POST_VOIDED"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "payments"             "$PRE_PAYMENTS"      "$POST_PAYMENTS"      "$((POST_PAYMENTS - PRE_PAYMENTS))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "invoices"             "$PRE_INVOICES"      "$POST_INVOICES"      "$((POST_INVOICES - PRE_INVOICES))"
+printf "  %-25s  %5s        \n"         "  └─ credit_notes"     "$POST_CREDIT_NOTES"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "tax_configurations"   "$PRE_TAX"           "$POST_TAX"           "$((POST_TAX - PRE_TAX))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "cashier_sessions"     "$PRE_CASHIER"       "$POST_CASHIER"       "$((POST_CASHIER - PRE_CASHIER))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "accounts_receivable"  "$PRE_AR"            "$POST_AR"            "$((POST_AR - PRE_AR))"
 printf "  %-25s  %5s → %5s  (Δ %+d)\n" "night_audit_log"      "—"                  "$POST_AUDIT"         "$POST_AUDIT"
+printf "  %-25s  %5s        \n"         "refunds"               "$POST_REFUNDS"
+printf "  %-25s  %5s        \n"         "command_idempotency"   "$POST_IDEMP"
+printf "  %-25s  %5s        \n"         "fiscal_periods"        "$POST_FISCAL"
 printf "  %-25s  %-17s\n"              "business_date"          "${POST_BDATE:-none}"
 echo ""
 

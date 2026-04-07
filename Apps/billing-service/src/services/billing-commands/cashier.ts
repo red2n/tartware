@@ -143,10 +143,10 @@ export const closeCashierSession = async (
 
   const cashReceived = Number(agg.total_cash_received ?? 0);
   const openingFloat = Number(session.opening_float_declared ?? 0);
-  // expected = opening float + cash received during shift
+  // System-expected drawer balance = opening float + cash received during shift
   const expectedCashBalance = openingFloat + cashReceived;
-  // cash_variance = counted − expected (positive = overage, negative = shortage)
-  const cashVariance = command.closing_cash_counted - expectedCashBalance;
+  // cash_variance = declared − counted (positive = shortage, negative = overage)
+  const cashVariance = command.closing_cash_declared - command.closing_cash_counted;
   const hasVariance = Math.abs(cashVariance) > 0.01;
 
   // 3. Update session with reconciliation data
@@ -164,13 +164,14 @@ export const closeCashierSession = async (
        total_refunds = $9,
        closing_cash_declared = $10,
        closing_cash_counted = $11,
-       cash_variance = $12,
-       has_variance = $13,
+       expected_cash_balance = $12,
+       cash_variance = $13,
+       has_variance = $14,
        reconciled = true,
        reconciled_at = NOW(),
-       reconciled_by = $14,
+       reconciled_by = $15,
        updated_at = NOW(),
-       updated_by = $14
+       updated_by = $15
      WHERE session_id = $1 AND tenant_id = $2`,
     [
       command.session_id,
@@ -184,6 +185,7 @@ export const closeCashierSession = async (
       Number(agg.total_refunds ?? 0),
       command.closing_cash_declared,
       command.closing_cash_counted,
+      expectedCashBalance,
       cashVariance,
       hasVariance,
       actorId,

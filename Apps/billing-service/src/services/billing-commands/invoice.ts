@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { query } from "../../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingCreditNoteCreateCommandSchema,
@@ -52,12 +52,26 @@ const applyInvoiceCreate = async (
   context: CommandContext,
 ): Promise<string> => {
   const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
-  const invoiceNumber =
-    command.invoice_number ?? `INV-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   const currency = command.currency ?? "USD";
 
-  const result = await query<{ id: string }>(
-    `
+  return withTransaction(async (client) => {
+    // Generate a collision-proof invoice number atomically inside the transaction.
+    // If the caller provided one, use it; otherwise, use a DB-side sequence counter
+    // scoped to the tenant + property + current date for human-readable numbering.
+    let invoiceNumber = command.invoice_number ?? null;
+    if (!invoiceNumber) {
+      const seqResult = await queryWithClient<{ seq: string }>(
+        client,
+        `SELECT nextval('invoice_number_seq') AS seq`,
+        [],
+      );
+      const seq = seqResult.rows[0]?.seq ?? randomUUID().slice(0, 8);
+      invoiceNumber = `INV-${seq}`;
+    }
+
+    const result = await queryWithClient<{ id: string }>(
+      client,
+      `
       INSERT INTO public.invoices (
         tenant_id,
         property_id,
@@ -93,27 +107,28 @@ const applyInvoiceCreate = async (
       )
       RETURNING id
     `,
-    [
-      context.tenantId,
-      command.property_id,
-      command.reservation_id,
-      command.guest_id,
-      invoiceNumber,
-      command.invoice_date ?? null,
-      command.due_date ?? null,
-      command.total_amount,
-      currency,
-      command.notes ?? null,
-      JSON.stringify(command.metadata ?? {}),
-      actor,
-    ],
-  );
+      [
+        context.tenantId,
+        command.property_id,
+        command.reservation_id ?? null,
+        command.guest_id,
+        invoiceNumber,
+        command.invoice_date ?? null,
+        command.due_date ?? null,
+        command.total_amount,
+        currency,
+        command.notes ?? null,
+        JSON.stringify(command.metadata ?? {}),
+        actor,
+      ],
+    );
 
-  const invoiceId = result.rows[0]?.id;
-  if (!invoiceId) {
-    throw new BillingCommandError("INVOICE_CREATE_FAILED", "Failed to create invoice.");
-  }
-  return invoiceId;
+    const invoiceId = result.rows[0]?.id;
+    if (!invoiceId) {
+      throw new BillingCommandError("INVOICE_CREATE_FAILED", "Failed to create invoice.");
+    }
+    return invoiceId;
+  });
 };
 
 const applyInvoiceAdjust = async (
@@ -127,12 +142,13 @@ const applyInvoiceAdjust = async (
       SET
         total_amount = GREATEST(0, total_amount + $3),
         notes = CASE
-          WHEN $4 IS NULL THEN notes
-          WHEN notes IS NULL THEN $4
-          ELSE CONCAT_WS(E'\\n', notes, $4)
+          WHEN $4::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $4::text
+          ELSE CONCAT_WS(E'\\n', notes, $4::text)
         END,
+        version = version + 1,
         updated_at = NOW(),
-        updated_by = $5
+        updated_by = $5::uuid
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid
       RETURNING id
@@ -185,6 +201,7 @@ const applyInvoiceFinalize = async (
   await query(
     `UPDATE public.invoices
      SET status = 'FINALIZED',
+         version = version + 1,
          updated_at = NOW(),
          updated_by = $3
      WHERE tenant_id = $1::uuid
@@ -232,12 +249,13 @@ export const voidInvoice = async (payload: unknown, context: CommandContext): Pr
     `UPDATE public.invoices
      SET status = 'VOIDED',
          notes = CASE
-           WHEN $3 IS NULL THEN notes
-           WHEN notes IS NULL THEN CONCAT('VOIDED: ', $3)
-           ELSE CONCAT_WS(E'\\n', notes, CONCAT('VOIDED: ', $3))
+           WHEN $3::text IS NULL THEN notes
+           WHEN notes IS NULL THEN CONCAT('VOIDED: ', $3::text)
+           ELSE CONCAT_WS(E'\\n', notes, CONCAT('VOIDED: ', $3::text))
          END,
+         version = version + 1,
          updated_at = NOW(),
-         updated_by = $4
+         updated_by = $4::uuid
      WHERE tenant_id = $1::uuid
        AND id = $2::uuid`,
     [context.tenantId, command.invoice_id, command.reason ?? null, actor],
