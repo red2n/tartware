@@ -56,6 +56,8 @@ export class ShellComponent implements OnInit, OnDestroy {
 		const color = this.settings.getString("property.brand_color", "");
 		if (color && /^#[0-9a-fA-F]{3,8}$/.test(color)) {
 			document.documentElement.style.setProperty("--brand-color", color);
+		} else {
+			document.documentElement.style.removeProperty("--brand-color");
 		}
 	});
 

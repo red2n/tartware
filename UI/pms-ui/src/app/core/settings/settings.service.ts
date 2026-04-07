@@ -1,20 +1,9 @@
 import { computed, effect, Injectable, signal } from "@angular/core";
 
-import type { SettingsDefinition, SettingsValue } from "@tartware/schemas";
+import type { SettingsCatalogResponse, SettingsValuesResponse } from "@tartware/schemas";
 
 import { ApiService } from "../api/api.service";
 import { AuthService } from "../auth/auth.service";
-
-interface CatalogResponse {
-	data: {
-		definitions: SettingsDefinition[];
-	};
-}
-
-interface ValuesResponse {
-	data: SettingsValue[];
-	meta: { count: number; sampleTenantId: string | null };
-}
 
 /**
  * Provides reactive access to all tenant settings with automatic default fallback.
@@ -44,12 +33,20 @@ export class SettingsService {
 		});
 	}
 
+	/** Track in-flight tenant to discard stale responses on rapid tenant switch. */
+	private _loadingTenantId: string | null = null;
+
 	private async load(tenantId: string): Promise<void> {
+		this._loadingTenantId = tenantId;
+		this._map.set(new Map());
 		try {
 			const [catalog, values] = await Promise.all([
-				this.api.get<CatalogResponse>("/settings/catalog"),
-				this.api.get<ValuesResponse>("/settings/values", { tenant_id: tenantId }),
+				this.api.get<SettingsCatalogResponse>("/settings/catalog"),
+				this.api.get<SettingsValuesResponse>("/settings/values", { tenant_id: tenantId }),
 			]);
+
+			// Discard stale response if tenant changed while loading
+			if (this._loadingTenantId !== tenantId) return;
 
 			const definitions = catalog.data?.definitions ?? [];
 			const savedValues = values.data ?? [];
@@ -79,7 +76,10 @@ export class SettingsService {
 			this._loaded.set(true);
 		} catch {
 			// Fail silently — screens fall back to their hardcoded defaults
-			this._loaded.set(true);
+			if (this._loadingTenantId === tenantId) {
+				this._map.set(new Map());
+				this._loaded.set(true);
+			}
 		}
 	}
 
