@@ -75,9 +75,11 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         await client.query("BEGIN");
 
         const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
-          `INSERT INTO tenants
-            (name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
-           VALUES ($1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7)
+          `WITH new_id AS (SELECT uuid_generate_v4() AS tid)
+           INSERT INTO tenants
+            (id, tenant_id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
+           SELECT tid, tid, $1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7
+           FROM new_id
            RETURNING id, name, slug`,
           [
             tenantInput.name,

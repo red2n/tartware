@@ -81,15 +81,21 @@ const ensureAdmin = async (client: Client) => {
 
 	if (rows.length === 0) {
 		const id = randomUUID();
+		// Need a tenant_id for the NOT NULL constraint — use the first existing tenant
+		const tenantResult = await client.query("SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1");
+		const tenantId = tenantResult.rows[0]?.id;
+		if (!tenantId) {
+			fail("No tenants exist yet — cannot create a system administrator without a tenant_id");
+		}
 		await client.query(
 			`INSERT INTO system_administrators (
-				id, username, email, password_hash, role, mfa_secret, mfa_enabled,
+				id, tenant_id, username, email, password_hash, role, mfa_secret, mfa_enabled,
 				ip_whitelist, allowed_hours, metadata, is_active, created_at
 			) VALUES (
-				$1::uuid, $2, $3, $4, $5::system_admin_role, $6, false,
-				$7::inet[], NULL, $8::jsonb, true, $9
+				$1::uuid, $2::uuid, $3, $4, $5, $6::system_admin_role, $7, false,
+				$8::inet[], NULL, $9::jsonb, true, $10
 			)` ,
-			[id, username, email, hashedPassword, role, mfaSecret, ips, JSON.stringify({ trusted_devices: ["bootstrap"] }), now],
+			[id, tenantId, username, email, hashedPassword, role, mfaSecret, ips, JSON.stringify({ trusted_devices: ["bootstrap"] }), now],
 		);
 		return { id, passwordChanged: true } as const;
 	}
