@@ -10,6 +10,10 @@ export class BillingCommandError extends Error {
     super(message);
     this.code = code;
   }
+
+  toJSON() {
+    return { code: this.code, message: this.message, name: this.name };
+  }
 }
 
 const APP_ACTOR = "COMMAND_CENTER";

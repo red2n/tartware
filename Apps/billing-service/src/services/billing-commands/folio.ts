@@ -89,59 +89,63 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
 
-  const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  // Resolve folio: prefer explicit folio_id, fall back to reservation lookup
+  let folioId = command.folio_id ?? null;
+  if (!folioId && command.reservation_id) {
+    folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  }
   if (!folioId) {
-    throw new BillingCommandError("FOLIO_NOT_FOUND", "No folio found for reservation.");
-  }
-
-  // Check current folio state
-  const { rows } = await query<{ folio_status: string; balance: string }>(
-    `SELECT folio_status, balance FROM public.folios
-     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid LIMIT 1`,
-    [context.tenantId, folioId],
-  );
-  const folio = rows[0];
-  if (!folio) {
-    throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio record not found.");
-  }
-  if (folio.folio_status === "CLOSED" || folio.folio_status === "SETTLED") {
-    appLogger.info({ folioId, status: folio.folio_status }, "Folio already closed/settled");
-    return folioId;
-  }
-
-  const balance = parseDbMoneyOrZero(folio.balance);
-  if (balance > 0 && !command.force) {
     throw new BillingCommandError(
-      "FOLIO_UNSETTLED",
-      `Folio has outstanding balance of ${balance.toFixed(2)}. Use force:true to close anyway.`,
+      "FOLIO_NOT_FOUND",
+      "No folio found. Provide folio_id or a valid reservation_id.",
     );
   }
 
-  const newStatus = balance === 0 ? "SETTLED" : "CLOSED";
-  const settledAt = newStatus === "SETTLED" ? new Date() : null;
-  const settledBy = newStatus === "SETTLED" ? actorId : null;
-  await query(
-    `UPDATE public.folios
-     SET folio_status = $3::text, closed_at = NOW(), close_reason = $4,
-         settled_at = $6::timestamptz, settled_by = $7::uuid,
-         updated_at = NOW(), updated_by = $5::uuid
-     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-    [
-      context.tenantId,
-      folioId,
-      newStatus,
-      command.close_reason ?? null,
-      actorId,
-      settledAt,
-      settledBy,
-    ],
-  );
+  return withTransaction(async (client) => {
+    // Lock the folio row to prevent concurrent close/settle races
+    const { rows } = await queryWithClient<{ folio_status: string; balance: string }>(
+      client,
+      `SELECT folio_status, balance FROM public.folios
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+       FOR UPDATE`,
+      [context.tenantId, folioId],
+    );
+    const folio = rows[0];
+    if (!folio) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio record not found.");
+    }
+    if (folio.folio_status === "CLOSED" || folio.folio_status === "SETTLED") {
+      appLogger.info({ folioId, status: folio.folio_status }, "Folio already closed/settled");
+      return folioId!;
+    }
 
-  appLogger.info(
-    { folioId, newStatus, balance, reservationId: command.reservation_id },
-    "Folio closed/settled",
-  );
-  return folioId;
+    const balance = parseDbMoneyOrZero(folio.balance);
+    if (balance > 0 && !command.force) {
+      throw new BillingCommandError(
+        "FOLIO_UNSETTLED",
+        `Folio has outstanding balance of ${balance.toFixed(2)}. Use force:true to close anyway.`,
+      );
+    }
+
+    const newStatus = balance === 0 ? "SETTLED" : "CLOSED";
+    const settledAt = newStatus === "SETTLED" ? new Date() : null;
+    const settledBy = newStatus === "SETTLED" ? actorId : null;
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET folio_status = $3::text, closed_at = NOW(),
+           settled_at = $5::timestamptz, settled_by = $6::uuid,
+           updated_at = NOW(), updated_by = $4::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, folioId, newStatus, actorId, settledAt, settledBy],
+    );
+
+    appLogger.info(
+      { folioId, newStatus, balance, reservationId: command.reservation_id },
+      "Folio closed/settled",
+    );
+    return folioId!;
+  });
 };
 
 const applyFolioTransfer = async (

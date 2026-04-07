@@ -14,8 +14,10 @@ import { FolioTypeEnum, PaymentMethodEnum } from "../../shared/enums.js";
 export const BillingPaymentCaptureCommandSchema = z.object({
 	payment_reference: z.string().trim().min(3).max(100),
 	property_id: z.string().uuid(),
-	reservation_id: z.string().uuid(),
-	guest_id: z.string().uuid(),
+	/** Target folio directly — use for standalone folios without a reservation. */
+	folio_id: z.string().uuid().optional(),
+	reservation_id: z.string().uuid().optional(),
+	guest_id: z.string().uuid().optional(),
 	amount: z.coerce.number().positive(),
 	currency: z.string().length(3).optional(),
 	payment_method: PaymentMethodEnum,
@@ -57,7 +59,7 @@ export type BillingPaymentRefundCommand = z.infer<
 
 export const BillingInvoiceCreateCommandSchema = z.object({
 	property_id: z.string().uuid(),
-	reservation_id: z.string().uuid(),
+	reservation_id: z.string().uuid().optional(),
 	guest_id: z.string().uuid(),
 	invoice_number: z.string().max(50).optional(),
 	invoice_date: z.coerce.date().optional(),
@@ -90,20 +92,28 @@ export type BillingInvoiceAdjustCommand = z.infer<
 	typeof BillingInvoiceAdjustCommandSchema
 >;
 
-export const BillingChargePostCommandSchema = z.object({
-	property_id: z.string().uuid(),
-	reservation_id: z.string().uuid(),
-	amount: z.coerce.number().positive(),
-	currency: z.string().length(3).optional(),
-	charge_code: z.string().max(50).default("MISC"),
-	department_code: z.string().max(20).optional(),
-	posting_type: z.enum(["DEBIT", "CREDIT"]).default("DEBIT"),
-	quantity: z.coerce.number().int().positive().default(1),
-	description: z.string().max(2000).optional(),
-	posted_at: z.coerce.date().optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
+export const BillingChargePostCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		/** Target folio directly — use for standalone folios without a reservation. */
+		folio_id: z.string().uuid().optional(),
+		/** Resolves to the guest folio for this reservation. Optional when folio_id is provided. */
+		reservation_id: z.string().uuid().optional(),
+		amount: z.coerce.number().positive(),
+		currency: z.string().length(3).optional(),
+		charge_code: z.string().max(50).default("MISC"),
+		department_code: z.string().max(20).optional(),
+		posting_type: z.enum(["DEBIT", "CREDIT"]).default("DEBIT"),
+		quantity: z.coerce.number().int().positive().default(1),
+		description: z.string().max(2000).optional(),
+		posted_at: z.coerce.date().optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.folio_id || v.reservation_id),
+		"folio_id or reservation_id is required",
+	);
 
 export type BillingChargePostCommand = z.infer<
 	typeof BillingChargePostCommandSchema
@@ -287,14 +297,22 @@ export type BillingDateRollManualCommand = z.infer<
  * Close/settle a folio. Sets folio_status to CLOSED or SETTLED
  * depending on balance. Zero balance → SETTLED, otherwise CLOSED.
  */
-export const BillingFolioCloseCommandSchema = z.object({
-	property_id: z.string().uuid(),
-	reservation_id: z.string().uuid(),
-	close_reason: z.string().max(500).optional(),
-	force: z.boolean().optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
+export const BillingFolioCloseCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		/** Close a specific folio by ID — use for standalone folios. */
+		folio_id: z.string().uuid().optional(),
+		/** Resolves to the guest folio for this reservation. */
+		reservation_id: z.string().uuid().optional(),
+		close_reason: z.string().max(500).optional(),
+		force: z.boolean().optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.folio_id || v.reservation_id),
+		"folio_id or reservation_id is required",
+	);
 
 export type BillingFolioCloseCommand = z.infer<
 	typeof BillingFolioCloseCommandSchema

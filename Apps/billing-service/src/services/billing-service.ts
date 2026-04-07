@@ -34,14 +34,15 @@ const formatEnumDisplay = (
   fallback: string,
 ): { value: string; display: string } => {
   if (!value || typeof value !== "string") {
-    return { value: fallback, display: fallback };
+    const formatted = fallback.toLowerCase();
+    return { value: formatted, display: fallback };
   }
-  const display = value
-    .toLowerCase()
+  const normalized = value.toLowerCase();
+  const display = normalized
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  return { value, display };
+  return { value: normalized, display };
 };
 
 const toIsoString = (value: string | Date | null): string | undefined => {
@@ -383,7 +384,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: pendingArrivals } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_in_date = $3::date AND status = 'confirmed'
+       AND check_in_date = $3::date AND status = 'CONFIRMED'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -401,7 +402,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: pendingDepartures } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_out_date = $3::date AND status = 'checked_in'
+       AND check_out_date = $3::date AND status = 'CHECKED_IN'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -419,7 +420,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: unbalancedFolios } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM folios
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'open' AND COALESCE(balance_due, 0) != 0
+       AND folio_status = 'OPEN' AND COALESCE(balance, 0) != 0
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],
   );
@@ -437,7 +438,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: conflictRooms } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM rooms
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND room_status = 'out_of_order' AND occupancy_status = 'occupied'
+       AND status = 'OUT_OF_ORDER' AND is_blocked = true
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],
   );
@@ -508,7 +509,7 @@ export const getBucketCheck = async (options: {
   const { rows: stayovers } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'checked_in' AND check_out_date > $3::date
+       AND status = 'CHECKED_IN' AND check_out_date > $3::date
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -518,7 +519,7 @@ export const getBucketCheck = async (options: {
   const { rows: dueOuts } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'checked_in' AND check_out_date = $3::date
+       AND status = 'CHECKED_IN' AND check_out_date = $3::date
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -528,7 +529,7 @@ export const getBucketCheck = async (options: {
   const { rows: arrivals } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_in_date = $3::date AND status = 'confirmed'
+       AND check_in_date = $3::date AND status = 'CONFIRMED'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -538,7 +539,7 @@ export const getBucketCheck = async (options: {
   const { rows: checkedInToday } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_in_date = $3::date AND status = 'checked_in'
+       AND check_in_date = $3::date AND status = 'CHECKED_IN'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );

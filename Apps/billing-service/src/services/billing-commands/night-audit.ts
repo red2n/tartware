@@ -374,9 +374,9 @@ async function postPackageCharges(
   }>(
     `SELECT r.id AS reservation_id, f.folio_id,
             pc.component_name, pc.unit_price,
-            COALESCE(pc.charge_code, 'PACKAGE') AS charge_code,
-            COALESCE(pc.department_code, 'OTHER') AS department_code,
-            pb.id AS package_booking_id
+            'PACKAGE' AS charge_code,
+            'OTHER' AS department_code,
+            pb.package_booking_id AS package_booking_id
      FROM reservations r
      INNER JOIN package_bookings pb
        ON pb.reservation_id = r.id AND pb.tenant_id = r.tenant_id

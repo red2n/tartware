@@ -220,6 +220,25 @@ export const tenantFolioParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + charge posting routes. */
+export const tenantChargeParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    postingId: {
+      type: "string",
+      format: "uuid",
+      description: "Charge posting identifier.",
+    },
+  },
+  required: ["tenantId", "postingId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 /** Path params schema for tenant + tax config routes. */
 export const tenantTaxConfigParamsSchema = {
   type: "object",

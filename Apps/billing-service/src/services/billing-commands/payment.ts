@@ -191,10 +191,11 @@ export const authorizePayment = async (
         $12,
         $12
       )
-      ON CONFLICT (payment_reference) DO UPDATE
+      ON CONFLICT (tenant_id, payment_reference) DO UPDATE
       SET
         amount = EXCLUDED.amount,
         status = 'AUTHORIZED',
+        version = payments.version + 1,
         updated_at = NOW(),
         updated_by = EXCLUDED.updated_by
       RETURNING id
@@ -321,8 +322,17 @@ const capturePayment = async (
     appLogger.warn({ guestId: command.guest_id, creditWarning }, "Credit limit warning on capture");
   }
 
-  const result = await query<{ id: string }>(
-    `
+  // Resolve folio before the transaction so we know whether to update it
+  const folioIdForUpdate = command.folio_id ?? null;
+  const reservationIdForFolio = command.reservation_id ?? null;
+  const resolvedFolioId =
+    folioIdForUpdate ??
+    (reservationIdForFolio ? await resolveFolioId(context.tenantId, reservationIdForFolio) : null);
+
+  const paymentId = await withTransaction(async (client) => {
+    const result = await queryWithClient<{ id: string }>(
+      client,
+      `
       INSERT INTO public.payments (
         tenant_id,
         property_id,
@@ -362,7 +372,7 @@ const capturePayment = async (
         $12,
         $12
       )
-      ON CONFLICT (payment_reference) DO UPDATE
+      ON CONFLICT (tenant_id, payment_reference) DO UPDATE
       SET
         amount = EXCLUDED.amount,
         currency = EXCLUDED.currency,
@@ -374,55 +384,53 @@ const capturePayment = async (
         processed_at = NOW(),
         processed_by = EXCLUDED.processed_by,
         metadata = payments.metadata || EXCLUDED.metadata,
+        version = payments.version + 1,
         updated_at = NOW(),
         updated_by = EXCLUDED.updated_by
       RETURNING id
     `,
-    [
-      context.tenantId,
-      command.property_id,
-      command.reservation_id,
-      command.guest_id,
-      command.payment_reference,
-      command.payment_method,
-      command.amount,
-      currency,
-      command.gateway?.name ?? null,
-      command.gateway?.reference ?? null,
-      JSON.stringify(gatewayResponse),
-      actor,
-      JSON.stringify(command.metadata ?? {}),
-    ],
-  );
+      [
+        context.tenantId,
+        command.property_id,
+        command.reservation_id ?? null,
+        command.guest_id ?? null,
+        command.payment_reference,
+        command.payment_method,
+        command.amount,
+        currency,
+        command.gateway?.name ?? null,
+        command.gateway?.reference ?? null,
+        JSON.stringify(gatewayResponse),
+        actor,
+        JSON.stringify(command.metadata ?? {}),
+      ],
+    );
 
-  const paymentId = result.rows[0]?.id;
-  if (!paymentId) {
-    throw new BillingCommandError("PAYMENT_CAPTURE_FAILED", "Failed to record captured payment.");
-  }
-
-  // G3: Update folio total_payments and balance when reservation_id is present
-  if (command.reservation_id) {
-    try {
-      const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
-      if (folioId) {
-        await query(
-          `
-            UPDATE public.folios
-            SET
-              total_payments = total_payments + $2,
-              balance = balance - $2,
-              updated_at = NOW(),
-              updated_by = $3
-            WHERE tenant_id = $1::uuid
-              AND folio_id = $4::uuid
-          `,
-          [context.tenantId, command.amount, actor, folioId],
-        );
-      }
-    } catch {
-      // Non-critical — payment recorded; folio balance sync can be reconciled
+    const id = result.rows[0]?.id;
+    if (!id) {
+      throw new BillingCommandError("PAYMENT_CAPTURE_FAILED", "Failed to record captured payment.");
     }
-  }
+
+    // Update folio balance atomically within the same transaction
+    if (resolvedFolioId) {
+      await queryWithClient(
+        client,
+        `
+        UPDATE public.folios
+        SET
+          total_payments = total_payments + $2,
+          balance = balance - $2,
+          updated_at = NOW(),
+          updated_by = $3
+        WHERE tenant_id = $1::uuid
+          AND folio_id = $4::uuid
+      `,
+        [context.tenantId, command.amount, actor, resolvedFolioId],
+      );
+    }
+
+    return id;
+  });
 
   return paymentId;
 };
@@ -536,6 +544,7 @@ const refundPayment = async (
         refund_reason = COALESCE($5, refund_reason),
         refund_date = NOW(),
         refunded_by = $6,
+        version = NULL,
         updated_at = NOW(),
         updated_by = $6
       WHERE tenant_id = $1::uuid
@@ -581,6 +590,7 @@ const applyPaymentToInvoice = async (
           '{applied_to_invoice_id}',
           to_jsonb($3::text)
         ),
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $4
       WHERE tenant_id = $1::uuid
@@ -609,6 +619,7 @@ const applyPaymentToInvoice = async (
           WHEN COALESCE(paid_amount, 0) + $3 >= total_amount THEN 'PAID'
           ELSE 'PARTIALLY_PAID'
         END,
+        version = version + 1,
         updated_at = NOW(),
         updated_by = $4
       WHERE tenant_id = $1::uuid
@@ -642,7 +653,7 @@ const loadPayment = async (
       WHERE tenant_id = $1::uuid
         AND (
           ($2::uuid IS NOT NULL AND id = $2::uuid)
-          OR ($3 IS NOT NULL AND payment_reference = $3)
+          OR ($3::text IS NOT NULL AND payment_reference = $3::text)
         )
       LIMIT 1
     `,
@@ -708,21 +719,22 @@ export const incrementAuthorization = async (
 
   await query(
     `UPDATE public.payments
-     SET amount = $3,
+     SET amount = $3::numeric,
          metadata = jsonb_set(
            COALESCE(metadata, '{}'::jsonb),
            '{incremental_auth_history}',
            COALESCE(metadata->'incremental_auth_history', '[]'::jsonb) ||
            jsonb_build_object(
              'previous_amount', amount,
-             'increment', $4,
-             'new_amount', $3,
-             'reason', $5,
+             'increment', $4::numeric,
+             'new_amount', $3::numeric,
+             'reason', $5::text,
              'timestamp', NOW()
            )::jsonb
          ),
+         version = version + 1,
          updated_at = NOW(),
-         updated_by = $6
+         updated_by = $6::uuid
      WHERE tenant_id = $1::uuid AND id = $2::uuid`,
     [
       context.tenantId,

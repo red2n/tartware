@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS payments (
     guest_id UUID NOT NULL,
 
     -- Payment Reference
-    payment_reference VARCHAR(100) UNIQUE NOT NULL,
+    payment_reference VARCHAR(100) NOT NULL,     -- Unique per tenant; enforced by idx_payments_tenant_payment_reference
     external_transaction_id VARCHAR(255),
 
     -- Transaction Details
@@ -127,5 +127,20 @@ COMMENT ON COLUMN payments.three_ds_version IS '3-D Secure protocol version used
 COMMENT ON COLUMN payments.three_ds_result IS '3-D Secure result (SUCCESS, CHALLENGE, FAILED, BYPASSED)';
 COMMENT ON COLUMN payments.refund_amount IS 'Amount refunded (0 = no refund)';
 COMMENT ON COLUMN payments.deleted_at IS 'Soft delete timestamp (NULL = active)';
+
+-- Fix global UNIQUE → tenant-scoped unique for multi-tenant safety
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'payments_payment_reference_key'
+      AND conrelid = 'payments'::regclass
+  ) THEN
+    ALTER TABLE payments DROP CONSTRAINT payments_payment_reference_key;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_tenant_payment_reference
+  ON payments (tenant_id, payment_reference);
 
 \echo 'Payments table created successfully!'

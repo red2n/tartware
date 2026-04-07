@@ -10,6 +10,10 @@ import {
   setCommandConsumerLag,
 } from "../lib/metrics.js";
 import {
+  checkCommandIdempotency,
+  recordCommandIdempotency,
+} from "../repositories/idempotency-repository.js";
+import {
   adjustInvoice,
   ageArEntries,
   applyArPayment,
@@ -324,6 +328,9 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeBillingCommand,
   publishDlqEvent,
+  checkIdempotency: checkCommandIdempotency,
+  recordIdempotency: recordCommandIdempotency,
+  idempotencyFailureMode: "fail-open",
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
