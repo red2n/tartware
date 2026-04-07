@@ -108,9 +108,11 @@ export const transferCharge = async (
       client,
       `UPDATE charge_postings
        SET transfer_to_folio_id = $3::uuid,
-           version = version + 1
+           version = version + 1,
+           updated_by = $4::uuid,
+           updated_at = NOW()
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
-      [command.posting_id, tenantId, targetFolioId],
+      [command.posting_id, tenantId, targetFolioId, actorId],
     );
 
     // 3. Create TRANSFER CREDIT on source folio (reduces balance)

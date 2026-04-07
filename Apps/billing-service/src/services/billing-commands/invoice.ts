@@ -56,8 +56,8 @@ const applyInvoiceCreate = async (
 
   return withTransaction(async (client) => {
     // Generate a collision-proof invoice number atomically inside the transaction.
-    // If the caller provided one, use it; otherwise, use a DB-side sequence counter
-    // scoped to the tenant + property + current date for human-readable numbering.
+    // If the caller provided one, use it; otherwise, derive one from a global DB-side
+    // sequence (invoice_number_seq) for human-readable, monotonically increasing numbering.
     let invoiceNumber = command.invoice_number ?? null;
     if (!invoiceNumber) {
       const seqResult = await queryWithClient<{ seq: string }>(

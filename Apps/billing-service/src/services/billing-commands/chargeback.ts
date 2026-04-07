@@ -51,6 +51,13 @@ export const recordChargeback = async (
     );
   }
 
+  if (!payment.guest_id) {
+    throw new BillingCommandError(
+      "MISSING_GUEST_ID",
+      `Cannot record chargeback: payment ${command.payment_reference} has no associated guest.`,
+    );
+  }
+
   // Insert a refund row with chargeback fields set
   const { rows: refundRows } = await query<{ refund_id: string }>(
     `INSERT INTO public.refunds (
@@ -61,7 +68,7 @@ export const recordChargeback = async (
        approved_at, approved_by,
        completed_at, processed_by, requested_by, created_by, updated_by
      ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, COALESCE($9::uuid, $8::uuid),
+       $1::uuid, $2::uuid, $3::uuid, $9::uuid,
        $4, 'USD', 'DISPUTE', 'ORIGINAL_PAYMENT_METHOD',
        'DISPUTE', $5::text, 'CHARGEBACK', 'COMPLETED',
        true, COALESCE($6::date, CURRENT_DATE), $5::varchar, $7::varchar,

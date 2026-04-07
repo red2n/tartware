@@ -11,25 +11,30 @@ import { z } from "zod";
 
 import { FolioTypeEnum, PaymentMethodEnum } from "../../shared/enums.js";
 
-export const BillingPaymentCaptureCommandSchema = z.object({
-	payment_reference: z.string().trim().min(3).max(100),
-	property_id: z.string().uuid(),
-	/** Target folio directly — use for standalone folios without a reservation. */
-	folio_id: z.string().uuid().optional(),
-	reservation_id: z.string().uuid().optional(),
-	guest_id: z.string().uuid().optional(),
-	amount: z.coerce.number().positive(),
-	currency: z.string().length(3).optional(),
-	payment_method: PaymentMethodEnum,
-	gateway: z
-		.object({
-			name: z.string().max(100).optional(),
-			reference: z.string().max(150).optional(),
-			response: z.record(z.unknown()).optional(),
-		})
-		.optional(),
-	metadata: z.record(z.unknown()).optional(),
-});
+export const BillingPaymentCaptureCommandSchema = z
+	.object({
+		payment_reference: z.string().trim().min(3).max(100),
+		property_id: z.string().uuid(),
+		/** Target folio directly — use for standalone folios without a reservation. */
+		folio_id: z.string().uuid().optional(),
+		reservation_id: z.string().uuid().optional(),
+		guest_id: z.string().uuid().optional(),
+		amount: z.coerce.number().positive(),
+		currency: z.string().length(3).optional(),
+		payment_method: PaymentMethodEnum,
+		gateway: z
+			.object({
+				name: z.string().max(100).optional(),
+				reference: z.string().max(150).optional(),
+				response: z.record(z.unknown()).optional(),
+			})
+			.optional(),
+		metadata: z.record(z.unknown()).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.folio_id || v.reservation_id),
+		"folio_id or reservation_id is required",
+	);
 
 export type BillingPaymentCaptureCommand = z.infer<
 	typeof BillingPaymentCaptureCommandSchema

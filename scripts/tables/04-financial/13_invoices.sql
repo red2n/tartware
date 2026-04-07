@@ -152,6 +152,8 @@ CREATE SEQUENCE IF NOT EXISTS invoice_number_seq
   NO MAXVALUE
   CACHE 20;
 
+GRANT USAGE, SELECT ON SEQUENCE invoice_number_seq TO tartware_app;
+
 -- Fix global UNIQUE → tenant-scoped unique for multi-tenant safety
 -- (idempotent: re-runnable without error)
 DO $$
