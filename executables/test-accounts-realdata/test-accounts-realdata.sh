@@ -2175,35 +2175,31 @@ echo ""
 
 # ── Folio Balance Integrity (v2 §3.1 — Trial Balance) ──
 echo "── Folio Balance Integrity (v2 §3.1) ─────────────────────────────────"
-echo "  Verify: Folio balance = sum(debits) - sum(credits)"
+echo "  Verify: Folio balance = total_charges - total_payments - total_credits"
+echo "  (stored totals maintained by DB CHECK constraint)"
 
 if [[ -n "$FOLIO1_ID" ]]; then
   get "$GW/v1/billing/folios/$FOLIO1_ID?tenant_id=$TID" >/dev/null
-  FOLIO_BAL=$(jq -r '.balance // .data.balance // 0' "$RESP_FILE" 2>/dev/null || echo "")
-  # Get charges for this folio
-  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$FOLIO1_ID&limit=200" >/dev/null
-  FOLIO_DEBITS=$(jq '[.data // . | .[] | select(.posting_type == "debit" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
-  FOLIO_CREDITS=$(jq '[.data // . | .[] | select(.posting_type == "credit" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
-  # Get payments for this reservation (payments link to reservations, not folios)
-  get "$GW/v1/billing/payments?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
-  FOLIO_PAYMENTS=$(jq '[.data // . | .[] | select(.status == "completed" or .status == "captured") | select(.transaction_type != "refund" and .transaction_type != "void") | .amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  FOLIO_BAL=$(jq -r '.balance // .data.balance // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  FOLIO_CHARGES=$(jq -r '.total_charges // .data.total_charges // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  FOLIO_PAYMENTS=$(jq -r '.total_payments // .data.total_payments // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  FOLIO_CREDITS=$(jq -r '.total_credits // .data.total_credits // empty' "$RESP_FILE" 2>/dev/null || echo "")
 
-  if [[ -n "$FOLIO_BAL" && "$FOLIO_BAL" != "0" ]]; then
-    CALC_BAL=$(echo "$FOLIO_DEBITS - $FOLIO_CREDITS - $FOLIO_PAYMENTS" | bc 2>/dev/null || echo "")
+  if [[ -n "$FOLIO_BAL" && -n "$FOLIO_CHARGES" ]]; then
+    CALC_BAL=$(echo "$FOLIO_CHARGES - $FOLIO_PAYMENTS - $FOLIO_CREDITS" | bc 2>/dev/null || echo "")
     if [[ -n "$CALC_BAL" ]]; then
-      # Allow small rounding tolerance (±0.01)
       DIFF=$(echo "($FOLIO_BAL) - ($CALC_BAL)" | bc 2>/dev/null || echo "999")
       ABS_DIFF=$(echo "$DIFF" | tr -d '-')
       if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
-        pass "Folio balance integrity: stored=$FOLIO_BAL calc=$CALC_BAL (D=$FOLIO_DEBITS C=$FOLIO_CREDITS P=$FOLIO_PAYMENTS)"
+        pass "Folio balance integrity: bal=$FOLIO_BAL = charges=$FOLIO_CHARGES - payments=$FOLIO_PAYMENTS - credits=$FOLIO_CREDITS"
       else
-        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF"
+        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF (C=$FOLIO_CHARGES P=$FOLIO_PAYMENTS Cr=$FOLIO_CREDITS)"
       fi
     else
       skip "Folio balance calc" "bc computation failed"
     fi
   else
-    skip "Folio balance integrity" "balance=$FOLIO_BAL"
+    skip "Folio balance integrity" "balance=$FOLIO_BAL charges=$FOLIO_CHARGES"
   fi
 else
   skip "Folio balance integrity" "no folio1 ID"

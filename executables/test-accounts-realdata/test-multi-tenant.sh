@@ -546,7 +546,7 @@ REQUIRED_COMMANDS=(
   "billing.folio.create" "billing.folio.close" "billing.folio.transfer"
   "billing.folio.split"
   "billing.cashier.open" "billing.cashier.close" "billing.cashier.handover"
-  "billing.ar.create" "billing.ar.apply_payment" "billing.ar.write_off"
+  "billing.ar.post" "billing.ar.apply_payment" "billing.ar.write_off"
   "billing.chargeback.record"
   "billing.night_audit.execute"
   "billing.express_checkout"
@@ -817,7 +817,7 @@ run_billing_pipeline() {
 
   local payment_count
   get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-  payment_count=$(resp_fcount '.status == "COMPLETED" or .status == "CAPTURED"')
+  payment_count=$(resp_fcount '.status == "completed" or .status == "captured"')
   assert_gte "Payments captured ($label)" "$payment_count" 1
 
   # Verify CC payment
@@ -882,8 +882,8 @@ run_billing_pipeline() {
     echo "── ${tag} — Accounts Receivable ──────────────────────────────────────"
     if ! $SKIP_SEED && [[ -n "$res_id" && -n "$guest_id" ]]; then
       send_command "CMD AR: Corporate \$158.50" \
-        "billing.ar.create" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"debtor_name\":\"ACME Corp $tag\",\"debtor_type\":\"CORPORATE\",\"original_amount\":158.50,\"outstanding_balance\":158.50,\"due_date\":\"$IN5DAYS\",\"notes\":\"Corporate billing $tag\"}"
+        "billing.ar.post" \
+        "{\"reservation_id\":\"$res_id\",\"account_type\":\"corporate\",\"account_id\":\"$guest_id\",\"account_name\":\"ACME Corp $tag\",\"amount\":158.50,\"payment_terms\":\"net_30\",\"notes\":\"Corporate billing $tag\"}"
       wait_kafka 5
     fi
 
@@ -932,7 +932,7 @@ run_billing_pipeline() {
 
       local refund_exists
       get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      refund_exists=$(resp_fcount '(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND") and (.amount | tostring | tonumber) == 50')
+      refund_exists=$(resp_fcount '(.transaction_type == "refund" or .transaction_type == "partial_refund") and (.amount | tostring | tonumber) == 50')
       if [[ "${refund_exists:-0}" -ge 1 ]]; then pass "Refund recorded ($label)"; else fail "Refund" "$label"; fi
     else
       skip "Refund" "CC payment not found"
@@ -1218,10 +1218,10 @@ echo ""
 
 echo "── 4.10  Cross-property financial summary ──────────────────────────"
 # USALI: total charges per property should be independent — use API to sum
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=2000&include_voided=false" >/dev/null
-A1_CHARGE_SUM=$(resp_sum_f "total_amount" '.posting_type == "DEBIT" and .is_voided != true')
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=2000&include_voided=false" >/dev/null
-A2_CHARGE_SUM=$(resp_sum_f "total_amount" '.posting_type == "DEBIT" and .is_voided != true')
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=200&include_voided=false" >/dev/null
+A1_CHARGE_SUM=$(resp_sum_f "total_amount" '.posting_type == "debit" and .is_voided != true')
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=200&include_voided=false" >/dev/null
+A2_CHARGE_SUM=$(resp_sum_f "total_amount" '.posting_type == "debit" and .is_voided != true')
 echo "  Property A1 charge revenue: \$$A1_CHARGE_SUM"
 echo "  Property A2 charge revenue: \$$A2_CHARGE_SUM"
 if [[ $(echo "$A1_CHARGE_SUM > 0" | bc 2>/dev/null) == "1" && $(echo "$A2_CHARGE_SUM > 0" | bc 2>/dev/null) == "1" ]]; then
@@ -1388,7 +1388,7 @@ if [[ "$CROSS_CODE" =~ ^(401|403|400) ]]; then
 else
   # Even if accepted, verify no charge was actually created via API
   TOKEN="$TOKEN_A"
-  get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=2000" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=200" >/dev/null
   ATTACK_CHARGE=$(resp_fcount '.description == "Cross-tenant attack"')
   if [[ "$ATTACK_CHARGE" == "0" ]]; then
     pass "API isolation: Cross-tenant charge not persisted"
