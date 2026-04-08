@@ -44,7 +44,8 @@ export const updateTenantModules = async (
   await query(
     `UPDATE public.tenants
         SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('modules', $2::jsonb),
-            updated_at = NOW()
+            updated_at = NOW(),
+            version = version + 1
       WHERE id = $1::uuid`,
     [tenantId, JSON.stringify(normalized)],
   );
@@ -53,7 +54,8 @@ export const updateTenantModules = async (
   await query(
     `UPDATE public.user_tenant_associations
         SET modules = $2::jsonb,
-            updated_at = NOW()
+            updated_at = NOW(),
+            version = version + 1
       WHERE tenant_id = $1::uuid
         AND COALESCE(is_deleted, false) = false`,
     [tenantId, JSON.stringify(normalized)],
