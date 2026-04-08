@@ -106,13 +106,17 @@ CREATE TABLE IF NOT EXISTS invoices (
     -- Optimistic Locking
     version BIGINT DEFAULT 0,
 
-    -- Constraints
+    -- Constraints (credit notes carry negative amounts by design)
     CONSTRAINT invoices_amounts_check CHECK (
-        subtotal >= 0 AND
-        tax_amount >= 0 AND
-        discount_amount >= 0 AND
-        total_amount >= 0 AND
-        paid_amount >= 0
+        CASE WHEN invoice_type = 'CREDIT_NOTE' THEN
+            subtotal <= 0 AND total_amount <= 0
+        ELSE
+            subtotal >= 0 AND
+            tax_amount >= 0 AND
+            discount_amount >= 0 AND
+            total_amount >= 0 AND
+            paid_amount >= 0
+        END
     ),
     CONSTRAINT invoices_billing_period CHECK (
         billing_from IS NULL OR billing_to IS NULL OR billing_from <= billing_to
