@@ -80,8 +80,16 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, transaction_type, payment_method, limit, offset } =
-        BillingPaymentListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        status,
+        transaction_type,
+        payment_method,
+        limit,
+        offset,
+        reservation_id,
+      } = BillingPaymentListQuerySchema.parse(request.query);
 
       const payments = await listBillingPayments({
         tenantId: tenant_id,
@@ -91,6 +99,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         paymentMethod: payment_method,
         limit,
         offset,
+        reservationId: reservation_id,
       });
 
       return BillingListResponseSchema.parse(payments);
@@ -307,7 +316,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, session_status, limit, offset } =
+      const { tenant_id, property_id, session_status, limit, offset, user_id, shift_type } =
         CashierSessionListQuerySchema.parse(request.query);
       return listCashierSessions({
         tenantId: tenant_id,
@@ -315,6 +324,8 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         sessionStatus: session_status,
         limit,
         offset,
+        userId: user_id,
+        shiftType: shift_type,
       });
     },
   );

@@ -131,6 +131,7 @@ export const AR_LIST_SQL = `
     AND ($4::VARCHAR IS NULL OR ar.ar_status = $4)
     AND ($5::VARCHAR IS NULL OR ar.account_type = $5)
     AND ($6::VARCHAR IS NULL OR ar.aging_bucket = $6)
+    AND ($8::UUID IS NULL OR ar.reservation_id = $8)
     AND COALESCE(ar.is_deleted, false) = false
   ORDER BY ar.created_at DESC
   LIMIT $1

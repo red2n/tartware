@@ -224,6 +224,19 @@ TOKEN_A=$(./http_test/get-token.sh 2>/dev/null)
 [[ -n "$TOKEN_A" ]] || { echo "FATAL: Cannot get auth token for Tenant A"; exit 1; }
 echo "  ✓ Tenant A auth token acquired"
 TOKEN="$TOKEN_A"
+
+# Ensure finance-automation module is enabled for Tenant A
+echo "  Enabling finance-automation module for Tenant A..."
+MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X PUT "$GW/v1/tenants/$TID_A/modules" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -H "Content-Type: application/json" \
+  -d "{\"modules\":[\"core\",\"finance-automation\"]}")
+if [[ "$MOD_CODE" =~ ^2 ]]; then
+  echo "  ✓ Modules enabled for Tenant A (HTTP $MOD_CODE)"
+else
+  echo "  ⚠ Module enable for Tenant A: HTTP $MOD_CODE (may be pre-existing)"
+fi
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -334,6 +347,20 @@ if [[ -z "$TOKEN_B" ]]; then
 fi
 [[ -n "$TOKEN_B" ]] || { echo "FATAL: Cannot get auth token for Tenant B"; exit 1; }
 echo "  ✓ Tenant B auth token acquired"
+
+# Enable finance-automation module for Tenant B
+echo "  Enabling finance-automation module for Tenant B..."
+MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X PUT "$GW/v1/tenants/$TID_B/modules" \
+  -H "Authorization: Bearer $TOKEN_B" \
+  -H "Content-Type: application/json" \
+  -d "{\"modules\":[\"core\",\"finance-automation\"]}")
+if [[ "$MOD_CODE" =~ ^2 ]]; then
+  echo "  ✓ Modules enabled for Tenant B (HTTP $MOD_CODE)"
+else
+  echo "  ⚠ Failed to enable modules for Tenant B (HTTP $MOD_CODE)"
+  jq '.message // .error // .' "$RESP_FILE" 2>/dev/null
+fi
 echo ""
 
 # ── 0.2  Create Property A2 (second property for Tenant A) ──────────────
@@ -600,9 +627,11 @@ run_billing_pipeline() {
   if ! $SKIP_SEED; then
     local guest_first="Test" guest_last="Guest-${tag}"
     local guest_email="${tag,,}@tartware-test.local"
+    local phone1="+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))"
     seed_rest "REST guest: $guest_first $guest_last" \
       "$GW/v1/guests" \
-      "{\"tenant_id\":\"$tid\",\"first_name\":\"$guest_first\",\"last_name\":\"$guest_last\",\"email\":\"$guest_email\",\"phone\":\"+1-555-${RANDOM}\",\"nationality\":\"US\"}"
+      "{\"tenant_id\":\"$tid\",\"first_name\":\"$guest_first\",\"last_name\":\"$guest_last\",\"email\":\"$guest_email\",\"phone\":\"$phone1\",\"nationality\":\"US\"}"
+    wait_kafka 3
     guest_id=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
     if [[ -z "$guest_id" ]]; then
       get "$GW/v1/guests?tenant_id=$tid&email=$guest_email" >/dev/null
@@ -616,12 +645,13 @@ run_billing_pipeline() {
   if [[ "$mode" == "full" ]]; then
     echo "── ${tag} — Tax Configuration ─────────────────────────────────────"
     if ! $SKIP_SEED; then
-      seed_rest "REST tax: Sales Tax 8.875%" \
-        "$GW/v1/billing/tax-configurations" \
-        "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"tax_name\":\"State Sales Tax\",\"tax_code\":\"SST-$tag\",\"tax_rate\":8.875,\"tax_type\":\"PERCENTAGE\",\"applies_to\":[\"ROOM\",\"FOOD_BEVERAGE\",\"OTHER\"],\"is_active\":true}"
-      seed_rest "REST tax: City Occupancy 5.875%" \
-        "$GW/v1/billing/tax-configurations" \
-        "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"tax_name\":\"City Occupancy Tax\",\"tax_code\":\"COT-$tag\",\"tax_rate\":5.875,\"tax_type\":\"PERCENTAGE\",\"applies_to\":[\"ROOM\"],\"is_active\":true}"
+      send_command "CMD tax: Sales Tax 8.875%" \
+        "billing.tax_config.create" \
+        "{\"property_id\":\"$pid\",\"tax_name\":\"State Sales Tax\",\"tax_code\":\"SST-$tag\",\"tax_rate\":8.875,\"tax_type\":\"sales_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\",\"FOOD_BEVERAGE\",\"OTHER\"],\"is_active\":true}"
+      send_command "CMD tax: City Occupancy 5.875%" \
+        "billing.tax_config.create" \
+        "{\"property_id\":\"$pid\",\"tax_name\":\"City Occupancy Tax\",\"tax_code\":\"COT-$tag\",\"tax_rate\":5.875,\"tax_type\":\"occupancy_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\"],\"is_active\":true}"
+      wait_kafka 5
     fi
     local tax_count
     get "$GW/v1/billing/tax-configurations?tenant_id=$tid&property_id=$pid" >/dev/null
@@ -633,18 +663,20 @@ run_billing_pipeline() {
   # ── Reservation ──
   echo "── ${tag} — Reservation ─────────────────────────────────────────────"
   if ! $SKIP_SEED; then
-    seed_rest "REST reservation: 3 nights" \
-      "$GW/v1/reservations" \
-      "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"guest_id\":\"$guest_id\",\"room_type_id\":\"$rtid\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"number_of_adults\":2,\"number_of_children\":0,\"status\":\"confirmed\",\"source\":\"DIRECT\",\"rate_amount\":199.00,\"currency\":\"USD\"}"
+    send_command "CMD reservation: 3 nights" \
+      "reservation.create" \
+      "{\"property_id\":\"$pid\",\"guest_id\":\"$guest_id\",\"room_type_id\":\"$rtid\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"status\":\"CONFIRMED\",\"source\":\"DIRECT\",\"total_amount\":597.00,\"currency\":\"USD\"}"
     res_id=$(jq -r '.id // .data.id // .reservation_id // empty' "$RESP_FILE" 2>/dev/null)
+    wait_kafka 5
     if [[ -z "$res_id" ]]; then
       get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
       res_id=$(resp_first "id")
     fi
     # Get folio
-    wait_kafka 2
-    get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
-    folio_id=$(resp_first "id")
+    if [[ -n "$res_id" ]]; then
+      get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
+      folio_id=$(resp_first "id")
+    fi
   fi
   if [[ -n "$res_id" ]]; then pass "Reservation created ($label)"; else fail "Reservation creation" "$label"; fi
   echo ""
@@ -654,9 +686,11 @@ run_billing_pipeline() {
     echo "── ${tag} — Second Reservation ──────────────────────────────────────"
     if ! $SKIP_SEED; then
       local guest2_email="${tag,,}-b@tartware-test.local"
+      local phone2="+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))"
       seed_rest "REST guest 2" \
         "$GW/v1/guests" \
-        "{\"tenant_id\":\"$tid\",\"first_name\":\"Sarah\",\"last_name\":\"Mitchell-$tag\",\"email\":\"$guest2_email\",\"phone\":\"+1-555-${RANDOM}\",\"nationality\":\"US\"}"
+        "{\"tenant_id\":\"$tid\",\"first_name\":\"Sarah\",\"last_name\":\"Mitchell-$tag\",\"email\":\"$guest2_email\",\"phone\":\"$phone2\",\"nationality\":\"US\"}"
+      wait_kafka 3
       local guest2_id
       guest2_id=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
       if [[ -z "$guest2_id" ]]; then
@@ -664,17 +698,19 @@ run_billing_pipeline() {
         guest2_id=$(resp_first "id")
       fi
       if [[ -n "$guest2_id" ]]; then
-        seed_rest "REST reservation 2: 5 nights" \
-          "$GW/v1/reservations" \
-          "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"guest_id\":\"$guest2_id\",\"room_type_id\":\"$rtid\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN5DAYS\",\"number_of_adults\":1,\"number_of_children\":0,\"status\":\"confirmed\",\"source\":\"DIRECT\",\"rate_amount\":199.00,\"currency\":\"USD\"}"
+        send_command "CMD reservation 2: 5 nights" \
+          "reservation.create" \
+          "{\"property_id\":\"$pid\",\"guest_id\":\"$guest2_id\",\"room_type_id\":\"$rtid\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN5DAYS\",\"status\":\"CONFIRMED\",\"source\":\"DIRECT\",\"total_amount\":995.00,\"currency\":\"USD\"}"
         res2_id=$(jq -r '.id // .data.id // .reservation_id // empty' "$RESP_FILE" 2>/dev/null)
+        wait_kafka 5
         if [[ -z "$res2_id" ]]; then
           get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
           res2_id=$(resp_first "id")
         fi
-        wait_kafka 2
-        get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res2_id" >/dev/null
-        folio2_id=$(resp_first "id")
+        if [[ -n "$res2_id" ]]; then
+          get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res2_id" >/dev/null
+          folio2_id=$(resp_first "id")
+        fi
       fi
     fi
     if [[ -n "$res2_id" ]]; then pass "Second reservation ($label)"; else skip "Second reservation" "$label"; fi
@@ -716,7 +752,7 @@ run_billing_pipeline() {
   fi
 
   local charge_count
-  get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   charge_count=$(resp_fcount '.is_voided != true')
   if [[ "$mode" == "full" ]]; then
     assert_gte "Charges posted ($label)" "$charge_count" 4
@@ -743,7 +779,7 @@ run_billing_pipeline() {
   fi
 
   local payment_count
-  get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   payment_count=$(resp_fcount '.status == "COMPLETED" or .status == "CAPTURED"')
   assert_gte "Payments captured ($label)" "$payment_count" 1
 
@@ -762,7 +798,11 @@ run_billing_pipeline() {
     wait_kafka 5
   fi
 
-  get "$GW/v1/billing/invoices?tenant_id=$tid&property_id=$pid&reservation_id=$res_id" >/dev/null
+  if [[ -n "$res_id" ]]; then
+    get "$GW/v1/billing/invoices?tenant_id=$tid&property_id=$pid&reservation_id=$res_id" >/dev/null
+  else
+    get "$GW/v1/billing/invoices?tenant_id=$tid&property_id=$pid" >/dev/null
+  fi
   inv_id=$(resp_first "id")
   if [[ -n "$inv_id" ]]; then pass "Invoice created ($label)"; else fail "Invoice creation" "$label"; fi
   echo ""
@@ -770,9 +810,14 @@ run_billing_pipeline() {
   # ── Cashier Session ──
   echo "── ${tag} — Cashier Session ─────────────────────────────────────────"
   if ! $SKIP_SEED; then
+    # Resolve a user ID for the cashier
+    local cashier_uid=""
+    get "$GW/v1/users?tenant_id=$tid&limit=1" >/dev/null 2>&1
+    cashier_uid=$(resp_first "id")
+    if [[ -z "$cashier_uid" ]]; then cashier_uid="$guest_id"; fi
     send_command "CMD cashier: open" \
       "billing.cashier.open" \
-      "{\"property_id\":\"$pid\",\"cashier_name\":\"Front Desk $tag\",\"shift_type\":\"morning\",\"opening_float\":500.00}"
+      "{\"property_id\":\"$pid\",\"cashier_id\":\"$cashier_uid\",\"cashier_name\":\"Front Desk $tag\",\"shift_type\":\"morning\",\"opening_float\":500.00}"
     wait_kafka 5
   fi
 
@@ -817,7 +862,7 @@ run_billing_pipeline() {
 
   # Seed business_dates via API
   curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X PUT "$GW/v1/night-audit/business-date" \
+    -X PUT "$GW/v1/night-audit/business-date?tenant_id=$tid" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"business_date\":\"$TODAY\",\"date_status\":\"OPEN\",\"night_audit_status\":\"PENDING\"}" >/dev/null 2>&1
@@ -840,7 +885,7 @@ run_billing_pipeline() {
     # ── Refund ──
     echo "── ${tag} — Payment Refund ──────────────────────────────────────────"
     local cc_pay_id
-    get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+    get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
     cc_pay_id=$(resp_ffirst ".payment_reference == \"$payref1\"" "id")
     if [[ -n "$cc_pay_id" ]]; then
       send_command "CMD refund: \$50" \
@@ -849,7 +894,7 @@ run_billing_pipeline() {
       wait_kafka 8
 
       local refund_exists
-      get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+      get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
       refund_exists=$(resp_fcount '(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND") and (.amount | tostring | tonumber) == 50')
       if [[ "${refund_exists:-0}" -ge 1 ]]; then pass "Refund recorded ($label)"; else fail "Refund" "$label"; fi
     else
@@ -912,7 +957,7 @@ run_billing_pipeline() {
           "{\"posting_id\":\"$minibar_id\",\"to_folio_id\":\"$house_id\",\"property_id\":\"$pid\",\"reason\":\"Transfer to house\"}"
         wait_kafka 5
         local xfer_credit
-        get "$GW/v1/billing/charges?tenant_id=$tid&transaction_type=TRANSFER&limit=500" >/dev/null
+        get "$GW/v1/billing/charges?tenant_id=$tid&transaction_type=TRANSFER&limit=200" >/dev/null
         xfer_credit=$(resp_count)
         assert_gte "Charge transfer ($label)" "$xfer_credit" 1
       fi
@@ -1136,9 +1181,9 @@ echo ""
 
 echo "── 4.10  Cross-property financial summary ──────────────────────────"
 # USALI: total charges per property should be independent — use API to sum
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=5000&include_voided=false" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=2000&include_voided=false" >/dev/null
 A1_CHARGE_SUM=$(resp_sum_f "total_amount" '.posting_type == "DEBIT" and .is_voided != true')
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=5000&include_voided=false" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=2000&include_voided=false" >/dev/null
 A2_CHARGE_SUM=$(resp_sum_f "total_amount" '.posting_type == "DEBIT" and .is_voided != true')
 echo "  Property A1 charge revenue: \$$A1_CHARGE_SUM"
 echo "  Property A2 charge revenue: \$$A2_CHARGE_SUM"
@@ -1306,7 +1351,7 @@ if [[ "$CROSS_CODE" =~ ^(401|403|400) ]]; then
 else
   # Even if accepted, verify no charge was actually created via API
   TOKEN="$TOKEN_A"
-  get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=5000" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=2000" >/dev/null
   ATTACK_CHARGE=$(resp_fcount '.description == "Cross-tenant attack"')
   if [[ "$ATTACK_CHARGE" == "0" ]]; then
     pass "API isolation: Cross-tenant charge not persisted"

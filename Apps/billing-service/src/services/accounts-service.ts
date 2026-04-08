@@ -143,6 +143,7 @@ export const listAccountsReceivable = async (options: {
   agingBucket?: string;
   limit?: number;
   offset?: number;
+  reservationId?: string;
 }): Promise<AccountsReceivableListItem[]> => {
   const { rows } = await query(AR_LIST_SQL, [
     options.limit ?? 100,
@@ -152,6 +153,7 @@ export const listAccountsReceivable = async (options: {
     options.accountType ?? null,
     options.agingBucket ?? null,
     options.offset ?? 0,
+    options.reservationId ?? null,
   ]);
 
   return rows.map((r: Record<string, unknown>) =>

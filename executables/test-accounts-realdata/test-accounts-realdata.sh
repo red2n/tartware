@@ -373,7 +373,7 @@ seed_rest "POST guest: Sarah Mitchell" \
 
 wait_kafka 3
 
-get "$GW/v1/guests?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/guests?tenant_id=$TID&limit=100" >/dev/null
 GUEST1_ID=$(resp_ffirst '.first_name == "John" and .last_name == "Anderson"' "id")
 GUEST2_ID=$(resp_ffirst '.first_name == "Sarah" and .last_name == "Mitchell"' "id")
 
@@ -514,7 +514,7 @@ fi
 
 wait_kafka 5
 
-get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
 CHARGE_COUNT=$(resp_count)
 assert_gte "DB: charge_postings for res 1 >= 4" "4" "$CHARGE_COUNT"
 
@@ -527,7 +527,7 @@ ROOM_TYPE=$(resp_ffirst '.charge_code == "ROOM"' "posting_type")
 assert_eq "DB: ROOM posting_type = DEBIT" "DEBIT" "$ROOM_TYPE"
 
 if [[ -n "$RES2_ID" ]]; then
-  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES2_ID&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES2_ID&limit=200" >/dev/null
   SARAH_CHARGES=$(resp_count)
   assert_gte "DB: charge_postings for res 2 >= 2" "2" "$SARAH_CHARGES"
 fi
@@ -557,7 +557,7 @@ fi
 
 wait_kafka 5
 
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 PAY1_EXISTS=$(resp_fcount ".payment_reference == \"$PAYREF1\"")
 PAY2_EXISTS=$(resp_fcount ".payment_reference == \"$PAYREF2\"")
 assert_eq "DB: payment $PAYREF1 exists" "1" "$PAY1_EXISTS"
@@ -617,10 +617,9 @@ echo "── 1.7  Cashier Sessions ───────────────
 CASHIER_ID=""
 CASHIER_NAME="Test Cashier"
 # Try to get users from the core service
-code=$(get "$GW/v1/tenants/$TID/users?limit=1")
+code=$(get "$GW/v1/users?tenant_id=$TID&limit=1")
 if [[ "$code" =~ ^2 ]]; then
   CASHIER_ID=$(resp_first "id")
-  local first_n last_n
   first_n=$(resp_first "first_name")
   last_n=$(resp_first "last_name")
   if [[ -n "$first_n" ]]; then CASHIER_NAME="$first_n $last_n"; fi
@@ -738,7 +737,7 @@ send_command "CMD authorize CC: \$75" \
 wait_kafka 4
 
 AUTH_STATUS=""
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 AUTH_STATUS=$(resp_ffirst ".payment_reference == \"$FAILPAY_REF\"" "status")
 if [[ -n "$AUTH_STATUS" ]]; then
   assert_eq_ci "DB: authorized payment status" "authorized" "$AUTH_STATUS"
@@ -753,7 +752,7 @@ send_command "CMD void CC authorization" \
 
 wait_kafka 4
 
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 VOID_STATUS=$(resp_ffirst ".payment_reference == \"$FAILPAY_REF\"" "status")
 assert_eq_ci "DB: voided payment status = CANCELLED" "cancelled" "$VOID_STATUS"
 
@@ -767,7 +766,7 @@ send_command "CMD capture cash fallback: \$75" \
 
 wait_kafka 4
 
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 CASH_STATUS=$(resp_ffirst ".payment_reference == \"$CASHPAY_REF\"" "status")
 CASH_METHOD=$(resp_ffirst ".payment_reference == \"$CASHPAY_REF\"" "payment_method")
 assert_eq "DB: cash fallback status = COMPLETED" "COMPLETED" "$CASH_STATUS"
@@ -872,7 +871,7 @@ fi
 if [[ "$BD_EXISTS" == "0" ]]; then
   # Seed a business_dates row via PUT API
   code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X PUT "$GW/v1/night-audit/business-date" \
+    -X PUT "$GW/v1/night-audit/business-date?tenant_id=$TID" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"business_date\":\"$TODAY\",\"date_status\":\"OPEN\",\"night_audit_status\":\"PENDING\"}")
@@ -991,7 +990,7 @@ echo "── 1.13  Payment Refund ───────────────�
 echo "  Scenario: Guest overpaid — partial refund of \$50 from CC payment"
 
 # Get the CC payment id for refund
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 CC_PAY_ID=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "id")
 
 if [[ -n "$CC_PAY_ID" ]]; then
@@ -1003,7 +1002,7 @@ if [[ -n "$CC_PAY_ID" ]]; then
   wait_kafka 8
 
   # Verify refund payment record created
-  get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+  get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   REFUND_EXISTS=$(jq '[.data // . | .[] | select((.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND") and .amount == 50)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "${REFUND_EXISTS:-0}" -ge 1 ]]; then
     pass "DB: refund payment record exists (amount=50)"
@@ -1031,7 +1030,7 @@ echo ""
 echo "── 1.14  Charge Void ────────────────────────────────────────────────"
 echo "  Scenario: SPA charge (\$150) posted incorrectly — void it"
 
-get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
 SPA_POSTING_ID=$(resp_ffirst '.charge_code == "SPA" and .is_voided != true' "id")
 
 if [[ -n "$SPA_POSTING_ID" ]]; then
@@ -1046,7 +1045,7 @@ if [[ -n "$SPA_POSTING_ID" ]]; then
   wait_kafka 8
 
   # Verify original charge is voided
-  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
   IS_VOIDED=$(resp_ffirst ".id == \"$SPA_POSTING_ID\"" "is_voided")
   assert_eq "DB: SPA charge is_voided = true" "true" "$IS_VOIDED"
 
@@ -1106,7 +1105,7 @@ echo ""
 echo "── 1.16  Charge Transfer ────────────────────────────────────────────"
 echo "  Scenario: MINIBAR charge posted to wrong guest — transfer to house account"
 
-get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
 MINIBAR_POSTING_ID=$(resp_ffirst '.charge_code == "MINIBAR" and .is_voided != true' "id")
 
 if [[ -n "$MINIBAR_POSTING_ID" && -n "$HOUSE_FOLIO_ID" ]]; then
@@ -1124,7 +1123,7 @@ if [[ -n "$MINIBAR_POSTING_ID" && -n "$HOUSE_FOLIO_ID" ]]; then
   wait_kafka 8
 
   # Verify CREDIT on source folio — may not have original_posting_id in API
-  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
   TRANSFER_CREDIT=$(jq --arg oid "$MINIBAR_POSTING_ID" '[.data // . | .[] | select(.transaction_type == "TRANSFER" and .posting_type == "CREDIT")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "$TRANSFER_CREDIT" -ge 1 ]]; then
     pass "DB: transfer CREDIT posting on source"
@@ -1162,7 +1161,7 @@ echo ""
 echo "── 1.17  Charge Split ───────────────────────────────────────────────"
 echo "  Scenario: RESTAURANT charge (\$85) split between res1 folio (\$50) + house account (\$35)"
 
-get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
 REST_POSTING_ID=$(resp_ffirst '.charge_code == "RESTAURANT" and .is_voided != true and .transaction_type == "CHARGE"' "id")
 
 if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
@@ -1173,7 +1172,7 @@ if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
   wait_kafka 8
 
   # Verify original charge was voided
-  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
   SPLIT_VOIDED=$(resp_ffirst ".id == \"$REST_POSTING_ID\"" "is_voided")
   assert_eq "DB: original RESTAURANT charge voided after split" "true" "$SPLIT_VOIDED"
 
@@ -1339,7 +1338,7 @@ if [[ -n "${PAYREF1:-}" ]]; then
   wait_kafka 8
 
   # Chargeback creates a refund record — check via payments API for refund type
-  get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+  get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   CB_PAY=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "$CB_PAY" -ge 1 ]]; then
     pass "DB: chargeback recorded via payment refund"
@@ -1456,7 +1455,7 @@ send_command "CMD authorize: initial \$100 for increment test" \
 
 wait_kafka 8
 
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 AUTH_INC_STATUS=$(resp_ffirst ".payment_reference == \"$AUTH_INC_REF\"" "status")
 if [[ "$AUTH_INC_STATUS" == "AUTHORIZED" ]]; then
   send_command "CMD auth_increment: +\$200" \
@@ -1465,7 +1464,7 @@ if [[ "$AUTH_INC_STATUS" == "AUTHORIZED" ]]; then
 
   wait_kafka 4
 
-  get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+  get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   INC_AMOUNT=$(resp_ffirst ".payment_reference == \"$AUTH_INC_REF\"" "amount")
   assert_eq_num "DB: auth amount after increment = 300" "300" "$INC_AMOUNT"
 
@@ -1491,7 +1490,7 @@ echo "  Scenario: Send identical charge.post twice with same idempotency_key"
 echo "  Expected: Only ONE charge created — second is deduplicated"
 
 IDEMP_KEY="IDEMP-${UNIQUE}-DEDUP-TEST"
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
 IDEMP_PRE=$(resp_count)
 
 send_command "CMD idempotency: charge.post attempt 1" \
@@ -1501,7 +1500,7 @@ send_command "CMD idempotency: charge.post attempt 1" \
 
 wait_kafka 8
 
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
 IDEMP_MID=$(resp_count)
 
 # Send identical command again with SAME idempotency_key
@@ -1512,7 +1511,7 @@ send_command "CMD idempotency: charge.post attempt 2 (same key)" \
 
 wait_kafka 8
 
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
 IDEMP_POST=$(resp_count)
 
 # First attempt should have created exactly 1 charge
@@ -1572,7 +1571,7 @@ echo ""
 echo "── 1.27  Night Audit Idempotency (v2 §12.2) ────────────────────────"
 echo "  Scenario: Re-run night audit for same date — verify no duplicate charges"
 
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
 AUDIT_PRE_CHARGES=$(resp_fcount '.charge_code == "ROOM"')
 get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID" >/dev/null
 AUDIT_PRE_COUNT=$(resp_count)
@@ -1587,7 +1586,7 @@ if [[ -n "$CURRENT_BDATE" ]]; then
 
   wait_kafka 10
 
-  get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
   AUDIT_POST_CHARGES=$(resp_fcount '.charge_code == "ROOM"')
   get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID" >/dev/null
   AUDIT_POST_COUNT=$(resp_count)
@@ -1622,7 +1621,7 @@ send_command "CMD multi-mode: CC \$70 to res1 folio" \
 
 wait_kafka 10
 
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 MULTI_CASH_EXISTS=$(resp_fcount ".payment_reference == \"$MULTI_CASH_REF\"")
 MULTI_CC_EXISTS=$(resp_fcount ".payment_reference == \"$MULTI_CC_REF\"")
 
@@ -1661,7 +1660,7 @@ else
   SESSION_ID=$(resp_first "session_id")
   AFTERNOON_ID=$(resp_ffirst '.shift_type == "afternoon"' "session_id")
   EVENING_ID=$(resp_ffirst '.shift_type == "evening"' "session_id")
-  get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+  get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   FAILPAY_REF=$(resp_ffirst '.status == "CANCELLED"' "payment_reference")
   CASHPAY_REF=$(resp_ffirst '.payment_method == "CASH" and .status == "COMPLETED"' "payment_reference")
   PAYREF1=$(resp_ffirst '.payment_method == "CREDIT_CARD" and .status == "COMPLETED"' "payment_reference")
@@ -2105,7 +2104,7 @@ echo ""
 echo "── Invoice Number Sequencing (v2 §5.1) ──────────────────────────────"
 echo "  Verify: Invoice numbers are sequential with no gaps"
 
-get "$GW/v1/billing/invoices?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
 INV_NUMBERS=$(jq -r '[.data // . | .[] | select(.invoice_number != null) | .invoice_number] | sort | .[]' "$RESP_FILE" 2>/dev/null || echo "")
 if [[ -n "$INV_NUMBERS" ]]; then
   INV_COUNT=$(echo "$INV_NUMBERS" | wc -l | tr -d ' ')
@@ -2136,7 +2135,7 @@ echo ""
 echo "── Audit Trail Immutability (v2 §12.1) ──────────────────────────────"
 echo "  Verify: Voided charges are not deleted — still visible via API"
 
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
 VOIDED_VISIBLE=$(jq '[.data // . | .[] | select(.is_voided == true)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 VOID_REVERSALS=$(jq '[.data // . | .[] | select(.transaction_type == "VOID")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 
@@ -2167,11 +2166,11 @@ if [[ -n "$FOLIO1_ID" ]]; then
   get "$GW/v1/billing/folios/$FOLIO1_ID?tenant_id=$TID" >/dev/null
   FOLIO_BAL=$(jq -r '.balance // .data.balance // 0' "$RESP_FILE" 2>/dev/null || echo "")
   # Get charges for this folio
-  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$FOLIO1_ID&limit=500" >/dev/null
+  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$FOLIO1_ID&limit=200" >/dev/null
   FOLIO_DEBITS=$(jq '[.data // . | .[] | select(.posting_type == "DEBIT" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
   FOLIO_CREDITS=$(jq '[.data // . | .[] | select(.posting_type == "CREDIT" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
-  # Get payments for this folio
-  get "$GW/v1/billing/payments?tenant_id=$TID&folio_id=$FOLIO1_ID&limit=500" >/dev/null
+  # Get payments for this reservation (payments link to reservations, not folios)
+  get "$GW/v1/billing/payments?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
   FOLIO_PAYMENTS=$(jq '[.data // . | .[] | select(.status == "COMPLETED" or .status == "CAPTURED") | select(.transaction_type != "REFUND" and .transaction_type != "VOID") | .amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
 
   if [[ -n "$FOLIO_BAL" && "$FOLIO_BAL" != "0" ]]; then
@@ -2200,7 +2199,7 @@ echo ""
 echo "── Payment-Refund Linkage (v2 §4.3) ──────────────────────────────────"
 echo "  Verify: Refunds reference their original payment"
 
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 REFUND_TOTAL=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 REFUND_LINKED=$REFUND_TOTAL  # API refunds inherently linked via folio_id
 
@@ -2235,7 +2234,7 @@ echo "── Multi-Mode Payment Verification (v2 §4.1) ────────
 echo "  Verify: Multiple payment methods applied to same reservation"
 
 if [[ -n "${RES1_ID:-}" ]]; then
-  get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+  get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   PAYMENT_METHODS=$(jq -r --arg rid "$RES1_ID" '[.data // . | .[] | select(.reservation_id == $rid and (.status == "COMPLETED" or .status == "CAPTURED" or .status == "AUTHORIZED")) | .payment_method] | unique | .[]' "$RESP_FILE" 2>/dev/null || echo "")
   if [[ -z "$PAYMENT_METHODS" ]]; then
     METHOD_COUNT=0
@@ -2284,15 +2283,15 @@ POST_AR=$(resp_count)
 get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID" >/dev/null
 POST_AUDIT=$(resp_count)
 # Refunds — count via payment API refund type
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 POST_REFUNDS=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID" >/dev/null
 POST_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
 # Voided charges
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
 POST_VOIDED=$(jq '[.data // . | .[] | select(.is_voided == true)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 # Credit notes
-get "$GW/v1/billing/invoices?tenant_id=$TID&limit=500" >/dev/null
+get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
 POST_CREDIT_NOTES=$(jq '[.data // . | .[] | select(.invoice_type == "CREDIT_NOTE")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 # Idempotency — use charge count comparison from test
 POST_IDEMP="${IDEMP_POST:-0}"

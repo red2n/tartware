@@ -115,6 +115,7 @@ export const listBillingPayments = async (options: {
   transactionType?: string;
   paymentMethod?: string;
   offset?: number;
+  reservationId?: string;
 }): Promise<BillingPayment[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -125,6 +126,7 @@ export const listBillingPayments = async (options: {
     : null;
   const paymentMethod = options.paymentMethod ? options.paymentMethod.trim().toUpperCase() : null;
   const offset = options.offset ?? 0;
+  const reservationId = options.reservationId ?? null;
 
   const { rows } = await query<BillingPaymentRow>(BILLING_PAYMENT_LIST_SQL, [
     limit,
@@ -134,6 +136,7 @@ export const listBillingPayments = async (options: {
     transactionType,
     paymentMethod,
     offset,
+    reservationId,
   ]);
 
   return rows.map((row) => applyBillingRetentionPolicy(mapRowToPayment(row)));
@@ -607,10 +610,14 @@ export const listCashierSessions = async (options: {
   sessionStatus?: string;
   limit?: number;
   offset?: number;
+  userId?: string;
+  shiftType?: string;
 }) => {
   const { tenantId, limit = 100, offset = 0 } = options;
   const propertyId = options.propertyId ?? null;
   const sessionStatus = options.sessionStatus ?? null;
+  const userId = options.userId ?? null;
+  const shiftType = options.shiftType ?? null;
 
   const { rows } = await query(CASHIER_SESSION_LIST_SQL, [
     limit,
@@ -618,6 +625,8 @@ export const listCashierSessions = async (options: {
     propertyId,
     sessionStatus,
     offset,
+    userId,
+    shiftType,
   ]);
 
   return rows;

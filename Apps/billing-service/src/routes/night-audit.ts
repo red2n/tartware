@@ -608,7 +608,13 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
            COALESCE(allow_postings, true) AS allow_postings,
            COALESCE(allow_check_ins, true) AS allow_check_ins,
            COALESCE(allow_check_outs, true) AS allow_check_outs`,
-        [body.tenant_id, body.property_id, body.business_date, body.date_status, body.night_audit_status],
+        [
+          body.tenant_id,
+          body.property_id,
+          body.business_date,
+          body.date_status,
+          body.night_audit_status,
+        ],
       );
 
       const row = result.rows[0];

@@ -30,6 +30,28 @@ export const getTenantModules = async (tenantId: string): Promise<TenantModulesR
 };
 
 /**
+ * Enable a set of modules for a tenant by merging into the existing config JSONB.
+ */
+export const updateTenantModules = async (
+  tenantId: string,
+  modules: string[],
+): Promise<TenantModulesResponse> => {
+  const normalized = normalizeModuleList(modules);
+  // Always include "core"
+  if (!normalized.includes("core")) normalized.unshift("core");
+
+  await query(
+    `UPDATE public.tenants
+        SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('modules', $2::jsonb),
+            updated_at = NOW()
+      WHERE id = $1::uuid`,
+    [tenantId, JSON.stringify(normalized)],
+  );
+
+  return { tenantId, modules: normalized };
+};
+
+/**
  * Get the module catalog definition list.
  */
 export const getModuleCatalog = () => Object.values(MODULE_DEFINITIONS);
