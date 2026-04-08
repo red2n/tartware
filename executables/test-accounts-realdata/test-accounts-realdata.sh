@@ -622,8 +622,8 @@ INV_TOTAL=$(resp_count)
 assert_gte "DB: invoices count >= $((PRE_INVOICES + 1))" "$((PRE_INVOICES + 1))" "$INV_TOTAL"
 
 get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-INV1_AMOUNT=$(resp_ffirst '.invoice_type != "CREDIT_NOTE"' "total_amount")
-INV1_STATUS=$(resp_ffirst '.invoice_type != "CREDIT_NOTE"' "status")
+INV1_AMOUNT=$(resp_ffirst '.invoice_type != "credit_note"' "total_amount")
+INV1_STATUS=$(resp_ffirst '.invoice_type != "credit_note"' "status")
 if [[ -n "$INV1_AMOUNT" ]]; then
   assert_eq_num "DB: invoice amount = 458.50" "458.50" "$INV1_AMOUNT"
   assert_eq_ci "DB: invoice status = draft" "draft" "$INV1_STATUS"
@@ -1026,7 +1026,7 @@ if [[ -n "$CC_PAY_ID" ]]; then
 
   # Verify refund payment record created
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-  REFUND_EXISTS=$(jq '[.data // . | .[] | select((.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND") and .amount == 50)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  REFUND_EXISTS=$(jq '[.data // . | .[] | select((.transaction_type == "refund" or .transaction_type == "partial_refund") and .amount == 50)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "${REFUND_EXISTS:-0}" -ge 1 ]]; then
     pass "DB: refund payment record exists (amount=50)"
   else
@@ -1034,11 +1034,11 @@ if [[ -n "$CC_PAY_ID" ]]; then
   fi
 
   # Verify original payment status updated
-  ORIG_PAY_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"REFUND\" and .transaction_type != \"PARTIAL_REFUND\"" "status")
+  ORIG_PAY_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"refund\" and .transaction_type != \"partial_refund\"" "status")
   assert_eq_ci "DB: original CC payment status after partial refund" "PARTIALLY_REFUNDED" "$ORIG_PAY_STATUS"
 
   # Verify original refund_amount field (may not be in API response — skip if not available)
-  ORIG_REFUND_AMT=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"REFUND\" and .transaction_type != \"PARTIAL_REFUND\"" "refund_amount")
+  ORIG_REFUND_AMT=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"refund\" and .transaction_type != \"partial_refund\"" "refund_amount")
   if [[ -n "$ORIG_REFUND_AMT" && "$ORIG_REFUND_AMT" != "null" ]]; then
     assert_eq_num "DB: original payment refund_amount = 50" "50" "$ORIG_REFUND_AMT"
   else
@@ -1067,8 +1067,8 @@ if [[ -n "$SPA_POSTING_ID" ]]; then
 
   wait_kafka 8
 
-  # Verify original charge is voided
-  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
+  # Verify original charge is voided (include_voided=true required — voided charges hidden by default)
+  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&include_voided=true&limit=200" >/dev/null
   IS_VOIDED=$(resp_ffirst ".id == \"$SPA_POSTING_ID\"" "is_voided")
   assert_eq "DB: SPA charge is_voided = true" "true" "$IS_VOIDED"
 
@@ -1081,7 +1081,7 @@ if [[ -n "$SPA_POSTING_ID" ]]; then
   fi
 
   # Verify reversal posting was created (VOID type linked to original)
-  REVERSAL_COUNT=$(jq --arg oid "$SPA_POSTING_ID" '[.data // . | .[] | select(.original_posting_id == $oid and .transaction_type == "VOID")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  REVERSAL_COUNT=$(jq --arg oid "$SPA_POSTING_ID" '[.data // . | .[] | select(.original_posting_id == $oid and .transaction_type == "void")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "$REVERSAL_COUNT" -ge 1 ]]; then
     pass "DB: reversal VOID posting exists"
   else
@@ -1111,7 +1111,7 @@ send_command "CMD folio.create: HOUSE_ACCOUNT" \
 wait_kafka 5
 
 get "$GW/v1/billing/folios?tenant_id=$TID&folio_type=HOUSE_ACCOUNT" >/dev/null
-HOUSE_FOLIO_ID=$(resp_ffirst '.folio_name != null' "id")
+HOUSE_FOLIO_ID=$(resp_ffirst '.folio_type == "house_account"' "id")
 if [[ -n "$HOUSE_FOLIO_ID" ]]; then
   pass "DB: HOUSE_ACCOUNT folio created (${HOUSE_FOLIO_ID:0:8}…)"
   get "$GW/v1/billing/folios/$HOUSE_FOLIO_ID?tenant_id=$TID" >/dev/null
@@ -1147,7 +1147,7 @@ if [[ -n "$MINIBAR_POSTING_ID" && -n "$HOUSE_FOLIO_ID" ]]; then
 
   # Verify CREDIT on source folio — may not have original_posting_id in API
   get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
-  TRANSFER_CREDIT=$(jq --arg oid "$MINIBAR_POSTING_ID" '[.data // . | .[] | select(.transaction_type == "TRANSFER" and .posting_type == "CREDIT")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  TRANSFER_CREDIT=$(jq --arg oid "$MINIBAR_POSTING_ID" '[.data // . | .[] | select(.transaction_type == "transfer" and .posting_type == "credit")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "$TRANSFER_CREDIT" -ge 1 ]]; then
     pass "DB: transfer CREDIT posting on source"
   else
@@ -1155,7 +1155,7 @@ if [[ -n "$MINIBAR_POSTING_ID" && -n "$HOUSE_FOLIO_ID" ]]; then
   fi
 
   # Verify DEBIT on target folio
-  TRANSFER_DEBIT=$(jq '[.data // . | .[] | select(.transaction_type == "TRANSFER" and .posting_type == "DEBIT")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  TRANSFER_DEBIT=$(jq '[.data // . | .[] | select(.transaction_type == "transfer" and .posting_type == "debit")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "$TRANSFER_DEBIT" -ge 1 ]]; then
     pass "DB: transfer DEBIT posting on target"
   else
@@ -1185,7 +1185,7 @@ echo "── 1.17  Charge Split ────────────────
 echo "  Scenario: RESTAURANT charge (\$85) split between res1 folio (\$50) + house account (\$35)"
 
 get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
-REST_POSTING_ID=$(resp_ffirst '.charge_code == "RESTAURANT" and .is_voided != true and .transaction_type == "CHARGE"' "id")
+REST_POSTING_ID=$(resp_ffirst '.charge_code == "RESTAURANT" and .is_voided != true and .transaction_type == "charge"' "id")
 
 if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
   send_command "CMD split: RESTAURANT \$50/\$35" \
@@ -1194,14 +1194,14 @@ if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
 
   wait_kafka 8
 
-  # Verify original charge was voided
-  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
+  # Verify original charge was voided (include_voided=true to see it)
+  get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&include_voided=true&limit=200" >/dev/null
   SPLIT_VOIDED=$(resp_ffirst ".id == \"$REST_POSTING_ID\"" "is_voided")
   assert_eq "DB: original RESTAURANT charge voided after split" "true" "$SPLIT_VOIDED"
 
   # Verify two new split postings exist (check for charges with amounts 50 and 35)
-  SPLIT_50=$(jq '[.data // . | .[] | select(.total_amount == 50 and .transaction_type == "CHARGE")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
-  SPLIT_35=$(jq '[.data // . | .[] | select(.total_amount == 35 and .transaction_type == "CHARGE")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  SPLIT_50=$(jq '[.data // . | .[] | select(.total_amount == 50 and .transaction_type == "charge")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  SPLIT_35=$(jq '[.data // . | .[] | select(.total_amount == 35 and .transaction_type == "charge")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   assert_gte "DB: \$50 split posting exists" "1" "$SPLIT_50"
   assert_gte "DB: \$35 split posting exists" "1" "$SPLIT_35"
 else
@@ -1215,7 +1215,7 @@ echo "  Scenario: Draft → Adjust → Finalize → Credit Note + separate invoi
 
 # Get the first invoice (created in phase 1.6)
 get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-INV1_ID=$(resp_ffirst '.status != "VOIDED"' "id")
+INV1_ID=$(resp_ffirst '.status != "voided"' "id")
 
 if [[ -n "$INV1_ID" ]]; then
   # --- Adjust: add $25 surcharge ---
@@ -1252,13 +1252,13 @@ if [[ -n "$INV1_ID" ]]; then
   wait_kafka 5
 
   get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-  CN_COUNT=$(resp_fcount ".invoice_type == \"CREDIT_NOTE\"")
+  CN_COUNT=$(resp_fcount ".invoice_type == \"credit_note\"")
   assert_gte "DB: credit note created for invoice" "1" "$CN_COUNT"
 
-  CN_AMOUNT=$(resp_ffirst '.invoice_type == "CREDIT_NOTE"' "total_amount")
+  CN_AMOUNT=$(resp_ffirst '.invoice_type == "credit_note"' "total_amount")
   assert_eq_num "DB: credit note amount = -100" "-100" "$CN_AMOUNT"
 
-  CN_STATUS=$(resp_ffirst '.invoice_type == "CREDIT_NOTE"' "status")
+  CN_STATUS=$(resp_ffirst '.invoice_type == "credit_note"' "status")
   assert_eq_ci "DB: credit note status = FINALIZED" "FINALIZED" "$CN_STATUS"
 else
   skip "Invoice lifecycle" "no invoice found for res 1"
@@ -1274,7 +1274,7 @@ send_command "CMD invoice: throwaway for void test" \
 wait_kafka 4
 
 get "$GW/v1/billing/invoices?tenant_id=$TID" >/dev/null
-VOID_INV_ID=$(resp_ffirst '.total_amount == 999.99 and .status == "DRAFT"' "id")
+VOID_INV_ID=$(resp_ffirst '.total_amount == 999.99 and .status == "draft"' "id")
 if [[ -n "$VOID_INV_ID" ]]; then
   send_command "CMD invoice.void: void throwaway invoice" \
     "billing.invoice.void" \
@@ -1366,7 +1366,7 @@ if [[ -n "${PAYREF1:-}" ]]; then
 
   # Chargeback creates a refund record — check via payments API for refund type
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-  CB_PAY=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  CB_PAY=$(jq '[.data // . | .[] | select(.transaction_type == "refund")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
   if [[ "$CB_PAY" -ge 1 ]]; then
     pass "DB: chargeback recorded via payment refund"
   else
@@ -1374,7 +1374,7 @@ if [[ -n "${PAYREF1:-}" ]]; then
   fi
 
   # Verify original payment status changed
-  CB_PAY_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"REFUND\" and .transaction_type != \"PARTIAL_REFUND\" and .transaction_type != \"VOID\"" "status")
+  CB_PAY_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"refund\" and .transaction_type != \"partial_refund\" and .transaction_type != \"void\"" "status")
   if [[ "${CB_PAY_STATUS,,}" == "refunded" || "${CB_PAY_STATUS,,}" == "partially_refunded" ]]; then
     pass "DB: CC payment status after chargeback = $CB_PAY_STATUS"
   else
@@ -1676,9 +1676,9 @@ else
   AFTERNOON_ID=$(resp_ffirst '.shift_type == "afternoon"' "session_id")
   EVENING_ID=$(resp_ffirst '.shift_type == "evening"' "session_id")
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-  FAILPAY_REF=$(resp_ffirst '.status == "CANCELLED"' "payment_reference")
-  CASHPAY_REF=$(resp_ffirst '.payment_method == "CASH" and .status == "COMPLETED"' "payment_reference")
-  PAYREF1=$(resp_ffirst '.payment_method == "CREDIT_CARD" and .status == "COMPLETED"' "payment_reference")
+  FAILPAY_REF=$(resp_ffirst '.status == "cancelled"' "payment_reference")
+  CASHPAY_REF=$(resp_ffirst '.payment_method == "cash" and .status == "completed"' "payment_reference")
+  PAYREF1=$(resp_ffirst '.payment_method == "credit_card" and .status == "completed"' "payment_reference")
   if [[ -n "$RES2_ID" ]]; then
     get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES2_ID" >/dev/null
     FOLIO2_ID=$(resp_first "id")
@@ -1983,7 +1983,7 @@ echo ""
 echo "── Voided Charges (API) ─────────────────────────────────────────────"
 
 # Verify voided charges appear correctly in API
-code=$(get "$GW/v1/billing/charges?tenant_id=$TID&limit=200")
+code=$(get "$GW/v1/billing/charges?tenant_id=$TID&include_voided=true&limit=200")
 assert_http "GET charges (includes voided)" "200" "$code"
 
 API_VOIDED_COUNT=$(jq '[.data // . | .[] | select(.is_voided == true)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
@@ -1992,13 +1992,13 @@ if [[ "$API_VOIDED_COUNT" -ge 1 ]]; then
 fi
 
 # Verify reversal postings (VOID type)
-API_VOID_POSTINGS=$(jq '[.data // . | .[] | select(.transaction_type == "VOID")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+API_VOID_POSTINGS=$(jq '[.data // . | .[] | select(.transaction_type == "void")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 if [[ "$API_VOID_POSTINGS" -ge 1 ]]; then
   pass "XCHECK: VOID reversal postings ($API_VOID_POSTINGS)"
 fi
 
 # Verify transfer postings
-API_TRANSFER_POSTINGS=$(jq '[.data // . | .[] | select(.transaction_type == "TRANSFER")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+API_TRANSFER_POSTINGS=$(jq '[.data // . | .[] | select(.transaction_type == "transfer")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 if [[ "$API_TRANSFER_POSTINGS" -ge 1 ]]; then
   pass "XCHECK: TRANSFER postings ($API_TRANSFER_POSTINGS)"
 fi
@@ -2010,7 +2010,7 @@ code=$(get "$GW/v1/billing/payments?tenant_id=$TID&limit=200")
 assert_http "GET payments (includes refunds)" "200" "$code"
 
 # Verify refund payment records exist
-API_REFUND_COUNT=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+API_REFUND_COUNT=$(jq '[.data // . | .[] | select(.transaction_type == "refund" or .transaction_type == "partial_refund")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 if [[ "$API_REFUND_COUNT" -ge 1 ]]; then
   pass "XCHECK: refund payment records ($API_REFUND_COUNT)"
 else
@@ -2018,7 +2018,7 @@ else
 fi
 
 # Chargeback verification via refund-type payments
-API_CHARGEBACK_COUNT=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+API_CHARGEBACK_COUNT=$(jq '[.data // . | .[] | select(.transaction_type == "refund")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 if [[ "$API_CHARGEBACK_COUNT" -ge 1 ]]; then
   pass "XCHECK: chargeback-eligible refund records ($API_CHARGEBACK_COUNT)"
 fi
@@ -2028,11 +2028,11 @@ echo "── Credit Notes & Invoice Lifecycle (API) ─────────�
 
 # Verify credit notes via API
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
-API_CN_COUNT=$(jq '[.data // . | .[] | select(.invoice_type == "CREDIT_NOTE")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+API_CN_COUNT=$(jq '[.data // . | .[] | select(.invoice_type == "credit_note")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 if [[ "$API_CN_COUNT" -ge 1 ]]; then
   pass "XCHECK: credit notes found ($API_CN_COUNT)"
 
-  CN_ID=$(jq -r '[.data // . | .[] | select(.invoice_type == "CREDIT_NOTE")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  CN_ID=$(jq -r '[.data // . | .[] | select(.invoice_type == "credit_note")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
   if [[ -n "$CN_ID" ]]; then
     code=$(get "$GW/v1/billing/invoices/$CN_ID?tenant_id=$TID")
     assert_http "GET credit note by ID" "200" "$code"
@@ -2043,7 +2043,7 @@ fi
 
 # Verify finalized invoice status via API
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
-FINALIZED_ID=$(jq -r '[.data // . | .[] | select(.status == "FINALIZED")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+FINALIZED_ID=$(jq -r '[.data // . | .[] | select(.status == "finalized")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
 if [[ -n "$FINALIZED_ID" ]]; then
   code=$(get "$GW/v1/billing/invoices/$FINALIZED_ID?tenant_id=$TID")
   assert_http "GET finalized invoice by ID" "200" "$code"
@@ -2053,7 +2053,7 @@ fi
 
 # Verify voided invoice status via API
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
-VOIDED_INV_ID=$(jq -r '[.data // . | .[] | select(.status == "VOIDED")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+VOIDED_INV_ID=$(jq -r '[.data // . | .[] | select(.status == "voided")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
 if [[ -n "$VOIDED_INV_ID" ]]; then
   code=$(get "$GW/v1/billing/invoices/$VOIDED_INV_ID?tenant_id=$TID")
   assert_http "GET voided invoice by ID" "200" "$code"
@@ -2150,9 +2150,9 @@ echo ""
 echo "── Audit Trail Immutability (v2 §12.1) ──────────────────────────────"
 echo "  Verify: Voided charges are not deleted — still visible via API"
 
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&include_voided=true&limit=200" >/dev/null
 VOIDED_VISIBLE=$(jq '[.data // . | .[] | select(.is_voided == true)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
-VOID_REVERSALS=$(jq '[.data // . | .[] | select(.transaction_type == "VOID")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+VOID_REVERSALS=$(jq '[.data // . | .[] | select(.transaction_type == "void")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 
 if [[ "$VOIDED_VISIBLE" -ge 1 ]]; then
   pass "Audit trail: voided charges still visible ($VOIDED_VISIBLE voided, $VOID_REVERSALS reversals)"
@@ -2163,7 +2163,7 @@ else
 fi
 
 # Verify voided charges have original reference (check via API if field is present)
-VOID_WITH_REF=$(jq '[.data // . | .[] | select(.transaction_type == "VOID" and .original_posting_id != null)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+VOID_WITH_REF=$(jq '[.data // . | .[] | select(.transaction_type == "void" and .original_posting_id != null)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 if [[ "$VOID_REVERSALS" -ge 1 ]]; then
   if [[ "$VOID_WITH_REF" -ge 1 ]]; then
     pass "Audit trail: VOID reversals reference original posting ($VOID_WITH_REF/$VOID_REVERSALS)"
@@ -2182,11 +2182,11 @@ if [[ -n "$FOLIO1_ID" ]]; then
   FOLIO_BAL=$(jq -r '.balance // .data.balance // 0' "$RESP_FILE" 2>/dev/null || echo "")
   # Get charges for this folio
   get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$FOLIO1_ID&limit=200" >/dev/null
-  FOLIO_DEBITS=$(jq '[.data // . | .[] | select(.posting_type == "DEBIT" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
-  FOLIO_CREDITS=$(jq '[.data // . | .[] | select(.posting_type == "CREDIT" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  FOLIO_DEBITS=$(jq '[.data // . | .[] | select(.posting_type == "debit" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  FOLIO_CREDITS=$(jq '[.data // . | .[] | select(.posting_type == "credit" and .is_voided != true) | .total_amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
   # Get payments for this reservation (payments link to reservations, not folios)
   get "$GW/v1/billing/payments?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
-  FOLIO_PAYMENTS=$(jq '[.data // . | .[] | select(.status == "COMPLETED" or .status == "CAPTURED") | select(.transaction_type != "REFUND" and .transaction_type != "VOID") | .amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  FOLIO_PAYMENTS=$(jq '[.data // . | .[] | select(.status == "completed" or .status == "captured") | select(.transaction_type != "refund" and .transaction_type != "void") | .amount // 0 | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
 
   if [[ -n "$FOLIO_BAL" && "$FOLIO_BAL" != "0" ]]; then
     CALC_BAL=$(echo "$FOLIO_DEBITS - $FOLIO_CREDITS - $FOLIO_PAYMENTS" | bc 2>/dev/null || echo "")
@@ -2215,7 +2215,7 @@ echo "── Payment-Refund Linkage (v2 §4.3) ───────────
 echo "  Verify: Refunds reference their original payment"
 
 get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-REFUND_TOTAL=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+REFUND_TOTAL=$(jq '[.data // . | .[] | select(.transaction_type == "refund" or .transaction_type == "partial_refund")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 REFUND_LINKED=$REFUND_TOTAL  # API refunds inherently linked via folio_id
 
 if [[ "$REFUND_TOTAL" -ge 1 ]]; then
@@ -2250,7 +2250,7 @@ echo "  Verify: Multiple payment methods applied to same reservation"
 
 if [[ -n "${RES1_ID:-}" ]]; then
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-  PAYMENT_METHODS=$(jq -r --arg rid "$RES1_ID" '[.data // . | .[] | select(.reservation_id == $rid and (.status == "COMPLETED" or .status == "CAPTURED" or .status == "AUTHORIZED")) | .payment_method] | unique | .[]' "$RESP_FILE" 2>/dev/null || echo "")
+  PAYMENT_METHODS=$(jq -r --arg rid "$RES1_ID" '[.data // . | .[] | select(.reservation_id == $rid and (.status == "completed" or .status == "captured" or .status == "authorized")) | .payment_method] | unique | .[]' "$RESP_FILE" 2>/dev/null || echo "")
   if [[ -z "$PAYMENT_METHODS" ]]; then
     METHOD_COUNT=0
   else
@@ -2299,15 +2299,15 @@ get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID" >/dev/null
 POST_AUDIT=$(resp_count)
 # Refunds — count via payment API refund type
 get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-POST_REFUNDS=$(jq '[.data // . | .[] | select(.transaction_type == "REFUND" or .transaction_type == "PARTIAL_REFUND")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+POST_REFUNDS=$(jq '[.data // . | .[] | select(.transaction_type == "refund" or .transaction_type == "partial_refund")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID" >/dev/null
 POST_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
 # Voided charges
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&include_voided=true&limit=200" >/dev/null
 POST_VOIDED=$(jq '[.data // . | .[] | select(.is_voided == true)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 # Credit notes
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
-POST_CREDIT_NOTES=$(jq '[.data // . | .[] | select(.invoice_type == "CREDIT_NOTE")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+POST_CREDIT_NOTES=$(jq '[.data // . | .[] | select(.invoice_type == "credit_note")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
 # Idempotency — use charge count comparison from test
 POST_IDEMP="${IDEMP_POST:-0}"
 POST_FISCAL="n/a"
