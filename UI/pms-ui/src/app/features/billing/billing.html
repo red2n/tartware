@@ -98,7 +98,7 @@
           <div class="form-field">
             <label>{{ 'Amount' | translate }} *</label>
             <input type="number" class="field-input" min="0.01" step="0.01" placeholder="0.00"
-                   [ngModel]="capturePaymentForm().amount" (ngModelChange)="updateCapturePaymentForm({ amount: +$event })" />
+                   [ngModel]="capturePaymentForm().amount" (ngModelChange)="updateCapturePaymentForm({ amount: +$event || 0 })" />
           </div>
           <div class="form-field">
             <label>{{ 'Payment Method' | translate }}</label>
@@ -314,7 +314,7 @@
           <div class="form-field">
             <label>{{ 'Total Amount' | translate }} *</label>
             <input type="number" class="field-input" min="0.01" step="0.01" placeholder="0.00"
-                   [ngModel]="createInvoiceForm().total_amount" (ngModelChange)="updateCreateInvoiceForm({ total_amount: +$event })" />
+                   [ngModel]="createInvoiceForm().total_amount" (ngModelChange)="updateCreateInvoiceForm({ total_amount: +$event || 0 })" />
           </div>
           <div class="form-field">
             <label>{{ 'Due Date' | translate }}</label>
@@ -724,12 +724,12 @@
           <div class="form-field">
             <label>{{ 'Amount' | translate }} *</label>
             <input type="number" class="field-input" min="0.01" step="0.01" placeholder="0.00"
-                   [ngModel]="postChargeForm().amount" (ngModelChange)="updatePostChargeForm({ amount: +$event })" />
+                   [ngModel]="postChargeForm().amount" (ngModelChange)="updatePostChargeForm({ amount: +$event || 0 })" />
           </div>
           <div class="form-field">
             <label>{{ 'Quantity' | translate }}</label>
             <input type="number" class="field-input" min="1" step="1" placeholder="1"
-                   [ngModel]="postChargeForm().quantity" (ngModelChange)="updatePostChargeForm({ quantity: +$event })" />
+                   [ngModel]="postChargeForm().quantity" (ngModelChange)="updatePostChargeForm({ quantity: +$event || 0 })" />
           </div>
           <div class="form-field full-width">
             <label>{{ 'Description' | translate }}</label>

@@ -75,11 +75,9 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         await client.query("BEGIN");
 
         const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
-          `WITH new_id AS (SELECT uuid_generate_v4() AS tid)
-           INSERT INTO tenants
-            (id, tenant_id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
-           SELECT tid, tid, $1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7
-           FROM new_id
+          `INSERT INTO tenants
+            (id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
+           VALUES (uuid_generate_v4(), $1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7)
            RETURNING id, name, slug`,
           [
             tenantInput.name,
@@ -99,11 +97,10 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
 
         const userResult = await client.query<{ id: string; username: string; email: string }>(
           `INSERT INTO users
-            (tenant_id, username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, true, false, $8, $8)
+            (username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, true, false, $7, $7)
            RETURNING id, username, email`,
           [
-            tenant.id,
             ownerInput.username,
             ownerInput.email,
             passwordHash,

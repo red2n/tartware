@@ -437,12 +437,17 @@ export const getPreAuditChecklist = async (options: {
         : "All open folios balanced",
   });
 
-  // 7. Room status verified — no rooms in 'out_of_order' that are occupied
+  // 7. Room status verified — no rooms in 'out_of_order' that have checked-in reservations
   const { rows: conflictRooms } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM rooms
-     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'OUT_OF_ORDER' AND is_blocked = true
-       AND COALESCE(is_deleted, false) = false`,
+    `SELECT COUNT(DISTINCT r.id)::text AS cnt
+     FROM rooms r
+     JOIN reservations res
+       ON res.tenant_id = r.tenant_id
+       AND res.room_number = r.room_number
+       AND res.status IN ('CHECKED_IN', 'IN_HOUSE')
+     WHERE r.tenant_id = $1::uuid AND r.property_id = $2::uuid
+       AND r.status = 'OUT_OF_ORDER'
+       AND COALESCE(r.is_deleted, false) = false`,
     [tenantId, propertyId],
   );
   const conflictCount = Number(conflictRooms[0]?.cnt ?? 0);
