@@ -37,6 +37,8 @@ export interface DbPoolConfig {
   idleTimeoutMillis: number;
   /** PostgreSQL statement_timeout in ms (0 = no limit). Default: 30 000 */
   statementTimeoutMs?: number;
+  /** Connection acquire timeout in ms. Default: 5 000 */
+  connectionTimeoutMs?: number;
 }
 
 // ── Logger interface (pino-compatible subset) ──────────────────
@@ -91,10 +93,22 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     ssl: dbConfig.ssl ? { rejectUnauthorized: false } : undefined,
     max: dbConfig.max,
     idleTimeoutMillis: dbConfig.idleTimeoutMillis,
+    connectionTimeoutMillis: dbConfig.connectionTimeoutMs ?? 5_000,
     statement_timeout: dbConfig.statementTimeoutMs,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000,
   });
 
+  // 57P01 = admin_shutdown — expected during PG restarts; pool self-heals.
   pool.on("error", (error: unknown) => {
+    const code = (error as { code?: string }).code;
+    if (code === "57P01") {
+      dbLogger.error(
+        { err: error },
+        "PostgreSQL connection terminated by server (pool will reconnect)",
+      );
+      return;
+    }
     dbLogger.error({ err: error }, "Unexpected PostgreSQL pool error");
   });
 

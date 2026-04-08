@@ -122,6 +122,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
   const ArListQuerySchema = z.object({
     tenant_id: z.string().uuid(),
     property_id: z.string().uuid().optional(),
+    reservation_id: z.string().uuid().optional(),
     status: z.string().optional(),
     account_type: z.string().optional(),
     aging_bucket: z.string().optional(),
@@ -157,8 +158,16 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, account_type, aging_bucket, limit, offset } =
-        ArListQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        status,
+        account_type,
+        aging_bucket,
+        limit,
+        offset,
+        reservation_id,
+      } = ArListQuerySchema.parse(request.query);
       return listAccountsReceivable({
         tenantId: tenant_id,
         propertyId: property_id,
@@ -167,6 +176,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
         agingBucket: aging_bucket,
         limit,
         offset,
+        reservationId: reservation_id,
       });
     },
   );

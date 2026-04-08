@@ -1396,3 +1396,21 @@ export const PoliceReportListItemSchema = z.object({
 });
 
 export type PoliceReportListItem = z.infer<typeof PoliceReportListItemSchema>;
+
+// =====================================================
+// BUSINESS DATE UPSERT
+// =====================================================
+
+/**
+ * Request body for upserting a business date for a property.
+ * Used by: PUT /v1/night-audit/business-date
+ */
+export const UpsertBusinessDateBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	business_date: z.string(), // YYYY-MM-DD
+	date_status: BusinessDateStatusEnum.default("OPEN"),
+	night_audit_status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"]).default("PENDING"),
+});
+
+export type UpsertBusinessDateBody = z.infer<typeof UpsertBusinessDateBodySchema>;

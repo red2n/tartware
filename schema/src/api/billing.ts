@@ -1097,6 +1097,7 @@ export type RoutingEvaluationResult = {
 export const BillingPaymentListQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
+	reservation_id: uuid.optional(),
 	status: z
 		.string()
 		.toLowerCase()
@@ -1177,6 +1178,8 @@ export const CashierSessionListQuerySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	session_status: z.string().optional(),
+	user_id: uuid.optional(),
+	shift_type: z.string().optional(),
 	limit: z.coerce.number().int().positive().max(200).default(100),
 	offset: z.coerce.number().int().min(0).default(0),
 });

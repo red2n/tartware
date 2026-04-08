@@ -262,6 +262,7 @@ export const listReservations = async (options: {
   offset?: number;
   tenantId: string;
   propertyId?: string;
+  guestId?: string;
   status?: string;
   search?: string;
 }): Promise<ReservationListItem[]> => {
@@ -269,6 +270,7 @@ export const listReservations = async (options: {
   const offset = options.offset ?? 0;
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;
+  const guestId = options.guestId ?? null;
   const status = options.status ? options.status.trim().toUpperCase() : null;
   const search = options.search ? `%${options.search.trim()}%` : null;
 
@@ -279,6 +281,7 @@ export const listReservations = async (options: {
     status,
     search,
     offset,
+    guestId,
   ]);
 
   return rows.map(mapRowToReservation);

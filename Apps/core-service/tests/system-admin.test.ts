@@ -286,6 +286,9 @@ describe('System Administrator Capabilities', () => {
       },
     });
 
+    if (response.statusCode !== 201) {
+      console.error('Bootstrap response:', response.statusCode, response.json());
+    }
     expect(response.statusCode).toBe(201);
     const payload = response.json();
     expect(payload).toHaveProperty('tenant.id');

@@ -107,7 +107,10 @@ export const transferCharge = async (
     await queryWithClient(
       client,
       `UPDATE charge_postings
-       SET transfer_to_folio_id = $3::uuid, updated_at = NOW(), updated_by = $4::uuid
+       SET transfer_to_folio_id = $3::uuid,
+           version = version + 1,
+           updated_by = $4::uuid,
+           updated_at = NOW()
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
       [command.posting_id, tenantId, targetFolioId, actorId],
     );
@@ -284,8 +287,7 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       client,
       `UPDATE charge_postings
        SET is_voided = TRUE, voided_at = NOW(), voided_by = $3::uuid,
-           void_reason = 'Split into multiple folios', version = version + 1,
-           updated_at = NOW(), updated_by = $3::uuid
+           void_reason = 'Split into multiple folios', version = version + 1
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
       [command.posting_id, tenantId, actorId],
     );
@@ -382,9 +384,17 @@ const applyChargePost = async (
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
   const currency = command.currency ?? "USD";
-  const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+
+  // Resolve folio: prefer explicit folio_id, fall back to reservation lookup
+  let folioId = command.folio_id ?? null;
+  if (!folioId && command.reservation_id) {
+    folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  }
   if (!folioId) {
-    throw new BillingCommandError("FOLIO_NOT_FOUND", "No folio found for reservation.");
+    throw new BillingCommandError(
+      "FOLIO_NOT_FOUND",
+      "No folio found. Provide folio_id or a valid reservation_id.",
+    );
   }
 
   // Evaluate routing rules for the source folio
@@ -423,7 +433,7 @@ const applyChargePost = async (
           context.tenantId,
           command.property_id,
           decision.destinationFolioId,
-          command.reservation_id,
+          command.reservation_id ?? null,
           command.posting_type,
           command.charge_code,
           command.department_code ?? null,
@@ -483,7 +493,7 @@ const applyChargePost = async (
           context.tenantId,
           command.property_id,
           folioId,
-          command.reservation_id,
+          command.reservation_id ?? null,
           command.posting_type,
           command.charge_code,
           command.department_code ?? null,
@@ -598,7 +608,6 @@ const applyChargeVoid = async (
            voided_by = $3::uuid,
            void_reason = $4,
            version = version + 1,
-           updated_at = NOW(),
            updated_by = $3::uuid
        WHERE posting_id = $1::uuid
          AND tenant_id = $2::uuid`,
@@ -661,7 +670,6 @@ const applyChargeVoid = async (
       `UPDATE public.charge_postings
        SET void_posting_id = $3::uuid,
            version = version + 1,
-           updated_at = NOW(),
            updated_by = $4::uuid
        WHERE posting_id = $1::uuid
          AND tenant_id = $2::uuid`,

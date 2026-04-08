@@ -34,14 +34,15 @@ const formatEnumDisplay = (
   fallback: string,
 ): { value: string; display: string } => {
   if (!value || typeof value !== "string") {
-    return { value: fallback, display: fallback };
+    const formatted = fallback.toLowerCase();
+    return { value: formatted, display: fallback };
   }
-  const display = value
-    .toLowerCase()
+  const normalized = value.toLowerCase();
+  const display = normalized
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  return { value, display };
+  return { value: normalized, display };
 };
 
 const toIsoString = (value: string | Date | null): string | undefined => {
@@ -114,6 +115,7 @@ export const listBillingPayments = async (options: {
   transactionType?: string;
   paymentMethod?: string;
   offset?: number;
+  reservationId?: string;
 }): Promise<BillingPayment[]> => {
   const limit = options.limit ?? 100;
   const tenantId = options.tenantId;
@@ -124,6 +126,7 @@ export const listBillingPayments = async (options: {
     : null;
   const paymentMethod = options.paymentMethod ? options.paymentMethod.trim().toUpperCase() : null;
   const offset = options.offset ?? 0;
+  const reservationId = options.reservationId ?? null;
 
   const { rows } = await query<BillingPaymentRow>(BILLING_PAYMENT_LIST_SQL, [
     limit,
@@ -133,6 +136,7 @@ export const listBillingPayments = async (options: {
     transactionType,
     paymentMethod,
     offset,
+    reservationId,
   ]);
 
   return rows.map((row) => applyBillingRetentionPolicy(mapRowToPayment(row)));
@@ -383,7 +387,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: pendingArrivals } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_in_date = $3::date AND status = 'confirmed'
+       AND check_in_date = $3::date AND status = 'CONFIRMED'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -401,7 +405,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: pendingDepartures } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_out_date = $3::date AND status = 'checked_in'
+       AND check_out_date = $3::date AND status = 'CHECKED_IN'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -419,7 +423,7 @@ export const getPreAuditChecklist = async (options: {
   const { rows: unbalancedFolios } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM folios
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'open' AND COALESCE(balance_due, 0) != 0
+       AND folio_status = 'OPEN' AND COALESCE(balance, 0) != 0
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],
   );
@@ -433,12 +437,17 @@ export const getPreAuditChecklist = async (options: {
         : "All open folios balanced",
   });
 
-  // 7. Room status verified — no rooms in 'out_of_order' that are occupied
+  // 7. Room status verified — no rooms in 'out_of_order' that have checked-in reservations
   const { rows: conflictRooms } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM rooms
-     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND room_status = 'out_of_order' AND occupancy_status = 'occupied'
-       AND COALESCE(is_deleted, false) = false`,
+    `SELECT COUNT(DISTINCT r.id)::text AS cnt
+     FROM rooms r
+     JOIN reservations res
+       ON res.tenant_id = r.tenant_id
+       AND res.room_number = r.room_number
+       AND res.status IN ('CHECKED_IN', 'IN_HOUSE')
+     WHERE r.tenant_id = $1::uuid AND r.property_id = $2::uuid
+       AND r.status = 'OUT_OF_ORDER'
+       AND COALESCE(r.is_deleted, false) = false`,
     [tenantId, propertyId],
   );
   const conflictCount = Number(conflictRooms[0]?.cnt ?? 0);
@@ -508,7 +517,7 @@ export const getBucketCheck = async (options: {
   const { rows: stayovers } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'checked_in' AND check_out_date > $3::date
+       AND status = 'CHECKED_IN' AND check_out_date > $3::date
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -518,7 +527,7 @@ export const getBucketCheck = async (options: {
   const { rows: dueOuts } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'checked_in' AND check_out_date = $3::date
+       AND status = 'CHECKED_IN' AND check_out_date = $3::date
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -528,7 +537,7 @@ export const getBucketCheck = async (options: {
   const { rows: arrivals } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_in_date = $3::date AND status = 'confirmed'
+       AND check_in_date = $3::date AND status = 'CONFIRMED'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -538,7 +547,7 @@ export const getBucketCheck = async (options: {
   const { rows: checkedInToday } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND check_in_date = $3::date AND status = 'checked_in'
+       AND check_in_date = $3::date AND status = 'CHECKED_IN'
        AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId, businessDate],
   );
@@ -606,10 +615,14 @@ export const listCashierSessions = async (options: {
   sessionStatus?: string;
   limit?: number;
   offset?: number;
+  userId?: string;
+  shiftType?: string;
 }) => {
   const { tenantId, limit = 100, offset = 0 } = options;
   const propertyId = options.propertyId ?? null;
   const sessionStatus = options.sessionStatus ?? null;
+  const userId = options.userId ?? null;
+  const shiftType = options.shiftType ?? null;
 
   const { rows } = await query(CASHIER_SESSION_LIST_SQL, [
     limit,
@@ -617,6 +630,8 @@ export const listCashierSessions = async (options: {
     propertyId,
     sessionStatus,
     offset,
+    userId,
+    shiftType,
   ]);
 
   return rows;

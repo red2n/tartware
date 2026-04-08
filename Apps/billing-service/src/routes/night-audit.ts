@@ -3,6 +3,7 @@ import {
   BusinessDateStatusResponseSchema,
   NightAuditRunDetailResponseSchema,
   NightAuditRunListResponseSchema,
+  UpsertBusinessDateBodySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -534,6 +535,110 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
           actions_taken: first.actions_taken ?? undefined,
           notes: first.notes ?? undefined,
           resolution_notes: first.resolution_notes ?? undefined,
+        },
+      };
+    },
+  );
+
+  // ==========================================================================
+  // PUT /v1/night-audit/business-date — upsert a business date for a property
+  // ==========================================================================
+
+  const UpsertBodyJsonSchema = schemaFromZod(
+    UpsertBusinessDateBodySchema,
+    "UpsertBusinessDateBody",
+  );
+  const UpsertResponseJsonSchema = schemaFromZod(
+    z.object({ data: BusinessDateStatusResponseSchema }),
+    "UpsertBusinessDateResponse",
+  );
+
+  type UpsertBusinessDateBody = z.infer<typeof UpsertBusinessDateBodySchema>;
+
+  app.put<{ Body: UpsertBusinessDateBody }>(
+    "/v1/night-audit/business-date",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as UpsertBusinessDateBody).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: NIGHT_AUDIT_TAG,
+        summary: "Upsert a business date for a property",
+        description:
+          "Creates or updates the business date record for a property. Used for initial setup and date management.",
+        body: UpsertBodyJsonSchema,
+        response: { 200: UpsertResponseJsonSchema },
+      }),
+    },
+    async (request) => {
+      const body = UpsertBusinessDateBodySchema.parse(request.body);
+
+      const result = await query<{
+        business_date_id: string;
+        tenant_id: string;
+        property_id: string;
+        business_date: string;
+        system_date: string;
+        date_status: string;
+        night_audit_status: string | null;
+        is_locked: boolean;
+        allow_postings: boolean;
+        allow_check_ins: boolean;
+        allow_check_outs: boolean;
+      }>(
+        `INSERT INTO public.business_dates
+           (tenant_id, property_id, business_date, date_status, night_audit_status)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (tenant_id, property_id, business_date)
+         DO UPDATE SET
+           date_status = EXCLUDED.date_status,
+           night_audit_status = EXCLUDED.night_audit_status,
+           updated_at = NOW()
+         RETURNING
+           business_date_id,
+           tenant_id,
+           property_id,
+           business_date::text,
+           system_date::text,
+           date_status,
+           night_audit_status,
+           COALESCE(is_locked, false) AS is_locked,
+           COALESCE(allow_postings, true) AS allow_postings,
+           COALESCE(allow_check_ins, true) AS allow_check_ins,
+           COALESCE(allow_check_outs, true) AS allow_check_outs`,
+        [
+          body.tenant_id,
+          body.property_id,
+          body.business_date,
+          body.date_status,
+          body.night_audit_status,
+        ],
+      );
+
+      const row = result.rows[0];
+      if (!row) {
+        throw new Error("Failed to upsert business date");
+      }
+
+      return {
+        data: {
+          business_date_id: row.business_date_id,
+          tenant_id: row.tenant_id,
+          property_id: row.property_id,
+          business_date: row.business_date,
+          system_date: row.system_date,
+          date_status: row.date_status,
+          date_status_display: formatStatus(row.date_status),
+          night_audit_status: row.night_audit_status ?? undefined,
+          night_audit_status_display: row.night_audit_status
+            ? formatStatus(row.night_audit_status)
+            : undefined,
+          is_locked: row.is_locked,
+          allow_postings: row.allow_postings,
+          allow_check_ins: row.allow_check_ins,
+          allow_check_outs: row.allow_check_outs,
         },
       };
     },

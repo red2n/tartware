@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     correction_type VARCHAR(20),               -- FULL_REVERSAL, PARTIAL_REVERSAL, ADJUSTMENT
 
     -- Invoice Number (human-readable)
-    invoice_number VARCHAR(100) UNIQUE NOT NULL,
+    invoice_number VARCHAR(100) NOT NULL,       -- Human-readable invoice number (e.g., INV-100001). Tenant-scoped uniqueness enforced by index.
 
     -- Invoice Type
     invoice_type VARCHAR(50) DEFAULT 'standard',
@@ -106,13 +106,17 @@ CREATE TABLE IF NOT EXISTS invoices (
     -- Optimistic Locking
     version BIGINT DEFAULT 0,
 
-    -- Constraints
+    -- Constraints (credit notes carry negative amounts by design)
     CONSTRAINT invoices_amounts_check CHECK (
-        subtotal >= 0 AND
-        tax_amount >= 0 AND
-        discount_amount >= 0 AND
-        total_amount >= 0 AND
-        paid_amount >= 0
+        CASE WHEN invoice_type = 'CREDIT_NOTE' THEN
+            subtotal <= 0 AND total_amount <= 0
+        ELSE
+            subtotal >= 0 AND
+            tax_amount >= 0 AND
+            discount_amount >= 0 AND
+            total_amount >= 0 AND
+            paid_amount >= 0
+        END
     ),
     CONSTRAINT invoices_billing_period CHECK (
         billing_from IS NULL OR billing_to IS NULL OR billing_from <= billing_to
@@ -140,5 +144,34 @@ COMMENT ON COLUMN invoices.status IS 'ENUM: draft, issued, paid, partially_paid,
 COMMENT ON COLUMN invoices.tax_breakdown IS 'Detailed tax breakdown by type (JSONB)';
 COMMENT ON COLUMN invoices.billing_address IS 'Billing address (JSONB)';
 COMMENT ON COLUMN invoices.deleted_at IS 'Soft delete timestamp (NULL = active)';
+
+-- =====================================================
+-- INVOICE NUMBER SEQUENCE
+-- Provides collision-free, monotonically increasing invoice numbers.
+-- Usage: SELECT nextval('invoice_number_seq') → prefix with INV-
+-- =====================================================
+CREATE SEQUENCE IF NOT EXISTS invoice_number_seq
+  START WITH 100001
+  INCREMENT BY 1
+  NO MAXVALUE
+  CACHE 20;
+
+GRANT USAGE, SELECT ON SEQUENCE invoice_number_seq TO tartware_app;
+
+-- Fix global UNIQUE → tenant-scoped unique for multi-tenant safety
+-- (idempotent: re-runnable without error)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'invoices_invoice_number_key'
+      AND conrelid = 'invoices'::regclass
+  ) THEN
+    ALTER TABLE invoices DROP CONSTRAINT invoices_invoice_number_key;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_tenant_invoice_number
+  ON invoices (tenant_id, invoice_number);
 
 \echo 'Invoices table created successfully!'

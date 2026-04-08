@@ -26,6 +26,7 @@ import {
   commandAcceptedSchema,
   paginationQuerySchema,
   reservationParamsSchema,
+  tenantChargeParamsSchema,
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
@@ -179,6 +180,30 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "billing.charge.post",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/charges/:postingId/void",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Void a charge posting via the Command Center.",
+        params: tenantChargeParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.charge.void",
+        paramKey: "postingId",
+        payloadKey: "posting_id",
       }),
   );
 

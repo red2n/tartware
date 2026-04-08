@@ -60,7 +60,7 @@ export const lockFiscalPeriod = async (
     `UPDATE public.fiscal_periods
      SET period_status = 'LOCKED',
          locked_at = NOW(),
-         locked_by = COALESCE($4, $5),
+         locked_by = COALESCE($4::uuid, $5::uuid),
          updated_at = NOW()
      WHERE tenant_id = $1::uuid
        AND fiscal_period_id = $2::uuid

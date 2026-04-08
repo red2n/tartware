@@ -8,13 +8,9 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type {
 	BillingPaymentListItem,
-	BillingPaymentListResponse,
 	ChargePostingListItem,
-	ChargePostingListResponse,
 	FolioListItem,
-	FolioListResponse,
 	InvoiceListItem,
-	InvoiceListResponse,
 } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
@@ -28,11 +24,35 @@ import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
-type BillingView = "payments" | "invoices" | "folios" | "charges";
-type PaymentStatusFilter = "ALL" | "completed" | "pending" | "failed" | "refunded";
-type InvoiceStatusFilter = "ALL" | "draft" | "issued" | "paid" | "overdue";
-type FolioStatusFilter = "ALL" | "open" | "closed" | "settled";
-type ChargeTypeFilter = "ALL" | "charge" | "payment" | "adjustment";
+import {
+	CHARGE_CODE_OPTIONS,
+	CHARGE_TYPE_FILTERS,
+	DEFAULT_PAGE_SIZE,
+	FOLIO_STATUS_FILTERS,
+	FOLIO_TYPE_OPTIONS,
+	INVOICE_STATUS_FILTERS,
+	PAYMENT_METHOD_OPTIONS,
+	PAYMENT_STATUS_FILTERS,
+	type BillingView,
+	type ChargeTypeFilter,
+	type FolioStatusFilter,
+	type InvoiceStatusFilter,
+	type PaymentStatusFilter,
+} from "./billing-constants";
+import { BillingDataService } from "./billing-data.service";
+import {
+	canCloseFolio,
+	canCreditNote,
+	canFinalizeInvoice,
+	canRefundPayment,
+	canVoidCharge,
+	canVoidInvoice,
+	canVoidPayment,
+	chargeTypeClass,
+	folioStatusClass,
+	invoiceStatusClass,
+	paymentStatusClass,
+} from "./billing-utils";
 
 @Component({
 	selector: "app-billing",
@@ -50,32 +70,33 @@ type ChargeTypeFilter = "ALL" | "charge" | "payment" | "adjustment";
 	],
 	templateUrl: "./billing.html",
 	styleUrl: "./billing.scss",
+	providers: [BillingDataService],
 })
 export class BillingComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
+	readonly data = inject(BillingDataService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
+	// ── Reusable option lists from billing-constants ──
+	readonly chargeCodeOptions = CHARGE_CODE_OPTIONS;
+	readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
+	readonly folioTypeOptions = FOLIO_TYPE_OPTIONS;
+
 	readonly activeView = signal<BillingView>("payments");
 
-	// ── Payments ──
-	readonly payments = signal<BillingPaymentListItem[]>([]);
-	readonly paymentsLoading = signal(false);
-	readonly paymentsError = signal<string | null>(null);
+	// ── Delegate data signals to BillingDataService ──
+	readonly payments = this.data.payments;
+	readonly paymentsLoading = this.data.paymentsLoading;
+	readonly paymentsError = this.data.paymentsError;
 	readonly activePaymentFilter = signal<PaymentStatusFilter>("ALL");
 	readonly paymentPage = signal(1);
 	readonly paymentSort = createSortState();
 
-	readonly paymentStatusFilters: { key: PaymentStatusFilter; label: string }[] = [
-		{ key: "ALL", label: "All" },
-		{ key: "completed", label: "Completed" },
-		{ key: "pending", label: "Pending" },
-		{ key: "failed", label: "Failed" },
-		{ key: "refunded", label: "Refunded" },
-	];
+	readonly paymentStatusFilters = PAYMENT_STATUS_FILTERS;
 
 	readonly filteredPayments = computed(() => {
 		let list = this.payments();
@@ -110,26 +131,23 @@ export class BillingComponent {
 			ALL: all.length,
 			completed: all.filter((p) => p.status === "completed").length,
 			pending: all.filter((p) => p.status === "pending").length,
+			authorized: all.filter((p) => p.status === "authorized").length,
 			failed: all.filter((p) => p.status === "failed").length,
+			cancelled: all.filter((p) => p.status === "cancelled").length,
 			refunded: all.filter((p) => p.status === "refunded").length,
+			partially_refunded: all.filter((p) => p.status === "partially_refunded").length,
 		};
 	});
 
 	// ── Invoices ──
-	readonly invoices = signal<InvoiceListItem[]>([]);
-	readonly invoicesLoading = signal(false);
-	readonly invoicesError = signal<string | null>(null);
+	readonly invoices = this.data.invoices;
+	readonly invoicesLoading = this.data.invoicesLoading;
+	readonly invoicesError = this.data.invoicesError;
 	readonly activeInvoiceFilter = signal<InvoiceStatusFilter>("ALL");
 	readonly invoicePage = signal(1);
 	readonly invoiceSort = createSortState();
 
-	readonly invoiceStatusFilters: { key: InvoiceStatusFilter; label: string }[] = [
-		{ key: "ALL", label: "All" },
-		{ key: "issued", label: "Issued" },
-		{ key: "paid", label: "Paid" },
-		{ key: "overdue", label: "Overdue" },
-		{ key: "draft", label: "Draft" },
-	];
+	readonly invoiceStatusFilters = INVOICE_STATUS_FILTERS;
 
 	readonly filteredInvoices = computed(() => {
 		let list = this.invoices();
@@ -169,19 +187,14 @@ export class BillingComponent {
 	});
 
 	// ── Folios ──
-	readonly folios = signal<FolioListItem[]>([]);
-	readonly foliosLoading = signal(false);
-	readonly foliosError = signal<string | null>(null);
+	readonly folios = this.data.folios;
+	readonly foliosLoading = this.data.foliosLoading;
+	readonly foliosError = this.data.foliosError;
 	readonly activeFolioFilter = signal<FolioStatusFilter>("ALL");
 	readonly folioPage = signal(1);
 	readonly folioSort = createSortState();
 
-	readonly folioStatusFilters: { key: FolioStatusFilter; label: string }[] = [
-		{ key: "ALL", label: "All" },
-		{ key: "open", label: "Open" },
-		{ key: "closed", label: "Closed" },
-		{ key: "settled", label: "Settled" },
-	];
+	readonly folioStatusFilters = FOLIO_STATUS_FILTERS;
 
 	readonly filteredFolios = computed(() => {
 		let list = this.folios();
@@ -221,9 +234,9 @@ export class BillingComponent {
 	});
 
 	// ── Charges ──
-	readonly charges = signal<ChargePostingListItem[]>([]);
-	readonly chargesLoading = signal(false);
-	readonly chargesError = signal<string | null>(null);
+	readonly charges = this.data.charges;
+	readonly chargesLoading = this.data.chargesLoading;
+	readonly chargesError = this.data.chargesError;
 	readonly activeChargeFilter = signal<ChargeTypeFilter>("ALL");
 	readonly chargePage = signal(1);
 	readonly chargeSort = createSortState();
@@ -235,12 +248,7 @@ export class BillingComponent {
 		this.chargePage.set(1);
 	});
 
-	readonly chargeTypeFilters: { key: ChargeTypeFilter; label: string }[] = [
-		{ key: "ALL", label: "All" },
-		{ key: "charge", label: "Charges" },
-		{ key: "payment", label: "Payments" },
-		{ key: "adjustment", label: "Adjustments" },
-	];
+	readonly chargeTypeFilters = CHARGE_TYPE_FILTERS;
 
 	readonly filteredCharges = computed(() => {
 		let list = this.charges();
@@ -280,34 +288,24 @@ export class BillingComponent {
 	});
 
 	// ── Shared ──
-	readonly pageSize = 25;
+	readonly pageSize = DEFAULT_PAGE_SIZE;
 
 	/** KPI summary across all billing data. */
-	readonly summary = computed(() => {
-		const pays = this.payments();
-		const invs = this.invoices();
-		const fols = this.folios();
-		const completedPayments = pays.filter((p) => p.status === "completed");
-		const totalReceived = completedPayments.reduce((sum, p) => sum + p.amount, 0);
-		const currency = pays[0]?.currency ?? invs[0]?.currency ?? "USD";
-		const outstandingBalance = fols
-			.filter((f) => f.folio_status === "open")
-			.reduce((sum, f) => sum + f.balance, 0);
-		const overdueCount = invs.filter((i) => i.status === "overdue").length;
-		const openFolios = fols.filter((f) => f.folio_status === "open").length;
-		return { totalReceived, outstandingBalance, overdueCount, openFolios, currency };
-	});
+	readonly summary = this.data.summary;
 
 	constructor() {
+		// On tenant/property change, load the active tab first, then the rest incrementally
 		effect(() => {
 			this.auth.tenantId();
 			this.ctx.propertyId();
-			this.loadAll();
+			this.data.loadForView(this.activeView());
 		});
 	}
 
 	setView(view: BillingView): void {
 		this.activeView.set(view);
+		// Ensure the tab data is loaded when the user switches to it
+		this.data.ensureLoaded(view);
 	}
 
 	// ── Payment actions ──
@@ -363,69 +361,11 @@ export class BillingComponent {
 		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
-	// ── Display helpers ──
-	paymentStatusClass(status: string): string {
-		switch (status) {
-			case "completed":
-				return "badge-success";
-			case "pending":
-				return "badge-warning";
-			case "failed":
-				return "badge-danger";
-			case "refunded":
-				return "badge-accent";
-			case "authorized":
-				return "badge-muted";
-			default:
-				return "";
-		}
-	}
-
-	invoiceStatusClass(status: string): string {
-		switch (status) {
-			case "paid":
-				return "badge-success";
-			case "issued":
-				return "badge-accent";
-			case "overdue":
-				return "badge-danger";
-			case "draft":
-				return "badge-muted";
-			case "cancelled":
-			case "void":
-				return "badge-danger";
-			default:
-				return "";
-		}
-	}
-
-	folioStatusClass(status: string): string {
-		switch (status) {
-			case "open":
-				return "badge-accent";
-			case "closed":
-				return "badge-muted";
-			case "settled":
-				return "badge-success";
-			default:
-				return "";
-		}
-	}
-
-	chargeTypeClass(type: string): string {
-		switch (type) {
-			case "charge":
-				return "badge-danger";
-			case "payment":
-				return "badge-success";
-			case "adjustment":
-				return "badge-warning";
-			case "refund":
-				return "badge-accent";
-			default:
-				return "";
-		}
-	}
+	// ── Display helpers (delegated to billing-utils) ──
+	readonly paymentStatusClass = paymentStatusClass;
+	readonly invoiceStatusClass = invoiceStatusClass;
+	readonly folioStatusClass = folioStatusClass;
+	readonly chargeTypeClass = chargeTypeClass;
 
 	formatDate(dateStr: string): string {
 		return this.settings.formatDate(dateStr);
@@ -450,6 +390,23 @@ export class BillingComponent {
 	readonly voidInvoiceId = signal<string | null>(null);
 	readonly voidInvoiceReason = signal("");
 	readonly processingInvoiceVoid = signal(false);
+	readonly showCreateInvoiceForm = signal(false);
+	readonly createInvoiceForm = signal({
+		reservation_id: "" as string,
+		guest_id: "" as string,
+		total_amount: 0,
+		due_date: "" as string,
+		notes: "" as string,
+	});
+	readonly creatingInvoice = signal(false);
+
+	/** Unique guests derived from loaded folios for the invoice form picker. */
+	readonly availableGuests = this.data.availableGuests;
+
+	/** Reservations available for the selected guest. */
+	readonly availableReservations = computed(() =>
+		this.data.reservationsForGuest(this.createInvoiceForm().guest_id),
+	);
 
 	// ── Folio action state ──
 	readonly showCreateFolioForm = signal(false);
@@ -459,9 +416,45 @@ export class BillingComponent {
 		notes: "",
 	});
 	readonly creatingFolio = signal(false);
-	readonly selectedFolioId = signal<string | null>(null);
-	readonly folioCharges = signal<ChargePostingListItem[]>([]);
-	readonly folioChargesLoading = signal(false);
+	readonly selectedFolioId = this.data.selectedFolioId;
+	readonly folioCharges = this.data.folioCharges;
+	readonly folioChargesLoading = this.data.folioChargesLoading;
+
+	// ── Charge posting state ──
+	readonly showPostChargeForm = signal(false);
+	readonly postChargeForm = signal({
+		folio_id: "" as string,
+		charge_code: "MISC" as string,
+		amount: 0,
+		quantity: 1,
+		description: "" as string,
+		department_code: "" as string,
+	});
+	readonly postingCharge = signal(false);
+
+	/** Open folios available as charge targets. */
+	readonly openFolios = this.data.openFolios;
+
+	// ── Payment capture state ──
+	readonly showCapturePaymentForm = signal(false);
+	readonly capturePaymentForm = signal({
+		folio_id: "" as string,
+		amount: 0,
+		payment_method: "CASH" as string,
+		payment_reference: "" as string,
+	});
+	readonly capturingPayment = signal(false);
+
+	// ── Charge void state ──
+	readonly voidingChargeId = signal<string | null>(null);
+	readonly voidChargeReason = signal("");
+	readonly processingChargeVoid = signal(false);
+
+	// ── Folio close state ──
+	readonly closingFolioId = signal<string | null>(null);
+	readonly closeFolioReason = signal("");
+	readonly closeFolioForce = signal(false);
+	readonly processingFolioClose = signal(false);
 
 	// ── Payment actions ──
 	showVoidPayment(paymentId: string): void {
@@ -476,15 +469,12 @@ export class BillingComponent {
 		if (!tenantId) return;
 		this.processingVoid.set(true);
 		try {
-			await this.api.post(
-				`/tenants/${tenantId}/billing/payments/${payment.id}/void`,
-				{
-					payment_reference: payment.payment_reference,
-					property_id: this.ctx.propertyId(),
-					reservation_id: payment.reservation_id,
-					reason: this.voidPaymentReason() || undefined,
-				},
-			);
+			await this.api.post(`/tenants/${tenantId}/billing/payments/${payment.id}/void`, {
+				payment_reference: payment.payment_reference,
+				property_id: this.ctx.propertyId(),
+				reservation_id: payment.reservation_id,
+				reason: this.voidPaymentReason() || undefined,
+			});
 			this.toast.success("Payment voided.");
 			this.voidingPaymentId.set(null);
 			await this.loadPayments();
@@ -508,17 +498,14 @@ export class BillingComponent {
 		this.processingRefund.set(true);
 		try {
 			const form = this.refundForm();
-			await this.api.post(
-				`/tenants/${tenantId}/billing/payments/${payment.id}/refund`,
-				{
-					payment_id: payment.id,
-					property_id: this.ctx.propertyId(),
-					reservation_id: payment.reservation_id,
-					guest_id: payment.guest_id,
-					amount: form.amount,
-					reason: form.reason || undefined,
-				},
-			);
+			await this.api.post(`/tenants/${tenantId}/billing/payments/${payment.id}/refund`, {
+				payment_id: payment.id,
+				property_id: this.ctx.propertyId(),
+				reservation_id: payment.reservation_id,
+				guest_id: payment.guest_id,
+				amount: form.amount,
+				reason: form.reason || undefined,
+			});
 			this.toast.success("Refund submitted.");
 			this.refundingPaymentId.set(null);
 			await this.loadPayments();
@@ -529,12 +516,8 @@ export class BillingComponent {
 		}
 	}
 
-	canVoid(payment: BillingPaymentListItem): boolean {
-		return payment.status === "authorized" || payment.status === "pending";
-	}
-	canRefund(payment: BillingPaymentListItem): boolean {
-		return payment.status === "completed";
-	}
+	readonly canVoid = canVoidPayment;
+	readonly canRefund = canRefundPayment;
 
 	// ── Invoice actions ──
 	async finalizeInvoice(invoice: InvoiceListItem): Promise<void> {
@@ -542,10 +525,7 @@ export class BillingComponent {
 		if (!tenantId) return;
 		this.processingInvoiceAction.set(invoice.id);
 		try {
-			await this.api.post(
-				`/tenants/${tenantId}/billing/invoices/${invoice.id}/finalize`,
-				{},
-			);
+			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoice.id}/finalize`, {});
 			this.toast.success("Invoice finalized.");
 			await this.loadInvoices();
 		} catch (e) {
@@ -568,10 +548,9 @@ export class BillingComponent {
 		if (!tenantId || !invoiceId) return;
 		this.processingInvoiceVoid.set(true);
 		try {
-			await this.api.post(
-				`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`,
-				{ reason: this.voidInvoiceReason() || undefined },
-			);
+			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`, {
+				reason: this.voidInvoiceReason() || undefined,
+			});
 			this.toast.success("Invoice voided.");
 			this.voidInvoiceId.set(null);
 			await this.loadInvoices();
@@ -596,14 +575,11 @@ export class BillingComponent {
 		this.processingCreditNote.set(true);
 		try {
 			const form = this.creditNoteForm();
-			await this.api.post(
-				`/tenants/${tenantId}/billing/invoices/${invoiceId}/credit-note`,
-				{
-					property_id: this.ctx.propertyId(),
-					credit_amount: form.credit_amount,
-					reason: form.reason,
-				},
-			);
+			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/credit-note`, {
+				property_id: this.ctx.propertyId(),
+				credit_amount: form.credit_amount,
+				reason: form.reason,
+			});
 			this.toast.success("Credit note created.");
 			this.creditNoteInvoiceId.set(null);
 			await this.loadInvoices();
@@ -614,21 +590,65 @@ export class BillingComponent {
 		}
 	}
 
-	canVoidInvoice(invoice: InvoiceListItem): boolean {
-		return invoice.status === "draft";
+	readonly canVoidInvoice = canVoidInvoice;
+	readonly canFinalizeInvoice = canFinalizeInvoice;
+	readonly canCreditNote = canCreditNote;
+
+	// ── Invoice creation ──
+	toggleCreateInvoiceForm(): void {
+		this.showCreateInvoiceForm.set(!this.showCreateInvoiceForm());
 	}
-	canFinalizeInvoice(invoice: InvoiceListItem): boolean {
-		return invoice.status === "draft";
+	updateCreateInvoiceForm(
+		partial: Partial<{
+			reservation_id: string;
+			guest_id: string;
+			total_amount: number;
+			due_date: string;
+			notes: string;
+		}>,
+	): void {
+		this.createInvoiceForm.set({ ...this.createInvoiceForm(), ...partial });
 	}
-	canCreditNote(invoice: InvoiceListItem): boolean {
-		return invoice.status === "issued" || invoice.status === "paid";
+	async createInvoice(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		const form = this.createInvoiceForm();
+		if (!form.guest_id || form.total_amount <= 0) return;
+		this.creatingInvoice.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/invoices`, {
+				property_id: propertyId,
+				guest_id: form.guest_id,
+				reservation_id: form.reservation_id || undefined,
+				total_amount: form.total_amount,
+				due_date: form.due_date || undefined,
+				notes: form.notes || undefined,
+			});
+			this.toast.success("Invoice created.");
+			this.showCreateInvoiceForm.set(false);
+			this.createInvoiceForm.set({
+				reservation_id: "",
+				guest_id: "",
+				total_amount: 0,
+				due_date: "",
+				notes: "",
+			});
+			await this.loadInvoices();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to create invoice");
+		} finally {
+			this.creatingInvoice.set(false);
+		}
 	}
 
 	// ── Folio actions ──
 	toggleCreateFolioForm(): void {
 		this.showCreateFolioForm.set(!this.showCreateFolioForm());
 	}
-	updateCreateFolioForm(partial: Partial<{ folio_type: string; folio_name: string; notes: string }>): void {
+	updateCreateFolioForm(
+		partial: Partial<{ folio_type: string; folio_name: string; notes: string }>,
+	): void {
 		this.createFolioForm.set({ ...this.createFolioForm(), ...partial });
 	}
 	async createFolio(): Promise<void> {
@@ -655,104 +675,180 @@ export class BillingComponent {
 		}
 	}
 
+	// ── Post Charge actions ──
+	togglePostChargeForm(): void {
+		this.showPostChargeForm.set(!this.showPostChargeForm());
+	}
+	updatePostChargeForm(
+		partial: Partial<{
+			folio_id: string;
+			charge_code: string;
+			amount: number;
+			quantity: number;
+			description: string;
+			department_code: string;
+		}>,
+	): void {
+		this.postChargeForm.set({ ...this.postChargeForm(), ...partial });
+	}
+	async postCharge(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		const form = this.postChargeForm();
+		if (!form.folio_id || form.amount <= 0) return;
+		this.postingCharge.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/charges`, {
+				property_id: propertyId,
+				folio_id: form.folio_id,
+				charge_code: form.charge_code || "MISC",
+				amount: form.amount,
+				quantity: form.quantity || 1,
+				description: form.description || undefined,
+				department_code: form.department_code || undefined,
+			});
+			this.toast.success("Charge posted.");
+			this.showPostChargeForm.set(false);
+			this.postChargeForm.set({
+				folio_id: "",
+				charge_code: "MISC",
+				amount: 0,
+				quantity: 1,
+				description: "",
+				department_code: "",
+			});
+			await Promise.all([this.loadCharges(), this.loadFolios()]);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to post charge");
+		} finally {
+			this.postingCharge.set(false);
+		}
+	}
+
+	// ── Payment capture actions ──
+	toggleCapturePaymentForm(): void {
+		this.showCapturePaymentForm.set(!this.showCapturePaymentForm());
+	}
+	updateCapturePaymentForm(
+		partial: Partial<{
+			folio_id: string;
+			amount: number;
+			payment_method: string;
+			payment_reference: string;
+		}>,
+	): void {
+		this.capturePaymentForm.set({ ...this.capturePaymentForm(), ...partial });
+	}
+	async capturePayment(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		const form = this.capturePaymentForm();
+		if (form.amount <= 0 || !form.payment_reference) return;
+		this.capturingPayment.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/payments/capture`, {
+				property_id: propertyId,
+				folio_id: form.folio_id || undefined,
+				amount: form.amount,
+				payment_method: form.payment_method || "CASH",
+				payment_reference: form.payment_reference,
+			});
+			this.toast.success("Payment captured.");
+			this.showCapturePaymentForm.set(false);
+			this.capturePaymentForm.set({
+				folio_id: "",
+				amount: 0,
+				payment_method: "CASH",
+				payment_reference: "",
+			});
+			await Promise.all([this.loadPayments(), this.loadFolios()]);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to capture payment");
+		} finally {
+			this.capturingPayment.set(false);
+		}
+	}
+
+	// ── Charge void actions ──
+	showVoidCharge(postingId: string): void {
+		this.voidingChargeId.set(postingId);
+		this.voidChargeReason.set("");
+	}
+	cancelVoidCharge(): void {
+		this.voidingChargeId.set(null);
+	}
+	async voidCharge(charge: ChargePostingListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.processingChargeVoid.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/charges/${charge.id}/void`, {
+				posting_id: charge.id,
+				void_reason: this.voidChargeReason() || undefined,
+			});
+			this.toast.success("Charge voided.");
+			this.voidingChargeId.set(null);
+			await Promise.all([this.loadCharges(), this.loadFolios()]);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to void charge");
+		} finally {
+			this.processingChargeVoid.set(false);
+		}
+	}
+	readonly canVoidCharge = canVoidCharge;
+
+	// ── Folio close actions ──
+	showCloseFolio(folioId: string): void {
+		this.closingFolioId.set(folioId);
+		this.closeFolioReason.set("");
+		this.closeFolioForce.set(false);
+	}
+	cancelCloseFolio(): void {
+		this.closingFolioId.set(null);
+	}
+	async closeFolio(folio: FolioListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.processingFolioClose.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/folios/close`, {
+				property_id: propertyId,
+				folio_id: folio.id,
+				close_reason: this.closeFolioReason() || undefined,
+				force: this.closeFolioForce(),
+			});
+			this.toast.success("Folio closed.");
+			this.closingFolioId.set(null);
+			await this.loadFolios();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to close folio");
+		} finally {
+			this.processingFolioClose.set(false);
+		}
+	}
+	readonly canCloseFolio = canCloseFolio;
+
 	async selectFolio(folio: FolioListItem): Promise<void> {
-		if (this.selectedFolioId() === folio.id) {
-			this.selectedFolioId.set(null);
-			return;
-		}
-		this.selectedFolioId.set(folio.id);
-		this.folioChargesLoading.set(true);
-		try {
-			const tenantId = this.auth.tenantId();
-			const params: Record<string, string> = { tenant_id: tenantId ?? "", folio_id: folio.id, limit: "200" };
-			const propertyId = this.ctx.propertyId();
-			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ChargePostingListResponse>("/billing/charges", params);
-			this.folioCharges.set(res.data ?? []);
-		} catch {
-			this.folioCharges.set([]);
-		} finally {
-			this.folioChargesLoading.set(false);
-		}
+		await this.data.selectFolio(folio);
 	}
 
-	// ── Data loading ──
-	loadAll(): void {
-		this.loadPayments();
-		this.loadInvoices();
-		this.loadFolios();
-		this.loadCharges();
+	// ── Data loading (delegated to BillingDataService) ──
+	refreshAll(): void {
+		this.data.loadForView(this.activeView());
 	}
-
-	async loadPayments(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.paymentsLoading.set(true);
-		this.paymentsError.set(null);
-		try {
-			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
-			const propertyId = this.ctx.propertyId();
-			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<BillingPaymentListResponse>("/billing/payments", params);
-			this.payments.set(res.data ?? []);
-		} catch (e) {
-			this.paymentsError.set(e instanceof Error ? e.message : "Failed to load payments");
-		} finally {
-			this.paymentsLoading.set(false);
-		}
+	loadPayments(): Promise<void> {
+		return this.data.loadPayments();
 	}
-
-	async loadInvoices(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.invoicesLoading.set(true);
-		this.invoicesError.set(null);
-		try {
-			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
-			const propertyId = this.ctx.propertyId();
-			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<InvoiceListResponse>("/billing/invoices", params);
-			this.invoices.set(res.data ?? []);
-		} catch (e) {
-			this.invoicesError.set(e instanceof Error ? e.message : "Failed to load invoices");
-		} finally {
-			this.invoicesLoading.set(false);
-		}
+	loadInvoices(): Promise<void> {
+		return this.data.loadInvoices();
 	}
-
-	async loadFolios(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.foliosLoading.set(true);
-		this.foliosError.set(null);
-		try {
-			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
-			const propertyId = this.ctx.propertyId();
-			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<FolioListResponse>("/billing/folios", params);
-			this.folios.set(res.data ?? []);
-		} catch (e) {
-			this.foliosError.set(e instanceof Error ? e.message : "Failed to load folios");
-		} finally {
-			this.foliosLoading.set(false);
-		}
+	loadFolios(): Promise<void> {
+		return this.data.loadFolios();
 	}
-
-	async loadCharges(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.chargesLoading.set(true);
-		this.chargesError.set(null);
-		try {
-			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
-			const propertyId = this.ctx.propertyId();
-			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ChargePostingListResponse>("/billing/charges", params);
-			this.charges.set(res.data ?? []);
-		} catch (e) {
-			this.chargesError.set(e instanceof Error ? e.message : "Failed to load charges");
-		} finally {
-			this.chargesLoading.set(false);
-		}
+	loadCharges(): Promise<void> {
+		return this.data.loadCharges();
 	}
 }

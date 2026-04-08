@@ -1,7 +1,11 @@
 import { buildRouteSchema, jsonArraySchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance } from "fastify";
 
-import { getModuleCatalog, getTenantModules } from "../services/tenant-module-service.js";
+import {
+  getModuleCatalog,
+  getTenantModules,
+  updateTenantModules,
+} from "../services/tenant-module-service.js";
 
 const MODULES_TAG = "Modules";
 
@@ -52,6 +56,45 @@ export const registerModuleRoutes = (app: FastifyInstance): void => {
       const { tenantId } = request.params as { tenantId: string };
       const modules = await getTenantModules(tenantId);
       return modules;
+    },
+  );
+
+  app.put<{ Params: { tenantId: string }; Body: { modules: string[] } }>(
+    "/v1/tenants/:tenantId/modules",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.params as { tenantId: string }).tenantId,
+        minRole: "ADMIN",
+      }),
+      schema: buildRouteSchema({
+        tag: MODULES_TAG,
+        summary: "Enable modules for a tenant",
+        params: {
+          type: "object",
+          properties: {
+            tenantId: { type: "string", format: "uuid" },
+          },
+          required: ["tenantId"],
+        },
+        body: {
+          type: "object",
+          properties: {
+            modules: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+          required: ["modules"],
+        },
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenantId } = request.params;
+      const { modules } = request.body;
+      return updateTenantModules(tenantId, modules);
     },
   );
 };

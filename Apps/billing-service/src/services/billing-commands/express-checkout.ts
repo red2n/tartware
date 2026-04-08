@@ -36,15 +36,15 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
 
   // 2. Check folio balance
   if (!command.skip_balance_check) {
-    const { rows: balanceRows } = await query<{ balance_due: number }>(
-      `SELECT COALESCE(balance_due, 0) AS balance_due
+    const { rows: balanceRows } = await query<{ balance: number }>(
+      `SELECT COALESCE(balance, 0) AS balance
 			 FROM folios
 			 WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
 			   AND COALESCE(is_deleted, false) = false`,
       [tenantId, folioId],
     );
 
-    const balance = balanceRows[0]?.balance_due ?? 0;
+    const balance = balanceRows[0]?.balance ?? 0;
     if (balance > 0) {
       throw new BillingCommandError(
         "BALANCE_NOT_ZERO",
@@ -56,14 +56,13 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
   // 3. Close the folio
   await query(
     `UPDATE folios
-		 SET status = 'closed',
+		 SET folio_status = 'CLOSED',
 		     closed_at = NOW(),
-		     closed_by = $3::uuid,
 		     updated_at = NOW(),
 		     updated_by = $3::uuid
 		 WHERE tenant_id = $1::uuid
 		   AND folio_id = $2::uuid
-		   AND status != 'closed'`,
+		   AND folio_status != 'CLOSED'`,
     [tenantId, folioId, asUuid(actorId)],
   );
 
@@ -81,13 +80,13 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
   // 5. Update reservation status to checked_out
   await query(
     `UPDATE reservations
-		 SET status = 'checked_out',
+		 SET status = 'CHECKED_OUT',
 		     actual_check_out = NOW(),
 		     updated_at = NOW(),
 		     updated_by = $3::uuid
 		 WHERE tenant_id = $1::uuid
 		   AND id = $2::uuid
-		   AND status = 'checked_in'`,
+		   AND status = 'CHECKED_IN'`,
     [tenantId, command.reservation_id, asUuid(actorId)],
   );
 
@@ -95,8 +94,8 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
   if (roomNumber) {
     await query(
       `UPDATE rooms
-			 SET housekeeping_status = 'dirty',
-			     occupancy_status = 'vacant',
+			 SET housekeeping_status = 'DIRTY',
+			     status = 'DIRTY',
 			     updated_at = NOW(),
 			     updated_by = $3::uuid
 			 WHERE tenant_id = $1::uuid

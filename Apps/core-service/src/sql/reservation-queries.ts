@@ -56,6 +56,7 @@ export const RESERVATION_LIST_SQL = `
       OR r.guest_email ILIKE $5
       OR r.confirmation_number ILIKE $5
     )
+    AND ($7::uuid IS NULL OR r.guest_id = $7::uuid)
   ORDER BY r.check_in_date DESC, r.created_at DESC
   LIMIT $1
   OFFSET $6

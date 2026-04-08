@@ -47,6 +47,7 @@ export const BILLING_PAYMENT_LIST_SQL = `
       $6::text IS NULL
       OR p.payment_method = UPPER($6::text)::payment_method
     )
+    AND ($8::uuid IS NULL OR p.reservation_id = $8::uuid)
   ORDER BY p.processed_at DESC NULLS LAST, p.created_at DESC
   LIMIT $1
   OFFSET $7
@@ -220,6 +221,8 @@ export const CASHIER_SESSION_LIST_SQL = `
   WHERE tenant_id = $2::uuid
     AND ($3::uuid IS NULL OR property_id = $3::uuid)
     AND ($4::text IS NULL OR session_status = $4::text)
+    AND ($6::uuid IS NULL OR cashier_id = $6::uuid)
+    AND ($7::text IS NULL OR shift_type = $7::text)
   ORDER BY opened_at DESC
   LIMIT $1
   OFFSET $5

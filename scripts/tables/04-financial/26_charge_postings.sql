@@ -115,6 +115,7 @@ CREATE TABLE charge_postings (
 
         created_by UUID,
         updated_by UUID,
+        updated_at TIMESTAMP, -- Last modification timestamp
 
     -- Soft Delete
     is_deleted BOOLEAN DEFAULT FALSE,

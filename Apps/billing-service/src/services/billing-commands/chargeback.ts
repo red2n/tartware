@@ -19,9 +19,10 @@ export const recordChargeback = async (
     id: string;
     amount: string;
     reservation_id: string | null;
+    guest_id: string | null;
     status: string;
   }>(
-    `SELECT id, amount, reservation_id, status
+    `SELECT id, amount, reservation_id, guest_id, status
      FROM public.payments
      WHERE tenant_id = $1::uuid AND payment_reference = $2
      ORDER BY created_at DESC LIMIT 1`,
@@ -50,19 +51,30 @@ export const recordChargeback = async (
     );
   }
 
+  if (!payment.guest_id) {
+    throw new BillingCommandError(
+      "MISSING_GUEST_ID",
+      `Cannot record chargeback: payment ${command.payment_reference} has no associated guest.`,
+    );
+  }
+
   // Insert a refund row with chargeback fields set
-  const { rows: refundRows } = await query<{ id: string }>(
+  const { rows: refundRows } = await query<{ refund_id: string }>(
     `INSERT INTO public.refunds (
-       tenant_id, property_id, payment_id, refund_amount, currency,
-       refund_reason, request_source, status,
+       tenant_id, property_id, original_payment_id, guest_id,
+       refund_amount, currency_code, refund_type, refund_method,
+       reason_category, reason_description, request_source, refund_status,
        is_chargeback, chargeback_date, chargeback_reason, chargeback_reference,
-       processed_at, processed_by, created_by, updated_by
+       approved_at, approved_by,
+       completed_at, processed_by, requested_by, created_by, updated_by
      ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, $4, 'USD',
-       $5, 'CHARGEBACK', 'COMPLETED',
-       true, COALESCE($6, CURRENT_DATE), $5, $7,
-       NOW(), $8, $8, $8
-     ) RETURNING id`,
+       $1::uuid, $2::uuid, $3::uuid, $9::uuid,
+       $4, 'USD', 'DISPUTE', 'ORIGINAL_PAYMENT_METHOD',
+       'DISPUTE', $5::text, 'CHARGEBACK', 'COMPLETED',
+       true, COALESCE($6::date, CURRENT_DATE), $5::varchar, $7::varchar,
+       NOW(), $8::uuid,
+       NOW(), $8::uuid, $8::uuid, $8::uuid, $8::uuid
+     ) RETURNING refund_id`,
     [
       context.tenantId,
       command.property_id,
@@ -72,20 +84,22 @@ export const recordChargeback = async (
       command.chargeback_date ?? null,
       command.chargeback_reference ?? null,
       actor,
+      payment.guest_id,
     ],
   );
 
-  const refundId = refundRows[0]?.id;
+  const refundId = refundRows[0]?.refund_id;
 
   // Update the original payment status
   await query(
     `UPDATE public.payments
-     SET status = CASE
+     SET status = (CASE
        WHEN $3 >= amount THEN 'REFUNDED'
        ELSE 'PARTIALLY_REFUNDED'
-     END,
+     END)::payment_status,
      refund_amount = COALESCE(refund_amount, 0) + $3,
-     updated_at = NOW(), updated_by = $4
+     version = version + 1,
+     updated_at = NOW(), updated_by = $4::uuid
      WHERE tenant_id = $1::uuid AND id = $2::uuid`,
     [context.tenantId, payment.id, command.chargeback_amount, actor],
   );
@@ -94,7 +108,7 @@ export const recordChargeback = async (
   if (payment.reservation_id) {
     await query(
       `WITH target_folio AS (
-         SELECT id
+         SELECT folio_id
          FROM public.folios
          WHERE tenant_id = $1::uuid
            AND reservation_id = $2::uuid
@@ -107,7 +121,7 @@ export const recordChargeback = async (
            total_payments = f.total_payments - $3,
            updated_at = NOW()
        FROM target_folio tf
-       WHERE f.id = tf.id`,
+       WHERE f.folio_id = tf.folio_id`,
       [context.tenantId, payment.reservation_id, command.chargeback_amount],
     );
   }
