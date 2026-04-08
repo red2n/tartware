@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   SystemBootstrapTenantSchema,
@@ -74,12 +75,14 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
       try {
         await client.query("BEGIN");
 
+        const newTenantId = randomUUID();
         const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
           `INSERT INTO tenants
-            (id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
-           VALUES (uuid_generate_v4(), $1, $2, $3, 'ACTIVE', $4, $5, $6, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $7, $7)
+            (id, tenant_id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)
+           VALUES ($1, $1, $2, $3, $4, 'ACTIVE', $5, $6, $7, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $8, $8)
            RETURNING id, name, slug`,
           [
+            newTenantId,
             tenantInput.name,
             tenantSlug,
             tenantInput.type,
@@ -97,10 +100,12 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
 
         const userResult = await client.query<{ id: string; username: string; email: string }>(
           `INSERT INTO users
-            (username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
-           VALUES ($1, $2, $3, $4, $5, $6, true, false, $7, $7)
+            (id, tenant_id, username, email, password_hash, first_name, last_name, phone, mfa_secret, is_active, is_verified, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '0000000000000000', true, false, $9, $9)
            RETURNING id, username, email`,
           [
+            randomUUID(),
+            tenant.id,
             ownerInput.username,
             ownerInput.email,
             passwordHash,
@@ -211,10 +216,18 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
       const data = SystemCreateTenantSchema.parse(request.body);
 
       const { rows } = await query<{ id: string; name: string; slug: string }>(
-        `INSERT INTO tenants (name, slug, type, status, email, phone, website, config, subscription, metadata)
-         VALUES ($1, $2, $3, 'ACTIVE', $4, $5, $6, '{}', '{}', '{}')
+        `INSERT INTO tenants (id, tenant_id, name, slug, type, status, email, phone, website, config, subscription, metadata)
+         VALUES ($1, $1, $2, $3, $4, 'ACTIVE', $5, $6, $7, '{}', '{}', '{}')
          RETURNING id, name, slug`,
-        [data.name, data.slug, data.type, data.email, data.phone || null, data.website || null],
+        [
+          randomUUID(),
+          data.name,
+          data.slug,
+          data.type,
+          data.email,
+          data.phone || null,
+          data.website || null,
+        ],
       );
 
       const tenant = rows[0];

@@ -30,6 +30,7 @@ import {
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
+  tenantReservationParamsSchema,
   tenantTaxConfigParamsSchema,
 } from "./schemas.js";
 
@@ -780,6 +781,225 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         commandName: "billing.tax_config.delete",
         paramKey: "taxConfigId",
         payloadKey: "tax_config_id",
+      }),
+  );
+
+  // ============================================================================
+  // FOLIO LIFECYCLE COMMANDS (reopen, merge)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/:folioId/reopen",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Reopen a settled or closed folio for further postings.",
+        params: tenantFolioParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.folio.reopen",
+        paramKey: "folioId",
+        payloadKey: "folio_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/merge",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Merge a source folio into a target folio.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.folio.merge",
+      }),
+  );
+
+  // ============================================================================
+  // INVOICE LIFECYCLE COMMANDS (reopen)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/invoices/:invoiceId/reopen",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Reopen a finalized invoice as a new draft correction.",
+        params: tenantInvoiceParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.invoice.reopen",
+        paramKey: "invoiceId",
+        payloadKey: "invoice_id",
+      }),
+  );
+
+  // ============================================================================
+  // CHARGEBACK STATUS COMMAND
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/payments/:paymentId/chargeback/status",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary:
+          "Advance a chargeback through its state machine (RECEIVED → EVIDENCE_SUBMITTED → WON|LOST).",
+        params: tenantPaymentParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.chargeback.update_status",
+        paramKey: "paymentId",
+        payloadKey: "refund_id",
+      }),
+  );
+
+  // ============================================================================
+  // RESERVATION CHARGE COMMANDS (no-show, late checkout, cancellation penalty)
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/reservations/:reservationId/no-show-charge",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post a no-show penalty charge to the reservation folio.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.no_show.charge",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/reservations/:reservationId/late-checkout-charge",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post a late checkout fee to the reservation folio (tier-based calculation).",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.late_checkout.charge",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/reservations/:reservationId/cancellation-penalty",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post a cancellation penalty charge per rate plan policy.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.cancellation.penalty",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  // ============================================================================
+  // TAX EXEMPTION COMMAND
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/folios/:folioId/tax-exemption",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Apply a tax exemption certificate to an open folio.",
+        params: tenantFolioParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.tax_exemption.apply",
+        paramKey: "folioId",
+        payloadKey: "folio_id",
+      }),
+  );
+
+  // ============================================================================
+  // COMP POSTING COMMAND
+  // ============================================================================
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/charges/comp",
+    {
+      preHandler: tenantScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post a complimentary charge to a folio for budget tracking.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithTenant({
+        request,
+        reply,
+        commandName: "billing.comp.post",
       }),
   );
 

@@ -45,7 +45,11 @@ import {
   writeOffAr,
 } from "../services/billing-command-service.js";
 import {
+  applyTaxExemption,
   cashierHandover,
+  chargeCancellationPenalty,
+  chargeLateCheckout,
+  chargeNoShow,
   closeFiscalPeriod,
   createCreditNote,
   createFolio,
@@ -54,7 +58,12 @@ import {
   deleteTaxConfig,
   expressCheckout,
   lockFiscalPeriod,
+  mergeFolios,
+  postComp,
   reopenFiscalPeriod,
+  reopenFolio,
+  reopenInvoice,
+  updateChargebackStatus,
   updateTaxConfig,
   voidInvoice,
 } from "../services/billing-commands/index.js";
@@ -308,6 +317,60 @@ const routeBillingCommand = async (
       return;
     case "billing.credit_note.create":
       await createCreditNote(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.invoice.reopen":
+      await reopenInvoice(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.reopen":
+      await reopenFolio(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.merge":
+      await mergeFolios(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.chargeback.update_status":
+      await updateChargebackStatus(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.no_show.charge":
+      await chargeNoShow(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.late_checkout.charge":
+      await chargeLateCheckout(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.tax_exemption.apply":
+      await applyTaxExemption(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cancellation.penalty":
+      await chargeCancellationPenalty(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.comp.post":
+      await postComp(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

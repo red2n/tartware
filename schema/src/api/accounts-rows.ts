@@ -19,7 +19,7 @@ export type InvoiceRow = {
 	confirmation_number: string | null;
 	guest_id: string;
 	guest_name: string | null;
-	invoice_number: string;
+	invoice_number: string | null;
 	invoice_type: string | null;
 	invoice_date: string | Date;
 	due_date: string | Date | null;

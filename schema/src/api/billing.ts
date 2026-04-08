@@ -76,7 +76,7 @@ export const InvoiceListItemSchema = z.object({
 	confirmation_number: z.string().optional(),
 	guest_id: uuid,
 	guest_name: z.string().optional(),
-	invoice_number: z.string(),
+	invoice_number: z.string().nullable(),
 	invoice_type: z.string(),
 	invoice_type_display: z.string(),
 	invoice_date: z.string(),
