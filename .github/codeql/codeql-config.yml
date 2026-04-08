@@ -39,10 +39,11 @@ paths-ignore:
   - "**/*.test.ts"
   - "**/*.spec.ts"
   - "**/test-utils/**"
-  # Scripts (dev tooling, not production code)
+  # Scripts (dev tooling & CLI ops tools, not production code)
   - scripts/**
   - executables/**
   - loadtest/**
+  - "Apps/*/scripts/**"
   # UI (separate CI pipeline)
   - UI/**
   # Proto generated stubs
