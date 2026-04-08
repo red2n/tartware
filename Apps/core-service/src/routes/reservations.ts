@@ -15,6 +15,7 @@ import {
 const ReservationListQuerySchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid().optional(),
+  guest_id: z.string().uuid().optional(),
   status: z
     .string()
     .toLowerCase()
@@ -109,12 +110,13 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, status, search, limit, offset } =
+      const { tenant_id, property_id, guest_id, status, search, limit, offset } =
         ReservationListQuerySchema.parse(request.query);
 
       const reservations = await listReservations({
         tenantId: tenant_id,
         propertyId: property_id,
+        guestId: guest_id,
         status,
         search,
         limit,

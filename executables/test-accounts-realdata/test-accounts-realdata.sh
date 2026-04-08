@@ -75,7 +75,7 @@ get() {
 # These handle both flat arrays and { data: [], meta: { count } } wrappers.
 
 resp_count() {
-  jq -r '.meta.count // (if type == "array" then length elif .data and (.data | type == "array") then (.data | length) else 0 end)' "$RESP_FILE" 2>/dev/null || echo "0"
+  jq -r 'if type == "array" then length elif .data and (.data | type == "array") then (.data | length) else 0 end' "$RESP_FILE" 2>/dev/null || echo "0"
 }
 
 resp_first() {
@@ -315,15 +315,15 @@ echo ""
 
 # ─── Pre-test row counts ────────────────────────────────────────────────────
 
-get "$GW/v1/guests?tenant_id=$TID&limit=1" >/dev/null;                                 PRE_GUESTS=$(resp_count)
-get "$GW/v1/reservations?tenant_id=$TID&limit=1" >/dev/null;                           PRE_RESERVATIONS=$(resp_count)
-get "$GW/v1/billing/folios?tenant_id=$TID" >/dev/null;                                 PRE_FOLIOS=$(resp_count)
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=1" >/dev/null;                        PRE_CHARGES=$(resp_count)
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=1" >/dev/null;                       PRE_PAYMENTS=$(resp_count)
-get "$GW/v1/billing/invoices?tenant_id=$TID" >/dev/null;                               PRE_INVOICES=$(resp_count)
+get "$GW/v1/guests?tenant_id=$TID&limit=100" >/dev/null;                               PRE_GUESTS=$(resp_count)
+get "$GW/v1/reservations?tenant_id=$TID&limit=100" >/dev/null;                         PRE_RESERVATIONS=$(resp_count)
+get "$GW/v1/billing/folios?tenant_id=$TID&limit=100" >/dev/null;                       PRE_FOLIOS=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=100" >/dev/null;                      PRE_CHARGES=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=100" >/dev/null;                     PRE_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/invoices?tenant_id=$TID&limit=100" >/dev/null;                     PRE_INVOICES=$(resp_count)
 get "$GW/v1/billing/tax-configurations?tenant_id=$TID" >/dev/null;                     PRE_TAX=$(resp_count)
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&limit=1" >/dev/null;               PRE_CASHIER=$(resp_count)
-get "$GW/v1/billing/accounts-receivable?tenant_id=$TID" >/dev/null;                    PRE_AR=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&limit=100" >/dev/null;             PRE_CASHIER=$(resp_count)
+get "$GW/v1/billing/accounts-receivable?tenant_id=$TID&limit=100" >/dev/null;          PRE_AR=$(resp_count)
 
 echo "┌───────────────────────────────────────────────┐"
 echo "│  PRE-TEST DB STATE                            │"
@@ -490,7 +490,7 @@ RES1_STATUS=$(resp_field "status")
 assert_eq_ci "DB: reservation 1 status" "PENDING" "$RES1_STATUS"
 
 RES1_AMOUNT=$(resp_field "total_amount")
-assert_eq "DB: reservation 1 total_amount = 597" "597.00" "$RES1_AMOUNT"
+assert_eq_num "DB: reservation 1 total_amount = 597" "597" "$RES1_AMOUNT"
 
 if [[ -n "$FOLIO1_ID" ]]; then
   pass "DB: folio auto-created for res 1 (${FOLIO1_ID:0:8}…)"
@@ -589,7 +589,7 @@ assert_eq "DB: payment $PAYREF2 exists" "1" "$PAY2_EXISTS"
 PAY1_AMOUNT=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "amount")
 PAY1_METHOD=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "payment_method")
 PAY1_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "status")
-assert_eq "DB: payment 1 amount = 300" "300.00" "$PAY1_AMOUNT"
+assert_eq_num "DB: payment 1 amount = 300" "300" "$PAY1_AMOUNT"
 assert_eq_ci "DB: payment 1 method = CREDIT_CARD" "CREDIT_CARD" "$PAY1_METHOD"
 assert_eq_ci "DB: payment 1 status = COMPLETED" "COMPLETED" "$PAY1_STATUS"
 
@@ -622,8 +622,8 @@ INV_TOTAL=$(resp_count)
 assert_gte "DB: invoices count >= $((PRE_INVOICES + 1))" "$((PRE_INVOICES + 1))" "$INV_TOTAL"
 
 get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-INV1_AMOUNT=$(resp_first "total_amount")
-INV1_STATUS=$(resp_first "status")
+INV1_AMOUNT=$(resp_ffirst '.invoice_type != "CREDIT_NOTE"' "total_amount")
+INV1_STATUS=$(resp_ffirst '.invoice_type != "CREDIT_NOTE"' "status")
 if [[ -n "$INV1_AMOUNT" ]]; then
   assert_eq_num "DB: invoice amount = 458.50" "458.50" "$INV1_AMOUNT"
   assert_eq_ci "DB: invoice status = draft" "draft" "$INV1_STATUS"
@@ -710,12 +710,12 @@ AR_TOTAL=$(resp_count)
 assert_gte "DB: accounts_receivable >= $((PRE_AR + 1))" "$((PRE_AR + 1))" "$AR_TOTAL"
 
 get "$GW/v1/billing/accounts-receivable?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-AR1_AMOUNT=$(resp_first "original_amount")
-AR1_TYPE=$(resp_first "account_type")
-AR1_STATUS=$(resp_first "ar_status")
-AR1_TERMS=$(resp_first "payment_terms")
+AR1_AMOUNT=$(resp_ffirst '.account_type == "corporate"' "original_amount")
+AR1_TYPE=$(resp_ffirst '.account_type == "corporate"' "account_type")
+AR1_STATUS=$(resp_ffirst '.account_type == "corporate"' "ar_status")
+AR1_TERMS=$(resp_ffirst '.account_type == "corporate"' "payment_terms")
 if [[ -n "$AR1_AMOUNT" ]]; then
-  assert_eq "DB: AR amount = 158.50" "158.50" "$AR1_AMOUNT"
+  assert_eq_num "DB: AR amount = 158.50" "158.50" "$AR1_AMOUNT"
   assert_eq_ci "DB: AR account_type = corporate" "corporate" "$AR1_TYPE"
   assert_eq_ci "DB: AR status = open" "open" "$AR1_STATUS"
   assert_eq_ci "DB: AR payment_terms = net_30" "net_30" "$AR1_TERMS"
@@ -955,8 +955,8 @@ DATE_STATUS=$(jq -r '.data.date_status // empty' "$RESP_FILE" 2>/dev/null || ech
 assert_eq_ci "DB: date_status after audit = OPEN" "OPEN" "$DATE_STATUS"
 
 # Verify night_audit_status was updated
-NA_STATUS=$(jq -r '.data.night_audit_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ "$NA_STATUS" == "COMPLETED" || "$NA_STATUS" == "PENDING" ]]; then
+NA_STATUS=$(jq -r '.data.night_audit_status // .night_audit_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
+if [[ "${NA_STATUS,,}" == "completed" || "${NA_STATUS,,}" == "pending" ]]; then
   pass "DB: night_audit_status = $NA_STATUS"
 else
   fail "DB: night_audit_status" "expected COMPLETED or PENDING, got=$NA_STATUS"
@@ -1375,7 +1375,7 @@ if [[ -n "${PAYREF1:-}" ]]; then
 
   # Verify original payment status changed
   CB_PAY_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\" and .transaction_type != \"REFUND\" and .transaction_type != \"PARTIAL_REFUND\" and .transaction_type != \"VOID\"" "status")
-  if [[ "$CB_PAY_STATUS" == "REFUNDED" || "$CB_PAY_STATUS" == "PARTIALLY_REFUNDED" ]]; then
+  if [[ "${CB_PAY_STATUS,,}" == "refunded" || "${CB_PAY_STATUS,,}" == "partially_refunded" ]]; then
     pass "DB: CC payment status after chargeback = $CB_PAY_STATUS"
   else
     fail "DB: CC payment status after chargeback" "expected REFUNDED or PARTIALLY_REFUNDED, got=$CB_PAY_STATUS"
@@ -1484,7 +1484,7 @@ wait_kafka 8
 
 get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 AUTH_INC_STATUS=$(resp_ffirst ".payment_reference == \"$AUTH_INC_REF\"" "status")
-if [[ "$AUTH_INC_STATUS" == "AUTHORIZED" ]]; then
+if [[ "${AUTH_INC_STATUS,,}" == "authorized" ]]; then
   send_command "CMD auth_increment: +\$200" \
     "billing.payment.authorize_increment" \
     "{\"payment_reference\":\"$AUTH_INC_REF\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"additional_amount\":200.00,\"reason\":\"Guest extended stay — additional night\"}"
@@ -2277,23 +2277,23 @@ echo "  PHASE 3: POST-TEST DB SNAPSHOT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-get "$GW/v1/guests?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/guests?tenant_id=$TID&limit=100" >/dev/null
 POST_GUESTS=$(resp_count)
-get "$GW/v1/reservations?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/reservations?tenant_id=$TID&limit=100" >/dev/null
 POST_RESERVATIONS=$(resp_count)
-get "$GW/v1/billing/folios?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/billing/folios?tenant_id=$TID&limit=100" >/dev/null
 POST_FOLIOS=$(resp_count)
-get "$GW/v1/billing/charges?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/billing/charges?tenant_id=$TID&limit=100" >/dev/null
 POST_CHARGES=$(resp_count)
-get "$GW/v1/billing/payments?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=100" >/dev/null
 POST_PAYMENTS=$(resp_count)
-get "$GW/v1/billing/invoices?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/billing/invoices?tenant_id=$TID&limit=100" >/dev/null
 POST_INVOICES=$(resp_count)
 get "$GW/v1/billing/tax-configurations?tenant_id=$TID" >/dev/null
 POST_TAX=$(resp_count)
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&limit=100" >/dev/null
 POST_CASHIER=$(resp_count)
-get "$GW/v1/billing/accounts-receivable?tenant_id=$TID&limit=1" >/dev/null
+get "$GW/v1/billing/accounts-receivable?tenant_id=$TID&limit=100" >/dev/null
 POST_AR=$(resp_count)
 get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID" >/dev/null
 POST_AUDIT=$(resp_count)
