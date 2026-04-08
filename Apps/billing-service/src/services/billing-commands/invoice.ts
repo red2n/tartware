@@ -329,7 +329,7 @@ export const createCreditNote = async (
        metadata, created_by, updated_by
      ) VALUES (
        $1::uuid, $2::uuid, $3, $4,
-       $5, CURRENT_DATE, -$6, -$6,
+       $5, CURRENT_DATE, -($6::numeric), -($6::numeric),
        UPPER($7), $8, 'FINALIZED', 'CREDIT_NOTE',
        $9::uuid, 'FULL_REVERSAL',
        $10::jsonb, $11, $11

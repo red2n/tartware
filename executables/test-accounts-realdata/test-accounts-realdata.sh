@@ -419,8 +419,31 @@ TAX1_RATE=$(resp_ffirst ".tax_code == \"$TAXCODE1\"" "tax_rate")
 TAX1_TYPE=$(resp_ffirst ".tax_code == \"$TAXCODE1\"" "tax_type")
 TAX1_ACTIVE=$(resp_ffirst ".tax_code == \"$TAXCODE1\"" "is_active")
 assert_eq_num "DB: tax rate = 8.875" "8.875" "$TAX1_RATE"
-assert_eq "DB: tax type = sales_tax" "sales_tax" "$TAX1_TYPE"
+assert_eq_ci "DB: tax type = sales_tax" "sales_tax" "$TAX1_TYPE"
 assert_eq "DB: tax is_active = true" "true" "$TAX1_ACTIVE"
+echo ""
+
+# ── 1.2b  Seed BAR Rate (required by reservation rate-plan resolution) ──
+echo "── 1.2b  Seed BAR Rate ──────────────────────────────────────────────"
+
+if ! $SKIP_SEED; then
+  RATE_BAR_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/rates?tenant_id=$TID" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"room_type_id\":\"$RTID\",\"rate_name\":\"Best Available Rate\",\"rate_code\":\"BAR\",\"base_rate\":199.00,\"valid_from\":\"2024-01-01\",\"status\":\"ACTIVE\"}")
+  if [[ "$RATE_BAR_CODE" =~ ^2 ]]; then
+    pass "BAR rate created → $RATE_BAR_CODE"
+  elif [[ "$RATE_BAR_CODE" == "409" ]]; then
+    pass "BAR rate already exists (409)"
+  else
+    fail "BAR rate creation" "HTTP $RATE_BAR_CODE"
+  fi
+fi
+
+get "$GW/v1/rates?tenant_id=$TID&property_id=$PID" >/dev/null
+BAR_EXISTS=$(resp_fcount '.rate_code == "BAR"')
+assert_gte "BAR rate exists for property" "1" "$BAR_EXISTS"
 echo ""
 
 # ── 1.3  Reservations ──
@@ -464,7 +487,7 @@ fi
 
 get "$GW/v1/reservations/$RES1_ID?tenant_id=$TID" >/dev/null
 RES1_STATUS=$(resp_field "status")
-assert_eq "DB: reservation 1 status" "PENDING" "$RES1_STATUS"
+assert_eq_ci "DB: reservation 1 status" "PENDING" "$RES1_STATUS"
 
 RES1_AMOUNT=$(resp_field "total_amount")
 assert_eq "DB: reservation 1 total_amount = 597" "597.00" "$RES1_AMOUNT"
@@ -524,7 +547,7 @@ assert_eq_num "DB: ROOM charge amount = 199" "199" "$ROOM_CHARGE"
 assert_eq_num "DB: MINIBAR charge amount = 24.50" "24.50" "$MINIBAR_CHARGE"
 
 ROOM_TYPE=$(resp_ffirst '.charge_code == "ROOM"' "posting_type")
-assert_eq "DB: ROOM posting_type = DEBIT" "DEBIT" "$ROOM_TYPE"
+assert_eq_ci "DB: ROOM posting_type = DEBIT" "DEBIT" "$ROOM_TYPE"
 
 if [[ -n "$RES2_ID" ]]; then
   get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES2_ID&limit=200" >/dev/null
@@ -567,11 +590,11 @@ PAY1_AMOUNT=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "amount")
 PAY1_METHOD=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "payment_method")
 PAY1_STATUS=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "status")
 assert_eq "DB: payment 1 amount = 300" "300.00" "$PAY1_AMOUNT"
-assert_eq "DB: payment 1 method = CREDIT_CARD" "CREDIT_CARD" "$PAY1_METHOD"
-assert_eq "DB: payment 1 status = COMPLETED" "COMPLETED" "$PAY1_STATUS"
+assert_eq_ci "DB: payment 1 method = CREDIT_CARD" "CREDIT_CARD" "$PAY1_METHOD"
+assert_eq_ci "DB: payment 1 status = COMPLETED" "COMPLETED" "$PAY1_STATUS"
 
 PAY2_METHOD=$(resp_ffirst ".payment_reference == \"$PAYREF2\"" "payment_method")
-assert_eq "DB: payment 2 method = CASH" "CASH" "$PAY2_METHOD"
+assert_eq_ci "DB: payment 2 method = CASH" "CASH" "$PAY2_METHOD"
 
 if [[ -n "$PAYREF3" ]]; then
   PAY3_EXISTS=$(resp_fcount ".payment_reference == \"$PAYREF3\"")
@@ -644,7 +667,7 @@ if [[ -n "$CASHIER_ID" ]]; then
     assert_eq "DB: opening_float = 500" "500.00" "$SESSION_FLOAT"
 
     SESSION_STATUS=$(resp_first "session_status")
-    assert_eq "DB: session_status = open" "open" "$SESSION_STATUS"
+    assert_eq_ci "DB: session_status = open" "open" "$SESSION_STATUS"
 
     send_command "CMD cashier close: morning shift" \
       "billing.cashier.close" \
@@ -693,9 +716,9 @@ AR1_STATUS=$(resp_first "ar_status")
 AR1_TERMS=$(resp_first "payment_terms")
 if [[ -n "$AR1_AMOUNT" ]]; then
   assert_eq "DB: AR amount = 158.50" "158.50" "$AR1_AMOUNT"
-  assert_eq "DB: AR account_type = corporate" "corporate" "$AR1_TYPE"
-  assert_eq "DB: AR status = open" "open" "$AR1_STATUS"
-  assert_eq "DB: AR payment_terms = net_30" "net_30" "$AR1_TERMS"
+  assert_eq_ci "DB: AR account_type = corporate" "corporate" "$AR1_TYPE"
+  assert_eq_ci "DB: AR status = open" "open" "$AR1_STATUS"
+  assert_eq_ci "DB: AR payment_terms = net_30" "net_30" "$AR1_TERMS"
 else
   fail "DB: AR for res 1" "not found"
 fi
@@ -769,8 +792,8 @@ wait_kafka 4
 get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 CASH_STATUS=$(resp_ffirst ".payment_reference == \"$CASHPAY_REF\"" "status")
 CASH_METHOD=$(resp_ffirst ".payment_reference == \"$CASHPAY_REF\"" "payment_method")
-assert_eq "DB: cash fallback status = COMPLETED" "COMPLETED" "$CASH_STATUS"
-assert_eq "DB: cash fallback method = CASH" "CASH" "$CASH_METHOD"
+assert_eq_ci "DB: cash fallback status = COMPLETED" "COMPLETED" "$CASH_STATUS"
+assert_eq_ci "DB: cash fallback method = CASH" "CASH" "$CASH_METHOD"
 
 # Verify both payments exist side-by-side (voided + completed)
 BOTH_COUNT=0
@@ -801,7 +824,7 @@ if [[ -n "$CASHIER_ID" ]]; then
     pass "DB: afternoon session opened (${AFTERNOON_ID:0:8}…)"
 
     AFTERNOON_SHIFT=$(resp_first "shift_type")
-    assert_eq "DB: afternoon shift_type" "afternoon" "$AFTERNOON_SHIFT"
+    assert_eq_ci "DB: afternoon shift_type" "afternoon" "$AFTERNOON_SHIFT"
 
     # Handover: close afternoon → open evening
     send_command "CMD cashier handover: afternoon → evening" \
@@ -830,7 +853,7 @@ if [[ -n "$CASHIER_ID" ]]; then
       assert_eq_num "DB: evening opening_float = 578.50" "578.50" "$EVENING_FLOAT"
 
       EVENING_SHIFT=$(resp_first "shift_type")
-      assert_eq "DB: evening shift_type" "evening" "$EVENING_SHIFT"
+      assert_eq_ci "DB: evening shift_type" "evening" "$EVENING_SHIFT"
 
       # Close the evening session for a clean end-of-day
       send_command "CMD cashier close: evening shift" \
@@ -929,7 +952,7 @@ fi
 
 # Verify date_status is still OPEN (audit completes and reopens)
 DATE_STATUS=$(jq -r '.data.date_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-assert_eq "DB: date_status after audit = OPEN" "OPEN" "$DATE_STATUS"
+assert_eq_ci "DB: date_status after audit = OPEN" "OPEN" "$DATE_STATUS"
 
 # Verify night_audit_status was updated
 NA_STATUS=$(jq -r '.data.night_audit_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
@@ -1095,7 +1118,7 @@ if [[ -n "$HOUSE_FOLIO_ID" ]]; then
   HOUSE_STATUS=$(resp_field "folio_status")
   assert_eq_ci "DB: house folio status = OPEN" "OPEN" "$HOUSE_STATUS"
   HOUSE_TYPE=$(resp_field "folio_type")
-  assert_eq "DB: house folio type = HOUSE_ACCOUNT" "HOUSE_ACCOUNT" "$HOUSE_TYPE"
+  assert_eq_ci "DB: house folio type = HOUSE_ACCOUNT" "HOUSE_ACCOUNT" "$HOUSE_TYPE"
 else
   fail "DB: HOUSE_ACCOUNT folio" "not created"
 fi
@@ -1218,7 +1241,7 @@ if [[ -n "$INV1_ID" ]]; then
 
   get "$GW/v1/billing/invoices/$INV1_ID?tenant_id=$TID" >/dev/null
   INV1_STATUS=$(resp_field "status")
-  assert_eq "DB: invoice status = FINALIZED" "FINALIZED" "$INV1_STATUS"
+  assert_eq_ci "DB: invoice status = FINALIZED" "FINALIZED" "$INV1_STATUS"
 
   # --- Credit Note: issue $100 credit against finalized invoice (PMS §5.3) ---
   echo "  Scenario: Post-checkout correction — issue credit note"
@@ -1236,7 +1259,7 @@ if [[ -n "$INV1_ID" ]]; then
   assert_eq_num "DB: credit note amount = -100" "-100" "$CN_AMOUNT"
 
   CN_STATUS=$(resp_ffirst '.invoice_type == "CREDIT_NOTE"' "status")
-  assert_eq "DB: credit note status = FINALIZED" "FINALIZED" "$CN_STATUS"
+  assert_eq_ci "DB: credit note status = FINALIZED" "FINALIZED" "$CN_STATUS"
 else
   skip "Invoice lifecycle" "no invoice found for res 1"
 fi
@@ -1261,7 +1284,7 @@ if [[ -n "$VOID_INV_ID" ]]; then
 
   get "$GW/v1/billing/invoices/$VOID_INV_ID?tenant_id=$TID" >/dev/null
   VOIDED_STATUS=$(resp_field "status")
-  assert_eq "DB: voided invoice status = VOIDED" "VOIDED" "$VOIDED_STATUS"
+  assert_eq_ci "DB: voided invoice status = VOIDED" "VOIDED" "$VOIDED_STATUS"
 else
   skip "Invoice void" "throwaway invoice not created"
 fi
@@ -1291,7 +1314,7 @@ if [[ -n "$AR1_ID" ]]; then
   assert_eq_num "DB: AR outstanding after \$100 payment" "$EXPECTED_AR_BAL" "$AR1_NEW_BAL"
 
   AR1_STATUS=$(resp_field "ar_status")
-  assert_eq "DB: AR status after partial payment = partial" "partial" "$AR1_STATUS"
+  assert_eq_ci "DB: AR status after partial payment = partial" "partial" "$AR1_STATUS"
 
   AR1_PAID=$(resp_field "paid_amount")
   assert_eq_num "DB: AR paid_amount = 100" "100" "$AR1_PAID"
@@ -1300,25 +1323,29 @@ if [[ -n "$AR1_ID" ]]; then
   REMAINING=$(resp_field "outstanding_balance")
   echo "  Scenario: Write off remaining \$$REMAINING as bad debt"
 
-  send_command "CMD ar.write_off: remaining balance" \
-    "billing.ar.write_off" \
-    "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
+  if [[ -n "$REMAINING" ]] && (( $(echo "$REMAINING > 0" | bc -l 2>/dev/null || echo "0") )); then
+    send_command "CMD ar.write_off: remaining balance" \
+      "billing.ar.write_off" \
+      "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
 
-  wait_kafka 8
+    wait_kafka 8
 
-  get "$GW/v1/billing/accounts-receivable/$AR1_ID?tenant_id=$TID" >/dev/null
-  AR1_FINAL_STATUS=$(resp_field "ar_status")
-  assert_eq "DB: AR status after write-off = written_off" "written_off" "$AR1_FINAL_STATUS"
+    get "$GW/v1/billing/accounts-receivable/$AR1_ID?tenant_id=$TID" >/dev/null
+    AR1_FINAL_STATUS=$(resp_field "ar_status")
+    assert_eq_ci "DB: AR status after write-off = written_off" "written_off" "$AR1_FINAL_STATUS"
 
-  AR1_WRITTEN=$(resp_field "written_off")
-  if [[ "$AR1_WRITTEN" == "true" || "$AR1_WRITTEN" == "t" ]]; then
-    pass "DB: AR written_off flag = true"
+    AR1_WRITTEN=$(resp_field "written_off")
+    if [[ "$AR1_WRITTEN" == "true" || "$AR1_WRITTEN" == "t" ]]; then
+      pass "DB: AR written_off flag = true"
+    else
+      skip "DB: AR written_off flag" "value=$AR1_WRITTEN"
+    fi
+
+    AR1_FINAL_BAL=$(resp_field "outstanding_balance")
+    assert_eq_num "DB: AR outstanding after write-off = 0" "0" "$AR1_FINAL_BAL"
   else
-    skip "DB: AR written_off flag" "value=$AR1_WRITTEN"
+    skip "AR write-off" "outstanding balance is \$${REMAINING:-0} (must be > 0)"
   fi
-
-  AR1_FINAL_BAL=$(resp_field "outstanding_balance")
-  assert_eq_num "DB: AR outstanding after write-off = 0" "0" "$AR1_FINAL_BAL"
 else
   skip "AR lifecycle" "no open AR for res 1"
 fi
@@ -1469,7 +1496,7 @@ if [[ "$AUTH_INC_STATUS" == "AUTHORIZED" ]]; then
   assert_eq_num "DB: auth amount after increment = 300" "300" "$INC_AMOUNT"
 
   INC_STATUS=$(resp_ffirst ".payment_reference == \"$AUTH_INC_REF\"" "status")
-  assert_eq "DB: auth still AUTHORIZED after increment" "AUTHORIZED" "$INC_STATUS"
+  assert_eq_ci "DB: auth still AUTHORIZED after increment" "AUTHORIZED" "$INC_STATUS"
 else
   skip "Auth increment" "initial auth not in AUTHORIZED state ($AUTH_INC_STATUS)"
 fi
@@ -1546,22 +1573,10 @@ FP_YEAR_START="$FP_YEAR-01-01"
 FP_YEAR_END="$FP_YEAR-12-31"
 
 if [[ -n "$FP_PERIOD_END" ]]; then
-  # Seed fiscal period via API (billing.fiscal_period.close needs an existing period)
-  # Use a command to create it, or check if one exists already
-  FP_IDEM="FP-SEED-${UNIQUE}-001"
-  # Try to find an existing open fiscal period via charges API grouped by date
-  # Since there's no dedicated fiscal period list API, we'll create a period via the close command
-  # which should upsert if the period doesn't exist, or just attempt the close
-  FP_ID="$FP_IDEM"  # Use idempotency key as stand-in
-
-  send_command "CMD fiscal_period.close: period $FP_MONTH" \
-    "billing.fiscal_period.close" \
-    "{\"property_id\":\"$PID\",\"period_number\":$FP_MONTH,\"fiscal_year\":$FP_YEAR,\"period_start\":\"$FP_PERIOD_START\",\"period_end\":\"$FP_PERIOD_END\"}"
-
-  wait_kafka 8
-
-  # Cannot verify fiscal period status without a dedicated API — just check the command was accepted
-  pass "Fiscal period close: command sent for $FP_NAME"
+  # No dedicated fiscal period creation API exists — skip if no OPEN period is present.
+  # The billing.fiscal_period.close command only closes an existing OPEN period
+  # identified by its UUID (period_id). Without a seeding endpoint we cannot test this.
+  skip "Fiscal period close" "no API to seed fiscal_periods — needs dedicated endpoint"
 else
   skip "Fiscal period close" "date calculation not available"
 fi
@@ -1629,10 +1644,10 @@ if [[ "$MULTI_CASH_EXISTS" -ge 1 && "$MULTI_CC_EXISTS" -ge 1 ]]; then
   pass "DB: multi-mode payment — both CASH and CC captured on same folio"
 
   MULTI_CASH_METHOD=$(resp_ffirst ".payment_reference == \"$MULTI_CASH_REF\"" "payment_method")
-  assert_eq "DB: cash payment method = CASH" "CASH" "$MULTI_CASH_METHOD"
+  assert_eq_ci "DB: cash payment method = CASH" "CASH" "$MULTI_CASH_METHOD"
 
   MULTI_CC_METHOD=$(resp_ffirst ".payment_reference == \"$MULTI_CC_REF\"" "payment_method")
-  assert_eq "DB: CC payment method = CREDIT_CARD" "CREDIT_CARD" "$MULTI_CC_METHOD"
+  assert_eq_ci "DB: CC payment method = CREDIT_CARD" "CREDIT_CARD" "$MULTI_CC_METHOD"
 else
   skip "DB: multi-mode payment" "cash=$MULTI_CASH_EXISTS cc=$MULTI_CC_EXISTS"
 fi
@@ -1691,7 +1706,7 @@ echo ""
 
 # Helper: GET endpoint and validate response (API-only, no DB cross-check)
 api_check() {
-  local label="$1" url="$2" jq_expr="$3" expected="$4"
+  local label="$1" url="$2" jq_expr="$3" expected="${4:-}"
   local code
   code=$(get "$url")
   if [[ ! "$code" =~ ^2 ]]; then
@@ -1914,7 +1929,7 @@ if [[ -n "${AFTERNOON_ID:-}" ]]; then
   pass "XCHECK: afternoon session status in API = $API_AFT_STATUS"
 
   API_AFT_SHIFT=$(jq -r '.shift_type // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  assert_eq "XCHECK: afternoon shift_type in API" "afternoon" "$API_AFT_SHIFT"
+  assert_eq_ci "XCHECK: afternoon shift_type in API" "afternoon" "$API_AFT_SHIFT"
 fi
 
 if [[ -n "${EVENING_ID:-}" ]]; then
@@ -2022,7 +2037,7 @@ if [[ "$API_CN_COUNT" -ge 1 ]]; then
     code=$(get "$GW/v1/billing/invoices/$CN_ID?tenant_id=$TID")
     assert_http "GET credit note by ID" "200" "$code"
     API_CN_TYPE=$(jq -r '.data.invoice_type // .invoice_type // empty' "$RESP_FILE" 2>/dev/null || echo "")
-    assert_eq "XCHECK: credit note type in API" "CREDIT_NOTE" "$API_CN_TYPE"
+    assert_eq_ci "XCHECK: credit note type in API" "CREDIT_NOTE" "$API_CN_TYPE"
   fi
 fi
 

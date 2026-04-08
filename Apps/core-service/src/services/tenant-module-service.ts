@@ -30,7 +30,7 @@ export const getTenantModules = async (tenantId: string): Promise<TenantModulesR
 };
 
 /**
- * Enable a set of modules for a tenant by merging into the existing config JSONB.
+ * Enable a set of modules for a tenant by updating all user_tenant_associations.
  */
 export const updateTenantModules = async (
   tenantId: string,
@@ -40,11 +40,22 @@ export const updateTenantModules = async (
   // Always include "core"
   if (!normalized.includes("core")) normalized.unshift("core");
 
+  // Update tenant-level config (source of truth for GET /modules)
   await query(
     `UPDATE public.tenants
         SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('modules', $2::jsonb),
             updated_at = NOW()
       WHERE id = $1::uuid`,
+    [tenantId, JSON.stringify(normalized)],
+  );
+
+  // Also update all user_tenant_associations so the auth context picks up the modules
+  await query(
+    `UPDATE public.user_tenant_associations
+        SET modules = $2::jsonb,
+            updated_at = NOW()
+      WHERE tenant_id = $1::uuid
+        AND COALESCE(is_deleted, false) = false`,
     [tenantId, JSON.stringify(normalized)],
   );
 

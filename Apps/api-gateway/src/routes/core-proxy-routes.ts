@@ -136,7 +136,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/tenants/:tenantId/modules",
     {
       preHandler: tenantScopeFromParams,
@@ -144,6 +144,29 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
         tag: CORE_PROXY_TAG,
         summary: "List modules enabled for a tenant.",
         params: reservationParamsSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  // PUT modules must NOT require modules — it's the endpoint that SETS them.
+  // Without this separation, freshly-bootstrapped tenants with NULL modules
+  // would be unable to enable any modules (chicken-and-egg).
+  app.put(
+    "/v1/tenants/:tenantId/modules",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+        minRole: "ADMIN",
+      }),
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Enable modules for a tenant.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
         response: {
           200: jsonObjectSchema,
         },

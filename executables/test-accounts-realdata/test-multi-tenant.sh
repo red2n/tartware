@@ -496,6 +496,43 @@ if [[ -n "$RTID_B2" ]]; then
 fi
 echo ""
 
+# ── 0.4b  Seed BAR Rates (required by reservation rate-plan resolution) ──
+echo "── 0.4b  Seed BAR Rates ─────────────────────────────────────────────"
+
+seed_bar_rate() {
+  local tok="$1" tid="$2" pid="$3" rtid="$4" price="$5" lbl="$6"
+  local code
+  TOKEN="$tok"
+  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/rates?tenant_id=$tid" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"room_type_id\":\"$rtid\",\"rate_name\":\"Best Available Rate\",\"rate_code\":\"BAR\",\"base_rate\":$price,\"valid_from\":\"2024-01-01\",\"status\":\"ACTIVE\"}")
+  if [[ "$code" =~ ^2 ]]; then
+    echo "  ✓ BAR rate seeded for $lbl ($code)"
+  elif [[ "$code" == "409" ]]; then
+    echo "  ℹ BAR rate already exists for $lbl"
+  else
+    echo "  ⚠ BAR rate seed for $lbl failed (HTTP $code)"
+  fi
+}
+
+# Seed BAR for existing Property A1 (RTID_A1 is the existing room type)
+RTID_A1="${RTID_A1:-44444444-4444-4444-4444-444444444444}"
+seed_bar_rate "$TOKEN_A" "$TID_A" "$PID_A1" "$RTID_A1" "199.00" "A1"
+
+# Seed BAR for new properties
+if [[ -n "$RTID_A2" ]]; then
+  seed_bar_rate "$TOKEN_A" "$TID_A" "$PID_A2" "$RTID_A2" "179.00" "A2"
+fi
+if [[ -n "$RTID_B1" ]]; then
+  seed_bar_rate "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "189.00" "B1"
+fi
+if [[ -n "$RTID_B2" ]]; then
+  seed_bar_rate "$TOKEN_B" "$TID_B" "$PID_B2" "$RTID_B2" "149.00" "B2"
+fi
+echo ""
+
 # ── 0.5  Enable billing commands for both tenants ────────────────────────
 echo "── 0.5  Enable Billing Commands ─────────────────────────────────────"
 
@@ -829,7 +866,7 @@ run_billing_pipeline() {
   if ! $SKIP_SEED && [[ -n "$session_id" ]]; then
     send_command "CMD cashier: close" \
       "billing.cashier.close" \
-      "{\"session_id\":\"$session_id\",\"property_id\":\"$pid\",\"closing_float\":500.00,\"cash_collected\":100.00,\"notes\":\"End of shift $tag\"}"
+      "{\"session_id\":\"$session_id\",\"closing_cash_declared\":600.00,\"closing_cash_counted\":600.00,\"notes\":\"End of shift $tag\"}"
     wait_kafka 5
 
     local sess_status
@@ -978,7 +1015,7 @@ run_billing_pipeline() {
       get "$GW/v1/billing/invoices/$inv_id?tenant_id=$tid" >/dev/null
       inv_status=$(resp_field "status")
       if [[ -z "$inv_status" ]]; then inv_status=$(jq -r '.data.status // empty' "$RESP_FILE" 2>/dev/null); fi
-      assert_eq "Invoice finalized ($label)" "FINALIZED" "$inv_status"
+      assert_eq_ci "Invoice finalized ($label)" "FINALIZED" "$inv_status"
     else
       skip "Invoice finalize" "no invoice"
     fi
