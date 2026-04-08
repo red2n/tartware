@@ -1,0 +1,140 @@
+<div class="fiscal-periods-page">
+  <app-page-header title="Fiscal Periods" description="Manage accounting periods — close, lock, and reopen periods">
+    <button class="btn btn-invisible" (click)="loadPeriods()" [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <!-- ═══ STATUS FILTER ═══ -->
+  <div class="filter-bar">
+    <button class="filter-tab" [class.active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">{{ 'All' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'FUTURE'" (click)="setStatusFilter('FUTURE')">{{ 'Future' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'OPEN'" (click)="setStatusFilter('OPEN')">{{ 'Open' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'SOFT_CLOSE'" (click)="setStatusFilter('SOFT_CLOSE')">{{ 'Soft Close' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'CLOSED'" (click)="setStatusFilter('CLOSED')">{{ 'Closed' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'LOCKED'" (click)="setStatusFilter('LOCKED')">{{ 'Locked' | translate }}</button>
+  </div>
+
+  <!-- ═══ PERIOD LIST ═══ -->
+  @if (loading()) {
+    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading fiscal periods...' | translate }}</span></div>
+  } @else if (filtered().length === 0) {
+    <div class="empty-state">
+      <mat-icon>date_range</mat-icon>
+      <span>{{ 'No fiscal periods found.' | translate }}</span>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table table-compact" role="grid">
+        <thead>
+          <tr>
+            <th>{{ 'Year' | translate }}</th>
+            <th>{{ 'Period' | translate }}</th>
+            <th>{{ 'Start' | translate }}</th>
+            <th>{{ 'End' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th>{{ 'Reconciled' | translate }}</th>
+            <th class="text-right">{{ 'Revenue' | translate }}</th>
+            <th class="text-right">{{ 'Expenses' | translate }}</th>
+            <th class="text-right">{{ 'Net Income' | translate }}</th>
+            <th>{{ 'Notes' | translate }}</th>
+            <th class="text-right">{{ 'Actions' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of filtered(); track p.fiscal_period_id) {
+            <tr>
+              <td>{{ p.fiscal_year }}</td>
+              <td><strong>{{ p.period_name }}</strong> (#{{ p.period_number }})</td>
+              <td>{{ formatDate(p.period_start) }}</td>
+              <td>{{ formatDate(p.period_end) }}</td>
+              <td><span [class]="statusBadge(p.period_status)">{{ p.period_status_display }}</span></td>
+              <td>
+                <mat-icon [ngClass]="p.is_reconciled ? 'icon-success' : 'icon-danger'">
+                  {{ p.is_reconciled ? 'check_circle' : 'cancel' }}
+                </mat-icon>
+              </td>
+              <td class="text-right">{{ p.total_revenue ? formatCurrency(p.total_revenue) : '—' }}</td>
+              <td class="text-right">{{ p.total_expenses ? formatCurrency(p.total_expenses) : '—' }}</td>
+              <td class="text-right">{{ p.net_income ? formatCurrency(p.net_income) : '—' }}</td>
+              <td class="text-muted text-truncate" style="max-width: 150px">{{ p.notes ?? '' }}</td>
+              <td class="text-right">
+                <div class="action-btn-group">
+                  @if (canClose(p)) {
+                    <button class="btn btn-outline btn-sm" (click)="showCloseDialog(p)" [disabled]="actionLoading()" [matTooltip]="'Close Period' | translate">
+                      <mat-icon>lock_open</mat-icon>
+                    </button>
+                  }
+                  @if (canLock(p)) {
+                    <button class="btn btn-outline btn-sm" (click)="lockPeriod(p)" [disabled]="actionLoading()" [matTooltip]="'Lock Period' | translate">
+                      <mat-icon>lock</mat-icon>
+                    </button>
+                  }
+                  @if (canReopen(p)) {
+                    <button class="btn btn-outline btn-sm" (click)="showReopenDialog(p)" [disabled]="actionLoading()" [matTooltip]="'Reopen Period' | translate">
+                      <mat-icon>lock_open</mat-icon>
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+
+            @if (closingPeriodId() === p.fiscal_period_id) {
+              <tr>
+                <td colspan="11">
+                  <div class="inline-form">
+                    <h4>{{ 'Close Fiscal Period' | translate }}: {{ p.period_name }}</h4>
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Reason' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="Close reason (optional)"
+                               [ngModel]="closeReason()" (ngModelChange)="closeReason.set($event)" />
+                      </div>
+                      <div class="form-group">
+                        <label class="toggle-option">
+                          <input type="checkbox" [checked]="reconciliationConfirmed()" (change)="reconciliationConfirmed.set(!reconciliationConfirmed())" />
+                          <span>{{ 'Confirm AR/GL balances are reconciled' | translate }}</span>
+                        </label>
+                      </div>
+                      <div class="form-group form-group-actions">
+                        <button class="btn btn-outline btn-sm" (click)="cancelClose()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-warning btn-sm" (click)="submitClose()" [disabled]="actionLoading()">
+                          @if (actionLoading()) { <mat-spinner diameter="14"></mat-spinner> }
+                          {{ 'Close Period' | translate }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+
+            @if (reopeningPeriodId() === p.fiscal_period_id) {
+              <tr>
+                <td colspan="11">
+                  <div class="inline-form">
+                    <h4>{{ 'Reopen Fiscal Period' | translate }}: {{ p.period_name }}</h4>
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Reason' | translate }} *</label>
+                        <input type="text" class="field-input field-sm" placeholder="Reason for reopening (required)"
+                               [ngModel]="reopenReason()" (ngModelChange)="reopenReason.set($event)" />
+                      </div>
+                      <div class="form-group form-group-actions">
+                        <button class="btn btn-outline btn-sm" (click)="cancelReopen()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-primary btn-sm" (click)="submitReopen()" [disabled]="actionLoading() || !reopenReason()">
+                          @if (actionLoading()) { <mat-spinner diameter="14"></mat-spinner> }
+                          {{ 'Reopen Period' | translate }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

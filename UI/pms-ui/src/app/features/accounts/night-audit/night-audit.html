@@ -1,6 +1,6 @@
 <div class="night-audit-page">
   <app-page-header title="Night Audit" description="End-of-day processing, trial balance, and revenue posting">
-    <button class="btn btn-invisible" (click)="loadBusinessDateStatus(); loadTrialBalance(); loadHistory()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
+    <button class="btn btn-invisible" (click)="loadBusinessDateStatus(); loadTrialBalance(); loadHistory(); loadPreAuditChecklist(); loadBucketCheck(); loadDeptRevenue(); loadTaxSummary()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </app-page-header>
@@ -136,6 +136,21 @@
   <div class="filter-bar">
     <button class="filter-tab" [class.active]="activeTab() === 'status'" (click)="setTab('status')">{{ 'Overview' | translate }}</button>
     <button class="filter-tab" [class.active]="activeTab() === 'trial-balance'" (click)="setTab('trial-balance')">{{ 'Trial Balance' | translate }}</button>
+    <button class="filter-tab" [class.active]="activeTab() === 'pre-audit'" (click)="setTab('pre-audit')">
+      {{ 'Pre-Audit' | translate }}
+      @if (preAuditFailCount() > 0) {
+        <span class="badge badge-danger badge-sm">{{ preAuditFailCount() }}</span>
+      }
+    </button>
+    <button class="filter-tab" [class.active]="activeTab() === 'bucket-check'" (click)="setTab('bucket-check')">
+      {{ 'Bucket Check' | translate }}
+      @if (bucketCheckItems().length > 0) {
+        <span class="badge badge-sm" [ngClass]="bucketCheckBalanced() ? 'badge-success' : 'badge-warning'">
+          {{ bucketCheckBalanced() ? '✓' : '!' }}
+        </span>
+      }
+    </button>
+    <button class="filter-tab" [class.active]="activeTab() === 'reports'" (click)="setTab('reports')">{{ 'Reports' | translate }}</button>
     <button class="filter-tab" [class.active]="activeTab() === 'history'" (click)="setTab('history')">{{ 'Audit History' | translate }}</button>
   </div>
 
@@ -255,6 +270,201 @@
       </div>
     }
     }
+  }
+
+  <!-- ═══ TAB: PRE-AUDIT CHECKLIST ═══ -->
+  @if (activeTab() === 'pre-audit') {
+    <div class="section-card">
+      <div class="section-header">
+        <h3 class="section-title">{{ 'Pre-Audit Checklist' | translate }}</h3>
+        <button class="btn btn-invisible btn-sm" (click)="loadPreAuditChecklist()" [disabled]="preAuditLoading()">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+      @if (preAuditLoading()) {
+        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading checklist...' | translate }}</span></div>
+      } @else if (preAuditChecks().length === 0) {
+        <div class="empty-state"><mat-icon>checklist</mat-icon><span>{{ 'No pre-audit checks available.' | translate }}</span></div>
+      } @else {
+        <div class="kpi-grid" style="margin-bottom: 1rem;">
+          <div class="kpi-card audit-kpi-debits">
+            <mat-icon>check_circle</mat-icon>
+            <div class="kpi-body">
+              <div class="kpi-value">{{ preAuditPassCount() }}</div>
+              <div class="kpi-label">{{ 'Passed' | translate }}</div>
+            </div>
+          </div>
+          <div class="kpi-card audit-kpi-credits">
+            <mat-icon>error</mat-icon>
+            <div class="kpi-body">
+              <div class="kpi-value">{{ preAuditFailCount() }}</div>
+              <div class="kpi-label">{{ 'Failed' | translate }}</div>
+            </div>
+          </div>
+        </div>
+        <table class="table table-compact" role="grid">
+          <thead>
+            <tr>
+              <th style="width:40px">{{ 'Status' | translate }}</th>
+              <th>{{ 'Check' | translate }}</th>
+              <th>{{ 'Detail' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of preAuditChecks(); track c.check) {
+              <tr [ngClass]="c.passed ? 'row-success' : 'row-danger'">
+                <td><mat-icon [ngClass]="c.passed ? 'icon-success' : 'icon-danger'">{{ c.passed ? 'check_circle' : 'cancel' }}</mat-icon></td>
+                <td>{{ c.check }}</td>
+                <td class="text-muted">{{ c.detail }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+
+  <!-- ═══ TAB: BUCKET CHECK ═══ -->
+  @if (activeTab() === 'bucket-check') {
+    <div class="section-card">
+      <div class="section-header">
+        <h3 class="section-title">{{ 'Bucket Check' | translate }} — {{ 'Occupancy Verification' | translate }}</h3>
+        <div class="section-header-actions">
+          @if (bucketCheckItems().length > 0) {
+            <span class="badge" [ngClass]="bucketCheckBalanced() ? 'badge-success' : 'badge-warning'">
+              {{ bucketCheckBalanced() ? ('Balanced' | translate) : ('Imbalanced' | translate) }}
+            </span>
+          }
+          <button class="btn btn-invisible btn-sm" (click)="loadBucketCheck()" [disabled]="bucketCheckLoading()">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </div>
+      </div>
+      @if (bucketCheckLoading()) {
+        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading bucket check...' | translate }}</span></div>
+      } @else if (bucketCheckItems().length === 0) {
+        <div class="empty-state"><mat-icon>fact_check</mat-icon><span>{{ 'No bucket check data available.' | translate }}</span></div>
+      } @else {
+        <table class="table table-compact" role="grid">
+          <thead>
+            <tr>
+              <th>{{ 'Category' | translate }}</th>
+              <th class="text-right">{{ 'Expected' | translate }}</th>
+              <th class="text-right">{{ 'Actual' | translate }}</th>
+              <th style="width:40px">{{ 'Match' | translate }}</th>
+              <th>{{ 'Detail' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of bucketCheckItems(); track item.category) {
+              <tr [ngClass]="item.matched ? '' : 'row-danger'">
+                <td>{{ item.category }}</td>
+                <td class="text-right">{{ item.expected }}</td>
+                <td class="text-right">{{ item.actual }}</td>
+                <td><mat-icon [ngClass]="item.matched ? 'icon-success' : 'icon-danger'">{{ item.matched ? 'check' : 'close' }}</mat-icon></td>
+                <td class="text-muted">{{ item.detail }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+
+  <!-- ═══ TAB: REPORTS (DEPARTMENTAL REVENUE + TAX SUMMARY) ═══ -->
+  @if (activeTab() === 'reports') {
+    <!-- Departmental Revenue -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3 class="section-title">{{ 'Departmental Revenue' | translate }}</h3>
+        <button class="btn btn-invisible btn-sm" (click)="loadDeptRevenue()" [disabled]="deptRevenueLoading()">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+      @if (deptRevenueLoading()) {
+        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading revenue data...' | translate }}</span></div>
+      } @else if (deptRevenueItems().length === 0) {
+        <div class="empty-state"><mat-icon>bar_chart</mat-icon><span>{{ 'No revenue data available.' | translate }}</span></div>
+      } @else {
+        <table class="table table-compact" role="grid">
+          <thead>
+            <tr>
+              <th>{{ 'Department' | translate }}</th>
+              <th class="text-right">{{ 'Charges' | translate }}</th>
+              <th class="text-right">{{ 'Gross Revenue' | translate }}</th>
+              <th class="text-right">{{ 'Adjustments' | translate }}</th>
+              <th class="text-right">{{ 'Net Revenue' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of deptRevenueItems(); track d.department) {
+              <tr>
+                <td>{{ d.department }}</td>
+                <td class="text-right">{{ d.charge_count }}</td>
+                <td class="text-right">{{ formatCurrency(d.gross_revenue, 'USD') }}</td>
+                <td class="text-right">{{ formatCurrency(d.adjustments, 'USD') }}</td>
+                <td class="text-right">{{ formatCurrency(d.net_revenue, 'USD') }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr class="row-total">
+              <td colspan="2"><strong>{{ 'Totals' | translate }}</strong></td>
+              <td class="text-right"><strong>{{ formatCurrency(deptTotalGross(), 'USD') }}</strong></td>
+              <td></td>
+              <td class="text-right"><strong>{{ formatCurrency(deptTotalNet(), 'USD') }}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      }
+    </div>
+
+    <!-- Tax Summary -->
+    <div class="section-card" style="margin-top: 1rem;">
+      <div class="section-header">
+        <h3 class="section-title">{{ 'Tax Summary' | translate }}</h3>
+        <button class="btn btn-invisible btn-sm" (click)="loadTaxSummary()" [disabled]="taxSummaryLoading()">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+      @if (taxSummaryLoading()) {
+        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading tax data...' | translate }}</span></div>
+      } @else if (taxSummaryItems().length === 0) {
+        <div class="empty-state"><mat-icon>receipt_long</mat-icon><span>{{ 'No tax data available.' | translate }}</span></div>
+      } @else {
+        <table class="table table-compact" role="grid">
+          <thead>
+            <tr>
+              <th>{{ 'Tax Name' | translate }}</th>
+              <th>{{ 'Type' | translate }}</th>
+              <th>{{ 'Jurisdiction' | translate }}</th>
+              <th class="text-right">{{ 'Taxable Amount' | translate }}</th>
+              <th class="text-right">{{ 'Tax Collected' | translate }}</th>
+              <th class="text-right">{{ 'Transactions' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of taxSummaryItems(); track t.tax_name) {
+              <tr>
+                <td>{{ t.tax_name }}</td>
+                <td>{{ t.tax_type }}</td>
+                <td>{{ t.jurisdiction }}</td>
+                <td class="text-right">{{ formatCurrency(t.taxable_amount, 'USD') }}</td>
+                <td class="text-right">{{ formatCurrency(t.tax_collected, 'USD') }}</td>
+                <td class="text-right">{{ t.transaction_count }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr class="row-total">
+              <td colspan="4"><strong>{{ 'Total Tax Collected' | translate }}</strong></td>
+              <td class="text-right"><strong>{{ formatCurrency(totalTaxCollected(), 'USD') }}</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      }
+    </div>
   }
 
   <!-- ═══ BC-3: TAB: AUDIT HISTORY ═══ -->

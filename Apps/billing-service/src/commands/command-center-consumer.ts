@@ -50,11 +50,14 @@ import {
   chargeCancellationPenalty,
   chargeLateCheckout,
   chargeNoShow,
+  cloneRoutingRuleTemplate,
   closeFiscalPeriod,
   createCreditNote,
   createFolio,
   createFolioWindow,
+  createRoutingRule,
   createTaxConfig,
+  deleteRoutingRule,
   deleteTaxConfig,
   expressCheckout,
   lockFiscalPeriod,
@@ -64,6 +67,7 @@ import {
   reopenFolio,
   reopenInvoice,
   updateChargebackStatus,
+  updateRoutingRule,
   updateTaxConfig,
   voidInvoice,
 } from "../services/billing-commands/index.js";
@@ -371,6 +375,30 @@ const routeBillingCommand = async (
       return;
     case "billing.comp.post":
       await postComp(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.create":
+      await createRoutingRule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.update":
+      await updateRoutingRule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.delete":
+      await deleteRoutingRule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.clone_template":
+      await cloneRoutingRuleTemplate(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

@@ -403,9 +403,6 @@ importers:
       '@tartware/schemas':
         specifier: workspace:*
         version: link:../../schema
-      fastify:
-        specifier: ^5.8.3
-        version: 5.8.4
 
   Apps/command-consumer-utils:
     dependencies:
@@ -1088,9 +1085,6 @@ importers:
       '@fastify/sensible':
         specifier: ^5.1.1
         version: 5.6.0
-      '@tartware/candidate-pipeline':
-        specifier: workspace:*
-        version: link:../candidate-pipeline
       '@tartware/command-consumer-utils':
         specifier: workspace:*
         version: link:../command-consumer-utils

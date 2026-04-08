@@ -7,9 +7,17 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type {
+	BucketCheckItem,
+	BucketCheckResponse,
 	BusinessDateStatusResponse,
+	DepartmentalRevenueItem,
+	DepartmentalRevenueResponse,
 	NightAuditRunDetailResponse,
 	NightAuditRunListItem,
+	PreAuditCheckItem,
+	PreAuditResponse,
+	TaxSummaryItem,
+	TaxSummaryResponse,
 	TrialBalanceResponse,
 } from "@tartware/schemas";
 
@@ -29,7 +37,7 @@ import {
 import { ToastService } from "../../../shared/toast/toast.service";
 
 /** Tabs for the main content area. */
-type AuditTab = "status" | "trial-balance" | "history";
+type AuditTab = "status" | "trial-balance" | "pre-audit" | "bucket-check" | "reports" | "history";
 
 @Component({
 	selector: "app-night-audit",
@@ -102,6 +110,26 @@ export class NightAuditComponent {
 	readonly runDetailLoading = signal(false);
 	readonly expandedRunId = signal<string | null>(null);
 
+	// ── Pre-Audit Checklist ──
+	readonly preAuditChecks = signal<PreAuditCheckItem[]>([]);
+	readonly preAuditLoading = signal(false);
+
+	// ── Bucket Check ──
+	readonly bucketCheckItems = signal<BucketCheckItem[]>([]);
+	readonly bucketCheckBalanced = signal(false);
+	readonly bucketCheckLoading = signal(false);
+
+	// ── Departmental Revenue ──
+	readonly deptRevenueItems = signal<DepartmentalRevenueItem[]>([]);
+	readonly deptTotalGross = signal(0);
+	readonly deptTotalNet = signal(0);
+	readonly deptRevenueLoading = signal(false);
+
+	// ── Tax Summary ──
+	readonly taxSummaryItems = signal<TaxSummaryItem[]>([]);
+	readonly totalTaxCollected = signal(0);
+	readonly taxSummaryLoading = signal(false);
+
 	// ── Computed ──
 	readonly lineItems = computed(() => this.trialBalance()?.line_items ?? []);
 
@@ -162,6 +190,10 @@ export class NightAuditComponent {
 			this.loadBusinessDateStatus();
 			this.loadTrialBalance();
 			this.loadHistory();
+			this.loadPreAuditChecklist();
+			this.loadBucketCheck();
+			this.loadDeptRevenue();
+			this.loadTaxSummary();
 		});
 	}
 
@@ -442,5 +474,93 @@ export class NightAuditComponent {
 	private todayString(): string {
 		const d = new Date();
 		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+	}
+
+	// ── Pre-Audit Checklist ──
+	async loadPreAuditChecklist(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.preAuditLoading.set(true);
+		try {
+			const res = await this.api.get<PreAuditResponse>("/billing/pre-audit-checklist", {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				business_date: this.businessDate(),
+			});
+			this.preAuditChecks.set(res.checks ?? []);
+		} catch {
+			this.preAuditChecks.set([]);
+		} finally {
+			this.preAuditLoading.set(false);
+		}
+	}
+
+	readonly preAuditPassCount = computed(() => this.preAuditChecks().filter((c) => c.passed).length);
+	readonly preAuditFailCount = computed(() => this.preAuditChecks().filter((c) => !c.passed).length);
+
+	// ── Bucket Check ──
+	async loadBucketCheck(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.bucketCheckLoading.set(true);
+		try {
+			const res = await this.api.get<BucketCheckResponse>("/billing/bucket-check", {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				business_date: this.businessDate(),
+			});
+			this.bucketCheckItems.set(res.items ?? []);
+			this.bucketCheckBalanced.set(res.is_balanced ?? false);
+		} catch {
+			this.bucketCheckItems.set([]);
+			this.bucketCheckBalanced.set(false);
+		} finally {
+			this.bucketCheckLoading.set(false);
+		}
+	}
+
+	// ── Departmental Revenue ──
+	async loadDeptRevenue(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.deptRevenueLoading.set(true);
+		try {
+			const res = await this.api.get<DepartmentalRevenueResponse>("/billing/reports/departmental-revenue", {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				business_date: this.businessDate(),
+			});
+			this.deptRevenueItems.set(res.items ?? []);
+			this.deptTotalGross.set(res.total_gross ?? 0);
+			this.deptTotalNet.set(res.total_net ?? 0);
+		} catch {
+			this.deptRevenueItems.set([]);
+		} finally {
+			this.deptRevenueLoading.set(false);
+		}
+	}
+
+	// ── Tax Summary ──
+	async loadTaxSummary(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+		this.taxSummaryLoading.set(true);
+		try {
+			const res = await this.api.get<TaxSummaryResponse>("/billing/reports/tax-summary", {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				business_date: this.businessDate(),
+			});
+			this.taxSummaryItems.set(res.items ?? []);
+			this.totalTaxCollected.set(res.total_tax_collected ?? 0);
+		} catch {
+			this.taxSummaryItems.set([]);
+		} finally {
+			this.taxSummaryLoading.set(false);
+		}
 	}
 }

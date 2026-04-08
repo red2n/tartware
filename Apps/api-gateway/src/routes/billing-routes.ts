@@ -1004,6 +1004,49 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   // ============================================================================
+  // FOLIO ROUTING RULES PROXY (routing-rules → billing-service :3025)
+  // ============================================================================
+
+  app.get(
+    "/v1/billing/routing-rules",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy routing rules list to the billing service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.get(
+    "/v1/billing/routing-rules/templates",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy routing rule templates list to the billing service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.get(
+    "/v1/billing/routing-rules/:ruleId",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy routing rule detail to the billing service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyBilling,
+  );
+
+  // ============================================================================
   // BILLING SERVICE CATCH-ALL (remaining routes → billing-service :3025)
   // ============================================================================
 

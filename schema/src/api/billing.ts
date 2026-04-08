@@ -1090,6 +1090,61 @@ export type RoutingEvaluationResult = {
 };
 
 // ============================================================================
+// FOLIO ROUTING RULES — LIST / DETAIL SCHEMAS
+// ============================================================================
+
+/** Routing rule list item schema for API responses. */
+export const RoutingRuleListItemSchema = z.object({
+	rule_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	rule_name: z.string(),
+	rule_code: z.string().nullable(),
+	description: z.string().nullable(),
+	is_template: z.boolean(),
+	template_id: uuid.nullable(),
+	source_folio_id: uuid.nullable(),
+	source_reservation_id: uuid.nullable(),
+	destination_folio_id: uuid.nullable(),
+	destination_folio_type: z.string().nullable(),
+	charge_code_pattern: z.string().nullable(),
+	transaction_type: z.string().nullable(),
+	charge_category: z.string().nullable(),
+	min_amount: z.coerce.number().nullable(),
+	max_amount: z.coerce.number().nullable(),
+	routing_type: z.string(),
+	routing_percentage: z.coerce.number().nullable(),
+	routing_fixed_amount: z.coerce.number().nullable(),
+	priority: z.number().int(),
+	stop_on_match: z.boolean(),
+	effective_from: z.string().nullable(),
+	effective_until: z.string().nullable(),
+	auto_apply_to_group: z.boolean(),
+	auto_apply_to_company: z.boolean(),
+	company_id: uuid.nullable(),
+	group_booking_id: uuid.nullable(),
+	is_active: z.boolean(),
+	created_at: z.string(),
+	updated_at: z.string().nullable(),
+});
+
+export type RoutingRuleListItem = z.infer<typeof RoutingRuleListItemSchema>;
+
+/** Query parameters for listing routing rules. */
+export const RoutingRuleListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	folio_id: uuid.optional(),
+	is_template: z.coerce.boolean().optional(),
+	is_active: z.coerce.boolean().optional(),
+	charge_category: z.string().optional(),
+	limit: z.coerce.number().int().positive().max(200).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type RoutingRuleListQuery = z.infer<typeof RoutingRuleListQuerySchema>;
+
+// ============================================================================
 // BILLING ROUTE QUERY SCHEMAS
 // ============================================================================
 

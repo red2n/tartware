@@ -18,6 +18,10 @@
         </button>
       }
       @if (canCheckOut()) {
+        <button class="btn btn-primary btn-sm" (click)="showExpressCheckout()" [disabled]="actionLoading()" matTooltip="Express checkout: resolve folio, close, release room">
+          <mat-icon>flash_on</mat-icon>
+          Express Check-Out
+        </button>
         <button class="btn btn-outline btn-sm" (click)="showCheckOutConfirm()" [disabled]="actionLoading()" matTooltip="Check out guest and release room">
           <mat-icon>logout</mat-icon>
           Check Out
@@ -147,6 +151,62 @@
         } @else {
           <mat-icon>login</mat-icon>
           Confirm Check-In
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Express Check-Out confirmation -->
+@if (confirmingExpressCheckout()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkin">flash_on</mat-icon>
+      <h3 class="confirm-title">Express Check-Out</h3>
+    </div>
+    <div class="confirm-body">
+      @if (loadingFolioBalance()) {
+        <div class="loading-state">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>Loading folio balance...</span>
+        </div>
+      } @else if (folioBalance(); as fb) {
+        <dl class="detail-list">
+          <div class="detail-row">
+            <dt class="detail-label">Total Charges</dt>
+            <dd class="detail-value">{{ formatCurrency(fb.total_charges, 'USD') }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">Total Payments</dt>
+            <dd class="detail-value">{{ formatCurrency(fb.total_payments, 'USD') }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">Balance</dt>
+            <dd class="detail-value">
+              <span class="badge" [ngClass]="fb.balance > 0 ? 'badge-warning' : 'badge-success'">
+                {{ formatCurrency(fb.balance, 'USD') }}
+              </span>
+            </dd>
+          </div>
+        </dl>
+        @if (fb.balance > 0) {
+          <p class="text-muted">Outstanding balance of {{ formatCurrency(fb.balance, 'USD') }} exists. Express checkout will attempt to resolve the folio automatically.</p>
+        } @else {
+          <p class="text-muted">Folio is settled. Express checkout will close the folio and release the room.</p>
+        }
+      } @else {
+        <p>This will resolve the folio, close it, mark checkout, and set the room to dirty.</p>
+      }
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="expressCheckout()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Processing...
+        } @else {
+          <mat-icon>flash_on</mat-icon>
+          Confirm Express Check-Out
         }
       </button>
     </div>

@@ -193,6 +193,27 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				screenKey: "tax-config",
 				description: "Tax rules, jurisdictions, and rate configuration",
 			},
+			{
+				label: "Invoices",
+				icon: "description",
+				route: "/invoices",
+				screenKey: "invoices",
+				description: "Create, adjust, and finalize guest invoices",
+			},
+			{
+				label: "Fiscal Periods",
+				icon: "date_range",
+				route: "/fiscal-periods",
+				screenKey: "fiscal-periods",
+				description: "Manage accounting periods — close, lock, and reopen",
+			},
+			{
+				label: "Commissions",
+				icon: "handshake",
+				route: "/commissions",
+				screenKey: "commissions",
+				description: "Commission reports by source and period",
+			},
 		],
 	},
 ];

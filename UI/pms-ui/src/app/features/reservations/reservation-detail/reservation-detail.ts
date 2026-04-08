@@ -62,6 +62,9 @@ export class ReservationDetailComponent implements OnInit {
 	readonly confirmingCheckIn = signal(false);
 	readonly confirmingCheckOut = signal(false);
 	readonly confirmingCancel = signal(false);
+	readonly confirmingExpressCheckout = signal(false);
+	readonly folioBalance = signal<{ total_charges: number; total_payments: number; balance: number } | null>(null);
+	readonly loadingFolioBalance = signal(false);
 
 	/* ── Room selection for check-in ── */
 	readonly availableRooms = signal<AvailableRoom[]>([]);
@@ -282,6 +285,31 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingCheckOut.set(true);
 	}
 
+	showExpressCheckout(): void {
+		this.clearActionState();
+		this.confirmingExpressCheckout.set(true);
+		void this.loadFolioBalance();
+	}
+
+	private async loadFolioBalance(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		this.loadingFolioBalance.set(true);
+		try {
+			const res = await this.api.get<{ data: { total_charges: number; total_payments: number; balance: number }[] }>(
+				"/billing/folios",
+				{ tenant_id: tenantId, reservation_id: r.id, limit: "1" },
+			);
+			const folio = res.data?.[0] ?? null;
+			this.folioBalance.set(folio);
+		} catch {
+			this.folioBalance.set(null);
+		} finally {
+			this.loadingFolioBalance.set(false);
+		}
+	}
+
 	showCancelConfirm(): void {
 		this.clearActionState();
 		this.confirmingCancel.set(true);
@@ -292,6 +320,7 @@ export class ReservationDetailComponent implements OnInit {
 		this.showAllRoomTypes.set(false);
 		this.confirmingCheckOut.set(false);
 		this.confirmingCancel.set(false);
+		this.confirmingExpressCheckout.set(false);
 	}
 
 	/** Load available rooms matching the reservation's room type for manual selection. */
@@ -429,6 +458,30 @@ export class ReservationDetailComponent implements OnInit {
 		}
 	}
 
+	async expressCheckout(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+		this.actionSuccess.set(null);
+
+		try {
+			await this.api.post(`/tenants/${tenantId}/commands/billing.express_checkout`, {
+				reservation_id: r.id,
+				property_id: r.property_id,
+			});
+			this.toast.success("Express checkout completed. Folio closed and room released.");
+			this.confirmingExpressCheckout.set(false);
+			await this.pollUntilStatusChanged(r.id, r.status);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Express checkout failed");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
 	async cancelReservation(): Promise<void> {
 		const r = this.reservation();
 		const tenantId = this.auth.tenantId();
@@ -456,6 +509,7 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingCheckIn.set(false);
 		this.confirmingCheckOut.set(false);
 		this.confirmingCancel.set(false);
+		this.confirmingExpressCheckout.set(false);
 	}
 
 	/**

@@ -53,6 +53,10 @@ import {
 	BillingPaymentVoidCommandSchema,
 	BillingPricingBulkRecommendCommandSchema,
 	BillingPricingEvaluateCommandSchema,
+	BillingRoutingRuleCloneTemplateCommandSchema,
+	BillingRoutingRuleCreateCommandSchema,
+	BillingRoutingRuleDeleteCommandSchema,
+	BillingRoutingRuleUpdateCommandSchema,
 	BillingTaxConfigCreateCommandSchema,
 	BillingTaxConfigDeleteCommandSchema,
 	BillingTaxConfigUpdateCommandSchema,
@@ -425,6 +429,22 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.comp.post",
 		(payload) => BillingCompPostCommandSchema.parse(payload),
+	],
+	[
+		"billing.routing_rule.create",
+		(payload) => BillingRoutingRuleCreateCommandSchema.parse(payload),
+	],
+	[
+		"billing.routing_rule.update",
+		(payload) => BillingRoutingRuleUpdateCommandSchema.parse(payload),
+	],
+	[
+		"billing.routing_rule.delete",
+		(payload) => BillingRoutingRuleDeleteCommandSchema.parse(payload),
+	],
+	[
+		"billing.routing_rule.clone_template",
+		(payload) => BillingRoutingRuleCloneTemplateCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],

@@ -87,6 +87,12 @@ export {
   bulkGeneratePricingRecommendations,
   evaluatePricingRules,
 } from "./pricing.js";
+export {
+  cloneRoutingRuleTemplate,
+  createRoutingRule,
+  deleteRoutingRule,
+  updateRoutingRule,
+} from "./routing-rule.js";
 export { cashierHandover } from "./shift-handover.js";
 export {
   createTaxConfig,
