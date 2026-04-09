@@ -58,7 +58,7 @@ jobs:
 
       - name: Setup Python for documentation
         if: matrix.node-version == '22.x'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
