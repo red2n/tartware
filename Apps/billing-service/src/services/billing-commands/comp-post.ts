@@ -17,8 +17,7 @@ import {
  * requires an authorized_by user ID. The posting amount is negative
  * (credit) on the folio and positive in comp_accounting (debit to comp budget).
  *
- * This handler records comp usage for tracking/reporting; it does not
- * enforce a property comp budget limit before posting.
+ * Does not enforce budget limits — budget tracking is for reporting only.
  *
  * @returns folio_id of the target folio.
  */
@@ -52,9 +51,10 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
     const { rows: folioRows } = await queryWithClient<{
       folio_status: string;
       property_id: string;
+      guest_id: string | null;
     }>(
       client,
-      `SELECT folio_status, property_id FROM public.folios
+      `SELECT folio_status, property_id, guest_id FROM public.folios
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid FOR UPDATE`,
       [context.tenantId, folioId],
     );
@@ -68,6 +68,22 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
         `Comp posting requires OPEN folio. Current: ${folio.folio_status}.`,
       );
     }
+    if (!folio.guest_id) {
+      throw new BillingCommandError(
+        "COMP_GUEST_REQUIRED",
+        "Comp posting requires a guest folio (guest_id must be set on the folio).",
+      );
+    }
+
+    // Map command comp_type to the comp_category DB enum values
+    const COMP_TYPE_TO_CATEGORY: Record<string, string> = {
+      ROOM: "ROOM",
+      FOOD_BEVERAGE: "FOOD",
+      SPA: "SPA",
+      ACTIVITY: "OTHER",
+      MISCELLANEOUS: "OTHER",
+    };
+    const compCategory = COMP_TYPE_TO_CATEGORY[command.comp_type] ?? "OTHER";
 
     // Post as a CREDIT on the folio (reduces the guest's balance)
     const { rows: postingRows } = await queryWithClient<{ posting_id: string }>(
@@ -121,7 +137,7 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
     await queryWithClient(
       client,
       `INSERT INTO public.comp_transactions (
-         tenant_id, property_id, reservation_id, folio_id,
+         tenant_id, property_id, reservation_id, folio_id, guest_id,
          charge_posting_id, comp_number,
          comp_category, original_amount, comp_amount, currency_code,
          authorizer_id,
@@ -129,13 +145,13 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
          authorization_date,
          created_by, updated_by
        ) VALUES (
-         $1::uuid, $2::uuid, $3, $4::uuid,
-         $5::uuid, $6,
-         $7, $8::numeric, $8::numeric, $9,
-         $10::uuid,
-         $11, 'POSTED',
+         $1::uuid, $2::uuid, $3, $4::uuid, $5::uuid,
+         $6::uuid, $7,
+         $8, $9::numeric, $9::numeric, $10,
+         $11::uuid,
+         $12, 'POSTED',
          NOW(),
-         $12::uuid, $12::uuid
+         $13::uuid, $13::uuid
        )
        ON CONFLICT DO NOTHING`,
       [
@@ -143,9 +159,10 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
         folio.property_id,
         command.reservation_id ?? null,
         folioId,
+        folio.guest_id,
         postingId,
         compNumber,
-        command.comp_type,
+        compCategory,
         command.amount,
         currency,
         command.authorized_by ?? actorId,
@@ -165,6 +182,6 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
       "Comp posted to folio",
     );
 
-    return folioId!;
+    return folioId as string;
   });
 };

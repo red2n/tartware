@@ -201,6 +201,25 @@ export const tenantInvoiceParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Path params schema for tenant + refund/chargeback routes. */
+export const tenantRefundParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    refundId: {
+      type: "string",
+      format: "uuid",
+      description: "Refund/chargeback record identifier.",
+    },
+  },
+  required: ["tenantId", "refundId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 /** Path params schema for tenant + folio routes. */
 export const tenantFolioParamsSchema = {
   type: "object",

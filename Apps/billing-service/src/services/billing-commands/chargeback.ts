@@ -11,7 +11,6 @@ import {
   resolveActorId,
   resolveFolioId,
 } from "./common.js";
-import { reopenFolio } from "./folio.js";
 
 /**
  * Record a processor-initiated chargeback against a completed payment.
@@ -239,18 +238,36 @@ export const updateChargebackStatus = async (
     );
 
     // Auto-reopen the folio when the chargeback is LOST so the property can
-    // post a correction without manual intervention.
+    // post a correction without manual intervention. Inlined here to use the
+    // existing transaction client and avoid a nested withTransaction deadlock.
     if (command.chargeback_status === "LOST" && record.reservation_id) {
       const folioId = await resolveFolioId(context.tenantId, record.reservation_id);
       if (folioId) {
-        await reopenFolio(
-          {
-            property_id: context.tenantId, // placeholder \u2014 resolveFolioId already scoped to tenantId
-            folio_id: folioId,
-            reason: `Auto-reopened: chargeback ${command.refund_id} resolved as LOST`,
-          },
-          context,
+        const { rows: folioRows } = await queryWithClient<{ folio_status: string }>(
+          client,
+          `SELECT folio_status FROM public.folios
+           WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+           FOR UPDATE`,
+          [context.tenantId, folioId],
         );
+        const folioStatus = folioRows[0]?.folio_status;
+        if (folioStatus && folioStatus !== "OPEN") {
+          await queryWithClient(
+            client,
+            `UPDATE public.folios
+             SET folio_status = 'OPEN',
+                 closed_at = NULL, settled_at = NULL, settled_by = NULL,
+                 notes = CONCAT_WS(E'\\n', notes, $3::text),
+                 updated_at = NOW(), updated_by = $4::uuid
+             WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+            [
+              context.tenantId,
+              folioId,
+              `REOPENED: Auto-reopened: chargeback ${command.refund_id} resolved as LOST`,
+              actor,
+            ],
+          );
+        }
       }
     }
 

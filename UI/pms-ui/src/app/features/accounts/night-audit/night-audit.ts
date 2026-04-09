@@ -538,6 +538,8 @@ export class NightAuditComponent {
 			this.deptTotalNet.set(res.total_net ?? 0);
 		} catch {
 			this.deptRevenueItems.set([]);
+			this.deptTotalGross.set(0);
+			this.deptTotalNet.set(0);
 		} finally {
 			this.deptRevenueLoading.set(false);
 		}
@@ -559,6 +561,7 @@ export class NightAuditComponent {
 			this.totalTaxCollected.set(res.total_tax_collected ?? 0);
 		} catch {
 			this.taxSummaryItems.set([]);
+			this.totalTaxCollected.set(0);
 		} finally {
 			this.taxSummaryLoading.set(false);
 		}

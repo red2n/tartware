@@ -54,7 +54,7 @@ export const createFolio = async (payload: unknown, context: CommandContext): Pr
       command.reservation_id ?? null,
       command.guest_id ?? null,
       currency,
-      command.tax_exempt_id ? true : false,
+      !!command.tax_exempt_id,
       command.tax_exempt_id ?? null,
       command.notes ?? null,
       actor,
@@ -118,7 +118,7 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     }
     if (folio.folio_status === "CLOSED" || folio.folio_status === "SETTLED") {
       appLogger.info({ folioId, status: folio.folio_status }, "Folio already closed/settled");
-      return folioId!;
+      return folioId as string;
     }
 
     const balance = parseDbMoneyOrZero(folio.balance);
@@ -146,7 +146,7 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
       { folioId, newStatus, balance, reservationId: command.reservation_id },
       "Folio closed/settled",
     );
-    return folioId!;
+    return folioId as string;
   });
 };
 
@@ -241,7 +241,7 @@ export const reopenFolio = async (payload: unknown, context: CommandContext): Pr
     }
     if (folio.folio_status === "OPEN") {
       appLogger.info({ folioId }, "Folio is already OPEN \u2014 reopen is a no-op");
-      return folioId!;
+      return folioId as string;
     }
     if (!["SETTLED", "CLOSED"].includes(folio.folio_status)) {
       throw new BillingCommandError(
@@ -262,7 +262,7 @@ export const reopenFolio = async (payload: unknown, context: CommandContext): Pr
     );
 
     appLogger.info({ folioId, previousStatus: folio.folio_status }, "Folio reopened");
-    return folioId!;
+    return folioId as string;
   });
 };
 
@@ -300,9 +300,13 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
       folio_status: string;
       balance: string;
       property_id: string;
+      total_charges: string;
+      total_credits: string;
+      total_payments: string;
     }>(
       client,
-      `SELECT folio_id, folio_status, balance, property_id
+      `SELECT folio_id, folio_status, balance, property_id,
+              total_charges, total_credits, total_payments
        FROM public.folios
        WHERE tenant_id = $1::uuid AND folio_id = ANY($2::uuid[])
        ORDER BY folio_id
@@ -335,6 +339,9 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
       );
     }
 
+    const sourceCharges = parseDbMoneyOrZero(source.total_charges);
+    const sourceCredits = parseDbMoneyOrZero(source.total_credits);
+    const sourcePayments = parseDbMoneyOrZero(source.total_payments);
     const sourceBalance = parseDbMoneyOrZero(source.balance);
 
     // Re-attribute all source postings to the target folio
@@ -347,23 +354,33 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
       [context.tenantId, command.source_folio_id, command.target_folio_id, actorId],
     );
 
-    // Update target folio totals to absorb the source balance
+    // Update target folio totals to absorb all source folio components
     await queryWithClient(
       client,
       `UPDATE public.folios
        SET total_charges = total_charges + $3,
-           balance = balance + $3,
-           updated_at = NOW(), updated_by = $4::uuid
+           total_credits = total_credits + $4,
+           total_payments = total_payments + $5,
+           balance = balance + $6,
+           updated_at = NOW(), updated_by = $7::uuid
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-      [context.tenantId, command.target_folio_id, sourceBalance, actorId],
+      [
+        context.tenantId,
+        command.target_folio_id,
+        sourceCharges,
+        sourceCredits,
+        sourcePayments,
+        sourceBalance,
+        actorId,
+      ],
     );
 
-    // Zero out and close the source folio
+    // Zero out and close the source folio (all components must be zeroed for balance constraint)
     await queryWithClient(
       client,
       `UPDATE public.folios
        SET folio_status = 'CLOSED',
-           balance = 0, total_charges = 0, total_credits = 0,
+           balance = 0, total_charges = 0, total_credits = 0, total_payments = 0,
            closed_at = NOW(),
            notes = CONCAT_WS(E'\\n', notes, $3::text),
            updated_at = NOW(), updated_by = $4::uuid

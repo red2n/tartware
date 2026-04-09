@@ -30,6 +30,7 @@ import {
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
+  tenantRefundParamsSchema,
   tenantReservationParamsSchema,
   tenantTaxConfigParamsSchema,
 } from "./schemas.js";
@@ -861,14 +862,14 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   // ============================================================================
 
   app.post(
-    "/v1/tenants/:tenantId/billing/payments/:paymentId/chargeback/status",
+    "/v1/tenants/:tenantId/billing/chargebacks/:refundId/status",
     {
       preHandler: tenantScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary:
           "Advance a chargeback through its state machine (RECEIVED → EVIDENCE_SUBMITTED → WON|LOST).",
-        params: tenantPaymentParamsSchema,
+        params: tenantRefundParamsSchema,
         body: jsonObjectSchema,
         response: { 202: commandAcceptedSchema },
       }),
@@ -878,7 +879,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "billing.chargeback.update_status",
-        paramKey: "paymentId",
+        paramKey: "refundId",
         payloadKey: "refund_id",
       }),
   );

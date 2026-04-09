@@ -44,6 +44,7 @@ import {
   voidPayment,
   writeOffAr,
 } from "../services/billing-command-service.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   applyTaxExemption,
   cashierHandover,
@@ -71,7 +72,6 @@ import {
   updateTaxConfig,
   voidInvoice,
 } from "../services/billing-commands/index.js";
-import { BillingCommandError } from "../services/billing-commands/common.js";
 
 const logger = appLogger.child({ module: "billing-command-consumer" });
 

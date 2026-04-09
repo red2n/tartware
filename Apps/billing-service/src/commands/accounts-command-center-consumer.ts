@@ -23,13 +23,12 @@ import {
   postArEntry,
   writeOffAr,
 } from "../services/billing-commands/accounts-receivable.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   adjustInvoice,
   createInvoice,
   finalizeInvoice,
 } from "../services/billing-commands/invoice.js";
-
-import { BillingCommandError } from "../services/billing-commands/common.js";
 
 const logger = appLogger.child({ module: "accounts-command-consumer" });
 

@@ -16,6 +16,7 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   approveCommission,
   bulkGeneratePricingRecommendations,
@@ -30,8 +31,6 @@ import {
   reopenFiscalPeriod,
   updateTaxConfig,
 } from "../services/billing-commands/index.js";
-
-import { BillingCommandError } from "../services/billing-commands/common.js";
 
 const logger = appLogger.child({ module: "finance-admin-command-consumer" });
 

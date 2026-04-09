@@ -24,7 +24,7 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
   const command = BillingNoShowChargeCommandSchema.parse(payload);
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
-  // Validate reservation exists and is in RESERVED status (not yet checked-in)
+  // Validate reservation exists and is in CONFIRMED status (not yet checked-in)
   const { rows: resRows } = await query<{
     reservation_id: string;
     property_id: string;
@@ -47,10 +47,10 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     );
   }
 
-  if (!["RESERVED", "NO_SHOW"].includes(reservation.status)) {
+  if (!["CONFIRMED", "NO_SHOW"].includes(reservation.status)) {
     throw new BillingCommandError(
       "INVALID_RESERVATION_STATUS",
-      `No-show charge requires RESERVED or NO_SHOW status. Current: ${reservation.status}.`,
+      `No-show charge requires CONFIRMED or NO_SHOW status. Current: ${reservation.status}.`,
     );
   }
 
@@ -117,8 +117,8 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     [context.tenantId, folioId, chargeAmount, actorId],
   );
 
-  // Mark reservation as NO_SHOW if still RESERVED
-  if (reservation.status === "RESERVED") {
+  // Mark reservation as NO_SHOW if still CONFIRMED
+  if (reservation.status === "CONFIRMED") {
     await query(
       `UPDATE public.reservations
        SET status = 'NO_SHOW', updated_at = NOW(), updated_by = $3::uuid
