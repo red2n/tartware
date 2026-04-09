@@ -178,4 +178,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_tenant_invoice_number
 -- invoice_number is nullable: assigned at FINALIZE time only (BA §5.1 gapless sequence)
 ALTER TABLE invoices ALTER COLUMN invoice_number DROP NOT NULL;
 
+-- revision_number tracks correction iterations (BA §5.2 reopen workflow)
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS revision_number INTEGER DEFAULT 0;
+
 \echo 'Invoices table created successfully!'

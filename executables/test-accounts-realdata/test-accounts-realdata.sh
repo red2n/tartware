@@ -1427,7 +1427,7 @@ if [[ -n "${HOUSE_FOLIO_ID:-}" ]]; then
 
   get "$GW/v1/billing/folios/$HOUSE_FOLIO_ID?tenant_id=$TID" >/dev/null
   HOUSE_CLOSE_STATUS=$(resp_field "folio_status")
-  if [[ "$HOUSE_CLOSE_STATUS" == "CLOSED" || "$HOUSE_CLOSE_STATUS" == "SETTLED" ]]; then
+  if [[ "$HOUSE_CLOSE_STATUS" == "CLOSED" || "$HOUSE_CLOSE_STATUS" == "SETTLED" || "$HOUSE_CLOSE_STATUS" == "closed" || "$HOUSE_CLOSE_STATUS" == "settled" ]]; then
     pass "DB: house folio closed/settled ($HOUSE_CLOSE_STATUS)"
   else
     fail "DB: house folio close" "expected CLOSED or SETTLED, got=$HOUSE_CLOSE_STATUS"

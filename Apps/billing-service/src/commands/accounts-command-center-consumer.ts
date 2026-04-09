@@ -29,6 +29,8 @@ import {
   finalizeInvoice,
 } from "../services/billing-commands/invoice.js";
 
+import { BillingCommandError } from "../services/billing-commands/common.js";
+
 const logger = appLogger.child({ module: "accounts-command-consumer" });
 
 const routeAccountsCommand = async (
@@ -75,6 +77,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
+  isRetryable: (error) => !(error instanceof BillingCommandError),
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

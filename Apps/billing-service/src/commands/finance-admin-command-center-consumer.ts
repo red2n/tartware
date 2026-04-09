@@ -31,6 +31,8 @@ import {
   updateTaxConfig,
 } from "../services/billing-commands/index.js";
 
+import { BillingCommandError } from "../services/billing-commands/common.js";
+
 const logger = appLogger.child({ module: "finance-admin-command-consumer" });
 
 const routeFinanceAdminCommand = async (
@@ -92,6 +94,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeFinanceAdminCommand,
   publishDlqEvent,
+  isRetryable: (error) => !(error instanceof BillingCommandError),
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

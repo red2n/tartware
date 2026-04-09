@@ -340,7 +340,7 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
     // Re-attribute all source postings to the target folio
     await queryWithClient(
       client,
-      `UPDATE public.folio_postings
+      `UPDATE public.charge_postings
        SET folio_id = $3::uuid,
            updated_at = NOW(), updated_by = $4::uuid
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,

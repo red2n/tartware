@@ -71,6 +71,7 @@ import {
   updateTaxConfig,
   voidInvoice,
 } from "../services/billing-commands/index.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 
 const logger = appLogger.child({ module: "billing-command-consumer" });
 
@@ -422,6 +423,7 @@ const { start, shutdown } = createConsumerLifecycle({
   checkIdempotency: checkCommandIdempotency,
   recordIdempotency: recordCommandIdempotency,
   idempotencyFailureMode: "fail-open",
+  isRetryable: (error) => !(error instanceof BillingCommandError),
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

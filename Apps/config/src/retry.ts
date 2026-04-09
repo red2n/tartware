@@ -12,6 +12,13 @@ type RetryOptions = {
   baseDelayMs: number;
   jitterFactor?: number;
   onRetry?: (context: RetryAttemptContext) => void;
+  /**
+   * Optional predicate to decide if a caught error should be retried.
+   * Return `false` to immediately re-throw business-logic errors
+   * (e.g. invalid status, validation failures) without consuming retry budget.
+   * Defaults to `() => true` (retry everything).
+   */
+  isRetryable?: (error: unknown) => boolean;
 };
 
 type RetryResult<T> = {
@@ -54,6 +61,11 @@ export const processWithRetry = async <T>(
       const value = await operation();
       return { value, attempts: attempt + 1 };
     } catch (error) {
+      // Non-retryable errors (business logic) skip retries entirely
+      if (options.isRetryable && !options.isRetryable(error)) {
+        throw error;
+      }
+
       if (attempt >= maxRetries) {
         throw new RetryExhaustedError(
           "Operation failed after maximum retry attempts",

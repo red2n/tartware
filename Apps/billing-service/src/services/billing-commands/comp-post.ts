@@ -72,19 +72,22 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
     // Post as a CREDIT on the folio (reduces the guest's balance)
     const { rows: postingRows } = await queryWithClient<{ posting_id: string }>(
       client,
-      `INSERT INTO public.folio_postings (
-         tenant_id, folio_id, reservation_id,
-         charge_code, posting_type, description,
-         amount, currency_code,
-         quantity, posted_at, posted_by, created_by, updated_by
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         unit_price, subtotal, total_amount, currency_code,
+         quantity, business_date, posting_time,
+         created_by, updated_by
        ) VALUES (
-         $1::uuid, $2::uuid, $3,
-         $4, 'CREDIT', $5,
-         $6::numeric, $7,
-         1, NOW(), $8::uuid, $8::uuid, $8::uuid
+         $1::uuid, $2::uuid, $3::uuid, $4,
+         'CHARGE', 'CREDIT', $5, $6,
+         $7::numeric, $7::numeric, $7::numeric, $8,
+         1, CURRENT_DATE, NOW(),
+         $9::uuid, $9::uuid
        ) RETURNING posting_id`,
       [
         context.tenantId,
+        folio.property_id,
         folioId,
         command.reservation_id ?? null,
         chargeCode,
@@ -111,12 +114,15 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
       [context.tenantId, folioId, command.amount, actorId],
     );
 
+    // Generate comp number: COMP-YYYY-XXXXX
+    const compNumber = `COMP-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}-${Math.random().toString(36).slice(2, 6)}`;
+
     // Record in comp_transactions for budget tracking
     await queryWithClient(
       client,
       `INSERT INTO public.comp_transactions (
          tenant_id, property_id, reservation_id, folio_id,
-         charge_posting_id,
+         charge_posting_id, comp_number,
          comp_category, original_amount, comp_amount, currency_code,
          authorizer_id,
          comp_description, comp_status,
@@ -124,12 +130,12 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
          created_by, updated_by
        ) VALUES (
          $1::uuid, $2::uuid, $3, $4::uuid,
-         $5::uuid,
-         $6, $7::numeric, $7::numeric, $8,
-         $9::uuid,
-         $10, 'POSTED',
+         $5::uuid, $6,
+         $7, $8::numeric, $8::numeric, $9,
+         $10::uuid,
+         $11, 'POSTED',
          NOW(),
-         $11::uuid, $11::uuid
+         $12::uuid, $12::uuid
        )
        ON CONFLICT DO NOTHING`,
       [
@@ -138,6 +144,7 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
         command.reservation_id ?? null,
         folioId,
         postingId,
+        compNumber,
         command.comp_type,
         command.amount,
         currency,

@@ -66,6 +66,8 @@ export type CreateConsumerLifecycleInput = {
     processedAt: Date;
   }) => Promise<void>;
   idempotencyFailureMode?: "fail-open" | "fail-closed";
+  /** Predicate to decide if a caught error should be retried. */
+  isRetryable?: (error: unknown) => boolean;
 };
 
 /**
@@ -102,6 +104,7 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
           input.commandCenterConfig.retryScheduleMs.length > 0
             ? input.commandCenterConfig.retryScheduleMs
             : undefined,
+        isRetryable: input.isRetryable,
       },
       processWithRetry,
       RetryExhaustedError,

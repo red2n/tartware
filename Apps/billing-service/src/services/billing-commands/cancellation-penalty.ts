@@ -29,14 +29,15 @@ export const chargeCancellationPenalty = async (
   // Load reservation + rate plan cancellation policy
   const { rows: resRows } = await query<{
     reservation_id: string;
+    property_id: string;
     status: string;
     room_rate: string | null;
     currency_code: string | null;
     rate_plan_id: string | null;
   }>(
-    `SELECT reservation_id, status, room_rate, currency_code, rate_plan_id
+    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code, rate_plan_id
      FROM public.reservations
-     WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
+     WHERE tenant_id = $1::uuid AND id = $2::uuid
      LIMIT 1`,
     [context.tenantId, command.reservation_id],
   );
@@ -98,19 +99,22 @@ export const chargeCancellationPenalty = async (
   }
 
   const { rows: postingRows } = await query<{ posting_id: string }>(
-    `INSERT INTO public.folio_postings (
-       tenant_id, folio_id, reservation_id,
-       charge_code, posting_type, description,
-       amount, currency_code,
-       quantity, posted_at, posted_by, created_by, updated_by
+    `INSERT INTO public.charge_postings (
+       tenant_id, property_id, folio_id, reservation_id,
+       transaction_type, posting_type, charge_code, charge_description,
+       unit_price, subtotal, total_amount, currency_code,
+       quantity, business_date, posting_time,
+       created_by, updated_by
      ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid,
-       'CANCEL_PENALTY', 'DEBIT', $4,
-       $5::numeric, $6,
-       1, NOW(), $7::uuid, $7::uuid, $7::uuid
+       $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+       'CHARGE', 'DEBIT', 'CANCEL_PENALTY', $5,
+       $6::numeric, $6::numeric, $6::numeric, $7,
+       1, CURRENT_DATE, NOW(),
+       $8::uuid, $8::uuid
      ) RETURNING posting_id`,
     [
       context.tenantId,
+      reservation.property_id,
       folioId,
       command.reservation_id,
       command.reason ?? "Cancellation penalty per rate plan policy",
