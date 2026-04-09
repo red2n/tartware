@@ -76,14 +76,14 @@ jobs:
 
       - name: Upload script documentation
         if: success() && matrix.node-version == '22.x'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: script-docs
           path: build/docs
 
       - name: Upload build artifacts
         if: success() && matrix.node-version == '22.x'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-artifacts
           path: |
