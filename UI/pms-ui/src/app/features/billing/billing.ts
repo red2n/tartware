@@ -157,7 +157,7 @@ export class BillingComponent {
 		if (query) {
 			list = list.filter(
 				(i) =>
-					i.invoice_number.toLowerCase().includes(query) ||
+					(i.invoice_number?.toLowerCase().includes(query) ?? false) ||
 					(i.guest_name?.toLowerCase().includes(query) ?? false) ||
 					(i.confirmation_number?.toLowerCase().includes(query) ?? false),
 			);

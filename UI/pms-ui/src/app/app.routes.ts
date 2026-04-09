@@ -162,6 +162,24 @@ export const routes: Routes = [
 					import("./features/accounts/tax-config/tax-config").then((m) => m.TaxConfigComponent),
 			},
 			{
+				path: "invoices",
+				canActivate: [propertyGuard, screenGuard("invoices")],
+				loadComponent: () =>
+					import("./features/accounts/invoices/invoices").then((m) => m.InvoicesComponent),
+			},
+			{
+				path: "fiscal-periods",
+				canActivate: [propertyGuard, screenGuard("fiscal-periods")],
+				loadComponent: () =>
+					import("./features/accounts/fiscal-periods/fiscal-periods").then((m) => m.FiscalPeriodsComponent),
+			},
+			{
+				path: "commissions",
+				canActivate: [propertyGuard, screenGuard("commissions")],
+				loadComponent: () =>
+					import("./features/accounts/commissions/commissions").then((m) => m.CommissionsComponent),
+			},
+			{
 				path: "settings",
 				pathMatch: "full",
 				redirectTo: "settings/ADMIN_USER_MANAGEMENT",

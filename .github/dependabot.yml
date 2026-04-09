@@ -1,0 +1,67 @@
+version: 2
+
+updates:
+  # Root pnpm workspace (covers all Apps/* and schema/)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      # Group minor/patch updates to reduce PR noise
+      fastify:
+        patterns:
+          - "fastify"
+          - "@fastify/*"
+      kafka:
+        patterns:
+          - "kafkajs"
+          - "@confluentinc/*"
+      opentelemetry:
+        patterns:
+          - "@opentelemetry/*"
+      typescript-tooling:
+        patterns:
+          - "typescript"
+          - "tsx"
+          - "esbuild"
+          - "@types/*"
+      linting:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "@biomejs/*"
+          - "knip"
+    ignore:
+      # Managed via pnpm.overrides in root package.json
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # Angular UI
+  - package-ecosystem: "npm"
+    directory: "/UI/pms-ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ui"
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"

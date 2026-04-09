@@ -9,6 +9,7 @@ import {
   type BillingInvoiceCreateCommand,
   BillingInvoiceCreateCommandSchema,
   BillingInvoiceFinalizeCommandSchema,
+  BillingInvoiceReopenCommandSchema,
   BillingInvoiceVoidCommandSchema,
 } from "../../schemas/billing-commands.js";
 import {
@@ -55,19 +56,12 @@ const applyInvoiceCreate = async (
   const currency = command.currency ?? "USD";
 
   return withTransaction(async (client) => {
-    // Generate a collision-proof invoice number atomically inside the transaction.
-    // If the caller provided one, use it; otherwise, derive one from a global DB-side
-    // sequence (invoice_number_seq) for human-readable, monotonically increasing numbering.
-    let invoiceNumber = command.invoice_number ?? null;
-    if (!invoiceNumber) {
-      const seqResult = await queryWithClient<{ seq: string }>(
-        client,
-        `SELECT nextval('invoice_number_seq') AS seq`,
-        [],
-      );
-      const seq = seqResult.rows[0]?.seq ?? randomUUID().slice(0, 8);
-      invoiceNumber = `INV-${seq}`;
-    }
+    // Invoice number is intentionally NOT assigned at creation time.
+    // Per PMS accounting standard (BA §5.1), the invoice number must only be
+    // assigned at FINALIZE time to maintain a gapless, audit-safe sequence.
+    // If the caller explicitly provides invoice_number it is accepted as an
+    // override (e.g. migration or system-generated reference).
+    const invoiceNumber = command.invoice_number ?? null;
 
     const result = await queryWithClient<{ id: string }>(
       client,
@@ -172,6 +166,8 @@ const applyInvoiceAdjust = async (
 /**
  * Finalize an invoice. Transitions status from DRAFT or SENT to FINALIZED,
  * locking the invoice from further edits or adjustments.
+ * Assigns a permanent invoice_number from the global sequence if one has not
+ * already been set (BA §5.1 — number assigned at finalization, not creation).
  */
 const applyInvoiceFinalize = async (
   command: { invoice_id: string; metadata?: Record<string, unknown> },
@@ -179,42 +175,64 @@ const applyInvoiceFinalize = async (
 ): Promise<string> => {
   const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
-  const { rows } = await query<{ id: string; status: string }>(
-    `SELECT id, status FROM public.invoices
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
-     LIMIT 1`,
-    [context.tenantId, command.invoice_id],
-  );
-
-  const invoice = rows[0];
-  if (!invoice) {
-    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for finalization.");
-  }
-
-  if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
-    throw new BillingCommandError(
-      "INVALID_INVOICE_STATUS",
-      `Invoice is ${invoice.status}; only DRAFT or SENT invoices can be finalized.`,
+  return withTransaction(async (client) => {
+    const { rows } = await queryWithClient<{
+      id: string;
+      status: string;
+      invoice_number: string | null;
+    }>(
+      client,
+      `SELECT id, status, invoice_number FROM public.invoices
+       WHERE tenant_id = $1::uuid AND id = $2::uuid
+       FOR UPDATE`,
+      [context.tenantId, command.invoice_id],
     );
-  }
 
-  await query(
-    `UPDATE public.invoices
-     SET status = 'FINALIZED',
-         version = version + 1,
-         updated_at = NOW(),
-         updated_by = $3
-     WHERE tenant_id = $1::uuid
-       AND id = $2::uuid`,
-    [context.tenantId, command.invoice_id, actor],
-  );
+    const invoice = rows[0];
+    if (!invoice) {
+      throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for finalization.");
+    }
 
-  appLogger.info(
-    { invoiceId: command.invoice_id, previousStatus: invoice.status },
-    "Invoice finalized",
-  );
+    if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
+      throw new BillingCommandError(
+        "INVALID_INVOICE_STATUS",
+        `Invoice is ${invoice.status}; only DRAFT or SENT invoices can be finalized.`,
+      );
+    }
 
-  return command.invoice_id;
+    // Assign invoice number from the global sequence at finalization time.
+    // If the invoice already has a number (e.g. migrated drafts), preserve it.
+    let invoiceNumber = invoice.invoice_number;
+    if (!invoiceNumber) {
+      const seqResult = await queryWithClient<{ seq: string }>(
+        client,
+        `SELECT nextval('invoice_number_seq') AS seq`,
+        [],
+      );
+      const seq = seqResult.rows[0]?.seq ?? randomUUID().slice(0, 8);
+      invoiceNumber = `INV-${seq}`;
+    }
+
+    await queryWithClient(
+      client,
+      `UPDATE public.invoices
+       SET status = 'FINALIZED',
+           invoice_number = $3,
+           version = version + 1,
+           updated_at = NOW(),
+           updated_by = $4
+       WHERE tenant_id = $1::uuid
+         AND id = $2::uuid`,
+      [context.tenantId, command.invoice_id, invoiceNumber, actor],
+    );
+
+    appLogger.info(
+      { invoiceId: command.invoice_id, invoiceNumber, previousStatus: invoice.status },
+      "Invoice finalized",
+    );
+
+    return command.invoice_id;
+  });
 };
 
 // ─── Void Invoice ─────────────────────────────────────────────────────
@@ -364,4 +382,119 @@ export const createCreditNote = async (
   );
 
   return creditNoteId;
+};
+
+// ─── Reopen Invoice ──────────────────────────────────────────────────
+
+/**
+ * Reopen a FINALIZED invoice for post-checkout correction.
+ *
+ * Workflow (BA §5.2):
+ * 1. Mark the existing FINALIZED invoice as SUPERSEDED (status change only).
+ * 2. Create a sibling invoice that is a copy of the original at revision_number + 1.
+ * 3. The new sibling starts in DRAFT so the user can adjust before re-finalizing.
+ *
+ * Returns the ID of the new draft sibling invoice.
+ */
+export const reopenInvoice = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingInvoiceReopenCommandSchema.parse(payload);
+  const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  return withTransaction(async (client) => {
+    const { rows } = await queryWithClient<{
+      id: string;
+      status: string;
+      revision_number: number | null;
+      property_id: string;
+      reservation_id: string | null;
+      guest_id: string;
+      total_amount: string;
+      currency: string;
+      due_date: string | null;
+      notes: string | null;
+    }>(
+      client,
+      `SELECT id, status, revision_number, property_id, reservation_id, guest_id,
+              total_amount, currency, due_date, notes
+       FROM public.invoices
+       WHERE tenant_id = $1::uuid AND id = $2::uuid
+       FOR UPDATE`,
+      [context.tenantId, command.invoice_id],
+    );
+
+    const invoice = rows[0];
+    if (!invoice) {
+      throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found.");
+    }
+    if (invoice.status !== "FINALIZED") {
+      throw new BillingCommandError(
+        "INVALID_INVOICE_STATUS",
+        `Only FINALIZED invoices can be reopened. This invoice is ${invoice.status}.`,
+      );
+    }
+
+    // Mark original as SUPERSEDED
+    await queryWithClient(
+      client,
+      `UPDATE public.invoices
+       SET status = 'SUPERSEDED',
+           notes = CONCAT_WS(E'\\n', notes, $3::text),
+           version = version + 1,
+           updated_at = NOW(), updated_by = $4
+       WHERE tenant_id = $1::uuid AND id = $2::uuid`,
+      [context.tenantId, invoice.id, `REOPENED: ${command.reason}`, actor],
+    );
+
+    const nextRevision = (invoice.revision_number ?? 0) + 1;
+
+    // Create a new DRAFT sibling at revision_number + 1
+    const { rows: newRows } = await queryWithClient<{ id: string }>(
+      client,
+      `INSERT INTO public.invoices (
+         tenant_id, property_id, reservation_id, guest_id,
+         invoice_date, due_date,
+         subtotal, total_amount, currency,
+         notes, status,
+         correction_type, original_invoice_id, revision_number,
+         metadata, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3, $4::uuid,
+         CURRENT_DATE, $5,
+         $6::numeric, $6::numeric, UPPER($7),
+         $8, 'DRAFT',
+         'CORRECTION', $9::uuid, $10,
+         '{}'::jsonb, $11, $11
+       ) RETURNING id`,
+      [
+        context.tenantId,
+        invoice.property_id,
+        invoice.reservation_id ?? null,
+        invoice.guest_id,
+        invoice.due_date ?? null,
+        invoice.total_amount,
+        invoice.currency,
+        command.reason,
+        invoice.id,
+        nextRevision,
+        actor,
+      ],
+    );
+
+    const newInvoiceId = newRows[0]?.id;
+    if (!newInvoiceId) {
+      throw new BillingCommandError("INVOICE_REOPEN_FAILED", "Failed to create revision draft.");
+    }
+
+    appLogger.info(
+      {
+        originalInvoiceId: invoice.id,
+        newInvoiceId,
+        revision: nextRevision,
+        reason: command.reason,
+      },
+      "Invoice reopened — new draft revision created",
+    );
+
+    return newInvoiceId;
+  });
 };

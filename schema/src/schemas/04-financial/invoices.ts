@@ -31,7 +31,7 @@ export const InvoicesSchema = z.object({
 	property_id: uuid,
 	reservation_id: uuid,
 	guest_id: uuid,
-	invoice_number: z.string(),
+	invoice_number: z.string().nullable(),
 	invoice_type: z.string().optional(),
 	invoice_date: z.coerce.date(),
 	due_date: z.coerce.date().optional(),

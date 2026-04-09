@@ -88,10 +88,16 @@ deleted_by VARCHAR(100), -- User who initiated soft deletion
 -- Optimistic Locking
 version BIGINT DEFAULT 0, -- Incremented on updates to prevent stale writes
 
+-- Multi-Tenant RLS consistency
+tenant_id UUID NOT NULL, -- Self-referential; equals id; required for uniform RLS policies across all tables
+
 -- Constraints
 CONSTRAINT tenants_slug_format CHECK (slug ~ '^[a-z0-9-]+$'), -- Enforce slug character set
     CONSTRAINT tenants_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') -- Basic email structure validation
 );
+
+-- Add tenant_id if the table already exists (idempotent)
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tenant_id UUID;
 
 -- =====================================================
 -- TABLE COMMENTS
@@ -118,5 +124,7 @@ COMMENT ON COLUMN tenants.metadata IS 'Custom metadata fields (JSONB)';
 COMMENT ON COLUMN tenants.deleted_at IS 'Soft delete timestamp (NULL = active)';
 
 COMMENT ON COLUMN tenants.version IS 'Optimistic locking version (prevents concurrent update conflicts)';
+
+COMMENT ON COLUMN tenants.tenant_id IS 'Self-referential tenant identifier; equals id; required for uniform RLS policies across all tables';
 
 \echo 'Tenants table created successfully!'

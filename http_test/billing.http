@@ -747,6 +747,15 @@ X-Idempotency-Key: cashier-close-{{$timestamp}}
 #   POST /v1/tenants/:tenantId/billing/folios/close
 #   POST /v1/tenants/:tenantId/billing/cashier-sessions/open
 #   POST /v1/tenants/:tenantId/billing/cashier-sessions/close
+#   POST /v1/tenants/:tenantId/billing/invoices/:invoiceId/reopen
+#   POST /v1/tenants/:tenantId/billing/folios/:folioId/reopen
+#   POST /v1/tenants/:tenantId/billing/folios/merge
+#   POST /v1/tenants/:tenantId/billing/payments/:paymentId/chargeback/status
+#   POST /v1/tenants/:tenantId/billing/reservations/:reservationId/no-show-charge
+#   POST /v1/tenants/:tenantId/billing/reservations/:reservationId/late-checkout-charge
+#   POST /v1/tenants/:tenantId/billing/reservations/:reservationId/cancellation-penalty
+#   POST /v1/tenants/:tenantId/billing/folios/:folioId/tax-exemption
+#   POST /v1/tenants/:tenantId/billing/charges/comp
 #
 # SAMPLE IDs:
 #   Tenant:      11111111-1111-1111-1111-111111111111
@@ -756,5 +765,152 @@ X-Idempotency-Key: cashier-close-{{$timestamp}}
 #   Invoice:     55555555-5555-5555-5555-555555555555
 #   Folio:       66666666-6666-6666-6666-666666666666
 #   TaxConfig:   77777777-7777-7777-7777-777777777777
+#   Payment:     88888888-8888-8888-8888-888888888888
 #
 ###############################################################################
+
+###############################################################################
+# 11. NEW BA-COMPLIANCE COMMANDS
+###############################################################################
+
+### 11a. Reopen a Finalized Invoice (creates new draft at revision N+1)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/invoices/55555555-5555-5555-5555-555555555555/reopen
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Incorrect room rate applied — guest dispute resolved in their favour",
+  "idempotency_key": "reopen-inv-001"
+}
+
+### 11b. Reopen a Settled Folio
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/folios/66666666-6666-6666-6666-666666666666/reopen
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Guest chargeback won — folio reopened for balance adjustment",
+  "idempotency_key": "reopen-folio-001"
+}
+
+### 11c. Merge Source Folio into Target Folio
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/folios/merge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "source_folio_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "target_folio_id": "66666666-6666-6666-6666-666666666666",
+  "reason": "Consolidating incidental charges to master folio per guest request",
+  "idempotency_key": "merge-folio-001"
+}
+
+### 11d. Advance Chargeback Status (RECEIVED → EVIDENCE_SUBMITTED)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/payments/88888888-8888-8888-8888-888888888888/chargeback/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "refund_id": "88888888-8888-8888-8888-888888888888",
+  "chargeback_status": "EVIDENCE_SUBMITTED",
+  "notes": "Submitted transaction logs and signed registration card to processor",
+  "idempotency_key": "chargeback-update-001"
+}
+
+### 11e. Post No-Show Penalty Charge
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/reservations/44444444-4444-4444-4444-444444444444/no-show-charge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "reservation_id": "44444444-4444-4444-4444-444444444444",
+  "reason_code": "NO_SHOW_POLICY",
+  "idempotency_key": "no-show-001"
+}
+
+### 11f. Post Late Checkout Fee (tier-based calculation)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/reservations/44444444-4444-4444-4444-444444444444/late-checkout-charge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "reservation_id": "44444444-4444-4444-4444-444444444444",
+  "actual_checkout_time": "2026-03-15T14:30:00+05:30",
+  "standard_checkout_time": "2026-03-15T12:00:00+05:30",
+  "idempotency_key": "late-co-001"
+}
+
+### 11g. Post Late Checkout Fee (override amount)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/reservations/44444444-4444-4444-4444-444444444444/late-checkout-charge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "reservation_id": "44444444-4444-4444-4444-444444444444",
+  "actual_checkout_time": "2026-03-15T16:00:00+05:30",
+  "override_amount": 2500,
+  "currency": "INR",
+  "idempotency_key": "late-co-override-001"
+}
+
+### 11h. Post Cancellation Penalty (rate plan derived)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/reservations/44444444-4444-4444-4444-444444444444/cancellation-penalty
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "reservation_id": "44444444-4444-4444-4444-444444444444",
+  "reason": "Guest cancelled within non-refundable window",
+  "idempotency_key": "cancel-penalty-001"
+}
+
+### 11i. Apply Tax Exemption Certificate to Folio
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/folios/66666666-6666-6666-6666-666666666666/tax-exemption
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "folio_id": "66666666-6666-6666-6666-666666666666",
+  "exemption_type": "GOVERNMENT",
+  "exemption_certificate": "GOV-EXEMPT-2026-XYZ",
+  "exemption_reason": "State government employee on official duty",
+  "expiry_date": "2026-12-31",
+  "idempotency_key": "tax-exempt-001"
+}
+
+### 11j. Post Complimentary Charge (ROOM comp — requires authorized_by)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/charges/comp
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "reservation_id": "44444444-4444-4444-4444-444444444444",
+  "comp_type": "ROOM",
+  "amount": 15000,
+  "currency": "INR",
+  "authorized_by": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "description": "Complimentary room upgrade — loyalty guest goodwill gesture",
+  "idempotency_key": "comp-room-001"
+}
+
+### 11k. Post Complimentary F&B Charge (no auth required)
+POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/charges/comp
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "property_id": "22222222-2222-2222-2222-222222222222",
+  "folio_id": "66666666-6666-6666-6666-666666666666",
+  "comp_type": "FOOD_BEVERAGE",
+  "amount": 500,
+  "currency": "INR",
+  "description": "Complimentary welcome drink",
+  "idempotency_key": "comp-fb-001"
+}

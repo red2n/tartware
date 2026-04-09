@@ -23,6 +23,7 @@ import {
   postArEntry,
   writeOffAr,
 } from "../services/billing-commands/accounts-receivable.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   adjustInvoice,
   createInvoice,
@@ -75,6 +76,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
+  isRetryable: (error) => !(error instanceof BillingCommandError),
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

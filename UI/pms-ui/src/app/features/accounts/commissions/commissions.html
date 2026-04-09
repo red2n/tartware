@@ -1,0 +1,97 @@
+<div class="commissions-page">
+  <app-page-header title="Commission Management" description="Commission report by source — reservations, revenue, and rates">
+    <button class="btn btn-invisible" (click)="loadReport()" [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <!-- ═══ DATE FILTER ═══ -->
+  <div class="filter-bar">
+    <div class="form-group">
+      <label class="field-label">{{ 'Period Start' | translate }}</label>
+      <input type="date" class="field-input field-sm"
+             [ngModel]="periodStart()" (ngModelChange)="periodStart.set($event)" />
+    </div>
+    <div class="form-group">
+      <label class="field-label">{{ 'Period End' | translate }}</label>
+      <input type="date" class="field-input field-sm"
+             [ngModel]="periodEnd()" (ngModelChange)="periodEnd.set($event)" />
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadReport()" [disabled]="loading()">
+      <mat-icon>search</mat-icon>
+      {{ 'Apply' | translate }}
+    </button>
+  </div>
+
+  <!-- ═══ TOTAL KPI ═══ -->
+  @if (!loading() && items().length > 0) {
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <mat-icon>payments</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ formatCurrency(totalCommission()) }}</div>
+          <div class="kpi-label">{{ 'Total Commission' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <mat-icon>receipt</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ items().length }}</div>
+          <div class="kpi-label">{{ 'Sources' | translate }}</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ COMMISSION TABLE ═══ -->
+  @if (loading()) {
+    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading commissions...' | translate }}</span></div>
+  } @else if (items().length === 0) {
+    <div class="empty-state">
+      <mat-icon>account_balance</mat-icon>
+      <span>{{ 'No commission data for the selected period.' | translate }}</span>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table table-compact" role="grid">
+        <thead>
+          <tr>
+            <th class="sortable" (click)="toggleSort('source')" [attr.aria-sort]="getAriaSort('source')">
+              {{ 'Source' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('source') }}</mat-icon>
+            </th>
+            <th class="text-right sortable" (click)="toggleSort('reservation_count')" [attr.aria-sort]="getAriaSort('reservation_count')">
+              {{ 'Reservations' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('reservation_count') }}</mat-icon>
+            </th>
+            <th class="text-right sortable" (click)="toggleSort('room_revenue')" [attr.aria-sort]="getAriaSort('room_revenue')">
+              {{ 'Room Revenue' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('room_revenue') }}</mat-icon>
+            </th>
+            <th class="text-right sortable" (click)="toggleSort('commission_amount')" [attr.aria-sort]="getAriaSort('commission_amount')">
+              {{ 'Commission' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('commission_amount') }}</mat-icon>
+            </th>
+            <th class="text-right">{{ 'Avg Rate' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of sorted(); track c.source) {
+            <tr>
+              <td><strong>{{ c.source }}</strong></td>
+              <td class="text-right">{{ c.reservation_count }}</td>
+              <td class="text-right">{{ formatCurrency(c.room_revenue) }}</td>
+              <td class="text-right">{{ formatCurrency(c.commission_amount) }}</td>
+              <td class="text-right">{{ (c.commission_rate_avg * 100).toFixed(1) }}%</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr class="row-total">
+            <td><strong>{{ 'Total' | translate }}</strong></td>
+            <td></td>
+            <td></td>
+            <td class="text-right"><strong>{{ formatCurrency(totalCommission()) }}</strong></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+</div>

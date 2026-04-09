@@ -6,6 +6,7 @@ import type {
   ChargePostingListQuery,
   FolioListQuery,
   PreAuditQuery,
+  RoutingRuleListQuery,
 } from "@tartware/schemas";
 import {
   BillingPaymentListQuerySchema,
@@ -18,6 +19,8 @@ import {
   FolioListQuerySchema,
   PreAuditQuerySchema,
   PreAuditResponseSchema,
+  RoutingRuleListItemSchema,
+  RoutingRuleListQuerySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -33,6 +36,7 @@ import {
   listChargePostings,
   listFolios,
 } from "../services/billing-service.js";
+import { getRoutingRuleById, listRoutingRules } from "../services/routing-rule-read-service.js";
 
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
 const BillingListQueryJsonSchema = schemaFromZod(
@@ -361,6 +365,139 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }
 
       return session;
+    },
+  );
+
+  // ============================================================================
+  // FOLIO ROUTING RULES
+  // ============================================================================
+
+  const RoutingRuleListResponseSchema = z.array(RoutingRuleListItemSchema);
+  const RoutingRuleListQueryJsonSchema = schemaFromZod(
+    RoutingRuleListQuerySchema,
+    "RoutingRuleListQuery",
+  );
+  const RoutingRuleListResponseJsonSchema = schemaFromZod(
+    RoutingRuleListResponseSchema,
+    "RoutingRuleListResponse",
+  );
+  const RoutingRuleDetailJsonSchema = schemaFromZod(RoutingRuleListItemSchema, "RoutingRuleDetail");
+
+  app.get<{ Querystring: RoutingRuleListQuery }>(
+    "/v1/billing/routing-rules",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as RoutingRuleListQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "List folio routing rules (templates and/or active rules)",
+        querystring: RoutingRuleListQueryJsonSchema,
+        response: {
+          200: RoutingRuleListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const {
+        tenant_id,
+        property_id,
+        folio_id,
+        is_template,
+        is_active,
+        charge_category,
+        limit,
+        offset,
+      } = RoutingRuleListQuerySchema.parse(request.query);
+
+      const rules = await listRoutingRules({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        folioId: folio_id,
+        isTemplate: is_template,
+        isActive: is_active,
+        chargeCategory: charge_category,
+        limit,
+        offset,
+      });
+
+      return RoutingRuleListResponseSchema.parse(rules);
+    },
+  );
+
+  app.get<{ Params: { ruleId: string }; Querystring: { tenant_id: string } }>(
+    "/v1/billing/routing-rules/:ruleId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Get routing rule by ID",
+        params: schemaFromZod(z.object({ ruleId: z.string().uuid() }), "RoutingRuleIdParam"),
+        querystring: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "TenantIdQueryRoutingRule",
+        ),
+        response: {
+          200: RoutingRuleDetailJsonSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { ruleId } = request.params;
+      const { tenant_id } = request.query;
+
+      const rule = await getRoutingRuleById(ruleId, tenant_id);
+
+      if (!rule) {
+        reply.notFound("ROUTING_RULE_NOT_FOUND");
+        return;
+      }
+
+      return RoutingRuleListItemSchema.parse(rule);
+    },
+  );
+
+  app.get<{ Querystring: { tenant_id: string; property_id?: string } }>(
+    "/v1/billing/routing-rules/templates",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "List routing rule templates for a property",
+        querystring: schemaFromZod(
+          z.object({
+            tenant_id: z.string().uuid(),
+            property_id: z.string().uuid().optional(),
+          }),
+          "RoutingRuleTemplateQuery",
+        ),
+        response: {
+          200: RoutingRuleListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id } = request.query;
+
+      const rules = await listRoutingRules({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        isTemplate: true,
+        limit: 200,
+        offset: 0,
+      });
+
+      return RoutingRuleListResponseSchema.parse(rules);
     },
   );
 };

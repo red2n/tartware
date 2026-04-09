@@ -14,5 +14,6 @@
     "vitest",
     "swc"
   ],
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["@tartware/schemas"]
 }

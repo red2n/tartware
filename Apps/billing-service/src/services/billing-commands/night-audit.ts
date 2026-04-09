@@ -55,12 +55,18 @@ export const executeNightAudit = async (
   if (shouldLockPostings) {
     await query(
       `UPDATE public.business_dates
-       SET allow_postings = false, updated_at = NOW(), updated_by = $3
+       SET allow_postings = false,
+           night_audit_status = 'IN_PROGRESS',
+           night_audit_started_at = NOW(),
+           night_audit_started_by = $3::uuid,
+           is_locked = true, locked_at = NOW(), locked_by = $3::uuid,
+           updated_at = NOW(), updated_by = $3
        WHERE property_id = $1 AND tenant_id = $2`,
       [command.property_id, context.tenantId, actorId],
     );
   }
 
+  let auditSucceeded = false;
   try {
     // Step 2: Post room charges + taxes for in-house guests
     if (shouldPostCharges) {
@@ -138,19 +144,27 @@ export const executeNightAudit = async (
         `UPDATE public.business_dates
          SET business_date = ($3::date + INTERVAL '1 day')::date,
              previous_business_date = $3::date,
+             date_rolled_at = NOW(), date_rolled_by = $4::uuid,
              updated_at = NOW(), updated_by = $4
          WHERE property_id = $1 AND tenant_id = $2`,
         [command.property_id, context.tenantId, auditDate, actorId],
       );
     }
+
+    auditSucceeded = true;
   } finally {
-    // Step 8: Unlock postings
+    // Step 8: Unlock postings and update audit status
     if (shouldLockPostings) {
       await query(
         `UPDATE public.business_dates
-         SET allow_postings = true, updated_at = NOW(), updated_by = $3
+         SET allow_postings = true,
+             night_audit_status = $4,
+             night_audit_completed_at = NOW(),
+             night_audit_completed_by = $3::uuid,
+             is_locked = false,
+             updated_at = NOW(), updated_by = $3
          WHERE property_id = $1 AND tenant_id = $2`,
-        [command.property_id, context.tenantId, actorId],
+        [command.property_id, context.tenantId, actorId, auditSucceeded ? "COMPLETED" : "FAILED"],
       );
     }
   }

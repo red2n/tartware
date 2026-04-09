@@ -22,6 +22,14 @@ export const BillingPaymentCaptureCommandSchema = z
 		amount: z.coerce.number().positive(),
 		currency: z.string().length(3).optional(),
 		payment_method: PaymentMethodEnum,
+		/** Transaction type — ADVANCE_DEPOSIT records to deposit liability account, not revenue. */
+		transaction_type: z
+			.enum(["PAYMENT", "ADVANCE_DEPOSIT", "DEPOSIT_APPLIED", "SECURITY_DEPOSIT"])
+			.default("PAYMENT"),
+		/** Exchange rate to the property's base currency when paying in a foreign currency. */
+		exchange_rate: z.coerce.number().positive().optional(),
+		/** ISO-4217 currency code of the original payment before conversion. */
+		original_currency: z.string().length(3).optional(),
 		gateway: z
 			.object({
 				name: z.string().max(100).optional(),
@@ -30,6 +38,7 @@ export const BillingPaymentCaptureCommandSchema = z
 			})
 			.optional(),
 		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
 	})
 	.refine(
 		(v) => Boolean(v.folio_id || v.reservation_id),
@@ -622,6 +631,23 @@ export const BillingChargebackRecordCommandSchema = z.object({
 	chargeback_reason: z.string().max(200),
 	chargeback_reference: z.string().max(100).optional(),
 	chargeback_date: z.coerce.date().optional(),
+	/**
+	 * Initial status when recording. Defaults to RECEIVED.
+	 * Use billing.chargeback.update_status to advance through the state machine.
+	 */
+	initial_status: z
+		.enum(["RECEIVED", "EVIDENCE_SUBMITTED"])
+		.default("RECEIVED"),
+	/** Supporting evidence documents (file URLs or base64 refs). */
+	evidence: z
+		.array(
+			z.object({
+				type: z.enum(["RECEIPT", "CORRESPONDENCE", "CONTRACT", "PHOTO", "OTHER"]),
+				description: z.string().max(500).optional(),
+				url: z.string().max(2048).optional(),
+			}),
+		)
+		.optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -640,6 +666,11 @@ export const BillingFiscalPeriodCloseCommandSchema = z.object({
 	property_id: z.string().uuid(),
 	period_id: z.string().uuid(),
 	close_reason: z.string().max(500).optional(),
+	/**
+	 * Caller must explicitly confirm that AR/GL balances reconcile before close.
+	 * Prevents period close without completing the reconciliation checklist (BA §15 G-15).
+	 */
+	reconciliation_confirmed: z.boolean().optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });
@@ -848,6 +879,233 @@ export type BillingExpressCheckoutCommand = z.infer<
 	typeof BillingExpressCheckoutCommandSchema
 >;
 
+// ─── Invoice Reopen Command ──────────────────────────────────────────────────
+
+/**
+ * Reopen a FINALIZED invoice for correction.
+ * Creates a new revision — the original invoice is set to SUPERSEDED status
+ * and a sibling invoice is created at revision_number + 1.
+ * Only Finance Manager and above may reopen a finalized invoice.
+ */
+export const BillingInvoiceReopenCommandSchema = z.object({
+	invoice_id: z.string().uuid(),
+	reason: z.string().min(1).max(1000),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingInvoiceReopenCommand = z.infer<
+	typeof BillingInvoiceReopenCommandSchema
+>;
+
+// ─── Folio Reopen Command ────────────────────────────────────────────────────
+
+/**
+ * Reopen a SETTLED or CLOSED folio to allow further charge postings or adjustments.
+ * Typically triggered automatically when a chargeback is raised against the folio.
+ * Requires a reason for audit trail.
+ */
+export const BillingFolioReopenCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		folio_id: z.string().uuid().optional(),
+		reservation_id: z.string().uuid().optional(),
+		reason: z.string().min(1).max(500),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.folio_id || v.reservation_id),
+		"folio_id or reservation_id is required",
+	);
+
+export type BillingFolioReopenCommand = z.infer<
+	typeof BillingFolioReopenCommandSchema
+>;
+
+// ─── Folio Merge Command ─────────────────────────────────────────────────────
+
+/**
+ * Merge a source folio into a target folio.
+ * All charge postings from the source folio are re-attributed to the target.
+ * The source folio is moved to CLOSED status. Irreversible — only Finance Manager
+ * or above may merge folios. Both folios must be OPEN.
+ */
+export const BillingFolioMergeCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	source_folio_id: z.string().uuid(),
+	target_folio_id: z.string().uuid(),
+	reason: z.string().min(1).max(500),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFolioMergeCommand = z.infer<
+	typeof BillingFolioMergeCommandSchema
+>;
+
+// ─── Chargeback Status Update Command ───────────────────────────────────────
+
+/**
+ * Advance a chargeback through its state machine:
+ *   RECEIVED → EVIDENCE_SUBMITTED → WON | LOST
+ * When transitioning to LOST the folio is automatically reopened.
+ */
+export const BillingChargebackUpdateStatusCommandSchema = z.object({
+	refund_id: z.string().uuid(),
+	chargeback_status: z.enum(["EVIDENCE_SUBMITTED", "WON", "LOST"]),
+	evidence: z
+		.array(
+			z.object({
+				type: z.enum(["RECEIPT", "CORRESPONDENCE", "CONTRACT", "PHOTO", "OTHER"]),
+				description: z.string().max(500).optional(),
+				url: z.string().max(2048).optional(),
+			}),
+		)
+		.optional(),
+	notes: z.string().max(2000).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingChargebackUpdateStatusCommand = z.infer<
+	typeof BillingChargebackUpdateStatusCommandSchema
+>;
+
+// ─── No-Show Charge Command ──────────────────────────────────────────────────
+
+/**
+ * Post a no-show penalty charge for a reservation that was not cancelled
+ * and the guest did not arrive. Typically executed during night audit
+ * for reservations that remain in RESERVED status past their expected
+ * arrival time. The charge is posted to the first-night room rate.
+ */
+export const BillingNoShowChargeCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	/** Override charge amount — defaults to first-night room rate if omitted. */
+	charge_amount: z.coerce.number().positive().optional(),
+	currency: z.string().length(3).optional(),
+	/** Reason code for audit: typically "NO_SHOW_POLICY". */
+	reason_code: z.string().max(100).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingNoShowChargeCommand = z.infer<
+	typeof BillingNoShowChargeCommandSchema
+>;
+
+// ─── Late Checkout Charge Command ───────────────────────────────────────────
+
+/**
+ * Post a late checkout fee. The fee tier is calculated from the checkout
+ * time against the property's late checkout policy:
+ *   ≤ 2h overdue → 50% of one night
+ *   > 2h overdue → 100% of one night (or full day rate)
+ * Requires the reservation to be in CHECKED_IN status.
+ */
+export const BillingLateCheckoutChargeCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	/** Actual checkout ISO 8601 datetime; used to calculate tier. */
+	actual_checkout_time: z.string().datetime({ offset: true }),
+	/** Standard checkout time (HH:MM); defaults to property policy if omitted. */
+	standard_checkout_time: z.string().max(10).optional(),
+	/** Override calculated fee — skips tier lookup. */
+	override_amount: z.coerce.number().positive().optional(),
+	currency: z.string().length(3).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingLateCheckoutChargeCommand = z.infer<
+	typeof BillingLateCheckoutChargeCommandSchema
+>;
+
+// ─── Tax Exemption Apply Command ─────────────────────────────────────────────
+
+/**
+ * Apply a tax exemption to a folio or reservation.
+ * Sets tax_exempt = true and records the exemption certificate reference
+ * for audit. Affects future charge postings — previously posted charges
+ * are NOT automatically reversed (use billing.charge.void + repost if needed).
+ */
+export const BillingTaxExemptionApplyCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		folio_id: z.string().uuid().optional(),
+		reservation_id: z.string().uuid().optional(),
+		exemption_type: z.enum(["DIPLOMATIC", "GOVERNMENT", "NON_PROFIT", "RESALE", "EDUCATIONAL", "OTHER"]),
+		exemption_certificate: z.string().max(200),
+		exemption_reason: z.string().max(500).optional(),
+		/** ISO date when the certificate expires. */
+		expiry_date: z.string().date().optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.folio_id || v.reservation_id),
+		"folio_id or reservation_id is required",
+	);
+
+export type BillingTaxExemptionApplyCommand = z.infer<
+	typeof BillingTaxExemptionApplyCommandSchema
+>;
+
+// ─── Cancellation Penalty Command ───────────────────────────────────────────
+
+/**
+ * Apply a cancellation penalty charge to a reservation's folio.
+ * Looks up the applicable cancellation policy from the reservation's
+ * rate plan; the penalty_amount_override bypasses the policy lookup.
+ * The charge is posted with charge_code="CANCEL_PENALTY".
+ */
+export const BillingCancellationPenaltyCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	reservation_id: z.string().uuid(),
+	/** Override the policy-derived penalty — useful for negotiated amounts. */
+	penalty_amount_override: z.coerce.number().positive().optional(),
+	currency: z.string().length(3).optional(),
+	reason: z.string().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingCancellationPenaltyCommand = z.infer<
+	typeof BillingCancellationPenaltyCommandSchema
+>;
+
+// ─── Comp Post Command ────────────────────────────────────────────────────────
+
+/**
+ * Post a complimentary (comp) charge to a reservation or folio.
+ * Records against the comp_accounting table for budget tracking.
+ * The comp_type must match an active comp category in the property config.
+ * Blocks if the property's comp budget for the period is exhausted.
+ */
+export const BillingCompPostCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		folio_id: z.string().uuid().optional(),
+		reservation_id: z.string().uuid().optional(),
+		comp_type: z.enum(["ROOM", "FOOD_BEVERAGE", "SPA", "ACTIVITY", "MISCELLANEOUS"]),
+		amount: z.coerce.number().positive(),
+		currency: z.string().length(3).optional(),
+		charge_code: z.string().max(50).optional(),
+		description: z.string().max(500).optional(),
+		/** Manager authorizing the comp. Required for ROOM comps. */
+		authorized_by: z.string().uuid().optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(v) => Boolean(v.folio_id || v.reservation_id),
+		"folio_id or reservation_id is required",
+	);
+
+export type BillingCompPostCommand = z.infer<typeof BillingCompPostCommandSchema>;
+
 // ─── Shift Handover Command ──────────────────────────────────────────────────
 
 /**
@@ -954,4 +1212,134 @@ export const BillingCreditNoteCreateCommandSchema = z.object({
 
 export type BillingCreditNoteCreateCommand = z.infer<
 	typeof BillingCreditNoteCreateCommandSchema
+>;
+
+// ─── Folio Routing Rules CRUD ───────────────────────────────────────────
+
+/**
+ * Create a new folio routing rule (template or active).
+ * Templates are reusable blueprints; active rules are bound to specific folios.
+ */
+export const BillingRoutingRuleCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	rule_name: z.string().min(1).max(200),
+	rule_code: z.string().max(50).optional(),
+	description: z.string().max(2000).optional(),
+	is_template: z.boolean().default(false),
+	/** Source folio — required for active rules, omitted for templates. */
+	source_folio_id: z.string().uuid().optional(),
+	source_reservation_id: z.string().uuid().optional(),
+	/** Destination folio — required for active rules. */
+	destination_folio_id: z.string().uuid().optional(),
+	destination_folio_type: z
+		.enum(["GUEST", "MASTER", "CITY_LEDGER", "INCIDENTAL", "HOUSE_ACCOUNT"])
+		.optional(),
+	/** Charge code pattern: exact ("ROOM"), wildcard ("F&B*"), or CSV ("ROOM,SPA"). */
+	charge_code_pattern: z.string().max(100).optional(),
+	transaction_type: z.string().max(50).optional(),
+	charge_category: z
+		.enum([
+			"ACCOMMODATION",
+			"FOOD_BEVERAGE",
+			"SERVICES",
+			"TAXES_FEES",
+			"INCIDENTALS",
+		])
+		.optional(),
+	min_amount: z.coerce.number().min(0).optional(),
+	max_amount: z.coerce.number().min(0).optional(),
+	routing_type: z.enum(["FULL", "PERCENTAGE", "FIXED_AMOUNT", "REMAINDER"]).default("FULL"),
+	routing_percentage: z.coerce.number().min(0).max(100).optional(),
+	routing_fixed_amount: z.coerce.number().min(0).optional(),
+	priority: z.coerce.number().int().min(0).default(100),
+	stop_on_match: z.boolean().default(true),
+	effective_from: z.coerce.date().optional(),
+	effective_until: z.coerce.date().optional(),
+	auto_apply_to_group: z.boolean().default(false),
+	auto_apply_to_company: z.boolean().default(false),
+	company_id: z.string().uuid().optional(),
+	group_booking_id: z.string().uuid().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingRoutingRuleCreateCommand = z.infer<
+	typeof BillingRoutingRuleCreateCommandSchema
+>;
+
+/**
+ * Update an existing routing rule's criteria, priority, or routing type.
+ */
+export const BillingRoutingRuleUpdateCommandSchema = z.object({
+	rule_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	rule_name: z.string().min(1).max(200).optional(),
+	description: z.string().max(2000).optional(),
+	destination_folio_id: z.string().uuid().optional(),
+	destination_folio_type: z
+		.enum(["GUEST", "MASTER", "CITY_LEDGER", "INCIDENTAL", "HOUSE_ACCOUNT"])
+		.optional(),
+	charge_code_pattern: z.string().max(100).optional(),
+	transaction_type: z.string().max(50).optional(),
+	charge_category: z
+		.enum([
+			"ACCOMMODATION",
+			"FOOD_BEVERAGE",
+			"SERVICES",
+			"TAXES_FEES",
+			"INCIDENTALS",
+		])
+		.optional(),
+	min_amount: z.coerce.number().min(0).optional(),
+	max_amount: z.coerce.number().min(0).optional(),
+	routing_type: z.enum(["FULL", "PERCENTAGE", "FIXED_AMOUNT", "REMAINDER"]).optional(),
+	routing_percentage: z.coerce.number().min(0).max(100).optional(),
+	routing_fixed_amount: z.coerce.number().min(0).optional(),
+	priority: z.coerce.number().int().min(0).optional(),
+	stop_on_match: z.boolean().optional(),
+	effective_from: z.coerce.date().optional(),
+	effective_until: z.coerce.date().optional(),
+	is_active: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingRoutingRuleUpdateCommand = z.infer<
+	typeof BillingRoutingRuleUpdateCommandSchema
+>;
+
+/**
+ * Soft-delete a routing rule.
+ */
+export const BillingRoutingRuleDeleteCommandSchema = z.object({
+	rule_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingRoutingRuleDeleteCommand = z.infer<
+	typeof BillingRoutingRuleDeleteCommandSchema
+>;
+
+/**
+ * Clone a template rule into active rules bound to a specific folio pair.
+ * Copies template fields, sets is_template=false, and binds source + destination.
+ */
+export const BillingRoutingRuleCloneTemplateCommandSchema = z.object({
+	template_id: z.string().uuid(),
+	property_id: z.string().uuid(),
+	source_folio_id: z.string().uuid(),
+	destination_folio_id: z.string().uuid(),
+	/** Override priority from template. */
+	priority: z.coerce.number().int().min(0).optional(),
+	/** Override effective dates from template. */
+	effective_from: z.coerce.date().optional(),
+	effective_until: z.coerce.date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingRoutingRuleCloneTemplateCommand = z.infer<
+	typeof BillingRoutingRuleCloneTemplateCommandSchema
 >;

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     correction_type VARCHAR(20),               -- FULL_REVERSAL, PARTIAL_REVERSAL, ADJUSTMENT
 
     -- Invoice Number (human-readable)
-    invoice_number VARCHAR(100) NOT NULL,       -- Human-readable invoice number (e.g., INV-100001). Tenant-scoped uniqueness enforced by index.
+    invoice_number VARCHAR(100),                -- Human-readable invoice number (e.g., INV-100001). NULL until finalized. Tenant-scoped uniqueness enforced by index.
 
     -- Invoice Type
     invoice_type VARCHAR(50) DEFAULT 'standard',
@@ -172,6 +172,13 @@ BEGIN
 END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_tenant_invoice_number
-  ON invoices (tenant_id, invoice_number);
+  ON invoices (tenant_id, invoice_number)
+  WHERE invoice_number IS NOT NULL;
+
+-- invoice_number is nullable: assigned at FINALIZE time only (BA §5.1 gapless sequence)
+ALTER TABLE invoices ALTER COLUMN invoice_number DROP NOT NULL;
+
+-- revision_number tracks correction iterations (BA §5.2 reopen workflow)
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS revision_number INTEGER DEFAULT 0;
 
 \echo 'Invoices table created successfully!'

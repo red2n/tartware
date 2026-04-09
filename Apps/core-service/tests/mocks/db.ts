@@ -752,8 +752,10 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
 
   if (sql.startsWith("insert into tenants") || sql.startsWith("insert into public.tenants")) {
     const id = randomUUID();
-    const name = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
-    const slug = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    // All INSERT INTO tenants queries use (id, tenant_id, name, slug, ...) VALUES ($1, $1, $2, $3, ...)
+    // so params[0]=UUID, params[1]=name, params[2]=slug
+    const name = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    const slug = typeof params?.[2] === "string" ? (params?.[2] as string) : "";
     mockTenants.set(id, { id, name, slug });
     return {
       rows: [
@@ -775,8 +777,13 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     sql.startsWith("insert into public.users")
   ) {
     const id = randomUUID();
-    const username = typeof params?.[0] === "string" ? (params?.[0] as string) : "";
-    const email = typeof params?.[1] === "string" ? (params?.[1] as string) : "";
+    // Queries that include explicit (id, username, email, ...) have UUID as params[0].
+    // Queries that start with (username, email, ...) have username as params[0].
+    const hasIdPrefix = sql.includes("(id,") || sql.includes("(id,\n");
+    const usernameIdx = hasIdPrefix ? 1 : 0;
+    const emailIdx = hasIdPrefix ? 2 : 1;
+    const username = typeof params?.[usernameIdx] === "string" ? (params?.[usernameIdx] as string) : "";
+    const email = typeof params?.[emailIdx] === "string" ? (params?.[emailIdx] as string) : "";
     mockUsers.set(id, { id, username, email });
     return {
       rows: [

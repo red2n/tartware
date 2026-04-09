@@ -5,6 +5,8 @@ import { appLogger } from "../../lib/logger.js";
 import {
   BillingFolioCloseCommandSchema,
   BillingFolioCreateCommandSchema,
+  BillingFolioMergeCommandSchema,
+  BillingFolioReopenCommandSchema,
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
 } from "../../schemas/billing-commands.js";
@@ -52,7 +54,7 @@ export const createFolio = async (payload: unknown, context: CommandContext): Pr
       command.reservation_id ?? null,
       command.guest_id ?? null,
       currency,
-      command.tax_exempt_id ? true : false,
+      !!command.tax_exempt_id,
       command.tax_exempt_id ?? null,
       command.notes ?? null,
       actor,
@@ -116,7 +118,7 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     }
     if (folio.folio_status === "CLOSED" || folio.folio_status === "SETTLED") {
       appLogger.info({ folioId, status: folio.folio_status }, "Folio already closed/settled");
-      return folioId!;
+      return folioId as string;
     }
 
     const balance = parseDbMoneyOrZero(folio.balance);
@@ -144,7 +146,7 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
       { folioId, newStatus, balance, reservationId: command.reservation_id },
       "Folio closed/settled",
     );
-    return folioId!;
+    return folioId as string;
   });
 };
 
@@ -197,4 +199,209 @@ const applyFolioTransfer = async (
   });
 
   return toFolioId;
+};
+
+// \u2500\u2500\u2500 Folio Reopen \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+/**
+ * Reopen a SETTLED or CLOSED folio.
+ * Required before posting adjustments, chargeback reversals, or correction charges
+ * on a settled folio. The folio is set back to OPEN status and the closed_at /
+ * settled_at timestamps are cleared (BA \u00a713.5).
+ *
+ * @returns folio_id of the reopened folio.
+ */
+export const reopenFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingFolioReopenCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  let folioId = command.folio_id ?? null;
+  if (!folioId && command.reservation_id) {
+    folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  }
+  if (!folioId) {
+    throw new BillingCommandError(
+      "FOLIO_NOT_FOUND",
+      "No folio found. Provide folio_id or a valid reservation_id.",
+    );
+  }
+
+  return withTransaction(async (client) => {
+    const { rows } = await queryWithClient<{ folio_status: string }>(
+      client,
+      `SELECT folio_status FROM public.folios
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+       FOR UPDATE`,
+      [context.tenantId, folioId],
+    );
+
+    const folio = rows[0];
+    if (!folio) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio record not found.");
+    }
+    if (folio.folio_status === "OPEN") {
+      appLogger.info({ folioId }, "Folio is already OPEN \u2014 reopen is a no-op");
+      return folioId as string;
+    }
+    if (!["SETTLED", "CLOSED"].includes(folio.folio_status)) {
+      throw new BillingCommandError(
+        "INVALID_FOLIO_STATUS",
+        `Cannot reopen folio in status ${folio.folio_status}. Only SETTLED or CLOSED folios can be reopened.`,
+      );
+    }
+
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET folio_status = 'OPEN',
+           closed_at = NULL, settled_at = NULL, settled_by = NULL,
+           notes = CONCAT_WS(E'\\n', notes, $3::text),
+           updated_at = NOW(), updated_by = $4::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, folioId, `REOPENED: ${command.reason}`, actorId],
+    );
+
+    appLogger.info({ folioId, previousStatus: folio.folio_status }, "Folio reopened");
+    return folioId as string;
+  });
+};
+
+// \u2500\u2500\u2500 Folio Merge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+/**
+ * Merge a source folio into a target folio (BA \u00a73.5 \u2014 group/corporate consolidation).
+ * All charge postings on the source are re-attributed to the target folio.
+ * The source folio balance is zeroed and its status is set to CLOSED.
+ *
+ * Constraints:
+ * - Both folios must be OPEN.
+ * - Folios must belong to the same tenant and property.
+ * - The operation is irreversible \u2014 no undo pathway exists.
+ *
+ * @returns target_folio_id.
+ */
+export const mergeFolios = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command = BillingFolioMergeCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  if (command.source_folio_id === command.target_folio_id) {
+    throw new BillingCommandError("FOLIO_MERGE_INVALID", "Source and target folios must differ.");
+  }
+
+  return withTransaction(async (client) => {
+    // Lock both rows in a consistent order (lower UUID first) to prevent deadlocks
+    const [lockFirst, lockSecond] =
+      command.source_folio_id < command.target_folio_id
+        ? [command.source_folio_id, command.target_folio_id]
+        : [command.target_folio_id, command.source_folio_id];
+
+    const { rows } = await queryWithClient<{
+      folio_id: string;
+      folio_status: string;
+      balance: string;
+      property_id: string;
+      total_charges: string;
+      total_credits: string;
+      total_payments: string;
+    }>(
+      client,
+      `SELECT folio_id, folio_status, balance, property_id,
+              total_charges, total_credits, total_payments
+       FROM public.folios
+       WHERE tenant_id = $1::uuid AND folio_id = ANY($2::uuid[])
+       ORDER BY folio_id
+       FOR UPDATE`,
+      [context.tenantId, [lockFirst, lockSecond]],
+    );
+
+    if (rows.length !== 2) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "One or both folios not found.");
+    }
+
+    const source = rows.find((r) => r.folio_id === command.source_folio_id);
+    const target = rows.find((r) => r.folio_id === command.target_folio_id);
+
+    if (!source || !target) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "One or both folios could not be resolved.");
+    }
+
+    if (source.folio_status !== "OPEN" || target.folio_status !== "OPEN") {
+      throw new BillingCommandError(
+        "INVALID_FOLIO_STATUS",
+        `Both folios must be OPEN for merge. Source: ${source.folio_status}, Target: ${target.folio_status}.`,
+      );
+    }
+
+    if (source.property_id !== target.property_id) {
+      throw new BillingCommandError(
+        "FOLIO_MERGE_INVALID",
+        "Source and target folios must belong to the same property.",
+      );
+    }
+
+    const sourceCharges = parseDbMoneyOrZero(source.total_charges);
+    const sourceCredits = parseDbMoneyOrZero(source.total_credits);
+    const sourcePayments = parseDbMoneyOrZero(source.total_payments);
+    const sourceBalance = parseDbMoneyOrZero(source.balance);
+
+    // Re-attribute all source postings to the target folio
+    await queryWithClient(
+      client,
+      `UPDATE public.charge_postings
+       SET folio_id = $3::uuid,
+           updated_at = NOW(), updated_by = $4::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, command.source_folio_id, command.target_folio_id, actorId],
+    );
+
+    // Update target folio totals to absorb all source folio components
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges + $3,
+           total_credits = total_credits + $4,
+           total_payments = total_payments + $5,
+           balance = balance + $6,
+           updated_at = NOW(), updated_by = $7::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [
+        context.tenantId,
+        command.target_folio_id,
+        sourceCharges,
+        sourceCredits,
+        sourcePayments,
+        sourceBalance,
+        actorId,
+      ],
+    );
+
+    // Zero out and close the source folio (all components must be zeroed for balance constraint)
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET folio_status = 'CLOSED',
+           balance = 0, total_charges = 0, total_credits = 0, total_payments = 0,
+           closed_at = NOW(),
+           notes = CONCAT_WS(E'\\n', notes, $3::text),
+           updated_at = NOW(), updated_by = $4::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [
+        context.tenantId,
+        command.source_folio_id,
+        `MERGED into ${command.target_folio_id}: ${command.reason}`,
+        actorId,
+      ],
+    );
+
+    appLogger.info(
+      {
+        sourceFolioId: command.source_folio_id,
+        targetFolioId: command.target_folio_id,
+        transferredBalance: sourceBalance,
+      },
+      "Folio merge complete",
+    );
+
+    return command.target_folio_id;
+  });
 };

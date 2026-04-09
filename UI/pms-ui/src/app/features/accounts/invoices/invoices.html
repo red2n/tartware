@@ -1,0 +1,171 @@
+<div class="invoices-page">
+  <app-page-header title="Invoice Management" description="Create, adjust, and finalize guest invoices">
+    <button class="btn btn-primary btn-sm" (click)="openCreateForm()" [disabled]="loading()">
+      <mat-icon>add</mat-icon>
+      {{ 'New Invoice' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadInvoices()" [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <!-- ═══ CREATE FORM ═══ -->
+  @if (showCreateForm()) {
+    <div class="action-confirm-card">
+      <div class="confirm-header">
+        <mat-icon class="confirm-icon">receipt</mat-icon>
+        <h3 class="confirm-title">{{ 'Create Invoice' | translate }}</h3>
+      </div>
+      <div class="confirm-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="field-label">{{ 'Guest ID' | translate }} *</label>
+            <input type="text" class="field-input" placeholder="Guest UUID"
+                   [ngModel]="createForm().guest_id"
+                   (ngModelChange)="createForm.set({...createForm(), guest_id: $event})" />
+          </div>
+          <div class="form-group">
+            <label class="field-label">{{ 'Reservation ID' | translate }}</label>
+            <input type="text" class="field-input" placeholder="Reservation UUID (optional)"
+                   [ngModel]="createForm().reservation_id"
+                   (ngModelChange)="createForm.set({...createForm(), reservation_id: $event})" />
+          </div>
+          <div class="form-group">
+            <label class="field-label">{{ 'Total Amount' | translate }} *</label>
+            <input type="number" class="field-input" placeholder="0.00" step="0.01"
+                   [ngModel]="createForm().total_amount"
+                   (ngModelChange)="createForm.set({...createForm(), total_amount: $event})" />
+          </div>
+          <div class="form-group">
+            <label class="field-label">{{ 'Due Date' | translate }}</label>
+            <input type="date" class="field-input"
+                   [ngModel]="createForm().due_date"
+                   (ngModelChange)="createForm.set({...createForm(), due_date: $event})" />
+          </div>
+          <div class="form-group form-group-full">
+            <label class="field-label">{{ 'Notes' | translate }}</label>
+            <textarea class="field-input" rows="2"
+                      [ngModel]="createForm().notes"
+                      (ngModelChange)="createForm.set({...createForm(), notes: $event})"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm" (click)="cancelCreate()" [disabled]="creating()">{{ 'Cancel' | translate }}</button>
+        <button class="btn btn-primary btn-sm" (click)="submitCreate()" [disabled]="creating()">
+          @if (creating()) { <mat-spinner diameter="16"></mat-spinner> }
+          {{ 'Create Invoice' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ STATUS FILTER ═══ -->
+  <div class="filter-bar">
+    <button class="filter-tab" [class.active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">{{ 'All' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'DRAFT'" (click)="setStatusFilter('DRAFT')">{{ 'Draft' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'SENT'" (click)="setStatusFilter('SENT')">{{ 'Sent' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'FINALIZED'" (click)="setStatusFilter('FINALIZED')">{{ 'Finalized' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'PAID'" (click)="setStatusFilter('PAID')">{{ 'Paid' | translate }}</button>
+    <button class="filter-tab" [class.active]="statusFilter() === 'VOIDED'" (click)="setStatusFilter('VOIDED')">{{ 'Voided' | translate }}</button>
+
+    <div class="filter-bar-spacer"></div>
+    <input type="text" class="field-input field-sm filter-search" placeholder="Search invoices..."
+           [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+  </div>
+
+  <!-- ═══ INVOICE LIST ═══ -->
+  @if (loading()) {
+    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading invoices...' | translate }}</span></div>
+  } @else if (paginated().length === 0) {
+    <div class="empty-state">
+      <mat-icon>receipt_long</mat-icon>
+      <span>{{ 'No invoices found.' | translate }}</span>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table table-compact" role="grid">
+        <thead>
+          <tr>
+            <th class="sortable" (click)="toggleSort('invoice_number')" [attr.aria-sort]="getAriaSort('invoice_number')">
+              {{ 'Invoice #' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('invoice_number') }}</mat-icon>
+            </th>
+            <th>{{ 'Guest' | translate }}</th>
+            <th>{{ 'Confirmation' | translate }}</th>
+            <th class="sortable" (click)="toggleSort('invoice_date')" [attr.aria-sort]="getAriaSort('invoice_date')">
+              {{ 'Date' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('invoice_date') }}</mat-icon>
+            </th>
+            <th class="text-right sortable" (click)="toggleSort('total_amount')" [attr.aria-sort]="getAriaSort('total_amount')">
+              {{ 'Total' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('total_amount') }}</mat-icon>
+            </th>
+            <th class="text-right">{{ 'Paid' | translate }}</th>
+            <th class="text-right">{{ 'Balance' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th class="text-right">{{ 'Actions' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (inv of paginated(); track inv.id) {
+            <tr>
+              <td>{{ inv.invoice_number ?? '—' }}</td>
+              <td>{{ inv.guest_name ?? inv.guest_id }}</td>
+              <td>{{ inv.confirmation_number ?? '—' }}</td>
+              <td>{{ formatDate(inv.invoice_date) }}</td>
+              <td class="text-right">{{ formatCurrency(inv.total_amount, inv.currency) }}</td>
+              <td class="text-right">{{ formatCurrency(inv.paid_amount, inv.currency) }}</td>
+              <td class="text-right">
+                <span [ngClass]="inv.balance_due > 0 ? 'text-danger' : 'text-success'">
+                  {{ formatCurrency(inv.balance_due, inv.currency) }}
+                </span>
+              </td>
+              <td><span [class]="statusBadge(inv.status)">{{ inv.status_display }}</span></td>
+              <td class="text-right">
+                <div class="action-btn-group">
+                  @if (inv.status === 'DRAFT' || inv.status === 'SENT') {
+                    <button class="btn btn-invisible btn-sm" (click)="openAdjust(inv)" [matTooltip]="'Adjust' | translate" [disabled]="actionLoading()">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button class="btn btn-invisible btn-sm" (click)="finalizeInvoice(inv)" [matTooltip]="'Finalize' | translate" [disabled]="actionLoading()">
+                      <mat-icon>lock</mat-icon>
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+            @if (adjustingInvoiceId() === inv.id) {
+              <tr>
+                <td colspan="9">
+                  <div class="inline-form">
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Adjustment Amount' | translate }} *</label>
+                        <input type="number" class="field-input field-sm" step="0.01" placeholder="+/- amount"
+                               [ngModel]="adjustForm().adjustment_amount"
+                               (ngModelChange)="adjustForm.set({...adjustForm(), adjustment_amount: $event})" />
+                      </div>
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Reason' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="Reason for adjustment"
+                               [ngModel]="adjustForm().reason"
+                               (ngModelChange)="adjustForm.set({...adjustForm(), reason: $event})" />
+                      </div>
+                      <div class="form-group form-group-actions">
+                        <button class="btn btn-outline btn-sm" (click)="cancelAdjust()" [disabled]="adjusting()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-primary btn-sm" (click)="submitAdjust()" [disabled]="adjusting()">
+                          @if (adjusting()) { <mat-spinner diameter="14"></mat-spinner> }
+                          {{ 'Apply' | translate }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-pagination [currentPage]="page()" [pageSize]="pageSize()" [totalItems]="filtered().length" (pageChange)="onPageChange($event)"></app-pagination>
+  }
+</div>

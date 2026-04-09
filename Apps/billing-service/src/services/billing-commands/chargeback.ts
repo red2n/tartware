@@ -1,7 +1,16 @@
-import { query } from "../../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
-import { BillingChargebackRecordCommandSchema } from "../../schemas/billing-commands.js";
-import { BillingCommandError, type CommandContext, resolveActorId } from "./common.js";
+import {
+  BillingChargebackRecordCommandSchema,
+  BillingChargebackUpdateStatusCommandSchema,
+} from "../../schemas/billing-commands.js";
+import {
+  asUuid,
+  BillingCommandError,
+  type CommandContext,
+  resolveActorId,
+  resolveFolioId,
+} from "./common.js";
 
 /**
  * Record a processor-initiated chargeback against a completed payment.
@@ -137,4 +146,140 @@ export const recordChargeback = async (
   );
 
   return refundId ?? payment.id;
+};
+
+// \u2500\u2500\u2500 Chargeback State Machine \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+/** Valid forward state transitions for a chargeback dispute (BA \u00a74.4). */
+const CHARGEBACK_TRANSITIONS: Record<string, string[]> = {
+  RECEIVED: ["EVIDENCE_SUBMITTED"],
+  EVIDENCE_SUBMITTED: ["WON", "LOST"],
+};
+
+/**
+ * Advance a chargeback dispute through its state machine:
+ *   RECEIVED \u2192 EVIDENCE_SUBMITTED \u2192 WON | LOST
+ *
+ * On transition to LOST the associated folio is automatically reopened so the
+ * property can post a correction charge without manual intervention (BA \u00a74.4).
+ *
+ * @returns refund_id of the updated chargeback record.
+ */
+export const updateChargebackStatus = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = BillingChargebackUpdateStatusCommandSchema.parse(payload);
+  const actor = asUuid(resolveActorId(context.initiatedBy));
+
+  return withTransaction(async (client) => {
+    const { rows } = await queryWithClient<{
+      refund_id: string;
+      chargeback_status: string | null;
+      original_payment_id: string;
+      reservation_id: string | null;
+      is_chargeback: boolean;
+    }>(
+      client,
+      `SELECT r.refund_id, r.chargeback_status, r.original_payment_id,
+              p.reservation_id, r.is_chargeback
+       FROM public.refunds r
+       LEFT JOIN public.payments p ON p.id = r.original_payment_id
+       WHERE r.tenant_id = $1::uuid AND r.refund_id = $2::uuid
+       FOR UPDATE OF r`,
+      [context.tenantId, command.refund_id],
+    );
+
+    const record = rows[0];
+    if (!record) {
+      throw new BillingCommandError("CHARGEBACK_NOT_FOUND", "Chargeback record not found.");
+    }
+    if (!record.is_chargeback) {
+      throw new BillingCommandError(
+        "NOT_A_CHARGEBACK",
+        "The specified refund is not a chargeback record.",
+      );
+    }
+
+    const currentStatus = record.chargeback_status ?? "RECEIVED";
+    const allowedNext = CHARGEBACK_TRANSITIONS[currentStatus] ?? [];
+    if (!allowedNext.includes(command.chargeback_status)) {
+      throw new BillingCommandError(
+        "INVALID_CHARGEBACK_TRANSITION",
+        `Cannot transition from ${currentStatus} to ${command.chargeback_status}. Allowed: ${allowedNext.join(", ")}`,
+      );
+    }
+
+    const evidenceJson = command.evidence ? JSON.stringify(command.evidence) : null;
+
+    await queryWithClient(
+      client,
+      `UPDATE public.refunds
+       SET chargeback_status = $3,
+           notes = CASE
+             WHEN $4::text IS NULL THEN notes
+             WHEN notes IS NULL THEN $4::text
+             ELSE CONCAT_WS(E'\\n', notes, $4::text)
+           END,
+           metadata = CASE
+             WHEN $5::jsonb IS NULL THEN metadata
+             ELSE COALESCE(metadata, '{}'::jsonb) || $5::jsonb
+           END,
+           updated_at = NOW(), updated_by = $6::uuid
+       WHERE tenant_id = $1::uuid AND refund_id = $2::uuid`,
+      [
+        context.tenantId,
+        command.refund_id,
+        command.chargeback_status,
+        command.notes ?? null,
+        evidenceJson ? JSON.parse(evidenceJson) : null,
+        actor,
+      ],
+    );
+
+    // Auto-reopen the folio when the chargeback is LOST so the property can
+    // post a correction without manual intervention. Inlined here to use the
+    // existing transaction client and avoid a nested withTransaction deadlock.
+    if (command.chargeback_status === "LOST" && record.reservation_id) {
+      const folioId = await resolveFolioId(context.tenantId, record.reservation_id);
+      if (folioId) {
+        const { rows: folioRows } = await queryWithClient<{ folio_status: string }>(
+          client,
+          `SELECT folio_status FROM public.folios
+           WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+           FOR UPDATE`,
+          [context.tenantId, folioId],
+        );
+        const folioStatus = folioRows[0]?.folio_status;
+        if (folioStatus && folioStatus !== "OPEN") {
+          await queryWithClient(
+            client,
+            `UPDATE public.folios
+             SET folio_status = 'OPEN',
+                 closed_at = NULL, settled_at = NULL, settled_by = NULL,
+                 notes = CONCAT_WS(E'\\n', notes, $3::text),
+                 updated_at = NOW(), updated_by = $4::uuid
+             WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+            [
+              context.tenantId,
+              folioId,
+              `REOPENED: Auto-reopened: chargeback ${command.refund_id} resolved as LOST`,
+              actor,
+            ],
+          );
+        }
+      }
+    }
+
+    appLogger.info(
+      {
+        refundId: command.refund_id,
+        previousStatus: currentStatus,
+        newStatus: command.chargeback_status,
+      },
+      "Chargeback status updated",
+    );
+
+    return command.refund_id;
+  });
 };

@@ -18,6 +18,13 @@ export const closeFiscalPeriod = async (
   const command = BillingFiscalPeriodCloseCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
+  if (command.reconciliation_confirmed === false) {
+    throw new BillingCommandError(
+      "RECONCILIATION_NOT_CONFIRMED",
+      "Fiscal period cannot be closed: reconciliation_confirmed must be true.",
+    );
+  }
+
   const { rowCount } = await query(
     `UPDATE public.fiscal_periods
      SET period_status = 'SOFT_CLOSE',

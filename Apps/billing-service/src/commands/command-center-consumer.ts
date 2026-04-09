@@ -44,17 +44,31 @@ import {
   voidPayment,
   writeOffAr,
 } from "../services/billing-command-service.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
+  applyTaxExemption,
   cashierHandover,
+  chargeCancellationPenalty,
+  chargeLateCheckout,
+  chargeNoShow,
+  cloneRoutingRuleTemplate,
   closeFiscalPeriod,
   createCreditNote,
   createFolio,
   createFolioWindow,
+  createRoutingRule,
   createTaxConfig,
+  deleteRoutingRule,
   deleteTaxConfig,
   expressCheckout,
   lockFiscalPeriod,
+  mergeFolios,
+  postComp,
   reopenFiscalPeriod,
+  reopenFolio,
+  reopenInvoice,
+  updateChargebackStatus,
+  updateRoutingRule,
   updateTaxConfig,
   voidInvoice,
 } from "../services/billing-commands/index.js";
@@ -312,6 +326,84 @@ const routeBillingCommand = async (
         initiatedBy: metadata.initiatedBy ?? null,
       });
       return;
+    case "billing.invoice.reopen":
+      await reopenInvoice(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.reopen":
+      await reopenFolio(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.folio.merge":
+      await mergeFolios(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.chargeback.update_status":
+      await updateChargebackStatus(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.no_show.charge":
+      await chargeNoShow(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.late_checkout.charge":
+      await chargeLateCheckout(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.tax_exemption.apply":
+      await applyTaxExemption(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.cancellation.penalty":
+      await chargeCancellationPenalty(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.comp.post":
+      await postComp(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.create":
+      await createRoutingRule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.update":
+      await updateRoutingRule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.delete":
+      await deleteRoutingRule(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.routing_rule.clone_template":
+      await cloneRoutingRuleTemplate(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
     default:
       logger.debug(
         { commandName: metadata.commandName },
@@ -331,6 +423,7 @@ const { start, shutdown } = createConsumerLifecycle({
   checkIdempotency: checkCommandIdempotency,
   recordIdempotency: recordCommandIdempotency,
   idempotencyFailureMode: "fail-open",
+  isRetryable: (error) => !(error instanceof BillingCommandError),
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

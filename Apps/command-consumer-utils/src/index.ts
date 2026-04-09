@@ -35,6 +35,7 @@ type RetryOptions = {
   baseDelayMs: number;
   delayScheduleMs?: number[];
   onRetry?: (context: RetryAttemptContext) => void;
+  isRetryable?: (error: unknown) => boolean;
 };
 
 type ProcessWithRetry = (
@@ -101,6 +102,7 @@ type CreateCommandCenterHandlersInput = {
     maxRetries: number;
     baseDelayMs: number;
     delayScheduleMs?: number[];
+    isRetryable?: (error: unknown) => boolean;
   };
   processWithRetry: ProcessWithRetry;
   RetryExhaustedError: new (...args: never[]) => Error & { attempts: number };
@@ -342,6 +344,7 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
           maxRetries: input.retry.maxRetries,
           baseDelayMs: input.retry.baseDelayMs,
           delayScheduleMs: input.retry.delayScheduleMs,
+          isRetryable: input.retry.isRetryable,
           onRetry: ({ attempt, delayMs, error }) => {
             input.logger.warn(
               { attempt, delayMs, err: error, metadata },

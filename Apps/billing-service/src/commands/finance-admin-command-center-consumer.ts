@@ -16,6 +16,7 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
+import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   approveCommission,
   bulkGeneratePricingRecommendations,
@@ -92,6 +93,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeFinanceAdminCommand,
   publishDlqEvent,
+  isRetryable: (error) => !(error instanceof BillingCommandError),
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

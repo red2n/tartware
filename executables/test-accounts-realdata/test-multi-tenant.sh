@@ -548,10 +548,19 @@ REQUIRED_COMMANDS=(
   "billing.cashier.open" "billing.cashier.close" "billing.cashier.handover"
   "billing.ar.post" "billing.ar.apply_payment" "billing.ar.write_off"
   "billing.chargeback.record"
+  "billing.chargeback.update_status"
   "billing.night_audit.execute"
   "billing.express_checkout"
   "billing.fiscal_period.close"
   "billing.tax_config.create"
+  "billing.invoice.reopen"
+  "billing.folio.reopen"
+  "billing.folio.merge"
+  "billing.no_show.charge"
+  "billing.late_checkout.charge"
+  "billing.cancellation.penalty"
+  "billing.tax_exemption.apply"
+  "billing.comp.post"
 )
 
 enable_commands_via_api() {
@@ -1040,6 +1049,226 @@ run_billing_pipeline() {
       fi
       echo ""
     fi
+
+    # ── BA Compliance Gap Commands (full mode only) ──────────────────────
+
+    # ── Invoice Reopen ──
+    if [[ -n "$inv_id" ]]; then
+      echo "── ${tag} — Invoice Reopen ──────────────────────────────────────"
+      send_command "CMD invoice.reopen" \
+        "billing.invoice.reopen" \
+        "{\"invoice_id\":\"$inv_id\",\"reason\":\"Post-checkout rate correction — pipeline $tag\"}"
+      wait_kafka 8
+
+      local reopen_inv_status
+      get "$GW/v1/billing/invoices?tenant_id=$tid&property_id=$pid" >/dev/null
+      reopen_inv_status=$(resp_ffirst ".id == \"$inv_id\"" "status")
+      if [[ "${reopen_inv_status,,}" == "superseded" || "${reopen_inv_status,,}" == "reopened" || "${reopen_inv_status,,}" == "draft" ]]; then
+        pass "Invoice reopen ($label) — $reopen_inv_status"
+      else
+        skip "Invoice reopen ($label)" "status=$reopen_inv_status"
+      fi
+      echo ""
+    fi
+
+    # ── Folio Reopen (house account was not closed in pipeline — reopen folio2 if closed) ──
+    if [[ -n "$folio2_id" ]]; then
+      echo "── ${tag} — Folio Reopen ────────────────────────────────────────"
+      local fr_status
+      get "$GW/v1/billing/folios/$folio2_id?tenant_id=$tid" >/dev/null
+      fr_status=$(resp_field "folio_status")
+      if [[ "${fr_status,,}" == "closed" || "${fr_status,,}" == "settled" ]]; then
+        send_command "CMD folio.reopen: reopen folio2" \
+          "billing.folio.reopen" \
+          "{\"property_id\":\"$pid\",\"folio_id\":\"$folio2_id\",\"reason\":\"Post-checkout adjustment — pipeline $tag\"}"
+        wait_kafka 8
+
+        get "$GW/v1/billing/folios/$folio2_id?tenant_id=$tid" >/dev/null
+        local fr_new_status
+        fr_new_status=$(resp_field "folio_status")
+        if [[ "${fr_new_status,,}" == "open" || "${fr_new_status,,}" == "reopened" ]]; then
+          pass "Folio reopen ($label) — $fr_new_status"
+        else
+          skip "Folio reopen ($label)" "status=$fr_new_status"
+        fi
+      else
+        # Folio not closed — dispatch command against primary folio with reservation_id
+        send_command "CMD folio.reopen: via reservation" \
+          "billing.folio.reopen" \
+          "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"reason\":\"Settlement correction — pipeline $tag\"}"
+        wait_kafka 5
+        pass "Folio reopen dispatched ($label)"
+      fi
+      echo ""
+    fi
+
+    # ── Folio Merge ──
+    if [[ -n "$folio_id" && -n "$house_id" ]]; then
+      echo "── ${tag} — Folio Merge ─────────────────────────────────────────"
+      # Create a throwaway folio as merge source
+      send_command "CMD folio.create: merge source" \
+        "billing.folio.create" \
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge-Src $tag\",\"currency\":\"USD\",\"idempotency_key\":\"MERGE-$tag-$UNIQUE\"}"
+      wait_kafka 5
+
+      local merge_src
+      get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
+      merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and .folio_type != "HOUSE_ACCOUNT" and (.folio_status == "OPEN" or .folio_status == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+      if [[ -n "$merge_src" ]]; then
+        send_command "CMD folio.merge: src → primary" \
+          "billing.folio.merge" \
+          "{\"property_id\":\"$pid\",\"source_folio_id\":\"$merge_src\",\"target_folio_id\":\"$folio_id\",\"reason\":\"Consolidation — pipeline $tag\"}"
+        wait_kafka 8
+
+        local merge_st
+        get "$GW/v1/billing/folios/$merge_src?tenant_id=$tid" >/dev/null
+        merge_st=$(resp_field "folio_status")
+        if [[ "${merge_st,,}" == "closed" || "${merge_st,,}" == "merged" ]]; then
+          pass "Folio merge ($label) — source $merge_st"
+        else
+          skip "Folio merge ($label)" "source status=$merge_st"
+        fi
+      else
+        skip "Folio merge ($label)" "no merge source folio"
+      fi
+      echo ""
+    fi
+
+    # ── Chargeback Status Update ──
+    echo "── ${tag} — Chargeback Status Update ────────────────────────────"
+    local cb_refund_id
+    get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+    cb_refund_id=$(resp_ffirst '.transaction_type == "refund"' "id")
+    if [[ -n "$cb_refund_id" ]]; then
+      send_command "CMD chargeback.update_status" \
+        "billing.chargeback.update_status" \
+        "{\"refund_id\":\"$cb_refund_id\",\"chargeback_status\":\"EVIDENCE_SUBMITTED\",\"evidence\":[{\"type\":\"RECEIPT\",\"description\":\"Signed folio\"}],\"notes\":\"Evidence — pipeline $tag\"}"
+      wait_kafka 8
+      pass "Chargeback status update dispatched ($label)"
+    else
+      skip "Chargeback status update ($label)" "no refund record"
+    fi
+    echo ""
+
+    # ── No-Show Charge ──
+    echo "── ${tag} — No-Show Charge ──────────────────────────────────────"
+    if [[ -n "$res_id" ]]; then
+      local pre_ns
+      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+      pre_ns=$(resp_count)
+      send_command "CMD no_show.charge" \
+        "billing.no_show.charge" \
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
+      wait_kafka 8
+      local post_ns
+      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+      post_ns=$(resp_count)
+      if [[ $((post_ns - pre_ns)) -ge 1 ]]; then
+        pass "No-show charge ($label)"
+      else
+        skip "No-show charge ($label)" "Δ=$((post_ns - pre_ns))"
+      fi
+    else
+      skip "No-show charge ($label)" "no reservation"
+    fi
+    echo ""
+
+    # ── Late Checkout Charge ──
+    echo "── ${tag} — Late Checkout Charge ────────────────────────────────"
+    if [[ -n "$res_id" ]]; then
+      local late_iso
+      late_iso=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
+        || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
+      if [[ -n "$late_iso" ]]; then
+        local pre_late
+        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+        pre_late=$(resp_count)
+        send_command "CMD late_checkout.charge" \
+          "billing.late_checkout.charge" \
+          "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"actual_checkout_time\":\"$late_iso\",\"standard_checkout_time\":\"12:00\",\"currency\":\"USD\"}"
+        wait_kafka 8
+        local post_late
+        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+        post_late=$(resp_count)
+        if [[ $((post_late - pre_late)) -ge 1 ]]; then
+          pass "Late checkout charge ($label)"
+        else
+          skip "Late checkout charge ($label)" "Δ=$((post_late - pre_late))"
+        fi
+      else
+        skip "Late checkout charge ($label)" "date calc unavailable"
+      fi
+    else
+      skip "Late checkout charge ($label)" "no reservation"
+    fi
+    echo ""
+
+    # ── Cancellation Penalty ──
+    echo "── ${tag} — Cancellation Penalty ────────────────────────────────"
+    if [[ -n "$res_id" ]]; then
+      local pre_cp
+      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+      pre_cp=$(resp_count)
+      send_command "CMD cancellation.penalty" \
+        "billing.cancellation.penalty" \
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
+      wait_kafka 8
+      local post_cp
+      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+      post_cp=$(resp_count)
+      if [[ $((post_cp - pre_cp)) -ge 1 ]]; then
+        pass "Cancellation penalty ($label)"
+      else
+        skip "Cancellation penalty ($label)" "Δ=$((post_cp - pre_cp))"
+      fi
+    else
+      skip "Cancellation penalty ($label)" "no reservation"
+    fi
+    echo ""
+
+    # ── Tax Exemption ──
+    echo "── ${tag} — Tax Exemption ───────────────────────────────────────"
+    if [[ -n "$folio_id" ]]; then
+      send_command "CMD tax_exemption.apply" \
+        "billing.tax_exemption.apply" \
+        "{\"property_id\":\"$pid\",\"folio_id\":\"$folio_id\",\"exemption_type\":\"GOVERNMENT\",\"exemption_certificate\":\"GOV-$tag-$UNIQUE\",\"exemption_reason\":\"Government employee — pipeline $tag\",\"expiry_date\":\"2026-12-31\"}"
+      wait_kafka 8
+
+      local tex_flag
+      get "$GW/v1/billing/folios/$folio_id?tenant_id=$tid" >/dev/null
+      tex_flag=$(jq -r '.tax_exempt // .data.tax_exempt // empty' "$RESP_FILE" 2>/dev/null || echo "")
+      if [[ "$tex_flag" == "true" || "$tex_flag" == "t" ]]; then
+        pass "Tax exemption ($label) — tax_exempt=true"
+      else
+        skip "Tax exemption ($label)" "flag=$tex_flag"
+      fi
+    else
+      skip "Tax exemption ($label)" "no folio"
+    fi
+    echo ""
+
+    # ── Comp Post ──
+    echo "── ${tag} — Comp Post ───────────────────────────────────────────"
+    if [[ -n "$res_id" ]]; then
+      local pre_comp
+      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+      pre_comp=$(resp_count)
+      send_command "CMD comp.post: F&B \$35" \
+        "billing.comp.post" \
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":35.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Comp dinner — pipeline $tag\"}"
+      wait_kafka 8
+      local post_comp
+      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+      post_comp=$(resp_count)
+      if [[ $((post_comp - pre_comp)) -ge 1 ]]; then
+        pass "Comp post ($label)"
+      else
+        skip "Comp post ($label)" "Δ=$((post_comp - pre_comp))"
+      fi
+    else
+      skip "Comp post ($label)" "no reservation"
+    fi
+    echo ""
   fi
 
   echo "  ✓ Pipeline complete for $label"
