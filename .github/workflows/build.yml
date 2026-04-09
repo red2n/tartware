@@ -34,7 +34,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: pnpm-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -42,7 +42,7 @@ jobs:
             pnpm-${{ runner.os }}-${{ matrix.node-version }}-
 
       - name: Restore Nx cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .nx/cache
           key: nx-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
