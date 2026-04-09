@@ -62,7 +62,7 @@
     "@vitest/ui": "^4.0.18",
     "ast-v8-to-istanbul": "^0.3.10",
     "eslint": "8.57.0",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.29.1",
     "knip": "^5.67.0",
     "tsx": "^4.7.1",
