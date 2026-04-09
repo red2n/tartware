@@ -100,6 +100,11 @@ export function canCreditNote(invoice: InvoiceListItem): boolean {
 	return invoice.status === "issued" || invoice.status === "paid";
 }
 
+/** Whether an invoice can be reopened into a correction draft. */
+export function canReopenInvoice(invoice: InvoiceListItem): boolean {
+	return invoice.status !== "draft";
+}
+
 /** Whether a charge posting can be voided. */
 export function canVoidCharge(charge: ChargePostingListItem): boolean {
 	return charge.transaction_type === "charge" && !charge.is_voided;
@@ -108,4 +113,9 @@ export function canVoidCharge(charge: ChargePostingListItem): boolean {
 /** Whether a folio can be closed / settled. */
 export function canCloseFolio(folio: FolioListItem): boolean {
 	return folio.folio_status === "open";
+}
+
+/** Whether a folio can be reopened for additional postings. */
+export function canReopenFolio(folio: FolioListItem): boolean {
+	return folio.folio_status === "closed" || folio.folio_status === "settled";
 }

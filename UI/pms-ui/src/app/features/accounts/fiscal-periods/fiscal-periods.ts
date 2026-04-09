@@ -44,6 +44,7 @@ export class FiscalPeriodsComponent {
 	// ── State ──
 	readonly periods = signal<FiscalPeriodListItem[]>([]);
 	readonly loading = signal(false);
+	readonly error = signal<string | null>(null);
 	readonly statusFilter = signal<StatusFilter>("ALL");
 	readonly actionLoading = signal(false);
 
@@ -77,14 +78,20 @@ export class FiscalPeriodsComponent {
 		if (!tenantId || !propertyId) return;
 
 		this.loading.set(true);
+		this.error.set(null);
 		try {
 			const res = await this.api.get<{ data: FiscalPeriodListItem[] }>("/billing/fiscal-periods", {
 				tenant_id: tenantId,
 				property_id: propertyId,
 			});
 			this.periods.set(res.data ?? []);
-		} catch {
+		} catch (e) {
 			this.periods.set([]);
+			this.error.set(
+				e instanceof Error
+					? e.message
+					: "Fiscal period list endpoint is not currently available through the API.",
+			);
 		} finally {
 			this.loading.set(false);
 		}

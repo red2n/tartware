@@ -1,5 +1,6 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -27,12 +28,19 @@ const CHECKIN_ALLOWED = new Set(["PENDING", "CONFIRMED"]);
 const CHECKOUT_ALLOWED = new Set(["CHECKED_IN"]);
 /** Statuses that allow cancellation. */
 const CANCEL_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
+/** Statuses that allow a no-show charge. */
+const NO_SHOW_CHARGE_ALLOWED = new Set(["CONFIRMED", "NO_SHOW"]);
+/** Statuses that allow a late checkout fee. */
+const LATE_CHECKOUT_CHARGE_ALLOWED = new Set(["CHECKED_IN"]);
+/** Statuses that allow a cancellation penalty posting. */
+const CANCELLATION_PENALTY_ALLOWED = new Set(["CANCELLED", "NO_SHOW"]);
 
 @Component({
 	selector: "app-reservation-detail",
 	standalone: true,
 	imports: [
 		NgClass,
+		FormsModule,
 		RouterLink,
 		MatIconModule,
 		MatProgressSpinnerModule,
@@ -63,8 +71,31 @@ export class ReservationDetailComponent implements OnInit {
 	readonly confirmingCheckOut = signal(false);
 	readonly confirmingCancel = signal(false);
 	readonly confirmingExpressCheckout = signal(false);
-	readonly folioBalance = signal<{ total_charges: number; total_payments: number; balance: number } | null>(null);
+	readonly confirmingNoShowCharge = signal(false);
+	readonly confirmingLateCheckoutCharge = signal(false);
+	readonly confirmingCancellationPenalty = signal(false);
+	readonly folioBalance = signal<{
+		total_charges: number;
+		total_payments: number;
+		balance: number;
+	} | null>(null);
 	readonly loadingFolioBalance = signal(false);
+	readonly noShowChargeForm = signal({
+		charge_amount: "",
+		currency: "",
+		reason_code: "NO_SHOW_POLICY",
+	});
+	readonly lateCheckoutChargeForm = signal({
+		actual_checkout_time: this.currentLocalDateTime(),
+		standard_checkout_time: "12:00",
+		override_amount: "",
+		currency: "",
+	});
+	readonly cancellationPenaltyForm = signal({
+		penalty_amount_override: "",
+		currency: "",
+		reason: "",
+	});
 
 	/* ── Room selection for check-in ── */
 	readonly availableRooms = signal<AvailableRoom[]>([]);
@@ -96,6 +127,21 @@ export class ReservationDetailComponent implements OnInit {
 	readonly canCancel = computed(() => {
 		const r = this.reservation();
 		return r ? CANCEL_ALLOWED.has(r.status.toUpperCase()) : false;
+	});
+
+	readonly canChargeNoShow = computed(() => {
+		const r = this.reservation();
+		return r ? NO_SHOW_CHARGE_ALLOWED.has(r.status.toUpperCase()) : false;
+	});
+
+	readonly canChargeLateCheckout = computed(() => {
+		const r = this.reservation();
+		return r ? LATE_CHECKOUT_CHARGE_ALLOWED.has(r.status.toUpperCase()) : false;
+	});
+
+	readonly canChargeCancellationPenalty = computed(() => {
+		const r = this.reservation();
+		return r ? CANCELLATION_PENALTY_ALLOWED.has(r.status.toUpperCase()) : false;
 	});
 
 	readonly bookingRows = computed<DetailRow[]>(() => {
@@ -297,10 +343,9 @@ export class ReservationDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 		this.loadingFolioBalance.set(true);
 		try {
-			const res = await this.api.get<{ data: { total_charges: number; total_payments: number; balance: number }[] }>(
-				"/billing/folios",
-				{ tenant_id: tenantId, reservation_id: r.id, limit: "1" },
-			);
+			const res = await this.api.get<{
+				data: { total_charges: number; total_payments: number; balance: number }[];
+			}>("/billing/folios", { tenant_id: tenantId, reservation_id: r.id, limit: "1" });
 			const folio = res.data?.[0] ?? null;
 			this.folioBalance.set(folio);
 		} catch {
@@ -315,12 +360,49 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingCancel.set(true);
 	}
 
+	showNoShowChargeConfirm(): void {
+		const r = this.reservation();
+		this.clearActionState();
+		this.noShowChargeForm.set({
+			charge_amount: "",
+			currency: r?.currency ?? "",
+			reason_code: "NO_SHOW_POLICY",
+		});
+		this.confirmingNoShowCharge.set(true);
+	}
+
+	showLateCheckoutChargeConfirm(): void {
+		const r = this.reservation();
+		this.clearActionState();
+		this.lateCheckoutChargeForm.set({
+			actual_checkout_time: this.currentLocalDateTime(),
+			standard_checkout_time: "12:00",
+			override_amount: "",
+			currency: r?.currency ?? "",
+		});
+		this.confirmingLateCheckoutCharge.set(true);
+	}
+
+	showCancellationPenaltyConfirm(): void {
+		const r = this.reservation();
+		this.clearActionState();
+		this.cancellationPenaltyForm.set({
+			penalty_amount_override: "",
+			currency: r?.currency ?? "",
+			reason: "",
+		});
+		this.confirmingCancellationPenalty.set(true);
+	}
+
 	cancelAction(): void {
 		this.confirmingCheckIn.set(false);
 		this.showAllRoomTypes.set(false);
 		this.confirmingCheckOut.set(false);
 		this.confirmingCancel.set(false);
 		this.confirmingExpressCheckout.set(false);
+		this.confirmingNoShowCharge.set(false);
+		this.confirmingLateCheckoutCharge.set(false);
+		this.confirmingCancellationPenalty.set(false);
 	}
 
 	/** Load available rooms matching the reservation's room type for manual selection. */
@@ -503,6 +585,126 @@ export class ReservationDetailComponent implements OnInit {
 		}
 	}
 
+	async chargeNoShow(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+
+		const chargeAmount = this.parseOptionalPositiveNumber(this.noShowChargeForm().charge_amount);
+		if (this.noShowChargeForm().charge_amount && chargeAmount == null) {
+			this.toast.error("No-show charge amount must be greater than 0.");
+			return;
+		}
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+		this.actionSuccess.set(null);
+
+		try {
+			await this.api.post(`/tenants/${tenantId}/billing/reservations/${r.id}/no-show-charge`, {
+				property_id: r.property_id,
+				charge_amount: chargeAmount,
+				currency: this.optionalTrimmedValue(this.noShowChargeForm().currency),
+				reason_code: this.optionalTrimmedValue(this.noShowChargeForm().reason_code),
+			});
+			this.toast.success("No-show charge command accepted.");
+			this.confirmingNoShowCharge.set(false);
+			await this.refreshReservationAfterCommand(
+				r.id,
+				r.status === "CONFIRMED" ? "NO_SHOW" : undefined,
+			);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "No-show charge failed");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async chargeLateCheckout(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+
+		const actualCheckoutTime = this.toIsoOffsetDateTime(
+			this.lateCheckoutChargeForm().actual_checkout_time,
+		);
+		if (!actualCheckoutTime) {
+			this.toast.error("Actual checkout time is required.");
+			return;
+		}
+
+		const overrideAmount = this.parseOptionalPositiveNumber(
+			this.lateCheckoutChargeForm().override_amount,
+		);
+		if (this.lateCheckoutChargeForm().override_amount && overrideAmount == null) {
+			this.toast.error("Late checkout override amount must be greater than 0.");
+			return;
+		}
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+		this.actionSuccess.set(null);
+
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/billing/reservations/${r.id}/late-checkout-charge`,
+				{
+					property_id: r.property_id,
+					actual_checkout_time: actualCheckoutTime,
+					standard_checkout_time: this.optionalTrimmedValue(
+						this.lateCheckoutChargeForm().standard_checkout_time,
+					),
+					override_amount: overrideAmount,
+					currency: this.optionalTrimmedValue(this.lateCheckoutChargeForm().currency),
+				},
+			);
+			this.toast.success("Late checkout charge command accepted.");
+			this.confirmingLateCheckoutCharge.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Late checkout charge failed");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async chargeCancellationPenalty(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+
+		const penaltyAmountOverride = this.parseOptionalPositiveNumber(
+			this.cancellationPenaltyForm().penalty_amount_override,
+		);
+		if (this.cancellationPenaltyForm().penalty_amount_override && penaltyAmountOverride == null) {
+			this.toast.error("Penalty override amount must be greater than 0.");
+			return;
+		}
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+		this.actionSuccess.set(null);
+
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/billing/reservations/${r.id}/cancellation-penalty`,
+				{
+					property_id: r.property_id,
+					penalty_amount_override: penaltyAmountOverride,
+					currency: this.optionalTrimmedValue(this.cancellationPenaltyForm().currency),
+					reason: this.optionalTrimmedValue(this.cancellationPenaltyForm().reason),
+				},
+			);
+			this.toast.success("Cancellation penalty command accepted.");
+			this.confirmingCancellationPenalty.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Cancellation penalty failed");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
 	private clearActionState(): void {
 		this.actionSuccess.set(null);
 		this.actionError.set(null);
@@ -510,6 +712,9 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingCheckOut.set(false);
 		this.confirmingCancel.set(false);
 		this.confirmingExpressCheckout.set(false);
+		this.confirmingNoShowCharge.set(false);
+		this.confirmingLateCheckoutCharge.set(false);
+		this.confirmingCancellationPenalty.set(false);
 	}
 
 	/**
@@ -523,6 +728,41 @@ export class ReservationDetailComponent implements OnInit {
 			const current = this.reservation();
 			if (current && current.status !== previousStatus) return;
 		}
+	}
+
+	private async refreshReservationAfterCommand(id: string, expectedStatus?: string): Promise<void> {
+		for (let i = 0; i < 4; i++) {
+			await new Promise((resolve) => setTimeout(resolve, 800));
+			await this.loadReservation(id);
+			if (!expectedStatus || this.reservation()?.status === expectedStatus) return;
+		}
+	}
+
+	private currentLocalDateTime(): string {
+		const now = new Date();
+		const offsetMs = now.getTimezoneOffset() * 60_000;
+		return new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
+	}
+
+	private toIsoOffsetDateTime(value: string): string | null {
+		const trimmed = value.trim();
+		if (!trimmed) return null;
+		const parsed = new Date(trimmed);
+		if (Number.isNaN(parsed.getTime())) return null;
+		return parsed.toISOString();
+	}
+
+	private parseOptionalPositiveNumber(value: string): number | undefined | null {
+		const trimmed = value.trim();
+		if (!trimmed) return undefined;
+		const numeric = Number(trimmed);
+		if (!Number.isFinite(numeric) || numeric <= 0) return null;
+		return numeric;
+	}
+
+	private optionalTrimmedValue(value: string): string | undefined {
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
 	}
 
 	formatDate(dateStr: string): string {

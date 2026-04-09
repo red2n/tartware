@@ -5,10 +5,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
-import type {
-	CommissionReportItem,
-	CommissionReportResponse,
-} from "@tartware/schemas";
+import type { CommissionReportItem, CommissionReportResponse } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -79,8 +76,8 @@ export class CommissionsComponent {
 			const res = await this.api.get<CommissionReportResponse>("/billing/reports/commissions", {
 				tenant_id: tenantId,
 				property_id: propertyId,
-				period_start: this.periodStart(),
-				period_end: this.periodEnd(),
+				start_date: this.periodStart(),
+				end_date: this.periodEnd(),
 			});
 			this.items.set(res.items ?? []);
 			this.totalCommission.set(res.total_commission ?? 0);

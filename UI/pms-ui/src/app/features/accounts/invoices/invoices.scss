@@ -1,1 +1,126 @@
 /* Invoice Management — component-specific styles. */
+
+.invoices-page {
+  display: block;
+}
+
+.invoice-kpi-total > mat-icon {
+  color: var(--color-accent-fg);
+}
+
+.invoice-kpi-balance > mat-icon {
+  color: var(--color-warning-fg);
+}
+
+.invoice-kpi-draft > mat-icon {
+  color: var(--color-fg-muted);
+}
+
+.invoice-kpi-credit > mat-icon {
+  color: var(--color-accent-fg);
+}
+
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.results-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.results-count {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.results-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.filter-search {
+  min-width: min(360px, 100%);
+}
+
+.invoice-table-shell {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-canvas-default);
+}
+
+.invoice-table tbody tr:hover {
+  background: var(--color-canvas-subtle);
+}
+
+.invoice-cell,
+.invoice-guest-cell,
+.invoice-date-cell,
+.invoice-amount-cell {
+  vertical-align: top;
+}
+
+.invoice-primary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.invoice-secondary-row,
+.cell-sub,
+.amount-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--color-fg-muted);
+}
+
+.cell-main {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-fg-default);
+}
+
+.invoice-ref {
+  font-size: var(--font-size-sm);
+}
+
+.amount-breakdown {
+  align-items: flex-end;
+}
+
+.action-btn-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 92px;
+}
+
+@media (max-width: 768px) {
+  .filter-toolbar {
+    align-items: stretch;
+  }
+
+  .filter-search {
+    width: 100%;
+    min-width: 0;
+  }
+}
