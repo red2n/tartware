@@ -17,8 +17,8 @@ import {
  * requires an authorized_by user ID. The posting amount is negative
  * (credit) on the folio and positive in comp_accounting (debit to comp budget).
  *
- * Blocks if the property's comp budget for the current period would be exceeded
- * (budget enforcement via comp_accounting table aggregate check).
+ * This handler records comp usage for tracking/reporting; it does not
+ * enforce a property comp budget limit before posting.
  *
  * @returns folio_id of the target folio.
  */
