@@ -373,7 +373,8 @@ export const getPreAuditChecklist = async (options: {
   const { rows: openSessions } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM cashier_sessions
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status = 'OPEN' AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()`,
+       AND session_status = 'open'
+       AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()`,
     [tenantId, propertyId],
   );
   const openCount = Number(openSessions[0]?.cnt ?? 0);
@@ -483,13 +484,13 @@ export const getBucketCheck = async (options: {
   const bdParam = options.businessDate ?? null;
   const { rows: dateRows } = await query<{ business_date: string }>(
     bdParam
-      ? `SELECT $3::date::text AS business_date`
+      ? `SELECT $1::date::text AS business_date`
       : `SELECT business_date::text
          FROM business_dates
          WHERE tenant_id = $1::uuid AND property_id = $2::uuid
            AND date_status = 'OPEN' AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()
          ORDER BY business_date DESC LIMIT 1`,
-    bdParam ? [tenantId, propertyId, bdParam] : [tenantId, propertyId],
+    bdParam ? [bdParam] : [tenantId, propertyId],
   );
   const businessDate = dateRows[0]?.business_date ?? new Date().toISOString().slice(0, 10);
 

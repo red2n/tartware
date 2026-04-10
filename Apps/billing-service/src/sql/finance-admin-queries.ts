@@ -176,3 +176,59 @@ export const FISCAL_PERIOD_LIST_SQL = `
     AND ($2::uuid IS NULL OR fp.property_id = $2::uuid)
   ORDER BY fp.fiscal_year DESC, fp.period_number DESC
 `;
+
+export const LEDGER_ENTRY_LIST_SQL = `
+  SELECT
+    gle.gl_entry_id,
+    gle.gl_batch_id,
+    gle.tenant_id,
+    gle.property_id,
+    p.property_name,
+    glb.batch_number,
+    glb.batch_date,
+    glb.accounting_period,
+    glb.batch_status,
+    gle.folio_id,
+    f.folio_number,
+    gle.reservation_id,
+    r.confirmation_number,
+    gle.department_code,
+    gle.posting_date,
+    gle.gl_account_code,
+    gle.cost_center,
+    gle.usali_category,
+    gle.description,
+    gle.debit_amount,
+    gle.credit_amount,
+    gle.currency,
+    gle.source_table,
+    gle.source_id,
+    gle.reference_number,
+    gle.status,
+    gle.posted_at,
+    gle.created_at
+  FROM public.general_ledger_entries gle
+  LEFT JOIN public.general_ledger_batches glb
+    ON glb.gl_batch_id = gle.gl_batch_id
+   AND COALESCE(glb.is_deleted, false) = false
+  LEFT JOIN public.properties p
+    ON p.id = gle.property_id
+  LEFT JOIN public.folios f
+    ON f.folio_id = gle.folio_id
+   AND COALESCE(f.is_deleted, false) = false
+  LEFT JOIN public.reservations r
+    ON r.id = gle.reservation_id
+   AND COALESCE(r.is_deleted, false) = false
+  WHERE COALESCE(gle.is_deleted, false) = false
+    AND gle.tenant_id = $1::uuid
+    AND ($2::uuid IS NULL OR gle.property_id = $2::uuid)
+    AND ($3::text IS NULL OR LOWER(gle.status) = LOWER($3::text))
+    AND ($4::text IS NULL OR LOWER(COALESCE(glb.batch_status, '')) = LOWER($4::text))
+    AND ($5::text IS NULL OR gle.gl_account_code ILIKE $5::text || '%')
+    AND ($6::text IS NULL OR LOWER(COALESCE(gle.department_code, '')) = LOWER($6::text))
+    AND ($7::date IS NULL OR gle.posting_date >= $7::date)
+    AND ($8::date IS NULL OR gle.posting_date <= $8::date)
+  ORDER BY gle.posting_date DESC, gle.created_at DESC
+  LIMIT $9
+  OFFSET $10
+`;

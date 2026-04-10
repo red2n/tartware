@@ -5,6 +5,9 @@ import {
   type FiscalPeriodListItem,
   FiscalPeriodListItemSchema,
   type FiscalPeriodRow,
+  type LedgerEntryListItem,
+  LedgerEntryListItemSchema,
+  type LedgerEntryRow,
   type TaxConfigurationListItem,
   TaxConfigurationListItemSchema,
   type TaxConfigurationRow,
@@ -14,6 +17,7 @@ import {
 import { query } from "../lib/db.js";
 import {
   FISCAL_PERIOD_LIST_SQL,
+  LEDGER_ENTRY_LIST_SQL,
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/finance-admin-queries.js";
@@ -120,6 +124,46 @@ const mapRowToFiscalPeriod = (row: FiscalPeriodRow): FiscalPeriodListItem => {
   });
 };
 
+const mapRowToLedgerEntry = (row: LedgerEntryRow): LedgerEntryListItem => {
+  const { value: status, display: statusDisplay } = formatEnumDisplay(row.status, "Draft");
+  const batchStatus = row.batch_status
+    ? formatEnumDisplay(row.batch_status, row.batch_status)
+    : null;
+
+  return LedgerEntryListItemSchema.parse({
+    gl_entry_id: row.gl_entry_id,
+    gl_batch_id: row.gl_batch_id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    property_name: row.property_name ?? undefined,
+    batch_number: row.batch_number ?? undefined,
+    batch_date: row.batch_date ? (toIsoString(row.batch_date) ?? "").split("T")[0] : undefined,
+    accounting_period: row.accounting_period ?? undefined,
+    batch_status: batchStatus?.value,
+    batch_status_display: batchStatus?.display,
+    folio_id: row.folio_id ?? undefined,
+    folio_number: row.folio_number ?? undefined,
+    reservation_id: row.reservation_id ?? undefined,
+    confirmation_number: row.confirmation_number ?? undefined,
+    department_code: row.department_code ?? undefined,
+    posting_date: (toIsoString(row.posting_date) ?? "").split("T")[0],
+    gl_account_code: row.gl_account_code,
+    cost_center: row.cost_center ?? undefined,
+    usali_category: row.usali_category ?? undefined,
+    description: row.description ?? undefined,
+    debit_amount: toNumberOrFallback(row.debit_amount, 0),
+    credit_amount: toNumberOrFallback(row.credit_amount, 0),
+    currency: row.currency ?? undefined,
+    source_table: row.source_table ?? undefined,
+    source_id: row.source_id ?? undefined,
+    reference_number: row.reference_number ?? undefined,
+    status,
+    status_display: statusDisplay,
+    posted_at: toIsoString(row.posted_at),
+    created_at: toIsoString(row.created_at) ?? new Date().toISOString(),
+  });
+};
+
 export const listTaxConfigurations = async (options: {
   limit?: number;
   tenantId: string;
@@ -178,6 +222,34 @@ export const listFiscalPeriods = async (options: {
   ]);
 
   return rows.map(mapRowToFiscalPeriod);
+};
+
+export const listLedgerEntries = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  status?: string;
+  batchStatus?: string;
+  glAccountCode?: string;
+  departmentCode?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<LedgerEntryListItem[]> => {
+  const { rows } = await query<LedgerEntryRow>(LEDGER_ENTRY_LIST_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+    options.status ?? null,
+    options.batchStatus ?? null,
+    options.glAccountCode ?? null,
+    options.departmentCode ?? null,
+    options.startDate ?? null,
+    options.endDate ?? null,
+    options.limit ?? 200,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map(mapRowToLedgerEntry);
 };
 
 // ============================================================================

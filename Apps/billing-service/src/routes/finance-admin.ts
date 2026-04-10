@@ -1,6 +1,9 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   FiscalPeriodListResponseSchema,
+  type LedgerEntryListQuery,
+  LedgerEntryListQuerySchema,
+  LedgerEntryListResponseSchema,
   TaxConfigurationListItemSchema,
   TaxConfigurationListResponseSchema,
   TaxTypeEnum,
@@ -16,6 +19,7 @@ import {
   getTaxSummary,
   getTrialBalance,
   listFiscalPeriods,
+  listLedgerEntries,
   listTaxConfigurations,
 } from "../services/finance-admin-service.js";
 
@@ -192,6 +196,68 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       return FiscalPeriodListResponseSchema.parse({
         data: periods,
         meta: { count: periods.length },
+      });
+    },
+  );
+
+  const LedgerEntryListQueryJsonSchema = schemaFromZod(
+    LedgerEntryListQuerySchema,
+    "LedgerEntryListQuery",
+  );
+  const LedgerEntryListResponseJsonSchema = schemaFromZod(
+    LedgerEntryListResponseSchema,
+    "LedgerEntryListResponse",
+  );
+
+  app.get<{ Querystring: LedgerEntryListQuery }>(
+    "/v1/billing/ledger",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as LedgerEntryListQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "List general ledger entries with finance filters",
+        description:
+          "Retrieve GL entries joined to batches, folios, and reservations for accounting review.",
+        querystring: LedgerEntryListQueryJsonSchema,
+        response: {
+          200: LedgerEntryListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const {
+        tenant_id,
+        property_id,
+        status,
+        batch_status,
+        gl_account_code,
+        department_code,
+        start_date,
+        end_date,
+        limit,
+        offset,
+      } = LedgerEntryListQuerySchema.parse(request.query);
+
+      const entries = await listLedgerEntries({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        status,
+        batchStatus: batch_status,
+        glAccountCode: gl_account_code,
+        departmentCode: department_code,
+        startDate: start_date,
+        endDate: end_date,
+        limit,
+        offset,
+      });
+
+      return LedgerEntryListResponseSchema.parse({
+        data: entries,
+        meta: { count: entries.length },
       });
     },
   );

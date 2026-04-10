@@ -209,6 +209,58 @@ export type ChargePostingListResponse = z.infer<
 	typeof ChargePostingListResponseSchema
 >;
 
+/**
+ * Ledger entry list item schema for API responses.
+ */
+export const LedgerEntryListItemSchema = z.object({
+	gl_entry_id: uuid,
+	gl_batch_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	batch_number: z.string().optional(),
+	batch_date: z.string().optional(),
+	accounting_period: z.string().optional(),
+	batch_status: z.string().optional(),
+	batch_status_display: z.string().optional(),
+	folio_id: uuid.optional(),
+	folio_number: z.string().optional(),
+	reservation_id: uuid.optional(),
+	confirmation_number: z.string().optional(),
+	department_code: z.string().optional(),
+	posting_date: z.string(),
+	gl_account_code: z.string(),
+	cost_center: z.string().optional(),
+	usali_category: z.string().optional(),
+	description: z.string().optional(),
+	debit_amount: z.number(),
+	credit_amount: z.number(),
+	currency: z.string().optional(),
+	source_table: z.string().optional(),
+	source_id: uuid.optional(),
+	reference_number: z.string().optional(),
+	status: z.string(),
+	status_display: z.string(),
+	posted_at: z.string().optional(),
+	created_at: z.string(),
+});
+
+export type LedgerEntryListItem = z.infer<typeof LedgerEntryListItemSchema>;
+
+/**
+ * Ledger entry list response schema.
+ */
+export const LedgerEntryListResponseSchema = z.object({
+	data: z.array(LedgerEntryListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type LedgerEntryListResponse = z.infer<
+	typeof LedgerEntryListResponseSchema
+>;
+
 // =====================================================
 // TAX CONFIGURATIONS
 // =====================================================
@@ -1156,6 +1208,22 @@ export type RoutingRuleListQuery = z.infer<typeof RoutingRuleListQuerySchema>;
 // ============================================================================
 // BILLING ROUTE QUERY SCHEMAS
 // ============================================================================
+
+/** Query parameters for listing general ledger entries. */
+export const LedgerEntryListQuerySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	status: z.string().toLowerCase().optional(),
+	batch_status: z.string().toLowerCase().optional(),
+	gl_account_code: z.string().optional(),
+	department_code: z.string().optional(),
+	start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	limit: z.coerce.number().int().positive().max(500).default(200),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type LedgerEntryListQuery = z.infer<typeof LedgerEntryListQuerySchema>;
 
 /** Query parameters for listing billing payments. */
 export const BillingPaymentListQuerySchema = z.object({

@@ -308,6 +308,21 @@ export type BillingDateRollManualCommand = z.infer<
 >;
 
 /**
+ * Rebuild the general ledger batch for a property business date using posted
+ * billing source transactions. Safe to rerun for the same date.
+ */
+export const BillingLedgerPostCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	business_date: z.coerce.date().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingLedgerPostCommand = z.infer<
+	typeof BillingLedgerPostCommandSchema
+>;
+
+/**
  * Close/settle a folio. Sets folio_status to CLOSED or SETTLED
  * depending on balance. Zero balance → SETTLED, otherwise CLOSED.
  */

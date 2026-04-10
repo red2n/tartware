@@ -107,6 +107,42 @@ export type ChargePostingRow = {
 };
 
 // =====================================================
+// LEDGER ENTRY ROW
+// =====================================================
+
+/** Raw row shape from the ledger entries list query. */
+export type LedgerEntryRow = {
+	gl_entry_id: string;
+	gl_batch_id: string;
+	tenant_id: string;
+	property_id: string;
+	property_name: string | null;
+	batch_number: string | null;
+	batch_date: string | Date | null;
+	accounting_period: string | null;
+	batch_status: string | null;
+	folio_id: string | null;
+	folio_number: string | null;
+	reservation_id: string | null;
+	confirmation_number: string | null;
+	department_code: string | null;
+	posting_date: string | Date;
+	gl_account_code: string;
+	cost_center: string | null;
+	usali_category: string | null;
+	description: string | null;
+	debit_amount: number | string | null;
+	credit_amount: number | string | null;
+	currency: string | null;
+	source_table: string | null;
+	source_id: string | null;
+	reference_number: string | null;
+	status: string;
+	posted_at: string | Date | null;
+	created_at: string | Date;
+};
+
+// =====================================================
 // PAYMENT COMMAND ROW
 // =====================================================
 
