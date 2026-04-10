@@ -142,6 +142,46 @@ export type LedgerEntryRow = {
 	created_at: string | Date;
 };
 
+/** Raw row shape from ledger-post charge source query with charge-code and folio joins. */
+export type ChargeLedgerSourceRow = {
+	posting_id: string;
+	property_id: string;
+	folio_id: string;
+	reservation_id: string | null;
+	posting_date: string | Date;
+	department_code: string | null;
+	charge_code: string;
+	charge_description: string;
+	charge_category: string | null;
+	posting_type: string;
+	subtotal: string | null;
+	tax_amount: string | null;
+	service_charge: string | null;
+	discount_amount: string | null;
+	total_amount: string;
+	currency_code: string | null;
+	gl_account: string | null;
+	revenue_group: string | null;
+	confirmation_number: string | null;
+	folio_number: string | null;
+};
+
+/** Raw row shape from ledger-post payment source query with reservation/folio joins. */
+export type PaymentLedgerSourceRow = {
+	id: string;
+	property_id: string;
+	reservation_id: string | null;
+	folio_id: string | null;
+	payment_date: string | Date;
+	payment_reference: string;
+	transaction_type: string;
+	payment_method: string | null;
+	amount: string;
+	currency: string | null;
+	confirmation_number: string | null;
+	folio_number: string | null;
+};
+
 // =====================================================
 // PAYMENT COMMAND ROW
 // =====================================================

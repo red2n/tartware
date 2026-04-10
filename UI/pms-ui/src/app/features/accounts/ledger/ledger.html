@@ -1,5 +1,9 @@
 <div class="ledger-page">
   <app-page-header title="Ledger" description="General ledger entries, batches, and posting review">
+    <button class="btn btn-primary btn-sm" (click)="postLedger()" [disabled]="loading() || posting()">
+      <mat-icon>{{ posting() ? "hourglass_top" : "upload" }}</mat-icon>
+      {{ 'Post Ledger' | translate }}
+    </button>
     <button class="btn btn-invisible" (click)="loadLedger()" [matTooltip]="'Refresh' | translate">
       <mat-icon>refresh</mat-icon>
     </button>

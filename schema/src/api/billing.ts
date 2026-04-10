@@ -261,6 +261,36 @@ export type LedgerEntryListResponse = z.infer<
 	typeof LedgerEntryListResponseSchema
 >;
 
+/**
+ * Shared insert shape used by billing-service when materializing GL entries.
+ */
+export const BillingLedgerEntryInsertInputSchema = z.object({
+	gl_batch_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	folio_id: uuid.nullish(),
+	reservation_id: uuid.nullish(),
+	department_code: z.string().nullish(),
+	posting_date: z.string(),
+	gl_account_code: z.string(),
+	cost_center: z.string().nullish(),
+	usali_category: z.string().nullish(),
+	description: z.string(),
+	debit_amount: z.number(),
+	credit_amount: z.number(),
+	currency: z.string(),
+	source_table: z.string(),
+	source_id: uuid,
+	reference_number: z.string().nullish(),
+	status: z.literal("READY"),
+	created_by: uuid,
+	updated_by: uuid,
+});
+
+export type BillingLedgerEntryInsertInput = z.infer<
+	typeof BillingLedgerEntryInsertInputSchema
+>;
+
 // =====================================================
 // TAX CONFIGURATIONS
 // =====================================================

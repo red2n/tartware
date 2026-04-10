@@ -13,6 +13,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import {
 	createSortState,
 	getAriaSort,
@@ -20,6 +21,7 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
+import { ToastService } from "../../../shared/toast/toast.service";
 
 type LedgerStatusFilter = "ALL" | "draft" | "ready" | "posted" | "voided";
 type BatchStatusFilter = "ALL" | "open" | "review" | "posted" | "error";
@@ -43,10 +45,12 @@ export class LedgerComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly toast = inject(ToastService);
 	readonly settings = inject(SettingsService);
 
 	readonly items = signal<LedgerEntryListItem[]>([]);
 	readonly loading = signal(false);
+	readonly posting = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly statusFilter = signal<LedgerStatusFilter>("ALL");
 	readonly batchStatusFilter = signal<BatchStatusFilter>("ALL");
@@ -122,6 +126,27 @@ export class LedgerComponent {
 		this.startDate.set(this.monthStart());
 		this.endDate.set(this.todayString());
 		void this.loadLedger();
+	}
+
+	async postLedger(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		this.posting.set(true);
+		try {
+			const businessDate = this.endDate() || this.todayString();
+			await this.api.post(`/tenants/${tenantId}/commands/billing.ledger.post`, {
+				property_id: propertyId,
+				business_date: businessDate,
+			});
+			this.toast.success(`Ledger post submitted for ${businessDate}. Refreshing ledger...`);
+			await settleCommandReadModel(() => this.loadLedger());
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to post ledger");
+		} finally {
+			this.posting.set(false);
+		}
 	}
 
 	toggleSort(column: string): void {
