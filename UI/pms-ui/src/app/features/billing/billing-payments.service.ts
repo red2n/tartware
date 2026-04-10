@@ -5,6 +5,7 @@ import type { BillingPaymentListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { settleCommandReadModel } from "../../shared/command-refresh";
 import { ToastService } from "../../shared/toast/toast.service";
 
 import { BillingDataService } from "./billing-data.service";
@@ -52,9 +53,9 @@ export class BillingPaymentsService {
 				reservation_id: payment.reservation_id,
 				reason: this.voidPaymentReason() || undefined,
 			});
-			this.toast.success("Payment voided.");
+			this.toast.success("Payment void submitted. Refreshing billing data...");
 			this.voidingPaymentId.set(null);
-			await this.data.loadPayments();
+			await settleCommandReadModel(() => this.data.loadPayments());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to void payment");
 		} finally {
@@ -85,9 +86,9 @@ export class BillingPaymentsService {
 				amount: form.amount,
 				reason: form.reason || undefined,
 			});
-			this.toast.success("Refund submitted.");
+			this.toast.success("Refund submitted. Refreshing billing data...");
 			this.refundingPaymentId.set(null);
-			await this.data.loadPayments();
+			await settleCommandReadModel(() => this.data.loadPayments());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to refund payment");
 		} finally {
@@ -125,7 +126,7 @@ export class BillingPaymentsService {
 				payment_method: form.payment_method || "CASH",
 				payment_reference: form.payment_reference,
 			});
-			this.toast.success("Payment captured.");
+			this.toast.success("Payment capture submitted. Refreshing billing data...");
 			this.showCapturePaymentForm.set(false);
 			this.capturePaymentForm.set({
 				folio_id: "",
@@ -133,7 +134,9 @@ export class BillingPaymentsService {
 				payment_method: "CASH",
 				payment_reference: "",
 			});
-			await Promise.all([this.data.loadPayments(), this.data.loadFolios()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadPayments(), this.data.loadFolios()]),
+			);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to capture payment");
 		} finally {

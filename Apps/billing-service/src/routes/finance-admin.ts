@@ -1,5 +1,6 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  FiscalPeriodListResponseSchema,
   TaxConfigurationListItemSchema,
   TaxConfigurationListResponseSchema,
   TaxTypeEnum,
@@ -14,6 +15,7 @@ import {
   getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
+  listFiscalPeriods,
   listTaxConfigurations,
 } from "../services/finance-admin-service.js";
 
@@ -143,6 +145,54 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       }
 
       return TaxConfigurationListItemSchema.parse(config);
+    },
+  );
+
+  const FiscalPeriodListQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+  });
+
+  type FiscalPeriodListQuery = z.infer<typeof FiscalPeriodListQuerySchema>;
+
+  const FiscalPeriodListQueryJsonSchema = schemaFromZod(
+    FiscalPeriodListQuerySchema,
+    "FiscalPeriodListQuery",
+  );
+  const FiscalPeriodListResponseJsonSchema = schemaFromZod(
+    FiscalPeriodListResponseSchema,
+    "FiscalPeriodListResponse",
+  );
+
+  app.get<{ Querystring: FiscalPeriodListQuery }>(
+    "/v1/billing/fiscal-periods",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as FiscalPeriodListQuery).tenant_id,
+        minRole: "ADMIN",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "List fiscal periods for a property",
+        description: "Retrieve accounting periods and their close status for a property",
+        querystring: FiscalPeriodListQueryJsonSchema,
+        response: {
+          200: FiscalPeriodListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id } = FiscalPeriodListQuerySchema.parse(request.query);
+      const periods = await listFiscalPeriods({
+        tenantId: tenant_id,
+        propertyId: property_id,
+      });
+
+      return FiscalPeriodListResponseSchema.parse({
+        data: periods,
+        meta: { count: periods.length },
+      });
     },
   );
 

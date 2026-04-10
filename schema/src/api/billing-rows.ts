@@ -169,3 +169,31 @@ export type TaxConfigurationRow = {
 	created_at: string | Date;
 	updated_at: string | Date | null;
 };
+
+// =====================================================
+// FISCAL PERIOD ROW
+// =====================================================
+
+/** Raw row shape from fiscal periods list query. */
+export type FiscalPeriodRow = {
+	fiscal_period_id: string;
+	tenant_id: string;
+	property_id: string;
+	property_name: string | null;
+	fiscal_year: number;
+	fiscal_year_start: string | Date;
+	fiscal_year_end: string | Date;
+	period_number: number;
+	period_name: string;
+	period_start: string | Date;
+	period_end: string | Date;
+	period_status: string;
+	is_reconciled: boolean | null;
+	closed_at: string | Date | null;
+	soft_closed_at: string | Date | null;
+	locked_at: string | Date | null;
+	total_revenue: number | string | null;
+	total_expenses: number | string | null;
+	net_income: number | string | null;
+	notes: string | null;
+};

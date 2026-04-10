@@ -14,6 +14,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "FUTURE" | "OPEN" | "SOFT_CLOSE" | "CLOSED" | "LOCKED";
@@ -112,13 +113,13 @@ export class FiscalPeriodsComponent {
 	statusBadge(status: string): string {
 		switch (status) {
 			case "FUTURE":
-				return "badge badge-info";
+				return "badge badge-accent";
 			case "OPEN":
 				return "badge badge-success";
 			case "SOFT_CLOSE":
 				return "badge badge-warning";
 			case "CLOSED":
-				return "badge badge-primary";
+				return "badge badge-muted";
 			case "LOCKED":
 				return "badge badge-danger";
 			default:
@@ -160,9 +161,9 @@ export class FiscalPeriodsComponent {
 				close_reason: this.closeReason() || undefined,
 				reconciliation_confirmed: this.reconciliationConfirmed(),
 			});
-			this.toast.success("Fiscal period soft-closed.");
+			this.toast.success("Fiscal period close submitted. Refreshing periods...");
 			this.closingPeriodId.set(null);
-			await this.loadPeriods();
+			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to close period.");
 		} finally {
@@ -182,8 +183,8 @@ export class FiscalPeriodsComponent {
 				property_id: propertyId,
 				period_id: p.fiscal_period_id,
 			});
-			this.toast.success("Fiscal period locked.");
-			await this.loadPeriods();
+			this.toast.success("Fiscal period lock submitted. Refreshing periods...");
+			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to lock period.");
 		} finally {
@@ -217,9 +218,9 @@ export class FiscalPeriodsComponent {
 				period_id: periodId,
 				reason: this.reopenReason(),
 			});
-			this.toast.success("Fiscal period reopened.");
+			this.toast.success("Fiscal period reopen submitted. Refreshing periods...");
 			this.reopeningPeriodId.set(null);
-			await this.loadPeriods();
+			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to reopen period.");
 		} finally {

@@ -116,6 +116,8 @@
   <!-- ═══ INVOICE LIST ═══ -->
   @if (loading()) {
     <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading invoices...' | translate }}</span></div>
+  } @else if (error(); as err) {
+    <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
   } @else if (paginated().length === 0) {
     <div class="empty-state">
       <mat-icon>receipt_long</mat-icon>

@@ -106,14 +106,6 @@
   align-items: flex-end;
 }
 
-.action-btn-group {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 92px;
-}
-
 @media (max-width: 768px) {
   .filter-toolbar {
     align-items: stretch;

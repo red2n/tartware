@@ -23,6 +23,7 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type SessionStatusFilter = "ALL" | "OPEN" | "CLOSED" | "RECONCILED" | "PENDING_APPROVAL";
@@ -245,7 +246,7 @@ export class CashieringComponent {
 				shift_type: form.shift_type,
 				opening_float: form.opening_float,
 			});
-			this.toast.success("Cashier session opened.");
+			this.toast.success("Cashier session open submitted. Refreshing sessions...");
 			this.showOpenForm.set(false);
 			this.openForm.set({
 				cashier_name: "",
@@ -253,7 +254,7 @@ export class CashieringComponent {
 				shift_type: "full_day",
 				opening_float: 0,
 			});
-			await this.loadSessions();
+			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to open session");
 		} finally {
@@ -289,9 +290,9 @@ export class CashieringComponent {
 				closing_cash_counted: form.closing_cash_counted,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Cashier session closed.");
+			this.toast.success("Cashier session close submitted. Refreshing sessions...");
 			this.closingSessionId.set(null);
-			await this.loadSessions();
+			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to close session");
 		} finally {
@@ -356,9 +357,9 @@ export class CashieringComponent {
 				incoming_opening_float: form.incoming_opening_float,
 				property_id: propertyId,
 			});
-			this.toast.success("Shift handover completed.");
+			this.toast.success("Shift handover submitted. Refreshing sessions...");
 			this.handoveringSessionId.set(null);
-			await this.loadSessions();
+			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to handover session");
 		} finally {

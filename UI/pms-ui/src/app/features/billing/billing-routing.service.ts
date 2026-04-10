@@ -5,6 +5,7 @@ import type { FolioListItem, RoutingRuleListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { settleCommandReadModel } from "../../shared/command-refresh";
 import { ToastService } from "../../shared/toast/toast.service";
 
 @Injectable()
@@ -143,7 +144,7 @@ export class BillingRoutingService {
 				priority: form.priority,
 				stop_on_match: form.stop_on_match,
 			});
-			this.toast.success("Routing rule submitted.");
+			this.toast.success("Routing rule submitted. Refreshing rules...");
 			this.showCreateRoutingRuleForm.set(false);
 			this.createRoutingRuleForm.set({
 				rule_name: "",
@@ -160,7 +161,7 @@ export class BillingRoutingService {
 				priority: 100,
 				stop_on_match: true,
 			});
-			await this.loadRoutingRules();
+			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to create routing rule");
 		} finally {
@@ -222,9 +223,9 @@ export class BillingRoutingService {
 				stop_on_match: form.stop_on_match,
 				is_active: form.is_active,
 			});
-			this.toast.success("Routing rule updated.");
+			this.toast.success("Routing rule update submitted. Refreshing rules...");
 			this.editingRoutingRuleId.set(null);
-			await this.loadRoutingRules();
+			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to update routing rule");
 		} finally {
@@ -250,9 +251,9 @@ export class BillingRoutingService {
 				rule_id: rule.rule_id,
 				property_id: propertyId,
 			});
-			this.toast.success("Routing rule deleted.");
+			this.toast.success("Routing rule delete submitted. Refreshing rules...");
 			this.deletingRoutingRuleId.set(null);
-			await this.loadRoutingRules();
+			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to delete routing rule");
 		} finally {
@@ -289,9 +290,9 @@ export class BillingRoutingService {
 				destination_folio_id: form.destination_folio_id,
 				priority: form.priority || undefined,
 			});
-			this.toast.success("Routing rule cloned from template.");
+			this.toast.success("Routing rule clone submitted. Refreshing rules...");
 			this.cloningTemplateId.set(null);
-			await this.loadRoutingRules();
+			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to clone template");
 		} finally {

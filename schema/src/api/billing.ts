@@ -514,6 +514,15 @@ export const FiscalPeriodListItemSchema = z.object({
 
 export type FiscalPeriodListItem = z.infer<typeof FiscalPeriodListItemSchema>;
 
+export const FiscalPeriodListResponseSchema = z.object({
+	data: z.array(FiscalPeriodListItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type FiscalPeriodListResponse = z.infer<typeof FiscalPeriodListResponseSchema>;
+
 // =====================================================
 // SHIFT SUMMARY (CASHIER HANDOVER)
 // =====================================================

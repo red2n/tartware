@@ -22,6 +22,7 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 const INVOICE_STATUS_ORDER = [
@@ -63,6 +64,7 @@ export class InvoicesComponent {
 	// ── List state ──
 	readonly invoices = signal<InvoiceListItem[]>([]);
 	readonly loading = signal(false);
+	readonly error = signal<string | null>(null);
 	readonly totalCount = signal(0);
 
 	// ── Filters ──
@@ -185,6 +187,7 @@ export class InvoicesComponent {
 		if (!tenantId || !propertyId) return;
 
 		this.loading.set(true);
+		this.error.set(null);
 		try {
 			const res = await this.api.get<InvoiceListResponse>("/billing/invoices", {
 				tenant_id: tenantId,
@@ -193,8 +196,10 @@ export class InvoicesComponent {
 			});
 			this.invoices.set(res.data ?? []);
 			this.totalCount.set(res.meta?.count ?? res.data?.length ?? 0);
-		} catch {
+		} catch (e) {
 			this.invoices.set([]);
+			this.totalCount.set(0);
+			this.error.set(e instanceof Error ? e.message : "Failed to load invoices.");
 		} finally {
 			this.loading.set(false);
 		}
@@ -334,9 +339,9 @@ export class InvoicesComponent {
 				due_date: f.due_date || undefined,
 				notes: f.notes || undefined,
 			});
-			this.toast.success("Invoice created successfully.");
+			this.toast.success("Invoice create submitted. Refreshing invoices...");
 			this.showCreateForm.set(false);
-			await this.loadInvoices();
+			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to create invoice.");
 		} finally {
@@ -372,9 +377,9 @@ export class InvoicesComponent {
 				adjustment_amount: Number.parseFloat(f.adjustment_amount),
 				reason: f.reason || undefined,
 			});
-			this.toast.success("Invoice adjusted successfully.");
+			this.toast.success("Invoice adjust submitted. Refreshing invoices...");
 			this.adjustingInvoiceId.set(null);
-			await this.loadInvoices();
+			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to adjust invoice.");
 		} finally {
@@ -392,8 +397,8 @@ export class InvoicesComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${inv.id}/finalize`, {
 				invoice_id: inv.id,
 			});
-			this.toast.success("Invoice finalized.");
-			await this.loadInvoices();
+			this.toast.success("Invoice finalize submitted. Refreshing invoices...");
+			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to finalize invoice.");
 		} finally {
@@ -420,9 +425,9 @@ export class InvoicesComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`, {
 				reason: this.voidReason() || undefined,
 			});
-			this.toast.success("Invoice voided.");
+			this.toast.success("Invoice void submitted. Refreshing invoices...");
 			this.voidingInvoiceId.set(null);
-			await this.loadInvoices();
+			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to void invoice.");
 		} finally {
@@ -461,9 +466,9 @@ export class InvoicesComponent {
 				credit_amount: Number.parseFloat(form.credit_amount),
 				reason: form.reason.trim(),
 			});
-			this.toast.success("Credit note created.");
+			this.toast.success("Credit note submitted. Refreshing invoices...");
 			this.creditingInvoiceId.set(null);
-			await this.loadInvoices();
+			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to create credit note.");
 		} finally {
@@ -495,9 +500,9 @@ export class InvoicesComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/reopen`, {
 				reason: this.reopenReason().trim(),
 			});
-			this.toast.success("Invoice reopened.");
+			this.toast.success("Invoice reopen submitted. Refreshing invoices...");
 			this.reopeningInvoiceId.set(null);
-			await this.loadInvoices();
+			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to reopen invoice.");
 		} finally {

@@ -48,6 +48,7 @@ export class CommissionsComponent {
 	readonly items = signal<CommissionReportItem[]>([]);
 	readonly totalCommission = signal(0);
 	readonly loading = signal(false);
+	readonly error = signal<string | null>(null);
 
 	// ── Date filter ──
 	readonly periodStart = signal(this.monthStart());
@@ -72,6 +73,7 @@ export class CommissionsComponent {
 		if (!tenantId || !propertyId) return;
 
 		this.loading.set(true);
+		this.error.set(null);
 		try {
 			const res = await this.api.get<CommissionReportResponse>("/billing/reports/commissions", {
 				tenant_id: tenantId,
@@ -81,9 +83,10 @@ export class CommissionsComponent {
 			});
 			this.items.set(res.items ?? []);
 			this.totalCommission.set(res.total_commission ?? 0);
-		} catch {
+		} catch (e) {
 			this.items.set([]);
 			this.totalCommission.set(0);
+			this.error.set(e instanceof Error ? e.message : "Failed to load commission report.");
 		} finally {
 			this.loading.set(false);
 		}

@@ -146,3 +146,33 @@ export const TAX_CONFIGURATION_BY_ID_SQL = `
     AND t.tenant_id = $2
     AND COALESCE(t.is_deleted, false) = false
 `;
+
+export const FISCAL_PERIOD_LIST_SQL = `
+  SELECT
+    fp.fiscal_period_id,
+    fp.tenant_id,
+    fp.property_id,
+    p.property_name,
+    fp.fiscal_year,
+    fp.fiscal_year_start,
+    fp.fiscal_year_end,
+    fp.period_number,
+    fp.period_name,
+    fp.period_start,
+    fp.period_end,
+    fp.period_status,
+    fp.is_reconciled,
+    fp.closed_at,
+    fp.soft_closed_at,
+    fp.locked_at,
+    fp.total_revenue,
+    fp.total_expenses,
+    fp.net_income,
+    fp.notes
+  FROM public.fiscal_periods fp
+  LEFT JOIN public.properties p ON fp.property_id = p.id
+  WHERE COALESCE(fp.is_deleted, false) = false
+    AND fp.tenant_id = $1::uuid
+    AND ($2::uuid IS NULL OR fp.property_id = $2::uuid)
+  ORDER BY fp.fiscal_year DESC, fp.period_number DESC
+`;

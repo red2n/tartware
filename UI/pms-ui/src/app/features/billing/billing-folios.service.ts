@@ -5,6 +5,7 @@ import type { ChargePostingListItem, FolioListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { settleCommandReadModel } from "../../shared/command-refresh";
 import { ToastService } from "../../shared/toast/toast.service";
 
 import { BillingDataService } from "./billing-data.service";
@@ -121,14 +122,14 @@ export class BillingFoliosService {
 				folio_name: form.folio_name || undefined,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Folio created.");
+			this.toast.success("Folio create submitted. Refreshing folios...");
 			this.showCreateFolioForm.set(false);
 			this.createFolioForm.set({
 				folio_type: "HOUSE_ACCOUNT",
 				folio_name: "",
 				notes: "",
 			});
-			await this.data.loadFolios();
+			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to create folio");
 		} finally {
@@ -170,7 +171,7 @@ export class BillingFoliosService {
 				description: form.description || undefined,
 				department_code: form.department_code || undefined,
 			});
-			this.toast.success("Charge posted.");
+			this.toast.success("Charge post submitted. Refreshing folios...");
 			this.showPostChargeForm.set(false);
 			this.postChargeForm.set({
 				folio_id: "",
@@ -180,7 +181,9 @@ export class BillingFoliosService {
 				description: "",
 				department_code: "",
 			});
-			await Promise.all([this.data.loadCharges(), this.data.loadFolios()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
+			);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to post charge");
 		} finally {
@@ -206,9 +209,11 @@ export class BillingFoliosService {
 				posting_id: charge.id,
 				void_reason: this.voidChargeReason() || undefined,
 			});
-			this.toast.success("Charge voided.");
+			this.toast.success("Charge void submitted. Refreshing folios...");
 			this.voidingChargeId.set(null);
-			await Promise.all([this.data.loadCharges(), this.data.loadFolios()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
+			);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to void charge");
 		} finally {
@@ -238,9 +243,9 @@ export class BillingFoliosService {
 				close_reason: this.closeFolioReason() || undefined,
 				force: this.closeFolioForce(),
 			});
-			this.toast.success("Folio closed.");
+			this.toast.success("Folio close submitted. Refreshing folios...");
 			this.closingFolioId.set(null);
-			await this.data.loadFolios();
+			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to close folio");
 		} finally {
@@ -267,9 +272,9 @@ export class BillingFoliosService {
 				property_id: propertyId,
 				reason: this.reopenFolioReason().trim(),
 			});
-			this.toast.success("Folio reopened.");
+			this.toast.success("Folio reopen submitted. Refreshing folios...");
 			this.reopeningFolioId.set(null);
-			await this.data.loadFolios();
+			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to reopen folio");
 		} finally {
@@ -299,9 +304,11 @@ export class BillingFoliosService {
 				target_folio_id: form.target_folio_id,
 				reason: form.reason.trim(),
 			});
-			this.toast.success("Folio merge submitted.");
+			this.toast.success("Folio merge submitted. Refreshing folios...");
 			this.mergingFolioId.set(null);
-			await Promise.all([this.data.loadFolios(), this.data.loadCharges()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadFolios(), this.data.loadCharges()]),
+			);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to merge folios");
 		} finally {
@@ -349,8 +356,9 @@ export class BillingFoliosService {
 				billed_to_type: form.billed_to_type,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Folio window created.");
+			this.toast.success("Folio window submitted. Refreshing folios...");
 			this.creatingWindowFolioId.set(null);
+			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to create folio window");
 		} finally {
@@ -386,9 +394,11 @@ export class BillingFoliosService {
 				exemption_reason: form.exemption_reason || undefined,
 				expiry_date: form.expiry_date || undefined,
 			});
-			this.toast.success("Tax exemption applied.");
+			this.toast.success("Tax exemption submitted. Refreshing folios...");
 			this.taxExemptionFolioId.set(null);
-			await Promise.all([this.data.loadFolios(), this.data.loadCharges()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadFolios(), this.data.loadCharges()]),
+			);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to apply tax exemption");
 		} finally {
@@ -426,9 +436,11 @@ export class BillingFoliosService {
 				description: form.description || undefined,
 				authorized_by: this.auth.user()?.id,
 			});
-			this.toast.success("Comp posting submitted.");
+			this.toast.success("Comp posting submitted. Refreshing folios...");
 			this.compPostingFolioId.set(null);
-			await Promise.all([this.data.loadFolios(), this.data.loadCharges()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadFolios(), this.data.loadCharges()]),
+			);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to post comp charge");
 		} finally {
@@ -471,9 +483,11 @@ export class BillingFoliosService {
 					{ folio_id: form.target_folio_id, amount: Number(form.amount.toFixed(2)) },
 				],
 			});
-			this.toast.success("Charge split submitted.");
+			this.toast.success("Charge split submitted. Refreshing folios...");
 			this.splittingChargeId.set(null);
-			await Promise.all([this.data.loadCharges(), this.data.loadFolios()]);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
+			);
 			this.selectedFolioId.set(null);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to split charge");
