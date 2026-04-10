@@ -1,5 +1,8 @@
 import {
   type CreateRoomTypeInput,
+  type RoomTypeGridItem,
+  RoomTypeGridItemSchema,
+  type RoomTypeGridRow,
   type RoomTypeItem,
   RoomTypeItemSchema,
   type RoomTypeRow,
@@ -11,6 +14,7 @@ import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-buil
 import {
   ROOM_TYPE_CREATE_SQL,
   ROOM_TYPE_DELETE_SQL,
+  ROOM_TYPE_GRID_SQL,
   ROOM_TYPE_LIST_SQL,
 } from "../sql/room-type-queries.js";
 
@@ -72,6 +76,29 @@ const mapRowToRoomType = (row: RoomTypeRow): RoomTypeItem =>
     version: row.version ? row.version.toString() : "0",
   });
 
+const mapRowToRoomTypeGrid = (row: RoomTypeGridRow): RoomTypeGridItem =>
+  RoomTypeGridItemSchema.parse({
+    room_type_id: row.id,
+    property_id: row.property_id,
+    type_name: row.type_name,
+    type_code: row.type_code,
+    description: row.description ?? undefined,
+    short_description: row.short_description ?? undefined,
+    category: row.category ?? "STANDARD",
+    base_occupancy: row.base_occupancy ?? 2,
+    max_occupancy: row.max_occupancy ?? 2,
+    max_adults: row.max_adults ?? 2,
+    max_children: row.max_children ?? undefined,
+    extra_bed_capacity: row.extra_bed_capacity ?? undefined,
+    size_sqm: toNumber(row.size_sqm),
+    bed_type: row.bed_type ?? undefined,
+    number_of_beds: row.number_of_beds ?? undefined,
+    base_price: toNumber(row.base_price) ?? 0,
+    currency: row.currency ?? undefined,
+    display_order: row.display_order ?? undefined,
+    is_active: row.is_active ?? true,
+  });
+
 const toJson = (value: unknown): string | null => {
   if (value === undefined || value === null) {
     return null;
@@ -97,6 +124,26 @@ export const listRoomTypes = async (options: {
   ]);
 
   return rows.map(mapRowToRoomType);
+};
+
+export const listRoomTypeGrid = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  isActive?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<RoomTypeGridItem[]> => {
+  const { rows } = await query<RoomTypeGridRow>(ROOM_TYPE_GRID_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+    options.isActive ?? null,
+    options.search ? `%${options.search.trim()}%` : null,
+    options.limit ?? 200,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map(mapRowToRoomTypeGrid);
 };
 
 /**

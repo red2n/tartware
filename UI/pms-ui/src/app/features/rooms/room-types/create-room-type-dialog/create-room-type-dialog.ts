@@ -1,16 +1,16 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
-import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
-import type { RoomTypeItem } from "@tartware/schemas";
+import type { RoomTypeGridItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
+import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { ToastService } from "../../../../shared/toast/toast.service";
 
 const ROOM_CATEGORIES = [
@@ -38,7 +38,14 @@ const ROOM_CATEGORIES = [
 @Component({
 	selector: "app-create-room-type-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
+	imports: [
+		FormsModule,
+		MatButtonModule,
+		MatDialogModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		DialogActionsComponent,
+	],
 	templateUrl: "./create-room-type-dialog.html",
 	styleUrl: "./create-room-type-dialog.scss",
 })
@@ -48,7 +55,7 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateRoomTypeDialogComponent>);
 	private readonly toast = inject(ToastService);
-	private readonly data = inject<RoomTypeItem | null>(MAT_DIALOG_DATA, { optional: true });
+	private readonly data = inject<RoomTypeGridItem | null>(MAT_DIALOG_DATA, { optional: true });
 
 	readonly saving = signal(false);
 	readonly categories = ROOM_CATEGORIES;

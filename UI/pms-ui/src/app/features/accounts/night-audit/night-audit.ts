@@ -68,9 +68,7 @@ export class NightAuditComponent {
 		this.settings.formatTime(this.settings.getString("audit.night_audit_time", "02:00")),
 	);
 	/** Whether the night audit runs automatically at the scheduled time. */
-	readonly autoRunEnabled = computed(() =>
-		this.settings.getBool("audit.auto_run_enabled", false),
-	);
+	readonly autoRunEnabled = computed(() => this.settings.getBool("audit.auto_run_enabled", false));
 	/** Whether check-ins are blocked during the audit process. */
 	readonly blockCheckinDuringAudit = computed(() =>
 		this.settings.getBool("audit.block_checkin_during_audit", false),
@@ -206,6 +204,10 @@ export class NightAuditComponent {
 	onDateChange(date: string): void {
 		this.businessDate.set(date);
 		this.loadTrialBalance();
+		this.loadPreAuditChecklist();
+		this.loadBucketCheck();
+		this.loadDeptRevenue();
+		this.loadTaxSummary();
 	}
 
 	onSort(col: string): void {
@@ -497,7 +499,9 @@ export class NightAuditComponent {
 	}
 
 	readonly preAuditPassCount = computed(() => this.preAuditChecks().filter((c) => c.passed).length);
-	readonly preAuditFailCount = computed(() => this.preAuditChecks().filter((c) => !c.passed).length);
+	readonly preAuditFailCount = computed(
+		() => this.preAuditChecks().filter((c) => !c.passed).length,
+	);
 
 	// ── Bucket Check ──
 	async loadBucketCheck(): Promise<void> {
@@ -528,11 +532,15 @@ export class NightAuditComponent {
 		if (!tenantId || !propertyId) return;
 		this.deptRevenueLoading.set(true);
 		try {
-			const res = await this.api.get<DepartmentalRevenueResponse>("/billing/reports/departmental-revenue", {
-				tenant_id: tenantId,
-				property_id: propertyId,
-				business_date: this.businessDate(),
-			});
+			const res = await this.api.get<DepartmentalRevenueResponse>(
+				"/billing/reports/departmental-revenue",
+				{
+					tenant_id: tenantId,
+					property_id: propertyId,
+					start_date: this.businessDate(),
+					end_date: this.businessDate(),
+				},
+			);
 			this.deptRevenueItems.set(res.items ?? []);
 			this.deptTotalGross.set(res.total_gross ?? 0);
 			this.deptTotalNet.set(res.total_net ?? 0);
@@ -555,7 +563,8 @@ export class NightAuditComponent {
 			const res = await this.api.get<TaxSummaryResponse>("/billing/reports/tax-summary", {
 				tenant_id: tenantId,
 				property_id: propertyId,
-				business_date: this.businessDate(),
+				start_date: this.businessDate(),
+				end_date: this.businessDate(),
 			});
 			this.taxSummaryItems.set(res.items ?? []);
 			this.totalTaxCollected.set(res.total_tax_collected ?? 0);

@@ -2,6 +2,12 @@ import { toNumberOrFallback } from "@tartware/config";
 import {
   type CommissionReportItem,
   type DepartmentalRevenueItem,
+  type FiscalPeriodListItem,
+  FiscalPeriodListItemSchema,
+  type FiscalPeriodRow,
+  type LedgerEntryListItem,
+  LedgerEntryListItemSchema,
+  type LedgerEntryRow,
   type TaxConfigurationListItem,
   TaxConfigurationListItemSchema,
   type TaxConfigurationRow,
@@ -10,6 +16,8 @@ import {
 } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
+  FISCAL_PERIOD_LIST_SQL,
+  LEDGER_ENTRY_LIST_SQL,
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/finance-admin-queries.js";
@@ -86,6 +94,76 @@ const mapRowToTaxConfiguration = (row: TaxConfigurationRow): TaxConfigurationLis
   });
 };
 
+const mapRowToFiscalPeriod = (row: FiscalPeriodRow): FiscalPeriodListItem => {
+  const { display: periodStatusDisplay } = formatEnumDisplay(row.period_status, "Open");
+
+  return FiscalPeriodListItemSchema.parse({
+    fiscal_period_id: row.fiscal_period_id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    property_name: row.property_name ?? undefined,
+    fiscal_year: row.fiscal_year,
+    fiscal_year_start: (toIsoString(row.fiscal_year_start) ?? "").split("T")[0],
+    fiscal_year_end: (toIsoString(row.fiscal_year_end) ?? "").split("T")[0],
+    period_number: row.period_number,
+    period_name: row.period_name,
+    period_start: (toIsoString(row.period_start) ?? "").split("T")[0],
+    period_end: (toIsoString(row.period_end) ?? "").split("T")[0],
+    period_status: row.period_status,
+    period_status_display: periodStatusDisplay,
+    is_reconciled: Boolean(row.is_reconciled),
+    closed_at: toIsoString(row.closed_at),
+    soft_closed_at: toIsoString(row.soft_closed_at),
+    locked_at: toIsoString(row.locked_at),
+    total_revenue:
+      row.total_revenue != null ? String(toNumberOrFallback(row.total_revenue, 0)) : undefined,
+    total_expenses:
+      row.total_expenses != null ? String(toNumberOrFallback(row.total_expenses, 0)) : undefined,
+    net_income: row.net_income != null ? String(toNumberOrFallback(row.net_income, 0)) : undefined,
+    notes: row.notes ?? undefined,
+  });
+};
+
+const mapRowToLedgerEntry = (row: LedgerEntryRow): LedgerEntryListItem => {
+  const { value: status, display: statusDisplay } = formatEnumDisplay(row.status, "Draft");
+  const batchStatus = row.batch_status
+    ? formatEnumDisplay(row.batch_status, row.batch_status)
+    : null;
+
+  return LedgerEntryListItemSchema.parse({
+    gl_entry_id: row.gl_entry_id,
+    gl_batch_id: row.gl_batch_id,
+    tenant_id: row.tenant_id,
+    property_id: row.property_id,
+    property_name: row.property_name ?? undefined,
+    batch_number: row.batch_number ?? undefined,
+    batch_date: row.batch_date ? (toIsoString(row.batch_date) ?? "").split("T")[0] : undefined,
+    accounting_period: row.accounting_period ?? undefined,
+    batch_status: batchStatus?.value,
+    batch_status_display: batchStatus?.display,
+    folio_id: row.folio_id ?? undefined,
+    folio_number: row.folio_number ?? undefined,
+    reservation_id: row.reservation_id ?? undefined,
+    confirmation_number: row.confirmation_number ?? undefined,
+    department_code: row.department_code ?? undefined,
+    posting_date: (toIsoString(row.posting_date) ?? "").split("T")[0],
+    gl_account_code: row.gl_account_code,
+    cost_center: row.cost_center ?? undefined,
+    usali_category: row.usali_category ?? undefined,
+    description: row.description ?? undefined,
+    debit_amount: toNumberOrFallback(row.debit_amount, 0),
+    credit_amount: toNumberOrFallback(row.credit_amount, 0),
+    currency: row.currency ?? undefined,
+    source_table: row.source_table ?? undefined,
+    source_id: row.source_id ?? undefined,
+    reference_number: row.reference_number ?? undefined,
+    status,
+    status_display: statusDisplay,
+    posted_at: toIsoString(row.posted_at),
+    created_at: toIsoString(row.created_at) ?? new Date().toISOString(),
+  });
+};
+
 export const listTaxConfigurations = async (options: {
   limit?: number;
   tenantId: string;
@@ -132,6 +210,46 @@ export const getTaxConfigurationById = async (options: {
   if (!row) return null;
 
   return mapRowToTaxConfiguration(row);
+};
+
+export const listFiscalPeriods = async (options: {
+  tenantId: string;
+  propertyId?: string;
+}): Promise<FiscalPeriodListItem[]> => {
+  const { rows } = await query<FiscalPeriodRow>(FISCAL_PERIOD_LIST_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+  ]);
+
+  return rows.map(mapRowToFiscalPeriod);
+};
+
+export const listLedgerEntries = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  status?: string;
+  batchStatus?: string;
+  glAccountCode?: string;
+  departmentCode?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<LedgerEntryListItem[]> => {
+  const { rows } = await query<LedgerEntryRow>(LEDGER_ENTRY_LIST_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+    options.status ?? null,
+    options.batchStatus ?? null,
+    options.glAccountCode ?? null,
+    options.departmentCode ?? null,
+    options.startDate ?? null,
+    options.endDate ?? null,
+    options.limit ?? 200,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map(mapRowToLedgerEntry);
 };
 
 // ============================================================================

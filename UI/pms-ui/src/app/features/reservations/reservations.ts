@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { ReservationListItem, ReservationListResponse } from "@tartware/schemas";
+import type { ReservationGridItem, ReservationGridResponse } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -53,7 +53,7 @@ export class ReservationsComponent {
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
-	readonly reservations = signal<ReservationListItem[]>([]);
+	readonly reservations = signal<ReservationGridItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<StatusFilter>("ALL");
@@ -124,7 +124,7 @@ export class ReservationsComponent {
 	readonly summary = computed(() => {
 		const all = this.reservations();
 		const today = new Date().toISOString().split("T")[0];
-		const upper = (r: ReservationListItem) => r.status.toUpperCase();
+		const upper = (r: ReservationGridItem) => r.status.toUpperCase();
 		return {
 			arrivalsToday: all.filter(
 				(r) => r.check_in_date === today && !["CANCELLED", "CHECKED_OUT"].includes(upper(r)),
@@ -210,9 +210,8 @@ export class ReservationsComponent {
 			};
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ReservationListResponse>("/reservations", params);
-			const list = Array.isArray(res) ? res : (res.data ?? []);
-			this.reservations.set(list);
+			const res = await this.api.get<ReservationGridResponse>("/reservations/grid", params);
+			this.reservations.set(res.data ?? []);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load reservations");
 		} finally {

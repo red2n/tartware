@@ -48,8 +48,8 @@
   <!-- ═══ FILTERS ═══ -->
   <div class="ar-filters">
     <div class="filter-row">
-      <div class="filter-group">
-        <label>{{ 'Status' | translate }}</label>
+      <div class="form-group">
+        <label class="field-label">{{ 'Status' | translate }}</label>
         <div class="filter-chips">
           @for (f of statusFilters; track f.key) {
             <button class="chip" [class.active]="activeStatusFilter() === f.key" (click)="setStatusFilter(f.key)">
@@ -58,8 +58,8 @@
           }
         </div>
       </div>
-      <div class="filter-group">
-        <label>{{ 'Account Type' | translate }}</label>
+      <div class="form-group">
+        <label class="field-label">{{ 'Account Type' | translate }}</label>
         <div class="filter-chips">
           @for (f of typeFilters; track f.key) {
             <button class="chip" [class.active]="activeTypeFilter() === f.key" (click)="setTypeFilter(f.key)">
@@ -70,8 +70,8 @@
       </div>
     </div>
     <div class="filter-row">
-      <div class="filter-group">
-        <label>{{ 'Aging Bucket' | translate }}</label>
+      <div class="form-group">
+        <label class="field-label">{{ 'Aging Bucket' | translate }}</label>
         <div class="filter-chips">
           @for (f of agingFilters; track f.key) {
             <button class="chip" [class.active]="activeAgingFilter() === f.key" (click)="setAgingFilter(f.key)">
@@ -130,7 +130,7 @@
               <th (click)="onSort('ar_status')" [attr.aria-sort]="ariaSort('ar_status')">
                 {{ 'Status' | translate }} <mat-icon>{{ sortIcon('ar_status') }}</mat-icon>
               </th>
-              <th></th>
+              <th class="cell-actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -138,24 +138,24 @@
               <tr [class.overdue]="ar.is_overdue" (click)="selectAr(ar)">
                 <td class="mono">{{ ar.ar_number }}</td>
                 <td>
-                  <div class="account-cell">
-                    <span class="account-name">{{ ar.account_name }}</span>
+                  <div class="cell-primary">
+                    <span class="cell-main">{{ ar.account_name }}</span>
                     @if (ar.guest_name) {
-                      <span class="account-sub">{{ ar.guest_name }}</span>
+                      <span class="text-subtle">{{ ar.guest_name }}</span>
                     }
                   </div>
                 </td>
-                <td><span class="type-badge">{{ ar.account_type_display }}</span></td>
+                <td><span class="badge badge-muted">{{ ar.account_type_display }}</span></td>
                 <td class="mono right">{{ fmtMoney(+ar.original_amount) }}</td>
                 <td class="mono right bold">{{ fmtMoney(+ar.outstanding_balance) }}</td>
                 <td>{{ formatDate(ar.transaction_date) }}</td>
                 <td>
                   @if (ar.aging_bucket_display) {
-                    <span class="aging-badge" [ngClass]="'aging-' + ar.aging_bucket">{{ ar.aging_bucket_display }}</span>
+                    <span class="badge" [ngClass]="agingBadgeClass(ar.aging_bucket)">{{ ar.aging_bucket_display }}</span>
                   }
                 </td>
-                <td><span class="status-badge" [ngClass]="statusClass(ar.ar_status)">{{ ar.ar_status_display }}</span></td>
-                <td><mat-icon class="row-action">chevron_right</mat-icon></td>
+                <td><span class="badge" [ngClass]="statusClass(ar.ar_status)">{{ ar.ar_status_display }}</span></td>
+                <td><mat-icon class="chevron-icon">chevron_right</mat-icon></td>
               </tr>
             }
           </tbody>
@@ -187,7 +187,7 @@
           </div>
           <div class="detail-field">
             <label>{{ 'Status' | translate }}</label>
-            <span class="status-badge" [ngClass]="statusClass(detail.ar_status)">{{ detail.ar_status_display }}</span>
+            <span class="badge" [ngClass]="statusClass(detail.ar_status)">{{ detail.ar_status_display }}</span>
           </div>
           <div class="detail-field">
             <label>{{ 'Original Amount' | translate }}</label>
@@ -212,7 +212,7 @@
           @if (detail.aging_bucket_display) {
             <div class="detail-field">
               <label>{{ 'Aging' | translate }}</label>
-              <span class="aging-badge" [ngClass]="'aging-' + detail.aging_bucket">{{ detail.aging_bucket_display }}</span>
+              <span class="badge" [ngClass]="agingBadgeClass(detail.aging_bucket)">{{ detail.aging_bucket_display }}</span>
             </div>
           }
           @if (detail.days_overdue != null) {

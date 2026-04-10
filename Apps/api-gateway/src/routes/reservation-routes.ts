@@ -51,6 +51,38 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   });
 
   app.get(
+    "/v1/reservations/grid",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Proxy reservation grid queries to core service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.get(
+    "/v1/reservations/list",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Proxy full reservation list queries to core service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.get(
     "/v1/reservations",
     {
       preHandler: tenantScopeFromQuery,

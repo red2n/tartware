@@ -1,4 +1,7 @@
 import {
+  type BuildingGridItem,
+  BuildingGridItemSchema,
+  type BuildingGridRow,
   type BuildingItem,
   BuildingItemSchema,
   type BuildingRow,
@@ -10,6 +13,7 @@ import { query } from "../lib/db.js";
 import {
   BUILDING_CREATE_SQL,
   BUILDING_DELETE_SQL,
+  BUILDING_GRID_SQL,
   BUILDING_LIST_SQL,
 } from "../sql/building-queries.js";
 import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
@@ -64,6 +68,33 @@ const mapRowToBuilding = (row: BuildingRow): BuildingItem =>
     version: row.version ? row.version.toString() : "0",
   });
 
+const mapRowToBuildingGrid = (row: BuildingGridRow): BuildingGridItem =>
+  BuildingGridItemSchema.parse({
+    building_id: row.building_id,
+    property_id: row.property_id,
+    building_code: row.building_code,
+    building_name: row.building_name,
+    building_type: row.building_type,
+    floor_count: row.floor_count ?? undefined,
+    basement_floors: row.basement_floors ?? undefined,
+    total_rooms: row.total_rooms ?? undefined,
+    wheelchair_accessible: row.wheelchair_accessible ?? undefined,
+    elevator_count: row.elevator_count ?? undefined,
+    has_lobby: row.has_lobby ?? undefined,
+    has_pool: row.has_pool ?? undefined,
+    has_gym: row.has_gym ?? undefined,
+    has_spa: row.has_spa ?? undefined,
+    has_restaurant: row.has_restaurant ?? undefined,
+    has_parking: row.has_parking ?? undefined,
+    parking_spaces: row.parking_spaces ?? undefined,
+    year_built: row.year_built ?? undefined,
+    last_renovation_year: row.last_renovation_year ?? undefined,
+    is_active: row.is_active ?? true,
+    building_status: row.building_status ?? "OPERATIONAL",
+    guest_description: row.guest_description ?? undefined,
+    internal_notes: row.internal_notes ?? undefined,
+  });
+
 /**
  * List buildings for a tenant, with optional filters.
  */
@@ -87,6 +118,28 @@ export const listBuildings = async (options: {
   ]);
 
   return rows.map(mapRowToBuilding);
+};
+
+export const listBuildingGrid = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  isActive?: boolean;
+  buildingType?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<BuildingGridItem[]> => {
+  const { rows } = await query<BuildingGridRow>(BUILDING_GRID_SQL, [
+    options.tenantId,
+    options.propertyId ?? null,
+    options.isActive ?? null,
+    options.buildingType ?? null,
+    options.search ? `%${options.search.trim()}%` : null,
+    options.limit ?? 200,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map(mapRowToBuildingGrid);
 };
 
 /**

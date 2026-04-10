@@ -1,0 +1,167 @@
+<div class="ledger-page">
+  <app-page-header title="Ledger" description="General ledger entries, batches, and posting review">
+    <button class="btn btn-primary btn-sm" (click)="postLedger()" [disabled]="loading() || posting()">
+      <mat-icon>{{ posting() ? "hourglass_top" : "upload" }}</mat-icon>
+      {{ 'Post Ledger' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadLedger()" [matTooltip]="'Refresh' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </app-page-header>
+
+  <div class="filter-bar">
+    <div class="form-group">
+      <label class="field-label">{{ 'Ledger Status' | translate }}</label>
+      <select class="field-input field-sm" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+        <option value="ALL">{{ 'All' | translate }}</option>
+        <option value="draft">{{ 'Draft' | translate }}</option>
+        <option value="ready">{{ 'Ready' | translate }}</option>
+        <option value="posted">{{ 'Posted' | translate }}</option>
+        <option value="voided">{{ 'Voided' | translate }}</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="field-label">{{ 'Batch Status' | translate }}</label>
+      <select class="field-input field-sm" [ngModel]="batchStatusFilter()" (ngModelChange)="batchStatusFilter.set($event)">
+        <option value="ALL">{{ 'All' | translate }}</option>
+        <option value="open">{{ 'Open' | translate }}</option>
+        <option value="review">{{ 'Review' | translate }}</option>
+        <option value="posted">{{ 'Posted' | translate }}</option>
+        <option value="error">{{ 'Error' | translate }}</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="field-label">{{ 'GL Account' | translate }}</label>
+      <input type="text" class="field-input field-sm" placeholder="4000" [ngModel]="glAccountCode()" (ngModelChange)="glAccountCode.set($event)" />
+    </div>
+
+    <div class="form-group">
+      <label class="field-label">{{ 'Department' | translate }}</label>
+      <input type="text" class="field-input field-sm" placeholder="ROOMS" [ngModel]="departmentCode()" (ngModelChange)="departmentCode.set($event)" />
+    </div>
+
+    <div class="form-group">
+      <label class="field-label">{{ 'From' | translate }}</label>
+      <input type="date" class="field-input field-sm" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)" />
+    </div>
+
+    <div class="form-group">
+      <label class="field-label">{{ 'To' | translate }}</label>
+      <input type="date" class="field-input field-sm" [ngModel]="endDate()" (ngModelChange)="endDate.set($event)" />
+    </div>
+
+    <button class="btn btn-outline btn-sm" (click)="resetFilters()" [disabled]="loading()">
+      <mat-icon>restart_alt</mat-icon>
+      {{ 'Reset' | translate }}
+    </button>
+
+    <button class="btn btn-primary btn-sm" (click)="loadLedger()" [disabled]="loading()">
+      <mat-icon>search</mat-icon>
+      {{ 'Apply' | translate }}
+    </button>
+  </div>
+
+  @if (!loading() && items().length > 0) {
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <mat-icon>south</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ formatCurrency(totals().totalDebits, totals().currency) }}</div>
+          <div class="kpi-label">{{ 'Total Debits' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <mat-icon>north</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ formatCurrency(totals().totalCredits, totals().currency) }}</div>
+          <div class="kpi-label">{{ 'Total Credits' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <mat-icon>balance</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ formatCurrency(totals().variance, totals().currency) }}</div>
+          <div class="kpi-label">{{ 'Variance' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <mat-icon>task_alt</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ totals().postedCount }}</div>
+          <div class="kpi-label">{{ 'Posted Entries' | translate }}</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading ledger entries...' | translate }}</span></div>
+  } @else if (error(); as err) {
+    <div class="empty-state">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ err }}</span>
+    </div>
+  } @else if (sorted().length === 0) {
+    <div class="empty-state">
+      <mat-icon>account_balance_wallet</mat-icon>
+      <span>{{ 'No ledger entries found for the selected filters.' | translate }}</span>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table table-compact" role="grid">
+        <thead>
+          <tr>
+            <th class="sortable" (click)="toggleSort('posting_date')" [attr.aria-sort]="getAriaSort('posting_date')">
+              {{ 'Posting Date' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('posting_date') }}</mat-icon>
+            </th>
+            <th>{{ 'Batch' | translate }}</th>
+            <th class="sortable" (click)="toggleSort('gl_account_code')" [attr.aria-sort]="getAriaSort('gl_account_code')">
+              {{ 'GL Account' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('gl_account_code') }}</mat-icon>
+            </th>
+            <th>{{ 'Description' | translate }}</th>
+            <th>{{ 'Reference' | translate }}</th>
+            <th>{{ 'Source' | translate }}</th>
+            <th class="text-right sortable" (click)="toggleSort('debit_amount')" [attr.aria-sort]="getAriaSort('debit_amount')">
+              {{ 'Debit' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('debit_amount') }}</mat-icon>
+            </th>
+            <th class="text-right sortable" (click)="toggleSort('credit_amount')" [attr.aria-sort]="getAriaSort('credit_amount')">
+              {{ 'Credit' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('credit_amount') }}</mat-icon>
+            </th>
+            <th>{{ 'Entry Status' | translate }}</th>
+            <th>{{ 'Batch Status' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of sorted(); track item.gl_entry_id) {
+            <tr>
+              <td>{{ formatDate(item.posting_date) }}</td>
+              <td>
+                <strong>{{ item.batch_number ?? "—" }}</strong>
+                <div class="text-muted">{{ item.accounting_period ?? "—" }}</div>
+              </td>
+              <td>
+                <strong>{{ item.gl_account_code }}</strong>
+                <div class="text-muted">{{ item.department_code ?? item.cost_center ?? "—" }}</div>
+              </td>
+              <td>
+                <div>{{ item.description ?? "—" }}</div>
+                <div class="text-muted">{{ item.usali_category ?? "—" }}</div>
+              </td>
+              <td>
+                <div>{{ item.reference_number ?? item.confirmation_number ?? "—" }}</div>
+                <div class="text-muted">{{ item.folio_number ?? "—" }}</div>
+              </td>
+              <td>{{ item.source_table ?? "—" }}</td>
+              <td class="text-right">{{ formatCurrency(item.debit_amount, item.currency ?? totals().currency) }}</td>
+              <td class="text-right">{{ formatCurrency(item.credit_amount, item.currency ?? totals().currency) }}</td>
+              <td><span [class]="statusBadge(item.status)">{{ item.status_display }}</span></td>
+              <td><span [class]="batchBadge(item.batch_status)">{{ item.batch_status_display ?? "—" }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

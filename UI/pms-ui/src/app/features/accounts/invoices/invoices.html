@@ -60,46 +60,84 @@
     </div>
   }
 
-  <!-- ═══ STATUS FILTER ═══ -->
-  <div class="filter-bar">
-    <button class="filter-tab" [class.active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">{{ 'All' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'DRAFT'" (click)="setStatusFilter('DRAFT')">{{ 'Draft' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'SENT'" (click)="setStatusFilter('SENT')">{{ 'Sent' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'FINALIZED'" (click)="setStatusFilter('FINALIZED')">{{ 'Finalized' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'PAID'" (click)="setStatusFilter('PAID')">{{ 'Paid' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'VOIDED'" (click)="setStatusFilter('VOIDED')">{{ 'Voided' | translate }}</button>
+  @if (invoices().length > 0) {
+    <div class="kpi-grid">
+      <div class="kpi-card invoice-kpi-total">
+        <mat-icon>receipt_long</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().total }}</div>
+          <div class="kpi-label">{{ 'Invoices Loaded' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card invoice-kpi-balance" [class.kpi-alert]="summary().outstandingBalance > 0">
+        <mat-icon>account_balance_wallet</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ formatCurrency(summary().outstandingBalance, 'USD') }}</div>
+          <div class="kpi-label">{{ 'Outstanding Balance' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card invoice-kpi-draft">
+        <mat-icon>edit_note</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().draftCount }}</div>
+          <div class="kpi-label">{{ 'Drafts' | translate }}</div>
+        </div>
+      </div>
+      <div class="kpi-card invoice-kpi-credit">
+        <mat-icon>note_add</mat-icon>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().creditCount }}</div>
+          <div class="kpi-label">{{ 'Credit Notes' | translate }}</div>
+        </div>
+      </div>
+    </div>
+  }
 
-    <div class="filter-bar-spacer"></div>
-    <input type="text" class="field-input field-sm filter-search" placeholder="Search invoices..."
-           [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+  <!-- ═══ STATUS FILTER ═══ -->
+  <div class="filter-panel">
+    <div class="filter-bar">
+      @for (filter of statusFilters(); track filter.key) {
+        <button class="filter-tab" [class.active]="statusFilter() === filter.key" (click)="setStatusFilter(filter.key)">
+          {{ filter.label | translate }}
+          <span class="counter">{{ filter.count }}</span>
+        </button>
+      }
+    </div>
+    <div class="filter-toolbar">
+      <div class="results-meta">
+        <span class="results-count">{{ resultsLabel() }}</span>
+        <span class="results-note">Showing live invoice states from billing APIs.</span>
+      </div>
+      <input type="text" class="field-input field-sm filter-search" placeholder="Search invoice number, guest, confirmation, type, status..."
+             [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+    </div>
   </div>
 
   <!-- ═══ INVOICE LIST ═══ -->
   @if (loading()) {
     <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading invoices...' | translate }}</span></div>
+  } @else if (error(); as err) {
+    <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
   } @else if (paginated().length === 0) {
     <div class="empty-state">
       <mat-icon>receipt_long</mat-icon>
       <span>{{ 'No invoices found.' | translate }}</span>
     </div>
   } @else {
-    <div class="table-container">
-      <table class="table table-compact" role="grid">
+    <div class="table-container invoice-table-shell">
+      <table class="data-table invoice-table" role="grid">
         <thead>
           <tr>
             <th class="sortable" (click)="toggleSort('invoice_number')" [attr.aria-sort]="getAriaSort('invoice_number')">
-              {{ 'Invoice #' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('invoice_number') }}</mat-icon>
+              {{ 'Invoice' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('invoice_number') }}</mat-icon>
             </th>
             <th>{{ 'Guest' | translate }}</th>
-            <th>{{ 'Confirmation' | translate }}</th>
             <th class="sortable" (click)="toggleSort('invoice_date')" [attr.aria-sort]="getAriaSort('invoice_date')">
-              {{ 'Date' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('invoice_date') }}</mat-icon>
+              {{ 'Dates' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('invoice_date') }}</mat-icon>
             </th>
             <th class="text-right sortable" (click)="toggleSort('total_amount')" [attr.aria-sort]="getAriaSort('total_amount')">
-              {{ 'Total' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('total_amount') }}</mat-icon>
+              {{ 'Amounts' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('total_amount') }}</mat-icon>
             </th>
-            <th class="text-right">{{ 'Paid' | translate }}</th>
-            <th class="text-right">{{ 'Balance' | translate }}</th>
             <th>{{ 'Status' | translate }}</th>
             <th class="text-right">{{ 'Actions' | translate }}</th>
           </tr>
@@ -107,34 +145,73 @@
         <tbody>
           @for (inv of paginated(); track inv.id) {
             <tr>
-              <td>{{ inv.invoice_number ?? '—' }}</td>
-              <td>{{ inv.guest_name ?? inv.guest_id }}</td>
-              <td>{{ inv.confirmation_number ?? '—' }}</td>
-              <td>{{ formatDate(inv.invoice_date) }}</td>
-              <td class="text-right">{{ formatCurrency(inv.total_amount, inv.currency) }}</td>
-              <td class="text-right">{{ formatCurrency(inv.paid_amount, inv.currency) }}</td>
-              <td class="text-right">
-                <span [ngClass]="inv.balance_due > 0 ? 'text-danger' : 'text-success'">
-                  {{ formatCurrency(inv.balance_due, inv.currency) }}
-                </span>
+              <td class="invoice-cell">
+                <div class="invoice-primary-row">
+                  <span class="ref-code invoice-ref">{{ displayInvoiceNumber(inv) }}</span>
+                  <span class="badge" [ngClass]="isCreditInvoice(inv) ? 'badge-warning' : 'badge-muted'">{{ inv.invoice_type_display }}</span>
+                </div>
+                <div class="invoice-secondary-row">
+                  <span>{{ inv.confirmation_number ?? 'No confirmation linked' }}</span>
+                  @if (!inv.invoice_number) {
+                    <span class="text-subtle">Number assigned by backend state transition.</span>
+                  }
+                </div>
               </td>
-              <td><span [class]="statusBadge(inv.status)">{{ inv.status_display }}</span></td>
+              <td class="invoice-guest-cell">
+                <div class="cell-main">{{ inv.guest_name ?? inv.guest_id }}</div>
+                <div class="cell-sub">{{ inv.guest_id }}</div>
+              </td>
+              <td class="invoice-date-cell">
+                <div class="cell-main">{{ formatDate(inv.invoice_date) }}</div>
+                <div class="cell-sub">Due {{ inv.due_date ? formatDate(inv.due_date) : 'Not set' }}</div>
+              </td>
+              <td class="text-right invoice-amount-cell">
+                <div class="cell-main cell-amount" [class.cell-negative]="inv.total_amount < 0">
+                  {{ formatCurrency(inv.total_amount, inv.currency) }}
+                </div>
+                <div class="cell-sub amount-breakdown">
+                  <span>Paid {{ formatCurrency(inv.paid_amount, inv.currency) }}</span>
+                  <span [class.cell-negative]="inv.balance_due > 0" [class.cell-positive]="inv.balance_due <= 0">
+                    Balance {{ formatCurrency(inv.balance_due, inv.currency) }}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="statusBadge(inv.status)">{{ statusLabel(inv) }}</span>
+              </td>
               <td class="text-right">
                 <div class="action-btn-group">
-                  @if (inv.status === 'DRAFT' || inv.status === 'SENT') {
+                  @if (canVoidInvoiceAction(inv)) {
                     <button class="btn btn-invisible btn-sm" (click)="openAdjust(inv)" [matTooltip]="'Adjust' | translate" [disabled]="actionLoading()">
                       <mat-icon>edit</mat-icon>
+                    </button>
+                    <button class="btn btn-invisible btn-sm" (click)="openVoid(inv)" [matTooltip]="'Void' | translate" [disabled]="voiding()">
+                      <mat-icon>block</mat-icon>
                     </button>
                     <button class="btn btn-invisible btn-sm" (click)="finalizeInvoice(inv)" [matTooltip]="'Finalize' | translate" [disabled]="actionLoading()">
                       <mat-icon>lock</mat-icon>
                     </button>
+                  } @else {
+                    @if (canCreditInvoiceAction(inv)) {
+                      <button class="btn btn-invisible btn-sm" (click)="openCredit(inv)" [matTooltip]="'Credit Note' | translate" [disabled]="crediting()">
+                        <mat-icon>note_add</mat-icon>
+                      </button>
+                    }
+                    @if (canReopenInvoiceAction(inv)) {
+                      <button class="btn btn-invisible btn-sm" (click)="openReopen(inv)" [matTooltip]="'Reopen' | translate" [disabled]="reopening()">
+                        <mat-icon>lock_open</mat-icon>
+                      </button>
+                    }
+                    @if (!canCreditInvoiceAction(inv) && !canReopenInvoiceAction(inv)) {
+                      <span class="text-subtle">{{ actionLabel(inv) }}</span>
+                    }
                   }
                 </div>
               </td>
             </tr>
             @if (adjustingInvoiceId() === inv.id) {
               <tr>
-                <td colspan="9">
+                <td colspan="6">
                   <div class="inline-form">
                     <div class="form-grid">
                       <div class="form-group">
@@ -154,6 +231,81 @@
                         <button class="btn btn-primary btn-sm" (click)="submitAdjust()" [disabled]="adjusting()">
                           @if (adjusting()) { <mat-spinner diameter="14"></mat-spinner> }
                           {{ 'Apply' | translate }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+            @if (voidingInvoiceId() === inv.id) {
+              <tr>
+                <td colspan="6">
+                  <div class="inline-form">
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Reason' | translate }}</label>
+                        <input type="text" class="field-input field-sm" placeholder="Reason for voiding"
+                               [ngModel]="voidReason()"
+                               (ngModelChange)="voidReason.set($event)" />
+                      </div>
+                      <div class="form-group form-group-actions">
+                        <button class="btn btn-outline btn-sm" (click)="cancelVoid()" [disabled]="voiding()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-danger btn-sm" (click)="submitVoid()" [disabled]="voiding()">
+                          @if (voiding()) { <mat-spinner diameter="14"></mat-spinner> }
+                          {{ 'Void Invoice' | translate }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+            @if (creditingInvoiceId() === inv.id) {
+              <tr>
+                <td colspan="6">
+                  <div class="inline-form">
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Credit Amount' | translate }} *</label>
+                        <input type="number" class="field-input field-sm" step="0.01" min="0.01"
+                               [ngModel]="creditForm().credit_amount"
+                               (ngModelChange)="creditForm.set({...creditForm(), credit_amount: $event})" />
+                      </div>
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Reason' | translate }} *</label>
+                        <input type="text" class="field-input field-sm" placeholder="Reason for credit note"
+                               [ngModel]="creditForm().reason"
+                               (ngModelChange)="creditForm.set({...creditForm(), reason: $event})" />
+                      </div>
+                      <div class="form-group form-group-actions">
+                        <button class="btn btn-outline btn-sm" (click)="cancelCredit()" [disabled]="crediting()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-primary btn-sm" (click)="submitCredit()" [disabled]="crediting()">
+                          @if (crediting()) { <mat-spinner diameter="14"></mat-spinner> }
+                          {{ 'Create Credit Note' | translate }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+            @if (reopeningInvoiceId() === inv.id) {
+              <tr>
+                <td colspan="6">
+                  <div class="inline-form">
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label class="field-label">{{ 'Reason' | translate }} *</label>
+                        <input type="text" class="field-input field-sm" placeholder="Reason for reopening"
+                               [ngModel]="reopenReason()"
+                               (ngModelChange)="reopenReason.set($event)" />
+                      </div>
+                      <div class="form-group form-group-actions">
+                        <button class="btn btn-outline btn-sm" (click)="cancelReopen()" [disabled]="reopening()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-primary btn-sm" (click)="submitReopen()" [disabled]="reopening() || !reopenReason()">
+                          @if (reopening()) { <mat-spinner diameter="14"></mat-spinner> }
+                          {{ 'Reopen Invoice' | translate }}
                         </button>
                       </div>
                     </div>

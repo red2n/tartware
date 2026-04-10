@@ -21,19 +21,48 @@ describe("Reservations API", () => {
     await app.close();
   });
 
-  it("returns normalized reservation data for authorized users", async () => {
+  it("returns normalized reservation grid data for authorized users", async () => {
     const response = await app.inject({
       method: "GET",
-      url: `/v1/reservations?tenant_id=${TEST_TENANT_ID}`,
+      url: `/v1/reservations/grid?tenant_id=${TEST_TENANT_ID}`,
       headers: buildAuthHeader(MANAGER_USER_ID),
     });
 
     expect(response.statusCode).toBe(200);
     const payload = response.json();
-    expect(Array.isArray(payload)).toBe(true);
-    expect(payload).toHaveLength(1);
+    expect(Array.isArray(payload.data)).toBe(true);
+    expect(payload.data).toHaveLength(1);
+    expect(payload.meta).toEqual({ count: 1 });
 
-    const reservation = payload[0];
+    const reservation = payload.data[0];
+    expect(reservation).toMatchObject({
+      id: "aa0e8400-e29b-41d4-a716-446655440099",
+      confirmation_number: "CONF-123456",
+      status: "confirmed",
+      status_display: "Confirmed",
+      guest_name: "John Doe",
+      guest_email: "john.doe@example.com",
+      room_number: "1205",
+      total_amount: 450,
+      currency: "USD",
+    });
+    expect(reservation.nights).toBe(2);
+  });
+
+  it("returns full reservation list payload for authorized users", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/reservations/list?tenant_id=${TEST_TENANT_ID}`,
+      headers: buildAuthHeader(MANAGER_USER_ID),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const payload = response.json();
+    expect(Array.isArray(payload.data)).toBe(true);
+    expect(payload.data).toHaveLength(1);
+    expect(payload.meta).toEqual({ count: 1 });
+
+    const reservation = payload.data[0];
     expect(reservation).toMatchObject({
       id: "aa0e8400-e29b-41d4-a716-446655440099",
       tenant_id: TEST_TENANT_ID,

@@ -46,6 +46,22 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   });
 
   app.get(
+    "/v1/rooms/grid",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy room grid queries to the rooms service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.get(
     "/v1/rooms",
     {
       preHandler: tenantScopeFromQuery,
@@ -87,6 +103,22 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         response: {
           200: jsonObjectSchema,
           204: { type: "null" },
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
+  app.get(
+    "/v1/room-types/grid",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy room type grid requests to the rooms service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
         },
       }),
     },
@@ -188,6 +220,22 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   );
 
   // Buildings routes - proxy to rooms service
+  app.get(
+    "/v1/buildings/grid",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy building grid requests to the rooms service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyRooms,
+  );
+
   app.get(
     "/v1/buildings",
     {

@@ -6,14 +6,8 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
-import type {
-	BillingPaymentListItem,
-	ChargePostingListItem,
-	FolioListItem,
-	InvoiceListItem,
-} from "@tartware/schemas";
+import type { FolioListItem } from "@tartware/schemas";
 
-import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -22,29 +16,34 @@ import { SettingsService } from "../../core/settings/settings.service";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
-import { ToastService } from "../../shared/toast/toast.service";
 
 import {
+	type BillingView,
 	CHARGE_CODE_OPTIONS,
 	CHARGE_TYPE_FILTERS,
+	type ChargeTypeFilter,
 	DEFAULT_PAGE_SIZE,
 	FOLIO_STATUS_FILTERS,
 	FOLIO_TYPE_OPTIONS,
+	type FolioStatusFilter,
 	INVOICE_STATUS_FILTERS,
+	type InvoiceStatusFilter,
 	PAYMENT_METHOD_OPTIONS,
 	PAYMENT_STATUS_FILTERS,
-	type BillingView,
-	type ChargeTypeFilter,
-	type FolioStatusFilter,
-	type InvoiceStatusFilter,
 	type PaymentStatusFilter,
 } from "./billing-constants";
 import { BillingDataService } from "./billing-data.service";
+import { BillingFoliosService } from "./billing-folios.service";
+import { BillingInvoicesService } from "./billing-invoices.service";
+import { BillingPaymentsService } from "./billing-payments.service";
+import { BillingRoutingService } from "./billing-routing.service";
 import {
 	canCloseFolio,
 	canCreditNote,
 	canFinalizeInvoice,
 	canRefundPayment,
+	canReopenFolio,
+	canReopenInvoice,
 	canVoidCharge,
 	canVoidInvoice,
 	canVoidPayment,
@@ -70,34 +69,44 @@ import {
 	],
 	templateUrl: "./billing.html",
 	styleUrl: "./billing.scss",
-	providers: [BillingDataService],
+	providers: [
+		BillingDataService,
+		BillingPaymentsService,
+		BillingInvoicesService,
+		BillingFoliosService,
+		BillingRoutingService,
+	],
 })
 export class BillingComponent {
-	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly toast = inject(ToastService);
 	readonly data = inject(BillingDataService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
+	private readonly paymentActions = inject(BillingPaymentsService);
+	private readonly invoiceActions = inject(BillingInvoicesService);
+	private readonly folioActions = inject(BillingFoliosService);
+	private readonly routingActions = inject(BillingRoutingService);
 
-	// ── Reusable option lists from billing-constants ──
 	readonly chargeCodeOptions = CHARGE_CODE_OPTIONS;
 	readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
 	readonly folioTypeOptions = FOLIO_TYPE_OPTIONS;
-
+	readonly billedToTypeOptions = this.folioActions.billedToTypeOptions;
+	readonly taxExemptionTypeOptions = this.folioActions.taxExemptionTypeOptions;
+	readonly compTypeOptions = this.folioActions.compTypeOptions;
+	readonly routingTypeOptions = this.routingActions.routingTypeOptions;
+	readonly routingChargeCategoryOptions = this.routingActions.routingChargeCategoryOptions;
+	readonly routingDestinationTypeOptions = this.routingActions.routingDestinationTypeOptions;
+	readonly pageSize = DEFAULT_PAGE_SIZE;
 	readonly activeView = signal<BillingView>("payments");
 
-	// ── Delegate data signals to BillingDataService ──
 	readonly payments = this.data.payments;
 	readonly paymentsLoading = this.data.paymentsLoading;
 	readonly paymentsError = this.data.paymentsError;
 	readonly activePaymentFilter = signal<PaymentStatusFilter>("ALL");
 	readonly paymentPage = signal(1);
 	readonly paymentSort = createSortState();
-
 	readonly paymentStatusFilters = PAYMENT_STATUS_FILTERS;
-
 	readonly filteredPayments = computed(() => {
 		let list = this.payments();
 		const status = this.activePaymentFilter();
@@ -114,7 +123,6 @@ export class BillingComponent {
 		}
 		return list;
 	});
-
 	readonly paginatedPayments = computed(() => {
 		const sorted = sortBy(
 			this.filteredPayments(),
@@ -124,7 +132,6 @@ export class BillingComponent {
 		const start = (this.paymentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
-
 	readonly paymentFilterCounts = computed(() => {
 		const all = this.payments();
 		return {
@@ -139,16 +146,13 @@ export class BillingComponent {
 		};
 	});
 
-	// ── Invoices ──
 	readonly invoices = this.data.invoices;
 	readonly invoicesLoading = this.data.invoicesLoading;
 	readonly invoicesError = this.data.invoicesError;
 	readonly activeInvoiceFilter = signal<InvoiceStatusFilter>("ALL");
 	readonly invoicePage = signal(1);
 	readonly invoiceSort = createSortState();
-
 	readonly invoiceStatusFilters = INVOICE_STATUS_FILTERS;
-
 	readonly filteredInvoices = computed(() => {
 		let list = this.invoices();
 		const status = this.activeInvoiceFilter();
@@ -164,7 +168,6 @@ export class BillingComponent {
 		}
 		return list;
 	});
-
 	readonly paginatedInvoices = computed(() => {
 		const sorted = sortBy(
 			this.filteredInvoices(),
@@ -174,7 +177,6 @@ export class BillingComponent {
 		const start = (this.invoicePage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
-
 	readonly invoiceFilterCounts = computed(() => {
 		const all = this.invoices();
 		return {
@@ -186,16 +188,13 @@ export class BillingComponent {
 		};
 	});
 
-	// ── Folios ──
 	readonly folios = this.data.folios;
 	readonly foliosLoading = this.data.foliosLoading;
 	readonly foliosError = this.data.foliosError;
 	readonly activeFolioFilter = signal<FolioStatusFilter>("ALL");
 	readonly folioPage = signal(1);
 	readonly folioSort = createSortState();
-
 	readonly folioStatusFilters = FOLIO_STATUS_FILTERS;
-
 	readonly filteredFolios = computed(() => {
 		let list = this.folios();
 		const status = this.activeFolioFilter();
@@ -212,7 +211,6 @@ export class BillingComponent {
 		}
 		return list;
 	});
-
 	readonly paginatedFolios = computed(() => {
 		const sorted = sortBy(
 			this.filteredFolios(),
@@ -222,7 +220,6 @@ export class BillingComponent {
 		const start = (this.folioPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
-
 	readonly folioFilterCounts = computed(() => {
 		const all = this.folios();
 		return {
@@ -233,23 +230,13 @@ export class BillingComponent {
 		};
 	});
 
-	// ── Charges ──
 	readonly charges = this.data.charges;
 	readonly chargesLoading = this.data.chargesLoading;
 	readonly chargesError = this.data.chargesError;
 	readonly activeChargeFilter = signal<ChargeTypeFilter>("ALL");
 	readonly chargePage = signal(1);
 	readonly chargeSort = createSortState();
-	private readonly _resetPage = effect(() => {
-		this.globalSearch.query();
-		this.paymentPage.set(1);
-		this.invoicePage.set(1);
-		this.folioPage.set(1);
-		this.chargePage.set(1);
-	});
-
 	readonly chargeTypeFilters = CHARGE_TYPE_FILTERS;
-
 	readonly filteredCharges = computed(() => {
 		let list = this.charges();
 		const type = this.activeChargeFilter();
@@ -266,7 +253,6 @@ export class BillingComponent {
 		}
 		return list;
 	});
-
 	readonly paginatedCharges = computed(() => {
 		const sorted = sortBy(
 			this.filteredCharges(),
@@ -276,7 +262,6 @@ export class BillingComponent {
 		const start = (this.chargePage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
 	});
-
 	readonly chargeFilterCounts = computed(() => {
 		const all = this.charges();
 		return {
@@ -287,68 +272,291 @@ export class BillingComponent {
 		};
 	});
 
-	// ── Shared ──
-	readonly pageSize = DEFAULT_PAGE_SIZE;
-
-	/** KPI summary across all billing data. */
+	readonly routingRules = this.routingActions.routingRules;
+	readonly routingTemplates = this.routingActions.routingTemplates;
+	readonly routingLoading = this.routingActions.routingLoading;
+	readonly routingError = this.routingActions.routingError;
+	readonly routingPage = signal(1);
+	readonly routingSort = createSortState();
+	readonly filteredRoutingRules = computed(() => {
+		let list = [...this.routingRules(), ...this.routingTemplates()];
+		const query = this.globalSearch.query().toLowerCase().trim();
+		if (query) {
+			list = list.filter(
+				(rule) =>
+					rule.rule_name.toLowerCase().includes(query) ||
+					(rule.rule_code?.toLowerCase().includes(query) ?? false) ||
+					(rule.charge_code_pattern?.toLowerCase().includes(query) ?? false),
+			);
+		}
+		return list;
+	});
+	readonly paginatedRoutingRules = computed(() => {
+		const sorted = sortBy(
+			this.filteredRoutingRules(),
+			this.routingSort().column,
+			this.routingSort().direction,
+		);
+		const start = (this.routingPage() - 1) * this.pageSize;
+		return sorted.slice(start, start + this.pageSize);
+	});
+	readonly selectedFolioId = this.folioActions.selectedFolioId;
+	readonly selectedFolioRoutingRules = computed(() => {
+		const selectedFolioId = this.selectedFolioId();
+		if (!selectedFolioId) return [];
+		return this.routingRules().filter((rule) => rule.source_folio_id === selectedFolioId);
+	});
 	readonly summary = this.data.summary;
 
+	readonly voidingPaymentId = this.paymentActions.voidingPaymentId;
+	readonly voidPaymentReason = this.paymentActions.voidPaymentReason;
+	readonly processingVoid = this.paymentActions.processingVoid;
+	readonly refundingPaymentId = this.paymentActions.refundingPaymentId;
+	readonly refundForm = this.paymentActions.refundForm;
+	readonly processingRefund = this.paymentActions.processingRefund;
+	readonly showCapturePaymentForm = this.paymentActions.showCapturePaymentForm;
+	readonly capturePaymentForm = this.paymentActions.capturePaymentForm;
+	readonly capturingPayment = this.paymentActions.capturingPayment;
+	readonly showVoidPayment = this.paymentActions.showVoidPayment.bind(this.paymentActions);
+	readonly cancelVoidPayment = this.paymentActions.cancelVoidPayment.bind(this.paymentActions);
+	readonly voidPayment = this.paymentActions.voidPayment.bind(this.paymentActions);
+	readonly showRefundPayment = this.paymentActions.showRefundPayment.bind(this.paymentActions);
+	readonly cancelRefundPayment = this.paymentActions.cancelRefundPayment.bind(this.paymentActions);
+	readonly refundPayment = this.paymentActions.refundPayment.bind(this.paymentActions);
+	readonly toggleCapturePaymentForm = this.paymentActions.toggleCapturePaymentForm.bind(
+		this.paymentActions,
+	);
+	readonly updateCapturePaymentForm = this.paymentActions.updateCapturePaymentForm.bind(
+		this.paymentActions,
+	);
+	readonly capturePayment = this.paymentActions.capturePayment.bind(this.paymentActions);
+
+	readonly processingInvoiceAction = this.invoiceActions.processingInvoiceAction;
+	readonly creditNoteInvoiceId = this.invoiceActions.creditNoteInvoiceId;
+	readonly creditNoteForm = this.invoiceActions.creditNoteForm;
+	readonly processingCreditNote = this.invoiceActions.processingCreditNote;
+	readonly voidInvoiceId = this.invoiceActions.voidInvoiceId;
+	readonly voidInvoiceReason = this.invoiceActions.voidInvoiceReason;
+	readonly processingInvoiceVoid = this.invoiceActions.processingInvoiceVoid;
+	readonly reopenInvoiceId = this.invoiceActions.reopenInvoiceId;
+	readonly reopenInvoiceReason = this.invoiceActions.reopenInvoiceReason;
+	readonly processingInvoiceReopen = this.invoiceActions.processingInvoiceReopen;
+	readonly showCreateInvoiceForm = this.invoiceActions.showCreateInvoiceForm;
+	readonly createInvoiceForm = this.invoiceActions.createInvoiceForm;
+	readonly creatingInvoice = this.invoiceActions.creatingInvoice;
+	readonly availableGuests = this.invoiceActions.availableGuests;
+	readonly availableReservations = this.invoiceActions.availableReservations;
+	readonly finalizeInvoice = this.invoiceActions.finalizeInvoice.bind(this.invoiceActions);
+	readonly showVoidInvoice = this.invoiceActions.showVoidInvoice.bind(this.invoiceActions);
+	readonly cancelVoidInvoice = this.invoiceActions.cancelVoidInvoice.bind(this.invoiceActions);
+	readonly voidInvoice = this.invoiceActions.voidInvoice.bind(this.invoiceActions);
+	readonly showCreditNote = this.invoiceActions.showCreditNote.bind(this.invoiceActions);
+	readonly cancelCreditNote = this.invoiceActions.cancelCreditNote.bind(this.invoiceActions);
+	readonly createCreditNote = this.invoiceActions.createCreditNote.bind(this.invoiceActions);
+	readonly showReopenInvoice = this.invoiceActions.showReopenInvoice.bind(this.invoiceActions);
+	readonly cancelReopenInvoice = this.invoiceActions.cancelReopenInvoice.bind(this.invoiceActions);
+	readonly reopenInvoice = this.invoiceActions.reopenInvoice.bind(this.invoiceActions);
+	readonly toggleCreateInvoiceForm = this.invoiceActions.toggleCreateInvoiceForm.bind(
+		this.invoiceActions,
+	);
+	readonly updateCreateInvoiceForm = this.invoiceActions.updateCreateInvoiceForm.bind(
+		this.invoiceActions,
+	);
+	readonly createInvoice = this.invoiceActions.createInvoice.bind(this.invoiceActions);
+
+	readonly showCreateFolioForm = this.folioActions.showCreateFolioForm;
+	readonly createFolioForm = this.folioActions.createFolioForm;
+	readonly creatingFolio = this.folioActions.creatingFolio;
+	readonly folioCharges = this.folioActions.folioCharges;
+	readonly folioChargesLoading = this.folioActions.folioChargesLoading;
+	readonly showPostChargeForm = this.folioActions.showPostChargeForm;
+	readonly postChargeForm = this.folioActions.postChargeForm;
+	readonly postingCharge = this.folioActions.postingCharge;
+	readonly openFolios = this.folioActions.openFolios;
+	readonly voidingChargeId = this.folioActions.voidingChargeId;
+	readonly voidChargeReason = this.folioActions.voidChargeReason;
+	readonly processingChargeVoid = this.folioActions.processingChargeVoid;
+	readonly closingFolioId = this.folioActions.closingFolioId;
+	readonly closeFolioReason = this.folioActions.closeFolioReason;
+	readonly closeFolioForce = this.folioActions.closeFolioForce;
+	readonly processingFolioClose = this.folioActions.processingFolioClose;
+	readonly reopeningFolioId = this.folioActions.reopeningFolioId;
+	readonly reopenFolioReason = this.folioActions.reopenFolioReason;
+	readonly processingFolioReopen = this.folioActions.processingFolioReopen;
+	readonly mergingFolioId = this.folioActions.mergingFolioId;
+	readonly mergeFolioForm = this.folioActions.mergeFolioForm;
+	readonly processingFolioMerge = this.folioActions.processingFolioMerge;
+	readonly creatingWindowFolioId = this.folioActions.creatingWindowFolioId;
+	readonly folioWindowForm = this.folioActions.folioWindowForm;
+	readonly processingFolioWindow = this.folioActions.processingFolioWindow;
+	readonly taxExemptionFolioId = this.folioActions.taxExemptionFolioId;
+	readonly taxExemptionForm = this.folioActions.taxExemptionForm;
+	readonly processingTaxExemption = this.folioActions.processingTaxExemption;
+	readonly compPostingFolioId = this.folioActions.compPostingFolioId;
+	readonly compPostingForm = this.folioActions.compPostingForm;
+	readonly processingCompPosting = this.folioActions.processingCompPosting;
+	readonly splittingChargeId = this.folioActions.splittingChargeId;
+	readonly splitChargeForm = this.folioActions.splitChargeForm;
+	readonly processingChargeSplit = this.folioActions.processingChargeSplit;
+	readonly toggleCreateFolioForm = this.folioActions.toggleCreateFolioForm.bind(this.folioActions);
+	readonly updateCreateFolioForm = this.folioActions.updateCreateFolioForm.bind(this.folioActions);
+	readonly createFolio = this.folioActions.createFolio.bind(this.folioActions);
+	readonly togglePostChargeForm = this.folioActions.togglePostChargeForm.bind(this.folioActions);
+	readonly updatePostChargeForm = this.folioActions.updatePostChargeForm.bind(this.folioActions);
+	readonly postCharge = this.folioActions.postCharge.bind(this.folioActions);
+	readonly showVoidCharge = this.folioActions.showVoidCharge.bind(this.folioActions);
+	readonly cancelVoidCharge = this.folioActions.cancelVoidCharge.bind(this.folioActions);
+	readonly voidCharge = this.folioActions.voidCharge.bind(this.folioActions);
+	readonly showCloseFolio = this.folioActions.showCloseFolio.bind(this.folioActions);
+	readonly cancelCloseFolio = this.folioActions.cancelCloseFolio.bind(this.folioActions);
+	readonly closeFolio = this.folioActions.closeFolio.bind(this.folioActions);
+	readonly showReopenFolio = this.folioActions.showReopenFolio.bind(this.folioActions);
+	readonly cancelReopenFolio = this.folioActions.cancelReopenFolio.bind(this.folioActions);
+	readonly reopenFolio = this.folioActions.reopenFolio.bind(this.folioActions);
+	readonly showMergeFolio = this.folioActions.showMergeFolio.bind(this.folioActions);
+	readonly cancelMergeFolio = this.folioActions.cancelMergeFolio.bind(this.folioActions);
+	readonly mergeFolio = this.folioActions.mergeFolio.bind(this.folioActions);
+	readonly showCreateWindow = this.folioActions.showCreateWindow.bind(this.folioActions);
+	readonly cancelCreateWindow = this.folioActions.cancelCreateWindow.bind(this.folioActions);
+	readonly createFolioWindow = this.folioActions.createFolioWindow.bind(this.folioActions);
+	readonly showTaxExemption = this.folioActions.showTaxExemption.bind(this.folioActions);
+	readonly cancelTaxExemption = this.folioActions.cancelTaxExemption.bind(this.folioActions);
+	readonly applyTaxExemption = this.folioActions.applyTaxExemption.bind(this.folioActions);
+	readonly showCompPosting = this.folioActions.showCompPosting.bind(this.folioActions);
+	readonly cancelCompPosting = this.folioActions.cancelCompPosting.bind(this.folioActions);
+	readonly postCompCharge = this.folioActions.postCompCharge.bind(this.folioActions);
+	readonly showSplitCharge = this.folioActions.showSplitCharge.bind(this.folioActions);
+	readonly cancelSplitCharge = this.folioActions.cancelSplitCharge.bind(this.folioActions);
+	readonly splitCharge = this.folioActions.splitCharge.bind(this.folioActions);
+	readonly selectFolio = this.folioActions.selectFolio.bind(this.folioActions);
+
+	readonly showCreateRoutingRuleForm = this.routingActions.showCreateRoutingRuleForm;
+	readonly creatingRoutingRule = this.routingActions.creatingRoutingRule;
+	readonly editingRoutingRuleId = this.routingActions.editingRoutingRuleId;
+	readonly editingRoutingRule = this.routingActions.editingRoutingRule;
+	readonly deletingRoutingRuleId = this.routingActions.deletingRoutingRuleId;
+	readonly deletingRoutingRule = this.routingActions.deletingRoutingRule;
+	readonly cloningTemplateId = this.routingActions.cloningTemplateId;
+	readonly cloningTemplate = this.routingActions.cloningTemplate;
+	readonly createRoutingRuleForm = this.routingActions.createRoutingRuleForm;
+	readonly editRoutingRuleForm = this.routingActions.editRoutingRuleForm;
+	readonly cloneTemplateForm = this.routingActions.cloneTemplateForm;
+	readonly loadRoutingRules = this.routingActions.loadRoutingRules.bind(this.routingActions);
+	readonly toggleCreateRoutingRuleForm = this.routingActions.toggleCreateRoutingRuleForm.bind(
+		this.routingActions,
+	);
+	readonly updateCreateRoutingRuleForm = this.routingActions.updateCreateRoutingRuleForm.bind(
+		this.routingActions,
+	);
+	readonly createRoutingRule = this.routingActions.createRoutingRule.bind(this.routingActions);
+	readonly startEditRoutingRule = this.routingActions.startEditRoutingRule.bind(
+		this.routingActions,
+	);
+	readonly cancelEditRoutingRule = this.routingActions.cancelEditRoutingRule.bind(
+		this.routingActions,
+	);
+	readonly updateEditRoutingRuleForm = this.routingActions.updateEditRoutingRuleForm.bind(
+		this.routingActions,
+	);
+	readonly saveRoutingRule = this.routingActions.saveRoutingRule.bind(this.routingActions);
+	readonly showDeleteRoutingRule = this.routingActions.showDeleteRoutingRule.bind(
+		this.routingActions,
+	);
+	readonly cancelDeleteRoutingRule = this.routingActions.cancelDeleteRoutingRule.bind(
+		this.routingActions,
+	);
+	readonly deleteRoutingRule = this.routingActions.deleteRoutingRule.bind(this.routingActions);
+	readonly showCloneTemplate = this.routingActions.showCloneTemplate.bind(this.routingActions);
+	readonly cancelCloneTemplate = this.routingActions.cancelCloneTemplate.bind(this.routingActions);
+	readonly cloneTemplate = this.routingActions.cloneTemplate.bind(this.routingActions);
+
+	readonly paymentStatusClass = paymentStatusClass;
+	readonly invoiceStatusClass = invoiceStatusClass;
+	readonly folioStatusClass = folioStatusClass;
+	readonly chargeTypeClass = chargeTypeClass;
+	readonly canVoid = canVoidPayment;
+	readonly canRefund = canRefundPayment;
+	readonly canVoidInvoice = canVoidInvoice;
+	readonly canFinalizeInvoice = canFinalizeInvoice;
+	readonly canCreditNote = canCreditNote;
+	readonly canReopenInvoice = canReopenInvoice;
+	readonly canVoidCharge = canVoidCharge;
+	readonly canCloseFolio = canCloseFolio;
+	readonly canReopenFolio = canReopenFolio;
+
 	constructor() {
-		// On tenant/property change, load the active tab first, then the rest incrementally
+		effect(() => {
+			this.globalSearch.query();
+			this.paymentPage.set(1);
+			this.invoicePage.set(1);
+			this.folioPage.set(1);
+			this.chargePage.set(1);
+			this.routingPage.set(1);
+		});
+
 		effect(() => {
 			this.auth.tenantId();
 			this.ctx.propertyId();
-			this.data.loadForView(this.activeView());
+			const activeView = this.activeView();
+			this.data.loadForView(activeView === "routing" ? "payments" : activeView);
+			this.loadRoutingRules();
 		});
 	}
 
 	setView(view: BillingView): void {
 		this.activeView.set(view);
-		// Ensure the tab data is loaded when the user switches to it
+		if (view === "routing") {
+			this.loadRoutingRules();
+			return;
+		}
 		this.data.ensureLoaded(view);
 	}
 
-	// ── Payment actions ──
 	setPaymentFilter(f: PaymentStatusFilter): void {
 		this.activePaymentFilter.set(f);
 		this.paymentPage.set(1);
 	}
+
 	onPaymentSort(col: string): void {
 		this.paymentSort.set(toggleSort(this.paymentSort(), col));
 		this.paymentPage.set(1);
 	}
 
-	// ── Invoice actions ──
 	setInvoiceFilter(f: InvoiceStatusFilter): void {
 		this.activeInvoiceFilter.set(f);
 		this.invoicePage.set(1);
 	}
+
 	onInvoiceSort(col: string): void {
 		this.invoiceSort.set(toggleSort(this.invoiceSort(), col));
 		this.invoicePage.set(1);
 	}
 
-	// ── Folio actions ──
 	setFolioFilter(f: FolioStatusFilter): void {
 		this.activeFolioFilter.set(f);
 		this.folioPage.set(1);
 	}
+
 	onFolioSort(col: string): void {
 		this.folioSort.set(toggleSort(this.folioSort(), col));
 		this.folioPage.set(1);
 	}
 
-	// ── Charge actions ──
 	setChargeFilter(f: ChargeTypeFilter): void {
 		this.activeChargeFilter.set(f);
 		this.chargePage.set(1);
 	}
+
 	onChargeSort(col: string): void {
 		this.chargeSort.set(toggleSort(this.chargeSort(), col));
 		this.chargePage.set(1);
 	}
 
-	// ── Sort helpers ──
+	onRoutingSort(col: string): void {
+		this.routingSort.set(toggleSort(this.routingSort(), col));
+		this.routingPage.set(1);
+	}
+
 	sortIcon(sort: ReturnType<typeof createSortState>, col: string): string {
 		const s = sort();
 		if (s.column !== col) return "unfold_more";
@@ -361,494 +569,45 @@ export class BillingComponent {
 		return s.direction === "asc" ? "ascending" : "descending";
 	}
 
-	// ── Display helpers (delegated to billing-utils) ──
-	readonly paymentStatusClass = paymentStatusClass;
-	readonly invoiceStatusClass = invoiceStatusClass;
-	readonly folioStatusClass = folioStatusClass;
-	readonly chargeTypeClass = chargeTypeClass;
+	targetFoliosFor(sourceFolioId: string): FolioListItem[] {
+		return this.openFolios().filter((folio) => folio.id !== sourceFolioId);
+	}
+
+	openRoutingCreateForFolio(folio: FolioListItem): void {
+		this.setView("routing");
+		this.routingActions.openCreateForFolio(folio);
+	}
 
 	formatDate(dateStr: string): string {
 		return this.settings.formatDate(dateStr);
 	}
+
 	formatCurrency(amount: number, currency?: string): string {
 		return this.settings.formatCurrency(amount, currency);
 	}
 
-	// ── Payment action state ──
-	readonly voidingPaymentId = signal<string | null>(null);
-	readonly voidPaymentReason = signal("");
-	readonly processingVoid = signal(false);
-	readonly refundingPaymentId = signal<string | null>(null);
-	readonly refundForm = signal({ amount: 0, reason: "" });
-	readonly processingRefund = signal(false);
-
-	// ── Invoice action state ──
-	readonly processingInvoiceAction = signal<string | null>(null);
-	readonly creditNoteInvoiceId = signal<string | null>(null);
-	readonly creditNoteForm = signal({ credit_amount: 0, reason: "" });
-	readonly processingCreditNote = signal(false);
-	readonly voidInvoiceId = signal<string | null>(null);
-	readonly voidInvoiceReason = signal("");
-	readonly processingInvoiceVoid = signal(false);
-	readonly showCreateInvoiceForm = signal(false);
-	readonly createInvoiceForm = signal({
-		reservation_id: "" as string,
-		guest_id: "" as string,
-		total_amount: 0,
-		due_date: "" as string,
-		notes: "" as string,
-	});
-	readonly creatingInvoice = signal(false);
-
-	/** Unique guests derived from loaded folios for the invoice form picker. */
-	readonly availableGuests = this.data.availableGuests;
-
-	/** Reservations available for the selected guest. */
-	readonly availableReservations = computed(() =>
-		this.data.reservationsForGuest(this.createInvoiceForm().guest_id),
-	);
-
-	// ── Folio action state ──
-	readonly showCreateFolioForm = signal(false);
-	readonly createFolioForm = signal({
-		folio_type: "HOUSE_ACCOUNT" as string,
-		folio_name: "",
-		notes: "",
-	});
-	readonly creatingFolio = signal(false);
-	readonly selectedFolioId = this.data.selectedFolioId;
-	readonly folioCharges = this.data.folioCharges;
-	readonly folioChargesLoading = this.data.folioChargesLoading;
-
-	// ── Charge posting state ──
-	readonly showPostChargeForm = signal(false);
-	readonly postChargeForm = signal({
-		folio_id: "" as string,
-		charge_code: "MISC" as string,
-		amount: 0,
-		quantity: 1,
-		description: "" as string,
-		department_code: "" as string,
-	});
-	readonly postingCharge = signal(false);
-
-	/** Open folios available as charge targets. */
-	readonly openFolios = this.data.openFolios;
-
-	// ── Payment capture state ──
-	readonly showCapturePaymentForm = signal(false);
-	readonly capturePaymentForm = signal({
-		folio_id: "" as string,
-		amount: 0,
-		payment_method: "CASH" as string,
-		payment_reference: "" as string,
-	});
-	readonly capturingPayment = signal(false);
-
-	// ── Charge void state ──
-	readonly voidingChargeId = signal<string | null>(null);
-	readonly voidChargeReason = signal("");
-	readonly processingChargeVoid = signal(false);
-
-	// ── Folio close state ──
-	readonly closingFolioId = signal<string | null>(null);
-	readonly closeFolioReason = signal("");
-	readonly closeFolioForce = signal(false);
-	readonly processingFolioClose = signal(false);
-
-	// ── Payment actions ──
-	showVoidPayment(paymentId: string): void {
-		this.voidingPaymentId.set(paymentId);
-		this.voidPaymentReason.set("");
-	}
-	cancelVoidPayment(): void {
-		this.voidingPaymentId.set(null);
-	}
-	async voidPayment(payment: BillingPaymentListItem): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.processingVoid.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/payments/${payment.id}/void`, {
-				payment_reference: payment.payment_reference,
-				property_id: this.ctx.propertyId(),
-				reservation_id: payment.reservation_id,
-				reason: this.voidPaymentReason() || undefined,
-			});
-			this.toast.success("Payment voided.");
-			this.voidingPaymentId.set(null);
-			await this.loadPayments();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to void payment");
-		} finally {
-			this.processingVoid.set(false);
-		}
-	}
-
-	showRefundPayment(payment: BillingPaymentListItem): void {
-		this.refundingPaymentId.set(payment.id);
-		this.refundForm.set({ amount: payment.amount, reason: "" });
-	}
-	cancelRefundPayment(): void {
-		this.refundingPaymentId.set(null);
-	}
-	async refundPayment(payment: BillingPaymentListItem): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.processingRefund.set(true);
-		try {
-			const form = this.refundForm();
-			await this.api.post(`/tenants/${tenantId}/billing/payments/${payment.id}/refund`, {
-				payment_id: payment.id,
-				property_id: this.ctx.propertyId(),
-				reservation_id: payment.reservation_id,
-				guest_id: payment.guest_id,
-				amount: form.amount,
-				reason: form.reason || undefined,
-			});
-			this.toast.success("Refund submitted.");
-			this.refundingPaymentId.set(null);
-			await this.loadPayments();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to refund payment");
-		} finally {
-			this.processingRefund.set(false);
-		}
-	}
-
-	readonly canVoid = canVoidPayment;
-	readonly canRefund = canRefundPayment;
-
-	// ── Invoice actions ──
-	async finalizeInvoice(invoice: InvoiceListItem): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.processingInvoiceAction.set(invoice.id);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoice.id}/finalize`, {});
-			this.toast.success("Invoice finalized.");
-			await this.loadInvoices();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to finalize invoice");
-		} finally {
-			this.processingInvoiceAction.set(null);
-		}
-	}
-
-	showVoidInvoice(invoiceId: string): void {
-		this.voidInvoiceId.set(invoiceId);
-		this.voidInvoiceReason.set("");
-	}
-	cancelVoidInvoice(): void {
-		this.voidInvoiceId.set(null);
-	}
-	async voidInvoice(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const invoiceId = this.voidInvoiceId();
-		if (!tenantId || !invoiceId) return;
-		this.processingInvoiceVoid.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`, {
-				reason: this.voidInvoiceReason() || undefined,
-			});
-			this.toast.success("Invoice voided.");
-			this.voidInvoiceId.set(null);
-			await this.loadInvoices();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to void invoice");
-		} finally {
-			this.processingInvoiceVoid.set(false);
-		}
-	}
-
-	showCreditNote(invoice: InvoiceListItem): void {
-		this.creditNoteInvoiceId.set(invoice.id);
-		this.creditNoteForm.set({ credit_amount: invoice.total_amount, reason: "" });
-	}
-	cancelCreditNote(): void {
-		this.creditNoteInvoiceId.set(null);
-	}
-	async createCreditNote(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const invoiceId = this.creditNoteInvoiceId();
-		if (!tenantId || !invoiceId) return;
-		this.processingCreditNote.set(true);
-		try {
-			const form = this.creditNoteForm();
-			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/credit-note`, {
-				property_id: this.ctx.propertyId(),
-				credit_amount: form.credit_amount,
-				reason: form.reason,
-			});
-			this.toast.success("Credit note created.");
-			this.creditNoteInvoiceId.set(null);
-			await this.loadInvoices();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create credit note");
-		} finally {
-			this.processingCreditNote.set(false);
-		}
-	}
-
-	readonly canVoidInvoice = canVoidInvoice;
-	readonly canFinalizeInvoice = canFinalizeInvoice;
-	readonly canCreditNote = canCreditNote;
-
-	// ── Invoice creation ──
-	toggleCreateInvoiceForm(): void {
-		this.showCreateInvoiceForm.set(!this.showCreateInvoiceForm());
-	}
-	updateCreateInvoiceForm(
-		partial: Partial<{
-			reservation_id: string;
-			guest_id: string;
-			total_amount: number;
-			due_date: string;
-			notes: string;
-		}>,
-	): void {
-		this.createInvoiceForm.set({ ...this.createInvoiceForm(), ...partial });
-	}
-	async createInvoice(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const propertyId = this.ctx.propertyId();
-		if (!tenantId || !propertyId) return;
-		const form = this.createInvoiceForm();
-		if (!form.guest_id || form.total_amount <= 0) return;
-		this.creatingInvoice.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/invoices`, {
-				property_id: propertyId,
-				guest_id: form.guest_id,
-				reservation_id: form.reservation_id || undefined,
-				total_amount: form.total_amount,
-				due_date: form.due_date || undefined,
-				notes: form.notes || undefined,
-			});
-			this.toast.success("Invoice created.");
-			this.showCreateInvoiceForm.set(false);
-			this.createInvoiceForm.set({
-				reservation_id: "",
-				guest_id: "",
-				total_amount: 0,
-				due_date: "",
-				notes: "",
-			});
-			await this.loadInvoices();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create invoice");
-		} finally {
-			this.creatingInvoice.set(false);
-		}
-	}
-
-	// ── Folio actions ──
-	toggleCreateFolioForm(): void {
-		this.showCreateFolioForm.set(!this.showCreateFolioForm());
-	}
-	updateCreateFolioForm(
-		partial: Partial<{ folio_type: string; folio_name: string; notes: string }>,
-	): void {
-		this.createFolioForm.set({ ...this.createFolioForm(), ...partial });
-	}
-	async createFolio(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const propertyId = this.ctx.propertyId();
-		if (!tenantId || !propertyId) return;
-		this.creatingFolio.set(true);
-		try {
-			const form = this.createFolioForm();
-			await this.api.post(`/tenants/${tenantId}/billing/folios`, {
-				property_id: propertyId,
-				folio_type: form.folio_type,
-				folio_name: form.folio_name || undefined,
-				notes: form.notes || undefined,
-			});
-			this.toast.success("Folio created.");
-			this.showCreateFolioForm.set(false);
-			this.createFolioForm.set({ folio_type: "HOUSE_ACCOUNT", folio_name: "", notes: "" });
-			await this.loadFolios();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create folio");
-		} finally {
-			this.creatingFolio.set(false);
-		}
-	}
-
-	// ── Post Charge actions ──
-	togglePostChargeForm(): void {
-		this.showPostChargeForm.set(!this.showPostChargeForm());
-	}
-	updatePostChargeForm(
-		partial: Partial<{
-			folio_id: string;
-			charge_code: string;
-			amount: number;
-			quantity: number;
-			description: string;
-			department_code: string;
-		}>,
-	): void {
-		this.postChargeForm.set({ ...this.postChargeForm(), ...partial });
-	}
-	async postCharge(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const propertyId = this.ctx.propertyId();
-		if (!tenantId || !propertyId) return;
-		const form = this.postChargeForm();
-		if (!form.folio_id || form.amount <= 0) return;
-		this.postingCharge.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/charges`, {
-				property_id: propertyId,
-				folio_id: form.folio_id,
-				charge_code: form.charge_code || "MISC",
-				amount: form.amount,
-				quantity: form.quantity || 1,
-				description: form.description || undefined,
-				department_code: form.department_code || undefined,
-			});
-			this.toast.success("Charge posted.");
-			this.showPostChargeForm.set(false);
-			this.postChargeForm.set({
-				folio_id: "",
-				charge_code: "MISC",
-				amount: 0,
-				quantity: 1,
-				description: "",
-				department_code: "",
-			});
-			await Promise.all([this.loadCharges(), this.loadFolios()]);
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to post charge");
-		} finally {
-			this.postingCharge.set(false);
-		}
-	}
-
-	// ── Payment capture actions ──
-	toggleCapturePaymentForm(): void {
-		this.showCapturePaymentForm.set(!this.showCapturePaymentForm());
-	}
-	updateCapturePaymentForm(
-		partial: Partial<{
-			folio_id: string;
-			amount: number;
-			payment_method: string;
-			payment_reference: string;
-		}>,
-	): void {
-		this.capturePaymentForm.set({ ...this.capturePaymentForm(), ...partial });
-	}
-	async capturePayment(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const propertyId = this.ctx.propertyId();
-		if (!tenantId || !propertyId) return;
-		const form = this.capturePaymentForm();
-		if (form.amount <= 0 || !form.payment_reference) return;
-		this.capturingPayment.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/payments/capture`, {
-				property_id: propertyId,
-				folio_id: form.folio_id || undefined,
-				amount: form.amount,
-				payment_method: form.payment_method || "CASH",
-				payment_reference: form.payment_reference,
-			});
-			this.toast.success("Payment captured.");
-			this.showCapturePaymentForm.set(false);
-			this.capturePaymentForm.set({
-				folio_id: "",
-				amount: 0,
-				payment_method: "CASH",
-				payment_reference: "",
-			});
-			await Promise.all([this.loadPayments(), this.loadFolios()]);
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to capture payment");
-		} finally {
-			this.capturingPayment.set(false);
-		}
-	}
-
-	// ── Charge void actions ──
-	showVoidCharge(postingId: string): void {
-		this.voidingChargeId.set(postingId);
-		this.voidChargeReason.set("");
-	}
-	cancelVoidCharge(): void {
-		this.voidingChargeId.set(null);
-	}
-	async voidCharge(charge: ChargePostingListItem): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
-		this.processingChargeVoid.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/charges/${charge.id}/void`, {
-				posting_id: charge.id,
-				void_reason: this.voidChargeReason() || undefined,
-			});
-			this.toast.success("Charge voided.");
-			this.voidingChargeId.set(null);
-			await Promise.all([this.loadCharges(), this.loadFolios()]);
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to void charge");
-		} finally {
-			this.processingChargeVoid.set(false);
-		}
-	}
-	readonly canVoidCharge = canVoidCharge;
-
-	// ── Folio close actions ──
-	showCloseFolio(folioId: string): void {
-		this.closingFolioId.set(folioId);
-		this.closeFolioReason.set("");
-		this.closeFolioForce.set(false);
-	}
-	cancelCloseFolio(): void {
-		this.closingFolioId.set(null);
-	}
-	async closeFolio(folio: FolioListItem): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const propertyId = this.ctx.propertyId();
-		if (!tenantId || !propertyId) return;
-		this.processingFolioClose.set(true);
-		try {
-			await this.api.post(`/tenants/${tenantId}/billing/folios/close`, {
-				property_id: propertyId,
-				folio_id: folio.id,
-				close_reason: this.closeFolioReason() || undefined,
-				force: this.closeFolioForce(),
-			});
-			this.toast.success("Folio closed.");
-			this.closingFolioId.set(null);
-			await this.loadFolios();
-		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to close folio");
-		} finally {
-			this.processingFolioClose.set(false);
-		}
-	}
-	readonly canCloseFolio = canCloseFolio;
-
-	async selectFolio(folio: FolioListItem): Promise<void> {
-		await this.data.selectFolio(folio);
-	}
-
-	// ── Data loading (delegated to BillingDataService) ──
 	refreshAll(): void {
-		this.data.loadForView(this.activeView());
+		this.data.loadForView(this.activeView() === "routing" ? "payments" : this.activeView());
+		this.loadRoutingRules();
 	}
+
 	loadPayments(): Promise<void> {
 		return this.data.loadPayments();
 	}
+
 	loadInvoices(): Promise<void> {
 		return this.data.loadInvoices();
 	}
+
 	loadFolios(): Promise<void> {
 		return this.data.loadFolios();
 	}
+
 	loadCharges(): Promise<void> {
 		return this.data.loadCharges();
+	}
+
+	loadRouting(): Promise<void> {
+		return this.loadRoutingRules();
 	}
 }

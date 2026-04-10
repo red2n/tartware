@@ -1,7 +1,7 @@
 /* Night Audit — component-specific overrides only.
  * Reusable patterns (filter-bar, data-table, states, badges, buttons,
  * kpi-grid, kpi-card, ref-code, col-right, cell-amount, cell-positive,
- * cell-negative, field-input)
+ * cell-negative, field-input, badge-sm, table/table-compact)
  * live in styles/shared.scss. */
 
 .night-audit-page { max-width: 1400px; }
@@ -191,8 +191,6 @@
   margin-right: var(--space-2);
 }
 
-.badge-sm { font-size: var(--font-size-xs); padding: 1px 6px; }
-
 /* ── Run Detail (BC-4) ── */
 .detail-row > td {
   padding: 0 !important;
@@ -277,9 +275,6 @@
   margin-top: 2px;
 }
 
-.text-success { color: var(--color-success-fg); }
-.text-danger { color: var(--color-danger-fg); }
-
 .step-error {
   margin-top: var(--space-1);
   font-size: var(--font-size-xs);
@@ -304,7 +299,6 @@
   .status-banner-main { flex-direction: column; align-items: flex-start; }
   .status-stats { gap: var(--space-3); }
   .execute-confirm { margin-left: 0; flex-wrap: wrap; }
-  .table-container { overflow-x: auto; }
   .run-kpis { flex-wrap: wrap; gap: var(--space-3); }
   .step-name { flex-direction: column; align-items: flex-start; gap: 2px; }
 }

@@ -10,6 +10,7 @@
     "@tartware/telemetry",
     "@tartware/tenant-auth",
     "@tartware/command-consumer-utils",
+    "@tartware/candidate-pipeline",
     "@fastify/cors",
     "@fastify/helmet",
     "@tartware/fastify-server",

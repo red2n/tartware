@@ -27,6 +27,7 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter =
@@ -258,16 +259,28 @@ export class AccountsReceivableComponent {
 
 	statusClass(status: string): string {
 		const map: Record<string, string> = {
-			open: "status-open",
-			partial: "status-warning",
-			paid: "status-success",
-			overdue: "status-danger",
-			in_collection: "status-danger",
-			written_off: "status-muted",
-			disputed: "status-warning",
-			cancelled: "status-muted",
+			open: "badge-accent",
+			partial: "badge-warning",
+			paid: "badge-success",
+			overdue: "badge-danger",
+			in_collection: "badge-danger",
+			written_off: "badge-muted",
+			disputed: "badge-warning",
+			cancelled: "badge-muted",
 		};
 		return map[status] ?? "";
+	}
+
+	agingBadgeClass(bucket: string | null | undefined): string {
+		const map: Record<string, string> = {
+			current: "badge-success",
+			"1_30_days": "badge-accent",
+			"31_60_days": "badge-warning",
+			"61_90_days": "badge-danger",
+			"91_120_days": "badge-danger",
+			over_120_days: "badge-danger",
+		};
+		return bucket ? (map[bucket] ?? "badge-muted") : "badge-muted";
 	}
 
 	// ── Detail ──
@@ -327,10 +340,10 @@ export class AccountsReceivableComponent {
 				payment_method: form.payment_method || undefined,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Payment applied successfully.");
+			this.toast.success("Payment application submitted. Refreshing AR...");
 			this.showPaymentForm.set(false);
 			this.closeDetail();
-			await this.loadArData();
+			await settleCommandReadModel(() => this.loadArData());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to apply payment");
 		} finally {
@@ -370,10 +383,10 @@ export class AccountsReceivableComponent {
 				write_off_amount: form.write_off_amount,
 				reason: form.reason,
 			});
-			this.toast.success("AR entry written off.");
+			this.toast.success("Write-off submitted. Refreshing AR...");
 			this.showWriteOffForm.set(false);
 			this.closeDetail();
-			await this.loadArData();
+			await settleCommandReadModel(() => this.loadArData());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to write off AR");
 		} finally {
@@ -392,8 +405,8 @@ export class AccountsReceivableComponent {
 			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.age`, {
 				property_id: propertyId,
 			});
-			this.toast.success("Aging recalculation initiated.");
-			await this.loadArData();
+			this.toast.success("Aging recalculation submitted. Refreshing AR...");
+			await settleCommandReadModel(() => this.loadArData());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to recalculate aging");
 		} finally {

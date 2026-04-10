@@ -40,6 +40,24 @@ export type RoomListRow = {
 	version: bigint | null;
 };
 
+/** Raw row shape from lightweight rooms grid query. */
+export type RoomGridRow = {
+	id: string;
+	room_type_name: string | null;
+	room_type_amenities: string[] | null;
+	room_number: string;
+	room_name: string | null;
+	floor: string | null;
+	status: string | null;
+	housekeeping_status: string | null;
+	maintenance_status: string | null;
+	amenities: string[] | null;
+	is_blocked: boolean | null;
+	block_reason: string | null;
+	is_out_of_order: boolean | null;
+	out_of_order_reason: string | null;
+};
+
 // =====================================================
 // ROOM TYPE ROW
 // =====================================================
@@ -73,6 +91,29 @@ export type RoomTypeRow = {
 	created_at: string | Date | null;
 	updated_at: string | Date | null;
 	version: bigint | null;
+};
+
+/** Raw row shape from lightweight room types grid query. */
+export type RoomTypeGridRow = {
+	id: string;
+	property_id: string;
+	type_name: string;
+	type_code: string;
+	description: string | null;
+	short_description: string | null;
+	category: string | null;
+	base_occupancy: number | null;
+	max_occupancy: number | null;
+	max_adults: number | null;
+	max_children: number | null;
+	extra_bed_capacity: number | null;
+	size_sqm: string | number | null;
+	bed_type: string | null;
+	number_of_beds: number | null;
+	base_price: string | number | null;
+	currency: string | null;
+	display_order: number | null;
+	is_active: boolean | null;
 };
 
 // =====================================================
@@ -110,6 +151,33 @@ export type BuildingRow = {
 	created_at: string | Date | null;
 	updated_at: string | Date | null;
 	version: bigint | null;
+};
+
+/** Raw row shape from lightweight buildings grid query. */
+export type BuildingGridRow = {
+	building_id: string;
+	property_id: string;
+	building_code: string;
+	building_name: string;
+	building_type: string;
+	floor_count: number | null;
+	basement_floors: number | null;
+	total_rooms: number | null;
+	wheelchair_accessible: boolean | null;
+	elevator_count: number | null;
+	has_lobby: boolean | null;
+	has_pool: boolean | null;
+	has_gym: boolean | null;
+	has_spa: boolean | null;
+	has_restaurant: boolean | null;
+	has_parking: boolean | null;
+	parking_spaces: number | null;
+	year_built: number | null;
+	last_renovation_year: number | null;
+	is_active: boolean | null;
+	building_status: string | null;
+	guest_description: string | null;
+	internal_notes: string | null;
 };
 
 // =====================================================

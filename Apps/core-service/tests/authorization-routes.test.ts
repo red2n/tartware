@@ -35,18 +35,18 @@ describe("Route authorization policies", () => {
   });
 
   it("requires manager role for reservation listings", async () => {
-    vi.spyOn(reservationService, "listReservations").mockResolvedValue([]);
+    vi.spyOn(reservationService, "listReservationGrid").mockResolvedValue([]);
 
     const managerResponse = await app.inject({
       method: "GET",
-      url: `/v1/reservations?tenant_id=${TEST_TENANT_ID}`,
+      url: `/v1/reservations/grid?tenant_id=${TEST_TENANT_ID}`,
       headers: buildAuthHeader(MANAGER_USER_ID),
     });
     expect(managerResponse.statusCode).toBe(200);
 
     const staffResponse = await app.inject({
       method: "GET",
-      url: `/v1/reservations?tenant_id=${TEST_TENANT_ID}`,
+      url: `/v1/reservations/grid?tenant_id=${TEST_TENANT_ID}`,
       headers: buildAuthHeader(STAFF_USER_ID),
     });
     expect(staffResponse.statusCode).toBe(403);

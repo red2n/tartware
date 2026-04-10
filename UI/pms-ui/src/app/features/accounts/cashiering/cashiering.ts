@@ -23,9 +23,33 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type SessionStatusFilter = "ALL" | "OPEN" | "CLOSED" | "RECONCILED" | "PENDING_APPROVAL";
+type CashierSessionDetail = CashierSessionListItem & {
+	till_id?: string | null;
+	register_id?: string | null;
+	session_duration_minutes?: number | null;
+	opening_float_counted?: string | null;
+	opening_float_variance?: string | null;
+	base_currency?: string | null;
+	cash_transactions?: number | null;
+	card_transactions?: number | null;
+	other_transactions?: number | null;
+	refund_transactions?: number | null;
+	void_transactions?: number | null;
+	total_cash_received?: string | null;
+	total_card_received?: string | null;
+	total_voids?: string | null;
+	closing_cash_declared?: string | null;
+	expected_cash_balance?: string | null;
+	cash_variance_percent?: string | null;
+	total_variance?: string | null;
+	variance_reason?: string | null;
+	has_material_variance?: boolean | null;
+	updated_at?: string | null;
+};
 
 @Component({
 	selector: "app-cashiering",
@@ -60,6 +84,10 @@ export class CashieringComponent {
 	readonly page = signal(1);
 	readonly sort = createSortState();
 	readonly pageSize = 25;
+	readonly selectedSessionId = signal<string | null>(null);
+	readonly selectedSessionDetail = signal<CashierSessionDetail | null>(null);
+	readonly loadingSessionDetail = signal(false);
+	readonly sessionDetailError = signal<string | null>(null);
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.page.set(1);
@@ -179,6 +207,20 @@ export class CashieringComponent {
 		return this.settings.formatCurrency(amount, currency);
 	}
 
+	async toggleSessionDetails(sessionId: string): Promise<void> {
+		if (this.selectedSessionId() === sessionId) {
+			this.selectedSessionId.set(null);
+			this.selectedSessionDetail.set(null);
+			this.sessionDetailError.set(null);
+			return;
+		}
+
+		this.selectedSessionId.set(sessionId);
+		this.selectedSessionDetail.set(null);
+		this.sessionDetailError.set(null);
+		await this.loadSessionDetail(sessionId);
+	}
+
 	// ── Open Session ──
 	toggleOpenForm(): void {
 		this.showOpenForm.set(!this.showOpenForm());
@@ -196,7 +238,7 @@ export class CashieringComponent {
 		this.openingSession.set(true);
 		try {
 			const form = this.openForm();
-			await this.api.post(`/tenants/${tenantId}/commands/billing.cashier.open`, {
+			await this.api.post(`/tenants/${tenantId}/billing/cashier-sessions/open`, {
 				property_id: propertyId,
 				cashier_id: this.auth.user()?.id,
 				cashier_name: form.cashier_name,
@@ -204,7 +246,7 @@ export class CashieringComponent {
 				shift_type: form.shift_type,
 				opening_float: form.opening_float,
 			});
-			this.toast.success("Cashier session opened.");
+			this.toast.success("Cashier session open submitted. Refreshing sessions...");
 			this.showOpenForm.set(false);
 			this.openForm.set({
 				cashier_name: "",
@@ -212,7 +254,7 @@ export class CashieringComponent {
 				shift_type: "full_day",
 				opening_float: 0,
 			});
-			await this.loadSessions();
+			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to open session");
 		} finally {
@@ -242,15 +284,15 @@ export class CashieringComponent {
 		this.closingSession.set(true);
 		try {
 			const form = this.closeForm();
-			await this.api.post(`/tenants/${tenantId}/commands/billing.cashier.close`, {
+			await this.api.post(`/tenants/${tenantId}/billing/cashier-sessions/close`, {
 				session_id: sessionId,
 				closing_cash_declared: form.closing_cash_declared,
 				closing_cash_counted: form.closing_cash_counted,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Cashier session closed.");
+			this.toast.success("Cashier session close submitted. Refreshing sessions...");
 			this.closingSessionId.set(null);
-			await this.loadSessions();
+			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to close session");
 		} finally {
@@ -288,7 +330,9 @@ export class CashieringComponent {
 		this.handoveringSessionId.set(null);
 	}
 
-	updateHandoverForm(partial: Partial<typeof this.handoverForm extends () => infer T ? T : never>): void {
+	updateHandoverForm(
+		partial: Partial<typeof this.handoverForm extends () => infer T ? T : never>,
+	): void {
 		this.handoverForm.set({ ...this.handoverForm(), ...partial });
 	}
 
@@ -313,13 +357,39 @@ export class CashieringComponent {
 				incoming_opening_float: form.incoming_opening_float,
 				property_id: propertyId,
 			});
-			this.toast.success("Shift handover completed.");
+			this.toast.success("Shift handover submitted. Refreshing sessions...");
 			this.handoveringSessionId.set(null);
-			await this.loadSessions();
+			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to handover session");
 		} finally {
 			this.handoveringSession.set(false);
+		}
+	}
+
+	private async loadSessionDetail(sessionId: string): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		this.loadingSessionDetail.set(true);
+		this.sessionDetailError.set(null);
+		try {
+			const detail = await this.api.get<CashierSessionDetail>(
+				`/billing/cashier-sessions/${sessionId}`,
+				{ tenant_id: tenantId },
+			);
+			if (this.selectedSessionId() === sessionId) {
+				this.selectedSessionDetail.set(detail);
+			}
+		} catch (e) {
+			if (this.selectedSessionId() === sessionId) {
+				this.selectedSessionDetail.set(null);
+				this.sessionDetailError.set(
+					e instanceof Error ? e.message : "Failed to load cashier session detail",
+				);
+			}
+		} finally {
+			this.loadingSessionDetail.set(false);
 		}
 	}
 
@@ -333,11 +403,11 @@ export class CashieringComponent {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<CashierSessionListResponse>(
+			const res = await this.api.get<CashierSessionListItem[] | CashierSessionListResponse>(
 				"/billing/cashier-sessions",
 				params,
 			);
-			this.sessions.set(res.data ?? []);
+			this.sessions.set(Array.isArray(res) ? res : (res.data ?? []));
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load cashier sessions");
 		} finally {

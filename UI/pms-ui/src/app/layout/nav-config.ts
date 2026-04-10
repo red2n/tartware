@@ -187,6 +187,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "End-of-day processing, trial balance, and revenue posting",
 			},
 			{
+				label: "Ledger",
+				icon: "account_balance_wallet",
+				route: "/ledger",
+				screenKey: "billing",
+				description: "General ledger entries, batches, and posting review",
+			},
+			{
 				label: "Tax Config",
 				icon: "gavel",
 				route: "/tax-config",

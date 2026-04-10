@@ -8,7 +8,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router, RouterLink } from "@angular/router";
 
-import type { GuestSummaryStats, GuestWithStats } from "@tartware/schemas";
+import type { GuestGridItem, GuestGridResponse, GuestSummaryStats } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -28,9 +28,6 @@ import {
 import { ToastService } from "../../shared/toast/toast.service";
 
 type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
-
-/** API returns version as string instead of bigint. */
-type GuestListItem = Omit<GuestWithStats, "version"> & { version: string };
 
 @Component({
 	selector: "app-guests",
@@ -59,7 +56,7 @@ export class GuestsComponent {
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
-	readonly guests = signal<GuestListItem[]>([]);
+	readonly guests = signal<GuestGridItem[]>([]);
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
@@ -217,7 +214,7 @@ export class GuestsComponent {
 	}
 
 	/** Guest initials for avatar. */
-	initials(guest: GuestListItem): string {
+	initials(guest: GuestGridItem): string {
 		return `${guest.first_name.charAt(0)}${guest.last_name.charAt(0)}`.toUpperCase();
 	}
 
@@ -240,8 +237,8 @@ export class GuestsComponent {
 				tenant_id: tenantId,
 				limit: "100",
 			};
-			const guests = await this.api.get<GuestListItem[]>("/guests", params);
-			this.guests.set(guests);
+			const guests = await this.api.get<GuestGridResponse>("/guests/grid", params);
+			this.guests.set(guests.data ?? []);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load guests");
 		} finally {

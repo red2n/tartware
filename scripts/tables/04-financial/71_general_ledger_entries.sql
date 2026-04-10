@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS general_ledger_entries (
     base_amount DECIMAL(15,2),
 
     -- Source Traceability
-    source_table VARCHAR(50) CHECK (source_table IN ('charge_postings', 'spa_appointments', 'banquet_event_orders', 'manual_adjustment', 'other')),
+    source_table VARCHAR(50) CHECK (source_table IN ('charge_postings', 'payments', 'spa_appointments', 'banquet_event_orders', 'manual_adjustment', 'other')),
     source_id UUID,
     reference_number VARCHAR(100),
 
@@ -69,5 +69,25 @@ COMMENT ON TABLE general_ledger_entries IS 'Line-level GL entries exported to ac
 COMMENT ON COLUMN general_ledger_entries.gl_account_code IS 'Mapped GL account number.';
 COMMENT ON COLUMN general_ledger_entries.usali_category IS 'USALI category to support hospitality accounting standards.';
 COMMENT ON COLUMN general_ledger_entries.status IS 'Posting workflow state.';
+
+DO $$
+BEGIN
+    ALTER TABLE general_ledger_entries
+        DROP CONSTRAINT IF EXISTS general_ledger_entries_source_table_check;
+
+    ALTER TABLE general_ledger_entries
+        ADD CONSTRAINT general_ledger_entries_source_table_check
+        CHECK (
+            source_table IS NULL OR
+            source_table IN (
+                'charge_postings',
+                'payments',
+                'spa_appointments',
+                'banquet_event_orders',
+                'manual_adjustment',
+                'other'
+            )
+        );
+END $$;
 
 \echo '✓ Table created: general_ledger_entries'

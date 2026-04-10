@@ -1,3 +1,51 @@
+export const RESERVATION_GRID_SQL = `
+  SELECT
+    r.id,
+    rt.type_name AS room_type_name,
+    r.confirmation_number,
+    r.check_in_date,
+    r.check_out_date,
+    r.room_number,
+    r.total_amount,
+    r.currency,
+    r.status,
+    r.source,
+    r.reservation_type,
+    r.guest_name,
+    r.guest_email,
+    CASE
+      WHEN r.check_in_date IS NOT NULL
+        AND r.check_out_date IS NOT NULL
+      THEN GREATEST(1, (r.check_out_date::date - r.check_in_date::date))
+      ELSE 1
+    END AS nights
+  FROM public.reservations r
+  LEFT JOIN public.properties p
+    ON r.property_id = p.id
+  LEFT JOIN public.room_types rt
+    ON r.room_type_id = rt.id
+  WHERE COALESCE(r.is_deleted, false) = false
+    AND r.deleted_at IS NULL
+    AND r.tenant_id = $2::uuid
+    AND ($3::uuid IS NULL OR r.property_id = $3::uuid)
+    AND (
+      $4::text IS NULL
+      OR r.status = UPPER($4::text)::reservation_status
+    )
+    AND (
+      $5::text IS NULL
+      OR r.guest_name ILIKE $5
+      OR r.guest_email ILIKE $5
+      OR r.confirmation_number ILIKE $5
+      OR r.room_number ILIKE $5
+      OR rt.type_name ILIKE $5
+    )
+    AND ($7::uuid IS NULL OR r.guest_id = $7::uuid)
+  ORDER BY r.check_in_date DESC, r.created_at DESC
+  LIMIT $1
+  OFFSET $6
+`;
+
 export const RESERVATION_LIST_SQL = `
   SELECT
     r.id,
@@ -14,8 +62,6 @@ export const RESERVATION_LIST_SQL = `
     r.actual_check_in,
     r.actual_check_out,
     r.room_number,
-    r.number_of_adults,
-    r.number_of_children,
     r.total_amount,
     r.paid_amount,
     r.balance_due,
@@ -55,6 +101,8 @@ export const RESERVATION_LIST_SQL = `
       OR r.guest_name ILIKE $5
       OR r.guest_email ILIKE $5
       OR r.confirmation_number ILIKE $5
+      OR r.room_number ILIKE $5
+      OR rt.type_name ILIKE $5
     )
     AND ($7::uuid IS NULL OR r.guest_id = $7::uuid)
   ORDER BY r.check_in_date DESC, r.created_at DESC

@@ -23,6 +23,7 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type TaxTypeFilter =
@@ -245,7 +246,7 @@ export class TaxConfigComponent {
 				calculation_method: form.calculation_method.toLowerCase(),
 				is_active: form.is_active,
 			});
-			this.toast.success("Tax configuration created.");
+			this.toast.success("Tax configuration create submitted. Refreshing tax settings...");
 			this.showCreateForm.set(false);
 			this.createForm.set({
 				tax_code: "", tax_name: "", tax_description: "", tax_type: "OCCUPANCY_TAX",
@@ -253,7 +254,7 @@ export class TaxConfigComponent {
 				tax_rate: 0, is_percentage: true, effective_from: new Date().toISOString().split("T")[0],
 				calculation_method: "EXCLUSIVE", is_active: true,
 			});
-			await this.loadTaxConfigs();
+			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to create tax config");
 		} finally {
@@ -305,9 +306,9 @@ export class TaxConfigComponent {
 				calculation_method: form.calculation_method.toLowerCase(),
 				is_active: form.is_active,
 			});
-			this.toast.success("Tax configuration updated.");
+			this.toast.success("Tax configuration update submitted. Refreshing tax settings...");
 			this.editingTaxId.set(null);
-			await this.loadTaxConfigs();
+			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to update tax config");
 		} finally {
@@ -335,9 +336,9 @@ export class TaxConfigComponent {
 				property_id: propertyId,
 				reason: this.deleteReason() || undefined,
 			});
-			this.toast.success("Tax configuration deleted.");
+			this.toast.success("Tax configuration delete submitted. Refreshing tax settings...");
 			this.deletingTaxId.set(null);
-			await this.loadTaxConfigs();
+			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to delete tax config");
 		} finally {

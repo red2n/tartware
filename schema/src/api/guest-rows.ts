@@ -56,6 +56,25 @@ export type GuestProfileRow = {
 	version: bigint | null;
 };
 
+/** Raw row shape for lightweight guest grid queries. */
+export type GuestGridRow = {
+	id: string;
+	first_name: string;
+	last_name: string;
+	title: string | null;
+	nationality: string | null;
+	email: string;
+	phone: string | null;
+	company_name: string | null;
+	loyalty_tier: string | null;
+	vip_status: string | null;
+	total_bookings: number | null;
+	total_revenue: string | number | null;
+	last_stay_date: Date | null;
+	member_since: Date;
+	is_blacklisted: boolean | null;
+};
+
 // =====================================================
 // GUEST ROW (command-service merge variant)
 // =====================================================

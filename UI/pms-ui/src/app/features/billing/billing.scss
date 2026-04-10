@@ -1,5 +1,6 @@
 /* Billing page — component-specific overrides only.
- * Reusable patterns (filter-bar, data-table, states, badges, buttons)
+ * Reusable patterns (filter-bar, data-table, states, badges, buttons,
+ * ref-code, col-right, cell-amount, view-tabs)
  * live in styles/shared.scss. */
 
 .billing-page {
@@ -62,27 +63,10 @@
   color: var(--color-fg-muted);
 }
 
-/* ── Table cells ── */
-.ref-code {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-accent-fg);
-  font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-xs);
-}
-
 .charge-code {
   font-family: var(--font-family-mono, monospace);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-}
-
-.col-right {
-  text-align: right;
-}
-
-.cell-amount {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .guest-cell {
@@ -109,22 +93,7 @@
 }
 
 @media (max-width: 768px) {
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .bill-overview {
     grid-template-columns: 1fr;
   }
-
-  .view-tabs {
-    overflow-x: auto;
-  }
-
-  .table-container {
-    overflow-x: auto;
-  }
 }
-
-/* ── Responsive ── */

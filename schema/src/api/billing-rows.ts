@@ -107,6 +107,82 @@ export type ChargePostingRow = {
 };
 
 // =====================================================
+// LEDGER ENTRY ROW
+// =====================================================
+
+/** Raw row shape from the ledger entries list query. */
+export type LedgerEntryRow = {
+	gl_entry_id: string;
+	gl_batch_id: string;
+	tenant_id: string;
+	property_id: string;
+	property_name: string | null;
+	batch_number: string | null;
+	batch_date: string | Date | null;
+	accounting_period: string | null;
+	batch_status: string | null;
+	folio_id: string | null;
+	folio_number: string | null;
+	reservation_id: string | null;
+	confirmation_number: string | null;
+	department_code: string | null;
+	posting_date: string | Date;
+	gl_account_code: string;
+	cost_center: string | null;
+	usali_category: string | null;
+	description: string | null;
+	debit_amount: number | string | null;
+	credit_amount: number | string | null;
+	currency: string | null;
+	source_table: string | null;
+	source_id: string | null;
+	reference_number: string | null;
+	status: string;
+	posted_at: string | Date | null;
+	created_at: string | Date;
+};
+
+/** Raw row shape from ledger-post charge source query with charge-code and folio joins. */
+export type ChargeLedgerSourceRow = {
+	posting_id: string;
+	property_id: string;
+	folio_id: string;
+	reservation_id: string | null;
+	posting_date: string | Date;
+	department_code: string | null;
+	charge_code: string;
+	charge_description: string;
+	charge_category: string | null;
+	posting_type: string;
+	subtotal: string | null;
+	tax_amount: string | null;
+	service_charge: string | null;
+	discount_amount: string | null;
+	total_amount: string;
+	currency_code: string | null;
+	gl_account: string | null;
+	revenue_group: string | null;
+	confirmation_number: string | null;
+	folio_number: string | null;
+};
+
+/** Raw row shape from ledger-post payment source query with reservation/folio joins. */
+export type PaymentLedgerSourceRow = {
+	id: string;
+	property_id: string;
+	reservation_id: string | null;
+	folio_id: string | null;
+	payment_date: string | Date;
+	payment_reference: string;
+	transaction_type: string;
+	payment_method: string | null;
+	amount: string;
+	currency: string | null;
+	confirmation_number: string | null;
+	folio_number: string | null;
+};
+
+// =====================================================
 // PAYMENT COMMAND ROW
 // =====================================================
 
@@ -168,4 +244,32 @@ export type TaxConfigurationRow = {
 	last_applied_at: string | Date | null;
 	created_at: string | Date;
 	updated_at: string | Date | null;
+};
+
+// =====================================================
+// FISCAL PERIOD ROW
+// =====================================================
+
+/** Raw row shape from fiscal periods list query. */
+export type FiscalPeriodRow = {
+	fiscal_period_id: string;
+	tenant_id: string;
+	property_id: string;
+	property_name: string | null;
+	fiscal_year: number;
+	fiscal_year_start: string | Date;
+	fiscal_year_end: string | Date;
+	period_number: number;
+	period_name: string;
+	period_start: string | Date;
+	period_end: string | Date;
+	period_status: string;
+	is_reconciled: boolean | null;
+	closed_at: string | Date | null;
+	soft_closed_at: string | Date | null;
+	locked_at: string | Date | null;
+	total_revenue: number | string | null;
+	total_expenses: number | string | null;
+	net_income: number | string | null;
+	notes: string | null;
 };

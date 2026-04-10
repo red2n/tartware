@@ -122,7 +122,7 @@
             <th [attr.aria-sort]="ariaSort('session_status')">
               <button type="button" class="th-sort-btn" (click)="onSort('session_status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('session_status') }}</mat-icon></button>
             </th>
-            <th></th>
+            <th class="cell-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -148,6 +148,10 @@
                 <span class="badge" [ngClass]="statusClass(session.session_status)">{{ session.session_status_display }}</span>
               </td>
               <td class="cell-actions">
+                <button class="btn btn-outline btn-xs" (click)="toggleSessionDetails(session.session_id); $event.stopPropagation()">
+                  <mat-icon>{{ selectedSessionId() === session.session_id ? 'expand_less' : 'visibility' }}</mat-icon>
+                  {{ selectedSessionId() === session.session_id ? ('Hide' | translate) : ('Details' | translate) }}
+                </button>
                 @if (session.session_status === 'OPEN') {
                   <button class="btn btn-outline btn-xs" (click)="showCloseForm(session.session_id); $event.stopPropagation()">
                     <mat-icon>lock</mat-icon> {{ 'Close' | translate }}
@@ -159,6 +163,185 @@
                 }
               </td>
             </tr>
+            @if (selectedSessionId() === session.session_id) {
+              <tr class="close-form-row">
+                <td colspan="10">
+                  <div class="inline-close-form">
+                    <span class="form-label">{{ 'Session Details' | translate }} — {{ session.session_number }}</span>
+                    @if (loadingSessionDetail()) {
+                      <div class="loading-state">
+                        <mat-spinner diameter="18"></mat-spinner>
+                        <span>{{ 'Loading session detail...' | translate }}</span>
+                      </div>
+                    } @else if (sessionDetailError(); as detailError) {
+                      <div class="error-state">
+                        <mat-icon class="error-icon">error_outline</mat-icon>
+                        <span>{{ detailError }}</span>
+                      </div>
+                    } @else if (selectedSessionDetail(); as detail) {
+                      <div class="detail-grid cashier-detail-grid">
+                        <div class="detail-card">
+                          <div class="card-header">
+                            <h4 class="card-title">{{ 'Session Summary' | translate }}</h4>
+                          </div>
+                          <div class="card-body">
+                            <dl class="detail-list">
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Session Name' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.session_name ?? '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Terminal' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.terminal_name ?? detail.terminal_id ?? '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Till' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.till_id ?? '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Register' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.register_id ?? '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Opened' | translate }}</dt>
+                                <dd class="detail-value">{{ formatDate(detail.opened_at) }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Closed' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.closed_at ? formatDate(detail.closed_at) : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Duration' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.session_duration_minutes ? detail.session_duration_minutes + ' min' : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Base Currency' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.base_currency ?? 'USD' }}</dd>
+                              </div>
+                            </dl>
+                          </div>
+                        </div>
+
+                        <div class="detail-card">
+                          <div class="card-header">
+                            <h4 class="card-title">{{ 'Cash Reconciliation' | translate }}</h4>
+                          </div>
+                          <div class="card-body">
+                            <dl class="detail-list">
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Opening Float Declared' | translate }}</dt>
+                                <dd class="detail-value">{{ formatCurrency(+(detail.opening_float_declared), detail.base_currency ?? 'USD') }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Opening Float Counted' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.opening_float_counted ? formatCurrency(+(detail.opening_float_counted), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Closing Cash Declared' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.closing_cash_declared ? formatCurrency(+(detail.closing_cash_declared), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Closing Cash Counted' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.closing_cash_counted ? formatCurrency(+(detail.closing_cash_counted), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Expected Cash Balance' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.expected_cash_balance ? formatCurrency(+(detail.expected_cash_balance), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Cash Variance' | translate }}</dt>
+                                <dd class="detail-value" [class.variance-alert]="detail.has_variance">
+                                  {{ detail.cash_variance ? formatCurrency(+(detail.cash_variance), detail.base_currency ?? 'USD') : '—' }}
+                                  @if (detail.cash_variance_percent) {
+                                    <span class="detail-inline-note">({{ detail.cash_variance_percent }}%)</span>
+                                  }
+                                </dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Variance Reason' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.variance_reason ?? '—' }}</dd>
+                              </div>
+                            </dl>
+                          </div>
+                        </div>
+
+                        <div class="detail-card">
+                          <div class="card-header">
+                            <h4 class="card-title">{{ 'Transaction Breakdown' | translate }}</h4>
+                          </div>
+                          <div class="card-body">
+                            <dl class="detail-list">
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Total Transactions' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.total_transactions ?? 0 }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Cash Transactions' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.cash_transactions ?? 0 }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Card Transactions' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.card_transactions ?? 0 }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Refund Transactions' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.refund_transactions ?? 0 }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Void Transactions' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.void_transactions ?? 0 }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Other Transactions' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.other_transactions ?? 0 }}</dd>
+                              </div>
+                            </dl>
+                          </div>
+                        </div>
+
+                        <div class="detail-card">
+                          <div class="card-header">
+                            <h4 class="card-title">{{ 'Financial Totals' | translate }}</h4>
+                          </div>
+                          <div class="card-body">
+                            <dl class="detail-list">
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Total Cash Received' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.total_cash_received ? formatCurrency(+(detail.total_cash_received), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Total Card Received' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.total_card_received ? formatCurrency(+(detail.total_card_received), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Total Revenue' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.total_revenue ? formatCurrency(+(detail.total_revenue), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Total Refunds' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.total_refunds ? formatCurrency(+(detail.total_refunds), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Total Voids' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.total_voids ? formatCurrency(+(detail.total_voids), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Net Revenue' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.net_revenue ? formatCurrency(+(detail.net_revenue), detail.base_currency ?? 'USD') : '—' }}</dd>
+                              </div>
+                              <div class="detail-row">
+                                <dt class="detail-label">{{ 'Updated' | translate }}</dt>
+                                <dd class="detail-value">{{ detail.updated_at ? formatDate(detail.updated_at) : '—' }}</dd>
+                              </div>
+                            </dl>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
             <!-- Inline close form for this session -->
             @if (closingSessionId() === session.session_id) {
               <tr class="close-form-row">

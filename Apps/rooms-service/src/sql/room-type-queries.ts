@@ -43,6 +43,43 @@ export const ROOM_TYPE_LIST_SQL = `
   OFFSET $6
 `;
 
+export const ROOM_TYPE_GRID_SQL = `
+  SELECT
+    rt.id,
+    rt.property_id,
+    rt.type_name,
+    rt.type_code,
+    rt.description,
+    rt.short_description,
+    rt.category,
+    rt.base_occupancy,
+    rt.max_occupancy,
+    rt.max_adults,
+    rt.max_children,
+    rt.extra_bed_capacity,
+    rt.size_sqm,
+    rt.bed_type,
+    rt.number_of_beds,
+    rt.base_price,
+    rt.currency,
+    rt.display_order,
+    rt.is_active
+  FROM public.room_types rt
+  WHERE COALESCE(rt.is_deleted, false) = false
+    AND rt.deleted_at IS NULL
+    AND rt.tenant_id = $1::uuid
+    AND ($2::uuid IS NULL OR rt.property_id = $2::uuid)
+    AND ($3::boolean IS NULL OR rt.is_active = $3::boolean)
+    AND (
+      $4::text IS NULL
+      OR rt.type_name ILIKE $4
+      OR rt.type_code ILIKE $4
+    )
+  ORDER BY rt.display_order ASC, rt.type_name ASC
+  LIMIT $5
+  OFFSET $6
+`;
+
 export const ROOM_TYPE_CREATE_SQL = `
   WITH inserted AS (
     INSERT INTO public.room_types (
