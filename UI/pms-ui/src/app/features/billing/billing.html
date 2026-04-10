@@ -583,7 +583,7 @@
                 </th>
                 <th>{{ 'Opened' | translate }}</th>
                 <th>{{ 'Actions' | translate }}</th>
-                <th></th>
+                <th class="cell-actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -693,7 +693,7 @@
                                 <th>{{ 'Description' | translate }}</th>
                                 <th>{{ 'Type' | translate }}</th>
                                 <th class="col-right">{{ 'Amount' | translate }}</th>
-                                <th></th>
+                                <th class="cell-actions"></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1093,7 +1093,7 @@
                 <th class="col-right" [attr.aria-sort]="ariaSort(chargeSort, 'total_amount')">
                   <button type="button" class="th-sort-btn" (click)="onChargeSort('total_amount')">{{ 'Amount' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(chargeSort, 'total_amount') }}</mat-icon></button>
                 </th>
-                <th></th>
+                <th class="cell-actions"></th>
               </tr>
             </thead>
             <tbody>

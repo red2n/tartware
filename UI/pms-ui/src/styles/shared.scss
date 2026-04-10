@@ -608,6 +608,13 @@ textarea.field-input {
   white-space: nowrap;
 }
 
+.data-table th.cell-actions,
+.table th.cell-actions {
+  width: 1%;
+  min-width: 72px;
+  text-align: right;
+}
+
 .data-table th mat-icon,
 .table th mat-icon {
   font-size: 14px;
@@ -733,11 +740,24 @@ textarea.field-input {
   gap: 2px;
 }
 
-.cell-actions {
+.data-table td.cell-actions,
+.table td.cell-actions {
   white-space: nowrap;
-  display: flex;
-  gap: 4px;
+  width: 1%;
+  min-width: 72px;
+  text-align: right;
+}
+
+.data-table td.cell-actions > *,
+.table td.cell-actions > * {
+  display: inline-flex;
   align-items: center;
+  vertical-align: middle;
+}
+
+.data-table td.cell-actions > * + *,
+.table td.cell-actions > * + * {
+  margin-left: 4px;
 }
 
 .action-btn-group {
