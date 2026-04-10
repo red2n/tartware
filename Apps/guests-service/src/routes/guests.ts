@@ -2,6 +2,7 @@ import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   GuestCommunicationListItemSchema,
   GuestDocumentListItemSchema,
+  GuestGridResponseSchema,
   GuestPreferenceListItemSchema,
   GuestSummaryStatsSchema,
   GuestWithStatsSchema,
@@ -14,6 +15,7 @@ import {
   getGuestSummaryStats,
   listGuestCommunications,
   listGuestDocuments,
+  listGuestGrid,
   listGuestPreferences,
   listGuests,
 } from "../services/guest-service.js";
@@ -31,6 +33,7 @@ const GuestListQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+const GuestGridResponseJsonSchema = schemaFromZod(GuestGridResponseSchema, "GuestGridResponse");
 const GuestListResponseSchema = z.array(
   GuestWithStatsSchema.extend({
     version: z.string(),
@@ -129,6 +132,57 @@ const GuestCommunicationsResponseJsonSchema = schemaFromZod(
 const GUESTS_TAG = "Guests";
 
 export const registerGuestRoutes = (app: FastifyInstance): void => {
+  app.get(
+    "/v1/guests/grid",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) =>
+          (request.query as z.infer<typeof GuestListQuerySchema>).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: GUESTS_TAG,
+        summary: "List guests for grid/table views",
+        querystring: GuestListQueryJsonSchema,
+        response: {
+          200: GuestGridResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const {
+        limit,
+        tenant_id,
+        property_id,
+        email,
+        phone,
+        loyalty_tier,
+        vip_status,
+        is_blacklisted,
+        offset,
+      } = GuestListQuerySchema.parse(request.query);
+
+      const guests = await listGuestGrid({
+        limit,
+        tenantId: tenant_id,
+        propertyId: property_id,
+        email,
+        phone,
+        loyaltyTier: loyalty_tier,
+        vipStatus: vip_status,
+        isBlacklisted: is_blacklisted,
+        offset,
+      });
+
+      const response = sanitizeForJson({
+        data: guests,
+        meta: { count: guests.length },
+      });
+      return GuestGridResponseSchema.parse(response);
+    },
+  );
+
   app.get(
     "/v1/guests",
     {

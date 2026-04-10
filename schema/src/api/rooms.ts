@@ -52,6 +52,38 @@ export const RoomTypeItemSchema = z.object({
 export type RoomTypeItem = z.infer<typeof RoomTypeItemSchema>;
 
 /**
+ * Lightweight room type item used by grid/list views.
+ * Keeps only fields required by the current room type screen and edit dialog.
+ */
+export const RoomTypeGridItemSchema = z.object({
+	room_type_id: uuid,
+	property_id: uuid,
+	type_name: z.string(),
+	type_code: z.string(),
+	description: z.string().optional(),
+	short_description: z.string().optional(),
+	category: z.string(),
+	base_occupancy: z.number().int(),
+	max_occupancy: z.number().int(),
+	max_adults: z.number().int(),
+	max_children: z.number().int().optional(),
+	extra_bed_capacity: z.number().int().optional(),
+	size_sqm: z.number().optional(),
+	bed_type: z.string().optional(),
+	number_of_beds: z.number().int().optional(),
+	base_price: z.number(),
+	currency: z.string().optional(),
+	display_order: z.number().int().optional(),
+	is_active: z.boolean(),
+});
+
+export type RoomTypeGridItem = z.infer<typeof RoomTypeGridItemSchema>;
+
+export const RoomTypeGridResponseSchema = z.array(RoomTypeGridItemSchema);
+
+export type RoomTypeGridResponse = z.infer<typeof RoomTypeGridResponseSchema>;
+
+/**
  * Create room type request body schema.
  */
 export const CreateRoomTypeBodySchema = z.object({
@@ -167,6 +199,38 @@ export const RoomItemSchema = z.object({
 });
 
 export type RoomItem = z.infer<typeof RoomItemSchema>;
+
+/**
+ * Lightweight room item used by the rooms grid.
+ * Keeps only fields rendered on the rooms screen.
+ */
+export const RoomGridItemSchema = z.object({
+	room_id: uuid,
+	room_number: z.string(),
+	room_name: z.string().optional(),
+	room_type_name: z.string().optional(),
+	room_type_amenities: z.array(z.string()).optional(),
+	floor: z.string().optional(),
+	status: z.string(),
+	status_display: z.string(),
+	housekeeping_status: z.string(),
+	housekeeping_display: z.string(),
+	maintenance_display: z.string(),
+	amenities: z.array(z.string()).optional(),
+	is_blocked: z.boolean(),
+	block_reason: z.string().optional(),
+	is_out_of_order: z.boolean(),
+	out_of_order_reason: z.string().optional(),
+	recommendation_rank: z.number().int().min(1).optional(),
+	recommendation_score: z.number().min(0).max(1).optional(),
+	recommendation_reasons: z.array(z.string()).optional(),
+});
+
+export type RoomGridItem = z.infer<typeof RoomGridItemSchema>;
+
+export const RoomGridResponseSchema = z.array(RoomGridItemSchema);
+
+export type RoomGridResponse = z.infer<typeof RoomGridResponseSchema>;
 
 /**
  * Create room request body schema.

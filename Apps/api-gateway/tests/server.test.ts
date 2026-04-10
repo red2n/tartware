@@ -160,10 +160,30 @@ describe("API Gateway server", () => {
     });
   });
 
-  it("proxies reservation queries to the core service", async () => {
+  it("proxies guest grid queries to the guests service", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/v1/reservations?tenant_id=11111111-1111-1111-1111-111111111111",
+      url: "/v1/guests/grid?tenant_id=11111111-1111-1111-1111-111111111111",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(proxyRequestMock.mock.calls[0][2]).toBe(
+      serviceTargets.guestsServiceUrl,
+    );
+    expect(response.json()).toEqual({
+      proxied: true,
+      targetUrl: serviceTargets.guestsServiceUrl,
+    });
+  });
+
+  it("proxies reservation grid queries to the core service", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/reservations/grid?tenant_id=11111111-1111-1111-1111-111111111111",
       headers: {
         authorization: "Bearer unit-test-token",
       },

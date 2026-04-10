@@ -6,9 +6,14 @@ import {
   type GuestDocumentListItem,
   GuestDocumentListItemSchema,
   type GuestDocumentRow,
+  type GuestGridItem,
+  GuestGridItemSchema,
+  type GuestGridRow,
   type GuestPreferenceListItem,
   GuestPreferenceListItemSchema,
   type GuestPreferenceRow,
+  type GuestProfileListItem,
+  GuestProfileListItemSchema,
   type GuestProfileRow,
   type GuestReservationStats,
   type GuestSummaryStats,
@@ -22,6 +27,7 @@ import {
   GUEST_BY_ID_SQL,
   GUEST_COMMUNICATIONS_LIST_SQL,
   GUEST_DOCUMENTS_LIST_SQL,
+  GUEST_GRID_SQL,
   GUEST_LIST_SQL,
   GUEST_PREFERENCES_LIST_SQL,
   GUEST_RESERVATION_STATS_SQL,
@@ -132,6 +138,26 @@ type GuestRow = GuestProfileRow;
 
 // GuestReservationStats imported from @tartware/schemas
 
+const mapRowToGuestGrid = (row: GuestGridRow): GuestGridItem => {
+  return GuestGridItemSchema.parse({
+    id: row.id,
+    first_name: row.first_name,
+    last_name: row.last_name,
+    title: row.title ?? undefined,
+    nationality: row.nationality ?? undefined,
+    email: row.email || undefined,
+    phone: normalizePhoneNumber(row.phone),
+    company_name: row.company_name ?? undefined,
+    loyalty_tier: row.loyalty_tier ?? undefined,
+    vip_status: row.vip_status ?? undefined,
+    total_bookings: row.total_bookings ?? 0,
+    total_revenue: toNumberOrFallback(row.total_revenue),
+    last_stay_date: row.last_stay_date?.toISOString(),
+    member_since: row.member_since.toISOString(),
+    is_blacklisted: row.is_blacklisted ?? false,
+  });
+};
+
 const mapRowToGuest = (row: GuestRow, stats?: GuestReservationStats): GuestWithStats => {
   const parsed = GuestWithStatsSchema.parse({
     id: row.id,
@@ -186,6 +212,13 @@ const mapRowToGuest = (row: GuestRow, stats?: GuestReservationStats): GuestWithS
   return parsed;
 };
 
+const mapGuestWithStatsToListItem = (guest: GuestWithStats): GuestProfileListItem => {
+  return GuestProfileListItemSchema.parse({
+    ...guest,
+    version: guest.version.toString(),
+  });
+};
+
 const fetchGuestReservationStats = async (
   tenantId: string,
   guestIds: string[],
@@ -224,6 +257,45 @@ const fetchGuestReservationStats = async (
 };
 
 /**
+ * List guests for grid/table views.
+ */
+export const listGuestGrid = async (options: {
+  limit?: number;
+  tenantId: string;
+  propertyId?: string;
+  email?: string;
+  phone?: string;
+  loyaltyTier?: string;
+  vipStatus?: string;
+  isBlacklisted?: boolean;
+  offset?: number;
+}): Promise<GuestGridItem[]> => {
+  const limit = options.limit ?? 50;
+  const tenantId = options.tenantId;
+  const propertyId = options.propertyId ?? null;
+  const email = options.email ? `%${options.email}%` : null;
+  const phone = options.phone ? `%${options.phone}%` : null;
+  const loyaltyTier = options.loyaltyTier ?? null;
+  const vipStatus = options.vipStatus ?? null;
+  const isBlacklisted = options.isBlacklisted ?? null;
+  const offset = options.offset ?? 0;
+
+  const { rows } = await query<GuestGridRow>(GUEST_GRID_SQL, [
+    limit,
+    tenantId,
+    propertyId,
+    email,
+    phone,
+    loyaltyTier,
+    vipStatus,
+    isBlacklisted,
+    offset,
+  ]);
+
+  return rows.map(mapRowToGuestGrid);
+};
+
+/**
  * List guests with optional filters and computed reservation stats.
  */
 export const listGuests = async (options: {
@@ -236,7 +308,7 @@ export const listGuests = async (options: {
   vipStatus?: string;
   isBlacklisted?: boolean;
   offset?: number;
-}): Promise<GuestWithStats[]> => {
+}): Promise<GuestProfileListItem[]> => {
   const limit = options.limit ?? 50;
   const tenantId = options.tenantId;
   const propertyId = options.propertyId ?? null;
@@ -266,7 +338,11 @@ export const listGuests = async (options: {
   const guestIds = rows.map((row) => row.id);
   const statsMap = await fetchGuestReservationStats(tenantId, guestIds, propertyId ?? undefined);
 
-  return rows.map((row) => applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))));
+  return rows.map((row) =>
+    mapGuestWithStatsToListItem(
+      applyGuestRetentionPolicy(mapRowToGuest(row, statsMap.get(row.id))),
+    ),
+  );
 };
 
 /**

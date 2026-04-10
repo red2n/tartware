@@ -1,11 +1,16 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { CreateRoomTypesSchema, RoomCategoryEnum } from "@tartware/schemas";
+import {
+  CreateRoomTypesSchema,
+  RoomCategoryEnum,
+  RoomTypeGridResponseSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
   createRoomType,
   deleteRoomType,
+  listRoomTypeGrid,
   listRoomTypes,
   RoomTypeItemSchema,
   updateRoomType,
@@ -29,6 +34,10 @@ const RoomTypeListQueryJsonSchema = schemaFromZod(RoomTypeListQuerySchema, "Room
 const RoomTypeListResponseJsonSchema = schemaFromZod(
   RoomTypeListResponseSchema,
   "RoomTypeListResponse",
+);
+const RoomTypeGridResponseJsonSchema = schemaFromZod(
+  RoomTypeGridResponseSchema,
+  "RoomTypeGridResponse",
 );
 
 const CreateRoomTypeBodySchema = CreateRoomTypesSchema.extend({
@@ -96,6 +105,38 @@ const RoomTypeParamsSchema = z.object({
 });
 
 export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
+  app.get<{ Querystring: RoomTypeListQuery }>(
+    "/v1/room-types/grid",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as RoomTypeListQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOM_TYPES_TAG,
+        summary: "List lightweight room types for the grid",
+        querystring: RoomTypeListQueryJsonSchema,
+        response: {
+          200: RoomTypeGridResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const query = RoomTypeListQuerySchema.parse(request.query);
+      const roomTypes = await listRoomTypeGrid({
+        tenantId: query.tenant_id,
+        propertyId: query.property_id,
+        isActive: query.is_active,
+        search: query.search,
+        limit: query.limit,
+        offset: query.offset,
+      });
+
+      return RoomTypeGridResponseSchema.parse(roomTypes);
+    },
+  );
+
   app.get<{ Querystring: RoomTypeListQuery }>(
     "/v1/room-types",
     {

@@ -512,7 +512,45 @@ export type ChannelMappingListResponse = z.infer<
 	typeof ChannelMappingListResponseSchema
 >;
 /**
- * Reservation list item schema for API responses.
+ * Reservation grid row schema for list/table responses.
+ * Keeps only fields required by the reservations grid and its client-side filters.
+ */
+export const ReservationGridItemSchema = z.object({
+	id: uuid,
+	confirmation_number: z.string(),
+	check_in_date: z.string(),
+	check_out_date: z.string(),
+	nights: z.number().int().positive(),
+	status: z.string(),
+	status_display: z.string(),
+	source: z.string().optional(),
+	reservation_type: z.string().optional(),
+	guest_name: z.string(),
+	guest_email: z.string(),
+	room_type_name: z.string().optional(),
+	room_number: z.string().optional(),
+	total_amount: z.number(),
+	currency: z.string(),
+});
+
+export type ReservationGridItem = z.infer<typeof ReservationGridItemSchema>;
+
+/**
+ * Reservation grid response schema.
+ */
+export const ReservationGridResponseSchema = z.object({
+	data: z.array(ReservationGridItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type ReservationGridResponse = z.infer<
+	typeof ReservationGridResponseSchema
+>;
+
+/**
+ * Reservation list item schema for full reservation row/edit workflows.
  * Includes display fields derived from enum values and computed fields.
  */
 export const ReservationListItemSchema = z.object({
@@ -551,7 +589,7 @@ export const ReservationListItemSchema = z.object({
 export type ReservationListItem = z.infer<typeof ReservationListItemSchema>;
 
 /**
- * Reservation list response schema.
+ * Full reservation list response schema.
  */
 export const ReservationListResponseSchema = z.object({
 	data: z.array(ReservationListItemSchema),
@@ -563,6 +601,62 @@ export const ReservationListResponseSchema = z.object({
 export type ReservationListResponse = z.infer<
 	typeof ReservationListResponseSchema
 >;
+
+/**
+ * Raw SQL row shape for reservation grid queries.
+ */
+export type ReservationGridRow = {
+	id: string;
+	room_type_name: string | null;
+	confirmation_number: string;
+	check_in_date: string | Date | null;
+	check_out_date: string | Date | null;
+	room_number: string | null;
+	total_amount: number | string | null;
+	currency: string | null;
+	status: string | null;
+	source: string | null;
+	reservation_type: string | null;
+	guest_name: string;
+	guest_email: string;
+	nights: number | string | null;
+};
+
+/**
+ * Raw SQL row shape for full reservation list queries.
+ */
+export type ReservationListRow = {
+	id: string;
+	tenant_id: string;
+	property_id: string;
+	property_name: string | null;
+	guest_id: string | null;
+	room_type_id: string | null;
+	room_type_name: string | null;
+	confirmation_number: string;
+	check_in_date: string | Date | null;
+	check_out_date: string | Date | null;
+	booking_date: string | Date | null;
+	actual_check_in: string | Date | null;
+	actual_check_out: string | Date | null;
+	room_number: string | null;
+	total_amount: number | string | null;
+	paid_amount: number | string | null;
+	balance_due: number | string | null;
+	currency: string | null;
+	status: string | null;
+	source: string | null;
+	reservation_type: string | null;
+	guest_name: string;
+	guest_email: string;
+	guest_phone: string | null;
+	special_requests: string | null;
+	internal_notes: string | null;
+	created_at: string | Date;
+	updated_at: string | Date | null;
+	version: bigint | null;
+	nights: number | string | null;
+};
 // =====================================================
 // RESERVATION COMMAND SERVICE DOMAIN TYPES
 // =====================================================

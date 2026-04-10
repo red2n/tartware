@@ -2,6 +2,9 @@ import {
   type AmenityCatalogItem,
   type AvailableRoom,
   type CreateRoomInput,
+  type RoomGridItem,
+  RoomGridItemSchema,
+  type RoomGridRow,
   type RoomItem,
   RoomItemSchema,
   type RoomListRow,
@@ -9,7 +12,12 @@ import {
 } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
-import { ROOM_CREATE_SQL, ROOM_GET_BY_ID_SQL, ROOM_LIST_SQL } from "../sql/room-queries.js";
+import {
+  ROOM_CREATE_SQL,
+  ROOM_GET_BY_ID_SQL,
+  ROOM_GRID_SQL,
+  ROOM_LIST_SQL,
+} from "../sql/room-queries.js";
 
 // Re-export schema for consumers that import from this module
 export const RoomListItemSchema = RoomItemSchema;
@@ -101,6 +109,36 @@ const mapRowToRoom = (row: RoomListRow): RoomItem => {
     housekeeping_notes: row.housekeeping_notes ?? undefined,
     updated_at: toStringDate(row.updated_at),
     version: row.version ? row.version.toString() : "0",
+  });
+};
+
+const mapRowToRoomGrid = (row: RoomGridRow): RoomGridItem => {
+  const { value: status, display: statusDisplay } = normalizeEnum(row.status, "unknown");
+  const { value: housekeepingStatus, display: housekeepingDisplay } = normalizeEnum(
+    row.housekeeping_status,
+    "unspecified",
+  );
+  const { display: maintenanceDisplay } = normalizeEnum(row.maintenance_status, "normal");
+
+  return RoomGridItemSchema.parse({
+    room_id: row.id,
+    room_number: row.room_number,
+    room_name: row.room_name ?? undefined,
+    room_type_name: row.room_type_name ?? undefined,
+    room_type_amenities: Array.isArray(row.room_type_amenities)
+      ? row.room_type_amenities
+      : undefined,
+    floor: row.floor ?? undefined,
+    status,
+    status_display: statusDisplay,
+    housekeeping_status: housekeepingStatus,
+    housekeeping_display: housekeepingDisplay,
+    maintenance_display: maintenanceDisplay,
+    amenities: Array.isArray(row.amenities) ? row.amenities : undefined,
+    is_blocked: Boolean(row.is_blocked),
+    block_reason: row.block_reason ?? undefined,
+    is_out_of_order: Boolean(row.is_out_of_order),
+    out_of_order_reason: row.out_of_order_reason ?? undefined,
   });
 };
 
@@ -252,6 +290,28 @@ export const updateRoom = async (input: UpdateRoomInput): Promise<RoomListItem |
   }
 
   return mapRowToRoom(rows[0]);
+};
+
+export const listRoomGrid = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  status?: string;
+  housekeepingStatus?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<RoomGridItem[]> => {
+  const { rows } = await query<RoomGridRow>(ROOM_GRID_SQL, [
+    options.limit ?? 200,
+    options.tenantId,
+    options.propertyId ?? null,
+    options.status ?? null,
+    options.housekeepingStatus ?? null,
+    options.search ? `%${options.search.trim()}%` : null,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map(mapRowToRoomGrid);
 };
 
 /**

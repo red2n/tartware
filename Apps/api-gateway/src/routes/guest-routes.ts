@@ -46,6 +46,22 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   });
 
   app.get(
+    "/v1/guests/grid",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "Proxy guest grid queries to the guests service.",
+        querystring: paginationQuerySchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyGuests,
+  );
+
+  app.get(
     "/v1/guests",
     {
       preHandler: tenantScopeFromQuery,

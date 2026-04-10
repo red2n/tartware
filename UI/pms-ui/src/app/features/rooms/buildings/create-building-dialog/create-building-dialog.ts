@@ -1,16 +1,16 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
-import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
-import type { BuildingItem } from "@tartware/schemas";
+import type { BuildingGridItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
+import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { ToastService } from "../../../../shared/toast/toast.service";
 
 const BUILDING_TYPES = [
@@ -32,7 +32,14 @@ const BUILDING_STATUSES = ["OPERATIONAL", "RENOVATION", "CLOSED", "SEASONAL"];
 @Component({
 	selector: "app-create-building-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
+	imports: [
+		FormsModule,
+		MatButtonModule,
+		MatDialogModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		DialogActionsComponent,
+	],
 	templateUrl: "./create-building-dialog.html",
 	styleUrl: "./create-building-dialog.scss",
 })
@@ -42,7 +49,7 @@ export class CreateBuildingDialogComponent implements OnInit {
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(MatDialogRef<CreateBuildingDialogComponent>);
 	private readonly toast = inject(ToastService);
-	private readonly data = inject<BuildingItem | null>(MAT_DIALOG_DATA, { optional: true });
+	private readonly data = inject<BuildingGridItem | null>(MAT_DIALOG_DATA, { optional: true });
 
 	readonly saving = signal(false);
 	readonly buildingTypes = BUILDING_TYPES;

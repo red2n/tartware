@@ -1,3 +1,46 @@
+export const GUEST_GRID_SQL = `
+  SELECT
+    g.id,
+    g.first_name,
+    g.last_name,
+    g.title,
+    g.nationality,
+    g.email,
+    g.phone,
+    g.company_name,
+    g.loyalty_tier,
+    g.vip_status,
+    g.total_bookings,
+    g.total_revenue,
+    g.last_stay_date,
+    g.member_since,
+    g.is_blacklisted
+  FROM public.guests g
+  WHERE COALESCE(g.is_deleted, false) = false
+    AND g.deleted_at IS NULL
+    AND ($2::uuid IS NULL OR g.tenant_id = $2::uuid)
+    AND (
+      $3::uuid IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.reservations r
+        WHERE r.tenant_id = g.tenant_id
+          AND r.guest_id = g.id
+          AND r.property_id = $3::uuid
+          AND COALESCE(r.is_deleted, false) = false
+          AND r.deleted_at IS NULL
+      )
+    )
+    AND ($4::text IS NULL OR g.email ILIKE $4)
+    AND ($5::text IS NULL OR g.phone ILIKE $5)
+    AND ($6::text IS NULL OR g.loyalty_tier = $6)
+    AND ($7::text IS NULL OR g.vip_status = $7)
+    AND ($8::boolean IS NULL OR g.is_blacklisted = $8::boolean)
+  ORDER BY g.created_at DESC
+  LIMIT $1
+  OFFSET $9
+`;
+
 export const GUEST_LIST_SQL = `
   SELECT
     g.id,

@@ -1,5 +1,9 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { ReservationStatusEnum } from "@tartware/schemas";
+import {
+  ReservationGridResponseSchema,
+  ReservationListResponseSchema,
+  ReservationStatusEnum,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -7,9 +11,9 @@ import {
   CheckInBriefSchema,
   getCheckInBrief,
   getReservationById,
+  listReservationGrid,
   listReservations,
   ReservationDetailSchema,
-  ReservationListItemSchema,
 } from "../services/reservation-service.js";
 
 const ReservationListQuerySchema = z.object({
@@ -32,10 +36,13 @@ const ReservationListQuerySchema = z.object({
 
 type ReservationListQuery = z.infer<typeof ReservationListQuerySchema>;
 
-const ReservationListResponseSchema = z.array(ReservationListItemSchema);
 const ReservationListQueryJsonSchema = schemaFromZod(
   ReservationListQuerySchema,
   "ReservationListQuery",
+);
+const ReservationGridResponseJsonSchema = schemaFromZod(
+  ReservationGridResponseSchema,
+  "ReservationGridResponse",
 );
 const ReservationListResponseJsonSchema = schemaFromZod(
   ReservationListResponseSchema,
@@ -93,6 +100,82 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   );
 
   app.get<{ Querystring: ReservationListQuery }>(
+    "/v1/reservations/grid",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ReservationListQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: RESERVATIONS_TAG,
+        summary: "List reservations for grid/table views",
+        querystring: ReservationListQueryJsonSchema,
+        response: {
+          200: ReservationGridResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, guest_id, status, search, limit, offset } =
+        ReservationListQuerySchema.parse(request.query);
+
+      const reservations = await listReservationGrid({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        guestId: guest_id,
+        status,
+        search,
+        limit,
+        offset,
+      });
+
+      return ReservationGridResponseSchema.parse({
+        data: reservations,
+        meta: { count: reservations.length },
+      });
+    },
+  );
+
+  app.get<{ Querystring: ReservationListQuery }>(
+    "/v1/reservations/list",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ReservationListQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: RESERVATIONS_TAG,
+        summary: "List reservations with the full list payload",
+        querystring: ReservationListQueryJsonSchema,
+        response: {
+          200: ReservationListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, guest_id, status, search, limit, offset } =
+        ReservationListQuerySchema.parse(request.query);
+
+      const reservations = await listReservations({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        guestId: guest_id,
+        status,
+        search,
+        limit,
+        offset,
+      });
+
+      return ReservationListResponseSchema.parse({
+        data: reservations,
+        meta: { count: reservations.length },
+      });
+    },
+  );
+
+  app.get<{ Querystring: ReservationListQuery }>(
     "/v1/reservations",
     {
       preHandler: app.withTenantScope({
@@ -123,7 +206,10 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         offset,
       });
 
-      return ReservationListResponseSchema.parse(reservations);
+      return ReservationListResponseSchema.parse({
+        data: reservations,
+        meta: { count: reservations.length },
+      });
     },
   );
 

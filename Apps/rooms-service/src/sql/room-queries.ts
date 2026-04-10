@@ -55,6 +55,48 @@ export const ROOM_LIST_SQL = `
   OFFSET $7
 `;
 
+export const ROOM_GRID_SQL = `
+  SELECT
+    r.id,
+    rt.type_name AS room_type_name,
+    rt.amenities AS room_type_amenities,
+    r.room_number,
+    r.room_name,
+    r.floor,
+    r.status,
+    r.housekeeping_status,
+    r.maintenance_status,
+    r.amenities,
+    r.is_blocked,
+    r.block_reason,
+    r.is_out_of_order,
+    r.out_of_order_reason
+  FROM public.rooms r
+  LEFT JOIN public.room_types rt
+    ON r.room_type_id = rt.id
+  WHERE COALESCE(r.is_deleted, false) = false
+    AND r.deleted_at IS NULL
+    AND ($2::uuid IS NULL OR r.tenant_id = $2::uuid)
+    AND ($3::uuid IS NULL OR r.property_id = $3::uuid)
+    AND (
+      $4::text IS NULL
+      OR r.status = UPPER($4::text)::room_status
+    )
+    AND (
+      $5::text IS NULL
+      OR r.housekeeping_status = UPPER($5::text)::housekeeping_status
+    )
+    AND (
+      $6::text IS NULL
+      OR r.room_number ILIKE $6
+      OR r.room_name ILIKE $6
+      OR rt.type_name ILIKE $6
+    )
+  ORDER BY r.room_number ASC
+  LIMIT $1
+  OFFSET $7
+`;
+
 export const ROOM_GET_BY_ID_SQL = `
   SELECT
     r.id,

@@ -52,6 +52,42 @@ export const BuildingItemSchema = z.object({
 export type BuildingItem = z.infer<typeof BuildingItemSchema>;
 
 /**
+ * Lightweight building item used by the buildings grid and edit dialog.
+ * Excludes metadata and audit-only fields that are not rendered on the screen.
+ */
+export const BuildingGridItemSchema = z.object({
+	building_id: uuid,
+	property_id: uuid,
+	building_code: z.string(),
+	building_name: z.string(),
+	building_type: z.string(),
+	floor_count: z.number().int().nullable().optional(),
+	basement_floors: z.number().int().optional(),
+	total_rooms: z.number().int().optional(),
+	wheelchair_accessible: z.boolean().optional(),
+	elevator_count: z.number().int().optional(),
+	has_lobby: z.boolean().optional(),
+	has_pool: z.boolean().optional(),
+	has_gym: z.boolean().optional(),
+	has_spa: z.boolean().optional(),
+	has_restaurant: z.boolean().optional(),
+	has_parking: z.boolean().optional(),
+	parking_spaces: z.number().int().optional(),
+	year_built: z.number().int().nullable().optional(),
+	last_renovation_year: z.number().int().nullable().optional(),
+	is_active: z.boolean(),
+	building_status: z.string(),
+	guest_description: z.string().nullable().optional(),
+	internal_notes: z.string().nullable().optional(),
+});
+
+export type BuildingGridItem = z.infer<typeof BuildingGridItemSchema>;
+
+export const BuildingGridResponseSchema = z.array(BuildingGridItemSchema);
+
+export type BuildingGridResponse = z.infer<typeof BuildingGridResponseSchema>;
+
+/**
  * Create building request body schema.
  */
 export const CreateBuildingBodySchema = z.object({
