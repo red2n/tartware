@@ -12,8 +12,23 @@
 /* ── Cells ── */
 .variance-alert { color: var(--color-danger-fg); font-weight: var(--font-weight-semibold); }
 
+/* ── Session detail ── */
+.cashier-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.detail-inline-note {
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-1);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .filter-bar { flex-direction: column; align-items: stretch; }
   .table-container { overflow-x: auto; }
+  .cashier-detail-grid { grid-template-columns: 1fr; }
 }

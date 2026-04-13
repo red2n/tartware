@@ -10,7 +10,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router, RouterLink } from "@angular/router";
 
-import type { RoomItem } from "@tartware/schemas";
+import type { RoomGridItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -60,17 +60,13 @@ export class RoomsComponent {
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
-	readonly rooms = signal<RoomItem[]>([]);
+	readonly rooms = signal<RoomGridItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
-	private readonly _resetPage = effect(() => {
-		this.globalSearch.query();
-		this.currentPage.set(1);
-	});
 
 	// Recommendation date filters
 	readonly checkInDate = signal("");
@@ -161,6 +157,14 @@ export class RoomsComponent {
 	});
 
 	constructor() {
+		effect(
+			() => {
+				this.globalSearch.query();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
+
 		// Reload rooms when property selection changes
 		effect(() => {
 			this.auth.tenantId();
@@ -217,7 +221,7 @@ export class RoomsComponent {
 				params["check_in_date"] = ciDate;
 				params["check_out_date"] = coDate;
 			}
-			const rooms = await this.api.get<RoomItem[]>("/rooms", params);
+			const rooms = await this.api.get<RoomGridItem[]>("/rooms/grid", params);
 			this.rooms.set(rooms);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load rooms");
@@ -242,7 +246,7 @@ export class RoomsComponent {
 	}
 
 	/** Merge room-level + type-level amenities, deduplicated. */
-	roomAmenities(room: RoomItem): string[] {
+	roomAmenities(room: RoomGridItem): string[] {
 		const set = new Set([...(room.amenities ?? []), ...(room.room_type_amenities ?? [])]);
 		return Array.from(set);
 	}

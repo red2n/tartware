@@ -1,7 +1,15 @@
 /** Billing view tab identifiers. */
-export type BillingView = "payments" | "invoices" | "folios" | "charges";
+export type BillingView = "payments" | "invoices" | "folios" | "charges" | "routing";
 
-export type PaymentStatusFilter = "ALL" | "completed" | "pending" | "authorized" | "failed" | "cancelled" | "refunded" | "partially_refunded";
+export type PaymentStatusFilter =
+	| "ALL"
+	| "completed"
+	| "pending"
+	| "authorized"
+	| "failed"
+	| "cancelled"
+	| "refunded"
+	| "partially_refunded";
 export type InvoiceStatusFilter = "ALL" | "draft" | "issued" | "paid" | "overdue";
 export type FolioStatusFilter = "ALL" | "open" | "closed" | "settled";
 export type ChargeTypeFilter = "ALL" | "charge" | "payment" | "adjustment";

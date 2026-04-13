@@ -5,10 +5,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
-import type {
-	CommissionReportItem,
-	CommissionReportResponse,
-} from "@tartware/schemas";
+import type { CommissionReportItem, CommissionReportResponse } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -51,6 +48,7 @@ export class CommissionsComponent {
 	readonly items = signal<CommissionReportItem[]>([]);
 	readonly totalCommission = signal(0);
 	readonly loading = signal(false);
+	readonly error = signal<string | null>(null);
 
 	// ── Date filter ──
 	readonly periodStart = signal(this.monthStart());
@@ -75,18 +73,20 @@ export class CommissionsComponent {
 		if (!tenantId || !propertyId) return;
 
 		this.loading.set(true);
+		this.error.set(null);
 		try {
 			const res = await this.api.get<CommissionReportResponse>("/billing/reports/commissions", {
 				tenant_id: tenantId,
 				property_id: propertyId,
-				period_start: this.periodStart(),
-				period_end: this.periodEnd(),
+				start_date: this.periodStart(),
+				end_date: this.periodEnd(),
 			});
 			this.items.set(res.items ?? []);
 			this.totalCommission.set(res.total_commission ?? 0);
-		} catch {
+		} catch (e) {
 			this.items.set([]);
 			this.totalCommission.set(0);
+			this.error.set(e instanceof Error ? e.message : "Failed to load commission report.");
 		} finally {
 			this.loading.set(false);
 		}

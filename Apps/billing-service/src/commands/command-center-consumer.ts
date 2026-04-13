@@ -64,6 +64,7 @@ import {
   lockFiscalPeriod,
   mergeFolios,
   postComp,
+  postLedger,
   reopenFiscalPeriod,
   reopenFolio,
   reopenInvoice,
@@ -142,6 +143,12 @@ const routeBillingCommand = async (
       return;
     case "billing.date_roll.manual":
       await manualDateRoll(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.ledger.post":
+      await postLedger(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

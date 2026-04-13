@@ -634,6 +634,32 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   app.get(
+    "/v1/billing/ledger",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy ledger list to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/fiscal-periods",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy fiscal period list to the finance admin service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
     "/v1/billing/reports/trial-balance",
     {
       preHandler: financeTenantScopeFromQuery,

@@ -7,7 +7,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
-import type { BuildingItem } from "@tartware/schemas";
+import type { BuildingGridItem } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -48,16 +48,12 @@ export class BuildingsComponent {
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
-	readonly buildings = signal<BuildingItem[]>([]);
+	readonly buildings = signal<BuildingGridItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
-	private readonly _resetPage = effect(() => {
-		this.globalSearch.query();
-		this.currentPage.set(1);
-	});
 
 	readonly filteredBuildings = computed(() => {
 		let list = this.buildings();
@@ -86,6 +82,14 @@ export class BuildingsComponent {
 	});
 
 	constructor() {
+		effect(
+			() => {
+				this.globalSearch.query();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
+
 		effect(() => {
 			this.auth.tenantId();
 			this.ctx.propertyId();
@@ -122,7 +126,7 @@ export class BuildingsComponent {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const buildings = await this.api.get<BuildingItem[]>("/buildings", params);
+			const buildings = await this.api.get<BuildingGridItem[]>("/buildings/grid", params);
 			this.buildings.set(buildings);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load buildings");
@@ -148,7 +152,7 @@ export class BuildingsComponent {
 		);
 	}
 
-	openEditDialog(building: BuildingItem): void {
+	openEditDialog(building: BuildingGridItem): void {
 		import("./create-building-dialog/create-building-dialog").then(
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
@@ -166,7 +170,7 @@ export class BuildingsComponent {
 		);
 	}
 
-	async deleteBuilding(building: BuildingItem, event: Event): Promise<void> {
+	async deleteBuilding(building: BuildingGridItem, event: Event): Promise<void> {
 		event.stopPropagation();
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
@@ -199,7 +203,7 @@ export class BuildingsComponent {
 		}
 	}
 
-	amenityIcons(building: BuildingItem): string[] {
+	amenityIcons(building: BuildingGridItem): string[] {
 		const icons: string[] = [];
 		if (building.has_pool) icons.push("pool");
 		if (building.has_gym) icons.push("fitness_center");

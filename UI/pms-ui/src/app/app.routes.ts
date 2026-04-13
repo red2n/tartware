@@ -156,6 +156,12 @@ export const routes: Routes = [
 					import("./features/accounts/night-audit/night-audit").then((m) => m.NightAuditComponent),
 			},
 			{
+				path: "ledger",
+				canActivate: [propertyGuard, screenGuard("billing")],
+				loadComponent: () =>
+					import("./features/accounts/ledger/ledger").then((m) => m.LedgerComponent),
+			},
+			{
 				path: "tax-config",
 				canActivate: [propertyGuard, screenGuard("tax-config")],
 				loadComponent: () =>

@@ -46,6 +46,48 @@ export const BUILDING_LIST_SQL = `
   OFFSET $7
 `;
 
+export const BUILDING_GRID_SQL = `
+  SELECT
+    b.building_id,
+    b.property_id,
+    b.building_code,
+    b.building_name,
+    b.building_type,
+    b.floor_count,
+    b.basement_floors,
+    b.total_rooms,
+    b.wheelchair_accessible,
+    b.elevator_count,
+    b.has_lobby,
+    b.has_pool,
+    b.has_gym,
+    b.has_spa,
+    b.has_restaurant,
+    b.has_parking,
+    b.parking_spaces,
+    b.year_built,
+    b.last_renovation_year,
+    b.is_active,
+    b.building_status,
+    b.guest_description,
+    b.internal_notes
+  FROM public.buildings b
+  WHERE COALESCE(b.is_deleted, false) = false
+    AND b.deleted_at IS NULL
+    AND b.tenant_id = $1::uuid
+    AND ($2::uuid IS NULL OR b.property_id = $2::uuid)
+    AND ($3::boolean IS NULL OR b.is_active = $3::boolean)
+    AND ($4::text IS NULL OR b.building_type = $4)
+    AND (
+      $5::text IS NULL
+      OR b.building_name ILIKE $5
+      OR b.building_code ILIKE $5
+    )
+  ORDER BY b.building_code ASC
+  LIMIT $6
+  OFFSET $7
+`;
+
 export const BUILDING_CREATE_SQL = `
   WITH inserted AS (
     INSERT INTO public.buildings (

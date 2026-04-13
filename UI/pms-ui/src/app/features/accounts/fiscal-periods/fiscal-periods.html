@@ -18,6 +18,11 @@
   <!-- ═══ PERIOD LIST ═══ -->
   @if (loading()) {
     <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading fiscal periods...' | translate }}</span></div>
+  } @else if (error(); as err) {
+    <div class="empty-state">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ err }}</span>
+    </div>
   } @else if (filtered().length === 0) {
     <div class="empty-state">
       <mat-icon>date_range</mat-icon>

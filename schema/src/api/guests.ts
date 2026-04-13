@@ -217,3 +217,101 @@ export type GuestSummaryStatsRow = {
 		| Array<{ segment: string; count: number; total_revenue: number }>
 		| string;
 };
+
+/**
+ * Lightweight guest grid row schema for table/list UIs.
+ */
+export const GuestGridItemSchema = z.object({
+	id: uuid,
+	first_name: z.string(),
+	last_name: z.string(),
+	title: z.string().optional(),
+	nationality: z.string().optional(),
+	email: z.string().optional(),
+	phone: z.string().optional(),
+	company_name: z.string().optional(),
+	loyalty_tier: z.string().optional(),
+	vip_status: z.string().optional(),
+	total_bookings: z.number().int().nonnegative(),
+	total_revenue: z.number().nonnegative(),
+	last_stay_date: z.string().optional(),
+	member_since: z.string(),
+	is_blacklisted: z.boolean(),
+});
+
+export type GuestGridItem = z.infer<typeof GuestGridItemSchema>;
+
+/**
+ * Guest grid response schema.
+ */
+export const GuestGridResponseSchema = z.object({
+	data: z.array(GuestGridItemSchema),
+	meta: z.object({
+		count: z.number().int().nonnegative(),
+	}),
+});
+
+export type GuestGridResponse = z.infer<typeof GuestGridResponseSchema>;
+
+/**
+ * Full guest list item schema matching the existing /guests route payload.
+ */
+export const GuestProfileListItemSchema = z.object({
+	id: uuid,
+	tenant_id: uuid,
+	first_name: z.string(),
+	last_name: z.string(),
+	middle_name: z.string().optional(),
+	title: z.string().optional(),
+	date_of_birth: z.union([z.string(), z.date()]).optional(),
+	gender: z.string().optional(),
+	nationality: z.string().optional(),
+	email: z.string().optional(),
+	phone: z.string().optional(),
+	secondary_phone: z.string().optional(),
+	address: z
+		.object({
+			street: z.string(),
+			city: z.string(),
+			state: z.string(),
+			postalCode: z.string(),
+			country: z.string(),
+		})
+		.optional(),
+	id_type: z.string().optional(),
+	id_number: z.string().optional(),
+	passport_number: z.string().optional(),
+	passport_expiry: z.union([z.string(), z.date()]).optional(),
+	company_name: z.string().optional(),
+	company_tax_id: z.string().optional(),
+	loyalty_tier: z.string().optional(),
+	loyalty_points: z.number().int().nonnegative(),
+	vip_status: z.string().optional(),
+	preferences: z.record(z.string(), z.unknown()).optional(),
+	marketing_consent: z.boolean(),
+	communication_preferences: z.record(z.string(), z.unknown()).optional(),
+	total_bookings: z.number().int().nonnegative(),
+	total_nights: z.number().int().nonnegative(),
+	total_revenue: z.number().nonnegative(),
+	last_stay_date: z.union([z.string(), z.date()]).optional(),
+	member_since: z.union([z.string(), z.date()]),
+	first_stay_date: z.union([z.string(), z.date()]).optional(),
+	is_blacklisted: z.boolean(),
+	blacklist_reason: z.string().optional(),
+	notes: z.string().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+	created_at: z.union([z.string(), z.date()]),
+	updated_at: z.union([z.string(), z.date()]).optional(),
+	created_by: z.string().optional(),
+	updated_by: z.string().optional(),
+	deleted_at: z.union([z.string(), z.date(), z.null()]).optional(),
+	version: z.string(),
+	upcoming_reservations: z.number().int().nonnegative(),
+	past_reservations: z.number().int().nonnegative(),
+	cancelled_reservations: z.number().int().nonnegative(),
+	average_stay_length: z.number().optional(),
+	preferred_room_types: z.array(z.string()).optional(),
+	lifetime_value: z.number().nonnegative(),
+});
+
+export type GuestProfileListItem = z.infer<typeof GuestProfileListItemSchema>;

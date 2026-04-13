@@ -221,3 +221,14 @@
   cursor: pointer;
   max-width: 220px;
 }
+
+/* ── Reservation billing action forms ── */
+.reservation-action-grid {
+  margin-top: var(--space-3);
+}
+
+.reservation-action-grid .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

@@ -65,6 +65,11 @@
       {{ 'Charges' | translate }}
       <span class="counter">{{ charges().length }}</span>
     </button>
+    <button class="view-tab" [class.view-tab-active]="activeView() === 'routing'" (click)="setView('routing')">
+      <mat-icon>alt_route</mat-icon>
+      {{ 'Routing Rules' | translate }}
+      <span class="counter">{{ routingRules().length + routingTemplates().length }}</span>
+    </button>
   </div>
 
   <!-- ═════════════════════════════════════════════ -->
@@ -403,6 +408,11 @@
                         <mat-icon>note_add</mat-icon> {{ 'Credit Note' | translate }}
                       </button>
                     }
+                    @if (canReopenInvoice(inv)) {
+                      <button class="btn btn-outline btn-xs" (click)="showReopenInvoice(inv.id); $event.stopPropagation()" [matTooltip]="'Reopen invoice for correction' | translate">
+                        <mat-icon>lock_open</mat-icon> {{ 'Reopen' | translate }}
+                      </button>
+                    }
                   </td>
                 </tr>
                 <!-- Void invoice form -->
@@ -454,6 +464,30 @@
                             {{ 'Create Credit Note' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelCreditNote()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (reopenInvoiceId() === inv.id) {
+                  <tr class="action-row-form">
+                    <td colspan="9">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Reopen invoice' | translate }} {{ inv.invoice_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }} *</label>
+                            <input type="text" class="field-input field-sm" placeholder="Reason for reopening"
+                                   [ngModel]="reopenInvoiceReason()" (ngModelChange)="reopenInvoiceReason.set($event)" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="reopenInvoice()"
+                                  [disabled]="processingInvoiceReopen() || reopenInvoiceReason().trim().length < 3">
+                            @if (processingInvoiceReopen()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Reopen Invoice' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelReopenInvoice()">{{ 'Cancel' | translate }}</button>
                         </div>
                       </div>
                     </td>
@@ -549,7 +583,7 @@
                 </th>
                 <th>{{ 'Opened' | translate }}</th>
                 <th>{{ 'Actions' | translate }}</th>
-                <th></th>
+                <th class="cell-actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -580,7 +614,13 @@
                       <button class="btn btn-outline btn-xs" (click)="showCloseFolio(fol.id); $event.stopPropagation()" [matTooltip]="'Close / settle this folio' | translate">
                         <mat-icon>lock</mat-icon> {{ 'Close' | translate }}
                       </button>
-                    } @else if (fol.folio_status !== 'open') {
+                    }
+                    @if (canReopenFolio(fol)) {
+                      <button class="btn btn-outline btn-xs" (click)="showReopenFolio(fol.id); $event.stopPropagation()" [matTooltip]="'Reopen folio for additional postings' | translate">
+                        <mat-icon>lock_open</mat-icon> {{ 'Reopen' | translate }}
+                      </button>
+                    }
+                    @if (!canCloseFolio(fol) && !canReopenFolio(fol)) {
                       <span class="badge badge-muted">{{ fol.folio_status_display }}</span>
                     }
                   </td>
@@ -594,6 +634,52 @@
                     <td colspan="9">
                       <div class="folio-detail-panel">
                         <h4>{{ 'Folio Ledger' | translate }} — {{ fol.folio_number }}</h4>
+                        <div class="form-actions">
+                          @if (targetFoliosFor(fol.id).length > 0 && fol.folio_status === 'open') {
+                            <button class="btn btn-outline btn-sm" (click)="showMergeFolio(fol.id)">
+                              <mat-icon>merge</mat-icon> {{ 'Merge Folio' | translate }}
+                            </button>
+                          }
+                          @if (fol.reservation_id && fol.folio_status === 'open') {
+                            <button class="btn btn-outline btn-sm" (click)="showCreateWindow(fol.id)">
+                              <mat-icon>view_week</mat-icon> {{ 'Create Window' | translate }}
+                            </button>
+                          }
+                          @if (fol.folio_status === 'open') {
+                            <button class="btn btn-outline btn-sm" (click)="showTaxExemption(fol.id)">
+                              <mat-icon>verified</mat-icon> {{ 'Tax Exemption' | translate }}
+                            </button>
+                            <button class="btn btn-outline btn-sm" (click)="showCompPosting(fol.id)">
+                              <mat-icon>local_offer</mat-icon> {{ 'Comp Post' | translate }}
+                            </button>
+                            <button class="btn btn-outline btn-sm" (click)="openRoutingCreateForFolio(fol)">
+                              <mat-icon>alt_route</mat-icon> {{ 'Add Routing Rule' | translate }}
+                            </button>
+                          }
+                        </div>
+                        <div class="text-subtle">
+                          {{ 'Balance breakdown:' | translate }}
+                          {{ formatCurrency(fol.total_charges, fol.currency) }} -
+                          {{ formatCurrency(fol.total_payments, fol.currency) }} =
+                          {{ formatCurrency(fol.balance, fol.currency) }}
+                        </div>
+                        <div class="folio-routing-summary">
+                          <h5>{{ 'Active Routing Rules' | translate }}</h5>
+                          @if (selectedFolioRoutingRules().length === 0) {
+                            <div class="empty-state-sm"><mat-icon>alt_route</mat-icon><span>{{ 'No active routing rules for this folio' | translate }}</span></div>
+                          } @else {
+                            <div class="rule-chip-list">
+                              @for (rule of selectedFolioRoutingRules(); track rule.rule_id) {
+                                <span class="badge badge-muted">
+                                  {{ rule.rule_name }}:
+                                  {{ rule.charge_code_pattern ?? rule.charge_category ?? rule.transaction_type ?? 'ALL' }}
+                                  →
+                                  {{ rule.destination_folio_id === fol.id ? ('Same Folio' | translate) : (rule.destination_folio_type ?? 'Folio') }}
+                                </span>
+                              }
+                            </div>
+                          }
+                        </div>
                         @if (folioChargesLoading()) {
                           <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span class="text-muted">{{ 'Loading ledger...' | translate }}</span></div>
                         } @else if (folioCharges().length === 0) {
@@ -607,7 +693,7 @@
                                 <th>{{ 'Description' | translate }}</th>
                                 <th>{{ 'Type' | translate }}</th>
                                 <th class="col-right">{{ 'Amount' | translate }}</th>
-                                <th></th>
+                                <th class="cell-actions"></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -618,8 +704,57 @@
                                   <td>{{ chg.charge_description }}</td>
                                   <td><span class="badge" [ngClass]="chargeTypeClass(chg.transaction_type)">{{ chg.transaction_type_display }}</span></td>
                                   <td class="col-right cell-amount">{{ formatCurrency(chg.total_amount, chg.currency) }}</td>
-                                  <td>@if (chg.is_voided) { <span class="badge badge-danger">{{ 'Voided' | translate }}</span> }</td>
+                                  <td>
+                                    @if (chg.is_voided) {
+                                      <span class="badge badge-danger">{{ 'Voided' | translate }}</span>
+                                    } @else if (chg.transaction_type === 'charge' && targetFoliosFor(fol.id).length > 0 && chg.total_amount > 0) {
+                                      <button class="btn btn-outline btn-xs" (click)="showSplitCharge(chg)">
+                                        <mat-icon>call_split</mat-icon> {{ 'Split' | translate }}
+                                      </button>
+                                    }
+                                  </td>
                                 </tr>
+                                @if (splittingChargeId() === chg.id) {
+                                  <tr class="action-row-form">
+                                    <td colspan="6">
+                                      <div class="inline-action-form">
+                                        <span class="form-label">{{ 'Split charge' | translate }} {{ chg.charge_code }}</span>
+                                        <div class="form-inline-fields">
+                                          <div class="form-field">
+                                            <label>{{ 'Target Folio' | translate }}</label>
+                                            <select class="field-input field-sm" [ngModel]="splitChargeForm().target_folio_id"
+                                                    (ngModelChange)="splitChargeForm.set({ ...splitChargeForm(), target_folio_id: $event })">
+                                              <option value="">{{ 'Select folio...' | translate }}</option>
+                                              @for (target of targetFoliosFor(fol.id); track target.id) {
+                                                <option [value]="target.id">{{ target.folio_number }} — {{ target.guest_name ?? target.company_name ?? target.folio_type_display }}</option>
+                                              }
+                                            </select>
+                                          </div>
+                                          <div class="form-field">
+                                            <label>{{ 'Split Amount' | translate }}</label>
+                                            <input type="number" class="field-input field-sm" min="0.01" step="0.01"
+                                                   [ngModel]="splitChargeForm().amount"
+                                                   (ngModelChange)="splitChargeForm.set({ ...splitChargeForm(), amount: +$event || 0 })" />
+                                          </div>
+                                          <div class="form-field">
+                                            <label>{{ 'Reason' | translate }}</label>
+                                            <input type="text" class="field-input field-sm"
+                                                   [ngModel]="splitChargeForm().reason"
+                                                   (ngModelChange)="splitChargeForm.set({ ...splitChargeForm(), reason: $event })" />
+                                          </div>
+                                        </div>
+                                        <div class="form-actions">
+                                          <button class="btn btn-primary btn-sm" (click)="splitCharge(chg)"
+                                                  [disabled]="processingChargeSplit() || !splitChargeForm().target_folio_id || splitChargeForm().amount <= 0 || splitChargeForm().amount >= chg.total_amount">
+                                            @if (processingChargeSplit()) { <mat-spinner diameter="16"></mat-spinner> }
+                                            {{ 'Split Charge' | translate }}
+                                          </button>
+                                          <button class="btn btn-outline btn-sm" (click)="cancelSplitCharge()">{{ 'Cancel' | translate }}</button>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                }
                               }
                             </tbody>
                           </table>
@@ -658,6 +793,191 @@
                             {{ 'Close Folio' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelCloseFolio()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (reopeningFolioId() === fol.id) {
+                  <tr class="action-row-form">
+                    <td colspan="10">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Reopen folio' | translate }} {{ fol.folio_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }} *</label>
+                            <input type="text" class="field-input field-sm" placeholder="Reason for reopening"
+                                   [ngModel]="reopenFolioReason()" (ngModelChange)="reopenFolioReason.set($event)" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="reopenFolio(fol)"
+                                  [disabled]="processingFolioReopen() || reopenFolioReason().trim().length < 3">
+                            @if (processingFolioReopen()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Reopen Folio' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelReopenFolio()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (mergingFolioId() === fol.id) {
+                  <tr class="action-row-form">
+                    <td colspan="10">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Merge folio' | translate }} {{ fol.folio_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Target Folio' | translate }} *</label>
+                            <select class="field-input field-sm" [ngModel]="mergeFolioForm().target_folio_id"
+                                    (ngModelChange)="mergeFolioForm.set({ ...mergeFolioForm(), target_folio_id: $event })">
+                              <option value="">{{ 'Select target...' | translate }}</option>
+                              @for (target of targetFoliosFor(fol.id); track target.id) {
+                                <option [value]="target.id">{{ target.folio_number }} — {{ target.guest_name ?? target.company_name ?? target.folio_type_display }}</option>
+                              }
+                            </select>
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }} *</label>
+                            <input type="text" class="field-input field-sm"
+                                   [ngModel]="mergeFolioForm().reason"
+                                   (ngModelChange)="mergeFolioForm.set({ ...mergeFolioForm(), reason: $event })" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="mergeFolio(fol)"
+                                  [disabled]="processingFolioMerge() || !mergeFolioForm().target_folio_id || mergeFolioForm().reason.trim().length < 3">
+                            @if (processingFolioMerge()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Merge Folios' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelMergeFolio()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (creatingWindowFolioId() === fol.id) {
+                  <tr class="action-row-form">
+                    <td colspan="10">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Create folio window' | translate }} {{ fol.folio_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Start' | translate }}</label>
+                            <input type="date" class="field-input field-sm"
+                                   [ngModel]="folioWindowForm().window_start"
+                                   (ngModelChange)="folioWindowForm.set({ ...folioWindowForm(), window_start: $event })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'End' | translate }}</label>
+                            <input type="date" class="field-input field-sm"
+                                   [ngModel]="folioWindowForm().window_end"
+                                   (ngModelChange)="folioWindowForm.set({ ...folioWindowForm(), window_end: $event })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Billed To' | translate }}</label>
+                            <input type="text" class="field-input field-sm"
+                                   [ngModel]="folioWindowForm().billed_to"
+                                   (ngModelChange)="folioWindowForm.set({ ...folioWindowForm(), billed_to: $event })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Type' | translate }}</label>
+                            <select class="field-input field-sm" [ngModel]="folioWindowForm().billed_to_type"
+                                    (ngModelChange)="folioWindowForm.set({ ...folioWindowForm(), billed_to_type: $event })">
+                              @for (opt of billedToTypeOptions; track opt) {
+                                <option [value]="opt">{{ opt }}</option>
+                              }
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="createFolioWindow(fol)"
+                                  [disabled]="processingFolioWindow() || !folioWindowForm().window_start || !folioWindowForm().window_end || !folioWindowForm().billed_to.trim()">
+                            @if (processingFolioWindow()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Create Window' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelCreateWindow()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (taxExemptionFolioId() === fol.id) {
+                  <tr class="action-row-form">
+                    <td colspan="10">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Apply tax exemption' | translate }} {{ fol.folio_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Type' | translate }}</label>
+                            <select class="field-input field-sm" [ngModel]="taxExemptionForm().exemption_type"
+                                    (ngModelChange)="taxExemptionForm.set({ ...taxExemptionForm(), exemption_type: $event })">
+                              @for (opt of taxExemptionTypeOptions; track opt) {
+                                <option [value]="opt">{{ opt }}</option>
+                              }
+                            </select>
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Certificate' | translate }} *</label>
+                            <input type="text" class="field-input field-sm"
+                                   [ngModel]="taxExemptionForm().exemption_certificate"
+                                   (ngModelChange)="taxExemptionForm.set({ ...taxExemptionForm(), exemption_certificate: $event })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Expiry' | translate }}</label>
+                            <input type="date" class="field-input field-sm"
+                                   [ngModel]="taxExemptionForm().expiry_date"
+                                   (ngModelChange)="taxExemptionForm.set({ ...taxExemptionForm(), expiry_date: $event })" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="applyTaxExemption(fol)"
+                                  [disabled]="processingTaxExemption() || !taxExemptionForm().exemption_certificate.trim()">
+                            @if (processingTaxExemption()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Apply Exemption' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelTaxExemption()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (compPostingFolioId() === fol.id) {
+                  <tr class="action-row-form">
+                    <td colspan="10">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Comp post' | translate }} {{ fol.folio_number }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Comp Type' | translate }}</label>
+                            <select class="field-input field-sm" [ngModel]="compPostingForm().comp_type"
+                                    (ngModelChange)="compPostingForm.set({ ...compPostingForm(), comp_type: $event })">
+                              @for (opt of compTypeOptions; track opt) {
+                                <option [value]="opt">{{ opt }}</option>
+                              }
+                            </select>
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Amount' | translate }}</label>
+                            <input type="number" class="field-input field-sm" min="0.01" step="0.01"
+                                   [ngModel]="compPostingForm().amount"
+                                   (ngModelChange)="compPostingForm.set({ ...compPostingForm(), amount: +$event || 0 })" />
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Charge Code' | translate }}</label>
+                            <input type="text" class="field-input field-sm"
+                                   [ngModel]="compPostingForm().charge_code"
+                                   (ngModelChange)="compPostingForm.set({ ...compPostingForm(), charge_code: $event })" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="postCompCharge(fol)"
+                                  [disabled]="processingCompPosting() || compPostingForm().amount <= 0">
+                            @if (processingCompPosting()) { <mat-spinner diameter="16"></mat-spinner> }
+                            {{ 'Post Comp' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelCompPosting()">{{ 'Cancel' | translate }}</button>
                         </div>
                       </div>
                     </td>
@@ -773,7 +1093,7 @@
                 <th class="col-right" [attr.aria-sort]="ariaSort(chargeSort, 'total_amount')">
                   <button type="button" class="th-sort-btn" (click)="onChargeSort('total_amount')">{{ 'Amount' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(chargeSort, 'total_amount') }}</mat-icon></button>
                 </th>
-                <th></th>
+                <th class="cell-actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -828,6 +1148,283 @@
       }
     } @placeholder {
       <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
+    }
+  }
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- ROUTING RULES TAB                            -->
+  <!-- ═════════════════════════════════════════════ -->
+  @if (activeView() === 'routing') {
+    <div class="filter-bar filter-bar-with-action">
+      <div class="text-subtle">{{ 'Active rules and reusable templates for folio routing.' | translate }}</div>
+      <button class="btn btn-primary btn-sm" (click)="toggleCreateRoutingRuleForm()">
+        <mat-icon>add</mat-icon> {{ 'New Routing Rule' | translate }}
+      </button>
+    </div>
+
+    @if (showCreateRoutingRuleForm()) {
+      <div class="action-form">
+        <h3>{{ 'Create Routing Rule' | translate }}</h3>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>{{ 'Rule Name' | translate }}</label>
+            <input type="text" class="field-input"
+                   [ngModel]="createRoutingRuleForm().rule_name"
+                   (ngModelChange)="updateCreateRoutingRuleForm({ rule_name: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="checkbox-label">
+              <input type="checkbox" [ngModel]="createRoutingRuleForm().is_template"
+                     (ngModelChange)="updateCreateRoutingRuleForm({ is_template: $event })" />
+              {{ 'Save as Template' | translate }}
+            </label>
+          </div>
+          @if (!createRoutingRuleForm().is_template) {
+            <div class="form-field">
+              <label>{{ 'Source Folio' | translate }}</label>
+              <select class="field-input" [ngModel]="createRoutingRuleForm().source_folio_id"
+                      (ngModelChange)="updateCreateRoutingRuleForm({ source_folio_id: $event })">
+                <option value="">{{ 'Select source...' | translate }}</option>
+                @for (folio of openFolios(); track folio.id) {
+                  <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                }
+              </select>
+            </div>
+          }
+          <div class="form-field">
+            <label>{{ 'Destination Folio' | translate }}</label>
+            <select class="field-input" [ngModel]="createRoutingRuleForm().destination_folio_id"
+                    (ngModelChange)="updateCreateRoutingRuleForm({ destination_folio_id: $event })">
+              <option value="">{{ 'Select destination...' | translate }}</option>
+              @for (folio of openFolios(); track folio.id) {
+                <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>{{ 'Charge Pattern' | translate }}</label>
+            <input type="text" class="field-input"
+                   [ngModel]="createRoutingRuleForm().charge_code_pattern"
+                   (ngModelChange)="updateCreateRoutingRuleForm({ charge_code_pattern: $event })" />
+          </div>
+          <div class="form-field">
+            <label>{{ 'Category' | translate }}</label>
+            <select class="field-input" [ngModel]="createRoutingRuleForm().charge_category"
+                    (ngModelChange)="updateCreateRoutingRuleForm({ charge_category: $event })">
+              <option value="">{{ 'Any' | translate }}</option>
+              @for (opt of routingChargeCategoryOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>{{ 'Routing Type' | translate }}</label>
+            <select class="field-input" [ngModel]="createRoutingRuleForm().routing_type"
+                    (ngModelChange)="updateCreateRoutingRuleForm({ routing_type: $event })">
+              @for (opt of routingTypeOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          </div>
+          @if (createRoutingRuleForm().routing_type === 'PERCENTAGE') {
+            <div class="form-field">
+              <label>{{ 'Percentage' | translate }}</label>
+              <input type="number" class="field-input" min="0" max="100" step="0.01"
+                     [ngModel]="createRoutingRuleForm().routing_percentage"
+                     (ngModelChange)="updateCreateRoutingRuleForm({ routing_percentage: +$event || 0 })" />
+            </div>
+          }
+          @if (createRoutingRuleForm().routing_type === 'FIXED_AMOUNT') {
+            <div class="form-field">
+              <label>{{ 'Fixed Amount' | translate }}</label>
+              <input type="number" class="field-input" min="0" step="0.01"
+                     [ngModel]="createRoutingRuleForm().routing_fixed_amount"
+                     (ngModelChange)="updateCreateRoutingRuleForm({ routing_fixed_amount: +$event || 0 })" />
+            </div>
+          }
+          <div class="form-field">
+            <label>{{ 'Priority' | translate }}</label>
+            <input type="number" class="field-input" min="0"
+                   [ngModel]="createRoutingRuleForm().priority"
+                   (ngModelChange)="updateCreateRoutingRuleForm({ priority: +$event || 0 })" />
+          </div>
+          <div class="form-field full-width">
+            <label>{{ 'Description' | translate }}</label>
+            <input type="text" class="field-input"
+                   [ngModel]="createRoutingRuleForm().description"
+                   (ngModelChange)="updateCreateRoutingRuleForm({ description: $event })" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary btn-sm" (click)="createRoutingRule()"
+                  [disabled]="creatingRoutingRule() || !createRoutingRuleForm().rule_name.trim()">
+            @if (creatingRoutingRule()) { <mat-spinner diameter="16"></mat-spinner> }
+            {{ 'Create Rule' | translate }}
+          </button>
+          <button class="btn btn-outline btn-sm" (click)="toggleCreateRoutingRuleForm()">{{ 'Cancel' | translate }}</button>
+        </div>
+      </div>
+    }
+
+    @if (routingLoading()) {
+      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading routing rules...' | translate }}</span></div>
+    } @else if (routingError(); as err) {
+      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadRouting()">{{ 'Retry' | translate }}</button></div>
+    } @else if (filteredRoutingRules().length === 0) {
+      <div class="empty-state"><mat-icon class="empty-icon">alt_route</mat-icon><p>{{ 'No routing rules found' | translate }}</p></div>
+    } @else {
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th [attr.aria-sort]="ariaSort(routingSort, 'rule_name')">
+                <button type="button" class="th-sort-btn" (click)="onRoutingSort('rule_name')">{{ 'Rule' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(routingSort, 'rule_name') }}</mat-icon></button>
+              </th>
+              <th>{{ 'Mode' | translate }}</th>
+              <th>{{ 'Source' | translate }}</th>
+              <th>{{ 'Destination' | translate }}</th>
+              <th>{{ 'Pattern' | translate }}</th>
+              <th [attr.aria-sort]="ariaSort(routingSort, 'priority')">
+                <button type="button" class="th-sort-btn" (click)="onRoutingSort('priority')">{{ 'Priority' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(routingSort, 'priority') }}</mat-icon></button>
+              </th>
+              <th>{{ 'Status' | translate }}</th>
+              <th>{{ 'Actions' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rule of paginatedRoutingRules(); track rule.rule_id) {
+              <tr>
+                <td class="cell-primary">
+                  <span class="ref-code">{{ rule.rule_name }}</span>
+                  @if (rule.rule_code) {
+                    <span class="text-subtle">{{ rule.rule_code }}</span>
+                  }
+                </td>
+                <td><span class="badge badge-muted">{{ rule.is_template ? ('Template' | translate) : ('Active' | translate) }}</span></td>
+                <td>{{ rule.source_folio_id ?? '—' }}</td>
+                <td>{{ rule.destination_folio_id ?? rule.destination_folio_type ?? '—' }}</td>
+                <td>{{ rule.charge_code_pattern ?? rule.charge_category ?? rule.transaction_type ?? 'ALL' }}</td>
+                <td>{{ rule.priority }}</td>
+                <td><span class="badge" [ngClass]="rule.is_active ? 'badge-success' : 'badge-muted'">{{ rule.is_active ? ('Active' | translate) : ('Inactive' | translate) }}</span></td>
+                <td class="cell-actions">
+                  @if (!rule.is_template) {
+                    <button class="btn btn-outline btn-xs" (click)="startEditRoutingRule(rule)">
+                      <mat-icon>edit</mat-icon> {{ 'Edit' | translate }}
+                    </button>
+                  }
+                  @if (rule.is_template) {
+                    <button class="btn btn-outline btn-xs" (click)="showCloneTemplate(rule.rule_id)">
+                      <mat-icon>content_copy</mat-icon> {{ 'Clone' | translate }}
+                    </button>
+                  }
+                  <button class="btn btn-outline btn-xs" (click)="showDeleteRoutingRule(rule.rule_id)">
+                    <mat-icon>delete</mat-icon> {{ 'Delete' | translate }}
+                  </button>
+                </td>
+              </tr>
+              @if (editingRoutingRuleId() === rule.rule_id) {
+                <tr class="action-row-form">
+                  <td colspan="8">
+                    <div class="inline-action-form">
+                      <span class="form-label">{{ 'Edit routing rule' | translate }} {{ rule.rule_name }}</span>
+                      <div class="form-inline-fields">
+                        <div class="form-field">
+                          <label>{{ 'Name' | translate }}</label>
+                          <input type="text" class="field-input field-sm" [ngModel]="editRoutingRuleForm().rule_name"
+                                 (ngModelChange)="updateEditRoutingRuleForm({ rule_name: $event })" />
+                        </div>
+                        <div class="form-field">
+                          <label>{{ 'Pattern' | translate }}</label>
+                          <input type="text" class="field-input field-sm" [ngModel]="editRoutingRuleForm().charge_code_pattern"
+                                 (ngModelChange)="updateEditRoutingRuleForm({ charge_code_pattern: $event })" />
+                        </div>
+                        <div class="form-field">
+                          <label>{{ 'Destination' | translate }}</label>
+                          <select class="field-input field-sm" [ngModel]="editRoutingRuleForm().destination_folio_id"
+                                  (ngModelChange)="updateEditRoutingRuleForm({ destination_folio_id: $event })">
+                            <option value="">{{ 'Select...' | translate }}</option>
+                            @for (folio of openFolios(); track folio.id) {
+                              <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                            }
+                          </select>
+                        </div>
+                        <div class="form-field">
+                          <label>{{ 'Priority' | translate }}</label>
+                          <input type="number" class="field-input field-sm" min="0" [ngModel]="editRoutingRuleForm().priority"
+                                 (ngModelChange)="updateEditRoutingRuleForm({ priority: +$event || 0 })" />
+                        </div>
+                      </div>
+                      <div class="form-actions">
+                        <button class="btn btn-primary btn-sm" (click)="saveRoutingRule(rule)" [disabled]="editingRoutingRule()">
+                          @if (editingRoutingRule()) { <mat-spinner diameter="16"></mat-spinner> }
+                          {{ 'Save' | translate }}
+                        </button>
+                        <button class="btn btn-outline btn-sm" (click)="cancelEditRoutingRule()">{{ 'Cancel' | translate }}</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+              @if (deletingRoutingRuleId() === rule.rule_id) {
+                <tr class="action-row-form">
+                  <td colspan="8">
+                    <div class="inline-action-form">
+                      <span class="form-label">{{ 'Delete routing rule?' | translate }} {{ rule.rule_name }}</span>
+                      <div class="form-actions">
+                        <button class="btn btn-danger btn-sm" (click)="deleteRoutingRule(rule)" [disabled]="deletingRoutingRule()">
+                          @if (deletingRoutingRule()) { <mat-spinner diameter="16"></mat-spinner> }
+                          {{ 'Delete' | translate }}
+                        </button>
+                        <button class="btn btn-outline btn-sm" (click)="cancelDeleteRoutingRule()">{{ 'Cancel' | translate }}</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+              @if (cloningTemplateId() === rule.rule_id) {
+                <tr class="action-row-form">
+                  <td colspan="8">
+                    <div class="inline-action-form">
+                      <span class="form-label">{{ 'Clone template' | translate }} {{ rule.rule_name }}</span>
+                      <div class="form-inline-fields">
+                        <div class="form-field">
+                          <label>{{ 'Source Folio' | translate }}</label>
+                          <select class="field-input field-sm" [ngModel]="cloneTemplateForm().source_folio_id"
+                                  (ngModelChange)="cloneTemplateForm.set({ ...cloneTemplateForm(), source_folio_id: $event })">
+                            <option value="">{{ 'Select source...' | translate }}</option>
+                            @for (folio of openFolios(); track folio.id) {
+                              <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                            }
+                          </select>
+                        </div>
+                        <div class="form-field">
+                          <label>{{ 'Destination Folio' | translate }}</label>
+                          <select class="field-input field-sm" [ngModel]="cloneTemplateForm().destination_folio_id"
+                                  (ngModelChange)="cloneTemplateForm.set({ ...cloneTemplateForm(), destination_folio_id: $event })">
+                            <option value="">{{ 'Select destination...' | translate }}</option>
+                            @for (folio of openFolios(); track folio.id) {
+                              <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                            }
+                          </select>
+                        </div>
+                      </div>
+                      <div class="form-actions">
+                        <button class="btn btn-primary btn-sm" (click)="cloneTemplate(rule)"
+                                [disabled]="cloningTemplate() || !cloneTemplateForm().source_folio_id || !cloneTemplateForm().destination_folio_id">
+                          @if (cloningTemplate()) { <mat-spinner diameter="16"></mat-spinner> }
+                          {{ 'Clone Template' | translate }}
+                        </button>
+                        <button class="btn btn-outline btn-sm" (click)="cancelCloneTemplate()">{{ 'Cancel' | translate }}</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-pagination [totalItems]="filteredRoutingRules().length" [currentPage]="routingPage()" [pageSize]="pageSize" (pageChange)="routingPage.set($event)" />
     }
   }
 </div>

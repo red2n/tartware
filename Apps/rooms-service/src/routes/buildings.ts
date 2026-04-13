@@ -1,4 +1,5 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { BuildingGridResponseSchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -6,6 +7,7 @@ import {
   BuildingItemSchema,
   createBuilding,
   deleteBuilding,
+  listBuildingGrid,
   listBuildings,
   updateBuilding,
 } from "../services/building-service.js";
@@ -43,6 +45,10 @@ const BuildingListQueryJsonSchema = schemaFromZod(BuildingListQuerySchema, "Buil
 const BuildingListResponseJsonSchema = schemaFromZod(
   BuildingListResponseSchema,
   "BuildingListResponse",
+);
+const BuildingGridResponseJsonSchema = schemaFromZod(
+  BuildingGridResponseSchema,
+  "BuildingGridResponse",
 );
 
 const CreateBuildingBodySchema = z.object({
@@ -125,6 +131,39 @@ const BuildingParamsSchema = z.object({
 });
 
 export const registerBuildingRoutes = (app: FastifyInstance): void => {
+  app.get<{ Querystring: BuildingListQuery }>(
+    "/v1/buildings/grid",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as BuildingListQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: BUILDINGS_TAG,
+        summary: "List lightweight buildings for the grid",
+        querystring: BuildingListQueryJsonSchema,
+        response: {
+          200: BuildingGridResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const query = BuildingListQuerySchema.parse(request.query);
+      const buildings = await listBuildingGrid({
+        tenantId: query.tenant_id,
+        propertyId: query.property_id,
+        isActive: query.is_active,
+        buildingType: query.building_type,
+        search: query.search,
+        limit: query.limit,
+        offset: query.offset,
+      });
+
+      return BuildingGridResponseSchema.parse(buildings);
+    },
+  );
+
   app.get<{ Querystring: BuildingListQuery }>(
     "/v1/buildings",
     {

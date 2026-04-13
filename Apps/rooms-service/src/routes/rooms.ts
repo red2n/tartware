@@ -9,6 +9,7 @@ import {
   MaintenanceStatusEnum,
   type RoomByIdQuery,
   RoomByIdQuerySchema,
+  RoomGridResponseSchema,
   type RoomListQuery,
   RoomListQuerySchema,
   RoomStatusEnum,
@@ -23,6 +24,7 @@ import {
   deleteRoom,
   getRoomById,
   listAmenityCatalog,
+  listRoomGrid,
   listRooms,
   RoomListItemSchema,
   searchAvailableRooms,
@@ -30,6 +32,7 @@ import {
 } from "../services/room-service.js";
 
 const RoomListResponseSchema = z.array(RoomListItemSchema);
+const RoomGridResponseJsonSchema = schemaFromZod(RoomGridResponseSchema, "RoomGridResponse");
 const RoomListQueryJsonSchema = schemaFromZod(RoomListQuerySchema, "RoomListQuery");
 const RoomListResponseJsonSchema = schemaFromZod(RoomListResponseSchema, "RoomListResponse");
 
@@ -169,6 +172,106 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         request.log.error({ err: error }, "Failed to create room");
         return reply.internalServerError("Failed to create room");
       }
+    },
+  );
+
+  app.get<{ Querystring: RoomListQuery }>(
+    "/v1/rooms/grid",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as RoomListQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOMS_TAG,
+        summary: "List lightweight rooms for the rooms grid",
+        querystring: RoomListQueryJsonSchema,
+        response: {
+          200: RoomGridResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const {
+        tenant_id,
+        property_id,
+        status,
+        housekeeping_status,
+        search,
+        limit,
+        guest_id,
+        check_in_date,
+        check_out_date,
+        adults,
+        children,
+        offset,
+      } = RoomListQuerySchema.parse(request.query);
+
+      const rooms = await listRoomGrid({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        status,
+        housekeepingStatus: housekeeping_status,
+        search,
+        limit,
+        offset,
+      });
+
+      const hasRecommendationContext = property_id && check_in_date && check_out_date;
+
+      if (hasRecommendationContext && rooms.length > 0) {
+        try {
+          const roomIds = rooms.map((room) => room.room_id);
+          const rankResult = await rankRooms({
+            tenantId: tenant_id,
+            propertyId: property_id,
+            guestId: guest_id,
+            checkInDate: check_in_date,
+            checkOutDate: check_out_date,
+            adults: adults ?? 1,
+            children: children ?? 0,
+            roomIds,
+          });
+
+          const rankMap = new Map<string, { rank: number; score: number; reasons: string[] }>();
+          for (const ranked of rankResult.rankedRooms) {
+            rankMap.set(ranked.roomId, {
+              rank: ranked.rank,
+              score: ranked.relevanceScore,
+              reasons: ranked.reasons,
+            });
+          }
+
+          const enrichedRooms = rooms.map((room) => {
+            const ranking = rankMap.get(room.room_id);
+            return {
+              ...room,
+              recommendation_rank: ranking?.rank,
+              recommendation_score: ranking?.score,
+              recommendation_reasons: ranking?.reasons,
+            };
+          });
+
+          enrichedRooms.sort((a, b) => {
+            if (a.recommendation_rank && b.recommendation_rank) {
+              return a.recommendation_rank - b.recommendation_rank;
+            }
+            if (a.recommendation_rank) return -1;
+            if (b.recommendation_rank) return 1;
+            return 0;
+          });
+
+          return RoomGridResponseSchema.parse(enrichedRooms);
+        } catch (error) {
+          request.log.warn(
+            { err: error },
+            "Failed to rank room recommendations for grid, returning unranked",
+          );
+        }
+      }
+
+      return RoomGridResponseSchema.parse(rooms);
     },
   );
 

@@ -17,6 +17,12 @@
           Check In
         </button>
       }
+      @if (canChargeNoShow()) {
+        <button class="btn btn-danger btn-sm" (click)="showNoShowChargeConfirm()" [disabled]="actionLoading()" matTooltip="Post a no-show penalty to the reservation folio">
+          <mat-icon>person_off</mat-icon>
+          No-Show Charge
+        </button>
+      }
       @if (canCheckOut()) {
         <button class="btn btn-primary btn-sm" (click)="showExpressCheckout()" [disabled]="actionLoading()" matTooltip="Express checkout: resolve folio, close, release room">
           <mat-icon>flash_on</mat-icon>
@@ -27,10 +33,22 @@
           Check Out
         </button>
       }
+      @if (canChargeLateCheckout()) {
+        <button class="btn btn-outline btn-sm" (click)="showLateCheckoutChargeConfirm()" [disabled]="actionLoading()" matTooltip="Post a late checkout fee without checking the guest out">
+          <mat-icon>schedule</mat-icon>
+          Late Checkout Fee
+        </button>
+      }
       @if (canCancel()) {
         <button class="btn btn-danger btn-sm" (click)="showCancelConfirm()" [disabled]="actionLoading()" matTooltip="Cancel this reservation">
           <mat-icon>cancel</mat-icon>
           Cancel
+        </button>
+      }
+      @if (canChargeCancellationPenalty()) {
+        <button class="btn btn-outline btn-sm" (click)="showCancellationPenaltyConfirm()" [disabled]="actionLoading()" matTooltip="Post a cancellation penalty to the reservation folio">
+          <mat-icon>price_change</mat-icon>
+          Cancellation Penalty
         </button>
       }
     </div>
@@ -261,6 +279,150 @@
         } @else {
           <mat-icon>cancel</mat-icon>
           Confirm Cancel
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- No-show charge -->
+@if (confirmingNoShowCharge()) {
+  <div class="action-confirm-card action-confirm-danger">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-cancel">person_off</mat-icon>
+      <h3 class="confirm-title">Post No-Show Charge</h3>
+    </div>
+    <div class="confirm-body">
+      <p>This posts a no-show penalty to the reservation folio. If the reservation is still confirmed, the billing command will also mark it as <strong>No Show</strong>.</p>
+      <div class="form-grid reservation-action-grid">
+        <div class="form-field">
+          <label class="field-label">Charge Amount</label>
+          <input type="number" class="field-input" min="0" step="0.01"
+                 [ngModel]="noShowChargeForm().charge_amount"
+                 (ngModelChange)="noShowChargeForm.set({ ...noShowChargeForm(), charge_amount: $event ?? '' })" />
+          <span class="confirm-note">Leave blank to use the reservation room rate.</span>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Currency</label>
+          <input type="text" class="field-input" maxlength="3"
+                 [ngModel]="noShowChargeForm().currency"
+                 (ngModelChange)="noShowChargeForm.set({ ...noShowChargeForm(), currency: (($event ?? '') + '').toUpperCase() })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label">Reason Code</label>
+          <input type="text" class="field-input"
+                 [ngModel]="noShowChargeForm().reason_code"
+                 (ngModelChange)="noShowChargeForm.set({ ...noShowChargeForm(), reason_code: $event ?? '' })" />
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-danger btn-sm" (click)="chargeNoShow()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Posting...
+        } @else {
+          <mat-icon>person_off</mat-icon>
+          Confirm No-Show Charge
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Late checkout charge -->
+@if (confirmingLateCheckoutCharge()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkout">schedule</mat-icon>
+      <h3 class="confirm-title">Post Late Checkout Fee</h3>
+    </div>
+    <div class="confirm-body">
+      <p>This posts the fee only. It does not check the guest out or release the room.</p>
+      <div class="form-grid reservation-action-grid">
+        <div class="form-field">
+          <label class="field-label">Actual Checkout Time *</label>
+          <input type="datetime-local" class="field-input"
+                 [ngModel]="lateCheckoutChargeForm().actual_checkout_time"
+                 (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), actual_checkout_time: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label">Standard Checkout Time</label>
+          <input type="time" class="field-input"
+                 [ngModel]="lateCheckoutChargeForm().standard_checkout_time"
+                 (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), standard_checkout_time: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label">Override Amount</label>
+          <input type="number" class="field-input" min="0" step="0.01"
+                 [ngModel]="lateCheckoutChargeForm().override_amount"
+                 (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), override_amount: $event ?? '' })" />
+          <span class="confirm-note">Leave blank to let the API calculate the fee from checkout policy.</span>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Currency</label>
+          <input type="text" class="field-input" maxlength="3"
+                 [ngModel]="lateCheckoutChargeForm().currency"
+                 (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), currency: (($event ?? '') + '').toUpperCase() })" />
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="chargeLateCheckout()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Posting...
+        } @else {
+          <mat-icon>schedule</mat-icon>
+          Confirm Late Checkout Fee
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Cancellation penalty -->
+@if (confirmingCancellationPenalty()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkout">price_change</mat-icon>
+      <h3 class="confirm-title">Post Cancellation Penalty</h3>
+    </div>
+    <div class="confirm-body">
+      <p>This posts a penalty to the folio for a reservation already marked <strong>Cancelled</strong> or <strong>No Show</strong>.</p>
+      <div class="form-grid reservation-action-grid">
+        <div class="form-field">
+          <label class="field-label">Penalty Override</label>
+          <input type="number" class="field-input" min="0" step="0.01"
+                 [ngModel]="cancellationPenaltyForm().penalty_amount_override"
+                 (ngModelChange)="cancellationPenaltyForm.set({ ...cancellationPenaltyForm(), penalty_amount_override: $event ?? '' })" />
+          <span class="confirm-note">Leave blank to let the API use the rate plan penalty or room rate fallback.</span>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Currency</label>
+          <input type="text" class="field-input" maxlength="3"
+                 [ngModel]="cancellationPenaltyForm().currency"
+                 (ngModelChange)="cancellationPenaltyForm.set({ ...cancellationPenaltyForm(), currency: (($event ?? '') + '').toUpperCase() })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label">Reason</label>
+          <textarea class="field-input" rows="2"
+                    [ngModel]="cancellationPenaltyForm().reason"
+                    (ngModelChange)="cancellationPenaltyForm.set({ ...cancellationPenaltyForm(), reason: $event ?? '' })"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="chargeCancellationPenalty()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          Posting...
+        } @else {
+          <mat-icon>price_change</mat-icon>
+          Confirm Cancellation Penalty
         }
       </button>
     </div>

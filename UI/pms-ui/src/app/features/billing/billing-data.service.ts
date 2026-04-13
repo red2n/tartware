@@ -26,6 +26,13 @@ export class BillingDataService {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 
+	private unwrapListResponse<T>(response: T[] | { data?: T[] } | null | undefined): T[] {
+		if (Array.isArray(response)) {
+			return response;
+		}
+		return response?.data ?? [];
+	}
+
 	// ── Payments ──
 	readonly payments = signal<BillingPaymentListItem[]>([]);
 	readonly paymentsLoading = signal(false);
@@ -161,8 +168,11 @@ export class BillingDataService {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<BillingPaymentListResponse>("/billing/payments", params);
-			this.payments.set(res.data ?? []);
+			const res = await this.api.get<BillingPaymentListItem[] | BillingPaymentListResponse>(
+				"/billing/payments",
+				params,
+			);
+			this.payments.set(this.unwrapListResponse(res));
 		} catch (e) {
 			this.paymentsError.set(e instanceof Error ? e.message : "Failed to load payments");
 		} finally {
@@ -197,8 +207,11 @@ export class BillingDataService {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<FolioListResponse>("/billing/folios", params);
-			this.folios.set(res.data ?? []);
+			const res = await this.api.get<FolioListItem[] | FolioListResponse>(
+				"/billing/folios",
+				params,
+			);
+			this.folios.set(this.unwrapListResponse(res));
 		} catch (e) {
 			this.foliosError.set(e instanceof Error ? e.message : "Failed to load folios");
 		} finally {
@@ -215,8 +228,11 @@ export class BillingDataService {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ChargePostingListResponse>("/billing/charges", params);
-			this.charges.set(res.data ?? []);
+			const res = await this.api.get<ChargePostingListItem[] | ChargePostingListResponse>(
+				"/billing/charges",
+				params,
+			);
+			this.charges.set(this.unwrapListResponse(res));
 		} catch (e) {
 			this.chargesError.set(e instanceof Error ? e.message : "Failed to load charges");
 		} finally {
@@ -240,8 +256,11 @@ export class BillingDataService {
 			};
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const res = await this.api.get<ChargePostingListResponse>("/billing/charges", params);
-			this.folioCharges.set(res.data ?? []);
+			const res = await this.api.get<ChargePostingListItem[] | ChargePostingListResponse>(
+				"/billing/charges",
+				params,
+			);
+			this.folioCharges.set(this.unwrapListResponse(res));
 		} catch {
 			this.folioCharges.set([]);
 		} finally {

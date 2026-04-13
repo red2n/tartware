@@ -42,6 +42,7 @@ import {
 	BillingInvoiceFinalizeCommandSchema,
 	BillingInvoiceReopenCommandSchema,
 	BillingInvoiceVoidCommandSchema,
+	BillingLedgerPostCommandSchema,
 	BillingLateCheckoutChargeCommandSchema,
 	BillingNightAuditCommandSchema,
 	BillingNoShowChargeCommandSchema,
@@ -283,6 +284,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.date_roll.manual",
 		(payload) => BillingDateRollManualCommandSchema.parse(payload),
+	],
+	[
+		"billing.ledger.post",
+		(payload) => BillingLedgerPostCommandSchema.parse(payload),
 	],
 	[
 		"billing.folio.close",

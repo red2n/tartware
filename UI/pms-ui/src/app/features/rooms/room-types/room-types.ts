@@ -6,7 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
-import type { RoomTypeItem } from "@tartware/schemas";
+import type { RoomTypeGridItem } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -46,16 +46,12 @@ export class RoomTypesComponent {
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
-	readonly roomTypes = signal<RoomTypeItem[]>([]);
+	readonly roomTypes = signal<RoomTypeGridItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
-	private readonly _resetPage = effect(() => {
-		this.globalSearch.query();
-		this.currentPage.set(1);
-	});
 
 	readonly filteredRoomTypes = computed(() => {
 		let list = this.roomTypes();
@@ -85,6 +81,14 @@ export class RoomTypesComponent {
 	});
 
 	constructor() {
+		effect(
+			() => {
+				this.globalSearch.query();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
+
 		effect(() => {
 			this.auth.tenantId();
 			this.ctx.propertyId();
@@ -121,7 +125,7 @@ export class RoomTypesComponent {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
-			const roomTypes = await this.api.get<RoomTypeItem[]>("/room-types", params);
+			const roomTypes = await this.api.get<RoomTypeGridItem[]>("/room-types/grid", params);
 			this.roomTypes.set(roomTypes);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load room types");
@@ -147,7 +151,7 @@ export class RoomTypesComponent {
 		);
 	}
 
-	openEditDialog(roomType: RoomTypeItem): void {
+	openEditDialog(roomType: RoomTypeGridItem): void {
 		import("./create-room-type-dialog/create-room-type-dialog").then(
 			({ CreateRoomTypeDialogComponent }) => {
 				const ref = this.dialog.open(CreateRoomTypeDialogComponent, {
@@ -165,7 +169,7 @@ export class RoomTypesComponent {
 		);
 	}
 
-	async deleteRoomType(rt: RoomTypeItem, event: Event): Promise<void> {
+	async deleteRoomType(rt: RoomTypeGridItem, event: Event): Promise<void> {
 		event.stopPropagation();
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;

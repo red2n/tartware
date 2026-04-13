@@ -37,6 +37,8 @@ export {
   BillingInvoiceReopenCommandSchema,
   BillingInvoiceVoidCommandSchema,
   BillingLateCheckoutChargeCommandSchema,
+  type BillingLedgerPostCommand,
+  BillingLedgerPostCommandSchema,
   BillingNightAuditCommandSchema,
   BillingNoShowChargeCommandSchema,
   type BillingPaymentApplyCommand,
