@@ -37,7 +37,7 @@ const JsonbObject = z.record(z.unknown()).default({});
  */
 export const UserSchema = z.object({
 	id: uuid,
-	tenant_id: uuid,
+	tenant_id: uuid.optional(),
 	username: nonEmptyString.max(150),
 	email: email,
 	password_hash: z.string().min(20).describe("BCrypt hash"),

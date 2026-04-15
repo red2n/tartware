@@ -75,11 +75,12 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
         email: string;
         created: boolean;
       }>(
-        `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
-         VALUES ($1, $2, $3, $4, $5, $6, true, false)
+        `INSERT INTO users (tenant_id, username, email, password_hash, first_name, last_name, phone, is_active, is_verified)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true, false)
          ON CONFLICT DO NOTHING
          RETURNING id, username, email, true as created`,
         [
+          data.tenant_id || null,
           data.username,
           data.email,
           passwordHash,
