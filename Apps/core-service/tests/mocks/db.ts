@@ -777,11 +777,15 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
     sql.startsWith("insert into public.users")
   ) {
     const id = randomUUID();
-    // Queries that include explicit (id, username, email, ...) have UUID as params[0].
-    // Queries that start with (username, email, ...) have username as params[0].
+    // Determine column offsets based on which leading columns are present.
+    // (id, tenant_id, username, email, ...) → usernameIdx=2, emailIdx=3
+    // (id, username, email, ...)            → usernameIdx=1, emailIdx=2
+    // (tenant_id, username, email, ...)     → usernameIdx=1, emailIdx=2
+    // (username, email, ...)               → usernameIdx=0, emailIdx=1
     const hasIdPrefix = sql.includes("(id,") || sql.includes("(id,\n");
-    const usernameIdx = hasIdPrefix ? 1 : 0;
-    const emailIdx = hasIdPrefix ? 2 : 1;
+    const hasTenantIdColumn = sql.includes("tenant_id");
+    const usernameIdx = hasIdPrefix && hasTenantIdColumn ? 2 : hasIdPrefix ? 1 : hasTenantIdColumn ? 1 : 0;
+    const emailIdx = usernameIdx + 1;
     const username = typeof params?.[usernameIdx] === "string" ? (params?.[usernameIdx] as string) : "";
     const email = typeof params?.[emailIdx] === "string" ? (params?.[emailIdx] as string) : "";
     mockUsers.set(id, { id, username, email });
