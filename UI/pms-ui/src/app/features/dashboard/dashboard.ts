@@ -1,11 +1,11 @@
-import { NgClass } from "@angular/common";
+import { DecimalPipe, NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { ActivityItem, DashboardStats, TaskItem } from "@tartware/schemas";
+import type { ActivityItem, DashboardStats, HousekeepingTaskListItem, RateItem, RoomGridItem, TaskItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -18,6 +18,7 @@ import { PageHeaderComponent } from "../../shared/components/page-header/page-he
 	selector: "app-dashboard",
 	standalone: true,
 	imports: [
+		DecimalPipe,
 		NgClass,
 		MatIconModule,
 		MatProgressSpinnerModule,
@@ -38,6 +39,9 @@ export class DashboardComponent {
 	readonly stats = signal<DashboardStats | null>(null);
 	readonly activity = signal<ActivityItem[]>([]);
 	readonly tasks = signal<TaskItem[]>([]);
+	readonly rooms = signal<RoomGridItem[]>([]);
+	readonly rates = signal<RateItem[]>([]);
+	readonly hkTasks = signal<HousekeepingTaskListItem[]>([]);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
 
@@ -95,6 +99,47 @@ export class DashboardComponent {
 		return { line, area, width: w, height: h };
 	});
 
+	/** Room inventory summary computed from rooms grid data. */
+	readonly roomSummary = computed(() => {
+		const all = this.rooms();
+		if (all.length === 0) return null;
+		const total = all.length;
+		const occupied = all.filter(r => r.status === "OCCUPIED").length;
+		const available = all.filter(r => r.status === "AVAILABLE" || r.status === "VACANT").length;
+		const blocked = all.filter(r => r.is_blocked).length;
+		const ooo = all.filter(r => r.is_out_of_order).length;
+		const dirty = all.filter(r => r.housekeeping_status === "DIRTY").length;
+		const clean = all.filter(r => r.housekeeping_status === "CLEAN" || r.housekeeping_status === "INSPECTED").length;
+		const inProgress = all.filter(r => r.housekeeping_status === "IN_PROGRESS").length;
+		const occupancyPct = total > 0 ? Math.round((occupied / total) * 100) : 0;
+		return { total, occupied, available, blocked, ooo, dirty, clean, inProgress, occupancyPct };
+	});
+
+	/** Rate summary computed from rates data. */
+	readonly rateSummary = computed(() => {
+		const all = this.rates();
+		if (all.length === 0) return null;
+		const active = all.filter(r => r.status === "ACTIVE");
+		const baseRates = active.map(r => r.base_rate).filter(r => r > 0);
+		const minRate = baseRates.length > 0 ? Math.min(...baseRates) : 0;
+		const maxRate = baseRates.length > 0 ? Math.max(...baseRates) : 0;
+		const avgRate = baseRates.length > 0 ? baseRates.reduce((a, b) => a + b, 0) / baseRates.length : 0;
+		const mealPlanCount = active.filter(r => r.meal_plan && r.meal_plan !== "NONE" && r.meal_plan !== "RO").length;
+		const strategies = new Set(active.map(r => r.strategy));
+		return { total: all.length, active: active.length, minRate, maxRate, avgRate, mealPlanCount, strategies: [...strategies] };
+	});
+
+	/** Housekeeping summary computed from tasks data. */
+	readonly hkSummary = computed(() => {
+		const all = this.hkTasks();
+		if (all.length === 0) return null;
+		const pending = all.filter(t => t.status === "PENDING" || t.status === "ASSIGNED").length;
+		const inProgress = all.filter(t => t.status === "IN_PROGRESS").length;
+		const completed = all.filter(t => t.status === "COMPLETED" || t.status === "INSPECTED").length;
+		const urgent = all.filter(t => t.priority === "URGENT" || t.priority === "HIGH").length;
+		return { total: all.length, pending, inProgress, completed, urgent };
+	});
+
 	constructor() {
 		effect(() => {
 			this.auth.tenantId();
@@ -115,14 +160,20 @@ export class DashboardComponent {
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
 
-			const [stats, activity, tasks] = await Promise.all([
+			const [stats, activity, tasks, rooms, rates, hkTasks] = await Promise.all([
 				this.api.get<DashboardStats>("/dashboard/stats", params),
 				this.api.get<ActivityItem[]>("/dashboard/activity", params).catch(() => []),
 				this.api.get<TaskItem[]>("/dashboard/tasks", params).catch(() => []),
+				this.api.get<RoomGridItem[]>("/rooms/grid", params).catch(() => []),
+				this.api.get<RateItem[]>("/rates", { ...params, limit: "200" }).catch(() => []),
+				this.api.get<HousekeepingTaskListItem[]>("/housekeeping/tasks", params).catch(() => []),
 			]);
 			this.stats.set(stats);
 			this.activity.set(activity);
 			this.tasks.set(tasks);
+			this.rooms.set(rooms);
+			this.rates.set(rates);
+			this.hkTasks.set(hkTasks);
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load dashboard");
 		} finally {
@@ -171,5 +222,21 @@ export class DashboardComponent {
 
 	navigateToReservations(): void {
 		this.router.navigate(["/reservations"]);
+	}
+
+	navigateToRooms(): void {
+		this.router.navigate(["/rooms"]);
+	}
+
+	navigateToRates(): void {
+		this.router.navigate(["/rates"]);
+	}
+
+	navigateToHousekeeping(): void {
+		this.router.navigate(["/housekeeping"]);
+	}
+
+	navigateToBilling(): void {
+		this.router.navigate(["/billing"]);
 	}
 }

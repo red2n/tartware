@@ -25,6 +25,21 @@
   min-width: 0;
 }
 
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-4);
+  text-decoration: none;
+  border-radius: var(--borderRadius-small);
+  padding: var(--base-size-2) var(--base-size-4);
+  transition: background 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--control-transparent-bgColor-hover);
+  }
+}
+
 .app-logo {
   width: 20px;
   height: 20px;

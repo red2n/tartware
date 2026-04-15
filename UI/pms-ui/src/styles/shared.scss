@@ -1147,6 +1147,108 @@ textarea.field-input {
   }
 }
 
+/* ── Stat rows — label + value rows inside detail-cards ── */
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--base-size-6) 0;
+
+  & + .stat-row {
+    border-top: 1px solid var(--borderColor-muted);
+  }
+}
+
+.stat-row-primary {
+  font-weight: var(--base-text-weight-semibold);
+  border-top: none !important;
+  padding-bottom: var(--base-size-8);
+  margin-bottom: var(--base-size-4);
+  border-bottom: 1px solid var(--borderColor-default);
+}
+
+.stat-row-label {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-6);
+  font-size: var(--base-text-size-sm);
+  color: var(--fgColor-muted);
+}
+
+.stat-row-value {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-default);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value-highlight {
+  color: var(--fgColor-accent);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.stat-row-hint {
+  font-size: var(--base-text-size-xs);
+  margin-top: var(--base-size-4);
+  text-align: center;
+}
+
+/* ── Stat dots — small colored indicators ── */
+.stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stat-dot-success { background: var(--bgColor-success-emphasis); }
+.stat-dot-accent { background: var(--bgColor-accent-emphasis); }
+.stat-dot-attention { background: var(--bgColor-attention-emphasis); }
+.stat-dot-danger { background: var(--bgColor-danger-emphasis); }
+.stat-dot-muted { background: var(--fgColor-muted); }
+
+/* ── Stat bar — horizontal progress indicator ── */
+.stat-bar {
+  height: 6px;
+  background: var(--bgColor-muted);
+  border-radius: var(--borderRadius-full);
+  margin-top: var(--base-size-12);
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: var(--borderRadius-full);
+  transition: width 0.4s ease;
+}
+
+.stat-bar-fill-success { background: var(--bgColor-success-emphasis); }
+.stat-bar-fill-accent { background: var(--bgColor-accent-emphasis); }
+.stat-bar-fill-attention { background: var(--bgColor-attention-emphasis); }
+.stat-bar-fill-danger { background: var(--bgColor-danger-emphasis); }
+
+/* ── Stat divider — thin separator inside cards ── */
+.stat-divider {
+  border-top: 1px solid var(--borderColor-muted);
+  margin: var(--base-size-8) 0;
+}
+
+/* ── Stat chips — inline badge row ── */
+.stat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-4);
+  margin-top: var(--base-size-8);
+}
+
+/* ── Stat inline icon — small icon within stat rows ── */
+.stat-inline-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--fgColor-muted);
+}
+
 /* ── Stat grid (dashboard cards) ── */
 .stat-grid {
   display: grid;

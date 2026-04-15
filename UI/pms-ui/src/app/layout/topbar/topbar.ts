@@ -5,7 +5,7 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { Router } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -30,6 +30,7 @@ import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 		MatDividerModule,
 		MatTooltipModule,
 		FormsModule,
+		RouterLink,
 		RelativeTimePipe,
 		TranslatePipe,
 	],
