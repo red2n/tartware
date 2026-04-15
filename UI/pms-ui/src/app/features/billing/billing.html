@@ -9,34 +9,37 @@
   <!-- BILLING KPI OVERVIEW                         -->
   <!-- ═════════════════════════════════════════════ -->
   @if (payments().length > 0 || invoices().length > 0 || folios().length > 0) {
-    <div class="bill-overview">
-      <div class="bill-kpi bill-kpi-received">
-        <mat-icon>account_balance_wallet</mat-icon>
-        <div class="bill-kpi-body">
-          <div class="bill-kpi-value">{{ formatCurrency(summary().totalReceived, summary().currency) }}</div>
-          <div class="bill-kpi-label">{{ 'Total Received' | translate }}</div>
+    <div class="overview-bar">
+      <div class="overview-section bill-section-received">
+        <div class="overview-label">
+          <mat-icon>account_balance_wallet</mat-icon>
+          {{ 'Total Received' | translate }}
         </div>
+        <div class="overview-value">{{ formatCurrency(summary().totalReceived, summary().currency) }}</div>
       </div>
-      <div class="bill-kpi bill-kpi-outstanding">
-        <mat-icon>pending_actions</mat-icon>
-        <div class="bill-kpi-body">
-          <div class="bill-kpi-value">{{ formatCurrency(summary().outstandingBalance, summary().currency) }}</div>
-          <div class="bill-kpi-label">{{ 'Outstanding' | translate }}</div>
+      <div class="overview-divider"></div>
+      <div class="overview-section bill-section-outstanding">
+        <div class="overview-label">
+          <mat-icon>pending_actions</mat-icon>
+          {{ 'Outstanding' | translate }}
         </div>
+        <div class="overview-value">{{ formatCurrency(summary().outstandingBalance, summary().currency) }}</div>
       </div>
-      <div class="bill-kpi bill-kpi-overdue" [class.bill-kpi-alert]="summary().overdueCount > 0">
-        <mat-icon>warning</mat-icon>
-        <div class="bill-kpi-body">
-          <div class="bill-kpi-value">{{ summary().overdueCount }}</div>
-          <div class="bill-kpi-label">{{ 'Overdue Invoices' | translate }}</div>
+      <div class="overview-divider"></div>
+      <div class="overview-section" [class.bill-section-alert]="summary().overdueCount > 0">
+        <div class="overview-label">
+          <mat-icon>warning</mat-icon>
+          {{ 'Overdue Invoices' | translate }}
         </div>
+        <div class="overview-value">{{ summary().overdueCount }}</div>
       </div>
-      <div class="bill-kpi bill-kpi-folios">
-        <mat-icon>folder_open</mat-icon>
-        <div class="bill-kpi-body">
-          <div class="bill-kpi-value">{{ summary().openFolios }}</div>
-          <div class="bill-kpi-label">{{ 'Open Folios' | translate }}</div>
+      <div class="overview-divider"></div>
+      <div class="overview-section bill-section-folios">
+        <div class="overview-label">
+          <mat-icon>folder_open</mat-icon>
+          {{ 'Open Folios' | translate }}
         </div>
+        <div class="overview-value">{{ summary().openFolios }}</div>
       </div>
     </div>
   }

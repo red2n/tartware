@@ -1073,6 +1073,80 @@ textarea.field-input {
   padding-top: var(--base-size-4);
 }
 
+/* ═══════════════════════════════════════════
+   OVERVIEW BAR — unified KPI strip
+   One bordered box with divider-separated sections.
+   Used by: dashboard, reservations, rates, housekeeping, billing.
+   ═══════════════════════════════════════════ */
+.overview-bar {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  margin-bottom: var(--base-size-20);
+  overflow: hidden;
+}
+
+.overview-section {
+  flex: 1;
+  padding: var(--base-size-16) var(--base-size-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+
+  &.clickable {
+    cursor: pointer;
+    transition: background var(--base-duration-100);
+
+    &:hover {
+      background: var(--bgColor-muted);
+    }
+  }
+}
+
+.overview-divider {
+  width: 1px;
+  background: var(--borderColor-default);
+  align-self: stretch;
+  margin: var(--base-size-12) 0;
+}
+
+.overview-label {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-muted);
+
+  mat-icon {
+    @include icon-size(16px);
+  }
+}
+
+.overview-value {
+  font-size: var(--text-title-size-medium);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+}
+
+.overview-sub {
+  font-size: var(--base-text-size-xs);
+}
+
+@media (max-width: 768px) {
+  .overview-bar {
+    flex-direction: column;
+  }
+
+  .overview-divider {
+    width: auto;
+    height: 1px;
+    margin: 0 var(--base-size-12);
+  }
+}
+
 /* ── Stat grid (dashboard cards) ── */
 .stat-grid {
   display: grid;

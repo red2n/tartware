@@ -39,28 +39,7 @@
   color: var(--fgColor-success);
 }
 
-/* ── KPI Cards ── */
-.kpi-card {
-  flex-direction: column;
-  gap: var(--base-size-8);
-
-  &.clickable {
-    cursor: pointer;
-    transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
-
-    &:hover {
-      border-color: var(--bgColor-accent-muted);
-      box-shadow: var(--shadow-resting-small);
-    }
-  }
-}
-
-.kpi-header {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-}
-
+/* ── KPI icon colors ── */
 .kpi-icon {
   @include icon-size(20px);
   color: var(--fgColor-accent);
@@ -76,15 +55,6 @@
 
 .kpi-icon-checkout {
   color: var(--fgColor-danger);
-}
-
-.kpi-label {
-  font-size: var(--base-text-size-sm);
-  font-weight: var(--base-text-weight-medium);
-}
-
-.kpi-value {
-  font-size: var(--base-text-size-xl);
 }
 
 .kpi-trend {

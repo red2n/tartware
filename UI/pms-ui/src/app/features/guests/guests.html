@@ -13,33 +13,69 @@
   <!-- KPI LEGEND STRIP                            -->
   <!-- ═════════════════════════════════════════════ -->
   @if (guestStats(); as stats) {
-    <div class="guest-legend">
-      <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-total"></span> {{ 'Total' | translate }} <strong>{{ stats.total_guests }}</strong>
-      </span>
-      <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-new"></span> {{ 'New' | translate }} <strong>{{ stats.new_guests_this_month }}</strong>
-      </span>
-      <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-returning"></span> {{ 'Returning' | translate }} <strong>{{ stats.returning_guests }}</strong>
-      </span>
-      <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-longstay"></span> {{ 'Long Stay' | translate }} <strong>{{ stats.long_stay_guests }}</strong>
-      </span>
-      <span class="guest-legend-item clickable" (click)="setFilter('VIP')">
-        <span class="guest-dot guest-dot-vip"></span> {{ 'VIP' | translate }} <strong>{{ stats.vip_guests }}</strong>
-      </span>
-      <span class="guest-legend-item">
-        <span class="guest-dot guest-dot-revenue"></span> {{ 'Avg Value' | translate }} <strong>{{ formatCurrency(stats.average_lifetime_value) }}</strong>
-      </span>
-      @if (sparkline(); as spark) {
-        <span class="guest-legend-item guest-sparkline" [matTooltip]="'Registrations · last 12 weeks' | translate">
-          <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
-            <path [attr.d]="spark.area" class="sparkline-area" />
-            <path [attr.d]="spark.line" class="sparkline-line" />
-          </svg>
-        </span>
-      }
+    <div class="overview-bar">
+      <div class="overview-section clickable" (click)="setFilter('ALL')">
+        <div class="overview-label">
+          <mat-icon>people</mat-icon>
+          {{ 'Total Guests' | translate }}
+        </div>
+        <div class="overview-value">{{ stats.total_guests }}</div>
+        <div class="overview-sub text-muted">{{ stats.returning_guests }} {{ 'returning' | translate }}</div>
+      </div>
+      <div class="overview-divider"></div>
+      <div class="overview-section guest-section-new">
+        <div class="overview-label">
+          <mat-icon>person_add</mat-icon>
+          {{ 'New This Month' | translate }}
+        </div>
+        <div class="overview-value">{{ stats.new_guests_this_month }}</div>
+        <div class="overview-sub text-muted">{{ pctOf(stats.new_guests_this_month, stats.total_guests) }} {{ 'of total' | translate }}</div>
+      </div>
+      <div class="overview-divider"></div>
+      <div class="overview-section guest-section-vip clickable" (click)="setFilter('VIP')">
+        <div class="overview-label">
+          <mat-icon>star</mat-icon>
+          {{ 'VIP' | translate }}
+        </div>
+        <div class="overview-value">{{ stats.vip_guests }}</div>
+        <div class="overview-sub text-muted">{{ stats.long_stay_guests }} {{ 'long stay' | translate }}</div>
+      </div>
+      <div class="overview-divider"></div>
+      <div class="overview-section guest-section-loyalty clickable" (click)="setFilter('LOYALTY')">
+        <div class="overview-label">
+          <mat-icon>card_membership</mat-icon>
+          {{ 'Loyalty Members' | translate }}
+        </div>
+        <div class="overview-value">{{ stats.loyalty_members }}</div>
+        <div class="overview-sub text-muted">{{ pctOf(stats.loyalty_members, stats.total_guests) }} {{ 'enrolled' | translate }}</div>
+      </div>
+      <div class="overview-divider"></div>
+      <div class="overview-section guest-section-stay">
+        <div class="overview-label">
+          <mat-icon>hotel</mat-icon>
+          {{ 'Avg Stay' | translate }}
+        </div>
+        <div class="overview-value">{{ stats.average_stay_length | number:'1.1-1' }}d</div>
+        @if (stats.top_nationality) {
+          <div class="overview-sub text-muted">{{ 'Top' | translate }}: {{ stats.top_nationality }}</div>
+        }
+      </div>
+      <div class="overview-divider"></div>
+      <div class="overview-section guest-section-revenue">
+        <div class="overview-label">
+          <mat-icon>payments</mat-icon>
+          {{ 'Avg Lifetime Value' | translate }}
+        </div>
+        <div class="overview-value">{{ formatCurrency(stats.average_lifetime_value) }}</div>
+        @if (sparkline(); as spark) {
+          <div class="guest-sparkline" [matTooltip]="'Registrations · last 12 weeks' | translate">
+            <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
+              <path [attr.d]="spark.area" class="sparkline-area" />
+              <path [attr.d]="spark.line" class="sparkline-line" />
+            </svg>
+          </div>
+        }
+      </div>
     </div>
   }
 

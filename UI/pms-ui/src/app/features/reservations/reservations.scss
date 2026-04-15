@@ -8,79 +8,11 @@
   max-width: 1600px;
 }
 
-/* ── Reservation Pipeline Overview ── */
-.res-overview {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-  margin-bottom: var(--base-size-20);
-}
-
-.res-overview-card {
-  flex: 1;
-  display: flex;
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-default);
-  overflow: hidden;
-  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
-
-  &:hover {
-    box-shadow: var(--shadow-resting-small);
-  }
-}
-
-.res-overview-accent {
-  width: 4px;
-  flex-shrink: 0;
-}
-
-.res-card-arrivals .res-overview-accent { background: var(--bgColor-accent-emphasis); }
-.res-card-inhouse .res-overview-accent { background: var(--bgColor-success-emphasis); }
-.res-card-departures .res-overview-accent { background: var(--bgColor-attention-emphasis); }
-.res-card-revenue .res-overview-accent { background: var(--bgColor-done-emphasis); }
-
-.res-card-arrivals .res-overview-label mat-icon { color: var(--fgColor-accent); }
-.res-card-inhouse .res-overview-label mat-icon { color: var(--fgColor-success); }
-.res-card-departures .res-overview-label mat-icon { color: var(--fgColor-attention); }
-.res-card-revenue .res-overview-label mat-icon { color: var(--fgColor-done); }
-
-.res-overview-body {
-  padding: var(--base-size-12) var(--base-size-16);
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-4);
-}
-
-.res-overview-label {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-  font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-medium);
-  color: var(--fgColor-muted);
-
-  mat-icon {
-    @include icon-size(16px);
-  }
-}
-
-.res-overview-value {
-  font-size: var(--text-title-size-medium);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-}
-
-.res-overview-sub {
-  font-size: var(--base-text-size-xs);
-}
-
-.res-flow-arrow {
-  color: var(--fgColor-muted);
-  @include icon-size(18px);
-  opacity: 0.4;
-  flex-shrink: 0;
-}
+/* ── Reservation Pipeline — icon colors per section ── */
+.res-section-arrivals .overview-label mat-icon { color: var(--fgColor-accent); }
+.res-section-inhouse .overview-label mat-icon { color: var(--fgColor-success); }
+.res-section-departures .overview-label mat-icon { color: var(--fgColor-attention); }
+.res-section-revenue .overview-label mat-icon { color: var(--fgColor-done); }
 
 .confirmation-number {
   font-weight: var(--base-text-weight-semibold);

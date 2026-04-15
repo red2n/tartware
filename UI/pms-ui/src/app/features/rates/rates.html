@@ -13,45 +13,45 @@
   <!-- RATE ANALYTICS OVERVIEW                      -->
   <!-- ═════════════════════════════════════════════ -->
   @if (rates().length > 0) {
-    <div class="rate-overview">
-      <div class="rate-overview-section">
-        <div class="rate-overview-label">
+    <div class="overview-bar">
+      <div class="overview-section">
+        <div class="overview-label">
           <mat-icon>playlist_add_check</mat-icon>
           {{ 'Active Plans' | translate }}
         </div>
-        <div class="rate-overview-value">{{ summary().activePlans }}</div>
-        <div class="rate-overview-sub text-muted">{{ 'of' | translate }} {{ summary().totalPlans }} {{ 'total' | translate }}</div>
+        <div class="overview-value">{{ summary().activePlans }}</div>
+        <div class="overview-sub text-muted">{{ 'of' | translate }} {{ summary().totalPlans }} {{ 'total' | translate }}</div>
       </div>
-      <div class="rate-overview-divider"></div>
-      <div class="rate-overview-section">
-        <div class="rate-overview-label">
+      <div class="overview-divider"></div>
+      <div class="overview-section">
+        <div class="overview-label">
           <mat-icon>swap_vert</mat-icon>
           {{ 'Rate Range' | translate }}
         </div>
-        <div class="rate-overview-value rate-range-value">
+        <div class="overview-value rate-range-value">
           {{ formatCurrency(summary().minRate, summary().currency) }}
           <span class="rate-range-sep">—</span>
           {{ formatCurrency(summary().maxRate, summary().currency) }}
         </div>
-        <div class="rate-overview-sub text-muted">{{ 'active pricing corridor' | translate }}</div>
+        <div class="overview-sub text-muted">{{ 'active pricing corridor' | translate }}</div>
       </div>
-      <div class="rate-overview-divider"></div>
-      <div class="rate-overview-section rate-section-bar">
-        <div class="rate-overview-label">
+      <div class="overview-divider"></div>
+      <div class="overview-section rate-section-bar">
+        <div class="overview-label">
           <mat-icon>star</mat-icon>
           {{ 'BAR' | translate }}
         </div>
         @if (summary().barRateValue !== null) {
-          <div class="rate-overview-value">{{ formatCurrency(summary().barRateValue!, summary().currency) }}</div>
-          <div class="rate-overview-sub text-muted">{{ summary().barRateName }}</div>
+          <div class="overview-value">{{ formatCurrency(summary().barRateValue!, summary().currency) }}</div>
+          <div class="overview-sub text-muted">{{ summary().barRateName }}</div>
         } @else {
-          <div class="rate-overview-value text-muted">{{ 'Not set' | translate }}</div>
-          <div class="rate-overview-sub text-muted">{{ 'no BAR rate defined' | translate }}</div>
+          <div class="overview-value text-muted">{{ 'Not set' | translate }}</div>
+          <div class="overview-sub text-muted">{{ 'no BAR rate defined' | translate }}</div>
         }
       </div>
-      <div class="rate-overview-divider"></div>
-      <div class="rate-overview-section">
-        <div class="rate-overview-label">
+      <div class="overview-divider"></div>
+      <div class="overview-section">
+        <div class="overview-label">
           <mat-icon>category</mat-icon>
           {{ 'Top Types' | translate }}
         </div>

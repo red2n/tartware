@@ -30,85 +30,14 @@
   }
 }
 
-/* ── KPI Summary Strip ── */
-.hk-summary {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: var(--base-size-12);
-  margin-bottom: var(--base-size-20);
-}
-
-.hk-summary-card {
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-default);
-  padding: var(--base-size-12) var(--base-size-16);
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-4);
-  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
-
-  &.clickable {
-    cursor: pointer;
-
-    &:hover {
-      border-color: var(--bgColor-accent-muted);
-      box-shadow: var(--shadow-resting-small);
-    }
-  }
-}
-
-.hk-summary-header {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-  font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-medium);
-  color: var(--fgColor-muted);
-
-  mat-icon {
-    @include icon-size(16px);
-  }
-}
-
-.hk-summary-value {
-  font-size: var(--text-title-size-medium);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-}
-
-.hk-summary-sub {
-  font-size: var(--base-text-size-xs);
-}
-
-/* Summary card accent colors */
-.hk-summary-ready .hk-summary-header mat-icon {
-  color: var(--fgColor-success);
-}
-
-.hk-summary-ready .hk-summary-value {
-  color: var(--fgColor-success);
-}
-
-.hk-summary-dirty .hk-summary-header mat-icon {
-  color: var(--fgColor-danger);
-}
-
-.hk-summary-dirty .hk-summary-value {
-  color: var(--fgColor-danger);
-}
-
-.hk-summary-progress .hk-summary-header mat-icon {
-  color: var(--fgColor-attention);
-}
-
-.hk-summary-clean .hk-summary-header mat-icon {
-  color: var(--fgColor-success);
-}
-
-.hk-summary-dnd .hk-summary-header mat-icon {
-  color: var(--fgColor-muted);
-}
+/* ── Housekeeping KPI — icon/value accent colors ── */
+.hk-section-ready .overview-label mat-icon { color: var(--fgColor-success); }
+.hk-section-ready .overview-value { color: var(--fgColor-success); }
+.hk-section-dirty .overview-label mat-icon { color: var(--fgColor-danger); }
+.hk-section-dirty .overview-value { color: var(--fgColor-danger); }
+.hk-section-progress .overview-label mat-icon { color: var(--fgColor-attention); }
+.hk-section-clean .overview-label mat-icon { color: var(--fgColor-success); }
+.hk-section-dnd .overview-label mat-icon { color: var(--fgColor-muted); }
 
 /* ── Room table overrides ── */
 .data-table {
@@ -168,17 +97,7 @@
 }
 
 /* ── Responsive ── */
-@media (max-width: 768px) {
-  .hk-summary {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 @media (max-width: 480px) {
-  .hk-summary {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .view-tabs {
     overflow-x: auto;
   }

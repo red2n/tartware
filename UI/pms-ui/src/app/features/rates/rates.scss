@@ -40,55 +40,7 @@
   color: var(--fgColor-success);
 }
 
-/* ── Rate Analytics Overview ── */
-.rate-overview {
-  display: flex;
-  align-items: stretch;
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-default);
-  margin-bottom: var(--base-size-20);
-  overflow: hidden;
-}
-
-.rate-overview-section {
-  flex: 1;
-  padding: var(--base-size-16) var(--base-size-20);
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-4);
-}
-
-.rate-overview-divider {
-  width: 1px;
-  background: var(--borderColor-default);
-  align-self: stretch;
-  margin: var(--base-size-12) 0;
-}
-
-.rate-overview-label {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-  font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-medium);
-  color: var(--fgColor-muted);
-
-  mat-icon {
-    @include icon-size(16px);
-  }
-}
-
-.rate-overview-value {
-  font-size: var(--text-title-size-medium);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-}
-
-.rate-overview-sub {
-  font-size: var(--base-text-size-xs);
-}
-
+/* ── Rate Analytics — component-specific overrides ── */
 .rate-range-value {
   font-size: var(--base-text-size-lg);
 }
@@ -99,7 +51,7 @@
   font-weight: var(--base-text-weight-normal);
 }
 
-.rate-section-bar .rate-overview-label mat-icon {
+.rate-section-bar .overview-label mat-icon {
   color: var(--fgColor-attention);
 }
 

@@ -13,53 +13,41 @@
   <!-- RESERVATION PIPELINE OVERVIEW                -->
   <!-- ═════════════════════════════════════════════ -->
   @if (reservations().length > 0) {
-    <div class="res-overview">
-      <div class="res-overview-card res-card-arrivals">
-        <div class="res-overview-accent"></div>
-        <div class="res-overview-body">
-          <div class="res-overview-label">
-            <mat-icon>flight_land</mat-icon>
-            {{ 'Arrivals Today' | translate }}
-          </div>
-          <div class="res-overview-value">{{ summary().arrivalsToday }}</div>
-          <div class="res-overview-sub text-muted">{{ 'checking in' | translate }}</div>
+    <div class="overview-bar">
+      <div class="overview-section res-section-arrivals">
+        <div class="overview-label">
+          <mat-icon>flight_land</mat-icon>
+          {{ 'Arrivals Today' | translate }}
         </div>
+        <div class="overview-value">{{ summary().arrivalsToday }}</div>
+        <div class="overview-sub text-muted">{{ 'checking in' | translate }}</div>
       </div>
-      <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
-      <div class="res-overview-card res-card-inhouse">
-        <div class="res-overview-accent"></div>
-        <div class="res-overview-body">
-          <div class="res-overview-label">
-            <mat-icon>hotel</mat-icon>
-            {{ 'In-House' | translate }}
-          </div>
-          <div class="res-overview-value">{{ summary().inHouse }}</div>
-          <div class="res-overview-sub text-muted">{{ 'guests' | translate }}</div>
+      <div class="overview-divider"></div>
+      <div class="overview-section res-section-inhouse">
+        <div class="overview-label">
+          <mat-icon>hotel</mat-icon>
+          {{ 'In-House' | translate }}
         </div>
+        <div class="overview-value">{{ summary().inHouse }}</div>
+        <div class="overview-sub text-muted">{{ 'guests' | translate }}</div>
       </div>
-      <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
-      <div class="res-overview-card res-card-departures">
-        <div class="res-overview-accent"></div>
-        <div class="res-overview-body">
-          <div class="res-overview-label">
-            <mat-icon>flight_takeoff</mat-icon>
-            {{ 'Departures Today' | translate }}
-          </div>
-          <div class="res-overview-value">{{ summary().departuresToday }}</div>
-          <div class="res-overview-sub text-muted">{{ 'checking out' | translate }}</div>
+      <div class="overview-divider"></div>
+      <div class="overview-section res-section-departures">
+        <div class="overview-label">
+          <mat-icon>flight_takeoff</mat-icon>
+          {{ 'Departures Today' | translate }}
         </div>
+        <div class="overview-value">{{ summary().departuresToday }}</div>
+        <div class="overview-sub text-muted">{{ 'checking out' | translate }}</div>
       </div>
-      <mat-icon class="res-flow-arrow">arrow_forward</mat-icon>
-      <div class="res-overview-card res-card-revenue">
-        <div class="res-overview-accent"></div>
-        <div class="res-overview-body">
-          <div class="res-overview-label">
-            <mat-icon>payments</mat-icon>
-            {{ 'Revenue' | translate }}
-          </div>
-          <div class="res-overview-value">{{ formatCurrency(summary().totalRevenue, summary().currency) }}</div>
-          <div class="res-overview-sub text-muted">{{ summary().pending }} {{ 'pending' | translate }}</div>
+      <div class="overview-divider"></div>
+      <div class="overview-section res-section-revenue">
+        <div class="overview-label">
+          <mat-icon>payments</mat-icon>
+          {{ 'Revenue' | translate }}
         </div>
+        <div class="overview-value">{{ formatCurrency(summary().totalRevenue, summary().currency) }}</div>
+        <div class="overview-sub text-muted">{{ summary().pending }} {{ 'pending' | translate }}</div>
       </div>
     </div>
   }
