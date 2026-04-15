@@ -49,24 +49,24 @@ import { MatIconModule } from "@angular/material/icon";
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			padding: var(--space-3) var(--space-4);
-			font-size: var(--font-size-sm);
-			color: var(--color-fg-muted);
-			border: 1px solid var(--color-border-default);
+			padding: var(--base-size-12) var(--base-size-16);
+			font-size: var(--base-text-size-sm);
+			color: var(--fgColor-muted);
+			border: 1px solid var(--borderColor-default);
 			border-top: none;
-			border-radius: 0 0 var(--radius-md) var(--radius-md);
-			background: var(--color-canvas-default);
+			border-radius: 0 0 var(--borderRadius-medium) var(--borderRadius-medium);
+			background: var(--bgColor-default);
 		}
 
 		.pagination-controls {
 			display: flex;
 			align-items: center;
-			gap: var(--space-1);
+			gap: var(--base-size-4);
 		}
 
 		.pagination-page {
-			padding: 0 var(--space-2);
-			font-weight: var(--font-weight-medium);
+			padding: 0 var(--base-size-8);
+			font-weight: var(--base-text-weight-medium);
 			white-space: nowrap;
 		}
 	`,

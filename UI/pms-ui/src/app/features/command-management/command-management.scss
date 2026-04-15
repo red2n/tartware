@@ -22,7 +22,7 @@
 
 .command-code {
   font-size: var(--base-text-size-xs);
-  font-family: var(--font-family-mono, "SFMono-Regular", Consolas, monospace);
+  font-family: var(--fontStack-monospace);
   color: var(--fgColor-accent);
   background: var(--bgColor-accent-muted);
   padding: var(--base-size-2) var(--base-size-6);

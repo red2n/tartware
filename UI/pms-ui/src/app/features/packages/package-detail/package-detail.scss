@@ -37,7 +37,7 @@
 }
 
 .pkg-code {
-  font-family: var(--font-family-mono, monospace);
+  font-family: var(--fontStack-monospace);
   font-size: var(--base-text-size-sm);
   color: var(--fgColor-muted);
 }
