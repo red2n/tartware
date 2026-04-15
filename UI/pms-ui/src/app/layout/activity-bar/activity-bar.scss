@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 :host {
   display: block;
 }
@@ -18,14 +20,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: var(--space-1);
+  padding-top: var(--base-size-4);
 }
 
 .activity-bar-bottom {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: var(--space-1);
+  padding-bottom: var(--base-size-4);
 }
 
 .activity-bar-item {
@@ -37,22 +39,20 @@
   justify-content: center;
   border: none;
   background: transparent;
-  color: var(--color-fg-muted);
+  color: var(--fgColor-muted);
   cursor: pointer;
-  transition: color var(--duration-fast);
+  transition: color var(--base-duration-100);
 
   mat-icon {
-    font-size: 24px;
-    width: 24px;
-    height: 24px;
+    @include icon-size(24px);
   }
 
   &:hover {
-    color: var(--color-fg-default);
+    color: var(--fgColor-default);
   }
 
   &.active {
-    color: var(--color-fg-default);
+    color: var(--fgColor-default);
 
     &::before {
       content: '';
@@ -61,8 +61,8 @@
       top: 25%;
       bottom: 25%;
       width: 2px;
-      background: var(--color-accent-fg);
-      border-radius: var(--radius-full);
+      background: var(--fgColor-accent);
+      border-radius: var(--borderRadius-full);
     }
   }
 }

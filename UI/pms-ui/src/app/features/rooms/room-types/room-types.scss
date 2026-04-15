@@ -6,12 +6,12 @@
 }
 
 .rt-name {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-default);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
 }
 
 .rt-desc {
   display: block;
-  font-size: var(--font-size-xs);
-  margin-top: 2px;
+  font-size: var(--base-text-size-xs);
+  margin-top: var(--base-size-2);
 }

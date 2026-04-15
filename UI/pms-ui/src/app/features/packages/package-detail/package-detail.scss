@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Package detail — component-specific overrides only.
  * Reusable patterns (breadcrumb, detail-card, card-header, card-body,
  * detail-list, detail-row, detail-label, detail-value, badges, buttons)
@@ -6,11 +8,11 @@
 :host {
   display: block;
   max-width: 960px;
-  padding: var(--space-6) var(--space-8);
+  padding: var(--base-size-24) var(--base-size-32);
 }
 
 .page-header {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--base-size-20);
 }
 
 /* ── Package header ── */
@@ -18,83 +20,74 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--base-size-12);
   flex-wrap: wrap;
 }
 
 .pkg-header-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .pkg-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-title-size-medium);
+  font-weight: var(--base-text-weight-semibold);
   margin: 0;
 }
 
 .pkg-code {
   font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-sm);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-sm);
+  color: var(--fgColor-muted);
 }
 
 .pkg-badges {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
   align-items: center;
   flex-wrap: wrap;
-  margin-top: var(--space-1);
+  margin-top: var(--base-size-4);
 }
 
 .pkg-header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
 }
 
 .badge-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
+  @include icon-size(14px);
   vertical-align: text-bottom;
-  margin-right: 2px;
+  margin-right: var(--base-size-2);
 }
 
 .badge-attention {
-  background: var(--color-attention-subtle);
-  color: var(--color-attention-fg);
-}
-
-.badge-accent {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent-fg);
+  background: var(--bgColor-attention-muted);
+  color: var(--fgColor-attention);
 }
 
 /* ── Inclusions ── */
 .inclusion-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
 }
 
 .inclusion-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border-default);
-  background: var(--color-canvas-default);
-  font-size: var(--font-size-sm);
+  gap: var(--base-size-8);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-radius: var(--borderRadius-full);
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-default);
+  font-size: var(--base-text-size-sm);
   cursor: pointer;
-  transition: background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+  transition: background var(--base-duration-100), border-color var(--base-duration-100), color var(--base-duration-100);
 
   mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    @include icon-size(18px);
   }
 
   &:disabled {
@@ -104,49 +97,47 @@
 }
 
 .inclusion-on {
-  background: var(--color-success-subtle);
-  border-color: var(--color-success-muted);
-  color: var(--color-success-fg);
+  background: var(--bgColor-success-muted);
+  border-color: var(--bgColor-success-muted);
+  color: var(--fgColor-success);
 
   .inc-status-icon {
-    color: var(--color-success-fg);
+    color: var(--fgColor-success);
   }
 
   &:hover:not(:disabled) {
-    background: var(--color-success-muted);
+    background: var(--bgColor-success-muted);
   }
 }
 
 .inclusion-off {
-  color: var(--color-fg-muted);
+  color: var(--fgColor-muted);
 
   .inc-status-icon {
     opacity: 0.4;
   }
 
   &:hover:not(:disabled) {
-    border-color: var(--color-accent-emphasis);
-    color: var(--color-fg-default);
+    border-color: var(--bgColor-accent-emphasis);
+    color: var(--fgColor-default);
 
     .inc-status-icon {
       opacity: 0.8;
-      color: var(--color-accent-fg);
+      color: var(--fgColor-accent);
     }
   }
 }
 
 .inc-status-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
+  @include icon-size(16px);
   margin-left: auto;
 }
 
 /* ── Flash sm ── */
 .flash-sm {
-  font-size: var(--font-size-xs);
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-3);
+  font-size: var(--base-text-size-xs);
+  padding: var(--base-size-8) var(--base-size-12);
+  margin-bottom: var(--base-size-12);
 }
 
 /* ── Card body flush (no padding for tables) ── */
@@ -159,9 +150,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-canvas-subtle);
-  border-bottom: 1px solid var(--color-border-default);
+  padding: var(--base-size-12) var(--base-size-16);
+  background: var(--bgColor-muted);
+  border-bottom: 1px solid var(--borderColor-default);
 }
 
 /* ── Components grid ── */
@@ -174,9 +165,9 @@
 .comp-item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-muted);
+  gap: var(--base-size-12);
+  padding: var(--base-size-12) var(--base-size-16);
+  border-bottom: 1px solid var(--borderColor-muted);
 
   &:last-child {
     border-bottom: none;
@@ -188,16 +179,14 @@
   align-items: center;
   justify-content: center;
   width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--color-accent-subtle);
-  color: var(--color-accent-fg);
+  height: var(--control-medium-size);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-accent-muted);
+  color: var(--fgColor-accent);
   flex-shrink: 0;
 
   mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    @include icon-size(18px);
   }
 }
 
@@ -207,54 +196,46 @@
 }
 
 .comp-name {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-default);
 }
 
 .comp-desc {
   display: block;
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
-  margin-top: 1px;
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  margin-top: var(--base-size-2);
 }
 
 .comp-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
   flex-shrink: 0;
 }
 
 /* ── Components ── */
 .comp-type-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
+  @include icon-size(18px);
   vertical-align: text-bottom;
-  color: var(--color-fg-muted);
-  margin-right: var(--space-2);
+  color: var(--fgColor-muted);
+  margin-right: var(--base-size-8);
 }
 
-.cell-amount {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 
 .empty-state-sm {
-  padding: var(--space-4) var(--space-3);
+  padding: var(--base-size-16) var(--base-size-12);
 
   .empty-icon {
-    font-size: 32px;
-    width: 32px;
-    height: 32px;
+    @include icon-size(32px);
   }
 }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
   :host {
-    padding: var(--space-3);
+    padding: var(--base-size-12);
   }
 
   .pkg-header {

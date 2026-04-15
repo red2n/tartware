@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Housekeeping page — component-specific overrides only.
  * Reusable patterns (filter-bar, data-table, states, badges, buttons)
  * live in styles/shared.scss. */
@@ -12,21 +14,19 @@
 .hk-priority-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  color: var(--color-fg-muted);
-  background: var(--color-canvas-subtle);
-  border: 1px solid var(--color-border-muted);
+  gap: var(--base-size-4);
+  padding: var(--base-size-4) var(--base-size-12);
+  border-radius: var(--borderRadius-full);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: default;
 
   mat-icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
+    @include icon-size(14px);
   }
 }
 
@@ -34,26 +34,26 @@
 .hk-summary {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  gap: var(--base-size-12);
+  margin-bottom: var(--base-size-20);
 }
 
 .hk-summary-card {
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas-default);
-  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  padding: var(--base-size-12) var(--base-size-16);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+  gap: var(--base-size-4);
+  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
 
   &.clickable {
     cursor: pointer;
 
     &:hover {
-      border-color: var(--color-accent-muted);
-      box-shadow: var(--color-shadow-small);
+      border-color: var(--bgColor-accent-muted);
+      box-shadow: var(--shadow-resting-small);
     }
   }
 }
@@ -61,55 +61,53 @@
 .hk-summary-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-muted);
+  gap: var(--base-size-8);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-muted);
 
   mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
+    @include icon-size(16px);
   }
 }
 
 .hk-summary-value {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-fg-default);
+  font-size: var(--text-title-size-medium);
+  font-weight: var(--base-text-weight-bold);
+  color: var(--fgColor-default);
 }
 
 .hk-summary-sub {
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 /* Summary card accent colors */
 .hk-summary-ready .hk-summary-header mat-icon {
-  color: var(--color-success-fg);
+  color: var(--fgColor-success);
 }
 
 .hk-summary-ready .hk-summary-value {
-  color: var(--color-success-fg);
+  color: var(--fgColor-success);
 }
 
 .hk-summary-dirty .hk-summary-header mat-icon {
-  color: var(--color-danger-fg);
+  color: var(--fgColor-danger);
 }
 
 .hk-summary-dirty .hk-summary-value {
-  color: var(--color-danger-fg);
+  color: var(--fgColor-danger);
 }
 
 .hk-summary-progress .hk-summary-header mat-icon {
-  color: var(--color-warning-fg);
+  color: var(--fgColor-attention);
 }
 
 .hk-summary-clean .hk-summary-header mat-icon {
-  color: var(--color-success-fg);
+  color: var(--fgColor-success);
 }
 
 .hk-summary-dnd .hk-summary-header mat-icon {
-  color: var(--color-fg-muted);
+  color: var(--fgColor-muted);
 }
 
 /* ── Room table overrides ── */
@@ -129,63 +127,50 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .hk-room-number {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-accent-fg);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-accent);
 }
 
 .hk-room-name {
   display: block;
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 .cell-notes {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 /* Dirty row gets a subtle left accent */
 .row-dirty {
-  border-left: 3px solid var(--color-danger-emphasis);
+  border-left: 3px solid var(--bgColor-danger-emphasis);
 }
 
 /* ── HK action menu icon colors ── */
 ::ng-deep .hk-actions-menu {
-  .hk-icon-clean { color: var(--color-success-fg); }
-  .hk-icon-dirty { color: var(--color-danger-fg); }
-  .hk-icon-in-progress { color: var(--color-warning-fg); }
-  .hk-icon-inspected { color: var(--color-success-fg); }
-  .hk-icon-do-not-disturb { color: var(--color-fg-muted); }
+  .hk-icon-clean { color: var(--fgColor-success); }
+  .hk-icon-dirty { color: var(--fgColor-danger); }
+  .hk-icon-in-progress { color: var(--fgColor-attention); }
+  .hk-icon-inspected { color: var(--fgColor-success); }
+  .hk-icon-do-not-disturb { color: var(--fgColor-muted); }
 
-  .occ-icon-available { color: var(--color-success-fg); }
-  .occ-icon-occupied { color: var(--color-accent-fg); }
-  .occ-icon-dirty { color: var(--color-danger-fg); }
-  .occ-icon-out-of-order { color: var(--color-warning-fg); }
-  .occ-icon-out-of-service { color: var(--color-fg-muted); }
+  .occ-icon-available { color: var(--fgColor-success); }
+  .occ-icon-occupied { color: var(--fgColor-accent); }
+  .occ-icon-dirty { color: var(--fgColor-danger); }
+  .occ-icon-out-of-order { color: var(--fgColor-attention); }
+  .occ-icon-out-of-service { color: var(--fgColor-muted); }
 }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .hk-summary {
     grid-template-columns: repeat(3, 1fr);
-  }
-
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-input {
-    width: 100%;
-  }
-
-  .table-container {
-    overflow-x: auto;
   }
 }
 

@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 :host {
   display: block;
   position: fixed;
@@ -8,7 +10,7 @@
 .dashboard-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--overlay-backdrop-bgColor);
   display: flex;
   align-items: flex-end;
 }
@@ -17,12 +19,12 @@
 .dashboard-panel {
   width: 100%;
   max-height: 60vh;
-  background: var(--color-canvas-default);
-  border-top: 1px solid var(--color-border-default);
-  box-shadow: var(--color-shadow-extra-large);
+  background: var(--bgColor-default);
+  border-top: 1px solid var(--borderColor-default);
+  box-shadow: var(--shadow-floating-large);
   display: flex;
   flex-direction: column;
-  margin-bottom: 24px; /* height of the status bar */
+  margin-bottom: var(--base-size-24); /* height of the status bar */
   animation: slideUp 200ms ease-out;
 }
 
@@ -42,61 +44,57 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-muted);
+  padding: var(--base-size-12) var(--base-size-16);
+  border-bottom: 1px solid var(--borderColor-muted);
   flex-shrink: 0;
 }
 
 .dashboard-title-area {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
 }
 
 .dashboard-title-icon {
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  color: var(--color-accent-fg);
+  @include icon-size(20px);
+  color: var(--fgColor-accent);
 }
 
 .dashboard-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
   margin: 0;
 }
 
 .dashboard-counter {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
-  background: var(--color-canvas-subtle);
-  padding: 1px 8px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border-default);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  background: var(--bgColor-muted);
+  padding: var(--base-size-2) var(--base-size-8);
+  border-radius: var(--borderRadius-full);
+  border: 1px solid var(--borderColor-default);
 }
 
 .dashboard-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 /* ── Error banner ── */
 .dashboard-error {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--color-danger-subtle);
-  color: var(--color-danger-fg);
-  font-size: var(--font-size-sm);
-  border-bottom: 1px solid var(--color-border-muted);
+  gap: var(--base-size-8);
+  padding: var(--base-size-8) var(--base-size-16);
+  background: var(--bgColor-danger-muted);
+  color: var(--fgColor-danger);
+  font-size: var(--base-text-size-sm);
+  border-bottom: 1px solid var(--borderColor-muted);
 
   mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
+    @include icon-size(16px);
   }
 }
 
@@ -104,38 +102,36 @@
 .service-list {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-2) 0;
+  padding: var(--base-size-8) 0;
 }
 
 .service-group {
-  padding: 0 var(--space-4);
-  margin-bottom: var(--space-2);
+  padding: 0 var(--base-size-16);
+  margin-bottom: var(--base-size-8);
 }
 
 .service-group-title {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
+  gap: var(--base-size-4);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: var(--space-1) 0;
-  margin: 0 0 var(--space-1);
+  padding: var(--base-size-4) 0;
+  margin: 0 0 var(--base-size-4);
 }
 
 .service-group-danger {
-  color: var(--color-danger-fg);
+  color: var(--fgColor-danger);
 }
 
 .service-group-success {
-  color: var(--color-success-fg);
+  color: var(--fgColor-success);
 }
 
 .group-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
+  @include icon-size(14px);
 }
 
 /* ── Empty state ── */
@@ -143,20 +139,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-8) 0;
-  color: var(--color-fg-muted);
+  gap: var(--base-size-8);
+  padding: var(--base-size-32) 0;
+  color: var(--fgColor-muted);
 
   .empty-icon {
-    font-size: 32px;
-    width: 32px;
-    height: 32px;
+    @include icon-size(32px);
     opacity: 0.4;
   }
 
   p {
     margin: 0;
-    font-size: var(--font-size-sm);
+    font-size: var(--base-text-size-sm);
   }
 }
 

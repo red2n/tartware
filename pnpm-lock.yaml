@@ -1311,6 +1311,9 @@ importers:
       '@angular/service-worker':
         specifier: ^21.2.7
         version: 21.2.7(@angular/core@21.2.7(@angular/compiler@21.2.7)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
+      '@primer/primitives':
+        specifier: ^11.7.0
+        version: 11.7.0
       '@tartware/schemas':
         specifier: workspace:^
         version: link:../../schema
@@ -3638,6 +3641,9 @@ packages:
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
+
+  '@primer/primitives@11.7.0':
+    resolution: {integrity: sha512-Z9c4bp0JHOivd1llTr2y1pl0J5+uW1PgnSzA13l+ocOCq703HNpWRi2bffyg06HBMltq3So1SjnovnIWtH3kIQ==}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -10633,6 +10639,8 @@ snapshots:
   '@pinojs/redact@0.4.0': {}
 
   '@polka/url@1.0.0-next.29': {}
+
+  '@primer/primitives@11.7.0': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 

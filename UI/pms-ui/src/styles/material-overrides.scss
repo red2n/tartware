@@ -34,15 +34,15 @@ html[data-theme='dark'] {
 .mat-mdc-button.mat-primary,
 .mat-mdc-raised-button.mat-primary,
 .mat-mdc-flat-button.mat-primary {
-  --mdc-filled-button-container-color: var(--color-accent-emphasis);
-  --mdc-filled-button-label-text-color: var(--color-fg-on-emphasis);
+  --mdc-filled-button-container-color: var(--bgColor-accent-emphasis);
+  --mdc-filled-button-label-text-color: var(--fgColor-onEmphasis);
 }
 
 /* ── Card overrides ── */
 .mat-mdc-card {
-  --mdc-elevated-card-container-color: var(--color-canvas-default);
-  border: 1px solid var(--color-border-default);
-  box-shadow: var(--color-shadow-small) !important;
+  --mdc-elevated-card-container-color: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  box-shadow: var(--shadow-resting-small) !important;
 }
 
 /* ── Toolbar overrides (legacy — header now uses custom styles) ── */
@@ -54,45 +54,53 @@ html[data-theme='dark'] {
 
 /* ── Sidebar nav overrides ── */
 .mat-mdc-list-item {
-  --mdc-list-list-item-label-text-color: var(--color-fg-default);
-  border-radius: var(--radius-md);
+  --mdc-list-list-item-label-text-color: var(--fgColor-default);
+  border-radius: var(--borderRadius-medium);
 }
 
 .mat-mdc-list-item:hover {
-  background: var(--color-canvas-subtle) !important;
+  background: var(--bgColor-muted) !important;
 }
 
 /* ── Dialog overrides ── */
 .mat-mdc-dialog-surface {
-  background: var(--color-canvas-overlay) !important;
-  border: 1px solid var(--color-border-default);
+  background: var(--overlay-bgColor) !important;
+  border: 1px solid var(--borderColor-default);
 }
 
 /* ── Snackbar overrides ── */
 .mat-mdc-snack-bar-container {
-  --mdc-snackbar-container-color: var(--color-canvas-subtle);
-  --mdc-snackbar-supporting-text-color: var(--color-fg-default);
-  border: 1px solid var(--color-border-default);
+  --mdc-snackbar-container-color: var(--bgColor-muted);
+  --mdc-snackbar-supporting-text-color: var(--fgColor-default);
+  border: 1px solid var(--borderColor-default);
 }
 
 /* ── Form field overrides ── */
 .mat-mdc-form-field {
-  --mdc-outlined-text-field-outline-color: var(--color-border-default);
-  --mdc-outlined-text-field-hover-outline-color: var(--color-fg-muted);
-  --mdc-outlined-text-field-focus-outline-color: var(--color-accent-fg);
-  --mdc-outlined-text-field-label-text-color: var(--color-fg-muted);
-  --mdc-outlined-text-field-input-text-color: var(--color-fg-default);
+  --mdc-outlined-text-field-outline-color: var(--borderColor-default);
+  --mdc-outlined-text-field-hover-outline-color: var(--fgColor-muted);
+  --mdc-outlined-text-field-focus-outline-color: var(--fgColor-accent);
+  --mdc-outlined-text-field-label-text-color: var(--fgColor-muted);
+  --mdc-outlined-text-field-input-text-color: var(--fgColor-default);
 }
 
 /* ── Menu overrides ── */
 .mat-mdc-menu-panel {
-  background: var(--color-canvas-overlay) !important;
-  border: 1px solid var(--color-border-default);
-  box-shadow: var(--color-shadow-large) !important;
+  background: var(--overlay-bgColor) !important;
+  border: 1px solid var(--borderColor-default);
+  box-shadow: var(--shadow-floating-medium) !important;
 }
 
 /* ── Tooltip overrides ── */
 .mat-mdc-tooltip {
-  --mdc-plain-tooltip-container-color: var(--color-canvas-subtle);
-  --mdc-plain-tooltip-supporting-text-color: var(--color-fg-default);
+  --mdc-plain-tooltip-container-color: var(--bgColor-muted);
+  --mdc-plain-tooltip-supporting-text-color: var(--fgColor-default);
+}
+
+/* ── Dialog action buttons ── */
+.mat-mdc-dialog-actions {
+  padding: var(--base-size-16) var(--base-size-24) var(--base-size-24) !important;
+  gap: var(--base-size-12);
+  border-top: 1px solid var(--borderColor-muted);
+  margin-top: var(--base-size-8);
 }

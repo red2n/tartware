@@ -6,29 +6,27 @@
 .cashiering-page { max-width: 1600px; }
 
 /* ── KPI color modifiers ── */
-.cashier-kpi-total > mat-icon { color: var(--color-accent-fg); }
-.cashier-kpi-open > mat-icon { color: var(--color-success-fg); }
+.cashier-kpi-total > mat-icon { color: var(--fgColor-accent); }
+.cashier-kpi-open > mat-icon { color: var(--fgColor-success); }
 
 /* ── Cells ── */
-.variance-alert { color: var(--color-danger-fg); font-weight: var(--font-weight-semibold); }
+.variance-alert { color: var(--fgColor-danger); font-weight: var(--base-text-weight-semibold); }
 
 /* ── Session detail ── */
 .cashier-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-  margin-top: var(--space-3);
+  gap: var(--base-size-12);
+  margin-top: var(--base-size-12);
 }
 
 .detail-inline-note {
-  color: var(--color-fg-muted);
-  font-size: var(--font-size-xs);
-  margin-left: var(--space-1);
+  color: var(--fgColor-muted);
+  font-size: var(--base-text-size-xs);
+  margin-left: var(--base-size-4);
 }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .filter-bar { flex-direction: column; align-items: stretch; }
-  .table-container { overflow-x: auto; }
   .cashier-detail-grid { grid-template-columns: 1fr; }
 }

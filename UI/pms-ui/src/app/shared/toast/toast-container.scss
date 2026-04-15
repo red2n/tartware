@@ -1,11 +1,13 @@
+@use 'mixins' as *;
+
 .toast-container {
   position: fixed;
-  bottom: var(--space-4);
-  right: var(--space-4);
+  bottom: var(--base-size-16);
+  right: var(--base-size-16);
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
   max-width: 420px;
   pointer-events: none;
 }
@@ -13,37 +15,35 @@
 .toast {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  gap: var(--base-size-8);
+  padding: var(--base-size-12) var(--base-size-16);
+  border-radius: var(--borderRadius-medium);
+  font-size: var(--base-text-size-sm);
+  box-shadow: var(--shadow-resting-medium);
   pointer-events: auto;
   animation: toast-slide-in 0.25s ease-out;
 }
 
 .toast-success {
-  background: var(--color-success-subtle);
-  border: 1px solid var(--color-success-emphasis);
-  color: var(--color-success-fg);
+  background: var(--bgColor-success-muted);
+  border: 1px solid var(--bgColor-success-emphasis);
+  color: var(--fgColor-success);
 }
 
 .toast-error {
-  background: var(--color-danger-subtle);
-  border: 1px solid var(--color-danger-emphasis);
-  color: var(--color-danger-fg);
+  background: var(--bgColor-danger-muted);
+  border: 1px solid var(--bgColor-danger-emphasis);
+  color: var(--fgColor-danger);
 }
 
 .toast-icon {
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
+  @include icon-size(20px);
   flex-shrink: 0;
 }
 
 .toast-message {
   flex: 1;
-  line-height: 1.4;
+  line-height: var(--base-text-lineHeight-normal);
 }
 
 .toast-dismiss {
@@ -59,9 +59,7 @@
   flex-shrink: 0;
 
   mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    @include icon-size(18px);
   }
 
   &:hover {

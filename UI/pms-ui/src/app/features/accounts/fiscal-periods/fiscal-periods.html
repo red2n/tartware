@@ -7,12 +7,14 @@
 
   <!-- ═══ STATUS FILTER ═══ -->
   <div class="filter-bar">
-    <button class="filter-tab" [class.active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">{{ 'All' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'FUTURE'" (click)="setStatusFilter('FUTURE')">{{ 'Future' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'OPEN'" (click)="setStatusFilter('OPEN')">{{ 'Open' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'SOFT_CLOSE'" (click)="setStatusFilter('SOFT_CLOSE')">{{ 'Soft Close' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'CLOSED'" (click)="setStatusFilter('CLOSED')">{{ 'Closed' | translate }}</button>
-    <button class="filter-tab" [class.active]="statusFilter() === 'LOCKED'" (click)="setStatusFilter('LOCKED')">{{ 'Locked' | translate }}</button>
+    <nav class="filter-tabs" aria-label="Fiscal period status filters">
+      <button class="filter-tab" [class.filter-tab-active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">{{ 'All' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="statusFilter() === 'FUTURE'" (click)="setStatusFilter('FUTURE')">{{ 'Future' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="statusFilter() === 'OPEN'" (click)="setStatusFilter('OPEN')">{{ 'Open' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="statusFilter() === 'SOFT_CLOSE'" (click)="setStatusFilter('SOFT_CLOSE')">{{ 'Soft Close' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="statusFilter() === 'CLOSED'" (click)="setStatusFilter('CLOSED')">{{ 'Closed' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="statusFilter() === 'LOCKED'" (click)="setStatusFilter('LOCKED')">{{ 'Locked' | translate }}</button>
+    </nav>
   </div>
 
   <!-- ═══ PERIOD LIST ═══ -->

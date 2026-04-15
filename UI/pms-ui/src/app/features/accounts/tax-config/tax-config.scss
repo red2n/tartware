@@ -7,15 +7,12 @@
 .tax-config-page { max-width: 1600px; }
 
 /* ── KPI color modifiers ── */
-.tax-kpi-total > mat-icon { color: var(--color-accent-fg); }
-.tax-kpi-active > mat-icon { color: var(--color-success-fg); }
-.tax-kpi-jurisdictions > mat-icon { color: var(--color-warning-fg); }
+.tax-kpi-total > mat-icon { color: var(--fgColor-accent); }
+.tax-kpi-active > mat-icon { color: var(--fgColor-success); }
+.tax-kpi-jurisdictions > mat-icon { color: var(--fgColor-attention); }
 
 /* ── Cells ── */
 .tax-name-cell,
-.jurisdiction-cell { display: flex; flex-direction: column; gap: 2px; }
+.jurisdiction-cell { display: flex; flex-direction: column; gap: var(--base-size-2); }
 
 /* ── Responsive ── */
-@media (max-width: 768px) {
-  .filter-bar { flex-direction: column; align-items: stretch; }
-}

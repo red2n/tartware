@@ -1,17 +1,17 @@
 .dialog-title {
 	display: flex;
 	align-items: center;
-	gap: var(--space-8);
+	gap: var(--base-size-32);
 }
 
 .dialog-title-icon {
-	color: var(--color-accent-emphasis);
+	color: var(--bgColor-accent-emphasis);
 }
 
 .error-banner {
-	background: var(--color-danger-subtle);
-	color: var(--color-danger-fg);
-	padding: var(--space-8) var(--space-12);
+	background: var(--bgColor-danger-muted);
+	color: var(--fgColor-danger);
+	padding: var(--base-size-32) var(--base-size-48);
 	border-radius: var(--radius-8);
 	margin-bottom: var(--space-16);
 	font-size: var(--font-size-12);
@@ -20,17 +20,17 @@
 .checkbox-grid {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
-	gap: var(--space-8) var(--space-16);
+	gap: var(--base-size-32) var(--space-16);
 }
 
 .checkbox-item {
 	display: flex;
 	align-items: center;
-	gap: var(--space-8);
+	gap: var(--base-size-32);
 	cursor: pointer;
 	font-size: var(--font-size-14);
 
 	input[type="checkbox"] {
-		accent-color: var(--color-accent-emphasis);
+		accent-color: var(--bgColor-accent-emphasis);
 	}
 }

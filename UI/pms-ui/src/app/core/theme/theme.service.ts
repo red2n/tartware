@@ -51,7 +51,14 @@ export class ThemeService {
 		effect(() => {
 			const theme = this.effectiveTheme();
 			if (typeof document !== "undefined") {
-				document.documentElement.setAttribute("data-theme", theme.toLowerCase());
+				const el = document.documentElement;
+				const isDark = theme === "DARK";
+				// Our custom selector (used by tokens.css app-specific overrides)
+				el.setAttribute("data-theme", theme.toLowerCase());
+				// Primer primitives selectors (activates @primer/primitives theme tokens)
+				el.setAttribute("data-color-mode", isDark ? "dark" : "light");
+				el.setAttribute("data-light-theme", isDark ? "dark" : "light");
+				el.setAttribute("data-dark-theme", isDark ? "dark" : "light");
 			}
 		});
 	}

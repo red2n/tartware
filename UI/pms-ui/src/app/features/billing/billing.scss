@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Billing page — component-specific overrides only.
  * Reusable patterns (filter-bar, data-table, states, badges, buttons,
  * ref-code, col-right, cell-amount, view-tabs)
@@ -11,68 +13,66 @@
 .bill-overview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  gap: var(--base-size-12);
+  margin-bottom: var(--base-size-20);
 }
 
 .bill-kpi {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-default);
-  background: var(--color-canvas-default);
-  transition: box-shadow var(--duration-fast);
+  gap: var(--base-size-12);
+  padding: var(--base-size-16);
+  border-radius: var(--borderRadius-medium);
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-default);
+  transition: box-shadow var(--base-duration-100);
 
   &:hover {
-    box-shadow: var(--color-shadow-small);
+    box-shadow: var(--shadow-resting-small);
   }
 
   > mat-icon {
-    font-size: 24px;
-    width: 24px;
-    height: 24px;
+    @include icon-size(24px);
     flex-shrink: 0;
-    color: var(--color-fg-muted);
+    color: var(--fgColor-muted);
   }
 }
 
-.bill-kpi-received > mat-icon { color: var(--color-success-fg); }
-.bill-kpi-outstanding > mat-icon { color: var(--color-warning-fg); }
-.bill-kpi-overdue > mat-icon { color: var(--color-fg-muted); }
-.bill-kpi-folios > mat-icon { color: var(--color-accent-fg); }
+.bill-kpi-received > mat-icon { color: var(--fgColor-success); }
+.bill-kpi-outstanding > mat-icon { color: var(--fgColor-attention); }
+.bill-kpi-overdue > mat-icon { color: var(--fgColor-muted); }
+.bill-kpi-folios > mat-icon { color: var(--fgColor-accent); }
 
-.bill-kpi-alert > mat-icon { color: var(--color-danger-fg); }
-.bill-kpi-alert .bill-kpi-value { color: var(--color-danger-fg); }
+.bill-kpi-alert > mat-icon { color: var(--fgColor-danger); }
+.bill-kpi-alert .bill-kpi-value { color: var(--fgColor-danger); }
 
 .bill-kpi-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .bill-kpi-value {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-lg);
+  font-weight: var(--base-text-weight-bold);
+  color: var(--fgColor-default);
 }
 
 .bill-kpi-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 }
 
 .charge-code {
   font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
 }
 
 .guest-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .row-voided {

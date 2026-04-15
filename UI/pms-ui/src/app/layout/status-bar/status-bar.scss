@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 :host {
   display: block;
 }
@@ -9,10 +11,10 @@
   height: 24px;
   background: var(--color-statusbar-bg);
   color: var(--color-statusbar-text);
-  border-top: 1px solid var(--color-border-default);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family);
-  padding: 0 var(--space-2);
+  border-top: 1px solid var(--borderColor-default);
+  font-size: var(--base-text-size-xs);
+  font-family: var(--fontStack-sansSerif);
+  padding: 0 var(--base-size-8);
   user-select: none;
   z-index: 100;
   flex-shrink: 0;
@@ -22,23 +24,23 @@
 .status-bar-right {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .status-bar-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 6px;
+  gap: var(--base-size-4);
+  padding: 0 var(--base-size-6);
   height: 22px;
   border: none;
   background: transparent;
   color: var(--color-statusbar-text);
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
   font-family: inherit;
   cursor: default;
-  border-radius: var(--radius-sm);
-  transition: background var(--duration-fast);
+  border-radius: var(--borderRadius-small);
+  transition: background var(--base-duration-100);
   white-space: nowrap;
 }
 
@@ -50,27 +52,25 @@ button.status-bar-item {
   }
 
   &:active {
-    background: rgba(255, 255, 255, 0.18);
+    background: var(--color-statusbar-hover-bg);
   }
 }
 
 .status-bar-item-active {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-statusbar-hover-bg);
 }
 
 .status-bar-item-warning {
-  color: var(--color-warning-fg);
+  color: var(--fgColor-attention);
 
   .status-bar-icon {
-    color: var(--color-warning-fg);
+    color: var(--fgColor-attention);
   }
 }
 
 .status-bar-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
-  line-height: 14px;
+  @include icon-size(14px);
+  line-height: var(--base-size-16);
   color: inherit;
 }
 
