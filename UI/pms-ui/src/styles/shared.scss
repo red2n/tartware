@@ -3,12 +3,9 @@
  * Built on design tokens — used across all components
  * ===================================================== */
 
+@use 'mixins' as *;
+
 /* ── Mixins ── */
-@mixin icon-size($s) {
-  font-size: $s;
-  width: $s;
-  height: $s;
-}
 
 @mixin flex-row($gap: var(--base-size-8)) {
   display: flex;
@@ -2516,11 +2513,11 @@ textarea.field-input {
   min-width: 28px;
   height: 24px;
   padding: 0 var(--base-size-16);
-  border-radius: var(--radius-8);
+  border-radius: var(--borderRadius-medium);
   background: var(--bgColor-accent-muted);
   color: var(--fgColor-accent);
   font-weight: var(--base-text-weight-semibold);
-  font-size: var(--font-size-12);
+  font-size: var(--base-text-size-xs);
   cursor: help;
 }
 

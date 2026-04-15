@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="light">
+<html lang="en" data-color-mode="dark" data-light-theme="light" data-dark-theme="dark">
 <head>
   <meta charset="utf-8">
   <title>Tartware PMS</title>
@@ -11,6 +11,22 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192x192.png">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script>
+    // Prevent FOUC: apply saved theme before Angular bootstraps
+    (function() {
+      var mode = localStorage.getItem('theme_mode');
+      var isDark;
+      if (mode === 'LIGHT') isDark = false;
+      else if (mode === 'DARK') isDark = true;
+      else isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var t = isDark ? 'dark' : 'light';
+      var el = document.documentElement;
+      el.setAttribute('data-color-mode', t);
+      el.setAttribute('data-light-theme', t);
+      el.setAttribute('data-dark-theme', t);
+      el.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>
