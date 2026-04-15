@@ -134,24 +134,26 @@
 
   <!-- ═══ TAB NAVIGATION ═══ -->
   <div class="filter-bar">
-    <button class="filter-tab" [class.active]="activeTab() === 'status'" (click)="setTab('status')">{{ 'Overview' | translate }}</button>
-    <button class="filter-tab" [class.active]="activeTab() === 'trial-balance'" (click)="setTab('trial-balance')">{{ 'Trial Balance' | translate }}</button>
-    <button class="filter-tab" [class.active]="activeTab() === 'pre-audit'" (click)="setTab('pre-audit')">
-      {{ 'Pre-Audit' | translate }}
-      @if (preAuditFailCount() > 0) {
-        <span class="badge badge-danger badge-sm">{{ preAuditFailCount() }}</span>
-      }
-    </button>
-    <button class="filter-tab" [class.active]="activeTab() === 'bucket-check'" (click)="setTab('bucket-check')">
-      {{ 'Bucket Check' | translate }}
-      @if (bucketCheckItems().length > 0) {
-        <span class="badge badge-sm" [ngClass]="bucketCheckBalanced() ? 'badge-success' : 'badge-warning'">
-          {{ bucketCheckBalanced() ? '✓' : '!' }}
-        </span>
-      }
-    </button>
-    <button class="filter-tab" [class.active]="activeTab() === 'reports'" (click)="setTab('reports')">{{ 'Reports' | translate }}</button>
-    <button class="filter-tab" [class.active]="activeTab() === 'history'" (click)="setTab('history')">{{ 'Audit History' | translate }}</button>
+    <nav class="filter-tabs" aria-label="Night audit sections">
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'status'" (click)="setTab('status')">{{ 'Overview' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'trial-balance'" (click)="setTab('trial-balance')">{{ 'Trial Balance' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'pre-audit'" (click)="setTab('pre-audit')">
+        {{ 'Pre-Audit' | translate }}
+        @if (preAuditFailCount() > 0) {
+          <span class="badge badge-danger badge-sm">{{ preAuditFailCount() }}</span>
+        }
+      </button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'bucket-check'" (click)="setTab('bucket-check')">
+        {{ 'Bucket Check' | translate }}
+        @if (bucketCheckItems().length > 0) {
+          <span class="badge badge-sm" [ngClass]="bucketCheckBalanced() ? 'badge-success' : 'badge-warning'">
+            {{ bucketCheckBalanced() ? '✓' : '!' }}
+          </span>
+        }
+      </button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'reports'" (click)="setTab('reports')">{{ 'Reports' | translate }}</button>
+      <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'history'" (click)="setTab('history')">{{ 'Audit History' | translate }}</button>
+    </nav>
   </div>
 
   <!-- ═══ TAB: OVERVIEW (KPIs) ═══ -->

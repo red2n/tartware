@@ -1,133 +1,49 @@
 /* =====================================================
- * Design Tokens — Primer Design System (primer.style)
- * Source: @primer/css v21 functional color tokens
- * Two themes: light (default) and dark
- * Applied via [data-theme="dark"] on <html>
+ * App-Specific Design Tokens
+ *
+ * All standard design tokens (colors, typography, spacing,
+ * radius, motion, shadows) come from @primer/primitives
+ * and are activated via data-color-mode attributes on <html>.
+ *
+ * This file contains ONLY app-specific tokens that have
+ * no equivalent in the Primer design system.
  * ===================================================== */
 
 :root {
-	color-scheme: light;
-	/* ── Surface & Background (bgColor-*) ── */
-	--color-canvas-default: #faf9f7;
-	--color-canvas-subtle: #f5f4f1;
-	--color-canvas-inset: #f5f4f1;
-	--color-canvas-overlay: #faf9f7;
-
-	/* ── Text (fgColor-*) ── */
-	--color-fg-default: #1f2328;
-	--color-fg-muted: #59636e;
-	--color-fg-subtle: #59636e;
-	--color-fg-on-emphasis: #ffffff;
-
-	/* ── Borders (borderColor-*) ── */
-	--color-border-default: #d8d4ce;
-	--color-border-muted: #d8d4ceb3;
-	--color-border-subtle: #1f232826;
-
-	/* ── Accent (Blue) ── */
-	--color-accent-fg: #0969da;
-	--color-accent-emphasis: #0969da;
-	--color-accent-muted: #54aeff66;
-	--color-accent-subtle: #ddf4ff;
-
-	/* ── Success (Green) ── */
-	--color-success-fg: #1a7f37;
-	--color-success-emphasis: #1f883d;
-	--color-success-subtle: #dafbe1;
-
-	/* ── Warning / Attention (Yellow) ── */
-	--color-warning-fg: #9a6700;
-	--color-warning-emphasis: #9a6700;
-	--color-warning-subtle: #fff8c5;
-
-	/* ── Danger (Red) ── */
-	--color-danger-fg: #d1242f;
-	--color-danger-emphasis: #cf222e;
-	--color-danger-subtle: #ffebe9;
-
-	/* ── Shadows (Primer shadow-*) ── */
-	--color-shadow-small: 0 1px 0 0 #1f23280a;
-	--color-shadow-medium: 0 3px 6px 0 #25292e1f;
-	--color-shadow-large:
-		0 0 0 1px #d8d4ce, 0 8px 16px -4px #25292e14, 0 4px 32px -4px #25292e14;
-	--color-shadow-extra-large: 0 0 0 1px #d8d4ce, 0 12px 28px 0 #25292e3d;
-
 	/* ── Sidebar ── */
-	--color-sidebar-bg: #f5f4f1;
-	--color-sidebar-border: #d8d4ce;
+	--color-sidebar-bg: var(--bgColor-muted);
+	--color-sidebar-border: var(--borderColor-default);
 
 	/* ── Activity Bar ── */
-	--color-activity-bar-bg: #f5f4f1;
-	--color-activity-bar-border: #d8d4ce;
+	--color-activity-bar-bg: var(--bgColor-muted);
+	--color-activity-bar-border: var(--borderColor-default);
 
 	/* ── Status Bar ── */
-	--color-statusbar-bg: #f5f4f1;
-	--color-statusbar-text: var(--color-fg-muted);
-	--color-statusbar-hover-bg: rgba(0, 0, 0, 0.06);
+	--color-statusbar-bg: var(--bgColor-muted);
+	--color-statusbar-text: var(--fgColor-muted);
+	--color-statusbar-hover-bg: var(--bgColor-neutral-muted);
 
-	/* ── Header (Primer header-*) ── */
+	/* ── Header (aliased to sidebar) ── */
 	--color-header-bg: var(--color-sidebar-bg);
-	--color-header-text: var(--color-fg-default);
-	--color-header-text-muted: var(--color-fg-muted);
+	--color-header-text: var(--fgColor-default);
+	--color-header-text-muted: var(--fgColor-muted);
 	--color-header-border: var(--color-sidebar-border);
-	--color-header-logo: var(--color-fg-default);
-	--color-header-search-bg: var(--color-canvas-default);
-	--color-header-search-border: var(--color-border-default);
+	--color-header-logo: var(--fgColor-default);
+	--color-header-search-bg: var(--bgColor-default);
+	--color-header-search-border: var(--borderColor-default);
 
 	/* ── Topbar (aliased to header) ── */
 	--color-topbar-bg: var(--color-header-bg);
 	--color-topbar-border: var(--color-header-border);
 
-	/* ── Focus (Primer outline-focus) ── */
-	--color-focus-ring: #0969da;
-	--focus-ring: 0 0 0 2px #0969da;
-
-	/* ── Nav item ── */
-	--color-nav-active-bg: #ddf4ff;
-	--color-nav-active-border: #0969da;
-	--color-nav-hover-bg: #818b981a;
-
-	/* ── Spacing scale (4px base) ── */
-	--space-1: 4px;
-	--space-2: 8px;
-	--space-3: 12px;
-	--space-4: 16px;
-	--space-5: 20px;
-	--space-6: 24px;
-	--space-8: 32px;
-	--space-10: 40px;
-	--space-12: 48px;
-
-	/* ── Border radius ── */
-	--radius-sm: 4px;
-	--radius-md: 6px;
-	--radius-lg: 12px;
-	--radius-full: 9999px;
-
-	/* ── Typography (Primer body-font-size: 14px) ── */
-	--font-family:
-		-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,
-		Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-	--font-family-mono:
-		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
-		monospace;
-	--font-size-xs: 12px;
-	--font-size-sm: 14px;
-	--font-size-md: 16px;
-	--font-size-lg: 20px;
-	--font-size-xl: 24px;
-	--font-size-2xl: 32px;
-	--font-weight-normal: 400;
-	--font-weight-medium: 500;
-	--font-weight-semibold: 600;
-	--font-weight-bold: 700;
-	--line-height-tight: 1.25;
-	--line-height-normal: 1.5;
-
-	/* ── Transitions ── */
-	--duration-fast: 100ms;
-	--duration-normal: 200ms;
-	--duration-slow: 300ms;
+	/* ── Login hero panel ── */
+	--color-hero-bg-start: #1b2838;
+	--color-hero-bg-mid: #0d1926;
+	--color-hero-bg-end: #0a1628;
+	--color-hero-text: #f0f6fc;
+	--color-hero-text-muted: #9198a1;
+	--color-hero-text-subtle: #c9d1d9;
+	--color-hero-text-faint: #484f58;
 
 	/* ── Layout ── */
 	--sidebar-width: 240px;
@@ -137,71 +53,18 @@
 	--topbar-height: 48px;
 }
 
-/* ── Dark theme (Primer "dark" theme) ── */
+/* ── Dark theme — app-specific overrides only ──
+ * Primer handles all color/typography/motion switching
+ * via data-color-mode="dark". Only app-specific tokens
+ * with hardcoded values need dark overrides here.
+ * ─────────────────────────────────────────────── */
 [data-theme="dark"] {
-	color-scheme: dark;
-	--color-canvas-default: #0d1117;
-	--color-canvas-subtle: #151b23;
-	--color-canvas-inset: #010409;
-	--color-canvas-overlay: #151b23;
-
-	--color-fg-default: #f0f6fc;
-	--color-fg-muted: #9198a1;
-	--color-fg-subtle: #656c76;
-	--color-fg-on-emphasis: #ffffff;
-
-	--color-border-default: #3d444d;
-	--color-border-muted: #3d444db3;
-	--color-border-subtle: #ffffff26;
-
-	--color-accent-fg: #4493f8;
-	--color-accent-emphasis: #1f6feb;
-	--color-accent-muted: #388bfd66;
-	--color-accent-subtle: #388bfd1a;
-
-	--color-success-fg: #3fb950;
-	--color-success-emphasis: #238636;
-	--color-success-subtle: #3fb9501a;
-
-	--color-warning-fg: #d29922;
-	--color-warning-emphasis: #9e6a03;
-	--color-warning-subtle: #d299221a;
-
-	--color-danger-fg: #f85149;
-	--color-danger-emphasis: #da3633;
-	--color-danger-subtle: #f851491a;
-
-	--color-shadow-small: 0 1px 0 0 #01040966;
-	--color-shadow-medium: 0 3px 6px 0 #010409cc;
-	--color-shadow-large:
-		0 0 0 1px #3d444d, 0 8px 16px -4px #01040966, 0 4px 32px -4px #01040966;
-	--color-shadow-extra-large: 0 0 0 1px #3d444d, 0 12px 28px 0 #010409;
-
-	--color-sidebar-bg: #151b23;
-	--color-sidebar-border: #3d444d;
-
-	--color-activity-bar-bg: #151b23;
-	--color-activity-bar-border: #3d444d;
-
-	--color-statusbar-bg: #151b23;
-	--color-statusbar-text: var(--color-fg-muted);
-	--color-statusbar-hover-bg: rgba(255, 255, 255, 0.08);
-
-	--color-header-bg: var(--color-sidebar-bg);
-	--color-header-text: var(--color-fg-default);
-	--color-header-text-muted: var(--color-fg-muted);
-	--color-header-border: var(--color-sidebar-border);
-	--color-header-logo: var(--color-fg-default);
-	--color-header-search-bg: var(--color-canvas-default);
-	--color-header-search-border: var(--color-border-default);
-
-	--color-topbar-bg: var(--color-header-bg);
-	--color-topbar-border: var(--color-header-border);
-
-	--color-focus-ring: #4493f8;
-	--focus-ring: 0 0 0 2px #1f6feb;
-
-	--color-nav-active-bg: #388bfd1a;
-	--color-nav-active-border: #4493f8;
-	--color-nav-hover-bg: #656c7633;
+	/* ── Login hero ── */
+	--color-hero-bg-start: #0d1117;
+	--color-hero-bg-mid: #010409;
+	--color-hero-bg-end: #010409;
+	--color-hero-text: #f0f6fc;
+	--color-hero-text-muted: #9198a1;
+	--color-hero-text-subtle: #c9d1d9;
+	--color-hero-text-faint: #3d444d;
 }

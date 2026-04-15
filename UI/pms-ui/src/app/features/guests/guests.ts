@@ -1,4 +1,4 @@
-import { NgClass } from "@angular/common";
+import { DecimalPipe, NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -33,6 +33,7 @@ type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 	selector: "app-guests",
 	standalone: true,
 	imports: [
+		DecimalPipe,
 		NgClass,
 		FormsModule,
 		RouterLink,
@@ -198,6 +199,12 @@ export class GuestsComponent {
 
 	vipClass = vipStatusClass;
 	loyaltyClass = loyaltyTierClass;
+
+	/** Percentage of part/total, formatted as "X%". */
+	pctOf(part: number, total: number): string {
+		if (total === 0) return "0%";
+		return `${Math.round((part / total) * 100)}%`;
+	}
 
 	/** Format currency amount for display. */
 	formatCurrency(amount: number | null | undefined): string {

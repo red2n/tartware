@@ -1,0 +1,10 @@
+/* =====================================================
+ * Shared SCSS mixins — importable by component files
+ * Usage: @use 'mixins' as *;
+ * ===================================================== */
+
+@mixin icon-size($s) {
+  font-size: $s;
+  width: $s;
+  height: $s;
+}

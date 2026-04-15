@@ -38,7 +38,7 @@
   } @else {
 
   @if (error()) {
-  <div class="error-state" style="margin-bottom: var(--space-4)">
+  <div class="error-state" style="margin-bottom: var(--base-size-16)">
     <mat-icon class="error-icon">error_outline</mat-icon>
     <span>{{ error() }}</span>
   </div>
@@ -63,7 +63,7 @@
           <th>{{ 'Command' | translate }}</th>
           <th>{{ 'Service' | translate }}</th>
           <th>{{ 'Modules' | translate }}</th>
-          <th>{{ 'Status' | translate }}</th>
+          <th class="th-status">{{ 'Status' | translate }}</th>
           <th class="th-actions">{{ 'Toggle' | translate }}</th>
         </tr>
       </thead>
@@ -87,7 +87,7 @@
             <span class="badge badge-accent">{{ mod }}</span>
             }
           </td>
-          <td>
+          <td class="td-status">
             <span class="badge" [ngClass]="statusBadgeClass(getEffectiveStatus(cmd))">
               {{ getEffectiveStatus(cmd) | translate }}
             </span>

@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Packages page — component-specific overrides only.
  * Reusable patterns live in styles/shared.scss. */
 
@@ -9,109 +11,101 @@
 .pkg-overview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  gap: var(--base-size-12);
+  margin-bottom: var(--base-size-20);
 }
 
 .pkg-stat {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  transition: box-shadow var(--duration-fast);
+  gap: var(--base-size-12);
+  padding: var(--base-size-16);
+  border-radius: var(--borderRadius-medium);
+  transition: box-shadow var(--base-duration-100);
 
   &:hover {
-    box-shadow: var(--color-shadow-small);
+    box-shadow: var(--shadow-resting-small);
   }
 
   > mat-icon {
-    font-size: 22px;
-    width: 22px;
-    height: 22px;
+    @include icon-size(22px);
     flex-shrink: 0;
   }
 }
 
 .pkg-stat-active {
-  background: var(--color-success-subtle);
+  background: var(--bgColor-success-muted);
 
-  > mat-icon { color: var(--color-success-fg); }
+  > mat-icon { color: var(--fgColor-success); }
 }
 
 .pkg-stat-featured {
-  background: var(--color-warning-subtle);
+  background: var(--bgColor-attention-muted);
 
-  > mat-icon { color: var(--color-warning-fg); }
+  > mat-icon { color: var(--fgColor-attention); }
 }
 
 .pkg-stat-bookings {
-  background: var(--color-accent-subtle);
+  background: var(--bgColor-accent-muted);
 
-  > mat-icon { color: var(--color-accent-fg); }
+  > mat-icon { color: var(--fgColor-accent); }
 }
 
 .pkg-stat-price {
-  background: var(--color-canvas-subtle);
+  background: var(--bgColor-muted);
 
-  > mat-icon { color: var(--color-fg-muted); }
+  > mat-icon { color: var(--fgColor-muted); }
 }
 
 .pkg-stat-content {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .pkg-stat-value {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-lg);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
 }
 
 .pkg-stat-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 }
 
 .pkg-code {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-accent-fg);
-  font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-accent);
+  font-family: var(--fontStack-monospace);
+  font-size: var(--base-text-size-xs);
 }
 
 .pkg-name {
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 .col-right {
   text-align: right;
 }
 
-.cell-amount {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 
 .discount-hint {
-  margin-left: 4px;
-  font-size: var(--font-size-xs);
-  color: var(--color-success-fg);
-  font-weight: var(--font-weight-semibold);
+  margin-left: var(--base-size-4);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-success);
+  font-weight: var(--base-text-weight-semibold);
 }
 
 .cell-inclusions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--base-size-4);
 }
 
 .inclusion-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  color: var(--color-fg-muted);
+  @include icon-size(18px);
+  color: var(--fgColor-muted);
 }
 
 .cell-status {
@@ -123,12 +117,10 @@
 }
 
 .featured-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  color: var(--color-attention-fg);
+  @include icon-size(16px);
+  color: var(--fgColor-attention);
   vertical-align: middle;
-  margin-left: 4px;
+  margin-left: var(--base-size-4);
 }
 
 /* ── Responsive overrides: see shared.scss ── */

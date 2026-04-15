@@ -1,69 +1,69 @@
+@use 'mixins' as *;
+
 .dialog-title {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
-	font-size: var(--font-size-lg);
+	gap: var(--base-size-8);
+	font-size: var(--base-text-size-lg);
 }
 
 .dialog-title-icon {
-	color: var(--color-accent-emphasis);
+	color: var(--bgColor-accent-emphasis);
 }
 
 .error-banner {
-	background: var(--color-danger-subtle);
-	color: var(--color-danger-fg);
-	padding: var(--space-2) var(--space-3);
-	border-radius: var(--radius-md);
-	margin-bottom: var(--space-3);
-	font-size: var(--font-size-sm);
+	background: var(--bgColor-danger-muted);
+	color: var(--fgColor-danger);
+	padding: var(--base-size-8) var(--base-size-12);
+	border-radius: var(--borderRadius-medium);
+	margin-bottom: var(--base-size-12);
+	font-size: var(--base-text-size-sm);
 }
 
 /* ── Type chip selector ── */
 .type-chips {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--space-2);
+	gap: var(--base-size-8);
 }
 
 .type-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--space-1);
-	padding: var(--space-1) var(--space-3);
-	border-radius: var(--radius-full);
-	border: 1px solid var(--color-border-default);
-	background: var(--color-canvas-default);
-	font-size: var(--font-size-xs);
-	color: var(--color-fg-muted);
+	gap: var(--base-size-4);
+	padding: var(--base-size-4) var(--base-size-12);
+	border-radius: var(--borderRadius-full);
+	border: 1px solid var(--borderColor-default);
+	background: var(--bgColor-default);
+	font-size: var(--base-text-size-xs);
+	color: var(--fgColor-muted);
 	cursor: pointer;
-	transition: all var(--duration-fast);
+	transition: all var(--base-duration-100);
 
 	mat-icon {
-		font-size: 16px;
-		width: 16px;
-		height: 16px;
+		@include icon-size(16px);
 	}
 
 	&:hover {
-		border-color: var(--color-accent-muted);
-		color: var(--color-accent-fg);
-		background: var(--color-accent-subtle);
+		border-color: var(--bgColor-accent-muted);
+		color: var(--fgColor-accent);
+		background: var(--bgColor-accent-muted);
 	}
 }
 
 .type-chip-active {
-	background: var(--color-accent-subtle);
-	border-color: var(--color-accent-emphasis);
-	color: var(--color-accent-fg);
-	font-weight: var(--font-weight-medium);
+	background: var(--bgColor-accent-muted);
+	border-color: var(--bgColor-accent-emphasis);
+	color: var(--fgColor-accent);
+	font-weight: var(--base-text-weight-medium);
 }
 
 /* ── Option toggles (inline) ── */
 .option-toggles {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--space-2) var(--space-4);
-	margin-bottom: var(--space-2);
+	gap: var(--base-size-8) var(--base-size-16);
+	margin-bottom: var(--base-size-8);
 }
 
 .full-width {

@@ -3,8 +3,10 @@
     <button class="mobile-menu-toggle" (click)="menuToggle.emit()" aria-label="Toggle sidebar">
       <mat-icon>menu</mat-icon>
     </button>
-    <img src="assets/logo.svg" class="app-logo" alt="Tartware" />
-    <span class="app-title">Tartware</span>
+    <a class="app-brand" routerLink="/dashboard" [matTooltip]="'Go to Dashboard' | translate">
+      <img src="assets/logo.svg" class="app-logo" alt="Tartware" />
+      <span class="app-title">Tartware</span>
+    </a>
 
     <!-- Tenant switcher -->
     @if (showTenantSwitcher) {

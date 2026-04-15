@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
     -- Primary Key
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Stable identity shared across tenants
 
+-- Tenant Association (nullable — users may span multiple tenants via user_tenant_associations)
+tenant_id UUID REFERENCES tenants(id), -- Primary/home tenant; NULL for system actors
+
 -- Authentication
 username VARCHAR(100) UNIQUE NOT NULL, -- Login credential (enforced unique)
 email VARCHAR(255) UNIQUE NOT NULL, -- Used for password reset and notifications

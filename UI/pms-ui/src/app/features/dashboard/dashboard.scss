@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Dashboard — component-specific overrides.
  * Reusable patterns (stat-grid, detail-card, badges, etc.) live in styles/shared.scss. */
 
@@ -9,166 +11,143 @@
 .dashboard-meta-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
   align-items: center;
-  margin-bottom: var(--space-4);
+  margin-top: var(--base-size-16);
+  margin-bottom: var(--base-size-16);
 }
 
 .dashboard-meta-item {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--color-fg-muted);
-  background: var(--color-canvas-subtle);
-  border: 1px solid var(--color-border-muted);
-  border-radius: var(--radius-pill);
-  padding: var(--space-1) var(--space-3);
+  gap: var(--control-small-gap);
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--borderRadius-full);
+  padding: var(--control-small-paddingBlock) var(--control-small-paddingInline-normal);
 
   mat-icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
+    @include icon-size(14px);
   }
 }
 
 .dashboard-meta-active {
-  background: color-mix(in srgb, var(--color-success-fg) 10%, transparent);
-  border-color: color-mix(in srgb, var(--color-success-fg) 30%, transparent);
-  color: var(--color-success-fg);
+  background: var(--bgColor-success-muted);
+  border-color: var(--borderColor-success-muted);
+  color: var(--fgColor-success);
 }
 
-/* ── KPI Cards ── */
-.kpi-card {
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas-default);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-
-  &.clickable {
-    cursor: pointer;
-    transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
-
-    &:hover {
-      border-color: var(--color-accent-muted);
-      box-shadow: var(--color-shadow-small);
-    }
-  }
-}
-
-.kpi-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
+/* ── KPI icon colors ── */
 .kpi-icon {
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  color: var(--color-accent-fg);
+  @include icon-size(20px);
+  color: var(--fgColor-accent);
 }
 
 .kpi-icon-revenue {
-  color: var(--color-success-fg);
+  color: var(--fgColor-success);
 }
 
 .kpi-icon-checkin {
-  color: var(--color-warning-fg);
+  color: var(--fgColor-attention);
 }
 
 .kpi-icon-checkout {
-  color: var(--color-danger-fg);
-}
-
-.kpi-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-muted);
-}
-
-.kpi-value {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-fg-default);
+  color: var(--fgColor-danger);
 }
 
 .kpi-trend {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  gap: var(--base-size-4);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
 }
 
 .kpi-trend-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
+  @include icon-size(16px);
 }
 
 .trend-up {
-  color: var(--color-success-fg);
+  color: var(--fgColor-success);
 }
 
 .trend-down {
-  color: var(--color-danger-fg);
+  color: var(--fgColor-danger);
 }
 
 .trend-neutral {
-  color: var(--color-fg-muted);
+  color: var(--fgColor-muted);
 }
 
 .kpi-sub {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
 }
 
 /* ── Activity Sparkline ── */
-.dashboard-sparkline {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas-default);
-  padding: var(--space-3) var(--space-4);
-  margin-top: var(--space-4);
-}
-
-.sparkline-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  white-space: nowrap;
-}
-
 .sparkline-svg {
   width: 120px;
-  height: 28px;
+  height: var(--control-small-size);
   display: block;
 }
 
+.sparkline-lg {
+  width: 100%;
+  height: 48px;
+}
+
 .sparkline-area {
-  fill: var(--color-accent-subtle);
+  fill: var(--bgColor-accent-muted);
 }
 
 .sparkline-line {
   fill: none;
-  stroke: var(--color-accent-emphasis);
+  stroke: var(--bgColor-accent-emphasis);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.sparkline-label {
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
+  white-space: nowrap;
+}
+
+.dashboard-sparkline-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  align-items: center;
+}
+
+/* ── Dashboard operational grid ── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--base-size-16);
+  margin-top: var(--base-size-16);
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+
+    mat-icon {
+      @include icon-size(18px);
+      color: var(--fgColor-muted);
+    }
+  }
 }
 
 /* ── Dashboard panels ── */
 .dashboard-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
+  gap: var(--base-size-16);
+  margin-top: var(--base-size-16);
 }
 
 /* ── Activity list ── */
@@ -183,9 +162,9 @@
 .task-item {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-muted);
+  gap: var(--base-size-12);
+  padding: var(--base-size-12) 0;
+  border-bottom: 1px solid var(--borderColor-muted);
 
   &:last-child {
     border-bottom: none;
@@ -199,11 +178,9 @@
 
 .activity-icon,
 .task-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  color: var(--color-fg-muted);
-  margin-top: 2px;
+  @include icon-size(18px);
+  color: var(--fgColor-muted);
+  margin-top: var(--base-size-2);
   flex-shrink: 0;
 }
 
@@ -211,26 +188,30 @@
 .task-content {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
   flex: 1;
   min-width: 0;
 }
 
 .activity-title,
 .task-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-default);
 }
 
 .activity-desc,
 .task-desc {
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .dashboard-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }

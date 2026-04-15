@@ -9,7 +9,7 @@
     </button>
   </app-page-header>
 
-  <div class="filter-bar">
+  <div class="filter-form">
     <div class="form-group">
       <label class="field-label">{{ 'Ledger Status' | translate }}</label>
       <select class="field-input field-sm" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">

@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Rates page — component-specific overrides only.
  * Reusable patterns live in styles/shared.scss. */
 
@@ -9,149 +11,93 @@
 .policy-banners {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-16);
 }
 
 .policy-banner {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
+  gap: var(--base-size-8);
+  padding: var(--base-size-8) var(--base-size-16);
+  border-radius: var(--borderRadius-small);
+  font-size: var(--base-text-size-sm);
 
   mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
+    @include icon-size(16px);
   }
 }
 
 .policy-banner-info {
-  background: color-mix(in srgb, var(--color-accent-fg) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent-fg) 30%, transparent);
-  color: var(--color-accent-fg);
+  background: var(--bgColor-accent-muted);
+  border: 1px solid var(--borderColor-accent-muted);
+  color: var(--fgColor-accent);
 }
 
 .policy-banner-success {
-  background: color-mix(in srgb, var(--color-success-fg) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-success-fg) 30%, transparent);
-  color: var(--color-success-fg);
+  background: var(--bgColor-success-muted);
+  border: 1px solid var(--borderColor-success-muted);
+  color: var(--fgColor-success);
 }
 
-/* ── Rate Analytics Overview ── */
-.rate-overview {
-  display: flex;
-  align-items: stretch;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas-default);
-  margin-bottom: var(--space-5);
-  overflow: hidden;
-}
-
-.rate-overview-section {
-  flex: 1;
-  padding: var(--space-4) var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.rate-overview-divider {
-  width: 1px;
-  background: var(--color-border-default);
-  align-self: stretch;
-  margin: var(--space-3) 0;
-}
-
-.rate-overview-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-muted);
-
-  mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-  }
-}
-
-.rate-overview-value {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-fg-default);
-}
-
-.rate-overview-sub {
-  font-size: var(--font-size-xs);
-}
-
+/* ── Rate Analytics — component-specific overrides ── */
 .rate-range-value {
-  font-size: var(--font-size-lg);
+  font-size: var(--base-text-size-lg);
 }
 
 .rate-range-sep {
-  margin: 0 var(--space-1);
-  color: var(--color-fg-muted);
-  font-weight: var(--font-weight-regular);
+  margin: 0 var(--base-size-4);
+  color: var(--fgColor-muted);
+  font-weight: var(--base-text-weight-normal);
 }
 
-.rate-section-bar .rate-overview-label mat-icon {
-  color: var(--color-attention-fg, var(--color-warning-fg));
+.rate-section-bar .overview-label mat-icon {
+  color: var(--fgColor-attention);
 }
 
 .rate-overview-chips {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
   flex-wrap: wrap;
-  margin-top: var(--space-1);
+  margin-top: var(--base-size-4);
 }
 
 .rate-type-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px var(--space-2);
-  background: var(--color-canvas-subtle);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  gap: var(--base-size-4);
+  padding: 2px var(--base-size-8);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-full);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 
   strong {
-    color: var(--color-fg-default);
-    font-weight: var(--font-weight-semibold);
+    color: var(--fgColor-default);
+    font-weight: var(--base-text-weight-semibold);
   }
 }
 
 .rate-code {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-accent-fg);
-  font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-accent);
+  font-family: var(--fontStack-monospace);
+  font-size: var(--base-text-size-xs);
 }
 
 .rate-name {
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 .col-right {
   text-align: right;
 }
 
-.cell-amount {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 
 .tax-hint {
-  margin-left: 4px;
-  font-size: var(--font-size-xs);
+  margin-left: var(--base-size-4);
+  font-size: var(--base-text-size-xs);
 }
 
 .cell-status {
@@ -168,11 +114,11 @@
 }
 
 .btn-activate {
-  color: var(--color-success-fg);
-  border-color: var(--color-success-emphasis);
+  color: var(--fgColor-success);
+  border-color: var(--bgColor-success-emphasis);
 
   &:hover {
-    background: var(--color-success-subtle);
+    background: var(--bgColor-success-muted);
   }
 }
 

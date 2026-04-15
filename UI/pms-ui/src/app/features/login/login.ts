@@ -102,13 +102,13 @@ export class LoginComponent implements AfterViewInit {
 				navigator.credentials.store(cred).catch(() => {});
 			}
 			// Load user theme preference after login
-			await this.theme.loadPreferences();
-
 			// Load role-based screen permissions from DB
-			await this.screenPerms.loadPermissions();
-
-			// Load properties and handle selection
-			const properties = await this.ctx.fetchProperties();
+			// Load properties and handle selection — all independent, run in parallel
+			const [, , properties] = await Promise.all([
+				this.theme.loadPreferences(),
+				this.screenPerms.loadPermissions(),
+				this.ctx.fetchProperties(),
+			]);
 
 			const landingRoute = findFirstAllowedRoute(this.screenPerms.allowedScreens());
 

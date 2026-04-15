@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Reservation detail — component-specific only.
  * Reusable patterns (detail-card, detail-list, breadcrumb, etc.)
  * live in styles/shared.scss. */
@@ -6,26 +8,24 @@
 .guest-detail-value {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--base-size-4);
   flex-wrap: wrap;
 }
 
 .birthday-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  color: var(--color-accent-fg);
+  @include icon-size(16px);
+  color: var(--fgColor-accent);
   flex-shrink: 0;
 }
 
 .birthday-hint {
-  font-size: var(--font-size-xs);
-  color: var(--color-accent-fg);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-accent);
+  font-weight: var(--base-text-weight-medium);
 }
 
 .notes-section {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--base-size-12);
 
   &:last-child {
     margin-bottom: 0;
@@ -34,17 +34,17 @@
 
 .notes-label {
   display: block;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--base-size-4);
 }
 
 .notes-text {
-  font-size: var(--font-size-sm);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  color: var(--fgColor-default);
   margin: 0;
   white-space: pre-wrap;
 }
@@ -53,8 +53,8 @@
 .room-selection {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  gap: var(--base-size-8);
+  margin-top: var(--base-size-8);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -62,116 +62,110 @@
 .room-option {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas-default);
+  gap: var(--base-size-12);
+  padding: var(--base-size-8) var(--base-size-12);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
 
   &:hover {
-    border-color: var(--color-accent-muted);
+    border-color: var(--bgColor-accent-muted);
   }
 
   > mat-icon:first-child {
-    color: var(--color-fg-muted);
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+    color: var(--fgColor-muted);
+    @include icon-size(20px);
     flex-shrink: 0;
   }
 }
 
 .room-option-selected {
-  border-color: var(--color-accent-fg);
-  box-shadow: 0 0 0 1px var(--color-accent-fg);
-  background: var(--color-accent-subtle);
+  border-color: var(--fgColor-accent);
+  box-shadow: 0 0 0 1px var(--fgColor-accent);
+  background: var(--bgColor-accent-muted);
 }
 
 .room-option-info {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--base-size-2);
   flex: 1;
   min-width: 0;
 }
 
 .room-option-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
 }
 
 .room-option-hint {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 }
 
 .room-option-details {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 }
 
 .room-option-features {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 2px;
+  gap: var(--base-size-4);
+  margin-top: var(--base-size-2);
 }
 
 .room-feature-tag {
   display: inline-block;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-  background: var(--color-neutral-subtle);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  padding: var(--base-size-2) var(--base-size-6);
+  border-radius: var(--borderRadius-full);
+  background: var(--bgColor-neutral-muted);
+  color: var(--fgColor-muted);
 }
 
 .room-feature-more {
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--base-text-weight-semibold);
 }
 
 .room-option-detailed .room-option-info {
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .room-check {
-  color: var(--color-accent-fg);
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
+  color: var(--fgColor-accent);
+  @include icon-size(20px);
   flex-shrink: 0;
 }
 
 .room-loading {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  font-size: var(--font-size-sm);
-  color: var(--color-fg-muted);
+  gap: var(--base-size-8);
+  padding: var(--base-size-8);
+  font-size: var(--base-text-size-sm);
+  color: var(--fgColor-muted);
 }
 
 .room-empty-note {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
-  padding: var(--space-2);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  padding: var(--base-size-8);
   margin: 0;
 }
 
 .room-load-error {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  color: var(--color-danger-fg);
+  gap: var(--base-size-4);
+  color: var(--fgColor-danger);
 
   mat-icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
+    @include icon-size(14px);
   }
 }
 
@@ -179,23 +173,23 @@
 .room-filter-bar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  gap: var(--base-size-12);
+  margin-bottom: var(--base-size-8);
   flex-wrap: wrap;
 }
 
 .building-filter-bar {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
 }
 
 .room-type-toggle {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  gap: var(--base-size-4);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
   cursor: pointer;
   white-space: nowrap;
 
@@ -205,30 +199,31 @@
 }
 
 .building-filter-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-muted);
   white-space: nowrap;
 }
 
 .building-filter-select {
-  font-size: var(--font-size-sm);
-  padding: 3px var(--space-2);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-canvas-default);
-  color: var(--color-fg-default);
+  font-size: var(--text-body-size-small);
+  padding: var(--control-small-paddingBlock) var(--control-small-paddingInline-condensed);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-small);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
   cursor: pointer;
   max-width: 220px;
+  min-height: var(--control-small-size);
 }
 
 /* ── Reservation billing action forms ── */
 .reservation-action-grid {
-  margin-top: var(--space-3);
+  margin-top: var(--base-size-12);
 }
 
 .reservation-action-grid .form-field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--base-size-4);
 }

@@ -89,7 +89,6 @@ interface JsonFieldGroup {
 		TranslatePipe,
 	],
 	templateUrl: "./settings.html",
-	styleUrl: "./settings.scss",
 })
 export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);

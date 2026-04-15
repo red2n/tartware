@@ -18,13 +18,27 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000;
  */
 const REFRESH_GRACE_MS = 10 * 60 * 1000;
 
+/** Max retry attempts for transient refresh failures (network, 5xx). */
+const REFRESH_MAX_RETRIES = 3;
+
+/** Base delay (ms) for exponential backoff between retries. */
+const REFRESH_RETRY_BASE_MS = 1_000;
+
+/**
+ * Periodic health-check interval (ms) while the tab is active.
+ * Acts as a safety net for throttled/missed setTimeout timers.
+ */
+const HEALTH_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+
 @Injectable({ providedIn: "root" })
 export class AuthService implements OnDestroy {
 	private readonly _user = signal<UserInfo | null>(null);
 	private readonly _tenantId = signal<string | null>(null);
 	private readonly _memberships = signal<AuthMembership[]>([]);
 	private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+	private healthCheckTimerId: ReturnType<typeof setInterval> | null = null;
 	private isRefreshing = false;
+	private consecutiveRefreshFailures = 0;
 
 	readonly user = this._user.asReadonly();
 	readonly tenantId = this._tenantId.asReadonly();
@@ -48,6 +62,7 @@ export class AuthService implements OnDestroy {
 
 	ngOnDestroy(): void {
 		this.clearRefreshTimer();
+		this.clearHealthCheck();
 		document.removeEventListener("visibilitychange", this.onVisibilityChange);
 		window.removeEventListener("focus", this.onWindowFocus);
 		window.removeEventListener("auth:unauthorized", this.onUnauthorized);
@@ -89,6 +104,7 @@ export class AuthService implements OnDestroy {
 
 	logout(): void {
 		this.clearRefreshTimer();
+		this.clearHealthCheck();
 		localStorage.removeItem("access_token");
 		localStorage.removeItem("tenant_id");
 		localStorage.removeItem("user_info");
@@ -166,9 +182,11 @@ export class AuthService implements OnDestroy {
 	/**
 	 * Schedule a silent token refresh before the current token expires.
 	 * Runs outside Angular zone so the timer doesn't trigger change detection.
+	 * Also starts a periodic health check as a safety net for throttled timers.
 	 */
 	private scheduleTokenRefresh(token: string): void {
 		this.clearRefreshTimer();
+		this.consecutiveRefreshFailures = 0;
 
 		const expiresAt = this.getTokenExpiry(token);
 		if (!expiresAt) return;
@@ -183,6 +201,8 @@ export class AuthService implements OnDestroy {
 		this.ngZone.runOutsideAngular(() => {
 			this.refreshTimerId = setTimeout(() => this.refreshToken(), delayMs);
 		});
+
+		this.startHealthCheck();
 	}
 
 	private readonly onVisibilityChange = (): void => {
@@ -217,6 +237,16 @@ export class AuthService implements OnDestroy {
 		const token = localStorage.getItem("access_token");
 		if (!token) return;
 
+		if (this.isTokenExpired(token)) {
+			if (this.isWithinRefreshGrace(token)) {
+				this.refreshToken();
+			} else {
+				// Beyond grace — no point retrying
+				this.ngZone.run(() => this.forceLogout());
+			}
+			return;
+		}
+
 		const expiresAt = this.getTokenExpiry(token);
 		if (!expiresAt) return;
 
@@ -228,6 +258,15 @@ export class AuthService implements OnDestroy {
 		}
 	}
 
+	/**
+	 * Attempt to refresh the access token with retry + exponential backoff.
+	 *
+	 * Only force-logs out on definitive auth failures (401/403).
+	 * Transient errors (network, 5xx) are retried up to REFRESH_MAX_RETRIES
+	 * before giving up. After all retries, checks if the current token is
+	 * still within the grace window — if so, schedules another attempt later
+	 * rather than force-logging out.
+	 */
 	private async refreshToken(): Promise<void> {
 		if (this.isRefreshing) return;
 		this.isRefreshing = true;
@@ -239,23 +278,73 @@ export class AuthService implements OnDestroy {
 				return;
 			}
 
-			// Use fetch directly to bypass ApiService's 401 error handler
-			const response = await fetch("/v1/auth/refresh", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
-				},
-			});
+			let lastStatus = 0;
+			for (let attempt = 0; attempt <= REFRESH_MAX_RETRIES; attempt++) {
+				if (attempt > 0) {
+					const delay = REFRESH_RETRY_BASE_MS * 2 ** (attempt - 1);
+					const jitter = Math.floor(Math.random() * delay * 0.25);
+					await new Promise((r) => setTimeout(r, delay + jitter));
+				}
 
-			if (!response.ok) {
-				throw new Error(`Refresh failed: ${response.status}`);
+				try {
+					const response = await fetch("/v1/auth/refresh", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${localStorage.getItem("access_token") ?? token}`,
+						},
+					});
+
+					lastStatus = response.status;
+
+					if (response.ok) {
+						const data: TokenRefreshResponse = await response.json();
+						localStorage.setItem("access_token", data.access_token);
+						this.consecutiveRefreshFailures = 0;
+						this.scheduleTokenRefresh(data.access_token);
+						return;
+					}
+
+					// Definitive auth failure — no point retrying
+					if (response.status === 401 || response.status === 403) {
+						console.warn("[auth] refresh rejected by server (", response.status, ")");
+						this.ngZone.run(() => this.forceLogout());
+						return;
+					}
+
+					// 429 (rate limited) or 5xx — retry
+					console.warn(
+						`[auth] refresh attempt ${attempt + 1}/${REFRESH_MAX_RETRIES + 1} failed: ${response.status}`,
+					);
+				} catch {
+					// Network error — retry
+					console.warn(
+						`[auth] refresh attempt ${attempt + 1}/${REFRESH_MAX_RETRIES + 1} network error`,
+					);
+				}
 			}
 
-			const data: TokenRefreshResponse = await response.json();
-			localStorage.setItem("access_token", data.access_token);
-			this.scheduleTokenRefresh(data.access_token);
-		} catch {
+			// All retries exhausted — check if we still have a usable token
+			this.consecutiveRefreshFailures++;
+			const currentToken = localStorage.getItem("access_token");
+			if (currentToken && !this.isTokenExpired(currentToken)) {
+				// Token is still valid — reschedule and try again later
+				console.warn("[auth] refresh failed but token still valid, rescheduling");
+				this.scheduleTokenRefresh(currentToken);
+				return;
+			}
+
+			if (currentToken && this.isWithinRefreshGrace(currentToken)) {
+				// Token expired but within grace — schedule a retry in 30s
+				console.warn("[auth] token expired, within grace — retrying in 30s");
+				this.ngZone.runOutsideAngular(() => {
+					this.refreshTimerId = setTimeout(() => this.refreshToken(), 30_000);
+				});
+				return;
+			}
+
+			// Token fully expired beyond grace, all retries failed
+			console.warn("[auth] token expired beyond grace after", REFRESH_MAX_RETRIES + 1, "attempts, status:", lastStatus);
 			this.ngZone.run(() => this.forceLogout());
 		} finally {
 			this.isRefreshing = false;
@@ -264,6 +353,7 @@ export class AuthService implements OnDestroy {
 
 	/** Log out and redirect to login. Used when token refresh fails. */
 	private forceLogout(): void {
+		this.clearHealthCheck();
 		this.logout();
 		window.location.assign("/login");
 	}
@@ -272,6 +362,27 @@ export class AuthService implements OnDestroy {
 		if (this.refreshTimerId !== null) {
 			clearTimeout(this.refreshTimerId);
 			this.refreshTimerId = null;
+		}
+	}
+
+	/**
+	 * Periodic health check — runs every 2 minutes while the tab is active.
+	 * Catches cases where setTimeout is throttled or silently dropped.
+	 */
+	private startHealthCheck(): void {
+		this.clearHealthCheck();
+		this.ngZone.runOutsideAngular(() => {
+			this.healthCheckTimerId = setInterval(() => {
+				if (document.visibilityState !== "visible") return;
+				this.checkAndRefreshToken();
+			}, HEALTH_CHECK_INTERVAL_MS);
+		});
+	}
+
+	private clearHealthCheck(): void {
+		if (this.healthCheckTimerId !== null) {
+			clearInterval(this.healthCheckTimerId);
+			this.healthCheckTimerId = null;
 		}
 	}
 

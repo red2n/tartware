@@ -5,51 +5,51 @@
 }
 
 .invoice-kpi-total > mat-icon {
-  color: var(--color-accent-fg);
+  color: var(--fgColor-accent);
 }
 
 .invoice-kpi-balance > mat-icon {
-  color: var(--color-warning-fg);
+  color: var(--fgColor-attention);
 }
 
 .invoice-kpi-draft > mat-icon {
-  color: var(--color-fg-muted);
+  color: var(--fgColor-muted);
 }
 
 .invoice-kpi-credit > mat-icon {
-  color: var(--color-accent-fg);
+  color: var(--fgColor-accent);
 }
 
 .filter-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  gap: var(--base-size-12);
+  margin-bottom: var(--base-size-16);
 }
 
 .filter-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--base-size-12);
   flex-wrap: wrap;
 }
 
 .results-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .results-count {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
 }
 
 .results-note {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 }
 
 .filter-search {
@@ -57,14 +57,14 @@
 }
 
 .invoice-table-shell {
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-large);
   overflow: hidden;
-  background: var(--color-canvas-default);
+  background: var(--bgColor-default);
 }
 
 .invoice-table tbody tr:hover {
-  background: var(--color-canvas-subtle);
+  background: var(--bgColor-muted);
 }
 
 .invoice-cell,
@@ -77,9 +77,9 @@
 .invoice-primary-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--base-size-8);
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: var(--base-size-4);
 }
 
 .invoice-secondary-row,
@@ -87,19 +87,13 @@
 .amount-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
-}
-
-.cell-main {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-default);
+  gap: var(--base-size-2);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
 }
 
 .invoice-ref {
-  font-size: var(--font-size-sm);
+  font-size: var(--base-text-size-sm);
 }
 
 .amount-breakdown {

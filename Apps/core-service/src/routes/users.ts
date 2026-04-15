@@ -124,10 +124,11 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
           const passwordHash = await hashPassword(passwordToSet);
           const userInsert = await client.query<{ id: string; username: string; email: string }>(
             `INSERT INTO users
-              (username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5, $6, true, false, $7, $7)
+              (tenant_id, username, email, password_hash, first_name, last_name, phone, is_active, is_verified, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, true, false, $8, $8)
              RETURNING id, username, email`,
             [
+              data.tenant_id,
               data.username,
               data.email,
               passwordHash,

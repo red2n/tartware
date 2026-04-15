@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Command Management page — minimal custom styles; leverages shared.scss */
 
 .command-management-page {
@@ -9,29 +11,40 @@
 .command-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .command-name {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-fg-default);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
 }
 
 .command-code {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono, "SFMono-Regular", Consolas, monospace);
-  color: var(--color-accent-fg);
-  background: var(--color-accent-subtle);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
+  font-size: var(--base-text-size-xs);
+  font-family: var(--fontStack-monospace);
+  color: var(--fgColor-accent);
+  background: var(--bgColor-accent-muted);
+  padding: var(--base-size-2) var(--base-size-6);
+  border-radius: var(--borderRadius-small);
   width: fit-content;
 }
 
 .command-description {
-  font-size: var(--font-size-xs);
-  color: var(--color-fg-muted);
-  margin-top: 2px;
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  margin-top: var(--base-size-2);
+}
+
+/* Status column — fixed width so the edit icon doesn't cause reflow */
+.th-status,
+.td-status {
+  width: 120px;
+}
+
+.td-status {
+  position: relative;
+  white-space: nowrap;
 }
 
 /* Actions column */
@@ -43,20 +56,21 @@
 
 /* Modified row highlight */
 .row-modified {
-  background-color: var(--color-attention-subtle, #fffde7) !important;
+  background-color: var(--bgColor-attention-muted) !important;
 }
 
 .modified-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
-  color: var(--color-attention-fg, #9a6700);
+  @include icon-size(14px);
+  color: var(--fgColor-attention);
   vertical-align: middle;
-  margin-left: 4px;
+  margin-left: var(--base-size-4);
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Pending badge in header */
 .pending-badge {
-  font-size: var(--font-size-xs);
-  margin-right: var(--space-2);
+  font-size: var(--base-text-size-xs);
+  margin-right: var(--base-size-8);
 }

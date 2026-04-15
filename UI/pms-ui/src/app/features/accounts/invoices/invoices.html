@@ -96,12 +96,14 @@
   <!-- ═══ STATUS FILTER ═══ -->
   <div class="filter-panel">
     <div class="filter-bar">
-      @for (filter of statusFilters(); track filter.key) {
-        <button class="filter-tab" [class.active]="statusFilter() === filter.key" (click)="setStatusFilter(filter.key)">
-          {{ filter.label | translate }}
-          <span class="counter">{{ filter.count }}</span>
-        </button>
-      }
+      <nav class="filter-tabs" aria-label="Invoice status filters">
+        @for (filter of statusFilters(); track filter.key) {
+          <button class="filter-tab" [class.filter-tab-active]="statusFilter() === filter.key" (click)="setStatusFilter(filter.key)">
+            {{ filter.label | translate }}
+            <span class="counter">{{ filter.count }}</span>
+          </button>
+        }
+      </nav>
     </div>
     <div class="filter-toolbar">
       <div class="results-meta">

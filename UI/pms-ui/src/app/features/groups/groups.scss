@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 /* Groups page — component-specific overrides only.
  * All reusable patterns (filter-bar, data-table, states, badges, buttons)
  * live in styles/shared.scss. */
@@ -10,21 +12,21 @@
 .grp-overview {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  gap: var(--base-size-12);
+  margin-bottom: var(--base-size-20);
 }
 
 .grp-overview-card {
   flex: 1;
   display: flex;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
   overflow: hidden;
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
 
   &:hover {
-    box-shadow: var(--color-shadow-small);
+    box-shadow: var(--shadow-resting-small);
   }
 }
 
@@ -33,76 +35,72 @@
   flex-shrink: 0;
 }
 
-.grp-card-total .grp-overview-accent { background: var(--color-accent-emphasis); }
-.grp-card-active .grp-overview-accent { background: var(--color-success-emphasis); }
-.grp-card-rooms .grp-overview-accent { background: var(--color-warning-emphasis); }
-.grp-card-pickup .grp-overview-accent { background: #8b5cf6; }
+.grp-card-total .grp-overview-accent { background: var(--bgColor-accent-emphasis); }
+.grp-card-active .grp-overview-accent { background: var(--bgColor-success-emphasis); }
+.grp-card-rooms .grp-overview-accent { background: var(--bgColor-attention-emphasis); }
+.grp-card-pickup .grp-overview-accent { background: var(--bgColor-done-emphasis); }
 
-.grp-card-total .grp-overview-label mat-icon { color: var(--color-accent-fg); }
-.grp-card-active .grp-overview-label mat-icon { color: var(--color-success-fg); }
-.grp-card-rooms .grp-overview-label mat-icon { color: var(--color-warning-fg); }
-.grp-card-pickup .grp-overview-label mat-icon { color: #8b5cf6; }
+.grp-card-total .grp-overview-label mat-icon { color: var(--fgColor-accent); }
+.grp-card-active .grp-overview-label mat-icon { color: var(--fgColor-success); }
+.grp-card-rooms .grp-overview-label mat-icon { color: var(--fgColor-attention); }
+.grp-card-pickup .grp-overview-label mat-icon { color: var(--fgColor-done); }
 
 .grp-overview-body {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--base-size-12) var(--base-size-16);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--base-size-4);
 }
 
 .grp-overview-label {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-fg-muted);
+  gap: var(--base-size-8);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-muted);
 
   mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
+    @include icon-size(16px);
   }
 }
 
 .grp-overview-value {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-fg-default);
+  font-size: var(--text-title-size-medium);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
 }
 
 .grp-overview-sub {
-  font-size: var(--font-size-xs);
+  font-size: var(--base-text-size-xs);
 }
 
 /* ── Table cells ── */
 .group-name-cell {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--base-size-4);
 }
 
 .grp-type-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  color: var(--color-fg-muted);
+  @include icon-size(16px);
+  color: var(--fgColor-muted);
   flex-shrink: 0;
 }
 
 .group-name {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-accent-fg);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-accent);
 }
 
 .contact-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--base-size-2);
 }
 
 .contact-name {
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--base-text-weight-medium);
 }
 
 .text-center {
@@ -110,18 +108,11 @@
 }
 
 .rooms-fraction {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-family: var(--fontStack-monospace);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
 }
 
-.cell-amount {
-  font-weight: var(--font-weight-medium);
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
-  text-align: right;
-  white-space: nowrap;
-}
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
@@ -131,18 +122,5 @@
 
   .grp-overview-card {
     width: 100%;
-  }
-
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-input {
-    width: 100%;
-  }
-
-  .table-container {
-    overflow-x: auto;
   }
 }

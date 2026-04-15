@@ -293,8 +293,9 @@ export class AccountsReceivableComponent {
 				{ tenant_id: tenantId },
 			);
 			this.selectedAr.set(detail);
-		} catch {
+		} catch (e) {
 			this.selectedAr.set(null);
+			this.toast.error(e instanceof Error ? e.message : "Failed to load AR detail");
 		}
 	}
 

@@ -6,18 +6,18 @@
 .skip-link {
   position: absolute;
   top: -100%;
-  left: var(--space-4);
+  left: var(--base-size-16);
   z-index: 1000;
-  padding: var(--space-2) var(--space-4);
-  background: var(--color-accent-fg);
-  color: var(--color-fg-on-emphasis);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  padding: var(--base-size-8) var(--base-size-16);
+  background: var(--fgColor-accent);
+  color: var(--fgColor-onEmphasis);
+  border-radius: var(--borderRadius-medium);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
   text-decoration: none;
 
   &:focus {
-    top: var(--space-2);
+    top: var(--base-size-8);
   }
 }
 
@@ -57,7 +57,7 @@
 
 .content-area {
   flex: 1;
-  padding: var(--space-6);
+  padding: var(--base-size-24);
   width: 100%;
   overflow-y: auto;
 }

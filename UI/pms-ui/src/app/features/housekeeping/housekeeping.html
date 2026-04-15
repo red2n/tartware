@@ -53,55 +53,60 @@
   <!-- KPI SUMMARY STRIP                           -->
   <!-- ═════════════════════════════════════════════ -->
   @if (rooms().length > 0) {
-    <div class="hk-summary">
-      <div class="hk-summary-card hk-summary-ready">
-        <div class="hk-summary-header">
+    <div class="overview-bar">
+      <div class="overview-section hk-section-ready">
+        <div class="overview-label">
           <mat-icon>verified</mat-icon>
           <span>{{ 'Rooms Ready' | translate }}</span>
         </div>
-        <div class="hk-summary-value">{{ summary().readyPct }}%</div>
-        <div class="hk-summary-sub text-muted">{{ summary().clean + summary().inspected }} {{ 'of' | translate }} {{ summary().total }}</div>
+        <div class="overview-value">{{ summary().readyPct }}%</div>
+        <div class="overview-sub text-muted">{{ summary().clean + summary().inspected }} {{ 'of' | translate }} {{ summary().total }}</div>
       </div>
-      <div class="hk-summary-card hk-summary-dirty clickable" (click)="setView('rooms'); setFilter('DIRTY')">
-        <div class="hk-summary-header">
+      <div class="overview-divider"></div>
+      <div class="overview-section hk-section-dirty clickable" (click)="setView('rooms'); setFilter('DIRTY')">
+        <div class="overview-label">
           <mat-icon>warning</mat-icon>
           <span>{{ 'Dirty' | translate }}</span>
         </div>
-        <div class="hk-summary-value">{{ summary().dirty }}</div>
-        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
+        <div class="overview-value">{{ summary().dirty }}</div>
+        <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
-      <div class="hk-summary-card hk-summary-progress clickable" (click)="setView('rooms'); setFilter('IN_PROGRESS')">
-        <div class="hk-summary-header">
+      <div class="overview-divider"></div>
+      <div class="overview-section hk-section-progress clickable" (click)="setView('rooms'); setFilter('IN_PROGRESS')">
+        <div class="overview-label">
           <mat-icon>cleaning_services</mat-icon>
           <span>{{ 'In Progress' | translate }}</span>
         </div>
-        <div class="hk-summary-value">{{ summary().inProgress }}</div>
-        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
+        <div class="overview-value">{{ summary().inProgress }}</div>
+        <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
-      <div class="hk-summary-card hk-summary-clean clickable" (click)="setView('rooms'); setFilter('CLEAN')">
-        <div class="hk-summary-header">
+      <div class="overview-divider"></div>
+      <div class="overview-section hk-section-clean clickable" (click)="setView('rooms'); setFilter('CLEAN')">
+        <div class="overview-label">
           <mat-icon>check_circle</mat-icon>
           <span>{{ 'Clean' | translate }}</span>
         </div>
-        <div class="hk-summary-value">{{ summary().clean }}</div>
-        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
+        <div class="overview-value">{{ summary().clean }}</div>
+        <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
-      <div class="hk-summary-card clickable" (click)="setView('rooms'); setFilter('INSPECTED')">
-        <div class="hk-summary-header">
+      <div class="overview-divider"></div>
+      <div class="overview-section clickable" (click)="setView('rooms'); setFilter('INSPECTED')">
+        <div class="overview-label">
           <mat-icon>verified</mat-icon>
           <span>{{ 'Inspected' | translate }}</span>
         </div>
-        <div class="hk-summary-value">{{ summary().inspected }}</div>
-        <div class="hk-summary-sub text-muted">{{ 'rooms' | translate }}</div>
+        <div class="overview-value">{{ summary().inspected }}</div>
+        <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       @if (summary().dnd > 0) {
-        <div class="hk-summary-card hk-summary-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
-          <div class="hk-summary-header">
+        <div class="overview-divider"></div>
+        <div class="overview-section hk-section-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
+          <div class="overview-label">
             <mat-icon>do_not_disturb</mat-icon>
             <span>DND</span>
           </div>
-          <div class="hk-summary-value">{{ summary().dnd }}</div>
-          <div class="hk-summary-sub text-muted">rooms</div>
+          <div class="overview-value">{{ summary().dnd }}</div>
+          <div class="overview-sub text-muted">rooms</div>
         </div>
       }
     </div>

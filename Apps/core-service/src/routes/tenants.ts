@@ -223,11 +223,12 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
 
         const userResult = await client.query<{ id: string; username: string; email: string }>(
           `INSERT INTO users
-            (id, username, email, password_hash, first_name, last_name, phone, mfa_secret, is_active, is_verified, created_by, updated_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, true, false, $8, $8)
+            (id, tenant_id, username, email, password_hash, first_name, last_name, phone, mfa_secret, is_active, is_verified, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, true, false, $9, $9)
            RETURNING id, username, email`,
           [
             ownerId,
+            tenantId,
             ownerInput.username,
             ownerInput.email,
             passwordHash,
