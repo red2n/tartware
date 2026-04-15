@@ -59,13 +59,8 @@
   </div>
 </div>
 
-@defer (on idle) {
-@if (loading()) {
-  <div class="loading-state">
-    <mat-spinner diameter="32"></mat-spinner>
-    <span class="text-muted">{{ 'Loading rate calendar…' | translate }}</span>
-  </div>
-} @else if (filteredRates().length === 0) {
+@defer (when dataReady(); prefetch on idle) {
+@if (filteredRates().length === 0) {
   <div class="empty-state">
     <mat-icon class="empty-icon">payments</mat-icon>
     <h3>{{ 'No active rate plans' | translate }}</h3>
@@ -144,15 +139,42 @@
   }
 } @placeholder {
   <div class="placeholder-table">
-    <div class="placeholder-row"></div>
-    <div class="placeholder-row"></div>
-    <div class="placeholder-row"></div>
-    <div class="placeholder-row"></div>
-    <div class="placeholder-row"></div>
+    <div class="placeholder-row">
+      <div class="placeholder-cell placeholder-cell--xl"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+    </div>
+    @for (_ of [1,2,3,4,5,6,7]; track $index) {
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--xl"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+      </div>
+    }
   </div>
 } @loading (minimum 200ms) {
-  <div class="loading-state">
-    <mat-spinner diameter="24"></mat-spinner>
-    <span class="text-muted">{{ 'Rendering calendar…' | translate }}</span>
+  <div class="placeholder-table">
+    @for (_ of [1,2,3,4,5,6,7]; track $index) {
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--xl"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+      </div>
+    }
   </div>
 }

@@ -5,10 +5,17 @@
     </button>
   </app-page-header>
 
-  <!-- ═════════════════════════════════════════════ -->
-  <!-- BILLING KPI OVERVIEW                         -->
-  <!-- ═════════════════════════════════════════════ -->
-  @if (payments().length > 0 || invoices().length > 0 || folios().length > 0) {
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- BILLING KPI OVERVIEW                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  @if (!paymentsReady() || !invoicesReady() || !foliosReady()) {
+    <div class="overview-bar-sk">
+      <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
+      <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
+      <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
+      <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
+    </div>
+  } @else if (payments().length > 0 || invoices().length > 0 || folios().length > 0) {
     <div class="overview-bar">
       <div class="overview-section bill-section-received">
         <div class="overview-label">
@@ -144,10 +151,8 @@
       </div>
     }
 
-    @defer (on idle) {
-    @if (paymentsLoading()) {
-      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading payments...' | translate }}</span></div>
-    } @else if (paymentsError(); as err) {
+    @defer (when paymentsReady(); prefetch on idle) {
+    @if (paymentsError(); as err) {
       <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadPayments()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredPayments().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">credit_card_off</mat-icon><p>{{ 'No payments found' | translate }}</p></div>
@@ -262,7 +267,45 @@
         <app-pagination [totalItems]="filteredPayments().length" [currentPage]="paymentPage()" [pageSize]="pageSize" (pageChange)="paymentPage.set($event)" />
       }
     } @placeholder {
-      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
+      <div class="placeholder-table">
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--lg"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+        </div>
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="placeholder-table">
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
     }
   }
 
@@ -346,10 +389,8 @@
       </div>
     }
 
-    @defer (on idle) {
-    @if (invoicesLoading()) {
-      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading invoices...' | translate }}</span></div>
-    } @else if (invoicesError(); as err) {
+    @defer (when invoicesReady(); prefetch on idle) {
+    @if (invoicesError(); as err) {
       <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredInvoices().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">receipt</mat-icon><p>{{ 'No invoices found' | translate }}</p></div>
@@ -503,7 +544,42 @@
         <app-pagination [totalItems]="filteredInvoices().length" [currentPage]="invoicePage()" [pageSize]="pageSize" (pageChange)="invoicePage.set($event)" />
       }
     } @placeholder {
-      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
+      <div class="placeholder-table">
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--lg"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+        </div>
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="placeholder-table">
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
     }
   }
 
@@ -559,10 +635,8 @@
       </div>
     }
 
-    @defer (on idle) {
-    @if (foliosLoading()) {
-      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading folios...' | translate }}</span></div>
-    } @else if (foliosError(); as err) {
+    @defer (when foliosReady(); prefetch on idle) {
+    @if (foliosError(); as err) {
       <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadFolios()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredFolios().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">folder_off</mat-icon><p>{{ 'No folios found' | translate }}</p></div>
@@ -993,7 +1067,45 @@
         <app-pagination [totalItems]="filteredFolios().length" [currentPage]="folioPage()" [pageSize]="pageSize" (pageChange)="folioPage.set($event)" />
       }
     } @placeholder {
-      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
+      <div class="placeholder-table">
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--lg"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+        </div>
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="placeholder-table">
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--badge"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
     }
   }
 
@@ -1071,10 +1183,8 @@
       </div>
     }
 
-    @defer (on idle) {
-    @if (chargesLoading()) {
-      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading charges...' | translate }}</span></div>
-    } @else if (chargesError(); as err) {
+    @defer (when chargesReady(); prefetch on idle) {
+    @if (chargesError(); as err) {
       <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadCharges()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredCharges().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">receipt_long</mat-icon><p>{{ 'No charges found' | translate }}</p></div>
@@ -1150,7 +1260,42 @@
         <app-pagination [totalItems]="filteredCharges().length" [currentPage]="chargePage()" [pageSize]="pageSize" (pageChange)="chargePage.set($event)" />
       }
     } @placeholder {
-      <div class="placeholder-table"><div class="placeholder-row"></div><div class="placeholder-row"></div><div class="placeholder-row"></div></div>
+      <div class="placeholder-table">
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xl"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+        </div>
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--xl"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="placeholder-table">
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--xl"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--xs"></div>
+          </div>
+        }
+      </div>
     }
   }
 

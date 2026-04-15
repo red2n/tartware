@@ -9,16 +9,21 @@ import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type {
 	AvailabilityResponse,
 	AvailableRoom,
+	ChargePostingListItem,
 	GuestWithStats,
 	ReservationDetail,
 } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { CHARGE_CODE_OPTIONS } from "../../billing/billing-constants";
 
 type DetailRow = { label: string; value: string; badge?: string; icon?: string; hint?: string };
 
@@ -46,6 +51,7 @@ const CANCELLATION_PENALTY_ALLOWED = new Set(["CANCELLED", "NO_SHOW"]);
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./reservation-detail.html",
 	styleUrl: "./reservation-detail.scss",
@@ -53,6 +59,7 @@ const CANCELLATION_PENALTY_ALLOWED = new Set(["CANCELLED", "NO_SHOW"]);
 export class ReservationDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
+	private readonly ctx = inject(TenantContextService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
@@ -96,6 +103,19 @@ export class ReservationDetailComponent implements OnInit {
 		currency: "",
 		reason: "",
 	});
+
+	/* ── Charge posting ── */
+	readonly chargeCodeOptions = CHARGE_CODE_OPTIONS;
+	readonly showPostChargeForm = signal(false);
+	readonly postChargeForm = signal({
+		charge_code: "MISC",
+		amount: 0,
+		quantity: 1,
+		description: "",
+	});
+	readonly postingCharge = signal(false);
+	readonly folioCharges = signal<ChargePostingListItem[]>([]);
+	readonly loadingFolioCharges = signal(false);
 
 	/* ── Room selection for check-in ── */
 	readonly availableRooms = signal<AvailableRoom[]>([]);
@@ -142,6 +162,16 @@ export class ReservationDetailComponent implements OnInit {
 	readonly canChargeCancellationPenalty = computed(() => {
 		const r = this.reservation();
 		return r ? CANCELLATION_PENALTY_ALLOWED.has(r.status.toUpperCase()) : false;
+	});
+
+	/** Whether a miscellaneous charge can be posted — true for any active in-house or confirmed reservation. */
+	readonly canPostCharge = computed(() => {
+		const r = this.reservation();
+		if (!r) return false;
+		const s = r.status.toUpperCase();
+		// Allow posting on open folio statuses; block if folio is explicitly closed/settled
+		const folioBlocked = r.folio && !['OPEN'].includes(r.folio.folio_status);
+		return ['CHECKED_IN', 'PENDING', 'CONFIRMED'].includes(s) && !folioBlocked;
 	});
 
 	readonly bookingRows = computed<DetailRow[]>(() => {
@@ -270,6 +300,8 @@ export class ReservationDetailComponent implements OnInit {
 			if (res.guest_id) {
 				void this.loadGuestProfile(res.guest_id);
 			}
+			// Always load charges — works via folio_id or reservation_id
+			void this.loadFolioCharges();
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load reservation");
 		} finally {
@@ -352,6 +384,72 @@ export class ReservationDetailComponent implements OnInit {
 			this.folioBalance.set(null);
 		} finally {
 			this.loadingFolioBalance.set(false);
+		}
+	}
+
+	async loadFolioCharges(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const folioId = r.folio?.folio_id;
+		this.loadingFolioCharges.set(true);
+		try {
+			const params: Record<string, string> = { tenant_id: tenantId, limit: "50" };
+			if (folioId) {
+				params["folio_id"] = folioId;
+			} else {
+				params["reservation_id"] = r.id;
+			}
+			const res = await this.api.get<{ data: ChargePostingListItem[] }>(
+				"/billing/charges",
+				params,
+			);
+			this.folioCharges.set(res.data ?? []);
+		} catch {
+			this.folioCharges.set([]);
+		} finally {
+			this.loadingFolioCharges.set(false);
+		}
+	}
+
+	togglePostChargeForm(): void {
+		this.showPostChargeForm.set(!this.showPostChargeForm());
+		if (!this.showPostChargeForm()) {
+			this.postChargeForm.set({ charge_code: "MISC", amount: 0, quantity: 1, description: "" });
+		}
+	}
+
+	async postCharge(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!r || !tenantId || !propertyId) return;
+		const form = this.postChargeForm();
+		if (form.amount <= 0) return;
+		this.postingCharge.set(true);
+		try {
+			const body: Record<string, unknown> = {
+				property_id: propertyId,
+				charge_code: form.charge_code || "MISC",
+				amount: form.amount,
+				quantity: form.quantity || 1,
+				description: form.description || undefined,
+			};
+			// Prefer folio_id when available; otherwise resolve via reservation_id
+			if (r.folio?.folio_id) {
+				body["folio_id"] = r.folio.folio_id;
+			} else {
+				body["reservation_id"] = r.id;
+			}
+			await this.api.post(`/tenants/${tenantId}/billing/charges`, body);
+			this.toast.success("Charge posted. Refreshing folio...");
+			this.showPostChargeForm.set(false);
+			this.postChargeForm.set({ charge_code: "MISC", amount: 0, quantity: 1, description: "" });
+			await settleCommandReadModel(() => this.loadFolioCharges());
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to post charge");
+		} finally {
+			this.postingCharge.set(false);
 		}
 	}
 

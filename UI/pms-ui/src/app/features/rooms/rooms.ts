@@ -6,7 +6,6 @@ import { MatDialog } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router, RouterLink } from "@angular/router";
 
@@ -42,7 +41,6 @@ type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "
 		MatButtonModule,
 		MatFormFieldModule,
 		MatInputModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
@@ -61,7 +59,7 @@ export class RoomsComponent {
 	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly rooms = signal<RoomGridItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly currentPage = signal(1);
@@ -208,7 +206,7 @@ export class RoomsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 
 		try {
@@ -226,7 +224,7 @@ export class RoomsComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load rooms");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

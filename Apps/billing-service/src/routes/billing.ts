@@ -119,7 +119,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as FolioListQuery).tenant_id,
-        minRole: "ADMIN",
+        minRole: "STAFF",
         requiredModules: "finance-automation",
       }),
       schema: buildRouteSchema({
@@ -163,7 +163,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
-        minRole: "ADMIN",
+        minRole: "STAFF",
         requiredModules: "finance-automation",
       }),
       schema: buildRouteSchema({
@@ -203,7 +203,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as ChargePostingListQuery).tenant_id,
-        minRole: "ADMIN",
+        minRole: "STAFF",
         requiredModules: "finance-automation",
       }),
       schema: buildRouteSchema({

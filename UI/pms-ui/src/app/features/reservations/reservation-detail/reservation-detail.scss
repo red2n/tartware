@@ -227,3 +227,19 @@
   flex-direction: column;
   gap: var(--base-size-4);
 }
+
+/* ── Folio charge list ── */
+.folio-charges-body {
+  padding-top: 0;
+}
+
+.charge-code {
+  font-family: var(--fontStack-monospace, monospace);
+  font-size: var(--base-text-size-xs);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--borderRadius-small);
+  padding: 1px var(--base-size-6);
+  color: var(--fgColor-accent);
+}
+

@@ -109,12 +109,12 @@ export class HousekeepingComponent {
 
 	// ── Room data ──
 	readonly rooms = signal<RoomItem[]>([]);
-	readonly loadingRooms = signal(false);
+	readonly roomsReady = signal(false);
 	readonly roomError = signal<string | null>(null);
 
 	// ── Task data ──
 	readonly tasks = signal<HousekeepingTaskListItem[]>([]);
-	readonly loadingTasks = signal(false);
+	readonly tasksReady = signal(false);
 	readonly taskError = signal<string | null>(null);
 
 	// ── Action state ──
@@ -365,7 +365,7 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loadingRooms.set(true);
+		this.roomsReady.set(false);
 		this.roomError.set(null);
 
 		try {
@@ -377,7 +377,7 @@ export class HousekeepingComponent {
 		} catch (e) {
 			this.roomError.set(e instanceof Error ? e.message : "Failed to load rooms");
 		} finally {
-			this.loadingRooms.set(false);
+			this.roomsReady.set(true);
 		}
 	}
 
@@ -385,7 +385,7 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loadingTasks.set(true);
+		this.tasksReady.set(false);
 		this.taskError.set(null);
 
 		try {
@@ -397,7 +397,7 @@ export class HousekeepingComponent {
 		} catch (e) {
 			this.taskError.set(e instanceof Error ? e.message : "Failed to load tasks");
 		} finally {
-			this.loadingTasks.set(false);
+			this.tasksReady.set(true);
 		}
 	}
 

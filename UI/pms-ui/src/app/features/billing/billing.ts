@@ -101,7 +101,7 @@ export class BillingComponent {
 	readonly activeView = signal<BillingView>("payments");
 
 	readonly payments = this.data.payments;
-	readonly paymentsLoading = this.data.paymentsLoading;
+	readonly paymentsReady = this.data.paymentsReady;
 	readonly paymentsError = this.data.paymentsError;
 	readonly activePaymentFilter = signal<PaymentStatusFilter>("ALL");
 	readonly paymentPage = signal(1);
@@ -147,7 +147,7 @@ export class BillingComponent {
 	});
 
 	readonly invoices = this.data.invoices;
-	readonly invoicesLoading = this.data.invoicesLoading;
+	readonly invoicesReady = this.data.invoicesReady;
 	readonly invoicesError = this.data.invoicesError;
 	readonly activeInvoiceFilter = signal<InvoiceStatusFilter>("ALL");
 	readonly invoicePage = signal(1);
@@ -189,7 +189,7 @@ export class BillingComponent {
 	});
 
 	readonly folios = this.data.folios;
-	readonly foliosLoading = this.data.foliosLoading;
+	readonly foliosReady = this.data.foliosReady;
 	readonly foliosError = this.data.foliosError;
 	readonly activeFolioFilter = signal<FolioStatusFilter>("ALL");
 	readonly folioPage = signal(1);
@@ -231,7 +231,7 @@ export class BillingComponent {
 	});
 
 	readonly charges = this.data.charges;
-	readonly chargesLoading = this.data.chargesLoading;
+	readonly chargesReady = this.data.chargesReady;
 	readonly chargesError = this.data.chargesError;
 	readonly activeChargeFilter = signal<ChargeTypeFilter>("ALL");
 	readonly chargePage = signal(1);

@@ -136,6 +136,26 @@ export const RecentActivitySchema = z.array(ActivityItemSchema);
 export type RecentActivity = z.infer<typeof RecentActivitySchema>;
 
 /**
+ * Activity feed query parameters (extends base query with pagination)
+ */
+export const ActivityQuerySchema = DashboardStatsQuerySchema.extend({
+	limit: z.coerce.number().int().min(1).max(100).default(5).describe("Max items to return"),
+	offset: z.coerce.number().int().min(0).default(0).describe("Pagination offset"),
+});
+
+export type ActivityQuery = z.infer<typeof ActivityQuerySchema>;
+
+/**
+ * Paginated activity feed response
+ */
+export const PaginatedActivitySchema = z.object({
+	items: RecentActivitySchema,
+	total: z.number().int().nonnegative().describe("Total matching events across all pages"),
+});
+
+export type PaginatedActivity = z.infer<typeof PaginatedActivitySchema>;
+
+/**
  * Task item
  */
 export const TaskItemSchema = z.object({

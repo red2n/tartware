@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import type { CashierSessionListItem, CashierSessionListResponse } from "@tartware/schemas";
 
@@ -78,7 +78,7 @@ export class CashieringComponent {
 
 	// ── State ──
 	readonly sessions = signal<CashierSessionListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<SessionStatusFilter>("ALL");
 	readonly page = signal(1);
@@ -397,7 +397,7 @@ export class CashieringComponent {
 	async loadSessions(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
@@ -411,7 +411,7 @@ export class CashieringComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load cashier sessions");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

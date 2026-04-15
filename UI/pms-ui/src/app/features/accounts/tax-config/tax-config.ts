@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import type { TaxConfigurationListItem, TaxConfigurationListResponse } from "@tartware/schemas";
 
@@ -62,7 +62,7 @@ export class TaxConfigComponent {
 
 	// ── State ──
 	readonly taxConfigs = signal<TaxConfigurationListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeTaxTypeFilter = signal<TaxTypeFilter>("ALL");
 	readonly activeStatusFilter = signal<ActiveFilter>("ALL");
@@ -350,7 +350,7 @@ export class TaxConfigComponent {
 	async loadTaxConfigs(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "500" };
@@ -364,7 +364,7 @@ export class TaxConfigComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load tax configurations");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

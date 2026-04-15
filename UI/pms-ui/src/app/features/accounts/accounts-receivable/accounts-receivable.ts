@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import type {
 	AccountsReceivableDetail,
@@ -85,7 +85,7 @@ export class AccountsReceivableComponent {
 	readonly arItems = signal<AccountsReceivableListItem[]>([]);
 	readonly agingSummary = signal<ArAgingSummary[]>([]);
 	readonly selectedAr = signal<AccountsReceivableDetail | null>(null);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeStatusFilter = signal<StatusFilter>("ALL");
 	readonly activeTypeFilter = signal<AccountTypeFilter>("ALL");
@@ -419,7 +419,7 @@ export class AccountsReceivableComponent {
 	async loadArData(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "500" };
@@ -435,7 +435,7 @@ export class AccountsReceivableComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load AR data");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

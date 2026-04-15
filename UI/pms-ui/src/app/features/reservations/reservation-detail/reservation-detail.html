@@ -514,38 +514,138 @@
       </div>
     </div>
 
-    <!-- Folio Summary -->
-    @if (r.folio) {
+    <!-- Folio & Charges -->
+    @if (r.folio || canPostCharge()) {
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Folio</h3>
+          <h3 class="card-title">Folio &amp; Charges</h3>
+          @if (canPostCharge()) {
+            <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()"
+                    [matTooltip]="'Post a charge to this reservation\'s folio' | translate">
+              <mat-icon>add</mat-icon> {{ 'Post Charge' | translate }}
+            </button>
+          }
         </div>
-        <div class="card-body">
-          <dl class="detail-list">
-            <div class="detail-row">
-              <dt class="detail-label">Status</dt>
-              <dd class="detail-value">
-                <span class="badge badge-muted">{{ r.folio.folio_status }}</span>
-              </dd>
+
+        <!-- Post Charge Form -->
+        @if (showPostChargeForm()) {
+          <div class="card-body">
+            <div class="action-form">
+              <h3>{{ 'Post Charge' | translate }}</h3>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>{{ 'Charge Code' | translate }}</label>
+                  <select class="field-input" [ngModel]="postChargeForm().charge_code"
+                          (ngModelChange)="postChargeForm.set({ ...postChargeForm(), charge_code: $event })">
+                    @for (opt of chargeCodeOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Amount' | translate }} *</label>
+                  <input type="number" class="field-input" min="0.01" step="0.01" placeholder="0.00"
+                         [ngModel]="postChargeForm().amount"
+                         (ngModelChange)="postChargeForm.set({ ...postChargeForm(), amount: +$event || 0 })" />
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Quantity' | translate }}</label>
+                  <input type="number" class="field-input" min="1" step="1" placeholder="1"
+                         [ngModel]="postChargeForm().quantity"
+                         (ngModelChange)="postChargeForm.set({ ...postChargeForm(), quantity: +$event || 0 })" />
+                </div>
+                <div class="form-field full-width">
+                  <label>{{ 'Description' | translate }}</label>
+                  <input type="text" class="field-input" placeholder="Charge description"
+                         [ngModel]="postChargeForm().description"
+                         (ngModelChange)="postChargeForm.set({ ...postChargeForm(), description: $event })" />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary btn-sm" (click)="postCharge()"
+                        [disabled]="postingCharge() || postChargeForm().amount <= 0">
+                  @if (postingCharge()) { <mat-spinner diameter="16"></mat-spinner> }
+                  {{ 'Post Charge' | translate }}
+                </button>
+                <button class="btn btn-outline btn-sm" (click)="togglePostChargeForm()">
+                  {{ 'Cancel' | translate }}
+                </button>
+              </div>
             </div>
-            <div class="detail-row">
-              <dt class="detail-label">Total Charges</dt>
-              <dd class="detail-value">{{ formatCurrency(r.folio.total_charges, r.currency) }}</dd>
+          </div>
+        }
+
+        <!-- Folio summary (when a folio exists) -->
+        @if (r.folio) {
+          <div class="card-body">
+            <dl class="detail-list">
+              <div class="detail-row">
+                <dt class="detail-label">Status</dt>
+                <dd class="detail-value">
+                  <span class="badge badge-muted">{{ r.folio.folio_status }}</span>
+                </dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">Total Charges</dt>
+                <dd class="detail-value">{{ formatCurrency(r.folio.total_charges, r.currency) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">Total Payments</dt>
+                <dd class="detail-value">{{ formatCurrency(r.folio.total_payments, r.currency) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">Balance</dt>
+                <dd class="detail-value">
+                  <span class="badge" [ngClass]="r.folio.balance > 0 ? 'badge-warning' : 'badge-success'">
+                    {{ formatCurrency(r.folio.balance, r.currency) }}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        } @else {
+          <div class="card-body">
+            <p class="text-muted">{{ 'No folio yet. A folio will be created automatically when the first charge is posted.' | translate }}</p>
+          </div>
+        }
+
+        <!-- Charge line items -->
+        @if (loadingFolioCharges()) {
+          <div class="card-body">
+            <div class="loading-state">
+              <mat-spinner diameter="20"></mat-spinner>
+              <span class="text-muted">{{ 'Loading charges...' | translate }}</span>
             </div>
-            <div class="detail-row">
-              <dt class="detail-label">Total Payments</dt>
-              <dd class="detail-value">{{ formatCurrency(r.folio.total_payments, r.currency) }}</dd>
-            </div>
-            <div class="detail-row">
-              <dt class="detail-label">Balance</dt>
-              <dd class="detail-value">
-                <span class="badge" [ngClass]="r.folio.balance > 0 ? 'badge-warning' : 'badge-success'">
-                  {{ formatCurrency(r.folio.balance, r.currency) }}
-                </span>
-              </dd>
-            </div>
-          </dl>
-        </div>
+          </div>
+        } @else if (folioCharges().length > 0) {
+          <div class="card-body folio-charges-body">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>{{ 'Date' | translate }}</th>
+                  <th>{{ 'Code' | translate }}</th>
+                  <th>{{ 'Description' | translate }}</th>
+                  <th class="col-right">{{ 'Amount' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (chg of folioCharges(); track chg.id) {
+                  <tr>
+                    <td class="text-muted">{{ formatDate(chg.posting_date) }}</td>
+                    <td><span class="charge-code">{{ chg.charge_code }}</span></td>
+                    <td>{{ chg.charge_description }}</td>
+                    <td class="col-right cell-amount">{{ formatCurrency(chg.total_amount, r.currency) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else if (!loadingFolioCharges()) {
+          <div class="card-body">
+            <p class="text-muted">{{ 'No charges posted yet.' | translate }}</p>
+          </div>
+        }
+
       </div>
     }
 

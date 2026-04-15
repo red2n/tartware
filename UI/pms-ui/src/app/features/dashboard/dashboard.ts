@@ -5,7 +5,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { ActivityItem, DashboardStats, HousekeepingTaskListItem, RateItem, RoomGridItem, TaskItem } from "@tartware/schemas";
+import type { ActivityItem, DashboardStats, HousekeepingTaskListItem, PaginatedActivity, RateItem, RoomGridItem, TaskItem } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -42,8 +42,18 @@ export class DashboardComponent {
 	readonly rooms = signal<RoomGridItem[]>([]);
 	readonly rates = signal<RateItem[]>([]);
 	readonly hkTasks = signal<HousekeepingTaskListItem[]>([]);
-	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
+	readonly refreshingActivity = signal(false);
+	/** True once KPI stats have arrived — triggers @defer for the overview bar and sparkline. */
+	readonly statsReady = signal(false);
+	/** True once room/HK data has arrived — triggers @defer for Room Availability and Housekeeping cards. */
+	readonly roomsReady = signal(false);
+	/** True once rates have arrived — triggers @defer for the Rate Plans card. */
+	readonly ratesReady = signal(false);
+	/** Flipped false→true to re-trigger @defer skeleton on each load/refresh. */
+	readonly activityReady = signal(false);
+	/** Flipped false→true to re-trigger @defer skeleton on each tasks load. */
+	readonly tasksReady = signal(false);
 
 	// ── Settings-driven feature flags ────────────────────────────────────────
 	/** Show AI-generated revenue forecast card on the dashboard. */
@@ -152,32 +162,92 @@ export class DashboardComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
 		this.error.set(null);
+		const params: Record<string, string> = { tenant_id: tenantId };
+		const propertyId = this.ctx.propertyId();
+		if (propertyId) params["property_id"] = propertyId;
 
+		// Reset all ready signals so each section's @defer re-shows its skeleton
+		this.statsReady.set(false);
+		this.roomsReady.set(false);
+		this.ratesReady.set(false);
+
+		// Fire all fetches concurrently — each section appears as its own data arrives
+		void this.loadStats(params);
+		void this.loadRooms(params);
+		void this.loadRates(params);
+		void this.loadActivity();
+		void this.loadTasks();
+	}
+
+	private async loadStats(params: Record<string, string>): Promise<void> {
+		try {
+			const stats = await this.api.get<DashboardStats>("/dashboard/stats", params);
+			this.stats.set(stats);
+		} catch (e) {
+			this.error.set(e instanceof Error ? e.message : "Failed to load dashboard stats");
+		} finally {
+			this.statsReady.set(true);
+		}
+	}
+
+	private async loadRooms(params: Record<string, string>): Promise<void> {
+		try {
+			const [rooms, hkTasks] = await Promise.all([
+				this.api.get<RoomGridItem[]>("/rooms/grid", params).catch(() => [] as RoomGridItem[]),
+				this.api.get<HousekeepingTaskListItem[]>("/housekeeping/tasks", params).catch(() => [] as HousekeepingTaskListItem[]),
+			]);
+			this.rooms.set(rooms);
+			this.hkTasks.set(hkTasks);
+		} finally {
+			this.roomsReady.set(true);
+		}
+	}
+
+	private async loadRates(params: Record<string, string>): Promise<void> {
+		try {
+			const rates = await this.api.get<RateItem[]>("/rates", { ...params, limit: "200" }).catch(() => [] as RateItem[]);
+			this.rates.set(rates);
+		} finally {
+			this.ratesReady.set(true);
+		}
+	}
+
+	private async loadTasks(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		this.tasksReady.set(false);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId };
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
 
-			const [stats, activity, tasks, rooms, rates, hkTasks] = await Promise.all([
-				this.api.get<DashboardStats>("/dashboard/stats", params),
-				this.api.get<ActivityItem[]>("/dashboard/activity", params).catch(() => []),
-				this.api.get<TaskItem[]>("/dashboard/tasks", params).catch(() => []),
-				this.api.get<RoomGridItem[]>("/rooms/grid", params).catch(() => []),
-				this.api.get<RateItem[]>("/rates", { ...params, limit: "200" }).catch(() => []),
-				this.api.get<HousekeepingTaskListItem[]>("/housekeeping/tasks", params).catch(() => []),
-			]);
-			this.stats.set(stats);
-			this.activity.set(activity);
-			this.tasks.set(tasks);
-			this.rooms.set(rooms);
-			this.rates.set(rates);
-			this.hkTasks.set(hkTasks);
-		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load dashboard");
+			const result = await this.api
+				.get<TaskItem[]>("/dashboard/tasks", params)
+				.catch(() => [] as TaskItem[]);
+			this.tasks.set(result);
 		} finally {
-			this.loading.set(false);
+			this.tasksReady.set(true);
+		}
+	}
+
+	private async loadActivity(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+
+		this.activityReady.set(false);
+		try {
+			const params: Record<string, string> = { tenant_id: tenantId };
+			const propertyId = this.ctx.propertyId();
+			if (propertyId) params["property_id"] = propertyId;
+
+			const result = await this.api
+				.get<PaginatedActivity>("/dashboard/activity", { ...params, limit: "5" })
+				.catch(() => ({ items: [], total: 0 } as PaginatedActivity));
+			this.activity.set(result.items);
+		} finally {
+			this.activityReady.set(true);
 		}
 	}
 
@@ -239,4 +309,67 @@ export class DashboardComponent {
 	navigateToBilling(): void {
 		this.router.navigate(["/billing"]);
 	}
+
+	/** Manually refresh only the Recent Activity feed. */
+	async refreshActivity(): Promise<void> {
+		if (this.refreshingActivity()) return;
+		this.refreshingActivity.set(true);
+		try {
+			await this.loadActivity();
+		} finally {
+			this.refreshingActivity.set(false);
+		}
+	}
+
+	/** Format a date as a relative time string (e.g. "3h ago", "tomorrow", "Apr 14"). */
+	relativeTime(date: Date | string): string {
+		const d = new Date(date);
+		const now = new Date();
+		const diffMs = d.getTime() - now.getTime();
+		const absDiffMs = Math.abs(diffMs);
+		const diffMins = Math.floor(absDiffMs / 60_000);
+		const diffHours = Math.floor(diffMins / 60);
+		const diffDays = Math.floor(diffHours / 24);
+		const isPast = diffMs < 0;
+
+		if (diffMins < 1) return "just now";
+		if (diffMins < 60) return isPast ? `${diffMins}m ago` : `in ${diffMins}m`;
+		if (diffHours < 24) return isPast ? `${diffHours}h ago` : `in ${diffHours}h`;
+		if (diffDays === 1) return isPast ? "yesterday" : "tomorrow";
+		if (diffDays < 7) return isPast ? `${diffDays}d ago` : `in ${diffDays}d`;
+		return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	}
+
+	/** Navigate to the full activity log page. */
+	navigateToActivityLog(): void {
+		this.router.navigate(["/dashboard/activity"]);
+	}
+
+	/** Map an activity type key to a human-readable label. */
+	activityTypeLabel(type: string): string {
+		const labels: Record<string, string> = {
+			reservation: "Reservation",
+			checkin: "Check-in",
+			checkout: "Check-out",
+			payment: "Payment",
+			maintenance: "Maintenance",
+			housekeeping: "Housekeeping",
+			cancellation: "Cancellation",
+			noshow: "No-show",
+			folio: "Folio",
+		};
+		return labels[type] ?? type.replace(/_/g, " ");
+	}
+
+	/** Legend entries shown above the timeline. */
+	readonly activityLegend = [
+		{ type: "checkin",      label: "Check-in" },
+		{ type: "checkout",     label: "Check-out" },
+		{ type: "reservation",  label: "Reservation" },
+		{ type: "cancellation", label: "Cancellation" },
+		{ type: "noshow",       label: "No-show" },
+		{ type: "payment",      label: "Payment" },
+		{ type: "folio",        label: "Folio" },
+		{ type: "housekeeping", label: "Housekeeping" },
+	];
 }

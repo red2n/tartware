@@ -5,7 +5,6 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { PACKAGE_TYPE_OPTIONS } from "./package-constants";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink } from "@angular/router";
 
@@ -40,7 +39,6 @@ type TypeFilter = "ALL" | string;
 		MatIconModule,
 		MatButtonModule,
 		MatDialogModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		RouterLink,
 		PaginationComponent,
@@ -60,7 +58,7 @@ export class PackagesComponent {
 	readonly settings = inject(SettingsService);
 
 	readonly packages = signal<PackageListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly activeTypeFilter = signal<TypeFilter>("ALL");
@@ -254,7 +252,7 @@ export class PackagesComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 
 		try {
@@ -266,7 +264,7 @@ export class PackagesComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load packages");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

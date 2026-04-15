@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 import type { FiscalPeriodListItem } from "@tartware/schemas";
 
@@ -44,7 +44,7 @@ export class FiscalPeriodsComponent {
 
 	// ── State ──
 	readonly periods = signal<FiscalPeriodListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly statusFilter = signal<StatusFilter>("ALL");
 	readonly actionLoading = signal(false);
@@ -78,7 +78,7 @@ export class FiscalPeriodsComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const res = await this.api.get<{ data: FiscalPeriodListItem[] }>("/billing/fiscal-periods", {
@@ -94,7 +94,7 @@ export class FiscalPeriodsComponent {
 					: "Fiscal period list endpoint is not currently available through the API.",
 			);
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

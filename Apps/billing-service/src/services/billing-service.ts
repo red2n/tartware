@@ -445,9 +445,9 @@ export const getPreAuditChecklist = async (options: {
      JOIN reservations res
        ON res.tenant_id = r.tenant_id
        AND res.room_number = r.room_number
-       AND res.status IN ('CHECKED_IN', 'IN_HOUSE')
+       AND res.status = 'CHECKED_IN'
      WHERE r.tenant_id = $1::uuid AND r.property_id = $2::uuid
-       AND r.status = 'OUT_OF_ORDER'
+       AND r.is_out_of_order = true
        AND COALESCE(r.is_deleted, false) = false`,
     [tenantId, propertyId],
   );
@@ -500,16 +500,16 @@ export const getBucketCheck = async (options: {
   const { rows: totalRooms } = await query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt FROM rooms
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND room_status != 'out_of_order' AND COALESCE(is_deleted, false) = false`,
+       AND is_out_of_order = false AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],
   );
   const totalSellable = Number(totalRooms[0]?.cnt ?? 0);
 
-  // 2. Rooms physically occupied (occupancy_status = 'occupied')
+  // 2. Rooms physically occupied (derived from reservations with CHECKED_IN status)
   const { rows: occupiedRooms } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM rooms
+    `SELECT COUNT(*)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND occupancy_status = 'occupied' AND COALESCE(is_deleted, false) = false`,
+       AND status = 'CHECKED_IN' AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],
   );
   const physicalOccupied = Number(occupiedRooms[0]?.cnt ?? 0);

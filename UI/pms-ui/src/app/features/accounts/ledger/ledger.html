@@ -1,6 +1,6 @@
 <div class="ledger-page">
   <app-page-header title="Ledger" description="General ledger entries, batches, and posting review">
-    <button class="btn btn-primary btn-sm" (click)="postLedger()" [disabled]="loading() || posting()">
+    <button class="btn btn-primary btn-sm" (click)="postLedger()" [disabled]="!dataReady() || posting()">
       <mat-icon>{{ posting() ? "hourglass_top" : "upload" }}</mat-icon>
       {{ 'Post Ledger' | translate }}
     </button>
@@ -52,18 +52,18 @@
       <input type="date" class="field-input field-sm" [ngModel]="endDate()" (ngModelChange)="endDate.set($event)" />
     </div>
 
-    <button class="btn btn-outline btn-sm" (click)="resetFilters()" [disabled]="loading()">
+    <button class="btn btn-outline btn-sm" (click)="resetFilters()" [disabled]="!dataReady()">
       <mat-icon>restart_alt</mat-icon>
       {{ 'Reset' | translate }}
     </button>
 
-    <button class="btn btn-primary btn-sm" (click)="loadLedger()" [disabled]="loading()">
+    <button class="btn btn-primary btn-sm" (click)="loadLedger()" [disabled]="!dataReady()">
       <mat-icon>search</mat-icon>
       {{ 'Apply' | translate }}
     </button>
   </div>
 
-  @if (!loading() && items().length > 0) {
+  @if (dataReady() && items().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card">
         <mat-icon>south</mat-icon>
@@ -96,9 +96,8 @@
     </div>
   }
 
-  @if (loading()) {
-    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading ledger entries...' | translate }}</span></div>
-  } @else if (error(); as err) {
+  @defer (when dataReady(); prefetch on idle) {
+  @if (error(); as err) {
     <div class="empty-state">
       <mat-icon>error_outline</mat-icon>
       <span>{{ err }}</span>
@@ -162,6 +161,53 @@
           }
         </tbody>
       </table>
+    </div>
+  }
+  } @placeholder {
+    <div class="placeholder-table">
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--xl"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--badge"></div>
+        <div class="placeholder-cell placeholder-cell--badge"></div>
+      </div>
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xl"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+        </div>
+      }
+    </div>
+  } @loading (minimum 200ms) {
+    <div class="placeholder-table">
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xl"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+        </div>
+      }
     </div>
   }
 </div>

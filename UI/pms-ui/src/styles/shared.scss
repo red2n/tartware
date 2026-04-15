@@ -1297,26 +1297,111 @@ textarea.field-input {
   50% { opacity: 0.5; }
 }
 
-/* ── @defer placeholder skeleton ── */
+/* ── Shared skeleton animation — used by all grid @defer placeholders ── */
+@keyframes tl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ── Overview bar skeleton — shown before real overview-bar loads ── */
+.overview-bar-sk {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  margin-bottom: var(--base-size-20);
+  overflow: hidden;
+}
+
+.overview-sk-section {
+  flex: 1;
+  padding: var(--base-size-16) var(--base-size-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+}
+
+.overview-sk-label {
+  height: 11px;
+  width: 65%;
+  background: var(--borderColor-muted);
+  border-radius: var(--borderRadius-small);
+  animation: tl-pulse 1.4s ease-in-out infinite;
+}
+
+.overview-sk-value {
+  height: 26px;
+  width: 35%;
+  background: var(--borderColor-muted);
+  border-radius: var(--borderRadius-small);
+  animation: tl-pulse 1.4s ease-in-out infinite;
+  animation-delay: 0.15s;
+}
+
+.overview-sk-sub {
+  height: 10px;
+  width: 50%;
+  background: var(--borderColor-muted);
+  border-radius: var(--borderRadius-small);
+  animation: tl-pulse 1.4s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+
+/* ── @defer placeholder skeleton — shared by ALL grid/table views ── */
 .placeholder-table {
   border: 1px solid var(--borderColor-muted);
   border-radius: var(--borderRadius-medium);
   overflow: hidden;
+  margin-bottom: var(--base-size-16);
 }
 
+/* Each row is a flex bar mimicking a table row with cells */
 .placeholder-row {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-16);
+  padding: 0 var(--base-size-16);
   height: 44px;
   background: var(--bgColor-default);
   border-bottom: 1px solid var(--borderColor-muted);
-  animation: pulse 1.5s ease-in-out infinite;
 
+  /* Header row */
   &:first-child {
+    height: 38px;
     background: var(--bgColor-muted);
   }
 
   &:last-child {
     border-bottom: none;
   }
+}
+
+/* Shimmer cell inside each row */
+.placeholder-cell {
+  height: 12px;
+  background: var(--borderColor-muted);
+  border-radius: var(--borderRadius-small);
+  flex-shrink: 0;
+  animation: tl-pulse 1.4s ease-in-out infinite;
+
+  /* Size variants */
+  &--xs  { width: 48px; }
+  &--sm  { width: 72px; }
+  &--md  { width: 110px; }
+  &--lg  { width: 160px; }
+  &--xl  { flex: 1; min-width: 80px; }  /* fills remaining space */
+  &--badge { width: 60px; height: 18px; border-radius: var(--borderRadius-full); }
+
+  /* Stagger delays so cells don't all pulse in sync */
+  &:nth-child(1) { animation-delay: 0s; }
+  &:nth-child(2) { animation-delay: 0.1s; }
+  &:nth-child(3) { animation-delay: 0.2s; }
+  &:nth-child(4) { animation-delay: 0.3s; }
+  &:nth-child(5) { animation-delay: 0.15s; }
+  &:nth-child(6) { animation-delay: 0.25s; }
+  &:nth-child(7) { animation-delay: 0.05s; }
+  &:nth-child(8) { animation-delay: 0.35s; }
 }
 
 /* ── Form layout (dialog/modal forms) ── */
