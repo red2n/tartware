@@ -34,7 +34,7 @@
 .kpi-total { color: var(--fgColor-accent); }
 .kpi-warning { color: var(--fgColor-attention); }
 .kpi-danger { color: var(--fgColor-danger); }
-.kpi-critical { color: var(--bgColor-danger-emphasis); font-weight: var(--base-text-weight-bold); }
+.kpi-critical { color: var(--bgColor-danger-emphasis); font-weight: var(--base-text-weight-semibold); }
 
 .kpi-sub {
   font-size: var(--base-text-size-xs);
@@ -108,7 +108,7 @@
 
   h2 {
     font-size: var(--base-text-size-lg);
-    font-weight: var(--base-text-weight-bold);
+    font-weight: var(--base-text-weight-semibold);
     margin: 0;
     font-family: var(--fontStack-monospace);
   }

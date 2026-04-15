@@ -46,7 +46,7 @@
 
 .guest-type-badge {
   font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   background: var(--bgColor-attention-muted);
   color: var(--fgColor-attention);
   border-radius: var(--borderRadius-full);
@@ -169,7 +169,7 @@
 }
 
 .rt-rec-score {
-	font-weight: var(--base-text-weight-bold);
+	font-weight: var(--base-text-weight-semibold);
 	border-radius: var(--borderRadius-full);
 	padding: 1px var(--base-size-8);
 	line-height: var(--base-size-20);

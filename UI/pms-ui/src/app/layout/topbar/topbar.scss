@@ -33,7 +33,7 @@
 
 .app-title {
   font-size: var(--base-text-size-sm);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   color: var(--color-header-logo);
   white-space: nowrap;
   letter-spacing: 0.3px;
@@ -117,13 +117,13 @@
   gap: var(--base-size-8);
   width: 100%;
   max-width: 460px;
-  height: 26px;
-  padding: 0 var(--base-size-8) 0 var(--base-size-12);
+  height: 32px;
+  padding: 0 var(--base-size-12);
   border: 1px solid var(--color-header-search-border);
   border-radius: var(--borderRadius-medium);
   background: var(--color-header-search-bg);
   cursor: text;
-  font-size: var(--base-text-size-xs);
+  font-size: var(--base-text-size-sm);
   transition: border-color var(--base-duration-100), background var(--base-duration-100);
 
   &:focus-within {
@@ -136,7 +136,7 @@
 }
 
 .search-icon {
-  @include icon-size(14px);
+  @include icon-size(16px);
   color: var(--fgColor-muted);
   flex-shrink: 0;
 }
@@ -146,7 +146,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: var(--base-text-size-xs);
+  font-size: var(--base-text-size-sm);
   color: var(--fgColor-default);
   min-width: 0;
 
@@ -282,7 +282,7 @@
   background: var(--fgColor-danger);
   color: var(--fgColor-onEmphasis);
   font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   line-height: var(--base-size-16);
   text-align: center;
   pointer-events: none;

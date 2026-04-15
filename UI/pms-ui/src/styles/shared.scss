@@ -1096,7 +1096,7 @@ textarea.field-input {
 
 .stat-value {
   font-size: var(--base-text-size-xl);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-default);
   margin-top: var(--base-size-12);
 }
@@ -1159,7 +1159,7 @@ textarea.field-input {
 
 .form-section-title {
   font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1925,7 +1925,7 @@ textarea.field-input {
 
 .confirm-total-amount {
   font-size: var(--text-title-size-medium);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-accent);
 }
 
@@ -2036,7 +2036,7 @@ textarea.field-input {
 
 .rate-per-night {
   font-size: var(--base-text-size-lg);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-default);
 }
 
@@ -2250,7 +2250,7 @@ textarea.field-input {
 
 .summary-value {
   font-size: var(--base-text-size-lg);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   line-height: 1.2;
 }
 
@@ -2770,7 +2770,7 @@ textarea.field-input {
 }
 
 .kpi-body  { display: flex; flex-direction: column; gap: var(--base-size-2); }
-.kpi-value { font-size: var(--base-text-size-lg); font-weight: var(--base-text-weight-bold); color: var(--fgColor-default); }
+.kpi-value { font-size: var(--base-text-size-lg); font-weight: var(--base-text-weight-semibold); color: var(--fgColor-default); }
 .kpi-label { font-size: var(--base-text-size-xs); color: var(--fgColor-muted); }
 
 .kpi-alert > mat-icon      { color: var(--fgColor-danger); }

@@ -51,6 +51,15 @@ a {
   border-radius: var(--borderRadius-small);
 }
 
+/* Text inputs use Material's own focus ring — remove the global double-ring */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.search-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 /* ── Custom scrollbars ── */
 ::-webkit-scrollbar {
   width: 8px;

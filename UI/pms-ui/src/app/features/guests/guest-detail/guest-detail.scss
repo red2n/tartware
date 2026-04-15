@@ -35,7 +35,7 @@
 .guest-avatar-lg {
   background: var(--bgColor-accent-muted);
   color: var(--fgColor-accent);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   flex-shrink: 0;
 }
 
@@ -98,7 +98,7 @@
 
 .stat-mini-value {
   font-size: var(--base-text-size-lg);
-  font-weight: var(--base-text-weight-bold);
+  font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-default);
   font-variant-numeric: tabular-nums;
 }
