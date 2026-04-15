@@ -345,25 +345,27 @@ export class RateCalendarComponent {
 		this.saving.set(true);
 
 		try {
-			for (const [, groupCells] of groups) {
-				const first = groupCells[0];
-				await this.api.put("/rate-calendar", {
-					tenant_id: tenantId,
-					property_id: propertyId,
-					room_type_id: first.roomTypeId,
-					rate_id: first.rateId,
-					currency: first.currency,
-					source: "MANUAL",
-					days: groupCells.map((c) => ({
-						stay_date: c.date,
-						rate_amount: c.amount ?? c.baseRate,
-						status: c.status,
-						closed_to_arrival: c.cta,
-						closed_to_departure: c.ctd,
-						min_length_of_stay: c.minLos,
-					})),
-				});
-			}
+			await Promise.all(
+				[...groups.entries()].map(([, groupCells]) => {
+					const first = groupCells[0];
+					return this.api.put("/rate-calendar", {
+						tenant_id: tenantId,
+						property_id: propertyId,
+						room_type_id: first.roomTypeId,
+						rate_id: first.rateId,
+						currency: first.currency,
+						source: "MANUAL",
+						days: groupCells.map((c) => ({
+							stay_date: c.date,
+							rate_amount: c.amount ?? c.baseRate,
+							status: c.status,
+							closed_to_arrival: c.cta,
+							closed_to_departure: c.ctd,
+							min_length_of_stay: c.minLos,
+						})),
+					});
+				}),
+			);
 
 			this.toast.success(`Saved ${dirtyCells.length} day(s) successfully.`);
 			await this.loadCalendarData();
