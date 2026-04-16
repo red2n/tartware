@@ -24,7 +24,18 @@
   </div>
 
   <!-- ═══ TOTAL KPI ═══ -->
-  @if (dataReady() && items().length > 0) {
+  @if (!dataReady()) {
+    <div class="overview-bar-sk">
+      @for (_ of [1,2]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 1) { <div class="overview-divider"></div> }
+      }
+    </div>
+  } @else if (items().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card">
         <mat-icon>payments</mat-icon>

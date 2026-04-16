@@ -85,7 +85,18 @@
   }
 
   <!-- ═══ KPI OVERVIEW ═══ -->
-  @if (taxConfigs().length > 0) {
+  @if (!dataReady()) {
+    <div class="overview-bar-sk">
+      @for (_ of [1,2,3,4]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 3) { <div class="overview-divider"></div> }
+      }
+    </div>
+  } @else if (taxConfigs().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card tax-kpi-total">
         <mat-icon>gavel</mat-icon>
