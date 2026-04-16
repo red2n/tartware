@@ -12,10 +12,13 @@ export interface PropertyPickerData {
 	tenantName?: string;
 }
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-property-picker-dialog",
 	standalone: true,
-	imports: [MatButtonModule, MatDialogModule, MatIconModule],
+	imports: [MatButtonModule, MatDialogModule, MatIconModule,
+		TranslatePipe,
+	],
 	templateUrl: "./property-picker-dialog.html",
 })
 export class PropertyPickerDialogComponent {

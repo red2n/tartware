@@ -35,6 +35,7 @@ const ROOM_CATEGORIES = [
 	"OTHER",
 ];
 
+import { TranslatePipe } from "../../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-room-type-dialog",
 	standalone: true,
@@ -45,6 +46,7 @@ const ROOM_CATEGORIES = [
 		MatIconModule,
 		MatProgressSpinnerModule,
 		DialogActionsComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./create-room-type-dialog.html",
 	styleUrl: "./create-room-type-dialog.scss",

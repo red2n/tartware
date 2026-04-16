@@ -1,6 +1,6 @@
 <header class="title-bar">
   <div class="title-bar-left">
-    <button class="mobile-menu-toggle" (click)="menuToggle.emit()" aria-label="Toggle sidebar">
+    <button class="mobile-menu-toggle" (click)="menuToggle.emit()" [attr.aria-label]="'Toggle sidebar' | translate">
       <mat-icon>menu</mat-icon>
     </button>
     <a class="app-brand" routerLink="/dashboard" [matTooltip]="'Go to Dashboard' | translate">
@@ -149,7 +149,7 @@
     <mat-menu #langMenu="matMenu">
       @for (lang of supportedLanguages; track lang.code) {
         <button mat-menu-item (click)="setLanguage(lang.code)">
-          <span>{{ lang.label }}</span>
+          <span>{{ lang.label | translate }}</span>
           @if (currentLang() === lang.code) {
             <mat-icon class="check-icon">check</mat-icon>
           }

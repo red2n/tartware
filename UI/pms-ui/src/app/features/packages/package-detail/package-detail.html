@@ -2,7 +2,7 @@
   <div class="breadcrumb">
     <a routerLink="/packages" class="breadcrumb-link">
       <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
-      Packages
+      {{ 'Packages' | translate }}
     </a>
     @if (pkg(); as p) {
       <span class="breadcrumb-sep">/</span>
@@ -14,13 +14,13 @@
 @if (loading()) {
   <div class="loading-state">
     <mat-spinner diameter="32"></mat-spinner>
-    <span class="text-muted">Loading package...</span>
+    <span class="text-muted">{{ 'Loading package...' | translate }}</span>
   </div>
 } @else if (error(); as err) {
   <div class="error-state">
     <mat-icon class="error-icon">error_outline</mat-icon>
     <span>{{ err }}</span>
-    <button class="btn btn-outline" (click)="loadDetail()">Retry</button>
+    <button class="btn btn-outline" (click)="loadDetail()">{{ 'Retry' | translate }}</button>
   </div>
 } @else if (pkg(); as p) {
   <div class="detail-layout">
@@ -35,7 +35,7 @@
             <span class="badge badge-attention"><mat-icon class="badge-icon">star</mat-icon> Featured</span>
           }
           @if (p.is_published) {
-            <span class="badge badge-accent">Published</span>
+            <span class="badge badge-accent">{{ 'Published' | translate }}</span>
           }
           @if (p.badge_text) {
             <span class="badge badge-accent">{{ p.badge_text }}</span>
@@ -52,7 +52,7 @@
             [class.btn-primary]="!p.is_active"
             (click)="toggleActive()">
             <mat-icon>{{ p.is_active ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-            {{ p.is_active ? 'Deactivate' : 'Activate' }}
+            {{ p.is_active ? ('Deactivate' | translate) : ('Activate' | translate) }}
           </button>
         }
       </div>
@@ -61,13 +61,13 @@
     <!-- Info card -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Package Info</h3>
+        <h3 class="card-title">{{ 'Package Info' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of infoRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
                   <span class="badge" [ngClass]="row.badgeClass ?? ''">{{ row.badge }}</span>
@@ -84,13 +84,13 @@
     <!-- Pricing card -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Pricing & Cancellation</h3>
+        <h3 class="card-title">{{ 'Pricing & Cancellation' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of pricingRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
                   <span class="badge" [ngClass]="row.badgeClass ?? ''">{{ row.badge }}</span>
@@ -107,13 +107,13 @@
     <!-- Booking requirements card -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Booking Requirements</h3>
+        <h3 class="card-title">{{ 'Booking Requirements' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of bookingRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">{{ row.value }}</dd>
             </div>
           }
@@ -126,7 +126,7 @@
       <!-- Inclusions card -->
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Inclusions</h3>
+          <h3 class="card-title">{{ 'Inclusions' | translate }}</h3>
       </div>
       <div class="card-body">
         <div class="inclusion-grid">
@@ -138,9 +138,9 @@
               [class.inclusion-off]="!inc.included"
               [disabled]="updating()"
               (click)="toggleInclusion(inc.key, !inc.included)"
-              [matTooltip]="inc.included ? 'Click to remove' : 'Click to add'">
+              [matTooltip]="inc.included ? ('Click to remove' | translate) : ('Click to add' | translate)">
               <mat-icon>{{ inc.icon }}</mat-icon>
-              <span>{{ inc.label }}</span>
+              <span>{{ inc.label | translate }}</span>
               <mat-icon class="inc-status-icon">{{ inc.included ? 'check_circle' : 'add_circle_outline' }}</mat-icon>
             </button>
           }
@@ -151,13 +151,13 @@
     <!-- Performance card -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Performance</h3>
+        <h3 class="card-title">{{ 'Performance' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of performanceRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">{{ row.value }}</dd>
             </div>
           }
@@ -200,7 +200,7 @@
         <div class="card-body">
           <div class="empty-state empty-state-sm">
             <mat-icon class="empty-icon">extension</mat-icon>
-            <p>No components configured yet.</p>
+            <p>{{ 'No components configured yet.' | translate }}</p>
             <p class="empty-hint">Add services, amenities, or meals to this package.</p>
           </div>
         </div>

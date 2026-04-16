@@ -12,7 +12,7 @@
   @if (group(); as g) {
     <div class="page-actions">
       @if (canCheckIn()) {
-        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" matTooltip="Batch check-in all picked reservations with proximity-based room assignment">
+        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [matTooltip]="'Batch check-in all picked reservations with proximity-based room assignment' | translate">
           <mat-icon>login</mat-icon>
           {{ 'Check In Group' | translate }}
         </button>
@@ -44,7 +44,7 @@
           class="floor-input"
           [ngModel]="preferredFloor()"
           (ngModelChange)="preferredFloor.set($event)"
-          placeholder="e.g. 3"
+          [placeholder]="'e.g. 3' | translate"
           min="1" />
         <span class="floor-hint">{{ 'Leave empty for best available floor' | translate }}</span>
       </div>
@@ -90,7 +90,7 @@
         <dl class="detail-list">
           @for (row of groupInfoRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
                   <span class="badge" [ngClass]="row.badge" [matTooltip]="row.description ?? ''">{{ row.value }}</span>
@@ -116,7 +116,7 @@
         <dl class="detail-list">
           @for (row of stayRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">{{ row.value }}</dd>
             </div>
           }
@@ -133,7 +133,7 @@
         <dl class="detail-list">
           @for (row of contactRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">{{ row.value }}</dd>
             </div>
           }
@@ -151,7 +151,7 @@
           <dl class="detail-list">
             @for (row of roomRows(); track row.label) {
               <div class="detail-row">
-                <dt class="detail-label">{{ row.label }}</dt>
+                <dt class="detail-label">{{ row.label | translate }}</dt>
                 <dd class="detail-value">
                   @if (row.badge) {
                     <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
@@ -174,7 +174,7 @@
           <dl class="detail-list">
             @for (row of financialRows(); track row.label) {
               <div class="detail-row">
-                <dt class="detail-label">{{ row.label }}</dt>
+                <dt class="detail-label">{{ row.label | translate }}</dt>
                 <dd class="detail-value">
                   @if (row.badge) {
                     <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
@@ -202,9 +202,9 @@
 
     <!-- Meta -->
     <div class="meta-line">
-      Created {{ formatDate(g.created_at) }}
+      {{ 'Created' | translate }} {{ formatDate(g.created_at) }}
       @if (g.updated_at) {
-        · Updated {{ formatDate(g.updated_at) }}
+        · {{ 'Updated' | translate }} {{ formatDate(g.updated_at) }}
       }
     </div>
   </div>

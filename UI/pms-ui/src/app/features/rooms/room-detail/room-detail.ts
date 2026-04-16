@@ -20,6 +20,7 @@ type CatalogItem = AmenityCatalogItem;
 
 type DetailRow = { label: string; value: string; badge?: string };
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-room-detail",
 	standalone: true,
@@ -32,6 +33,7 @@ type DetailRow = { label: string; value: string; badge?: string };
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		MatSlideToggleModule,
+		TranslatePipe,
 	],
 	templateUrl: "./room-detail.html",
 	styleUrl: "./room-detail.scss",

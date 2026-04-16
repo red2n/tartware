@@ -157,7 +157,7 @@ services:
       timeout: 5s
       retries: 5
 
-  opensearch:
+  opensearch-node:
     image: opensearchproject/opensearch:2.13.0
     container_name: tartware-opensearch
     restart: unless-stopped
@@ -194,7 +194,7 @@ services:
     volumes:
       - ./docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     depends_on:
-      opensearch:
+      opensearch-node:
         condition: service_healthy
     networks:
       - tartware_network

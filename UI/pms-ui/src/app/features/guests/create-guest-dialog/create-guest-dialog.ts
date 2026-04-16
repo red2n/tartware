@@ -15,6 +15,7 @@ import {
 	validatePhone,
 } from "../guest-form-utils";
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-guest-dialog",
 	standalone: true,
@@ -25,6 +26,7 @@ import {
 		MatProgressSpinnerModule,
 		DialogActionsComponent,
 		GuestFormFieldsComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./create-guest-dialog.html",
 	styleUrl: "./create-guest-dialog.scss",

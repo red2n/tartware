@@ -63,7 +63,7 @@
                 {{ activityTypeLabel(item.type) }}
               </span>
               @if (item.urgent) {
-                <span class="badge badge-danger badge-sm al-urgent-badge">Urgent</span>
+                <span class="badge badge-danger badge-sm al-urgent-badge">{{ 'Urgent' | translate }}</span>
               }
             </div>
             <h3 class="al-event-title">{{ item.title }}</h3>
@@ -92,7 +92,7 @@
                     {{ activityTypeLabel(child.type) }}
                   </span>
                   @if (child.urgent) {
-                    <span class="badge badge-danger badge-sm al-urgent-badge">Urgent</span>
+                    <span class="badge badge-danger badge-sm al-urgent-badge">{{ 'Urgent' | translate }}</span>
                   }
                 </div>
                 <h3 class="al-event-title">{{ child.title }}</h3>

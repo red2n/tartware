@@ -1,51 +1,51 @@
 <h2 mat-dialog-title>
   <mat-icon class="dialog-title-icon">domain</mat-icon>
-  {{ isEditMode ? 'Edit Building' : 'New Building' }}
+  {{ isEditMode ? ('Edit Building' | translate) : ('New Building' | translate) }}
 </h2>
 
 <mat-dialog-content>
   <div class="form-fields">
     <!-- Basic Info -->
     <section class="form-section">
-      <span class="form-section-title">Building Details</span>
+      <span class="form-section-title">{{ 'Building Details' | translate }}</span>
 
       <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['buildingCode'] && !buildingCode.trim()">
-          <label class="field-label" for="b-code">Building code</label>
+          <label class="field-label" for="b-code">{{ 'Building code' | translate }}</label>
           <input
             id="b-code"
             type="text"
             class="field-input"
-            placeholder="MAIN"
+            [placeholder]="'MAIN' | translate"
             maxlength="50"
             [(ngModel)]="buildingCode"
             (blur)="markTouched('buildingCode')"
             [disabled]="saving() || isEditMode" />
           @if (touched['buildingCode'] && !buildingCode.trim()) {
-            <span class="field-hint-error">Code is required</span>
+            <span class="field-hint-error">{{ 'Code is required' | translate }}</span>
           }
-          <span class="field-hint">Alphanumeric, uppercase</span>
+          <span class="field-hint">{{ 'Alphanumeric, uppercase' | translate }}</span>
         </div>
         <div class="field-group field-required" [class.field-error]="touched['buildingName'] && !buildingName.trim()">
-          <label class="field-label" for="b-name">Building name</label>
+          <label class="field-label" for="b-name">{{ 'Building name' | translate }}</label>
           <input
             id="b-name"
             type="text"
             class="field-input"
-            placeholder="Main Building"
+            [placeholder]="'Main Building' | translate"
             maxlength="200"
             [(ngModel)]="buildingName"
             (blur)="markTouched('buildingName')"
             [disabled]="saving()" />
           @if (touched['buildingName'] && !buildingName.trim()) {
-            <span class="field-hint-error">Name is required</span>
+            <span class="field-hint-error">{{ 'Name is required' | translate }}</span>
           }
         </div>
       </div>
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="b-type">Building type</label>
+          <label class="field-label" for="b-type">{{ 'Building type' | translate }}</label>
           <select
             id="b-type"
             class="field-input"
@@ -57,7 +57,7 @@
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label" for="b-status">Status</label>
+          <label class="field-label" for="b-status">{{ 'Status' | translate }}</label>
           <select
             id="b-status"
             class="field-input"
@@ -73,11 +73,11 @@
 
 
       <div class="field-group">
-        <label class="field-label" for="b-guest-desc">Guest description</label>
+        <label class="field-label" for="b-guest-desc">{{ 'Guest description' | translate }}</label>
         <textarea
           id="b-guest-desc"
           class="field-input field-textarea"
-          placeholder="Description visible to guests..."
+          [placeholder]="'Description visible to guests...' | translate"
           rows="2"
           [(ngModel)]="guestDescription"
           [disabled]="saving()"></textarea>
@@ -86,11 +86,11 @@
 
     <!-- Structure -->
     <section class="form-section">
-      <span class="form-section-title">Structure</span>
+      <span class="form-section-title">{{ 'Structure' | translate }}</span>
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="b-floors">Floor count</label>
+          <label class="field-label" for="b-floors">{{ 'Floor count' | translate }}</label>
           <input
             id="b-floors"
             type="number"
@@ -101,7 +101,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="b-basement">Basement floors</label>
+          <label class="field-label" for="b-basement">{{ 'Basement floors' | translate }}</label>
           <input
             id="b-basement"
             type="number"
@@ -112,7 +112,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="b-rooms">Total rooms</label>
+          <label class="field-label" for="b-rooms">{{ 'Total rooms' | translate }}</label>
           <input
             id="b-rooms"
             type="number"
@@ -125,7 +125,7 @@
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="b-elevators">Elevators</label>
+          <label class="field-label" for="b-elevators">{{ 'Elevators' | translate }}</label>
           <input
             id="b-elevators"
             type="number"
@@ -136,7 +136,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="b-year">Year built</label>
+          <label class="field-label" for="b-year">{{ 'Year built' | translate }}</label>
           <input
             id="b-year"
             type="number"
@@ -147,7 +147,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="b-reno">Last renovation</label>
+          <label class="field-label" for="b-reno">{{ 'Last renovation' | translate }}</label>
           <input
             id="b-reno"
             type="number"
@@ -162,42 +162,42 @@
 
     <!-- Amenities -->
     <section class="form-section">
-      <span class="form-section-title">Amenities & Features</span>
+      <span class="form-section-title">{{ 'Amenities & Features' | translate }}</span>
 
       <div class="checkbox-grid">
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="wheelchairAccessible" [disabled]="saving()" />
-          Wheelchair accessible
+          {{ 'Wheelchair accessible' | translate }}
         </label>
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="hasLobby" [disabled]="saving()" />
-          Lobby
+          {{ 'Lobby' | translate }}
         </label>
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="hasPool" [disabled]="saving()" />
-          Pool
+          {{ 'Pool' | translate }}
         </label>
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="hasGym" [disabled]="saving()" />
-          Gym
+          {{ 'Gym' | translate }}
         </label>
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="hasSpa" [disabled]="saving()" />
-          Spa
+          {{ 'Spa' | translate }}
         </label>
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="hasRestaurant" [disabled]="saving()" />
-          Restaurant
+          {{ 'Restaurant' | translate }}
         </label>
         <label class="checkbox-field">
           <input type="checkbox" [(ngModel)]="hasParking" [disabled]="saving()" />
-          Parking
+          {{ 'Parking' | translate }}
         </label>
       </div>
 
       @if (hasParking) {
         <div class="field-group" style="margin-top: var(--base-size-12);">
-          <label class="field-label" for="b-parking">Parking spaces</label>
+          <label class="field-label" for="b-parking">{{ 'Parking spaces' | translate }}</label>
           <input
             id="b-parking"
             type="number"

@@ -1,8 +1,8 @@
-<h2 mat-dialog-title>Select Property</h2>
+<h2 mat-dialog-title>{{ 'Select Property' | translate }}</h2>
 
 <mat-dialog-content>
   @if (data.tenantName) {
-    <p class="text-subtle mb-4">Choose a property for <strong>{{ data.tenantName }}</strong></p>
+    <p class="text-subtle mb-4">{{ 'Choose a property for' | translate }} <strong>{{ data.tenantName }}</strong></p>
   }
 
   <div class="flex flex-col gap-2">

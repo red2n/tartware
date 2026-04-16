@@ -1,10 +1,10 @@
 <!-- Identity -->
 <section class="form-section">
-  <span class="form-section-title">Identity</span>
+  <span class="form-section-title">{{ 'Identity' | translate }}</span>
 
   <div class="field-row">
     <div class="field-group" [class.field-error]="hasFieldError('title')">
-      <label class="field-label" [for]="idPrefix() + '-title'">Title</label>
+      <label class="field-label" [for]="idPrefix() + '-title'">{{ 'Title' | translate }}</label>
       <select
         [id]="idPrefix() + '-title'"
         class="field-input"
@@ -25,38 +25,38 @@
 
   <div class="field-row">
     <div class="field-group field-required" [class.field-error]="(touched()['firstName'] && !firstName().trim()) || hasFieldError('first_name')">
-      <label class="field-label" [for]="idPrefix() + '-first'">First name</label>
+      <label class="field-label" [for]="idPrefix() + '-first'">{{ 'First name' | translate }}</label>
       <input
         [id]="idPrefix() + '-first'"
         type="text"
         class="field-input"
-        placeholder="John"
+        [placeholder]="'John' | translate"
         maxlength="100"
         [ngModel]="firstName()"
         (ngModelChange)="firstNameChange.emit($event)"
         (blur)="markTouched.emit('firstName')"
         [disabled]="saving()" />
       @if (touched()['firstName'] && !firstName().trim()) {
-        <span class="field-hint-error">First name is required</span>
+        <span class="field-hint-error">{{ 'First name is required' | translate }}</span>
       }
       @if (hasFieldError('first_name')) {
         <span class="field-hint-error">{{ getFieldError('first_name') }}</span>
       }
     </div>
     <div class="field-group field-required" [class.field-error]="(touched()['lastName'] && !lastName().trim()) || hasFieldError('last_name')">
-      <label class="field-label" [for]="idPrefix() + '-last'">Last name</label>
+      <label class="field-label" [for]="idPrefix() + '-last'">{{ 'Last name' | translate }}</label>
       <input
         [id]="idPrefix() + '-last'"
         type="text"
         class="field-input"
-        placeholder="Smith"
+        [placeholder]="'Smith' | translate"
         maxlength="100"
         [ngModel]="lastName()"
         (ngModelChange)="lastNameChange.emit($event)"
         (blur)="markTouched.emit('lastName')"
         [disabled]="saving()" />
       @if (touched()['lastName'] && !lastName().trim()) {
-        <span class="field-hint-error">Last name is required</span>
+        <span class="field-hint-error">{{ 'Last name is required' | translate }}</span>
       }
       @if (hasFieldError('last_name')) {
         <span class="field-hint-error">{{ getFieldError('last_name') }}</span>
@@ -66,7 +66,7 @@
 
   <div class="field-row">
     <div class="field-group" [class.field-error]="hasFieldError('nationality')">
-      <label class="field-label" [for]="idPrefix() + '-nationality'">Nationality</label>
+      <label class="field-label" [for]="idPrefix() + '-nationality'">{{ 'Nationality' | translate }}</label>
       <select
         [id]="idPrefix() + '-nationality'"
         class="field-input"
@@ -75,7 +75,7 @@
         [disabled]="saving()">
         <option value="">—</option>
         @for (n of nationalities; track n.code) {
-          <option [value]="n.code">{{ n.label }}</option>
+          <option [value]="n.code">{{ n.label | translate }}</option>
         }
       </select>
       @if (hasFieldError('nationality')) {
@@ -83,7 +83,7 @@
       }
     </div>
     <div class="field-group" [class.field-error]="hasFieldError('gender')">
-      <label class="field-label" [for]="idPrefix() + '-gender'">Gender</label>
+      <label class="field-label" [for]="idPrefix() + '-gender'">{{ 'Gender' | translate }}</label>
       <select
         [id]="idPrefix() + '-gender'"
         class="field-input"
@@ -91,10 +91,10 @@
         (ngModelChange)="genderChange.emit($event)"
         [disabled]="saving()">
         <option value="">—</option>
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-        <option value="non-binary">Non-binary</option>
-        <option value="prefer_not_to_say">Prefer not to say</option>
+        <option value="male">{{ 'Male' | translate }}</option>
+        <option value="female">{{ 'Female' | translate }}</option>
+        <option value="non-binary">{{ 'Non-binary' | translate }}</option>
+        <option value="prefer_not_to_say">{{ 'Prefer not to say' | translate }}</option>
       </select>
       @if (hasFieldError('gender')) {
         <span class="field-hint-error">{{ getFieldError('gender') }}</span>
@@ -104,7 +104,7 @@
 
   <div class="field-row">
     <div class="field-group" [class.field-error]="hasFieldError('date_of_birth')">
-      <label class="field-label" [for]="idPrefix() + '-dob'">Date of birth</label>
+      <label class="field-label" [for]="idPrefix() + '-dob'">{{ 'Date of birth' | translate }}</label>
       <input
         [id]="idPrefix() + '-dob'"
         type="date"
@@ -122,10 +122,10 @@
 
 <!-- Contact -->
 <section class="form-section">
-  <span class="form-section-title">Contact</span>
+  <span class="form-section-title">{{ 'Contact' | translate }}</span>
 
   <div class="field-group field-required" [class.field-error]="touched()['email'] && emailError()">
-    <label class="field-label" [for]="idPrefix() + '-email'">Email address</label>
+    <label class="field-label" [for]="idPrefix() + '-email'">{{ 'Email address' | translate }}</label>
     <input
       [id]="idPrefix() + '-email'"
       type="email"
@@ -145,7 +145,7 @@
   </div>
 
   <div class="field-group" [class.field-error]="touched()['phone'] && phoneError()">
-    <label class="field-label" [for]="idPrefix() + '-phone'">Phone number</label>
+    <label class="field-label" [for]="idPrefix() + '-phone'">{{ 'Phone number' | translate }}</label>
     <input
       [id]="idPrefix() + '-phone'"
       type="tel"
@@ -159,7 +159,7 @@
     @if (touched()['phone'] && phoneError()) {
       <span class="field-hint-error">{{ phoneError() }}</span>
     } @else {
-      <span class="field-hint">Include country code (e.g. +1 for US, +44 for UK)</span>
+      <span class="field-hint">{{ 'Include country code (e.g. +1 for US, +44 for UK)' | translate }}</span>
     }
     @if (hasFieldError('phone')) {
       <span class="field-hint-error">{{ getFieldError('phone') }}</span>
@@ -169,15 +169,15 @@
 
 <!-- Company -->
 <section class="form-section">
-  <span class="form-section-title">Company</span>
+  <span class="form-section-title">{{ 'Company' | translate }}</span>
 
   <div class="field-group" [class.field-error]="hasFieldError('company_name')">
-    <label class="field-label" [for]="idPrefix() + '-company'">Company name</label>
+    <label class="field-label" [for]="idPrefix() + '-company'">{{ 'Company name' | translate }}</label>
     <input
       [id]="idPrefix() + '-company'"
       type="text"
       class="field-input"
-      placeholder="Acme Corp"
+      [placeholder]="'Acme Corp' | translate"
       maxlength="200"
       [ngModel]="companyName()"
       (ngModelChange)="companyNameChange.emit($event)"
@@ -190,18 +190,18 @@
 
 <!-- Loyalty & VIP -->
 <section class="form-section">
-  <span class="form-section-title">Loyalty &amp; VIP</span>
+  <span class="form-section-title">{{ 'Loyalty & VIP' | translate }}</span>
 
   <div class="field-row">
     <div class="field-group" [class.field-error]="hasFieldError('vip_status')">
-      <label class="field-label" [for]="idPrefix() + '-vip'">VIP status</label>
+      <label class="field-label" [for]="idPrefix() + '-vip'">{{ 'VIP status' | translate }}</label>
       <select
         [id]="idPrefix() + '-vip'"
         class="field-input"
         [ngModel]="vipStatus()"
         (ngModelChange)="vipStatusChange.emit($event)"
         [disabled]="saving()">
-        <option value="">None</option>
+        <option value="">{{ 'None' | translate }}</option>
         @for (v of vipStatuses; track v) {
           <option [value]="v">{{ v }}</option>
         }
@@ -211,14 +211,14 @@
       }
     </div>
     <div class="field-group" [class.field-error]="hasFieldError('loyalty_tier')">
-      <label class="field-label" [for]="idPrefix() + '-loyalty'">Loyalty tier</label>
+      <label class="field-label" [for]="idPrefix() + '-loyalty'">{{ 'Loyalty tier' | translate }}</label>
       <select
         [id]="idPrefix() + '-loyalty'"
         class="field-input"
         [ngModel]="loyaltyTier()"
         (ngModelChange)="loyaltyTierChange.emit($event)"
         [disabled]="saving()">
-        <option value="">None</option>
+        <option value="">{{ 'None' | translate }}</option>
         @for (tier of loyaltyTiers; track tier) {
           <option [value]="tier">{{ tier }}</option>
         }

@@ -20,13 +20,13 @@
         <div class="form-grid">
           <div class="form-group">
             <label class="field-label">{{ 'Guest ID' | translate }} *</label>
-            <input type="text" class="field-input" placeholder="Guest UUID"
+            <input type="text" class="field-input" [placeholder]="'Guest UUID' | translate"
                    [ngModel]="createForm().guest_id"
                    (ngModelChange)="createForm.set({...createForm(), guest_id: $event})" />
           </div>
           <div class="form-group">
             <label class="field-label">{{ 'Reservation ID' | translate }}</label>
-            <input type="text" class="field-input" placeholder="Reservation UUID (optional)"
+            <input type="text" class="field-input" [placeholder]="'Reservation UUID (optional)' | translate"
                    [ngModel]="createForm().reservation_id"
                    (ngModelChange)="createForm.set({...createForm(), reservation_id: $event})" />
           </div>
@@ -107,7 +107,7 @@
   <!-- ═══ STATUS FILTER ═══ -->
   <div class="filter-panel">
     <div class="filter-bar">
-      <nav class="filter-tabs" aria-label="Invoice status filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Invoice status filters' | translate">
         @for (filter of statusFilters(); track filter.key) {
           <button class="filter-tab" [class.filter-tab-active]="statusFilter() === filter.key" (click)="setStatusFilter(filter.key)">
             {{ filter.label | translate }}
@@ -119,9 +119,9 @@
     <div class="filter-toolbar">
       <div class="results-meta">
         <span class="results-count">{{ resultsLabel() }}</span>
-        <span class="results-note">Showing live invoice states from billing APIs.</span>
+        <span class="results-note">{{ 'Showing live invoice states from billing APIs.' | translate }}</span>
       </div>
-      <input type="text" class="field-input field-sm filter-search" placeholder="Search invoice number, guest, confirmation, type, status..."
+      <input type="text" class="field-input field-sm filter-search" [placeholder]="'Search invoice number, guest, confirmation, type, status...' | translate"
              [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
     </div>
   </div>
@@ -163,7 +163,7 @@
                   <span class="badge" [ngClass]="isCreditInvoice(inv) ? 'badge-warning' : 'badge-muted'">{{ inv.invoice_type_display }}</span>
                 </div>
                 <div class="invoice-secondary-row">
-                  <span>{{ inv.confirmation_number ?? 'No confirmation linked' }}</span>
+                  <span>{{ inv.confirmation_number ?? ('No confirmation linked' | translate) }}</span>
                   @if (!inv.invoice_number) {
                     <span class="text-subtle">Number assigned by backend state transition.</span>
                   }
@@ -175,7 +175,7 @@
               </td>
               <td class="invoice-date-cell">
                 <div class="cell-main">{{ formatDate(inv.invoice_date) }}</div>
-                <div class="cell-sub">Due {{ inv.due_date ? formatDate(inv.due_date) : 'Not set' }}</div>
+                <div class="cell-sub">{{ 'Due' | translate }} {{ inv.due_date ? formatDate(inv.due_date) : ('Not set' | translate) }}</div>
               </td>
               <td class="text-right invoice-amount-cell">
                 <div class="cell-main cell-amount" [class.cell-negative]="inv.total_amount < 0">
@@ -234,7 +234,7 @@
                       </div>
                       <div class="form-group">
                         <label class="field-label">{{ 'Reason' | translate }}</label>
-                        <input type="text" class="field-input field-sm" placeholder="Reason for adjustment"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Reason for adjustment' | translate"
                                [ngModel]="adjustForm().reason"
                                (ngModelChange)="adjustForm.set({...adjustForm(), reason: $event})" />
                       </div>
@@ -257,7 +257,7 @@
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Reason' | translate }}</label>
-                        <input type="text" class="field-input field-sm" placeholder="Reason for voiding"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Reason for voiding' | translate"
                                [ngModel]="voidReason()"
                                (ngModelChange)="voidReason.set($event)" />
                       </div>
@@ -286,7 +286,7 @@
                       </div>
                       <div class="form-group">
                         <label class="field-label">{{ 'Reason' | translate }} *</label>
-                        <input type="text" class="field-input field-sm" placeholder="Reason for credit note"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Reason for credit note' | translate"
                                [ngModel]="creditForm().reason"
                                (ngModelChange)="creditForm.set({...creditForm(), reason: $event})" />
                       </div>
@@ -309,7 +309,7 @@
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Reason' | translate }} *</label>
-                        <input type="text" class="field-input field-sm" placeholder="Reason for reopening"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Reason for reopening' | translate"
                                [ngModel]="reopenReason()"
                                (ngModelChange)="reopenReason.set($event)" />
                       </div>

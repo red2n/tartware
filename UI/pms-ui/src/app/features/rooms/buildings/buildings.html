@@ -2,16 +2,16 @@
   <app-page-header title="Buildings" description="Property structures, wings, and floor plans">
     <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
       <mat-icon>add</mat-icon>
-      New building
+      {{ 'New building' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadBuildings()" matTooltip="Refresh" aria-label="Refresh buildings">
+    <button class="btn btn-invisible" (click)="loadBuildings()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh buildings' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </app-page-header>
 
   <!-- Filter bar -->
   <div class="filter-bar">
-    <span class="text-muted">{{ filteredBuildings().length }} buildings</span>
+    <span class="text-muted">{{ filteredBuildings().length }} {{ 'buildings' | translate }}</span>
   </div>
 
   <!-- Content -->
@@ -20,18 +20,18 @@
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
-      <button class="btn btn-outline" (click)="loadBuildings()">Retry</button>
+      <button class="btn btn-outline" (click)="loadBuildings()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredBuildings().length === 0) {
     <div class="empty-state">
       <mat-icon class="empty-icon">domain</mat-icon>
       @if (buildings().length === 0) {
-        <p>No buildings found</p>
-        <p class="text-muted">Buildings define the physical structures in your property.</p>
-        <button class="btn btn-primary" (click)="openCreateDialog()">Create first building</button>
+        <p>{{ 'No buildings found' | translate }}</p>
+        <p class="text-muted">{{ 'Buildings define the physical structures in your property.' | translate }}</p>
+        <button class="btn btn-primary" (click)="openCreateDialog()">{{ 'Create first building' | translate }}</button>
       } @else {
-        <p>No buildings match your search</p>
-        <button class="btn btn-outline" (click)="globalSearch.clear()">Clear search</button>
+        <p>{{ 'No buildings match your search' | translate }}</p>
+        <button class="btn btn-outline" (click)="globalSearch.clear()">{{ 'Clear search' | translate }}</button>
       }
     </div>
   } @else {
@@ -41,31 +41,31 @@
           <tr>
             <th [attr.aria-sort]="ariaSort('building_code')">
               <button type="button" class="th-sort-btn" (click)="onSort('building_code')">
-                Code <mat-icon class="sort-indicator">{{ sortIcon('building_code') }}</mat-icon>
+                {{ 'Code' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('building_code') }}</mat-icon>
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('building_name')">
               <button type="button" class="th-sort-btn" (click)="onSort('building_name')">
-                Name <mat-icon class="sort-indicator">{{ sortIcon('building_name') }}</mat-icon>
+                {{ 'Name' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('building_name') }}</mat-icon>
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('building_type')">
               <button type="button" class="th-sort-btn" (click)="onSort('building_type')">
-                Type <mat-icon class="sort-indicator">{{ sortIcon('building_type') }}</mat-icon>
+                {{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('building_type') }}</mat-icon>
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('floor_count')">
               <button type="button" class="th-sort-btn" (click)="onSort('floor_count')">
-                Floors <mat-icon class="sort-indicator">{{ sortIcon('floor_count') }}</mat-icon>
+                {{ 'Floors' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('floor_count') }}</mat-icon>
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('total_rooms')">
               <button type="button" class="th-sort-btn" (click)="onSort('total_rooms')">
-                Rooms <mat-icon class="sort-indicator">{{ sortIcon('total_rooms') }}</mat-icon>
+                {{ 'Rooms' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_rooms') }}</mat-icon>
               </button>
             </th>
-            <th>Amenities</th>
-            <th>Status</th>
+            <th>{{ 'Amenities' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
             <th class="cell-actions"></th>
           </tr>
         </thead>
@@ -101,11 +101,11 @@
                 </span>
               </td>
               <td class="cell-actions">
-                <button class="btn btn-invisible btn-sm" matTooltip="Edit"
+                <button class="btn btn-invisible btn-sm" [matTooltip]="'Edit' | translate"
                         (click)="openEditDialog(b); $event.stopPropagation()">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button class="btn btn-invisible btn-sm" matTooltip="Delete"
+                <button class="btn btn-invisible btn-sm" [matTooltip]="'Delete' | translate"
                         (click)="deleteBuilding(b, $event)">
                   <mat-icon>delete</mat-icon>
                 </button>

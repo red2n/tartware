@@ -79,7 +79,7 @@
         <tr [class.row-modified]="isModified(cmd.command_name)">
           <td>
             <div class="command-cell">
-              <span class="command-name">{{ cmd.label }}</span>
+              <span class="command-name">{{ cmd.label | translate }}</span>
               <code class="command-code">{{ cmd.command_name }}</code>
               @if (cmd.description && cmd.description !== cmd.command_name) {
               <span class="command-description">{{ cmd.description }}</span>

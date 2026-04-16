@@ -21,6 +21,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 import { loadGooglePlaces, parsePlaceResult } from "./google-places.js";
 import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./reference-data.js";
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-property-dialog",
 	standalone: true,
@@ -31,6 +32,7 @@ import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./referen
 		MatIconModule,
 		MatProgressSpinnerModule,
 		DialogActionsComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./create-property-dialog.html",
 	styleUrl: "./create-property-dialog.scss",

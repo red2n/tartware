@@ -1,6 +1,6 @@
 <h2 mat-dialog-title class="dialog-title">
 	<mat-icon class="dialog-title-icon">extension</mat-icon>
-	Add Component
+	{{ 'Add Component' | translate }}
 </h2>
 
 <mat-dialog-content>
@@ -10,7 +10,7 @@
 
 	<!-- Component type selector -->
 	<div class="form-section">
-		<h3 class="form-section-title">Type</h3>
+		<h3 class="form-section-title">{{ 'Type' | translate }}</h3>
 		<div class="type-chips">
 			@for (t of componentTypes; track t.key) {
 				<button
@@ -19,7 +19,7 @@
 					[class.type-chip-active]="componentType === t.key"
 					(click)="componentType = t.key">
 					<mat-icon>{{ typeIcon(t.key) }}</mat-icon>
-					<span>{{ t.label }}</span>
+					<span>{{ t.label | translate }}</span>
 				</button>
 			}
 		</div>
@@ -27,12 +27,12 @@
 
 	<!-- Name & Description -->
 	<div class="form-section">
-		<h3 class="form-section-title">Details</h3>
+		<h3 class="form-section-title">{{ 'Details' | translate }}</h3>
 
 		<div class="field-row">
 			<div class="field-group full-width">
 				<label class="field-label" for="componentName">Name <span class="required">*</span></label>
-				<input class="field-input" id="componentName" type="text" [(ngModel)]="componentName" placeholder="e.g. Spa Treatment, Room Upgrade" />
+				<input class="field-input" id="componentName" type="text" [(ngModel)]="componentName" [placeholder]="'e.g. Spa Treatment, Room Upgrade' | translate" />
 				@if (validationErrors['componentName']) {
 					<span class="field-error">{{ validationErrors['componentName'] }}</span>
 				}
@@ -41,27 +41,27 @@
 
 		<div class="field-row">
 			<div class="field-group full-width">
-				<label class="field-label" for="componentDescription">Description</label>
-				<input class="field-input" id="componentDescription" type="text" [(ngModel)]="componentDescription" placeholder="Brief description (optional)" />
+				<label class="field-label" for="componentDescription">{{ 'Description' | translate }}</label>
+				<input class="field-input" id="componentDescription" type="text" [(ngModel)]="componentDescription" [placeholder]="'Brief description (optional)' | translate" />
 			</div>
 		</div>
 	</div>
 
 	<!-- Pricing -->
 	<div class="form-section">
-		<h3 class="form-section-title">Pricing</h3>
+		<h3 class="form-section-title">{{ 'Pricing' | translate }}</h3>
 
 		<div class="field-row">
 			<div class="field-group">
-				<label class="field-label" for="pricingType">Pricing Model</label>
+				<label class="field-label" for="pricingType">{{ 'Pricing Model' | translate }}</label>
 				<select class="field-input" id="pricingType" [(ngModel)]="pricingType">
 					@for (p of pricingTypes; track p.key) {
-						<option [value]="p.key">{{ p.label }}</option>
+						<option [value]="p.key">{{ p.label | translate }}</option>
 					}
 				</select>
 			</div>
 			<div class="field-group">
-				<label class="field-label" for="unitPrice">Unit Price</label>
+				<label class="field-label" for="unitPrice">{{ 'Unit Price' | translate }}</label>
 				<input class="field-input" id="unitPrice" type="number" [(ngModel)]="unitPrice" min="0" step="0.01" placeholder="0.00" />
 				@if (validationErrors['unitPrice']) {
 					<span class="field-error">{{ validationErrors['unitPrice'] }}</span>
@@ -71,14 +71,14 @@
 
 		<div class="field-row">
 			<div class="field-group">
-				<label class="field-label" for="quantity">Quantity</label>
+				<label class="field-label" for="quantity">{{ 'Quantity' | translate }}</label>
 				<input class="field-input" id="quantity" type="number" [(ngModel)]="quantity" min="1" />
 				@if (validationErrors['quantity']) {
 					<span class="field-error">{{ validationErrors['quantity'] }}</span>
 				}
 			</div>
 			<div class="field-group">
-				<label class="field-label" for="displayOrder">Sort Order</label>
+				<label class="field-label" for="displayOrder">{{ 'Sort Order' | translate }}</label>
 				<input class="field-input" id="displayOrder" type="number" [(ngModel)]="displayOrder" min="0" />
 			</div>
 		</div>
@@ -86,47 +86,47 @@
 
 	<!-- Options & Delivery -->
 	<div class="form-section">
-		<h3 class="form-section-title">Options & Delivery</h3>
+		<h3 class="form-section-title">{{ 'Options & Delivery' | translate }}</h3>
 
 		<div class="option-toggles">
 			<label class="toggle-label">
 				<input type="checkbox" [(ngModel)]="isIncluded" />
-				Included in package
+				{{ 'Included in package' | translate }}
 			</label>
 			<label class="toggle-label">
 				<input type="checkbox" [(ngModel)]="isMandatory" />
-				Mandatory
+				{{ 'Mandatory' | translate }}
 			</label>
 			<label class="toggle-label">
 				<input type="checkbox" [(ngModel)]="isOptional" />
-				Optional add-on
+				{{ 'Optional add-on' | translate }}
 			</label>
 		</div>
 
 		<div class="field-row">
 			<div class="field-group">
-				<label class="field-label" for="deliveryTiming">Delivery Timing</label>
+				<label class="field-label" for="deliveryTiming">{{ 'Delivery Timing' | translate }}</label>
 				<select class="field-input" id="deliveryTiming" [(ngModel)]="deliveryTiming">
 					@for (d of deliveryTimings; track d.key) {
-						<option [value]="d.key">{{ d.label }}</option>
+						<option [value]="d.key">{{ d.label | translate }}</option>
 					}
 				</select>
 			</div>
 			<div class="field-group">
-				<label class="field-label" for="deliveryLocation">Location</label>
-				<input class="field-input" id="deliveryLocation" type="text" [(ngModel)]="deliveryLocation" placeholder="e.g. In-room, Lobby" />
+				<label class="field-label" for="deliveryLocation">{{ 'Location' | translate }}</label>
+				<input class="field-input" id="deliveryLocation" type="text" [(ngModel)]="deliveryLocation" [placeholder]="'e.g. In-room, Lobby' | translate" />
 			</div>
 		</div>
 	</div>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-	<button class="btn btn-text" (click)="cancel()" [disabled]="saving()">Cancel</button>
+	<button class="btn btn-text" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
 	<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
 		@if (saving()) {
 			<mat-spinner diameter="18"></mat-spinner>
 		} @else {
-			<mat-icon>add</mat-icon> Add Component
+			<mat-icon>add</mat-icon> {{ 'Add Component' | translate }}
 		}
 	</button>
 </mat-dialog-actions>

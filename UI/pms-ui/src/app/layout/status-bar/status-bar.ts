@@ -5,13 +5,14 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { BUILD_VERSION } from "../../../environments/build-version";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { RegistryService } from "../../core/registry/registry.service";
 import { ServiceDashboardComponent } from "./service-dashboard";
 
 @Component({
 	selector: "app-status-bar",
 	standalone: true,
-	imports: [MatIconModule, MatTooltipModule, ServiceDashboardComponent],
+	imports: [MatIconModule, MatTooltipModule, ServiceDashboardComponent, TranslatePipe],
 	templateUrl: "./status-bar.html",
 	styleUrl: "./status-bar.scss",
 })

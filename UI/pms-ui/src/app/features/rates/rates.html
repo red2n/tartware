@@ -64,7 +64,7 @@
         </div>
         <div class="rate-overview-chips">
           @for (t of summary().topTypes; track t.label) {
-            <span class="rate-type-chip">{{ t.label }} <strong>{{ t.count }}</strong></span>
+            <span class="rate-type-chip">{{ t.label | translate }} <strong>{{ t.count }}</strong></span>
           }
           @if (summary().topTypes.length === 0) {
             <span class="text-muted">—</span>
@@ -110,7 +110,7 @@
 
   <!-- Filter tabs + type filter + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs" aria-label="Rate status filters">
+    <nav class="filter-tabs" [attr.aria-label]="'Rate status filters' | translate">
       @for (f of statusFilters; track f.key) {
         <button
           type="button"
@@ -118,7 +118,7 @@
           [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
-          {{ f.label }}
+          {{ f.label | translate }}
           <span class="counter">{{ filterCounts()[f.key] }}</span>
         </button>
       }
@@ -129,7 +129,7 @@
               [ngModel]="activeTypeFilter()"
               (ngModelChange)="setTypeFilter($event)">
         @for (t of visibleRateTypes(); track t.key) {
-          <option [value]="t.key">{{ t.label }}</option>
+          <option [value]="t.key">{{ t.label | translate }}</option>
         }
       </select>
 

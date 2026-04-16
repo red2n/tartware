@@ -1,89 +1,89 @@
 <h2 mat-dialog-title>
   <mat-icon class="dialog-title-icon">add_business</mat-icon>
-  New Property
+  {{ 'New Property' | translate }}
 </h2>
 
 <mat-dialog-content>
   <div class="form-fields">
     <!-- Identity -->
     <section class="form-section">
-      <span class="form-section-title">Identity</span>
+      <span class="form-section-title">{{ 'Identity' | translate }}</span>
 
       <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['propertyName'] && !propertyName.trim()">
-          <label class="field-label" for="cp-name">Property name</label>
+          <label class="field-label" for="cp-name">{{ 'Property name' | translate }}</label>
           <input
             id="cp-name"
             type="text"
             class="field-input"
-            placeholder="Grand Oceanview Hotel"
+            [placeholder]="'Grand Oceanview Hotel' | translate"
             maxlength="200"
             [(ngModel)]="propertyName"
             (ngModelChange)="onNameChange()"
             (blur)="markTouched('propertyName')"
             [disabled]="saving()" />
           @if (touched['propertyName'] && !propertyName.trim()) {
-            <span class="field-hint-error">Property name is required</span>
+            <span class="field-hint-error">{{ 'Property name is required' | translate }}</span>
           }
         </div>
 
         <div class="field-group field-required" [class.field-error]="touched['propertyCode'] && !propertyCode.trim()">
-          <label class="field-label" for="cp-code">Property code</label>
+          <label class="field-label" for="cp-code">{{ 'Property code' | translate }}</label>
           <input
             id="cp-code"
             type="text"
             class="field-input"
-            placeholder="GRANDOCEAN"
+            [placeholder]="'GRANDOCEAN' | translate"
             maxlength="50"
             [(ngModel)]="propertyCode"
             (blur)="markTouched('propertyCode')"
             [disabled]="saving()" />
           @if (touched['propertyCode'] && !propertyCode.trim()) {
-            <span class="field-hint-error">Property code is required</span>
+            <span class="field-hint-error">{{ 'Property code is required' | translate }}</span>
           } @else {
-            <span class="field-hint">Uppercase alphanumeric, used in reports</span>
+            <span class="field-hint">{{ 'Uppercase alphanumeric, used in reports' | translate }}</span>
           }
         </div>
       </div>
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="cp-type">Property type</label>
+          <label class="field-label" for="cp-type">{{ 'Property type' | translate }}</label>
           <select
             id="cp-type"
             class="field-input"
             [(ngModel)]="propertyType"
             [disabled]="saving()">
-            <option value="">Select type…</option>
-            <option value="hotel">Hotel</option>
-            <option value="resort">Resort</option>
-            <option value="boutique">Boutique Hotel</option>
-            <option value="hostel">Hostel</option>
-            <option value="motel">Motel</option>
-            <option value="apartment">Serviced Apartment</option>
-            <option value="villa">Villa</option>
-            <option value="extended_stay">Extended Stay</option>
+            <option value="">{{ 'Select type…' | translate }}</option>
+            <option value="hotel">{{ 'Hotel' | translate }}</option>
+            <option value="resort">{{ 'Resort' | translate }}</option>
+            <option value="boutique">{{ 'Boutique Hotel' | translate }}</option>
+            <option value="hostel">{{ 'Hostel' | translate }}</option>
+            <option value="motel">{{ 'Motel' | translate }}</option>
+            <option value="apartment">{{ 'Serviced Apartment' | translate }}</option>
+            <option value="villa">{{ 'Villa' | translate }}</option>
+            <option value="extended_stay">{{ 'Extended Stay' | translate }}</option>
           </select>
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="cp-stars">Star rating</label>
+          <label class="field-label" for="cp-stars">{{ 'Star rating' | translate }}</label>
           <select
             id="cp-stars"
             class="field-input"
             [(ngModel)]="starRating"
             [disabled]="saving()">
-            <option [ngValue]="null">N/A</option>
-            <option [ngValue]="1">1 star</option>
-            <option [ngValue]="2">2 stars</option>
-            <option [ngValue]="3">3 stars</option>
-            <option [ngValue]="4">4 stars</option>
-            <option [ngValue]="5">5 stars</option>
+            <option [ngValue]="null">{{ 'N/A' | translate }}</option>
+            <option [ngValue]="1">1 {{ 'star' | translate }}</option>
+            <option [ngValue]="2">2 {{ 'stars' | translate }}</option>
+            <option [ngValue]="3">3 {{ 'stars' | translate }}</option>
+            <option [ngValue]="4">4 {{ 'stars' | translate }}</option>
+            <option [ngValue]="5">5 {{ 'stars' | translate }}</option>
           </select>
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="cp-rooms">Total rooms</label>
+          <label class="field-label" for="cp-rooms">{{ 'Total rooms' | translate }}</label>
           <input
             id="cp-rooms"
             type="number"
@@ -98,10 +98,10 @@
 
     <!-- Location -->
     <section class="form-section">
-      <span class="form-section-title">Location</span>
+      <span class="form-section-title">{{ 'Location' | translate }}</span>
 
       <div class="field-group">
-        <label class="field-label" for="cp-addr1">Address line 1</label>
+        <label class="field-label" for="cp-addr1">{{ 'Address line 1' | translate }}</label>
         <input
           #addressInput
           id="cp-addr1"
@@ -112,17 +112,17 @@
           [(ngModel)]="addressLine1"
           [disabled]="saving()" />
         @if (placesAvailable()) {
-          <span class="field-hint">Start typing to search by name or address</span>
+          <span class="field-hint">{{ 'Start typing to search by name or address' | translate }}</span>
         }
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="cp-addr2">Address line 2</label>
+        <label class="field-label" for="cp-addr2">{{ 'Address line 2' | translate }}</label>
         <input
           id="cp-addr2"
           type="text"
           class="field-input"
-          placeholder="Suite 100"
+          [placeholder]="'Suite 100' | translate"
           maxlength="255"
           [(ngModel)]="addressLine2"
           [disabled]="saving()" />
@@ -130,29 +130,29 @@
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="cp-city">City</label>
+          <label class="field-label" for="cp-city">{{ 'City' | translate }}</label>
           <input
             id="cp-city"
             type="text"
             class="field-input"
-            placeholder="Miami"
+            [placeholder]="'Miami' | translate"
             maxlength="100"
             [(ngModel)]="city"
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="cp-state">State / Province</label>
+          <label class="field-label" for="cp-state">{{ 'State / Province' | translate }}</label>
           <input
             id="cp-state"
             type="text"
             class="field-input"
-            placeholder="FL"
+            [placeholder]="'FL' | translate"
             maxlength="100"
             [(ngModel)]="state"
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="cp-postal">Postal code</label>
+          <label class="field-label" for="cp-postal">{{ 'Postal code' | translate }}</label>
           <input
             id="cp-postal"
             type="text"
@@ -166,25 +166,25 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="cp-country">Country</label>
+          <label class="field-label" for="cp-country">{{ 'Country' | translate }}</label>
           <input
             id="cp-country"
             type="text"
             class="field-input"
-            placeholder="US"
+            [placeholder]="'US' | translate"
             maxlength="2"
             [(ngModel)]="country"
             [disabled]="saving()" />
-          <span class="field-hint">ISO 3166-1 alpha-2 code</span>
+          <span class="field-hint">{{ 'ISO 3166-1 alpha-2 code' | translate }}</span>
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="cp-tz">Timezone</label>
+          <label class="field-label" for="cp-tz">{{ 'Timezone' | translate }}</label>
           <input
             id="cp-tz-filter"
             type="text"
             class="field-input field-input-search"
-            placeholder="Search timezones…"
+            [placeholder]="'Search timezones…' | translate"
             [ngModel]="tzFilter()"
             (ngModelChange)="tzFilter.set($event)"
             [disabled]="saving()" />
@@ -194,7 +194,7 @@
             [(ngModel)]="timezone"
             [disabled]="saving()">
             @for (tz of filteredTimezones(); track tz.value) {
-              <option [value]="tz.value">{{ tz.label }}</option>
+              <option [value]="tz.value">{{ tz.label | translate }}</option>
             }
           </select>
         </div>
@@ -203,11 +203,11 @@
 
     <!-- Operations -->
     <section class="form-section">
-      <span class="form-section-title">Operations</span>
+      <span class="form-section-title">{{ 'Operations' | translate }}</span>
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="cp-currency">Currency</label>
+          <label class="field-label" for="cp-currency">{{ 'Currency' | translate }}</label>
           <select
             id="cp-currency"
             class="field-input"
@@ -220,7 +220,7 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="cp-lang">Default language</label>
+          <label class="field-label" for="cp-lang">{{ 'Default language' | translate }}</label>
           <select
             id="cp-lang"
             class="field-input"
@@ -236,11 +236,11 @@
 
     <!-- Contact -->
     <section class="form-section">
-      <span class="form-section-title">Contact</span>
+      <span class="form-section-title">{{ 'Contact' | translate }}</span>
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="cp-phone">Phone</label>
+          <label class="field-label" for="cp-phone">{{ 'Phone' | translate }}</label>
           <input
             id="cp-phone"
             type="tel"
@@ -250,7 +250,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="cp-email">Email</label>
+          <label class="field-label" for="cp-email">{{ 'Email' | translate }}</label>
           <input
             id="cp-email"
             type="email"
@@ -260,7 +260,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="cp-website">Website</label>
+          <label class="field-label" for="cp-website">{{ 'Website' | translate }}</label>
           <input
             id="cp-website"
             type="url"

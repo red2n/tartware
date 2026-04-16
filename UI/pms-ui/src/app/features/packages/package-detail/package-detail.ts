@@ -23,6 +23,7 @@ type InclusionKey =
 	| "includes_wifi"
 	| "includes_airport_transfer";
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-package-detail",
 	standalone: true,
@@ -33,6 +34,7 @@ type InclusionKey =
 		MatProgressSpinnerModule,
 		MatTooltipModule,
 		RouterLink,
+		TranslatePipe,
 	],
 	templateUrl: "./package-detail.html",
 	styleUrl: "./package-detail.scss",

@@ -60,12 +60,12 @@
                   <span class="role-name">{{ role }}</span>
                   <div class="role-actions">
                     <button class="btn btn-invisible btn-xs"
-                      [matTooltip]="'Enable all for ' + role"
+                      [matTooltip]="('Enable all for' | translate) + ' ' + role"
                       (click)="enableAll(role)">
                       <mat-icon>check_circle</mat-icon>
                     </button>
                     <button class="btn btn-invisible btn-xs"
-                      [matTooltip]="'Disable all for ' + role"
+                      [matTooltip]="('Disable all for' | translate) + ' ' + role"
                       (click)="disableAll(role)">
                       <mat-icon>cancel</mat-icon>
                     </button>
@@ -81,7 +81,7 @@
               <td class="td-screen">
                 <div class="screen-cell">
                   <mat-icon class="screen-icon">{{ row.icon }}</mat-icon>
-                  <span class="screen-label">{{ row.label }}</span>
+                  <span class="screen-label">{{ row.label | translate }}</span>
                 </div>
               </td>
               @for (role of roles; track role) {

@@ -15,12 +15,12 @@
       <div class="form-grid">
         <div class="form-field">
           <label>{{ 'Tax Code' | translate }} *</label>
-          <input type="text" class="field-input" placeholder="e.g. OCCUPANCY-TAX"
+          <input type="text" class="field-input" [placeholder]="'e.g. OCCUPANCY-TAX' | translate"
                  [ngModel]="createForm().tax_code" (ngModelChange)="updateCreateForm({ tax_code: $event })" />
         </div>
         <div class="form-field">
           <label>{{ 'Tax Name' | translate }} *</label>
-          <input type="text" class="field-input" placeholder="e.g. City Occupancy Tax"
+          <input type="text" class="field-input" [placeholder]="'e.g. City Occupancy Tax' | translate"
                  [ngModel]="createForm().tax_name" (ngModelChange)="updateCreateForm({ tax_name: $event })" />
         </div>
         <div class="form-field">
@@ -49,22 +49,22 @@
         </div>
         <div class="form-field">
           <label>{{ 'Country Code' | translate }} *</label>
-          <input type="text" class="field-input" maxlength="2" placeholder="US"
+          <input type="text" class="field-input" maxlength="2" [placeholder]="'US' | translate"
                  [ngModel]="createForm().country_code" (ngModelChange)="updateCreateForm({ country_code: $event })" />
         </div>
         <div class="form-field">
           <label>{{ 'State / Province' | translate }}</label>
-          <input type="text" class="field-input" placeholder="e.g. CA"
+          <input type="text" class="field-input" [placeholder]="'e.g. CA' | translate"
                  [ngModel]="createForm().state_province" (ngModelChange)="updateCreateForm({ state_province: $event })" />
         </div>
         <div class="form-field">
           <label>{{ 'Jurisdiction' | translate }}</label>
-          <input type="text" class="field-input" placeholder="e.g. San Francisco"
+          <input type="text" class="field-input" [placeholder]="'e.g. San Francisco' | translate"
                  [ngModel]="createForm().jurisdiction_name" (ngModelChange)="updateCreateForm({ jurisdiction_name: $event })" />
         </div>
         <div class="form-field">
           <label>{{ 'Description' | translate }}</label>
-          <input type="text" class="field-input" placeholder="Optional description"
+          <input type="text" class="field-input" [placeholder]="'Optional description' | translate"
                  [ngModel]="createForm().tax_description" (ngModelChange)="updateCreateForm({ tax_description: $event })" />
         </div>
         <div class="form-field">
@@ -131,7 +131,7 @@
 
   <!-- ═══ FILTERS ═══ -->
   <div class="filter-bar">
-    <nav class="filter-tabs" aria-label="Tax type filters">
+    <nav class="filter-tabs" [attr.aria-label]="'Tax type filters' | translate">
       @for (f of taxTypeFilters; track f.key) {
         <button class="filter-tab" [class.filter-tab-active]="activeTaxTypeFilter() === f.key" (click)="setTaxTypeFilter(f.key)">
           {{ f.label | translate }}
@@ -140,7 +140,7 @@
       }
     </nav>
     <div class="filter-right">
-      <nav class="filter-tabs" aria-label="Status filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Status filters' | translate">
         @for (f of statusFilters; track f.key) {
           <button class="filter-tab" [class.filter-tab-active]="activeStatusFilter() === f.key" (click)="setStatusFilter(f.key)">
             {{ f.label | translate }}
@@ -273,7 +273,7 @@
                     <div class="form-inline-fields">
                       <div class="form-field">
                         <label>{{ 'Reason (optional)' | translate }}</label>
-                        <input type="text" class="field-input field-sm" placeholder="Reason for deletion"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Reason for deletion' | translate"
                                [ngModel]="deleteReason()" (ngModelChange)="deleteReason.set($event)" />
                       </div>
                     </div>

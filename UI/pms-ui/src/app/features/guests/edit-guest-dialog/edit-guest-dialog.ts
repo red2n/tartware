@@ -30,6 +30,7 @@ export interface EditGuestDialogData {
 	loyalty_tier: string | null;
 }
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-edit-guest-dialog",
 	standalone: true,
@@ -40,6 +41,7 @@ export interface EditGuestDialogData {
 		MatProgressSpinnerModule,
 		DialogActionsComponent,
 		GuestFormFieldsComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./edit-guest-dialog.html",
 	styleUrl: "./edit-guest-dialog.scss",
