@@ -18,6 +18,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -27,7 +28,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter =
@@ -85,7 +85,7 @@ export class AccountsReceivableComponent {
 	readonly arItems = signal<AccountsReceivableListItem[]>([]);
 	readonly agingSummary = signal<ArAgingSummary[]>([]);
 	readonly selectedAr = signal<AccountsReceivableDetail | null>(null);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeStatusFilter = signal<StatusFilter>("ALL");
 	readonly activeTypeFilter = signal<AccountTypeFilter>("ALL");
@@ -419,7 +419,7 @@ export class AccountsReceivableComponent {
 	async loadArData(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "500" };
@@ -435,7 +435,7 @@ export class AccountsReceivableComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load AR data");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

@@ -13,8 +13,8 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
-import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
+import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "FUTURE" | "OPEN" | "SOFT_CLOSE" | "CLOSED" | "LOCKED";
@@ -44,7 +44,7 @@ export class FiscalPeriodsComponent {
 
 	// ── State ──
 	readonly periods = signal<FiscalPeriodListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly statusFilter = signal<StatusFilter>("ALL");
 	readonly actionLoading = signal(false);
@@ -78,7 +78,7 @@ export class FiscalPeriodsComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const res = await this.api.get<{ data: FiscalPeriodListItem[] }>("/billing/fiscal-periods", {
@@ -94,7 +94,7 @@ export class FiscalPeriodsComponent {
 					: "Fiscal period list endpoint is not currently available through the API.",
 			);
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

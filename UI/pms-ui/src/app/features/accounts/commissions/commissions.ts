@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type { CommissionReportItem, CommissionReportResponse } from "@tartware/schemas";
@@ -29,7 +28,6 @@ import { ToastService } from "../../../shared/toast/toast.service";
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -47,7 +45,7 @@ export class CommissionsComponent {
 	// ── Report data ──
 	readonly items = signal<CommissionReportItem[]>([]);
 	readonly totalCommission = signal(0);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 
 	// ── Date filter ──
@@ -72,7 +70,7 @@ export class CommissionsComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const res = await this.api.get<CommissionReportResponse>("/billing/reports/commissions", {
@@ -88,7 +86,7 @@ export class CommissionsComponent {
 			this.totalCommission.set(0);
 			this.error.set(e instanceof Error ? e.message : "Failed to load commission report.");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

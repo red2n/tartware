@@ -2,57 +2,13 @@
 
   <nav class="sidebar-nav">
     @for (item of primaryNavItems(); track item.label) {
-      @if (item.children) {
-        <button class="nav-item nav-parent"
-                [class.nav-item-active]="isParentActive(item)"
-                [matTooltip]="collapsed() ? (item.label | translate) : ''"
-                matTooltipPosition="right"
-                (click)="onParentClick(item)">
-          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-          @if (!collapsed()) {
-            <span class="nav-label">{{ item.label | translate }}</span>
-          }
-        </button>
-      } @else {
-        <a class="nav-item"
-           [routerLink]="item.route"
-           routerLinkActive="nav-item-active"
-           [matTooltip]="collapsed() ? (item.label | translate) : ''"
-           matTooltipPosition="right">
-          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-          @if (!collapsed()) {
-            <span class="nav-label">{{ item.label | translate }}</span>
-          }
-        </a>
-      }
+      <ng-container *ngTemplateOutlet="navItemTpl; context: { $implicit: item }" />
     }
   </nav>
 
   <nav class="sidebar-nav-secondary">
     @for (item of secondaryNavItems(); track item.label) {
-      @if (item.children) {
-        <button class="nav-item nav-parent"
-                [class.nav-item-active]="isParentActive(item)"
-                [matTooltip]="collapsed() ? (item.label | translate) : ''"
-                matTooltipPosition="right"
-                (click)="onParentClick(item)">
-          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-          @if (!collapsed()) {
-            <span class="nav-label">{{ item.label | translate }}</span>
-          }
-        </button>
-      } @else {
-        <a class="nav-item"
-           [routerLink]="item.route"
-           routerLinkActive="nav-item-active"
-           [matTooltip]="collapsed() ? (item.label | translate) : ''"
-           matTooltipPosition="right">
-          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-          @if (!collapsed()) {
-            <span class="nav-label">{{ item.label | translate }}</span>
-          }
-        </a>
-      }
+      <ng-container *ngTemplateOutlet="navItemTpl; context: { $implicit: item }" />
     }
   </nav>
 
@@ -62,3 +18,29 @@
     </button>
   </div>
 </aside>
+
+<ng-template #navItemTpl let-item>
+  @if (item.children) {
+    <button class="nav-item nav-parent"
+            [class.nav-item-active]="isParentActive(item)"
+            [matTooltip]="collapsed() ? (item.label | translate) : ''"
+            matTooltipPosition="right"
+            (click)="onParentClick(item)">
+      <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+      @if (!collapsed()) {
+        <span class="nav-label">{{ item.label | translate }}</span>
+      }
+    </button>
+  } @else {
+    <a class="nav-item"
+       [routerLink]="item.route"
+       routerLinkActive="nav-item-active"
+       [matTooltip]="collapsed() ? (item.label | translate) : ''"
+       matTooltipPosition="right">
+      <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+      @if (!collapsed()) {
+        <span class="nav-label">{{ item.label | translate }}</span>
+      }
+    </a>
+  }
+</ng-template>

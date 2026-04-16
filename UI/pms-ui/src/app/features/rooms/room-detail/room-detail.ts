@@ -7,12 +7,11 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-
+import type { AmenityCatalogItem, BuildingItem, RoomItem, RoomTypeItem } from "@tartware/schemas";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../../shared/badge-utils";
 import { ToastService } from "../../../shared/toast/toast.service";
-import type { AmenityCatalogItem, BuildingItem, RoomItem, RoomTypeItem } from "@tartware/schemas";
 
 type RoomTypeRef = Pick<RoomTypeItem, "room_type_id" | "type_name">;
 type BuildingRef = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;

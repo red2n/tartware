@@ -1,4 +1,4 @@
-import { DatePipe, NgClass } from "@angular/common";
+import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -32,6 +32,7 @@ type SortDir = "asc" | "desc";
 	imports: [
 		DatePipe,
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
@@ -87,9 +88,7 @@ export class HousekeepingComponent {
 		this.settings.getString("rooms.default_status_on_checkout", "DIRTY"),
 	);
 	/** Maximum consecutive DND days before override. */
-	readonly dndMaxDays = computed(() =>
-		this.settings.getNumber("rooms.dnd_max_days", 3),
-	);
+	readonly dndMaxDays = computed(() => this.settings.getNumber("rooms.dnd_max_days", 3));
 	/** Stayover cleaning interval in days. */
 	readonly stayoverCleanInterval = computed(() =>
 		this.settings.getNumber("rooms.stayover_clean_interval", 1),
@@ -109,12 +108,12 @@ export class HousekeepingComponent {
 
 	// ── Room data ──
 	readonly rooms = signal<RoomItem[]>([]);
-	readonly loadingRooms = signal(false);
+	readonly roomsReady = signal(false);
 	readonly roomError = signal<string | null>(null);
 
 	// ── Task data ──
 	readonly tasks = signal<HousekeepingTaskListItem[]>([]);
-	readonly loadingTasks = signal(false);
+	readonly tasksReady = signal(false);
 	readonly taskError = signal<string | null>(null);
 
 	// ── Action state ──
@@ -365,7 +364,7 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loadingRooms.set(true);
+		this.roomsReady.set(false);
 		this.roomError.set(null);
 
 		try {
@@ -377,7 +376,7 @@ export class HousekeepingComponent {
 		} catch (e) {
 			this.roomError.set(e instanceof Error ? e.message : "Failed to load rooms");
 		} finally {
-			this.loadingRooms.set(false);
+			this.roomsReady.set(true);
 		}
 	}
 
@@ -385,7 +384,7 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loadingTasks.set(true);
+		this.tasksReady.set(false);
 		this.taskError.set(null);
 
 		try {
@@ -397,7 +396,7 @@ export class HousekeepingComponent {
 		} catch (e) {
 			this.taskError.set(e instanceof Error ? e.message : "Failed to load tasks");
 		} finally {
-			this.loadingTasks.set(false);
+			this.tasksReady.set(true);
 		}
 	}
 

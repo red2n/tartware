@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type { LedgerEntryListItem, LedgerEntryListResponse } from "@tartware/schemas";
@@ -12,8 +11,8 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
-import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
+import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import {
 	createSortState,
 	getAriaSort,
@@ -33,7 +32,6 @@ type BatchStatusFilter = "ALL" | "open" | "review" | "posted" | "error";
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -49,7 +47,7 @@ export class LedgerComponent {
 	readonly settings = inject(SettingsService);
 
 	readonly items = signal<LedgerEntryListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly posting = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly statusFilter = signal<LedgerStatusFilter>("ALL");
@@ -60,9 +58,7 @@ export class LedgerComponent {
 	readonly endDate = signal(this.todayString());
 	readonly sort = createSortState();
 
-	readonly sorted = computed(() =>
-		sortBy(this.items(), this.sort().column, this.sort().direction),
-	);
+	readonly sorted = computed(() => sortBy(this.items(), this.sort().column, this.sort().direction));
 
 	readonly totals = computed(() => {
 		const rows = this.items();
@@ -92,7 +88,7 @@ export class LedgerComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = {
@@ -114,7 +110,7 @@ export class LedgerComponent {
 			this.items.set([]);
 			this.error.set(e instanceof Error ? e.message : "Failed to load ledger entries.");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

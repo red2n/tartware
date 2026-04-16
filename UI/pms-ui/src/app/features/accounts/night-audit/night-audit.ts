@@ -93,7 +93,7 @@ export class NightAuditComponent {
 
 	// ── Trial Balance ──
 	readonly trialBalance = signal<TrialBalanceResponse | null>(null);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly businessDate = signal(this.todayString());
 	readonly sort = createSortState();
@@ -348,10 +348,7 @@ export class NightAuditComponent {
 			});
 			this.toast.success("Business date advanced successfully.");
 			this.dateRollReason.set("");
-			await Promise.all([
-				this.loadBusinessDateStatus(),
-				this.loadTrialBalance(),
-			]);
+			await Promise.all([this.loadBusinessDateStatus(), this.loadTrialBalance()]);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to advance date");
 		} finally {
@@ -393,7 +390,7 @@ export class NightAuditComponent {
 	async loadTrialBalance(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = {
@@ -410,7 +407,7 @@ export class NightAuditComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load trial balance");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 
@@ -460,10 +457,7 @@ export class NightAuditComponent {
 	private async pollAuditCompletion(): Promise<void> {
 		for (let i = 0; i < 10; i++) {
 			await new Promise((r) => setTimeout(r, 1500));
-			await Promise.all([
-				this.loadBusinessDateStatus(),
-				this.loadHistory(),
-			]);
+			await Promise.all([this.loadBusinessDateStatus(), this.loadHistory()]);
 			const status = this.businessDateStatus();
 			if (status?.date_status === "CLOSED" || status?.night_audit_status === "COMPLETED") {
 				this.toast.success("Night audit completed successfully.");

@@ -88,7 +88,7 @@ export class RateCalendarComponent {
 		return val === "MONDAY" ? 1 : 0;
 	});
 
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly saving = signal(false);
 
 	readonly roomTypes = signal<RoomType[]>([]);
@@ -152,7 +152,7 @@ export class RateCalendarComponent {
 		const propertyId = this.ctx.propertyId();
 		if (propertyId) params["property_id"] = propertyId;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		try {
 			const [roomTypes, rates] = await Promise.all([
 				this.api.get<RoomType[]>("/room-types", params),
@@ -164,7 +164,7 @@ export class RateCalendarComponent {
 		} catch {
 			this.toast.error("Failed to load reference data");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

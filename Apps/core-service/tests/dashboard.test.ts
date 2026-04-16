@@ -509,15 +509,18 @@ describe("Dashboard Routes", () => {
 
         expect(response.statusCode).toBe(200);
         const data = response.json();
-        expect(Array.isArray(data)).toBe(true);
+        expect(data).toHaveProperty("items");
+        expect(data).toHaveProperty("total");
+        expect(Array.isArray(data.items)).toBe(true);
+        expect(typeof data.total).toBe("number");
 
-        if (data.length > 0) {
-          expect(data[0]).toHaveProperty("id");
-          expect(data[0]).toHaveProperty("type");
-          expect(data[0]).toHaveProperty("title");
-          expect(data[0]).toHaveProperty("description");
-          expect(data[0]).toHaveProperty("timestamp");
-          expect(data[0]).toHaveProperty("icon");
+        if (data.items.length > 0) {
+          expect(data.items[0]).toHaveProperty("id");
+          expect(data.items[0]).toHaveProperty("type");
+          expect(data.items[0]).toHaveProperty("title");
+          expect(data.items[0]).toHaveProperty("description");
+          expect(data.items[0]).toHaveProperty("timestamp");
+          expect(data.items[0]).toHaveProperty("icon");
         }
       });
 
@@ -537,7 +540,9 @@ describe("Dashboard Routes", () => {
 
         expect(response.statusCode).toBe(200);
         const data = response.json();
-        expect(Array.isArray(data)).toBe(true);
+        expect(data).toHaveProperty("items");
+        expect(data).toHaveProperty("total");
+        expect(Array.isArray(data.items)).toBe(true);
       });
 
       it("should limit activity to 5 items", async () => {
@@ -556,7 +561,7 @@ describe("Dashboard Routes", () => {
 
         expect(response.statusCode).toBe(200);
         const data = response.json();
-        expect(data.length).toBeLessThanOrEqual(5);
+        expect(data.items.length).toBeLessThanOrEqual(5);
       });
     });
 
@@ -858,9 +863,10 @@ describe("Dashboard Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const data = response.json();
-      expect(Array.isArray(data)).toBe(true);
-      // Mock returns data, so we just verify it's an array
-      expect(data.length).toBeGreaterThanOrEqual(0);
+      expect(data).toHaveProperty("items");
+      expect(data).toHaveProperty("total");
+      expect(Array.isArray(data.items)).toBe(true);
+      expect(data.items.length).toBeGreaterThanOrEqual(0);
     });
   });
 });

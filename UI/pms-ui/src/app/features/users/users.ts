@@ -1,10 +1,9 @@
-import { NgClass } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type { UserWithTenants } from "@tartware/schemas";
@@ -26,10 +25,10 @@ type UserRow = UserWithTenants & { version: string };
 	standalone: true,
 	imports: [
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PageHeaderComponent,
 		PaginationComponent,
@@ -61,7 +60,7 @@ export class UsersComponent {
 	);
 
 	readonly users = signal<UserRow[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<"all" | "active" | "inactive">("all");
 	readonly sortState = createSortState();
@@ -140,7 +139,7 @@ export class UsersComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 
 		try {
@@ -149,7 +148,7 @@ export class UsersComponent {
 		} catch (err) {
 			this.error.set(err instanceof Error ? err.message : "Failed to load users");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

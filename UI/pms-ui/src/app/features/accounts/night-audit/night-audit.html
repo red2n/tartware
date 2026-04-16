@@ -7,9 +7,15 @@
 
   <!-- ═══ BC-1: BUSINESS DATE STATUS BANNER ═══ -->
   @if (statusLoading()) {
-    <div class="status-banner status-loading">
-      <mat-spinner diameter="20"></mat-spinner>
-      <span>{{ 'Loading business date status...' | translate }}</span>
+    <div class="overview-bar-sk">
+      @for (_ of [1,2,3]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 2) { <div class="overview-divider"></div> }
+      }
     </div>
   } @else if (statusDisplay(); as sd) {
     <div class="status-banner" [ngClass]="'status-' + sd.dateStatus.toLowerCase()">
@@ -158,7 +164,18 @@
 
   <!-- ═══ TAB: OVERVIEW (KPIs) ═══ -->
   @if (activeTab() === 'status') {
-    @if (summary(); as s) {
+    @if (!dataReady()) {
+      <div class="overview-bar-sk">
+        @for (_ of [1,2,3,4]; track $index) {
+          <div class="overview-sk-section">
+            <div class="overview-sk-label"></div>
+            <div class="overview-sk-value"></div>
+            <div class="overview-sk-sub"></div>
+          </div>
+          @if ($index < 3) { <div class="overview-divider"></div> }
+        }
+      </div>
+    } @else if (summary(); as s) {
       <div class="kpi-grid">
         <div class="kpi-card audit-kpi-debits">
           <mat-icon>arrow_upward</mat-icon>
@@ -189,7 +206,7 @@
           </div>
         </div>
       </div>
-    } @else if (!loading()) {
+    } @else if (dataReady()) {
       <div class="empty-state"><mat-icon class="empty-icon">nightlight</mat-icon><p>{{ 'No data for current business date' | translate }}</p></div>
     }
   }
@@ -204,10 +221,8 @@
       </div>
     </div>
 
-    @defer (on idle) {
-    @if (loading()) {
-      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading trial balance...' | translate }}</span></div>
-    } @else if (error(); as err) {
+    @defer (when dataReady(); prefetch on idle) {
+    @if (error(); as err) {
       <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadTrialBalance()">{{ 'Retry' | translate }}</button></div>
     } @else if (lineItems().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">nightlight</mat-icon><p>{{ 'No trial balance data for this date' | translate }}</p></div>
@@ -271,6 +286,37 @@
         </table>
       </div>
     }
+    } @placeholder {
+      <div class="placeholder-table">
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--lg"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+        </div>
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+          </div>
+        }
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="placeholder-table">
+        @for (_ of [1,2,3,4,5,6,7]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--lg"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+          </div>
+        }
+      </div>
     }
   }
 
@@ -284,7 +330,15 @@
         </button>
       </div>
       @if (preAuditLoading()) {
-        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading checklist...' | translate }}</span></div>
+        <div class="placeholder-table">
+          @for (_ of [1,2,3,4,5]; track $index) {
+            <div class="placeholder-row">
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--lg"></div>
+              <div class="placeholder-cell placeholder-cell--md"></div>
+            </div>
+          }
+        </div>
       } @else if (preAuditChecks().length === 0) {
         <div class="empty-state"><mat-icon>checklist</mat-icon><span>{{ 'No pre-audit checks available.' | translate }}</span></div>
       } @else {
@@ -343,7 +397,17 @@
         </div>
       </div>
       @if (bucketCheckLoading()) {
-        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading bucket check...' | translate }}</span></div>
+        <div class="placeholder-table">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="placeholder-row">
+              <div class="placeholder-cell placeholder-cell--md"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--md"></div>
+            </div>
+          }
+        </div>
       } @else if (bucketCheckItems().length === 0) {
         <div class="empty-state"><mat-icon>fact_check</mat-icon><span>{{ 'No bucket check data available.' | translate }}</span></div>
       } @else {
@@ -384,7 +448,17 @@
         </button>
       </div>
       @if (deptRevenueLoading()) {
-        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading revenue data...' | translate }}</span></div>
+        <div class="placeholder-table">
+          @for (_ of [1,2,3,4,5]; track $index) {
+            <div class="placeholder-row">
+              <div class="placeholder-cell placeholder-cell--md"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+            </div>
+          }
+        </div>
       } @else if (deptRevenueItems().length === 0) {
         <div class="empty-state"><mat-icon>bar_chart</mat-icon><span>{{ 'No revenue data available.' | translate }}</span></div>
       } @else {
@@ -430,7 +504,18 @@
         </button>
       </div>
       @if (taxSummaryLoading()) {
-        <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span>{{ 'Loading tax data...' | translate }}</span></div>
+        <div class="placeholder-table">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="placeholder-row">
+              <div class="placeholder-cell placeholder-cell--md"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--md"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+              <div class="placeholder-cell placeholder-cell--sm"></div>
+            </div>
+          }
+        </div>
       } @else if (taxSummaryItems().length === 0) {
         <div class="empty-state"><mat-icon>receipt_long</mat-icon><span>{{ 'No tax data available.' | translate }}</span></div>
       } @else {
@@ -472,7 +557,20 @@
   <!-- ═══ BC-3: TAB: AUDIT HISTORY ═══ -->
   @if (activeTab() === 'history') {
     @if (historyLoading()) {
-      <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span class="text-muted">{{ 'Loading audit history...' | translate }}</span></div>
+      <div class="placeholder-table">
+        @for (_ of [1,2,3,4,5,6]; track $index) {
+          <div class="placeholder-row">
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+            <div class="placeholder-cell placeholder-cell--md"></div>
+            <div class="placeholder-cell placeholder-cell--sm"></div>
+          </div>
+        }
+      </div>
     } @else if (auditHistory().length === 0) {
       <div class="empty-state"><mat-icon class="empty-icon">history</mat-icon><p>{{ 'No audit history found' | translate }}</p></div>
     } @else {
@@ -519,7 +617,14 @@
                 <tr class="detail-row">
                   <td colspan="8">
                     @if (runDetailLoading()) {
-                      <div class="loading-state"><mat-spinner diameter="24"></mat-spinner><span class="text-muted">{{ 'Loading details...' | translate }}</span></div>
+                      <div class="placeholder-table">
+                        @for (_ of [1,2,3]; track $index) {
+                          <div class="placeholder-row">
+                            <div class="placeholder-cell placeholder-cell--sm"></div>
+                            <div class="placeholder-cell placeholder-cell--lg"></div>
+                          </div>
+                        }
+                      </div>
                     } @else if (selectedRun(); as detail) {
                       <div class="run-detail">
                         <!-- KPI summary for run -->

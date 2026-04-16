@@ -12,7 +12,19 @@
   <!-- ═════════════════════════════════════════════ -->
   <!-- RESERVATION PIPELINE OVERVIEW                -->
   <!-- ═════════════════════════════════════════════ -->
-  @if (reservations().length > 0) {
+  @if (!dataReady()) {
+    <!-- Skeleton — shown while data is in-flight -->
+    <div class="overview-bar-sk">
+      @for (_ of [1,2,3,4]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 3) { <div class="overview-divider"></div> }
+      }
+    </div>
+  } @else if (reservations().length > 0) {
     <div class="overview-bar">
       <div class="overview-section res-section-arrivals">
         <div class="overview-label">
@@ -70,13 +82,8 @@
   </div>
 
   <!-- Content -->
-  @defer (on idle) {
-  @if (loading()) {
-    <div class="loading-state">
-      <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">{{ 'Loading reservations...' | translate }}</span>
-    </div>
-  } @else if (error(); as err) {
+  @defer (when dataReady(); prefetch on idle) {
+  @if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
@@ -174,16 +181,55 @@
     }
   } @placeholder {
     <div class="placeholder-table">
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
+      <!-- header -->
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--xs"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--xs"></div>
+      </div>
+      <!-- data rows -->
+      @for (_ of [1,2,3,4,5,6,7,8]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xl"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+        </div>
+      }
     </div>
   } @loading (minimum 200ms) {
-    <div class="loading-state">
-      <mat-spinner diameter="24"></mat-spinner>
-      <span class="text-muted">Rendering table...</span>
+    <div class="placeholder-table">
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--xs"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--xs"></div>
+      </div>
+      @for (_ of [1,2,3,4,5,6,7,8]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xl"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+        </div>
+      }
     </div>
   }
 </div>

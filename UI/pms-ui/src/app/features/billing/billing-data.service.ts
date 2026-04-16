@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from "@angular/core";
+import { computed, Injectable, inject, signal } from "@angular/core";
 
 import type {
 	BillingPaymentListItem,
@@ -35,22 +35,22 @@ export class BillingDataService {
 
 	// ── Payments ──
 	readonly payments = signal<BillingPaymentListItem[]>([]);
-	readonly paymentsLoading = signal(false);
+	readonly paymentsReady = signal(false);
 	readonly paymentsError = signal<string | null>(null);
 
 	// ── Invoices ──
 	readonly invoices = signal<InvoiceListItem[]>([]);
-	readonly invoicesLoading = signal(false);
+	readonly invoicesReady = signal(false);
 	readonly invoicesError = signal<string | null>(null);
 
 	// ── Folios ──
 	readonly folios = signal<FolioListItem[]>([]);
-	readonly foliosLoading = signal(false);
+	readonly foliosReady = signal(false);
 	readonly foliosError = signal<string | null>(null);
 
 	// ── Charges ──
 	readonly charges = signal<ChargePostingListItem[]>([]);
-	readonly chargesLoading = signal(false);
+	readonly chargesReady = signal(false);
 	readonly chargesError = signal<string | null>(null);
 
 	// ── Folio detail ──
@@ -59,9 +59,7 @@ export class BillingDataService {
 	readonly folioChargesLoading = signal(false);
 
 	/** Open folios available as charge / payment targets. */
-	readonly openFolios = computed(() =>
-		this.folios().filter((f) => f.folio_status === "open"),
-	);
+	readonly openFolios = computed(() => this.folios().filter((f) => f.folio_status === "open"));
 
 	/** KPI summary computed from all billing data. */
 	readonly summary = computed(() => {
@@ -162,7 +160,7 @@ export class BillingDataService {
 	async loadPayments(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.paymentsLoading.set(true);
+		this.paymentsReady.set(false);
 		this.paymentsError.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
@@ -176,14 +174,14 @@ export class BillingDataService {
 		} catch (e) {
 			this.paymentsError.set(e instanceof Error ? e.message : "Failed to load payments");
 		} finally {
-			this.paymentsLoading.set(false);
+			this.paymentsReady.set(true);
 		}
 	}
 
 	async loadInvoices(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.invoicesLoading.set(true);
+		this.invoicesReady.set(false);
 		this.invoicesError.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
@@ -194,14 +192,14 @@ export class BillingDataService {
 		} catch (e) {
 			this.invoicesError.set(e instanceof Error ? e.message : "Failed to load invoices");
 		} finally {
-			this.invoicesLoading.set(false);
+			this.invoicesReady.set(true);
 		}
 	}
 
 	async loadFolios(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.foliosLoading.set(true);
+		this.foliosReady.set(false);
 		this.foliosError.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
@@ -215,14 +213,14 @@ export class BillingDataService {
 		} catch (e) {
 			this.foliosError.set(e instanceof Error ? e.message : "Failed to load folios");
 		} finally {
-			this.foliosLoading.set(false);
+			this.foliosReady.set(true);
 		}
 	}
 
 	async loadCharges(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.chargesLoading.set(true);
+		this.chargesReady.set(false);
 		this.chargesError.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
@@ -236,7 +234,7 @@ export class BillingDataService {
 		} catch (e) {
 			this.chargesError.set(e instanceof Error ? e.message : "Failed to load charges");
 		} finally {
-			this.chargesLoading.set(false);
+			this.chargesReady.set(true);
 		}
 	}
 

@@ -1,21 +1,19 @@
 import { Component, inject, signal } from "@angular/core";
-import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
-import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import { getFieldError, hasFieldError, validateEmail, validatePhone } from "../guest-form-utils";
-import {
-	GUEST_TITLES,
-	LOYALTY_TIERS,
-	NATIONALITIES,
-	VIP_STATUSES,
-} from "../../../shared/guest-constants";
+import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
 import { ToastService } from "../../../shared/toast/toast.service";
+import { GuestFormFieldsComponent } from "../guest-form-fields/guest-form-fields";
+import {
+	isGuestFormValid,
+	markFieldTouched,
+	validateEmail,
+	validatePhone,
+} from "../guest-form-utils";
 
 export interface EditGuestDialogData {
 	id: string;
@@ -35,7 +33,14 @@ export interface EditGuestDialogData {
 @Component({
 	selector: "app-edit-guest-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, DialogActionsComponent],
+	imports: [
+		MatButtonModule,
+		MatDialogModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
+		DialogActionsComponent,
+		GuestFormFieldsComponent,
+	],
 	templateUrl: "./edit-guest-dialog.html",
 	styleUrl: "./edit-guest-dialog.scss",
 })
@@ -70,11 +75,6 @@ export class EditGuestDialogComponent {
 	vipStatus = this.data.vip_status ?? "";
 	loyaltyTier = this.data.loyalty_tier ?? "";
 
-	readonly titles = GUEST_TITLES;
-	readonly vipStatuses = VIP_STATUSES;
-	readonly loyaltyTiers = LOYALTY_TIERS;
-	readonly nationalities = NATIONALITIES;
-
 	private formatDateForInput(value: string | Date | null | undefined): string {
 		if (!value) return "";
 		const d = value instanceof Date ? value : new Date(value);
@@ -83,7 +83,7 @@ export class EditGuestDialogComponent {
 	}
 
 	markTouched(field: string): void {
-		this.touched = { ...this.touched, [field]: true };
+		this.touched = markFieldTouched(this.touched, field);
 	}
 
 	get emailError(): string | null {
@@ -95,21 +95,7 @@ export class EditGuestDialogComponent {
 	}
 
 	get isValid(): boolean {
-		return !!(
-			this.firstName.trim() &&
-			this.lastName.trim() &&
-			this.email.trim() &&
-			!this.emailError &&
-			!this.phoneError
-		);
-	}
-
-	hasFieldError(field: string): boolean {
-		return hasFieldError(this.fieldErrors(), field);
-	}
-
-	getFieldError(field: string): string {
-		return getFieldError(this.fieldErrors(), field);
+		return isGuestFormValid(this);
 	}
 
 	async save(): Promise<void> {
@@ -143,9 +129,7 @@ export class EditGuestDialogComponent {
 				const errors: Record<string, string> = {};
 				for (const fe of e.fieldErrors) {
 					errors[fe.path] =
-						fe.path === "date_of_birth"
-							? "Please enter a valid date (DD/MM/YYYY)"
-							: fe.message;
+						fe.path === "date_of_birth" ? "Please enter a valid date (DD/MM/YYYY)" : fe.message;
 				}
 				this.fieldErrors.set(errors);
 				this.toast.error(e.message);

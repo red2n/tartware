@@ -1,11 +1,13 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
-  type ActivityItem,
+  type ActivityQuery,
+  ActivityQuerySchema,
   type DashboardStats,
   type DashboardStatsQuery,
   DashboardStatsQuerySchema,
   DashboardStatsSchema,
-  RecentActivitySchema,
+  type PaginatedActivity,
+  PaginatedActivitySchema,
   type TaskItem,
   UpcomingTasksSchema,
 } from "@tartware/schemas";
@@ -91,8 +93,12 @@ const DashboardStatsQueryJsonSchema = schemaFromZod(
   DashboardStatsQuerySchema,
   "DashboardStatsQuery",
 );
+const ActivityQueryJsonSchema = schemaFromZod(ActivityQuerySchema, "ActivityQuery");
 const DashboardStatsResponseJsonSchema = schemaFromZod(DashboardStatsSchema, "DashboardStats");
-const RecentActivityResponseJsonSchema = schemaFromZod(RecentActivitySchema, "DashboardActivity");
+const PaginatedActivityResponseJsonSchema = schemaFromZod(
+  PaginatedActivitySchema,
+  "DashboardActivity",
+);
 const UpcomingTasksResponseJsonSchema = schemaFromZod(UpcomingTasksSchema, "DashboardTasks");
 
 export const registerDashboardRoutes = (app: FastifyInstance): void => {
@@ -253,63 +259,252 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
     },
   );
 
-  // Recent activity endpoint
-  app.get<{ Querystring: DashboardStatsQuery; Reply: ActivityItem[] }>(
+  // Recent activity endpoint (paginated)
+  app.get<{ Querystring: ActivityQuery; Reply: PaginatedActivity }>(
     "/v1/dashboard/activity",
     {
       preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as DashboardStatsQuery).tenant_id,
+        resolveTenantId: (request) => (request.query as ActivityQuery).tenant_id,
         minRole: "MANAGER",
         requiredModules: "core",
       }),
       schema: buildRouteSchema({
         tag: DASHBOARD_TAG,
         summary: "Recent reservations / activity feed",
-        querystring: DashboardStatsQueryJsonSchema,
+        querystring: ActivityQueryJsonSchema,
         response: {
-          200: RecentActivityResponseJsonSchema,
+          200: PaginatedActivityResponseJsonSchema,
         },
       }),
     },
-    async (request): Promise<ActivityItem[]> => {
-      const { tenant_id, property_id } = DashboardStatsQuerySchema.parse(request.query);
+    async (request): Promise<PaginatedActivity> => {
+      const { tenant_id, property_id, limit, offset } = ActivityQuerySchema.parse(request.query);
 
-      // Treat "all" as undefined (no property filter)
-      const effectivePropertyId = property_id === "all" ? undefined : property_id;
+      // null means "all properties" — single query handles both cases via IS NULL check
+      const propertyFilter = property_id === "all" ? null : (property_id ?? null);
 
-      // Get recent reservations, check-ins, and check-outs
-      const activityQuery = effectivePropertyId
-        ? `SELECT
-             r.id::text as id,
-             'reservation' as type,
-             'New reservation created' as title,
-             COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
-             r.created_at as timestamp,
-             'event' as icon
-           FROM reservations r
-           LEFT JOIN guests g ON r.guest_id = g.id
-           WHERE r.tenant_id = $1
-           AND r.property_id = $2
-           AND r.is_deleted = false
-           ORDER BY r.created_at DESC
-           LIMIT 5`
-        : `SELECT
-             r.id::text as id,
-             'reservation' as type,
-             'New reservation created' as title,
-             COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
-             r.created_at as timestamp,
-             'event' as icon
-           FROM reservations r
-           LEFT JOIN guests g ON r.guest_id = g.id
-           WHERE r.tenant_id = $1
-           AND r.is_deleted = false
-           ORDER BY r.created_at DESC
-           LIMIT 5`;
-      const activityParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
-      const activityResult = await query(activityQuery, activityParams);
+      const activityQuery = `
+        WITH activity AS (
+          -- 1. New reservations created
+          SELECT
+            r.id::text                                                              AS id,
+            'reservation'                                                           AS type,
+            'Reservation ' || r.confirmation_number || ' created'                  AS title,
+            COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || ' · Room ' || COALESCE(r.room_number, 'TBD')
+              || ' · ' || r.check_in_date::text || ' → ' || r.check_out_date::text AS description,
+            r.created_at                                                            AS ts,
+            'event_note'                                                            AS icon,
+            false                                                                   AS urgent,
+            NULL::text                                                              AS reservation_id
+          FROM reservations r
+          LEFT JOIN guests g ON r.guest_id = g.id
+          WHERE r.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.is_deleted = false
+            AND r.created_at > NOW() - INTERVAL '48 hours'
 
-      return activityResult.rows as ActivityItem[];
+          UNION ALL
+
+          -- 2. Check-ins (status flipped to CHECKED_IN recently)
+          SELECT
+            r.id::text || '-ci',
+            'checkin',
+            'Guest checked in · Room ' || COALESCE(r.room_number, 'TBD'),
+            COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || CASE WHEN g.vip_status IS NOT NULL AND g.vip_status <> 'NONE'
+                      THEN ' · VIP ' || g.vip_status ELSE '' END,
+            r.updated_at,
+            'login',
+            (g.vip_status IS NOT NULL AND g.vip_status <> 'NONE'),
+            r.id::text
+          FROM reservations r
+          LEFT JOIN guests g ON r.guest_id = g.id
+          WHERE r.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'CHECKED_IN'
+            AND r.is_deleted = false
+            AND r.updated_at > NOW() - INTERVAL '48 hours'
+
+          UNION ALL
+
+          -- 3. Check-outs
+          SELECT
+            r.id::text || '-co',
+            'checkout',
+            'Guest checked out · Room ' || COALESCE(r.room_number, 'TBD'),
+            COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || ' · Stay ' || r.check_in_date::text || ' → ' || r.check_out_date::text,
+            r.updated_at,
+            'logout',
+            false,
+            r.id::text
+          FROM reservations r
+          LEFT JOIN guests g ON r.guest_id = g.id
+          WHERE r.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'CHECKED_OUT'
+            AND r.is_deleted = false
+            AND r.updated_at > NOW() - INTERVAL '48 hours'
+
+          UNION ALL
+
+          -- 4. Cancellations
+          SELECT
+            r.id::text || '-can',
+            'cancellation',
+            'Reservation cancelled · ' || r.confirmation_number,
+            COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || ' · Arrival ' || r.check_in_date::text,
+            r.updated_at,
+            'cancel',
+            false,
+            r.id::text
+          FROM reservations r
+          LEFT JOIN guests g ON r.guest_id = g.id
+          WHERE r.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'CANCELLED'
+            AND r.is_deleted = false
+            AND r.updated_at > NOW() - INTERVAL '48 hours'
+
+          UNION ALL
+
+          -- 5. No-shows
+          SELECT
+            r.id::text || '-ns',
+            'noshow',
+            'No-show · Room ' || COALESCE(r.room_number, 'TBD'),
+            COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || ' · Was due ' || r.check_in_date::text,
+            r.updated_at,
+            'person_off',
+            false,
+            r.id::text
+          FROM reservations r
+          LEFT JOIN guests g ON r.guest_id = g.id
+          WHERE r.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'NO_SHOW'
+            AND r.is_deleted = false
+            AND r.updated_at > NOW() - INTERVAL '48 hours'
+
+          UNION ALL
+
+          -- 6. Folios opened
+          SELECT
+            f.folio_id::text,
+            'folio',
+            'Folio #' || f.folio_number || ' opened',
+            COALESCE(f.guest_name, 'Unknown Guest') || ' · ' || f.folio_type,
+            f.created_at,
+            'receipt_long',
+            false,
+            f.reservation_id::text
+          FROM folios f
+          WHERE f.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR f.property_id = $2::uuid)
+            AND f.deleted_at IS NULL
+            AND f.created_at > NOW() - INTERVAL '48 hours'
+
+          UNION ALL
+
+          -- 7. Folios settled
+          SELECT
+            f.folio_id::text || '-settled',
+            'payment',
+            'Folio #' || f.folio_number || ' settled',
+            COALESCE(f.guest_name, 'Unknown Guest') || ' · Balance cleared',
+            COALESCE(f.settled_at, f.updated_at),
+            'payments',
+            false,
+            f.reservation_id::text
+          FROM folios f
+          WHERE f.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR f.property_id = $2::uuid)
+            AND f.folio_status = 'SETTLED'
+            AND f.deleted_at IS NULL
+            AND COALESCE(f.settled_at, f.updated_at) > NOW() - INTERVAL '48 hours'
+
+          UNION ALL
+
+          -- 8. Rooms cleaned / inspected
+          SELECT
+            ht.id::text,
+            'housekeeping',
+            CASE ht.status
+              WHEN 'CLEAN'     THEN 'Room ' || ht.room_number || ' cleaned'
+              WHEN 'INSPECTED' THEN 'Room ' || ht.room_number || ' inspected & ready'
+              ELSE                  'Room ' || ht.room_number || ' cleaning started'
+            END,
+            ht.task_type
+              || CASE WHEN ht.is_guest_request THEN ' · Guest request' ELSE '' END
+              || CASE WHEN ht.priority IN ('HIGH', 'URGENT') THEN ' · ' || ht.priority ELSE '' END,
+            COALESCE(ht.completed_at, ht.updated_at, ht.created_at),
+            CASE ht.status
+              WHEN 'CLEAN'     THEN 'cleaning_services'
+              WHEN 'INSPECTED' THEN 'verified'
+              ELSE                  'mop'
+            END,
+            ht.is_guest_request,
+            NULL::text
+          FROM housekeeping_tasks ht
+          WHERE ht.tenant_id = $1::uuid
+            AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
+            AND ht.status IN ('CLEAN', 'INSPECTED', 'IN_PROGRESS')
+            AND COALESCE(ht.completed_at, ht.updated_at, ht.created_at) > NOW() - INTERVAL '48 hours'
+        )
+        SELECT id, type, title, description, ts AS timestamp, icon, urgent, reservation_id
+        FROM activity
+        ORDER BY ts DESC
+        LIMIT $3 OFFSET $4`;
+
+      const countQuery = `
+        WITH activity AS (
+          SELECT r.id::text FROM reservations r
+          WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.is_deleted = false AND r.created_at > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT r.id::text || '-ci' FROM reservations r
+          WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'CHECKED_IN' AND r.is_deleted = false AND r.updated_at > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT r.id::text || '-co' FROM reservations r
+          WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'CHECKED_OUT' AND r.is_deleted = false AND r.updated_at > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT r.id::text || '-can' FROM reservations r
+          WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'CANCELLED' AND r.is_deleted = false AND r.updated_at > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT r.id::text || '-ns' FROM reservations r
+          WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+            AND r.status = 'NO_SHOW' AND r.is_deleted = false AND r.updated_at > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT f.folio_id::text FROM folios f
+          WHERE f.tenant_id = $1::uuid AND ($2::uuid IS NULL OR f.property_id = $2::uuid)
+            AND f.deleted_at IS NULL AND f.created_at > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT f.folio_id::text || '-settled' FROM folios f
+          WHERE f.tenant_id = $1::uuid AND ($2::uuid IS NULL OR f.property_id = $2::uuid)
+            AND f.folio_status = 'SETTLED' AND f.deleted_at IS NULL
+            AND COALESCE(f.settled_at, f.updated_at) > NOW() - INTERVAL '48 hours'
+          UNION ALL
+          SELECT ht.id::text FROM housekeeping_tasks ht
+          WHERE ht.tenant_id = $1::uuid AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
+            AND ht.status IN ('CLEAN', 'INSPECTED', 'IN_PROGRESS')
+            AND COALESCE(ht.completed_at, ht.updated_at, ht.created_at) > NOW() - INTERVAL '48 hours'
+        ) SELECT COUNT(*)::int AS total FROM activity`;
+
+      const [activityResult, countResult] = await Promise.all([
+        query(activityQuery, [tenant_id, propertyFilter, limit, offset]),
+        query(countQuery, [tenant_id, propertyFilter]),
+      ]);
+
+      return {
+        items: activityResult.rows as PaginatedActivity["items"],
+        total: (countResult.rows[0]?.total ?? 0) as number,
+      };
     },
   );
 

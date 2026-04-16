@@ -1,10 +1,9 @@
-import { DecimalPipe, NgClass } from "@angular/common";
+import { DecimalPipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router, RouterLink } from "@angular/router";
 
@@ -35,11 +34,11 @@ type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 	imports: [
 		DecimalPipe,
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		RouterLink,
 		MatIconModule,
 		MatButtonModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
@@ -59,7 +58,7 @@ export class GuestsComponent {
 
 	readonly guests = signal<GuestGridItem[]>([]);
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<GuestFilter>("ALL");
 	readonly currentPage = signal(1);
@@ -235,7 +234,7 @@ export class GuestsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 
 		try {
@@ -249,7 +248,7 @@ export class GuestsComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load guests");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

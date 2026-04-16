@@ -1,0 +1,170 @@
+<app-page-header
+  [title]="'Activity Log' | translate"
+  [description]="'All property events from the last 48 hours' | translate"
+/>
+
+<div class="al-page">
+
+  @if (error()) {
+    <div class="flash flash-error">{{ error() }}</div>
+  }
+
+  <!-- Toolbar -->
+  <div class="al-toolbar">
+    <button class="btn btn-invisible btn-sm al-back-btn" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Dashboard' | translate }}
+    </button>
+    <div class="al-toolbar-right">
+      @if (total() > 0) {
+        <span class="al-total-badge">{{ total() }} {{ 'events' | translate }}</span>
+      }
+      <button class="btn btn-default btn-sm al-refresh-btn"
+        (click)="load()"
+        [disabled]="loading()"
+        [matTooltip]="'Refresh' | translate">
+        @if (loading()) {
+          <mat-spinner diameter="14"></mat-spinner>
+        } @else {
+          <mat-icon>refresh</mat-icon>
+        }
+        {{ 'Refresh' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @defer (when ready()) {
+
+    @if (error()) {
+      <div class="flash flash-error">{{ error() }}</div>
+    } @else if (items().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">history</mat-icon>
+        <p>{{ 'No activity recorded in the last 48 hours' | translate }}</p>
+      </div>
+    } @else {
+
+      <!-- Event list -->
+      <div class="al-list">
+        @for (item of groupedItems(); track item.id) {
+        <div class="al-event al-event--{{ item.type }}">
+
+          <!-- Left: type icon block -->
+          <div class="al-event-icon-col">
+            <div class="al-event-icon-wrap al-event-icon-wrap--{{ item.type }}">
+              <mat-icon>{{ item.icon }}</mat-icon>
+            </div>
+          </div>
+
+          <!-- Main content -->
+          <div class="al-event-content">
+            <div class="al-event-header">
+              <span class="al-event-type al-event-type--{{ item.type }}">
+                {{ activityTypeLabel(item.type) }}
+              </span>
+              @if (item.urgent) {
+                <span class="badge badge-danger badge-sm al-urgent-badge">Urgent</span>
+              }
+            </div>
+            <h3 class="al-event-title">{{ item.title }}</h3>
+            <p class="al-event-desc">{{ item.description }}</p>
+          </div>
+
+          <!-- Right: timestamps -->
+          <div class="al-event-time-col">
+            <time class="al-event-abs-time">{{ formatDate(item.timestamp) }}</time>
+            <time class="al-event-rel-time">{{ relativeTime(item.timestamp) }}</time>
+          </div>
+
+        </div>
+        <!-- Child activities indented under parent reservation -->
+        @if (item.children?.length) {
+          @for (child of item.children; track child.id) {
+            <div class="al-event al-event--{{ child.type }} al-event--child">
+              <div class="al-event-icon-col">
+                <div class="al-event-icon-wrap al-event-icon-wrap--{{ child.type }} al-event-icon-wrap--child">
+                  <mat-icon>{{ child.icon }}</mat-icon>
+                </div>
+              </div>
+              <div class="al-event-content">
+                <div class="al-event-header">
+                  <span class="al-event-type al-event-type--{{ child.type }}">
+                    {{ activityTypeLabel(child.type) }}
+                  </span>
+                  @if (child.urgent) {
+                    <span class="badge badge-danger badge-sm al-urgent-badge">Urgent</span>
+                  }
+                </div>
+                <h3 class="al-event-title">{{ child.title }}</h3>
+                <p class="al-event-desc">{{ child.description }}</p>
+              </div>
+              <div class="al-event-time-col">
+                <time class="al-event-abs-time">{{ formatDate(child.timestamp) }}</time>
+                <time class="al-event-rel-time">{{ relativeTime(child.timestamp) }}</time>
+              </div>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    <!-- Pagination -->
+    <div class="al-pagination">
+      <button class="btn btn-default btn-sm"
+        [disabled]="!hasPrev() || loading()"
+        (click)="prevPage()">
+        <mat-icon>chevron_left</mat-icon>
+        {{ 'Previous' | translate }}
+      </button>
+      <span class="al-page-label">{{ pageLabel() }}</span>
+      <button class="btn btn-default btn-sm"
+        [disabled]="!hasNext() || loading()"
+        (click)="nextPage()">
+        {{ 'Next' | translate }}
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+
+    }
+
+  } @placeholder {
+
+    <div class="al-skeleton">
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="al-skeleton-row">
+          <div class="al-skeleton-icon"></div>
+          <div class="al-skeleton-content">
+            <div class="al-skeleton-pill"></div>
+            <div class="al-skeleton-title"></div>
+            <div class="al-skeleton-desc"></div>
+          </div>
+          <div class="al-skeleton-time">
+            <div class="al-skeleton-line"></div>
+            <div class="al-skeleton-line al-skeleton-line--short"></div>
+          </div>
+        </div>
+      }
+    </div>
+
+  } @loading (minimum 300ms) {
+
+    <div class="al-skeleton">
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="al-skeleton-row al-skeleton-row--pulse">
+          <div class="al-skeleton-icon"></div>
+          <div class="al-skeleton-content">
+            <div class="al-skeleton-pill"></div>
+            <div class="al-skeleton-title"></div>
+            <div class="al-skeleton-desc"></div>
+          </div>
+          <div class="al-skeleton-time">
+            <div class="al-skeleton-line"></div>
+            <div class="al-skeleton-line al-skeleton-line--short"></div>
+          </div>
+        </div>
+      }
+    </div>
+
+  }
+
+</div>

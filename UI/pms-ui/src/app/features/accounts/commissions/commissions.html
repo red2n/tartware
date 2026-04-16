@@ -17,14 +17,25 @@
       <input type="date" class="field-input field-sm"
              [ngModel]="periodEnd()" (ngModelChange)="periodEnd.set($event)" />
     </div>
-    <button class="btn btn-outline btn-sm" (click)="loadReport()" [disabled]="loading()">
+    <button class="btn btn-outline btn-sm" (click)="loadReport()" [disabled]="!dataReady()">
       <mat-icon>search</mat-icon>
       {{ 'Apply' | translate }}
     </button>
   </div>
 
   <!-- ═══ TOTAL KPI ═══ -->
-  @if (!loading() && items().length > 0) {
+  @if (!dataReady()) {
+    <div class="overview-bar-sk">
+      @for (_ of [1,2]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 1) { <div class="overview-divider"></div> }
+      }
+    </div>
+  } @else if (items().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card">
         <mat-icon>payments</mat-icon>
@@ -44,9 +55,8 @@
   }
 
   <!-- ═══ COMMISSION TABLE ═══ -->
-  @if (loading()) {
-    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading commissions...' | translate }}</span></div>
-  } @else if (error(); as err) {
+  @defer (when dataReady(); prefetch on idle) {
+  @if (error(); as err) {
     <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadReport()">{{ 'Retry' | translate }}</button></div>
   } @else if (items().length === 0) {
     <div class="empty-state">
@@ -94,6 +104,38 @@
           </tr>
         </tfoot>
       </table>
+    </div>
+  }
+  } @placeholder {
+    <div class="placeholder-table">
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--lg"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+      </div>
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--lg"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+        </div>
+      }
+    </div>
+  } @loading (minimum 200ms) {
+    <div class="placeholder-table">
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--lg"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+        </div>
+      }
     </div>
   }
 </div>

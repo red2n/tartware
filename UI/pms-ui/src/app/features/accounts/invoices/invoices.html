@@ -1,6 +1,6 @@
 <div class="invoices-page">
   <app-page-header title="Invoice Management" description="Create, adjust, and finalize guest invoices">
-    <button class="btn btn-primary btn-sm" (click)="openCreateForm()" [disabled]="loading()">
+    <button class="btn btn-primary btn-sm" (click)="openCreateForm()" [disabled]="!dataReady()">
       <mat-icon>add</mat-icon>
       {{ 'New Invoice' | translate }}
     </button>
@@ -60,7 +60,18 @@
     </div>
   }
 
-  @if (invoices().length > 0) {
+  @if (!dataReady()) {
+    <div class="overview-bar-sk">
+      @for (_ of [1,2,3,4]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 3) { <div class="overview-divider"></div> }
+      }
+    </div>
+  } @else if (invoices().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card invoice-kpi-total">
         <mat-icon>receipt_long</mat-icon>
@@ -116,9 +127,8 @@
   </div>
 
   <!-- ═══ INVOICE LIST ═══ -->
-  @if (loading()) {
-    <div class="loading-state"><mat-spinner diameter="32"></mat-spinner><span>{{ 'Loading invoices...' | translate }}</span></div>
-  } @else if (error(); as err) {
+  @defer (when dataReady(); prefetch on idle) {
+  @if (error(); as err) {
     <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
   } @else if (paginated().length === 0) {
     <div class="empty-state">
@@ -322,4 +332,34 @@
 
     <app-pagination [currentPage]="page()" [pageSize]="pageSize()" [totalItems]="filtered().length" (pageChange)="onPageChange($event)"></app-pagination>
   }
+  } @placeholder {
+    <ng-container *ngTemplateOutlet="invTableSkeleton" />
+  } @loading (minimum 200ms) {
+    <ng-container *ngTemplateOutlet="invTableSkeleton" />
+  }
 </div>
+
+<ng-template #invTableSkeleton>
+  <div class="placeholder-table">
+    <div class="placeholder-row">
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--lg"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--sm"></div>
+      <div class="placeholder-cell placeholder-cell--badge"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--xs"></div>
+    </div>
+    @for (_ of [1,2,3,4,5,6,7]; track $index) {
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--lg"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--badge"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--xs"></div>
+      </div>
+    }
+  </div>
+</ng-template>

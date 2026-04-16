@@ -14,6 +14,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -23,7 +24,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type TaxTypeFilter =
@@ -62,7 +62,7 @@ export class TaxConfigComponent {
 
 	// ── State ──
 	readonly taxConfigs = signal<TaxConfigurationListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeTaxTypeFilter = signal<TaxTypeFilter>("ALL");
 	readonly activeStatusFilter = signal<ActiveFilter>("ALL");
@@ -170,11 +170,27 @@ export class TaxConfigComponent {
 	}
 
 	readonly taxTypeOptions = [
-		"SALES_TAX", "VAT", "GST", "OCCUPANCY_TAX", "TOURISM_TAX", "CITY_TAX",
-		"STATE_TAX", "FEDERAL_TAX", "RESORT_FEE", "SERVICE_CHARGE", "EXCISE_TAX", "OTHER",
+		"SALES_TAX",
+		"VAT",
+		"GST",
+		"OCCUPANCY_TAX",
+		"TOURISM_TAX",
+		"CITY_TAX",
+		"STATE_TAX",
+		"FEDERAL_TAX",
+		"RESORT_FEE",
+		"SERVICE_CHARGE",
+		"EXCISE_TAX",
+		"OTHER",
 	];
 	readonly calcMethodOptions = [
-		"INCLUSIVE", "EXCLUSIVE", "COMPOUND", "CASCADING", "ADDITIVE", "TIERED", "FLAT",
+		"INCLUSIVE",
+		"EXCLUSIVE",
+		"COMPOUND",
+		"CASCADING",
+		"ADDITIVE",
+		"TIERED",
+		"FLAT",
 	];
 
 	// ── Create form ──
@@ -221,7 +237,10 @@ export class TaxConfigComponent {
 	}
 
 	updateCreateForm(partial: Record<string, unknown>): void {
-		this.createForm.set({ ...this.createForm(), ...partial } as typeof this.createForm extends () => infer T ? T : never);
+		this.createForm.set({
+			...this.createForm(),
+			...partial,
+		} as typeof this.createForm extends () => infer T ? T : never);
 	}
 
 	async createTaxConfig(): Promise<void> {
@@ -249,10 +268,18 @@ export class TaxConfigComponent {
 			this.toast.success("Tax configuration create submitted. Refreshing tax settings...");
 			this.showCreateForm.set(false);
 			this.createForm.set({
-				tax_code: "", tax_name: "", tax_description: "", tax_type: "OCCUPANCY_TAX",
-				country_code: "US", state_province: "", jurisdiction_name: "",
-				tax_rate: 0, is_percentage: true, effective_from: new Date().toISOString().split("T")[0],
-				calculation_method: "EXCLUSIVE", is_active: true,
+				tax_code: "",
+				tax_name: "",
+				tax_description: "",
+				tax_type: "OCCUPANCY_TAX",
+				country_code: "US",
+				state_province: "",
+				jurisdiction_name: "",
+				tax_rate: 0,
+				is_percentage: true,
+				effective_from: new Date().toISOString().split("T")[0],
+				calculation_method: "EXCLUSIVE",
+				is_active: true,
 			});
 			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
@@ -283,7 +310,10 @@ export class TaxConfigComponent {
 	}
 
 	updateEditForm(partial: Record<string, unknown>): void {
-		this.editForm.set({ ...this.editForm(), ...partial } as typeof this.editForm extends () => infer T ? T : never);
+		this.editForm.set({
+			...this.editForm(),
+			...partial,
+		} as typeof this.editForm extends () => infer T ? T : never);
 	}
 
 	async saveEdit(): Promise<void> {
@@ -350,7 +380,7 @@ export class TaxConfigComponent {
 	async loadTaxConfigs(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "500" };
@@ -364,7 +394,7 @@ export class TaxConfigComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load tax configurations");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

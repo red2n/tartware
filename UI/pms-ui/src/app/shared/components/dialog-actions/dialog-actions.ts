@@ -3,10 +3,10 @@ import { MatDialogActions } from "@angular/material/dialog";
 import { MatProgressSpinner } from "@angular/material/progress-spinner";
 
 @Component({
-  selector: "app-dialog-actions",
-  standalone: true,
-  imports: [MatDialogActions, MatProgressSpinner],
-  template: `
+	selector: "app-dialog-actions",
+	standalone: true,
+	imports: [MatDialogActions, MatProgressSpinner],
+	template: `
     <mat-dialog-actions align="end">
       <button class="btn btn-outline" (click)="cancel.emit()" [disabled]="saving()">Cancel</button>
       <button
@@ -24,10 +24,10 @@ import { MatProgressSpinner } from "@angular/material/progress-spinner";
   `,
 })
 export class DialogActionsComponent {
-  saving = input.required<boolean>();
-  valid = input.required<boolean>();
-  saveLabel = input("Save");
-  savingLabel = input("Saving…");
-  cancel = output<void>();
-  save = output<void>();
+	saving = input.required<boolean>();
+	valid = input.required<boolean>();
+	saveLabel = input("Save");
+	savingLabel = input("Saving…");
+	cancel = output<void>();
+	save = output<void>();
 }

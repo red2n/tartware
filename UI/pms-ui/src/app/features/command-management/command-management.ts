@@ -1,19 +1,18 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute } from "@angular/router";
-import { type Subscription } from "rxjs";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatTooltipModule } from "@angular/material/tooltip";
-
+import { ActivatedRoute } from "@angular/router";
 import type {
 	BatchUpdateCommandFeaturesResponse,
 	CommandFeatureListItem,
 	CommandFeatureStatus,
 } from "@tartware/schemas";
+import { type Subscription } from "rxjs";
 
 import { ApiService } from "../../core/api/api.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -83,8 +82,8 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 		return items;
 	});
 
-	readonly enabledCount = computed(() =>
-		this.commands().filter((c) => this.getEffectiveStatus(c) === "enabled").length,
+	readonly enabledCount = computed(
+		() => this.commands().filter((c) => this.getEffectiveStatus(c) === "enabled").length,
 	);
 	readonly totalCount = computed(() => this.commands().length);
 

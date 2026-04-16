@@ -1,4 +1,4 @@
-import { NgClass } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -13,6 +13,7 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -22,7 +23,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 const INVOICE_STATUS_ORDER = [
@@ -42,6 +42,7 @@ const INVOICE_STATUS_ORDER = [
 	standalone: true,
 	imports: [
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
@@ -63,7 +64,7 @@ export class InvoicesComponent {
 
 	// ── List state ──
 	readonly invoices = signal<InvoiceListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly totalCount = signal(0);
 
@@ -186,7 +187,7 @@ export class InvoicesComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const res = await this.api.get<InvoiceListResponse>("/billing/invoices", {
@@ -201,7 +202,7 @@ export class InvoicesComponent {
 			this.totalCount.set(0);
 			this.error.set(e instanceof Error ? e.message : "Failed to load invoices.");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

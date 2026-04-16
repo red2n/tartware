@@ -4,7 +4,6 @@ import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type { BuildingGridItem } from "@tartware/schemas";
@@ -32,7 +31,6 @@ import { ToastService } from "../../../shared/toast/toast.service";
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
@@ -49,7 +47,7 @@ export class BuildingsComponent {
 	readonly globalSearch = inject(GlobalSearchService);
 
 	readonly buildings = signal<BuildingGridItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
@@ -119,7 +117,7 @@ export class BuildingsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 
 		try {
@@ -131,7 +129,7 @@ export class BuildingsComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load buildings");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 

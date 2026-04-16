@@ -74,13 +74,8 @@
   </div>
 
   <!-- Content -->
-  @defer (on idle) {
-  @if (loading()) {
-    <div class="loading-state">
-      <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">{{ 'Loading packages...' | translate }}</span>
-    </div>
-  } @else if (error(); as err) {
+  @defer (when dataReady(); prefetch on idle) {
+  @if (error(); as err) {
     <div class="error-state">
       <mat-icon class="error-icon">error_outline</mat-icon>
       <span>{{ err }}</span>
@@ -190,11 +185,24 @@
         (pageChange)="currentPage.set($event)" />
     }
   } @placeholder {
-    <div class="placeholder-table">
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
-      <div class="placeholder-row"></div>
-    </div>
+    <ng-container *ngTemplateOutlet="pkgTableSkeleton" />
+  } @loading (minimum 200ms) {
+    <ng-container *ngTemplateOutlet="pkgTableSkeleton" />
   }
 </div>
+
+<ng-template #pkgTableSkeleton>
+  <div class="placeholder-table">
+    @for (_ of [1,2,3,4,5,6,7,8]; track $index) {
+      <div class="placeholder-row">
+        <div class="placeholder-cell placeholder-cell--lg"></div>
+        <div class="placeholder-cell placeholder-cell--xl"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--md"></div>
+        <div class="placeholder-cell placeholder-cell--sm"></div>
+        <div class="placeholder-cell placeholder-cell--badge"></div>
+        <div class="placeholder-cell placeholder-cell--xs"></div>
+      </div>
+    }
+  </div>
+</ng-template>

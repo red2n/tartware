@@ -14,6 +14,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -23,7 +24,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type SessionStatusFilter = "ALL" | "OPEN" | "CLOSED" | "RECONCILED" | "PENDING_APPROVAL";
@@ -78,7 +78,7 @@ export class CashieringComponent {
 
 	// ── State ──
 	readonly sessions = signal<CashierSessionListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<SessionStatusFilter>("ALL");
 	readonly page = signal(1);
@@ -397,7 +397,7 @@ export class CashieringComponent {
 	async loadSessions(): Promise<void> {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 		try {
 			const params: Record<string, string> = { tenant_id: tenantId, limit: "200" };
@@ -411,7 +411,7 @@ export class CashieringComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load cashier sessions");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }

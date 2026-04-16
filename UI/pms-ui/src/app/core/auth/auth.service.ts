@@ -344,7 +344,12 @@ export class AuthService implements OnDestroy {
 			}
 
 			// Token fully expired beyond grace, all retries failed
-			console.warn("[auth] token expired beyond grace after", REFRESH_MAX_RETRIES + 1, "attempts, status:", lastStatus);
+			console.warn(
+				"[auth] token expired beyond grace after",
+				REFRESH_MAX_RETRIES + 1,
+				"attempts, status:",
+				lastStatus,
+			);
 			this.ngZone.run(() => this.forceLogout());
 		} finally {
 			this.isRefreshing = false;

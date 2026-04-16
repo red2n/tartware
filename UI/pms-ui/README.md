@@ -46,13 +46,80 @@ ng test
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+End-to-end tests use [Playwright](https://playwright.dev/) with Chromium to smoke-test all UI screens.
+
+### Prerequisites
+
+1. **Install Playwright browsers** (one-time):
+
+   ```bash
+   npx playwright install chromium
+   ```
+
+2. **Install system dependencies** (Linux — requires sudo):
+
+   ```bash
+   sudo npx playwright install-deps chromium
+   ```
+
+   > If `sudo: npx: command not found`, use the full path:
+   > ```bash
+   > sudo $(which npx) playwright install-deps chromium
+   > ```
+
+3. **Start the dev server** (must be running on `localhost:4200`):
+
+   ```bash
+   pnpm start
+   ```
+
+4. **Start the backend** (must be running on `localhost:8080`):
+
+   ```bash
+   # from the repo root
+   pnpm run dev:backend
+   ```
+
+### Running tests
 
 ```bash
-ng e2e
+# Headed (visible browser) — default
+pnpm e2e
+
+# Headless (CI / background)
+pnpm e2e:headless
+
+# Playwright interactive UI mode
+pnpm e2e:ui
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+### What the tests cover
+
+The smoke suite (`e2e/smoke.spec.ts`) visits 22 screens and asserts:
+
+- No full-page error state
+- No leftover loading spinners
+- At least one heading is visible
+
+Screens tested: Dashboard, Reservations, Group Bookings, Guests, Rooms, Room Types, Buildings, Rates, Rate Calendar, Packages, Housekeeping, Billing, Accounts Receivable, Cashiering, Night Audit, Tax Configuration, Invoices, Commissions, Settings, Command Management, User Management, Screen Permissions.
+
+### Authentication
+
+The test suite uses a setup project (`e2e/auth.setup.ts`) that logs in once with `setup.admin` / `TempPass123`, selects "Tartware Beach Resort", and saves the browser state to `e2e/.auth/state.json`. All screen tests reuse this saved session.
+
+### Test artifacts
+
+On failure, Playwright captures screenshots, videos, and traces in `test-results/`. View a trace with:
+
+```bash
+npx playwright show-trace test-results/<test-folder>/trace.zip
+```
+
+View the HTML report:
+
+```bash
+npx playwright show-report
+```
 
 ## Additional Resources
 

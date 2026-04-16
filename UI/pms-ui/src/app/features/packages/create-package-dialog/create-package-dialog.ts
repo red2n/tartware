@@ -3,13 +3,11 @@ import { FormsModule } from "@angular/forms";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
-
 import type { CreatePackageBody } from "@tartware/schemas";
-
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 
 @Component({
 	selector: "app-create-package-dialog",

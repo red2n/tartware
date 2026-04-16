@@ -101,7 +101,16 @@
 
           <div class="notification-panel-list">
             @if (notifications.loading()) {
-              <div class="notification-empty">{{ 'Loading...' | translate }}</div>
+              @for (_ of [1,2,3,4]; track $index) {
+                <div class="notif-sk-item">
+                  <div class="notif-sk-icon"></div>
+                  <div class="notif-sk-body">
+                    <div class="notif-sk-line notif-sk-line--title"></div>
+                    <div class="notif-sk-line notif-sk-line--msg"></div>
+                    <div class="notif-sk-line notif-sk-line--time"></div>
+                  </div>
+                </div>
+              }
             } @else if (notifications.notifications().length === 0) {
               <div class="notification-empty">
                 <mat-icon>notifications_none</mat-icon>

@@ -3,7 +3,6 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
@@ -40,7 +39,6 @@ type StatusFilter = "ALL" | GroupBlockStatus;
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
-		MatProgressSpinnerModule,
 		MatTooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
@@ -58,7 +56,7 @@ export class GroupsComponent {
 	readonly settings = inject(SettingsService);
 
 	readonly groups = signal<GroupBookingListItem[]>([]);
-	readonly loading = signal(false);
+	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly currentPage = signal(1);
@@ -250,7 +248,7 @@ export class GroupsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		this.loading.set(true);
+		this.dataReady.set(false);
 		this.error.set(null);
 
 		try {
@@ -266,7 +264,7 @@ export class GroupsComponent {
 		} catch (e) {
 			this.error.set(e instanceof Error ? e.message : "Failed to load group bookings");
 		} finally {
-			this.loading.set(false);
+			this.dataReady.set(true);
 		}
 	}
 }
