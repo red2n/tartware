@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from "@angular/core";
+import { computed, Injectable, inject, signal } from "@angular/core";
 
 import type {
 	BillingPaymentListItem,
@@ -59,9 +59,7 @@ export class BillingDataService {
 	readonly folioChargesLoading = signal(false);
 
 	/** Open folios available as charge / payment targets. */
-	readonly openFolios = computed(() =>
-		this.folios().filter((f) => f.folio_status === "open"),
-	);
+	readonly openFolios = computed(() => this.folios().filter((f) => f.folio_status === "open"));
 
 	/** KPI summary computed from all billing data. */
 	readonly summary = computed(() => {

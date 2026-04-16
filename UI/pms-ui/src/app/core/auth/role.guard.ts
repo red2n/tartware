@@ -3,7 +3,7 @@ import { type CanActivateFn, Router } from "@angular/router";
 
 import type { TenantRole } from "@tartware/schemas";
 
-import { hasMinRole, findFirstAllowedRoute } from "../../layout/nav-config";
+import { findFirstAllowedRoute, hasMinRole } from "../../layout/nav-config";
 import { AuthService } from "./auth.service";
 import { ScreenPermissionsService } from "./screen-permissions.service";
 

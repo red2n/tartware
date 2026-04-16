@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type {
 	BucketCheckItem,
@@ -348,10 +348,7 @@ export class NightAuditComponent {
 			});
 			this.toast.success("Business date advanced successfully.");
 			this.dateRollReason.set("");
-			await Promise.all([
-				this.loadBusinessDateStatus(),
-				this.loadTrialBalance(),
-			]);
+			await Promise.all([this.loadBusinessDateStatus(), this.loadTrialBalance()]);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to advance date");
 		} finally {
@@ -460,10 +457,7 @@ export class NightAuditComponent {
 	private async pollAuditCompletion(): Promise<void> {
 		for (let i = 0; i < 10; i++) {
 			await new Promise((r) => setTimeout(r, 1500));
-			await Promise.all([
-				this.loadBusinessDateStatus(),
-				this.loadHistory(),
-			]);
+			await Promise.all([this.loadBusinessDateStatus(), this.loadHistory()]);
 			const status = this.businessDateStatus();
 			if (status?.date_status === "CLOSED" || status?.night_audit_status === "COMPLETED") {
 				this.toast.success("Night audit completed successfully.");

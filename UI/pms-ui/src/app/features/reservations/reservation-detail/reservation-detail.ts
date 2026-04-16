@@ -17,12 +17,12 @@ import type {
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
-import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { CHARGE_CODE_OPTIONS } from "../../billing/billing-constants";
 
 type DetailRow = { label: string; value: string; badge?: string; icon?: string; hint?: string };
@@ -170,8 +170,8 @@ export class ReservationDetailComponent implements OnInit {
 		if (!r) return false;
 		const s = r.status.toUpperCase();
 		// Allow posting on open folio statuses; block if folio is explicitly closed/settled
-		const folioBlocked = r.folio && !['OPEN'].includes(r.folio.folio_status);
-		return ['CHECKED_IN', 'PENDING', 'CONFIRMED'].includes(s) && !folioBlocked;
+		const folioBlocked = r.folio && !["OPEN"].includes(r.folio.folio_status);
+		return ["CHECKED_IN", "PENDING", "CONFIRMED"].includes(s) && !folioBlocked;
 	});
 
 	readonly bookingRows = computed<DetailRow[]>(() => {
@@ -400,10 +400,7 @@ export class ReservationDetailComponent implements OnInit {
 			} else {
 				params["reservation_id"] = r.id;
 			}
-			const res = await this.api.get<{ data: ChargePostingListItem[] }>(
-				"/billing/charges",
-				params,
-			);
+			const res = await this.api.get<{ data: ChargePostingListItem[] }>("/billing/charges", params);
 			this.folioCharges.set(res.data ?? []);
 		} catch {
 			this.folioCharges.set([]);

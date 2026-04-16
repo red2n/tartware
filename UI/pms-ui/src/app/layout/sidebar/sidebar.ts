@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from "@angular/common";
 import { Component, computed, inject, input, output } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
@@ -11,7 +12,14 @@ import { filterNavByAllowedScreens, PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS } fro
 @Component({
 	selector: "app-sidebar",
 	standalone: true,
-	imports: [RouterLink, RouterLinkActive, MatIconModule, MatTooltipModule, TranslatePipe],
+	imports: [
+		NgTemplateOutlet,
+		RouterLink,
+		RouterLinkActive,
+		MatIconModule,
+		MatTooltipModule,
+		TranslatePipe,
+	],
 	templateUrl: "./sidebar.html",
 	styleUrl: "./sidebar.scss",
 })
@@ -24,11 +32,19 @@ export class SidebarComponent {
 	readonly parentSelect = output<NavItem>();
 
 	readonly primaryNavItems = computed(() => {
-		return filterNavByAllowedScreens(PRIMARY_NAV_ITEMS, this.screenPerms.allowedScreens(), this.screenPerms.loaded());
+		return filterNavByAllowedScreens(
+			PRIMARY_NAV_ITEMS,
+			this.screenPerms.allowedScreens(),
+			this.screenPerms.loaded(),
+		);
 	});
 
 	readonly secondaryNavItems = computed(() => {
-		return filterNavByAllowedScreens(SECONDARY_NAV_ITEMS, this.screenPerms.allowedScreens(), this.screenPerms.loaded());
+		return filterNavByAllowedScreens(
+			SECONDARY_NAV_ITEMS,
+			this.screenPerms.allowedScreens(),
+			this.screenPerms.loaded(),
+		);
 	});
 
 	isParentActive(item: NavItem): boolean {

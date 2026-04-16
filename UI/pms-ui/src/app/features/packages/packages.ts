@@ -1,15 +1,12 @@
-import { NgClass } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { PACKAGE_TYPE_OPTIONS } from "./package-constants";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink } from "@angular/router";
-
 import type { PackageListItem } from "@tartware/schemas";
-
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -26,6 +23,7 @@ import {
 	toggleSort,
 } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
+import { PACKAGE_TYPE_OPTIONS } from "./package-constants";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "FEATURED";
 type TypeFilter = "ALL" | string;
@@ -35,6 +33,7 @@ type TypeFilter = "ALL" | string;
 	standalone: true,
 	imports: [
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,

@@ -427,11 +427,11 @@
           } @else {
             <!-- Timeline -->
             <ul class="tl-list">
-              @for (item of activity(); track item.id; let last = $last) {
+              @for (item of groupedActivity(); track item.id; let last = $last) {
                 <li class="tl-event">
                   <div class="tl-spine">
                     <span class="tl-dot tl-dot--{{ item.type }}"></span>
-                    @if (!last) { <span class="tl-line"></span> }
+                    @if (!last || item.children?.length) { <span class="tl-line"></span> }
                   </div>
                   <div class="tl-body">
                     <div class="tl-meta">
@@ -446,6 +446,29 @@
                     <p class="tl-desc">{{ item.description }}</p>
                   </div>
                 </li>
+                <!-- Child activities indented under parent reservation -->
+                @if (item.children?.length) {
+                  @for (child of item.children; track child.id; let childLast = $last) {
+                    <li class="tl-event tl-event--child">
+                      <div class="tl-spine">
+                        <span class="tl-dot tl-dot--{{ child.type }} tl-dot--child"></span>
+                        @if (!childLast || !last) { <span class="tl-line"></span> }
+                      </div>
+                      <div class="tl-body">
+                        <div class="tl-meta">
+                          <mat-icon class="tl-icon">{{ child.icon }}</mat-icon>
+                          <span class="tl-type tl-type--{{ child.type }}">{{ activityTypeLabel(child.type) }}</span>
+                          @if (child.urgent) {
+                            <span class="badge badge-danger badge-sm">!</span>
+                          }
+                          <time class="tl-time">{{ relativeTime(child.timestamp) }}</time>
+                        </div>
+                        <p class="tl-title">{{ child.title }}</p>
+                        <p class="tl-desc">{{ child.description }}</p>
+                      </div>
+                    </li>
+                  }
+                }
               }
             </ul>
           }

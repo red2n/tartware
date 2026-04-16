@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type { TaxConfigurationListItem, TaxConfigurationListResponse } from "@tartware/schemas";
 
@@ -14,6 +14,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -23,7 +24,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type TaxTypeFilter =
@@ -170,11 +170,27 @@ export class TaxConfigComponent {
 	}
 
 	readonly taxTypeOptions = [
-		"SALES_TAX", "VAT", "GST", "OCCUPANCY_TAX", "TOURISM_TAX", "CITY_TAX",
-		"STATE_TAX", "FEDERAL_TAX", "RESORT_FEE", "SERVICE_CHARGE", "EXCISE_TAX", "OTHER",
+		"SALES_TAX",
+		"VAT",
+		"GST",
+		"OCCUPANCY_TAX",
+		"TOURISM_TAX",
+		"CITY_TAX",
+		"STATE_TAX",
+		"FEDERAL_TAX",
+		"RESORT_FEE",
+		"SERVICE_CHARGE",
+		"EXCISE_TAX",
+		"OTHER",
 	];
 	readonly calcMethodOptions = [
-		"INCLUSIVE", "EXCLUSIVE", "COMPOUND", "CASCADING", "ADDITIVE", "TIERED", "FLAT",
+		"INCLUSIVE",
+		"EXCLUSIVE",
+		"COMPOUND",
+		"CASCADING",
+		"ADDITIVE",
+		"TIERED",
+		"FLAT",
 	];
 
 	// ── Create form ──
@@ -221,7 +237,10 @@ export class TaxConfigComponent {
 	}
 
 	updateCreateForm(partial: Record<string, unknown>): void {
-		this.createForm.set({ ...this.createForm(), ...partial } as typeof this.createForm extends () => infer T ? T : never);
+		this.createForm.set({
+			...this.createForm(),
+			...partial,
+		} as typeof this.createForm extends () => infer T ? T : never);
 	}
 
 	async createTaxConfig(): Promise<void> {
@@ -249,10 +268,18 @@ export class TaxConfigComponent {
 			this.toast.success("Tax configuration create submitted. Refreshing tax settings...");
 			this.showCreateForm.set(false);
 			this.createForm.set({
-				tax_code: "", tax_name: "", tax_description: "", tax_type: "OCCUPANCY_TAX",
-				country_code: "US", state_province: "", jurisdiction_name: "",
-				tax_rate: 0, is_percentage: true, effective_from: new Date().toISOString().split("T")[0],
-				calculation_method: "EXCLUSIVE", is_active: true,
+				tax_code: "",
+				tax_name: "",
+				tax_description: "",
+				tax_type: "OCCUPANCY_TAX",
+				country_code: "US",
+				state_province: "",
+				jurisdiction_name: "",
+				tax_rate: 0,
+				is_percentage: true,
+				effective_from: new Date().toISOString().split("T")[0],
+				calculation_method: "EXCLUSIVE",
+				is_active: true,
 			});
 			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
@@ -283,7 +310,10 @@ export class TaxConfigComponent {
 	}
 
 	updateEditForm(partial: Record<string, unknown>): void {
-		this.editForm.set({ ...this.editForm(), ...partial } as typeof this.editForm extends () => infer T ? T : never);
+		this.editForm.set({
+			...this.editForm(),
+			...partial,
+		} as typeof this.editForm extends () => infer T ? T : never);
 	}
 
 	async saveEdit(): Promise<void> {

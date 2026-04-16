@@ -333,7 +333,24 @@
     <app-pagination [currentPage]="page()" [pageSize]="pageSize()" [totalItems]="filtered().length" (pageChange)="onPageChange($event)"></app-pagination>
   }
   } @placeholder {
-    <div class="placeholder-table">
+    <ng-container *ngTemplateOutlet="invTableSkeleton" />
+  } @loading (minimum 200ms) {
+    <ng-container *ngTemplateOutlet="invTableSkeleton" />
+  }
+</div>
+
+<ng-template #invTableSkeleton>
+  <div class="placeholder-table">
+    <div class="placeholder-row">
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--lg"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--sm"></div>
+      <div class="placeholder-cell placeholder-cell--badge"></div>
+      <div class="placeholder-cell placeholder-cell--md"></div>
+      <div class="placeholder-cell placeholder-cell--xs"></div>
+    </div>
+    @for (_ of [1,2,3,4,5,6,7]; track $index) {
       <div class="placeholder-row">
         <div class="placeholder-cell placeholder-cell--md"></div>
         <div class="placeholder-cell placeholder-cell--lg"></div>
@@ -343,31 +360,6 @@
         <div class="placeholder-cell placeholder-cell--md"></div>
         <div class="placeholder-cell placeholder-cell--xs"></div>
       </div>
-      @for (_ of [1,2,3,4,5,6,7]; track $index) {
-        <div class="placeholder-row">
-          <div class="placeholder-cell placeholder-cell--md"></div>
-          <div class="placeholder-cell placeholder-cell--lg"></div>
-          <div class="placeholder-cell placeholder-cell--md"></div>
-          <div class="placeholder-cell placeholder-cell--sm"></div>
-          <div class="placeholder-cell placeholder-cell--badge"></div>
-          <div class="placeholder-cell placeholder-cell--md"></div>
-          <div class="placeholder-cell placeholder-cell--xs"></div>
-        </div>
-      }
-    </div>
-  } @loading (minimum 200ms) {
-    <div class="placeholder-table">
-      @for (_ of [1,2,3,4,5,6,7]; track $index) {
-        <div class="placeholder-row">
-          <div class="placeholder-cell placeholder-cell--md"></div>
-          <div class="placeholder-cell placeholder-cell--lg"></div>
-          <div class="placeholder-cell placeholder-cell--md"></div>
-          <div class="placeholder-cell placeholder-cell--sm"></div>
-          <div class="placeholder-cell placeholder-cell--badge"></div>
-          <div class="placeholder-cell placeholder-cell--md"></div>
-          <div class="placeholder-cell placeholder-cell--xs"></div>
-        </div>
-      }
-    </div>
-  }
-</div>
+    }
+  </div>
+</ng-template>

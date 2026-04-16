@@ -295,7 +295,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
               || ' · ' || r.check_in_date::text || ' → ' || r.check_out_date::text AS description,
             r.created_at                                                            AS ts,
             'event_note'                                                            AS icon,
-            false                                                                   AS urgent
+            false                                                                   AS urgent,
+            NULL::text                                                              AS reservation_id
           FROM reservations r
           LEFT JOIN guests g ON r.guest_id = g.id
           WHERE r.tenant_id = $1::uuid
@@ -315,7 +316,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                       THEN ' · VIP ' || g.vip_status ELSE '' END,
             r.updated_at,
             'login',
-            (g.vip_status IS NOT NULL AND g.vip_status <> 'NONE')
+            (g.vip_status IS NOT NULL AND g.vip_status <> 'NONE'),
+            r.id::text
           FROM reservations r
           LEFT JOIN guests g ON r.guest_id = g.id
           WHERE r.tenant_id = $1::uuid
@@ -335,7 +337,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
               || ' · Stay ' || r.check_in_date::text || ' → ' || r.check_out_date::text,
             r.updated_at,
             'logout',
-            false
+            false,
+            r.id::text
           FROM reservations r
           LEFT JOIN guests g ON r.guest_id = g.id
           WHERE r.tenant_id = $1::uuid
@@ -355,7 +358,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
               || ' · Arrival ' || r.check_in_date::text,
             r.updated_at,
             'cancel',
-            false
+            false,
+            r.id::text
           FROM reservations r
           LEFT JOIN guests g ON r.guest_id = g.id
           WHERE r.tenant_id = $1::uuid
@@ -375,7 +379,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
               || ' · Was due ' || r.check_in_date::text,
             r.updated_at,
             'person_off',
-            false
+            false,
+            r.id::text
           FROM reservations r
           LEFT JOIN guests g ON r.guest_id = g.id
           WHERE r.tenant_id = $1::uuid
@@ -394,7 +399,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
             COALESCE(f.guest_name, 'Unknown Guest') || ' · ' || f.folio_type,
             f.created_at,
             'receipt_long',
-            false
+            false,
+            f.reservation_id::text
           FROM folios f
           WHERE f.tenant_id = $1::uuid
             AND ($2::uuid IS NULL OR f.property_id = $2::uuid)
@@ -411,7 +417,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
             COALESCE(f.guest_name, 'Unknown Guest') || ' · Balance cleared',
             COALESCE(f.settled_at, f.updated_at),
             'payments',
-            false
+            false,
+            f.reservation_id::text
           FROM folios f
           WHERE f.tenant_id = $1::uuid
             AND ($2::uuid IS NULL OR f.property_id = $2::uuid)
@@ -439,14 +446,15 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
               WHEN 'INSPECTED' THEN 'verified'
               ELSE                  'mop'
             END,
-            ht.is_guest_request
+            ht.is_guest_request,
+            NULL::text
           FROM housekeeping_tasks ht
           WHERE ht.tenant_id = $1::uuid
             AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
             AND ht.status IN ('CLEAN', 'INSPECTED', 'IN_PROGRESS')
             AND COALESCE(ht.completed_at, ht.updated_at, ht.created_at) > NOW() - INTERVAL '48 hours'
         )
-        SELECT id, type, title, description, ts AS timestamp, icon, urgent
+        SELECT id, type, title, description, ts AS timestamp, icon, urgent, reservation_id
         FROM activity
         ORDER BY ts DESC
         LIMIT $3 OFFSET $4`;

@@ -67,9 +67,7 @@ export class RatesComponent {
 		this.settings.getNumber("rates.max_discount_percent", 50),
 	);
 	/** City/tourist tax per night. */
-	readonly cityTaxPerNight = computed(() =>
-		this.settings.getNumber("rates.city_tax_per_night", 0),
-	);
+	readonly cityTaxPerNight = computed(() => this.settings.getNumber("rates.city_tax_per_night", 0));
 	/** Non-refundable cutoff in days before arrival. */
 	readonly nonRefundableCutoffDays = computed(() =>
 		this.settings.getNumber("rates.non_refundable_cutoff_days", 7),

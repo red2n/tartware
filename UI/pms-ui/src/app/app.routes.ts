@@ -30,7 +30,9 @@ export const routes: Routes = [
 				path: "dashboard/activity",
 				canActivate: [propertyGuard, screenGuard("dashboard")],
 				loadComponent: () =>
-					import("./features/dashboard/activity-log/activity-log").then((m) => m.ActivityLogComponent),
+					import("./features/dashboard/activity-log/activity-log").then(
+						(m) => m.ActivityLogComponent,
+					),
 			},
 			{
 				path: "reservations",
@@ -183,7 +185,9 @@ export const routes: Routes = [
 				path: "fiscal-periods",
 				canActivate: [propertyGuard, screenGuard("fiscal-periods")],
 				loadComponent: () =>
-					import("./features/accounts/fiscal-periods/fiscal-periods").then((m) => m.FiscalPeriodsComponent),
+					import("./features/accounts/fiscal-periods/fiscal-periods").then(
+						(m) => m.FiscalPeriodsComponent,
+					),
 			},
 			{
 				path: "commissions",

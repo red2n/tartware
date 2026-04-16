@@ -210,6 +210,18 @@
   position: relative;
 }
 
+/* Child items indented under their parent reservation */
+.tl-event--child {
+  margin-left: 20px;
+
+  .tl-spine { width: 10px; }
+}
+
+.tl-dot--child {
+  width: 8px;
+  height: 8px;
+}
+
 /* Spine: dot + connecting line */
 .tl-spine {
   display: flex;

@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass } from "@angular/common";
+import { DecimalPipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -34,6 +34,7 @@ type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 	imports: [
 		DecimalPipe,
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		RouterLink,
 		MatIconModule,

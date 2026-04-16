@@ -41,6 +41,35 @@ export class ActivityLogComponent {
 	/** Flipped false→true to re-trigger @defer skeleton on each load/refresh. */
 	readonly ready = signal(false);
 
+	/** Items grouped into a tree: reservation parents with their children indented. */
+	readonly groupedItems = computed(() => {
+		const items = this.items();
+		if (items.length === 0) return [] as (ActivityItem & { children?: ActivityItem[] })[];
+
+		const parentMap = new Map<string, ActivityItem & { children: ActivityItem[] }>();
+		const result: (ActivityItem & { children?: ActivityItem[] })[] = [];
+
+		for (const item of items) {
+			if (item.type === "reservation") {
+				const parent = { ...item, children: [] as ActivityItem[] };
+				parentMap.set(item.id, parent);
+				result.push(parent);
+			}
+		}
+
+		for (const item of items) {
+			if (item.type === "reservation") continue;
+			const resId = item.reservation_id;
+			if (resId && parentMap.has(resId)) {
+				parentMap.get(resId)!.children.push(item);
+			} else {
+				result.push(item);
+			}
+		}
+
+		return result;
+	});
+
 	readonly pageSize = PAGE_SIZE;
 	readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
 	readonly hasPrev = computed(() => this.page() > 0);

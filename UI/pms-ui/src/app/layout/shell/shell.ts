@@ -1,4 +1,12 @@
-import { Component, computed, effect, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
+import {
+	Component,
+	computed,
+	effect,
+	inject,
+	type OnDestroy,
+	type OnInit,
+	signal,
+} from "@angular/core";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { filter, type Subscription } from "rxjs";
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";

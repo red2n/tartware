@@ -109,7 +109,9 @@ export class ScreenPermissionsComponent implements OnInit {
 	private serverSnapshot = "";
 
 	readonly hasChanges = computed(() => {
-		const current = JSON.stringify(this.screenRows().map((r) => ({ k: r.screen_key, v: r.visibility })));
+		const current = JSON.stringify(
+			this.screenRows().map((r) => ({ k: r.screen_key, v: r.visibility })),
+		);
 		return current !== this.serverSnapshot;
 	});
 
@@ -196,7 +198,9 @@ export class ScreenPermissionsComponent implements OnInit {
 
 		try {
 			// Determine which roles have changes
-			const server: { k: string; v: Record<TenantRole, boolean> }[] = JSON.parse(this.serverSnapshot);
+			const server: { k: string; v: Record<TenantRole, boolean> }[] = JSON.parse(
+				this.serverSnapshot,
+			);
 			const serverMap = new Map(server.map((s) => [s.k, s.v]));
 			const changedRoles = new Set<TenantRole>();
 

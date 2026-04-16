@@ -46,7 +46,7 @@
 
       <!-- Event list -->
       <div class="al-list">
-        @for (item of items(); track item.id) {
+        @for (item of groupedItems(); track item.id) {
         <div class="al-event al-event--{{ item.type }}">
 
           <!-- Left: type icon block -->
@@ -77,6 +77,34 @@
           </div>
 
         </div>
+        <!-- Child activities indented under parent reservation -->
+        @if (item.children?.length) {
+          @for (child of item.children; track child.id) {
+            <div class="al-event al-event--{{ child.type }} al-event--child">
+              <div class="al-event-icon-col">
+                <div class="al-event-icon-wrap al-event-icon-wrap--{{ child.type }} al-event-icon-wrap--child">
+                  <mat-icon>{{ child.icon }}</mat-icon>
+                </div>
+              </div>
+              <div class="al-event-content">
+                <div class="al-event-header">
+                  <span class="al-event-type al-event-type--{{ child.type }}">
+                    {{ activityTypeLabel(child.type) }}
+                  </span>
+                  @if (child.urgent) {
+                    <span class="badge badge-danger badge-sm al-urgent-badge">Urgent</span>
+                  }
+                </div>
+                <h3 class="al-event-title">{{ child.title }}</h3>
+                <p class="al-event-desc">{{ child.description }}</p>
+              </div>
+              <div class="al-event-time-col">
+                <time class="al-event-abs-time">{{ formatDate(child.timestamp) }}</time>
+                <time class="al-event-rel-time">{{ relativeTime(child.timestamp) }}</time>
+              </div>
+            </div>
+          }
+        }
       }
     </div>
 

@@ -11,8 +11,8 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
-import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
+import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import {
 	createSortState,
 	getAriaSort,
@@ -58,9 +58,7 @@ export class LedgerComponent {
 	readonly endDate = signal(this.todayString());
 	readonly sort = createSortState();
 
-	readonly sorted = computed(() =>
-		sortBy(this.items(), this.sort().column, this.sort().direction),
-	);
+	readonly sorted = computed(() => sortBy(this.items(), this.sort().column, this.sort().direction));
 
 	readonly totals = computed(() => {
 		const rows = this.items();

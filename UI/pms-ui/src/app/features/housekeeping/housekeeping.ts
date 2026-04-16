@@ -1,4 +1,4 @@
-import { DatePipe, NgClass } from "@angular/common";
+import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -32,6 +32,7 @@ type SortDir = "asc" | "desc";
 	imports: [
 		DatePipe,
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
@@ -87,9 +88,7 @@ export class HousekeepingComponent {
 		this.settings.getString("rooms.default_status_on_checkout", "DIRTY"),
 	);
 	/** Maximum consecutive DND days before override. */
-	readonly dndMaxDays = computed(() =>
-		this.settings.getNumber("rooms.dnd_max_days", 3),
-	);
+	readonly dndMaxDays = computed(() => this.settings.getNumber("rooms.dnd_max_days", 3));
 	/** Stayover cleaning interval in days. */
 	readonly stayoverCleanInterval = computed(() =>
 		this.settings.getNumber("rooms.stayover_clean_interval", 1),

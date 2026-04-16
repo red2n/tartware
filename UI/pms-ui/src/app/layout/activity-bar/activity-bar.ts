@@ -21,11 +21,19 @@ export class ActivityBarComponent {
 	readonly itemSelect = output<NavItem>();
 
 	readonly primaryNavItems = computed(() => {
-		return filterNavByAllowedScreens(PRIMARY_NAV_ITEMS, this.screenPerms.allowedScreens(), this.screenPerms.loaded());
+		return filterNavByAllowedScreens(
+			PRIMARY_NAV_ITEMS,
+			this.screenPerms.allowedScreens(),
+			this.screenPerms.loaded(),
+		);
 	});
 
 	readonly secondaryNavItems = computed(() => {
-		return filterNavByAllowedScreens(SECONDARY_NAV_ITEMS, this.screenPerms.allowedScreens(), this.screenPerms.loaded());
+		return filterNavByAllowedScreens(
+			SECONDARY_NAV_ITEMS,
+			this.screenPerms.allowedScreens(),
+			this.screenPerms.loaded(),
+		);
 	});
 
 	isActive(item: NavItem): boolean {

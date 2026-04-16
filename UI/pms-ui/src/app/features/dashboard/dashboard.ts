@@ -5,7 +5,15 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 
-import type { ActivityItem, DashboardStats, HousekeepingTaskListItem, PaginatedActivity, RateItem, RoomGridItem, TaskItem } from "@tartware/schemas";
+import type {
+	ActivityItem,
+	DashboardStats,
+	HousekeepingTaskListItem,
+	PaginatedActivity,
+	RateItem,
+	RoomGridItem,
+	TaskItem,
+} from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -44,6 +52,38 @@ export class DashboardComponent {
 	readonly hkTasks = signal<HousekeepingTaskListItem[]>([]);
 	readonly error = signal<string | null>(null);
 	readonly refreshingActivity = signal(false);
+
+	/** Activity items grouped into a tree: reservation parents with their children indented. */
+	readonly groupedActivity = computed(() => {
+		const items = this.activity();
+		if (items.length === 0) return [] as (ActivityItem & { children?: ActivityItem[] })[];
+
+		// Collect reservation parent items (type === 'reservation') by their base id
+		const parentMap = new Map<string, ActivityItem & { children: ActivityItem[] }>();
+		const result: (ActivityItem & { children?: ActivityItem[] })[] = [];
+
+		// First pass: identify reservation parents
+		for (const item of items) {
+			if (item.type === "reservation") {
+				const parent = { ...item, children: [] as ActivityItem[] };
+				parentMap.set(item.id, parent);
+				result.push(parent);
+			}
+		}
+
+		// Second pass: attach children or push as top-level
+		for (const item of items) {
+			if (item.type === "reservation") continue;
+			const resId = item.reservation_id;
+			if (resId && parentMap.has(resId)) {
+				parentMap.get(resId)!.children.push(item);
+			} else {
+				result.push(item);
+			}
+		}
+
+		return result;
+	});
 	/** True once KPI stats have arrived — triggers @defer for the overview bar and sparkline. */
 	readonly statsReady = signal(false);
 	/** True once room/HK data has arrived — triggers @defer for Room Availability and Housekeeping cards. */
@@ -77,13 +117,9 @@ export class DashboardComponent {
 		this.settings.formatTime(this.settings.getString("property.check_out_time", "11:00")),
 	);
 	/** Property timezone (e.g. "America/New_York"). */
-	readonly timezone = computed(() =>
-		this.settings.getString("property.timezone", ""),
-	);
+	readonly timezone = computed(() => this.settings.getString("property.timezone", ""));
 	/** Property star rating (e.g. "4", "5"). */
-	readonly starRating = computed(() =>
-		this.settings.getNumber("property.star_rating", 0),
-	);
+	readonly starRating = computed(() => this.settings.getNumber("property.star_rating", 0));
 
 	/** SVG sparkline path from reservation_sparkline weekly buckets. */
 	readonly sparkline = computed(() => {
@@ -114,13 +150,15 @@ export class DashboardComponent {
 		const all = this.rooms();
 		if (all.length === 0) return null;
 		const total = all.length;
-		const occupied = all.filter(r => r.status === "OCCUPIED").length;
-		const available = all.filter(r => r.status === "AVAILABLE" || r.status === "VACANT").length;
-		const blocked = all.filter(r => r.is_blocked).length;
-		const ooo = all.filter(r => r.is_out_of_order).length;
-		const dirty = all.filter(r => r.housekeeping_status === "DIRTY").length;
-		const clean = all.filter(r => r.housekeeping_status === "CLEAN" || r.housekeeping_status === "INSPECTED").length;
-		const inProgress = all.filter(r => r.housekeeping_status === "IN_PROGRESS").length;
+		const occupied = all.filter((r) => r.status === "OCCUPIED").length;
+		const available = all.filter((r) => r.status === "AVAILABLE" || r.status === "VACANT").length;
+		const blocked = all.filter((r) => r.is_blocked).length;
+		const ooo = all.filter((r) => r.is_out_of_order).length;
+		const dirty = all.filter((r) => r.housekeeping_status === "DIRTY").length;
+		const clean = all.filter(
+			(r) => r.housekeeping_status === "CLEAN" || r.housekeeping_status === "INSPECTED",
+		).length;
+		const inProgress = all.filter((r) => r.housekeeping_status === "IN_PROGRESS").length;
 		const occupancyPct = total > 0 ? Math.round((occupied / total) * 100) : 0;
 		return { total, occupied, available, blocked, ooo, dirty, clean, inProgress, occupancyPct };
 	});
@@ -129,24 +167,37 @@ export class DashboardComponent {
 	readonly rateSummary = computed(() => {
 		const all = this.rates();
 		if (all.length === 0) return null;
-		const active = all.filter(r => r.status === "ACTIVE");
-		const baseRates = active.map(r => r.base_rate).filter(r => r > 0);
+		const active = all.filter((r) => r.status === "ACTIVE");
+		const baseRates = active.map((r) => r.base_rate).filter((r) => r > 0);
 		const minRate = baseRates.length > 0 ? Math.min(...baseRates) : 0;
 		const maxRate = baseRates.length > 0 ? Math.max(...baseRates) : 0;
-		const avgRate = baseRates.length > 0 ? baseRates.reduce((a, b) => a + b, 0) / baseRates.length : 0;
-		const mealPlanCount = active.filter(r => r.meal_plan && r.meal_plan !== "NONE" && r.meal_plan !== "RO").length;
-		const strategies = new Set(active.map(r => r.strategy));
-		return { total: all.length, active: active.length, minRate, maxRate, avgRate, mealPlanCount, strategies: [...strategies] };
+		const avgRate =
+			baseRates.length > 0 ? baseRates.reduce((a, b) => a + b, 0) / baseRates.length : 0;
+		const mealPlanCount = active.filter(
+			(r) => r.meal_plan && r.meal_plan !== "NONE" && r.meal_plan !== "RO",
+		).length;
+		const strategies = new Set(active.map((r) => r.strategy));
+		return {
+			total: all.length,
+			active: active.length,
+			minRate,
+			maxRate,
+			avgRate,
+			mealPlanCount,
+			strategies: [...strategies],
+		};
 	});
 
 	/** Housekeeping summary computed from tasks data. */
 	readonly hkSummary = computed(() => {
 		const all = this.hkTasks();
 		if (all.length === 0) return null;
-		const pending = all.filter(t => t.status === "PENDING" || t.status === "ASSIGNED").length;
-		const inProgress = all.filter(t => t.status === "IN_PROGRESS").length;
-		const completed = all.filter(t => t.status === "COMPLETED" || t.status === "INSPECTED").length;
-		const urgent = all.filter(t => t.priority === "URGENT" || t.priority === "HIGH").length;
+		const pending = all.filter((t) => t.status === "PENDING" || t.status === "ASSIGNED").length;
+		const inProgress = all.filter((t) => t.status === "IN_PROGRESS").length;
+		const completed = all.filter(
+			(t) => t.status === "COMPLETED" || t.status === "INSPECTED",
+		).length;
+		const urgent = all.filter((t) => t.priority === "URGENT" || t.priority === "HIGH").length;
 		return { total: all.length, pending, inProgress, completed, urgent };
 	});
 
@@ -195,7 +246,9 @@ export class DashboardComponent {
 		try {
 			const [rooms, hkTasks] = await Promise.all([
 				this.api.get<RoomGridItem[]>("/rooms/grid", params).catch(() => [] as RoomGridItem[]),
-				this.api.get<HousekeepingTaskListItem[]>("/housekeeping/tasks", params).catch(() => [] as HousekeepingTaskListItem[]),
+				this.api
+					.get<HousekeepingTaskListItem[]>("/housekeeping/tasks", params)
+					.catch(() => [] as HousekeepingTaskListItem[]),
 			]);
 			this.rooms.set(rooms);
 			this.hkTasks.set(hkTasks);
@@ -206,7 +259,9 @@ export class DashboardComponent {
 
 	private async loadRates(params: Record<string, string>): Promise<void> {
 		try {
-			const rates = await this.api.get<RateItem[]>("/rates", { ...params, limit: "200" }).catch(() => [] as RateItem[]);
+			const rates = await this.api
+				.get<RateItem[]>("/rates", { ...params, limit: "200" })
+				.catch(() => [] as RateItem[]);
 			this.rates.set(rates);
 		} finally {
 			this.ratesReady.set(true);
@@ -244,7 +299,7 @@ export class DashboardComponent {
 
 			const result = await this.api
 				.get<PaginatedActivity>("/dashboard/activity", { ...params, limit: "5" })
-				.catch(() => ({ items: [], total: 0 } as PaginatedActivity));
+				.catch(() => ({ items: [], total: 0 }) as PaginatedActivity);
 			this.activity.set(result.items);
 		} finally {
 			this.activityReady.set(true);
@@ -363,13 +418,13 @@ export class DashboardComponent {
 
 	/** Legend entries shown above the timeline. */
 	readonly activityLegend = [
-		{ type: "checkin",      label: "Check-in" },
-		{ type: "checkout",     label: "Check-out" },
-		{ type: "reservation",  label: "Reservation" },
+		{ type: "checkin", label: "Check-in" },
+		{ type: "checkout", label: "Check-out" },
+		{ type: "reservation", label: "Reservation" },
 		{ type: "cancellation", label: "Cancellation" },
-		{ type: "noshow",       label: "No-show" },
-		{ type: "payment",      label: "Payment" },
-		{ type: "folio",        label: "Folio" },
+		{ type: "noshow", label: "No-show" },
+		{ type: "payment", label: "Payment" },
+		{ type: "folio", label: "Folio" },
 		{ type: "housekeeping", label: "Housekeeping" },
 	];
 }

@@ -1,10 +1,10 @@
-import { NgClass } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type { InvoiceListItem, InvoiceListResponse } from "@tartware/schemas";
 
@@ -13,6 +13,7 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -22,7 +23,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 const INVOICE_STATUS_ORDER = [
@@ -42,6 +42,7 @@ const INVOICE_STATUS_ORDER = [
 	standalone: true,
 	imports: [
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,

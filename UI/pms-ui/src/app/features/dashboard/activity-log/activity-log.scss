@@ -86,6 +86,15 @@
   &--folio        { border-left-color: var(--fgColor-accent); }
   &--payment      { border-left-color: var(--fgColor-success); }
   &--housekeeping { border-left-color: var(--borderColor-default); }
+
+  /* Child items indented under parent reservation */
+  &--child {
+    margin-left: 28px;
+    padding-top: var(--base-size-8);
+    padding-bottom: var(--base-size-8);
+    border-left-width: 3px;
+    opacity: 0.92;
+  }
 }
 
 /* ── Icon column (left) ── */
@@ -112,6 +121,12 @@
   &--folio        { background: var(--bgColor-accent-muted);    color: var(--fgColor-accent); }
   &--payment      { background: var(--bgColor-success-muted);   color: var(--fgColor-success); }
   &--housekeeping { background: var(--bgColor-muted);           color: var(--fgColor-muted); }
+
+  &--child {
+    width: 28px;
+    height: 28px;
+    mat-icon { @include icon-size(16px); }
+  }
 }
 
 /* ── Content (middle) ── */

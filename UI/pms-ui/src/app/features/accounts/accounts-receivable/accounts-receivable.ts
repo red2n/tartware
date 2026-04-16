@@ -3,8 +3,8 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 import type {
 	AccountsReceivableDetail,
@@ -18,6 +18,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -27,7 +28,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter =

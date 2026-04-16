@@ -1,4 +1,4 @@
-import { NgClass } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -35,6 +35,7 @@ type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "
 	standalone: true,
 	imports: [
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		RouterLink,
 		MatIconModule,

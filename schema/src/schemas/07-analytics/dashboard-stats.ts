@@ -124,6 +124,7 @@ export const ActivityItemSchema = z.object({
 	timestamp: z.coerce.date().describe("Activity timestamp"),
 	icon: z.string().describe("Material icon name"),
 	urgent: z.boolean().optional().describe("Urgent flag"),
+	reservation_id: z.string().nullable().optional().describe("Parent reservation ID — used to group child activities under a reservation"),
 });
 
 export type ActivityItem = z.infer<typeof ActivityItemSchema>;

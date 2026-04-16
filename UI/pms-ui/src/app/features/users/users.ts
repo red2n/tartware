@@ -1,4 +1,4 @@
-import { NgClass } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -25,6 +25,7 @@ type UserRow = UserWithTenants & { version: string };
 	standalone: true,
 	imports: [
 		NgClass,
+		NgTemplateOutlet,
 		FormsModule,
 		MatIconModule,
 		MatButtonModule,
