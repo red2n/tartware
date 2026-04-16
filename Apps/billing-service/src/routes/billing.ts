@@ -240,7 +240,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         offset,
       });
 
-      return ChargePostingListResponseSchema.parse({ data, meta: { count: data.length } });
+      return ChargePostingListResponseSchema.parse(data);
     },
   );
   // PRE-AUDIT CHECKLIST

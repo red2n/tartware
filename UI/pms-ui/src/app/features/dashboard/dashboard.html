@@ -147,12 +147,179 @@
   </div>
 
   <!-- ═════════════════════════════════════════════ -->
-  <!-- MAIN + SIDEBAR LAYOUT                        -->
+  <!-- ACTIVITY + TASKS ROW (side by side)          -->
   <!-- ═════════════════════════════════════════════ -->
-  <div class="dashboard-layout">
+  <div class="dashboard-activity-row">
 
-  <!-- ── Left: Operational panels ── -->
-  <div class="dashboard-main">
+    <!-- Recent Activity — @defer shows skeleton while loadActivity() runs -->
+    <div class="detail-card changelog-panel">
+      <div class="card-header changelog-header">
+        <h3 class="card-title">
+          <mat-icon class="changelog-title-icon">bolt</mat-icon>
+          {{ 'Recent Activity' | translate }}
+        </h3>
+        <button class="btn btn-invisible btn-sm changelog-refresh-btn"
+          (click)="refreshActivity()"
+          [disabled]="refreshingActivity()"
+          [matTooltip]="'Refresh activity' | translate">
+          @if (refreshingActivity()) {
+            <mat-spinner diameter="14"></mat-spinner>
+          } @else {
+            <mat-icon>refresh</mat-icon>
+          }
+        </button>
+      </div>
+
+      @defer (when activityReady()) {
+        <div class="card-body changelog-body">
+          @if (activity().length === 0) {
+            <p class="text-muted empty-hint">{{ 'No recent activity' | translate }}</p>
+          } @else {
+            <!-- Timeline -->
+            <ul class="tl-list">
+              @for (item of groupedActivity(); track item.id; let last = $last) {
+                <li class="tl-event">
+                  <div class="tl-spine">
+                    <span class="tl-dot tl-dot--{{ item.type }}"></span>
+                    @if (!last || item.children?.length) { <span class="tl-line"></span> }
+                  </div>
+                  <div class="tl-body">
+                    <div class="tl-meta">
+                      <mat-icon class="tl-icon">{{ item.icon }}</mat-icon>
+                      <span class="tl-type tl-type--{{ item.type }}">{{ activityTypeLabel(item.type) }}</span>
+                      @if (item.urgent) {
+                        <span class="badge badge-danger badge-sm">!</span>
+                      }
+                      <time class="tl-time">{{ relativeTime(item.timestamp) }}</time>
+                    </div>
+                    <p class="tl-title">{{ item.title }}</p>
+                    <p class="tl-desc">{{ item.description }}</p>
+                  </div>
+                </li>
+                <!-- Child activities indented under parent reservation -->
+                @if (item.children?.length) {
+                  @for (child of item.children; track child.id; let childLast = $last) {
+                    <li class="tl-event tl-event--child">
+                      <div class="tl-spine">
+                        <span class="tl-dot tl-dot--{{ child.type }} tl-dot--child"></span>
+                        @if (!childLast || !last) { <span class="tl-line"></span> }
+                      </div>
+                      <div class="tl-body">
+                        <div class="tl-meta">
+                          <mat-icon class="tl-icon">{{ child.icon }}</mat-icon>
+                          <span class="tl-type tl-type--{{ child.type }}">{{ activityTypeLabel(child.type) }}</span>
+                          @if (child.urgent) {
+                            <span class="badge badge-danger badge-sm">!</span>
+                          }
+                          <time class="tl-time">{{ relativeTime(child.timestamp) }}</time>
+                        </div>
+                        <p class="tl-title">{{ child.title }}</p>
+                        <p class="tl-desc">{{ child.description }}</p>
+                      </div>
+                    </li>
+                  }
+                }
+              }
+            </ul>
+          }
+        </div>
+      } @placeholder {
+        <div class="card-body changelog-body tl-skeleton">
+          @for (_ of [1,2,3,4,5]; track $index) {
+            <div class="tl-skeleton-row">
+              <div class="tl-skeleton-dot"></div>
+              <div class="tl-skeleton-lines">
+                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @loading (minimum 300ms) {
+        <div class="card-body changelog-body tl-skeleton">
+          @for (_ of [1,2,3,4,5]; track $index) {
+            <div class="tl-skeleton-row">
+              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
+              <div class="tl-skeleton-lines">
+                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="tl-footer">
+        <button class="btn btn-invisible btn-sm tl-view-all" (click)="navigateToActivityLog()">
+          <mat-icon>open_in_new</mat-icon>
+          {{ 'View all activity' | translate }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Upcoming Tasks — @defer shows skeleton while loadTasks() runs -->
+    <div class="detail-card changelog-panel">
+      <div class="card-header changelog-header">
+        <h3 class="card-title">
+          <mat-icon class="changelog-title-icon">task_alt</mat-icon>
+          {{ 'Upcoming Tasks' | translate }}
+        </h3>
+      </div>
+      @defer (when tasksReady()) {
+        <div class="card-body changelog-body">
+          @if (tasks().length === 0) {
+            <p class="text-muted empty-hint">{{ 'No upcoming tasks' | translate }}</p>
+          } @else {
+            <ul class="changelog-list">
+              @for (task of tasks(); track task.id) {
+                <li class="changelog-item">
+                  <div class="changelog-meta">
+                    <span class="changelog-tag changelog-tag--priority-{{ task.priority }}">{{ task.priority }}</span>
+                    <time class="changelog-time text-muted">{{ relativeTime(task.due_time) }}</time>
+                  </div>
+                  <p class="changelog-title">{{ task.title }}</p>
+                  <p class="changelog-desc text-muted">{{ task.description }}</p>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      } @placeholder {
+        <div class="card-body changelog-body tl-skeleton">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="tl-skeleton-row">
+              <div class="tl-skeleton-dot"></div>
+              <div class="tl-skeleton-lines">
+                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @loading (minimum 300ms) {
+        <div class="card-body changelog-body tl-skeleton">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="tl-skeleton-row">
+              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
+              <div class="tl-skeleton-lines">
+                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+  </div><!-- /dashboard-activity-row -->
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- OPERATIONAL CARDS GRID                       -->
+  <!-- ═════════════════════════════════════════════ -->
   <div class="dashboard-grid">
 
     <!-- ── Room Availability — @defer until roomsReady() ── -->
@@ -395,176 +562,5 @@
       </div>
     }
 
-  </div>
-  </div><!-- /dashboard-main -->
-
-  <!-- ── Right: Activity + Tasks sidebar ── -->
-  <div class="dashboard-sidebar">
-
-    <!-- Recent Activity — @defer shows skeleton while loadActivity() runs -->
-    <div class="detail-card changelog-panel">
-      <div class="card-header changelog-header">
-        <h3 class="card-title">
-          <mat-icon class="changelog-title-icon">bolt</mat-icon>
-          {{ 'Recent Activity' | translate }}
-        </h3>
-        <button class="btn btn-invisible btn-sm changelog-refresh-btn"
-          (click)="refreshActivity()"
-          [disabled]="refreshingActivity()"
-          [matTooltip]="'Refresh activity' | translate">
-          @if (refreshingActivity()) {
-            <mat-spinner diameter="14"></mat-spinner>
-          } @else {
-            <mat-icon>refresh</mat-icon>
-          }
-        </button>
-      </div>
-
-      @defer (when activityReady()) {
-        <div class="card-body changelog-body">
-          @if (activity().length === 0) {
-            <p class="text-muted empty-hint">{{ 'No recent activity' | translate }}</p>
-          } @else {
-            <!-- Timeline -->
-            <ul class="tl-list">
-              @for (item of groupedActivity(); track item.id; let last = $last) {
-                <li class="tl-event">
-                  <div class="tl-spine">
-                    <span class="tl-dot tl-dot--{{ item.type }}"></span>
-                    @if (!last || item.children?.length) { <span class="tl-line"></span> }
-                  </div>
-                  <div class="tl-body">
-                    <div class="tl-meta">
-                      <mat-icon class="tl-icon">{{ item.icon }}</mat-icon>
-                      <span class="tl-type tl-type--{{ item.type }}">{{ activityTypeLabel(item.type) }}</span>
-                      @if (item.urgent) {
-                        <span class="badge badge-danger badge-sm">!</span>
-                      }
-                      <time class="tl-time">{{ relativeTime(item.timestamp) }}</time>
-                    </div>
-                    <p class="tl-title">{{ item.title }}</p>
-                    <p class="tl-desc">{{ item.description }}</p>
-                  </div>
-                </li>
-                <!-- Child activities indented under parent reservation -->
-                @if (item.children?.length) {
-                  @for (child of item.children; track child.id; let childLast = $last) {
-                    <li class="tl-event tl-event--child">
-                      <div class="tl-spine">
-                        <span class="tl-dot tl-dot--{{ child.type }} tl-dot--child"></span>
-                        @if (!childLast || !last) { <span class="tl-line"></span> }
-                      </div>
-                      <div class="tl-body">
-                        <div class="tl-meta">
-                          <mat-icon class="tl-icon">{{ child.icon }}</mat-icon>
-                          <span class="tl-type tl-type--{{ child.type }}">{{ activityTypeLabel(child.type) }}</span>
-                          @if (child.urgent) {
-                            <span class="badge badge-danger badge-sm">!</span>
-                          }
-                          <time class="tl-time">{{ relativeTime(child.timestamp) }}</time>
-                        </div>
-                        <p class="tl-title">{{ child.title }}</p>
-                        <p class="tl-desc">{{ child.description }}</p>
-                      </div>
-                    </li>
-                  }
-                }
-              }
-            </ul>
-          }
-        </div>
-      } @placeholder {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4,5]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      } @loading (minimum 300ms) {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4,5]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      <div class="tl-footer">
-        <button class="btn btn-invisible btn-sm tl-view-all" (click)="navigateToActivityLog()">
-          <mat-icon>open_in_new</mat-icon>
-          {{ 'View all activity' | translate }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Upcoming Tasks — @defer shows skeleton while loadTasks() runs -->
-    <div class="detail-card changelog-panel">
-      <div class="card-header changelog-header">
-        <h3 class="card-title">
-          <mat-icon class="changelog-title-icon">task_alt</mat-icon>
-          {{ 'Upcoming Tasks' | translate }}
-        </h3>
-      </div>
-      @defer (when tasksReady()) {
-        <div class="card-body changelog-body">
-          @if (tasks().length === 0) {
-            <p class="text-muted empty-hint">{{ 'No upcoming tasks' | translate }}</p>
-          } @else {
-            <ul class="changelog-list">
-              @for (task of tasks(); track task.id) {
-                <li class="changelog-item">
-                  <div class="changelog-meta">
-                    <span class="changelog-tag changelog-tag--priority-{{ task.priority }}">{{ task.priority }}</span>
-                    <time class="changelog-time text-muted">{{ relativeTime(task.due_time) }}</time>
-                  </div>
-                  <p class="changelog-title">{{ task.title }}</p>
-                  <p class="changelog-desc text-muted">{{ task.description }}</p>
-                </li>
-              }
-            </ul>
-          }
-        </div>
-      } @placeholder {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      } @loading (minimum 300ms) {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      }
-    </div>
-
-  </div><!-- /dashboard-sidebar -->
-  </div><!-- /dashboard-layout -->
+  </div><!-- /dashboard-grid -->
 </div>
