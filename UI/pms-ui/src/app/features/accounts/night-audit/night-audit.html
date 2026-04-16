@@ -7,17 +7,15 @@
 
   <!-- ═══ BC-1: BUSINESS DATE STATUS BANNER ═══ -->
   @if (statusLoading()) {
-    <div class="status-banner status-loading">
-      <div class="overview-bar-sk" style="border:none; margin:0; padding: var(--base-size-8) var(--base-size-16);">
-        @for (_ of [1,2,3]; track $index) {
-          <div class="overview-sk-section">
-            <div class="overview-sk-label"></div>
-            <div class="overview-sk-value"></div>
-            <div class="overview-sk-sub"></div>
-          </div>
-          @if ($index < 2) { <div class="overview-divider"></div> }
-        }
-      </div>
+    <div class="overview-bar-sk">
+      @for (_ of [1,2,3]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 2) { <div class="overview-divider"></div> }
+      }
     </div>
   } @else if (statusDisplay(); as sd) {
     <div class="status-banner" [ngClass]="'status-' + sd.dateStatus.toLowerCase()">

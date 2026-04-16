@@ -23,9 +23,17 @@
   </app-page-header>
 
   @if (loading()) {
-    <div class="loading-state">
-      <mat-spinner diameter="32"></mat-spinner>
-      <span class="text-muted">{{ 'Loading screen permissions...' | translate }}</span>
+    <div class="placeholder-table">
+      @for (_ of [1,2,3,4,5,6,7,8]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+        </div>
+      }
     </div>
   } @else if (error() && screenRows().length === 0) {
     <div class="error-state">

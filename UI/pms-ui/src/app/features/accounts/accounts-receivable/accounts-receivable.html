@@ -7,6 +7,18 @@
   </app-page-header>
 
   <!-- ═══ AGING KPIs ═══ -->
+  @if (!dataReady()) {
+    <div class="overview-bar-sk">
+      @for (_ of [1,2,3,4,5,6,7]; track $index) {
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
+        </div>
+        @if ($index < 6) { <div class="overview-divider"></div> }
+      }
+    </div>
+  } @else {
   <div class="aging-kpis">
     <div class="kpi-card">
       <span class="kpi-label">{{ 'Total Outstanding' | translate }}</span>
@@ -38,6 +50,7 @@
       <span class="kpi-value kpi-critical">{{ fmtMoney(agingTotals().over_120) }}</span>
     </div>
   </div>
+  }
 
   <!-- ═══ QUICK STATS ═══ -->
   <div class="quick-stats">
