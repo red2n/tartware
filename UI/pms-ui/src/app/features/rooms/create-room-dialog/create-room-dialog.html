@@ -1,17 +1,17 @@
 <h2 mat-dialog-title>
   <mat-icon class="dialog-title-icon">hotel</mat-icon>
-  New Room
+  {{ 'New Room' | translate }}
 </h2>
 
 <mat-dialog-content>
   <div class="form-fields">
     <!-- Room Details -->
     <section class="form-section">
-      <span class="form-section-title">Room Details</span>
+      <span class="form-section-title">{{ 'Room Details' | translate }}</span>
 
       <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['roomNumber'] && !roomNumber.trim()">
-          <label class="field-label" for="cr-number">Room number</label>
+          <label class="field-label" for="cr-number">{{ 'Room number' | translate }}</label>
           <input
             id="cr-number"
             type="text"
@@ -22,38 +22,38 @@
             (blur)="markTouched('roomNumber')"
             [disabled]="saving()" />
           @if (touched['roomNumber'] && !roomNumber.trim()) {
-            <span class="field-hint-error">Room number is required</span>
+            <span class="field-hint-error">{{ 'Room number is required' | translate }}</span>
           }
         </div>
         <div class="field-group">
-          <label class="field-label" for="cr-name">Room name</label>
+          <label class="field-label" for="cr-name">{{ 'Room name' | translate }}</label>
           <input
             id="cr-name"
             type="text"
             class="field-input"
-            placeholder="Ocean Suite"
+            [placeholder]="'Ocean Suite' | translate"
             maxlength="100"
             [(ngModel)]="roomName"
             [disabled]="saving()" />
-          <span class="field-hint">Optional display name</span>
+          <span class="field-hint">{{ 'Optional display name' | translate }}</span>
         </div>
       </div>
 
       <div class="field-group field-required" [class.field-error]="touched['roomTypeId'] && !roomTypeId">
-        <label class="field-label" for="cr-type">Room type</label>
+        <label class="field-label" for="cr-type">{{ 'Room type' | translate }}</label>
         <select
           id="cr-type"
           class="field-input"
           [(ngModel)]="roomTypeId"
           (blur)="markTouched('roomTypeId')"
           [disabled]="saving()">
-          <option value="">Select a room type…</option>
+          <option value="">{{ 'Select a room type…' | translate }}</option>
           @for (rt of roomTypes(); track rt.room_type_id) {
             <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
           }
         </select>
         @if (touched['roomTypeId'] && !roomTypeId) {
-          <span class="field-hint-error">Room type is required</span>
+          <span class="field-hint-error">{{ 'Room type is required' | translate }}</span>
         }
       </div>
 
@@ -62,11 +62,11 @@
 
     <!-- Location -->
     <section class="form-section">
-      <span class="form-section-title">Location</span>
+      <span class="form-section-title">{{ 'Location' | translate }}</span>
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="cr-floor">Floor</label>
+          <label class="field-label" for="cr-floor">{{ 'Floor' | translate }}</label>
           <input
             id="cr-floor"
             type="text"
@@ -77,25 +77,25 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="cr-building">Building</label>
+          <label class="field-label" for="cr-building">{{ 'Building' | translate }}</label>
           <select
             id="cr-building"
             class="field-input"
             [(ngModel)]="buildingId"
             [disabled]="saving()">
-            <option value="">No building</option>
+            <option value="">{{ 'No building' | translate }}</option>
             @for (b of buildings(); track b.building_id) {
               <option [value]="b.building_id">{{ b.building_name }} ({{ b.building_code }})</option>
             }
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label" for="cr-wing">Wing</label>
+          <label class="field-label" for="cr-wing">{{ 'Wing' | translate }}</label>
           <input
             id="cr-wing"
             type="text"
             class="field-input"
-            placeholder="East"
+            [placeholder]="'East' | translate"
             maxlength="50"
             [(ngModel)]="wing"
             [disabled]="saving()" />

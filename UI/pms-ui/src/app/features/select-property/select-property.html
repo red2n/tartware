@@ -11,7 +11,7 @@
         <h1 class="select-property-heading">{{ 'Select a property' | translate }}</h1>
         @if (tenantName()) {
           <p class="select-property-subtitle">
-            Choose a property for <strong>{{ tenantName() }}</strong> to continue
+            {{ 'Choose a property for' | translate }} <strong>{{ tenantName() }}</strong> {{ 'to continue' | translate }}
           </p>
         }
       </div>
@@ -124,7 +124,7 @@
           @if (search()) {
             <div class="select-property-empty">
               <mat-icon>search_off</mat-icon>
-              <span>No properties match "{{ search() }}"</span>
+              <span>{{ 'No properties match' | translate }} "{{ search() }}"</span>
             </div>
           } @else {
             <div class="select-property-empty">

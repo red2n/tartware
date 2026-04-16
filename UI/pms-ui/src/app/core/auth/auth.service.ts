@@ -290,7 +290,6 @@ export class AuthService implements OnDestroy {
 					const response = await fetch("/v1/auth/refresh", {
 						method: "POST",
 						headers: {
-							"Content-Type": "application/json",
 							Authorization: `Bearer ${localStorage.getItem("access_token") ?? token}`,
 						},
 					});
@@ -306,7 +305,7 @@ export class AuthService implements OnDestroy {
 					}
 
 					// Definitive auth failure — no point retrying
-					if (response.status === 401 || response.status === 403) {
+					if (response.status === 400 || response.status === 401 || response.status === 403) {
 						console.warn("[auth] refresh rejected by server (", response.status, ")");
 						this.ngZone.run(() => this.forceLogout());
 						return;

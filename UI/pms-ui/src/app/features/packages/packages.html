@@ -47,7 +47,7 @@
 
   <!-- Filter tabs + type filter + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs" aria-label="Package status filters">
+    <nav class="filter-tabs" [attr.aria-label]="'Package status filters' | translate">
       @for (f of statusFilters; track f.key) {
         <button
           type="button"
@@ -55,7 +55,7 @@
           [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
-          {{ f.label }}
+          {{ f.label | translate }}
           <span class="counter">{{ filterCounts()[f.key] }}</span>
         </button>
       }
@@ -66,7 +66,7 @@
               [ngModel]="activeTypeFilter()"
               (ngModelChange)="setTypeFilter($event)">
         @for (t of packageTypes; track t.key) {
-          <option [value]="t.key">{{ t.label }}</option>
+          <option [value]="t.key">{{ t.label | translate }}</option>
         }
       </select>
 

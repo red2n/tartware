@@ -33,9 +33,9 @@ export const chargeCancellationPenalty = async (
     status: string;
     room_rate: string | null;
     currency_code: string | null;
-    rate_plan_id: string | null;
+    rate_id: string | null;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code, rate_plan_id
+    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code, rate_id
      FROM public.reservations
      WHERE tenant_id = $1::uuid AND id = $2::uuid
      LIMIT 1`,
@@ -61,24 +61,27 @@ export const chargeCancellationPenalty = async (
   if (command.penalty_amount_override) {
     penaltyAmount = command.penalty_amount_override;
   } else {
-    // Derive from rate plan penalty definition (first-night charge is the standard)
-    let ratePlanPenalty: number | null = null;
-    if (reservation.rate_plan_id) {
-      const { rows: rpRows } = await query<{ cancellation_penalty_amount: string | null }>(
-        `SELECT cancellation_penalty_amount
-         FROM public.rate_plans
-         WHERE id = $1::uuid
+    // Derive from rate cancellation policy (first-night charge is the standard)
+    let ratePenalty: number | null = null;
+    if (reservation.rate_id) {
+      const { rows: rateRows } = await query<{ penalty_amount: string | null }>(
+        `SELECT (cancellation_policy->>'penalty')::text AS penalty_amount
+         FROM public.rates
+         WHERE id = $1::uuid AND tenant_id = $2::uuid
          LIMIT 1`,
-        [reservation.rate_plan_id],
+        [reservation.rate_id, context.tenantId],
       );
-      const rp = rpRows[0];
-      if (rp?.cancellation_penalty_amount) {
-        ratePlanPenalty = Number(rp.cancellation_penalty_amount);
+      const rate = rateRows[0];
+      if (rate?.penalty_amount) {
+        const parsed = Number(rate.penalty_amount);
+        if (Number.isFinite(parsed)) {
+          ratePenalty = parsed;
+        }
       }
     }
 
     // Fall back to first-night room rate
-    penaltyAmount = ratePlanPenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
+    penaltyAmount = ratePenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
 
     if (penaltyAmount <= 0) {
       throw new BillingCommandError(

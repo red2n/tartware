@@ -2,7 +2,7 @@
   <div class="breadcrumb">
     <a routerLink="/guests" class="breadcrumb-link">
       <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
-      Guests
+      {{ 'Guests' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
     @if (guest(); as g) {
@@ -19,7 +19,7 @@
   <div class="flash flash-error">
     <mat-icon class="flash-icon">error_outline</mat-icon>
     {{ err }}
-    <button class="btn btn-invisible" (click)="goBack()">Go back</button>
+    <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
 } @else if (guest(); as g) {
   <!-- Guest header card -->
@@ -63,51 +63,51 @@
             </span>
           }
           @if (g.is_blacklisted) {
-            <span class="badge badge-danger" [matTooltip]="g.blacklist_reason ?? ''">Blacklisted</span>
+            <span class="badge badge-danger" [matTooltip]="g.blacklist_reason ?? ''">{{ 'Blacklisted' | translate }}</span>
           }
         </div>
       </div>
     </div>
     <div class="guest-header-actions">
-      <button class="btn btn-outline btn-sm" (click)="openEditDialog()" matTooltip="Edit guest profile">
+      <button class="btn btn-outline btn-sm" (click)="openEditDialog()" [matTooltip]="'Edit guest profile' | translate">
         <mat-icon>edit</mat-icon>
-        Edit
+        {{ 'Edit' | translate }}
       </button>
     </div>
     <div class="guest-header-stats">
       <div class="stat-mini">
         <span class="stat-mini-value">{{ g.total_bookings }}</span>
-        <span class="stat-mini-label">Bookings</span>
+        <span class="stat-mini-label">{{ 'Bookings' | translate }}</span>
       </div>
       <div class="stat-mini">
         <span class="stat-mini-value">{{ g.total_nights }}</span>
-        <span class="stat-mini-label">Nights</span>
+        <span class="stat-mini-label">{{ 'Nights' | translate }}</span>
       </div>
       <div class="stat-mini">
         <span class="stat-mini-value">{{ formatCurrency(g.total_revenue) }}</span>
-        <span class="stat-mini-label">Revenue</span>
+        <span class="stat-mini-label">{{ 'Revenue' | translate }}</span>
       </div>
     </div>
   </div>
 
   <!-- Tab navigation -->
   <div class="filter-bar detail-tabs">
-    <nav class="filter-tabs" aria-label="Guest detail sections">
+    <nav class="filter-tabs" [attr.aria-label]="'Guest detail sections' | translate">
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'profile'" [class.filter-tab-active]="activeTab() === 'profile'" (click)="setTab('profile')">
         <mat-icon class="tab-icon">person</mat-icon>
-        Profile
+        {{ 'Profile' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'preferences'" [class.filter-tab-active]="activeTab() === 'preferences'" (click)="setTab('preferences')">
         <mat-icon class="tab-icon">tune</mat-icon>
-        Preferences
+        {{ 'Preferences' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'documents'" [class.filter-tab-active]="activeTab() === 'documents'" (click)="setTab('documents')">
         <mat-icon class="tab-icon">description</mat-icon>
-        Documents
+        {{ 'Documents' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'communications'" [class.filter-tab-active]="activeTab() === 'communications'" (click)="setTab('communications')">
         <mat-icon class="tab-icon">chat</mat-icon>
-        Communications
+        {{ 'Communications' | translate }}
       </button>
     </nav>
   </div>
@@ -119,13 +119,13 @@
       @if (personalRows().length > 0) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Personal Information</h3>
+            <h3 class="card-title">{{ 'Personal Information' | translate }}</h3>
           </div>
           <div class="card-body">
             <dl class="detail-list">
               @for (row of personalRows(); track row.label) {
                 <div class="detail-row">
-                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dt class="detail-label">{{ row.label | translate }}</dt>
                   <dd class="detail-value">{{ row.value }}</dd>
                 </div>
               }
@@ -138,13 +138,13 @@
       @if (addressRows().length > 0) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Address</h3>
+            <h3 class="card-title">{{ 'Address' | translate }}</h3>
           </div>
           <div class="card-body">
             <dl class="detail-list">
               @for (row of addressRows(); track row.label) {
                 <div class="detail-row">
-                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dt class="detail-label">{{ row.label | translate }}</dt>
                   <dd class="detail-value">{{ row.value }}</dd>
                 </div>
               }
@@ -157,13 +157,13 @@
       @if (identityRows().length > 0) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Identity</h3>
+            <h3 class="card-title">{{ 'Identity' | translate }}</h3>
           </div>
           <div class="card-body">
             <dl class="detail-list">
               @for (row of identityRows(); track row.label) {
                 <div class="detail-row">
-                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dt class="detail-label">{{ row.label | translate }}</dt>
                   <dd class="detail-value">{{ row.value }}</dd>
                 </div>
               }
@@ -176,13 +176,13 @@
       @if (companyRows().length > 0) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Company</h3>
+            <h3 class="card-title">{{ 'Company' | translate }}</h3>
           </div>
           <div class="card-body">
             <dl class="detail-list">
               @for (row of companyRows(); track row.label) {
                 <div class="detail-row">
-                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dt class="detail-label">{{ row.label | translate }}</dt>
                   <dd class="detail-value">{{ row.value }}</dd>
                 </div>
               }
@@ -194,13 +194,13 @@
       <!-- Loyalty & VIP -->
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Loyalty & VIP</h3>
+          <h3 class="card-title">{{ 'Loyalty & VIP' | translate }}</h3>
         </div>
         <div class="card-body">
           <dl class="detail-list">
             @for (row of loyaltyRows(); track row.label) {
               <div class="detail-row">
-                <dt class="detail-label">{{ row.label }}</dt>
+                <dt class="detail-label">{{ row.label | translate }}</dt>
                 <dd class="detail-value">
                   @if (row.badge) {
                     <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
@@ -217,13 +217,13 @@
       <!-- Stay statistics -->
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Stay Statistics</h3>
+          <h3 class="card-title">{{ 'Stay Statistics' | translate }}</h3>
         </div>
         <div class="card-body">
           <dl class="detail-list">
             @for (row of stayStats(); track row.label) {
               <div class="detail-row">
-                <dt class="detail-label">{{ row.label }}</dt>
+                <dt class="detail-label">{{ row.label | translate }}</dt>
                 <dd class="detail-value">{{ row.value }}</dd>
               </div>
             }
@@ -235,13 +235,13 @@
       @if (preferenceSummary().length > 0) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Preferences Summary</h3>
+            <h3 class="card-title">{{ 'Preferences Summary' | translate }}</h3>
           </div>
           <div class="card-body">
             <dl class="detail-list">
               @for (row of preferenceSummary(); track row.label) {
                 <div class="detail-row">
-                  <dt class="detail-label">{{ row.label }}</dt>
+                  <dt class="detail-label">{{ row.label | translate }}</dt>
                   <dd class="detail-value">{{ row.value }}</dd>
                 </div>
               }
@@ -254,7 +254,7 @@
       @if (g.notes) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">Notes</h3>
+            <h3 class="card-title">{{ 'Notes' | translate }}</h3>
           </div>
           <div class="card-body">
             <p class="guest-notes">{{ g.notes }}</p>
@@ -270,25 +270,25 @@
       @if (loadingTab()) {
       <div class="loading-state">
         <mat-spinner diameter="24"></mat-spinner>
-        <span class="text-muted">Loading preferences...</span>
+        <span class="text-muted">{{ 'Loading preferences...' | translate }}</span>
       </div>
     } @else if (preferences().length === 0) {
       <div class="empty-state">
         <mat-icon class="empty-icon">tune</mat-icon>
-        <p>No preferences recorded</p>
+        <p>{{ 'No preferences recorded' | translate }}</p>
       </div>
     } @else {
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Category</th>
-              <th>Type</th>
-              <th>Value</th>
-              <th>Priority</th>
-              <th>Mandatory</th>
-              <th>Status</th>
-              <th>Notes</th>
+              <th>{{ 'Category' | translate }}</th>
+              <th>{{ 'Type' | translate }}</th>
+              <th>{{ 'Value' | translate }}</th>
+              <th>{{ 'Priority' | translate }}</th>
+              <th>{{ 'Mandatory' | translate }}</th>
+              <th>{{ 'Status' | translate }}</th>
+              <th>{{ 'Notes' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -300,14 +300,14 @@
                 <td class="cell-numeric">{{ pref.priority }}</td>
                 <td>
                   @if (pref.is_mandatory) {
-                    <span class="badge badge-warning">Required</span>
+                    <span class="badge badge-warning">{{ 'Required' | translate }}</span>
                   } @else {
-                    <span class="text-muted">Optional</span>
+                    <span class="text-muted">{{ 'Optional' | translate }}</span>
                   }
                 </td>
                 <td>
                   <span class="badge" [ngClass]="pref.is_active ? 'badge-success' : 'badge-muted'">
-                    {{ pref.is_active ? 'Active' : 'Inactive' }}
+                    {{ pref.is_active ? ('Active' | translate) : ('Inactive' | translate) }}
                   </span>
                 </td>
                 <td>{{ pref.notes ?? '—' }}</td>
@@ -323,24 +323,24 @@
     @if (loadingTab()) {
       <div class="loading-state">
         <mat-spinner diameter="24"></mat-spinner>
-        <span class="text-muted">Loading documents...</span>
+        <span class="text-muted">{{ 'Loading documents...' | translate }}</span>
       </div>
     } @else if (documents().length === 0) {
       <div class="empty-state">
         <mat-icon class="empty-icon">description</mat-icon>
-        <p>No documents on file</p>
+        <p>{{ 'No documents on file' | translate }}</p>
       </div>
     } @else {
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Type</th>
-              <th>Number</th>
-              <th>File</th>
-              <th>Verified</th>
-              <th>Expires</th>
-              <th>Status</th>
+              <th>{{ 'Type' | translate }}</th>
+              <th>{{ 'Number' | translate }}</th>
+              <th>{{ 'File' | translate }}</th>
+              <th>{{ 'Verified' | translate }}</th>
+              <th>{{ 'Expires' | translate }}</th>
+              <th>{{ 'Status' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -351,7 +351,7 @@
                 <td>{{ doc.file_name }}</td>
                 <td>
                   @if (doc.is_verified) {
-                    <span class="badge badge-success">Verified</span>
+                    <span class="badge badge-success">{{ 'Verified' | translate }}</span>
                   } @else {
                     <span class="badge badge-muted">{{ doc.verification_status_display }}</span>
                   }
@@ -367,9 +367,9 @@
                 </td>
                 <td>
                   @if (doc.is_expired) {
-                    <span class="badge badge-danger">Expired</span>
+                    <span class="badge badge-danger">{{ 'Expired' | translate }}</span>
                   } @else {
-                    <span class="badge badge-success">Valid</span>
+                    <span class="badge badge-success">{{ 'Valid' | translate }}</span>
                   }
                 </td>
               </tr>
@@ -384,23 +384,23 @@
     @if (loadingTab()) {
       <div class="loading-state">
         <mat-spinner diameter="24"></mat-spinner>
-        <span class="text-muted">Loading communications...</span>
+        <span class="text-muted">{{ 'Loading communications...' | translate }}</span>
       </div>
     } @else if (communications().length === 0) {
       <div class="empty-state">
         <mat-icon class="empty-icon">chat</mat-icon>
-        <p>No communications recorded</p>
+        <p>{{ 'No communications recorded' | translate }}</p>
       </div>
     } @else {
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Type</th>
-              <th>Direction</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Date</th>
+              <th>{{ 'Type' | translate }}</th>
+              <th>{{ 'Direction' | translate }}</th>
+              <th>{{ 'Subject' | translate }}</th>
+              <th>{{ 'Status' | translate }}</th>
+              <th>{{ 'Date' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -431,7 +431,7 @@
   } @loading (minimum 200ms) {
     <div class="loading-state">
       <mat-spinner diameter="24"></mat-spinner>
-      <span class="text-muted">Rendering content…</span>
+      <span class="text-muted">{{ 'Rendering content…' | translate }}</span>
     </div>
   }
 }

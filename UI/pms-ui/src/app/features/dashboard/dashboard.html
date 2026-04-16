@@ -1,6 +1,6 @@
 <div class="dashboard-page">
   <app-page-header title="Dashboard" description="Real-time overview of property operations and key metrics">
-    <button class="btn btn-invisible" (click)="loadDashboard()" [matTooltip]="'Refresh' | translate">
+    <button class="btn btn-invisible" (click)="loadDashboard()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh dashboard' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </app-page-header>
@@ -147,271 +147,22 @@
   </div>
 
   <!-- ═════════════════════════════════════════════ -->
-  <!-- MAIN + SIDEBAR LAYOUT                        -->
+  <!-- ACTIVITY + TASKS ROW (side by side)          -->
   <!-- ═════════════════════════════════════════════ -->
-  <div class="dashboard-layout">
-
-  <!-- ── Left: Operational panels ── -->
-  <div class="dashboard-main">
-  <div class="dashboard-grid">
-
-    <!-- ── Room Availability — @defer until roomsReady() ── -->
-    @defer (when roomsReady()) {
-      @if (roomSummary(); as rm) {
-        <div class="detail-card clickable" (click)="navigateToRooms()">
-          <div class="card-header">
-            <h3 class="card-title">
-              <mat-icon>meeting_room</mat-icon>
-              {{ 'Room Availability' | translate }}
-            </h3>
-          </div>
-          <div class="card-body">
-            <div class="stat-row stat-row-primary">
-              <span class="stat-row-label">{{ 'Total Rooms' | translate }}</span>
-              <span class="stat-row-value">{{ rm.total }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">
-                <span class="stat-dot stat-dot-success"></span>
-                {{ 'Available' | translate }}
-              </span>
-              <span class="stat-row-value">{{ rm.available }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">
-                <span class="stat-dot stat-dot-accent"></span>
-                {{ 'Occupied' | translate }}
-              </span>
-              <span class="stat-row-value">{{ rm.occupied }}</span>
-            </div>
-            @if (rm.blocked > 0) {
-              <div class="stat-row">
-                <span class="stat-row-label">
-                  <span class="stat-dot stat-dot-attention"></span>
-                  {{ 'Blocked' | translate }}
-                </span>
-                <span class="stat-row-value">{{ rm.blocked }}</span>
-              </div>
-            }
-            @if (rm.ooo > 0) {
-              <div class="stat-row">
-                <span class="stat-row-label">
-                  <span class="stat-dot stat-dot-danger"></span>
-                  {{ 'Out of Order' | translate }}
-                </span>
-                <span class="stat-row-value">{{ rm.ooo }}</span>
-              </div>
-            }
-            <div class="stat-bar">
-              <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.occupancyPct"></div>
-            </div>
-            <div class="stat-row-hint text-muted">{{ rm.occupancyPct }}% {{ 'occupancy' | translate }}</div>
-          </div>
-        </div>
-      }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row"></div> }
-          <div class="card-sk-bar"></div>
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row card-sk--pulse"></div> }
-          <div class="card-sk-bar card-sk--pulse"></div>
-        </div>
-      </div>
-    }
-
-    <!-- ── Housekeeping Status — @defer until roomsReady() ── -->
-    @defer (when roomsReady()) {
-      @if (roomSummary(); as rm) {
-        <div class="detail-card clickable" (click)="navigateToHousekeeping()">
-          <div class="card-header">
-            <h3 class="card-title">
-              <mat-icon>cleaning_services</mat-icon>
-              {{ 'Housekeeping' | translate }}
-            </h3>
-          </div>
-          <div class="card-body">
-            <div class="stat-row stat-row-primary">
-              <span class="stat-row-label">{{ 'Rooms Ready' | translate }}</span>
-              <span class="stat-row-value">{{ rm.clean }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">
-                <span class="stat-dot stat-dot-danger"></span>
-                {{ 'Dirty' | translate }}
-              </span>
-              <span class="stat-row-value">{{ rm.dirty }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">
-                <span class="stat-dot stat-dot-attention"></span>
-                {{ 'In Progress' | translate }}
-              </span>
-              <span class="stat-row-value">{{ rm.inProgress }}</span>
-            </div>
-            @if (hkSummary(); as hk) {
-              <div class="stat-divider"></div>
-              <div class="stat-row">
-                <span class="stat-row-label">{{ 'Today\'s Tasks' | translate }}</span>
-                <span class="stat-row-value">{{ hk.total }}</span>
-              </div>
-              @if (hk.urgent > 0) {
-                <div class="stat-row">
-                  <span class="stat-row-label">
-                    <span class="stat-dot stat-dot-danger"></span>
-                    {{ 'Urgent / High' | translate }}
-                  </span>
-                  <span class="stat-row-value">{{ hk.urgent }}</span>
-                </div>
-              }
-            }
-            <div class="stat-bar">
-              <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.total > 0 ? (rm.clean / rm.total * 100) : 0"></div>
-            </div>
-            <div class="stat-row-hint text-muted">{{ rm.total > 0 ? (rm.clean / rm.total * 100 | number:'1.0-0') : 0 }}% {{ 'rooms ready' | translate }}</div>
-          </div>
-        </div>
-      }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4,5]; track $index) { <div class="card-sk-row"></div> }
-          <div class="card-sk-bar"></div>
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4,5]; track $index) { <div class="card-sk-row card-sk--pulse"></div> }
-          <div class="card-sk-bar card-sk--pulse"></div>
-        </div>
-      </div>
-    }
-
-    <!-- ── Rate Intelligence — @defer until ratesReady() ── -->
-    @defer (when ratesReady()) {
-      @if (rateSummary(); as rt) {
-        <div class="detail-card clickable" (click)="navigateToRates()">
-          <div class="card-header">
-            <h3 class="card-title">
-              <mat-icon>sell</mat-icon>
-              {{ 'Rate Plans' | translate }}
-            </h3>
-          </div>
-          <div class="card-body">
-            <div class="stat-row stat-row-primary">
-              <span class="stat-row-label">{{ 'Active Rates' | translate }}</span>
-              <span class="stat-row-value">{{ rt.active }} <span class="text-muted">/ {{ rt.total }}</span></span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">{{ 'Lowest Rate' | translate }}</span>
-              <span class="stat-row-value">{{ formatCurrency(rt.minRate) }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">{{ 'Highest Rate' | translate }}</span>
-              <span class="stat-row-value">{{ formatCurrency(rt.maxRate) }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">{{ 'Average Rate' | translate }}</span>
-              <span class="stat-row-value stat-value-highlight">{{ formatCurrency(rt.avgRate) }}</span>
-            </div>
-            @if (rt.mealPlanCount > 0) {
-              <div class="stat-divider"></div>
-              <div class="stat-row">
-                <span class="stat-row-label">
-                  <mat-icon class="stat-inline-icon">restaurant</mat-icon>
-                  {{ 'With Meal Plan' | translate }}
-                </span>
-                <span class="stat-row-value">{{ rt.mealPlanCount }}</span>
-              </div>
-            }
-            @if (rt.strategies.length > 0) {
-              <div class="stat-chips">
-                @for (s of rt.strategies; track s) {
-                  <span class="badge badge-muted">{{ s }}</span>
-                }
-              </div>
-            }
-          </div>
-        </div>
-      }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row"></div> }
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row card-sk--pulse"></div> }
-        </div>
-      </div>
-    }
-
-    <!-- ── Booking Sparkline — @defer until statsReady() ── -->
-    @defer (when statsReady()) {
-      @if (sparkline(); as spark) {
-        <div class="detail-card">
-          <div class="card-header">
-            <h3 class="card-title">
-              <mat-icon>show_chart</mat-icon>
-              {{ 'Booking Activity' | translate }}
-            </h3>
-          </div>
-          <div class="card-body dashboard-sparkline-card">
-            <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg sparkline-lg" aria-hidden="true">
-              <path [attr.d]="spark.area" class="sparkline-area" />
-              <path [attr.d]="spark.line" class="sparkline-line" />
-            </svg>
-            <span class="sparkline-label text-muted">{{ 'Reservations · last 12 weeks' | translate }}</span>
-          </div>
-        </div>
-      }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body dashboard-sparkline-card">
-          <div class="card-sk-sparkline"></div>
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
-        <div class="card-body dashboard-sparkline-card">
-          <div class="card-sk-sparkline card-sk--pulse"></div>
-        </div>
-      </div>
-    }
-
-  </div>
-  </div><!-- /dashboard-main -->
-
-  <!-- ── Right: Activity + Tasks sidebar ── -->
-  <div class="dashboard-sidebar">
+  <div class="dashboard-activity-row">
 
     <!-- Recent Activity — @defer shows skeleton while loadActivity() runs -->
     <div class="detail-card changelog-panel">
       <div class="card-header changelog-header">
-        <h3 class="card-title">
+        <h2 class="card-title">
           <mat-icon class="changelog-title-icon">bolt</mat-icon>
           {{ 'Recent Activity' | translate }}
-        </h3>
+        </h2>
         <button class="btn btn-invisible btn-sm changelog-refresh-btn"
           (click)="refreshActivity()"
           [disabled]="refreshingActivity()"
-          [matTooltip]="'Refresh activity' | translate">
+          [matTooltip]="'Refresh activity' | translate"
+          [attr.aria-label]="'Refresh activity' | translate">
           @if (refreshingActivity()) {
             <mat-spinner diameter="14"></mat-spinner>
           } @else {
@@ -512,10 +263,10 @@
     <!-- Upcoming Tasks — @defer shows skeleton while loadTasks() runs -->
     <div class="detail-card changelog-panel">
       <div class="card-header changelog-header">
-        <h3 class="card-title">
+        <h2 class="card-title">
           <mat-icon class="changelog-title-icon">task_alt</mat-icon>
           {{ 'Upcoming Tasks' | translate }}
-        </h3>
+        </h2>
       </div>
       @defer (when tasksReady()) {
         <div class="card-body changelog-body">
@@ -565,6 +316,252 @@
       }
     </div>
 
-  </div><!-- /dashboard-sidebar -->
-  </div><!-- /dashboard-layout -->
+  </div><!-- /dashboard-activity-row -->
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- OPERATIONAL CARDS GRID                       -->
+  <!-- ═════════════════════════════════════════════ -->
+  <div class="dashboard-grid">
+
+    <!-- ── Room Availability — @defer until roomsReady() ── -->
+    @defer (when roomsReady()) {
+      @if (roomSummary(); as rm) {
+        <div class="detail-card clickable" (click)="navigateToRooms()">
+          <div class="card-header">
+            <h2 class="card-title">
+              <mat-icon>meeting_room</mat-icon>
+              {{ 'Room Availability' | translate }}
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="stat-row stat-row-primary">
+              <span class="stat-row-label">{{ 'Total Rooms' | translate }}</span>
+              <span class="stat-row-value">{{ rm.total }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">
+                <span class="stat-dot stat-dot-success"></span>
+                {{ 'Available' | translate }}
+              </span>
+              <span class="stat-row-value">{{ rm.available }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">
+                <span class="stat-dot stat-dot-accent"></span>
+                {{ 'Occupied' | translate }}
+              </span>
+              <span class="stat-row-value">{{ rm.occupied }}</span>
+            </div>
+            @if (rm.blocked > 0) {
+              <div class="stat-row">
+                <span class="stat-row-label">
+                  <span class="stat-dot stat-dot-attention"></span>
+                  {{ 'Blocked' | translate }}
+                </span>
+                <span class="stat-row-value">{{ rm.blocked }}</span>
+              </div>
+            }
+            @if (rm.ooo > 0) {
+              <div class="stat-row">
+                <span class="stat-row-label">
+                  <span class="stat-dot stat-dot-danger"></span>
+                  {{ 'Out of Order' | translate }}
+                </span>
+                <span class="stat-row-value">{{ rm.ooo }}</span>
+              </div>
+            }
+            <div class="stat-bar">
+              <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.occupancyPct"></div>
+            </div>
+            <div class="stat-row-hint text-muted">{{ rm.occupancyPct }}% {{ 'occupancy' | translate }}</div>
+          </div>
+        </div>
+      }
+    } @placeholder {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title"></div></div>
+        <div class="card-body">
+          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row"></div> }
+          <div class="card-sk-bar"></div>
+        </div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
+        <div class="card-body">
+          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row card-sk--pulse"></div> }
+          <div class="card-sk-bar card-sk--pulse"></div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Housekeeping Status — @defer until roomsReady() ── -->
+    @defer (when roomsReady()) {
+      @if (roomSummary(); as rm) {
+        <div class="detail-card clickable" (click)="navigateToHousekeeping()">
+          <div class="card-header">
+            <h2 class="card-title">
+              <mat-icon>cleaning_services</mat-icon>
+              {{ 'Housekeeping' | translate }}
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="stat-row stat-row-primary">
+              <span class="stat-row-label">{{ 'Rooms Ready' | translate }}</span>
+              <span class="stat-row-value">{{ rm.clean }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">
+                <span class="stat-dot stat-dot-danger"></span>
+                {{ 'Dirty' | translate }}
+              </span>
+              <span class="stat-row-value">{{ rm.dirty }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">
+                <span class="stat-dot stat-dot-attention"></span>
+                {{ 'In Progress' | translate }}
+              </span>
+              <span class="stat-row-value">{{ rm.inProgress }}</span>
+            </div>
+            @if (hkSummary(); as hk) {
+              <div class="stat-divider"></div>
+              <div class="stat-row">
+                <span class="stat-row-label">{{ 'Today\'s Tasks' | translate }}</span>
+                <span class="stat-row-value">{{ hk.total }}</span>
+              </div>
+              @if (hk.urgent > 0) {
+                <div class="stat-row">
+                  <span class="stat-row-label">
+                    <span class="stat-dot stat-dot-danger"></span>
+                    {{ 'Urgent / High' | translate }}
+                  </span>
+                  <span class="stat-row-value">{{ hk.urgent }}</span>
+                </div>
+              }
+            }
+            <div class="stat-bar">
+              <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.total > 0 ? (rm.clean / rm.total * 100) : 0"></div>
+            </div>
+            <div class="stat-row-hint text-muted">{{ rm.total > 0 ? (rm.clean / rm.total * 100 | number:'1.0-0') : 0 }}% {{ 'rooms ready' | translate }}</div>
+          </div>
+        </div>
+      }
+    } @placeholder {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title"></div></div>
+        <div class="card-body">
+          @for (_ of [1,2,3,4,5]; track $index) { <div class="card-sk-row"></div> }
+          <div class="card-sk-bar"></div>
+        </div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
+        <div class="card-body">
+          @for (_ of [1,2,3,4,5]; track $index) { <div class="card-sk-row card-sk--pulse"></div> }
+          <div class="card-sk-bar card-sk--pulse"></div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Rate Intelligence — @defer until ratesReady() ── -->
+    @defer (when ratesReady()) {
+      @if (rateSummary(); as rt) {
+        <div class="detail-card clickable" (click)="navigateToRates()">
+          <div class="card-header">
+            <h2 class="card-title">
+              <mat-icon>sell</mat-icon>
+              {{ 'Rate Plans' | translate }}
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="stat-row stat-row-primary">
+              <span class="stat-row-label">{{ 'Active Rates' | translate }}</span>
+              <span class="stat-row-value">{{ rt.active }} <span class="text-muted">/ {{ rt.total }}</span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">{{ 'Lowest Rate' | translate }}</span>
+              <span class="stat-row-value">{{ formatCurrency(rt.minRate) }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">{{ 'Highest Rate' | translate }}</span>
+              <span class="stat-row-value">{{ formatCurrency(rt.maxRate) }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">{{ 'Average Rate' | translate }}</span>
+              <span class="stat-row-value stat-value-highlight">{{ formatCurrency(rt.avgRate) }}</span>
+            </div>
+            @if (rt.mealPlanCount > 0) {
+              <div class="stat-divider"></div>
+              <div class="stat-row">
+                <span class="stat-row-label">
+                  <mat-icon class="stat-inline-icon">restaurant</mat-icon>
+                  {{ 'With Meal Plan' | translate }}
+                </span>
+                <span class="stat-row-value">{{ rt.mealPlanCount }}</span>
+              </div>
+            }
+            @if (rt.strategies.length > 0) {
+              <div class="stat-chips">
+                @for (s of rt.strategies; track s) {
+                  <span class="badge badge-muted">{{ s }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    } @placeholder {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title"></div></div>
+        <div class="card-body">
+          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row"></div> }
+        </div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
+        <div class="card-body">
+          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row card-sk--pulse"></div> }
+        </div>
+      </div>
+    }
+
+    <!-- ── Booking Sparkline — @defer until statsReady() ── -->
+    @defer (when statsReady()) {
+      @if (sparkline(); as spark) {
+        <div class="detail-card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <mat-icon>show_chart</mat-icon>
+              {{ 'Booking Activity' | translate }}
+            </h2>
+          </div>
+          <div class="card-body dashboard-sparkline-card">
+            <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg sparkline-lg" aria-hidden="true">
+              <path [attr.d]="spark.area" class="sparkline-area" />
+              <path [attr.d]="spark.line" class="sparkline-line" />
+            </svg>
+            <span class="sparkline-label text-muted">{{ 'Reservations · last 12 weeks' | translate }}</span>
+          </div>
+        </div>
+      }
+    } @placeholder {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title"></div></div>
+        <div class="card-body dashboard-sparkline-card">
+          <div class="card-sk-sparkline"></div>
+        </div>
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="detail-card">
+        <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
+        <div class="card-body dashboard-sparkline-card">
+          <div class="card-sk-sparkline card-sk--pulse"></div>
+        </div>
+      </div>
+    }
+
+  </div><!-- /dashboard-grid -->
 </div>

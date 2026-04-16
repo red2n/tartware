@@ -27,7 +27,7 @@
             name="groupName"
             required
             maxlength="255"
-            placeholder="e.g. Acme Corp Annual Meeting 2025"
+            [placeholder]="'e.g. Acme Corp Annual Meeting 2025' | translate"
             (blur)="markTouched('groupName')" />
           @if (touched['groupName'] && !groupName.trim()) {
             <span class="field-hint field-hint-error">{{ 'Group name is required' | translate }}</span>
@@ -38,7 +38,7 @@
           <label class="field-label" for="groupType">{{ 'Group Type' | translate }} <span class="required">*</span></label>
           <select id="groupType" class="field-input" [(ngModel)]="groupType" name="groupType">
             @for (t of groupTypes; track t.value) {
-              <option [value]="t.value">{{ t.label }}</option>
+              <option [value]="t.value">{{ t.label | translate }}</option>
             }
           </select>
         </div>
@@ -52,14 +52,14 @@
             [(ngModel)]="organizationName"
             name="organizationName"
             maxlength="255"
-            placeholder="Company or organization name" />
+            [placeholder]="'Company or organization name' | translate" />
         </div>
 
         <div class="field-group">
           <label class="field-label" for="blockStatus">{{ 'Initial Status' | translate }}</label>
           <select id="blockStatus" class="field-input" [(ngModel)]="blockStatus" name="blockStatus">
             @for (s of blockStatuses; track s.value) {
-              <option [value]="s.value">{{ s.label }}</option>
+              <option [value]="s.value">{{ s.label | translate }}</option>
             }
           </select>
           <span class="field-hint field-hint-muted">{{ selectedStatusDescription }}</span>
@@ -147,7 +147,7 @@
             name="contactName"
             required
             maxlength="255"
-            placeholder="Primary contact person"
+            [placeholder]="'Primary contact person' | translate"
             (blur)="markTouched('contactName')" />
           @if (touched['contactName'] && !contactName.trim()) {
             <span class="field-hint field-hint-error">{{ 'Contact name is required' | translate }}</span>
@@ -188,7 +188,7 @@
           <label class="field-label" for="rateType">{{ 'Rate Type' | translate }}</label>
           <select id="rateType" class="field-input" [(ngModel)]="rateType" name="rateType">
             @for (r of rateTypes; track r.value) {
-              <option [value]="r.value">{{ r.label }}</option>
+              <option [value]="r.value">{{ r.label | translate }}</option>
             }
           </select>
         </div>
@@ -210,7 +210,7 @@
           <label class="field-label" for="paymentMethod">{{ 'Payment Method' | translate }}</label>
           <select id="paymentMethod" class="field-input" [(ngModel)]="paymentMethod" name="paymentMethod">
             @for (p of paymentMethods; track p.value) {
-              <option [value]="p.value">{{ p.label }}</option>
+              <option [value]="p.value">{{ p.label | translate }}</option>
             }
           </select>
         </div>
@@ -257,7 +257,7 @@
             name="notes"
             maxlength="2000"
             rows="3"
-            placeholder="Special requests, setup requirements, etc."></textarea>
+            [placeholder]="'Special requests, setup requirements, etc.' | translate"></textarea>
         </div>
       </div>
     </section>

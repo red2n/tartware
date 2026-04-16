@@ -2,7 +2,7 @@
   <div class="breadcrumb">
     <a routerLink="/reservations" class="breadcrumb-link">
       <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
-      Reservations
+      {{ 'Reservations' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
     @if (reservation(); as r) {
@@ -12,43 +12,43 @@
   @if (reservation(); as r) {
     <div class="page-actions">
       @if (canCheckIn()) {
-        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" matTooltip="Check in guest and assign room">
+        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [matTooltip]="'Check in guest and assign room' | translate">
           <mat-icon>login</mat-icon>
-          Check In
+          {{ 'Check In' | translate }}
         </button>
       }
       @if (canChargeNoShow()) {
-        <button class="btn btn-danger btn-sm" (click)="showNoShowChargeConfirm()" [disabled]="actionLoading()" matTooltip="Post a no-show penalty to the reservation folio">
+        <button class="btn btn-danger btn-sm" (click)="showNoShowChargeConfirm()" [disabled]="actionLoading()" [matTooltip]="'Post a no-show penalty to the reservation folio' | translate">
           <mat-icon>person_off</mat-icon>
-          No-Show Charge
+          {{ 'No-Show Charge' | translate }}
         </button>
       }
       @if (canCheckOut()) {
-        <button class="btn btn-primary btn-sm" (click)="showExpressCheckout()" [disabled]="actionLoading()" matTooltip="Express checkout: resolve folio, close, release room">
+        <button class="btn btn-primary btn-sm" (click)="showExpressCheckout()" [disabled]="actionLoading()" [matTooltip]="'Express checkout: resolve folio, close, release room' | translate">
           <mat-icon>flash_on</mat-icon>
-          Express Check-Out
+          {{ 'Express Check-Out' | translate }}
         </button>
-        <button class="btn btn-outline btn-sm" (click)="showCheckOutConfirm()" [disabled]="actionLoading()" matTooltip="Check out guest and release room">
+        <button class="btn btn-outline btn-sm" (click)="showCheckOutConfirm()" [disabled]="actionLoading()" [matTooltip]="'Check out guest and release room' | translate">
           <mat-icon>logout</mat-icon>
-          Check Out
+          {{ 'Check Out' | translate }}
         </button>
       }
       @if (canChargeLateCheckout()) {
-        <button class="btn btn-outline btn-sm" (click)="showLateCheckoutChargeConfirm()" [disabled]="actionLoading()" matTooltip="Post a late checkout fee without checking the guest out">
+        <button class="btn btn-outline btn-sm" (click)="showLateCheckoutChargeConfirm()" [disabled]="actionLoading()" [matTooltip]="'Post a late checkout fee without checking the guest out' | translate">
           <mat-icon>schedule</mat-icon>
-          Late Checkout Fee
+          {{ 'Late Checkout Fee' | translate }}
         </button>
       }
       @if (canCancel()) {
-        <button class="btn btn-danger btn-sm" (click)="showCancelConfirm()" [disabled]="actionLoading()" matTooltip="Cancel this reservation">
+        <button class="btn btn-danger btn-sm" (click)="showCancelConfirm()" [disabled]="actionLoading()" [matTooltip]="'Cancel this reservation' | translate">
           <mat-icon>cancel</mat-icon>
-          Cancel
+          {{ 'Cancel' | translate }}
         </button>
       }
       @if (canChargeCancellationPenalty()) {
-        <button class="btn btn-outline btn-sm" (click)="showCancellationPenaltyConfirm()" [disabled]="actionLoading()" matTooltip="Post a cancellation penalty to the reservation folio">
+        <button class="btn btn-outline btn-sm" (click)="showCancellationPenaltyConfirm()" [disabled]="actionLoading()" [matTooltip]="'Post a cancellation penalty to the reservation folio' | translate">
           <mat-icon>price_change</mat-icon>
-          Cancellation Penalty
+          {{ 'Cancellation Penalty' | translate }}
         </button>
       }
     </div>
@@ -60,17 +60,17 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-checkin">login</mat-icon>
-      <h3 class="confirm-title">Check-In — Assign Room</h3>
+      <h3 class="confirm-title">{{ 'Check-In — Assign Room' | translate }}</h3>
     </div>
     <div class="confirm-body">
-      <p>Select a room to assign, or let the system auto-assign the best available room.</p>
+      <p>{{ 'Select a room to assign, or let the system auto-assign the best available room.' | translate }}</p>
 
       <div class="room-filter-bar">
         @if (buildings().length > 0) {
           <div class="building-filter-bar">
-            <label for="building-filter" class="building-filter-label">Filter by building</label>
+            <label for="building-filter" class="building-filter-label">{{ 'Filter by building' | translate }}</label>
             <select id="building-filter" class="building-filter-select" [value]="buildingFilter()" (change)="filterByBuilding($any($event.target).value)">
-              <option value="">All Buildings</option>
+              <option value="">{{ 'All Buildings' | translate }}</option>
               @for (b of buildings(); track b.building_id) {
                 <option [value]="b.building_id">{{ b.building_name }}</option>
               }
@@ -79,7 +79,7 @@
         }
         <label class="room-type-toggle">
           <input type="checkbox" [checked]="showAllRoomTypes()" (change)="toggleShowAllRoomTypes()" />
-          Show all room types
+          {{ 'Show all room types' | translate }}
         </label>
       </div>
 
@@ -91,8 +91,8 @@
           (click)="selectAutoAssign()">
           <mat-icon>auto_awesome</mat-icon>
           <div class="room-option-info">
-            <span class="room-option-label">Auto-assign</span>
-            <span class="room-option-hint">System picks the best available room</span>
+            <span class="room-option-label">{{ 'Auto-assign' | translate }}</span>
+            <span class="room-option-hint">{{ 'System picks the best available room' | translate }}</span>
           </div>
           @if (useAutoAssign()) {
             <mat-icon class="room-check">check_circle</mat-icon>
@@ -102,15 +102,15 @@
         @if (loadingRooms()) {
           <div class="room-loading">
             <mat-spinner diameter="20"></mat-spinner>
-            <span>Loading available rooms...</span>
+            <span>{{ 'Loading available rooms...' | translate }}</span>
           </div>
         } @else if (availableRooms().length === 0) {
           @if (roomLoadError()) {
             <p class="room-empty-note room-load-error">
-              <mat-icon>warning</mat-icon> Could not load rooms: {{ roomLoadError() }}
+              <mat-icon>warning</mat-icon> {{ 'Could not load rooms:' | translate }} {{ roomLoadError() }}
             </p>
           } @else {
-            <p class="room-empty-note">No available rooms found for this room type. Auto-assign will attempt to find one.</p>
+            <p class="room-empty-note">{{ 'No available rooms found for this room type. Auto-assign will attempt to find one.' | translate }}</p>
           }
         } @else {
           @for (room of paginatedRooms(); track room.room_id) {
@@ -120,18 +120,18 @@
               (click)="selectRoom(room.room_id)">
               <mat-icon>meeting_room</mat-icon>
               <div class="room-option-info">
-                <span class="room-option-label">Room {{ room.room_number }}</span>
+                <span class="room-option-label">{{ 'Room' | translate }} {{ room.room_number }}</span>
                 <span class="room-option-hint">
                   {{ room.room_type_name }}
                   @if (room.building_name) { · {{ room.building_name }} }
-                  @if (room.floor) { · Floor {{ room.floor }} }
+                  @if (room.floor) { · {{ 'Floor' | translate }} {{ room.floor }} }
                   · {{ room.housekeeping_status }}
                 </span>
                 <span class="room-option-details">
                   @if (room.bed_type) { {{ room.bed_type }} · {{ room.number_of_beds }} bed{{ room.number_of_beds > 1 ? 's' : '' }} }
-                  · Max {{ room.max_occupancy }} guests
+                  · {{ 'Max' | translate }} {{ room.max_occupancy }} {{ 'guests' | translate }}
                   @if (room.size_sqm) { · {{ room.size_sqm }} m² }
-                  · {{ formatCurrency(room.base_rate, room.currency) }}/night
+                  · {{ formatCurrency(room.base_rate, room.currency) }}/{{ 'night' | translate }}
                 </span>
                 @if (room.features.length) {
                   <span class="room-option-features">
@@ -161,14 +161,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="checkIn()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Checking in...
+          {{ 'Checking in...' | translate }}
         } @else {
           <mat-icon>login</mat-icon>
-          Confirm Check-In
+          {{ 'Confirm Check-In' | translate }}
         }
       </button>
     </div>
@@ -180,26 +180,26 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-checkin">flash_on</mat-icon>
-      <h3 class="confirm-title">Express Check-Out</h3>
+      <h3 class="confirm-title">{{ 'Express Check-Out' | translate }}</h3>
     </div>
     <div class="confirm-body">
       @if (loadingFolioBalance()) {
         <div class="loading-state">
           <mat-spinner diameter="20"></mat-spinner>
-          <span>Loading folio balance...</span>
+          <span>{{ 'Loading folio balance...' | translate }}</span>
         </div>
       } @else if (folioBalance(); as fb) {
         <dl class="detail-list">
           <div class="detail-row">
-            <dt class="detail-label">Total Charges</dt>
+            <dt class="detail-label">{{ 'Total Charges' | translate }}</dt>
             <dd class="detail-value">{{ formatCurrency(fb.total_charges, 'USD') }}</dd>
           </div>
           <div class="detail-row">
-            <dt class="detail-label">Total Payments</dt>
+            <dt class="detail-label">{{ 'Total Payments' | translate }}</dt>
             <dd class="detail-value">{{ formatCurrency(fb.total_payments, 'USD') }}</dd>
           </div>
           <div class="detail-row">
-            <dt class="detail-label">Balance</dt>
+            <dt class="detail-label">{{ 'Balance' | translate }}</dt>
             <dd class="detail-value">
               <span class="badge" [ngClass]="fb.balance > 0 ? 'badge-warning' : 'badge-success'">
                 {{ formatCurrency(fb.balance, 'USD') }}
@@ -208,23 +208,23 @@
           </div>
         </dl>
         @if (fb.balance > 0) {
-          <p class="text-muted">Outstanding balance of {{ formatCurrency(fb.balance, 'USD') }} exists. Express checkout will attempt to resolve the folio automatically.</p>
+          <p class="text-muted">{{ 'Outstanding balance of' | translate }} {{ formatCurrency(fb.balance, 'USD') }} {{ 'exists. Express checkout will attempt to resolve the folio automatically.' | translate }}</p>
         } @else {
-          <p class="text-muted">Folio is settled. Express checkout will close the folio and release the room.</p>
+          <p class="text-muted">{{ 'Folio is settled. Express checkout will close the folio and release the room.' | translate }}</p>
         }
       } @else {
-        <p>This will resolve the folio, close it, mark checkout, and set the room to dirty.</p>
+        <p>{{ 'This will resolve the folio, close it, mark checkout, and set the room to dirty.' | translate }}</p>
       }
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="expressCheckout()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Processing...
+          {{ 'Processing...' | translate }}
         } @else {
           <mat-icon>flash_on</mat-icon>
-          Confirm Express Check-Out
+          {{ 'Confirm Express Check-Out' | translate }}
         }
       </button>
     </div>
@@ -236,24 +236,24 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-checkout">logout</mat-icon>
-      <h3 class="confirm-title">Confirm Check-Out</h3>
+      <h3 class="confirm-title">{{ 'Confirm Check-Out' | translate }}</h3>
     </div>
     <div class="confirm-body">
-      <p>This will:</p>
+      <p>{{ 'This will:' | translate }}</p>
       <ul class="confirm-list">
-        <li>Change reservation status to <strong>Checked Out</strong></li>
-        <li>Set room status to <strong>Vacant Dirty</strong> for housekeeping</li>
+        <li>{{ 'Change reservation status to' | translate }} <strong>{{ 'Checked Out' | translate }}</strong></li>
+        <li>{{ 'Set room status to' | translate }} <strong>{{ 'Vacant Dirty' | translate }}</strong> {{ 'for housekeeping' | translate }}</li>
       </ul>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-outline btn-sm" (click)="checkOut()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Checking out...
+          {{ 'Checking out...' | translate }}
         } @else {
           <mat-icon>logout</mat-icon>
-          Confirm Check-Out
+          {{ 'Confirm Check-Out' | translate }}
         }
       </button>
     </div>
@@ -265,20 +265,20 @@
   <div class="action-confirm-card action-confirm-danger">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-cancel">cancel</mat-icon>
-      <h3 class="confirm-title">Cancel Reservation</h3>
+      <h3 class="confirm-title">{{ 'Cancel Reservation' | translate }}</h3>
     </div>
     <div class="confirm-body">
-      <p>Are you sure you want to cancel this reservation? This action cannot be undone.</p>
+      <p>{{ 'Are you sure you want to cancel this reservation? This action cannot be undone.' | translate }}</p>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Go Back</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Go Back' | translate }}</button>
       <button class="btn btn-danger btn-sm" (click)="cancelReservation()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Cancelling...
+          {{ 'Cancelling...' | translate }}
         } @else {
           <mat-icon>cancel</mat-icon>
-          Confirm Cancel
+          {{ 'Confirm Cancel' | translate }}
         }
       </button>
     </div>
@@ -290,26 +290,26 @@
   <div class="action-confirm-card action-confirm-danger">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-cancel">person_off</mat-icon>
-      <h3 class="confirm-title">Post No-Show Charge</h3>
+      <h3 class="confirm-title">{{ 'Post No-Show Charge' | translate }}</h3>
     </div>
     <div class="confirm-body">
-      <p>This posts a no-show penalty to the reservation folio. If the reservation is still confirmed, the billing command will also mark it as <strong>No Show</strong>.</p>
+      <p>{{ 'This posts a no-show penalty to the reservation folio. If the reservation is still confirmed, the billing command will also mark it as' | translate }} <strong>{{ 'No Show' | translate }}</strong>.</p>
       <div class="form-grid reservation-action-grid">
         <div class="form-field">
-          <label class="field-label">Charge Amount</label>
+          <label class="field-label">{{ 'Charge Amount' | translate }}</label>
           <input type="number" class="field-input" min="0" step="0.01"
                  [ngModel]="noShowChargeForm().charge_amount"
                  (ngModelChange)="noShowChargeForm.set({ ...noShowChargeForm(), charge_amount: $event ?? '' })" />
-          <span class="confirm-note">Leave blank to use the reservation room rate.</span>
+          <span class="confirm-note">{{ 'Leave blank to use the reservation room rate.' | translate }}</span>
         </div>
         <div class="form-field">
-          <label class="field-label">Currency</label>
+          <label class="field-label">{{ 'Currency' | translate }}</label>
           <input type="text" class="field-input" maxlength="3"
                  [ngModel]="noShowChargeForm().currency"
                  (ngModelChange)="noShowChargeForm.set({ ...noShowChargeForm(), currency: (($event ?? '') + '').toUpperCase() })" />
         </div>
         <div class="form-field full-width">
-          <label class="field-label">Reason Code</label>
+          <label class="field-label">{{ 'Reason Code' | translate }}</label>
           <input type="text" class="field-input"
                  [ngModel]="noShowChargeForm().reason_code"
                  (ngModelChange)="noShowChargeForm.set({ ...noShowChargeForm(), reason_code: $event ?? '' })" />
@@ -317,14 +317,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-danger btn-sm" (click)="chargeNoShow()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Posting...
+          {{ 'Posting...' | translate }}
         } @else {
           <mat-icon>person_off</mat-icon>
-          Confirm No-Show Charge
+          {{ 'Confirm No-Show Charge' | translate }}
         }
       </button>
     </div>
@@ -336,32 +336,32 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-checkout">schedule</mat-icon>
-      <h3 class="confirm-title">Post Late Checkout Fee</h3>
+      <h3 class="confirm-title">{{ 'Post Late Checkout Fee' | translate }}</h3>
     </div>
     <div class="confirm-body">
-      <p>This posts the fee only. It does not check the guest out or release the room.</p>
+      <p>{{ 'This posts the fee only. It does not check the guest out or release the room.' | translate }}</p>
       <div class="form-grid reservation-action-grid">
         <div class="form-field">
-          <label class="field-label">Actual Checkout Time *</label>
+          <label class="field-label">{{ 'Actual Checkout Time' | translate }} *</label>
           <input type="datetime-local" class="field-input"
                  [ngModel]="lateCheckoutChargeForm().actual_checkout_time"
                  (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), actual_checkout_time: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label">Standard Checkout Time</label>
+          <label class="field-label">{{ 'Standard Checkout Time' | translate }}</label>
           <input type="time" class="field-input"
                  [ngModel]="lateCheckoutChargeForm().standard_checkout_time"
                  (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), standard_checkout_time: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label">Override Amount</label>
+          <label class="field-label">{{ 'Override Amount' | translate }}</label>
           <input type="number" class="field-input" min="0" step="0.01"
                  [ngModel]="lateCheckoutChargeForm().override_amount"
                  (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), override_amount: $event ?? '' })" />
-          <span class="confirm-note">Leave blank to let the API calculate the fee from checkout policy.</span>
+          <span class="confirm-note">{{ 'Leave blank to let the API calculate the fee from checkout policy.' | translate }}</span>
         </div>
         <div class="form-field">
-          <label class="field-label">Currency</label>
+          <label class="field-label">{{ 'Currency' | translate }}</label>
           <input type="text" class="field-input" maxlength="3"
                  [ngModel]="lateCheckoutChargeForm().currency"
                  (ngModelChange)="lateCheckoutChargeForm.set({ ...lateCheckoutChargeForm(), currency: (($event ?? '') + '').toUpperCase() })" />
@@ -369,14 +369,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="chargeLateCheckout()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Posting...
+          {{ 'Posting...' | translate }}
         } @else {
           <mat-icon>schedule</mat-icon>
-          Confirm Late Checkout Fee
+          {{ 'Confirm Late Checkout Fee' | translate }}
         }
       </button>
     </div>
@@ -388,26 +388,26 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <mat-icon class="confirm-icon confirm-icon-checkout">price_change</mat-icon>
-      <h3 class="confirm-title">Post Cancellation Penalty</h3>
+      <h3 class="confirm-title">{{ 'Post Cancellation Penalty' | translate }}</h3>
     </div>
     <div class="confirm-body">
-      <p>This posts a penalty to the folio for a reservation already marked <strong>Cancelled</strong> or <strong>No Show</strong>.</p>
+      <p>{{ 'This posts a penalty to the folio for a reservation already marked' | translate }} <strong>{{ 'Cancelled' | translate }}</strong> {{ 'or' | translate }} <strong>{{ 'No Show' | translate }}</strong>.</p>
       <div class="form-grid reservation-action-grid">
         <div class="form-field">
-          <label class="field-label">Penalty Override</label>
+          <label class="field-label">{{ 'Penalty Override' | translate }}</label>
           <input type="number" class="field-input" min="0" step="0.01"
                  [ngModel]="cancellationPenaltyForm().penalty_amount_override"
                  (ngModelChange)="cancellationPenaltyForm.set({ ...cancellationPenaltyForm(), penalty_amount_override: $event ?? '' })" />
-          <span class="confirm-note">Leave blank to let the API use the rate plan penalty or room rate fallback.</span>
+          <span class="confirm-note">{{ 'Leave blank to let the API use the rate plan penalty or room rate fallback.' | translate }}</span>
         </div>
         <div class="form-field">
-          <label class="field-label">Currency</label>
+          <label class="field-label">{{ 'Currency' | translate }}</label>
           <input type="text" class="field-input" maxlength="3"
                  [ngModel]="cancellationPenaltyForm().currency"
                  (ngModelChange)="cancellationPenaltyForm.set({ ...cancellationPenaltyForm(), currency: (($event ?? '') + '').toUpperCase() })" />
         </div>
         <div class="form-field full-width">
-          <label class="field-label">Reason</label>
+          <label class="field-label">{{ 'Reason' | translate }}</label>
           <textarea class="field-input" rows="2"
                     [ngModel]="cancellationPenaltyForm().reason"
                     (ngModelChange)="cancellationPenaltyForm.set({ ...cancellationPenaltyForm(), reason: $event ?? '' })"></textarea>
@@ -415,14 +415,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="chargeCancellationPenalty()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <mat-spinner diameter="16"></mat-spinner>
-          Posting...
+          {{ 'Posting...' | translate }}
         } @else {
           <mat-icon>price_change</mat-icon>
-          Confirm Cancellation Penalty
+          {{ 'Confirm Cancellation Penalty' | translate }}
         }
       </button>
     </div>
@@ -437,20 +437,20 @@
   <div class="flash flash-error">
     <mat-icon class="flash-icon">error_outline</mat-icon>
     {{ err }}
-    <button class="btn btn-invisible" (click)="goBack()">Go back</button>
+    <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
 } @else if (reservation(); as r) {
   <div class="detail-layout">
     <!-- Booking Information -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Booking Information</h3>
+        <h3 class="card-title">{{ 'Booking Information' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of bookingRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
                   <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
@@ -467,13 +467,13 @@
     <!-- Guest Information -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Guest Information</h3>
+        <h3 class="card-title">{{ 'Guest Information' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of guestRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value guest-detail-value">
                 {{ row.value }}
                 @if (row.icon) {
@@ -494,13 +494,13 @@
       <!-- Financial Summary -->
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Financial Summary</h3>
+          <h3 class="card-title">{{ 'Financial Summary' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of financialRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
                   <span class="badge" [ngClass]="row.badge">{{ row.value }}</span>
@@ -518,7 +518,7 @@
     @if (r.folio || canPostCharge()) {
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Folio &amp; Charges</h3>
+          <h3 class="card-title">{{ 'Folio & Charges' | translate }}</h3>
           @if (canPostCharge()) {
             <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()"
                     [matTooltip]="'Post a charge to this reservation\'s folio' | translate">
@@ -538,7 +538,7 @@
                   <select class="field-input" [ngModel]="postChargeForm().charge_code"
                           (ngModelChange)="postChargeForm.set({ ...postChargeForm(), charge_code: $event })">
                     @for (opt of chargeCodeOptions; track opt.value) {
-                      <option [value]="opt.value">{{ opt.label }}</option>
+                      <option [value]="opt.value">{{ opt.label | translate }}</option>
                     }
                   </select>
                 </div>
@@ -556,7 +556,7 @@
                 </div>
                 <div class="form-field full-width">
                   <label>{{ 'Description' | translate }}</label>
-                  <input type="text" class="field-input" placeholder="Charge description"
+                  <input type="text" class="field-input" [placeholder]="'Charge description' | translate"
                          [ngModel]="postChargeForm().description"
                          (ngModelChange)="postChargeForm.set({ ...postChargeForm(), description: $event })" />
                 </div>
@@ -580,21 +580,21 @@
           <div class="card-body">
             <dl class="detail-list">
               <div class="detail-row">
-                <dt class="detail-label">Status</dt>
+                <dt class="detail-label">{{ 'Status' | translate }}</dt>
                 <dd class="detail-value">
                   <span class="badge badge-muted">{{ r.folio.folio_status }}</span>
                 </dd>
               </div>
               <div class="detail-row">
-                <dt class="detail-label">Total Charges</dt>
+                <dt class="detail-label">{{ 'Total Charges' | translate }}</dt>
                 <dd class="detail-value">{{ formatCurrency(r.folio.total_charges, r.currency) }}</dd>
               </div>
               <div class="detail-row">
-                <dt class="detail-label">Total Payments</dt>
+                <dt class="detail-label">{{ 'Total Payments' | translate }}</dt>
                 <dd class="detail-value">{{ formatCurrency(r.folio.total_payments, r.currency) }}</dd>
               </div>
               <div class="detail-row">
-                <dt class="detail-label">Balance</dt>
+                <dt class="detail-label">{{ 'Balance' | translate }}</dt>
                 <dd class="detail-value">
                   <span class="badge" [ngClass]="r.folio.balance > 0 ? 'badge-warning' : 'badge-success'">
                     {{ formatCurrency(r.folio.balance, r.currency) }}
@@ -653,18 +653,18 @@
     @if (r.special_requests || r.internal_notes) {
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Notes</h3>
+          <h3 class="card-title">{{ 'Notes' | translate }}</h3>
         </div>
         <div class="card-body">
           @if (r.special_requests) {
             <div class="notes-section">
-              <span class="notes-label">Special Requests</span>
+              <span class="notes-label">{{ 'Special Requests' | translate }}</span>
               <p class="notes-text">{{ r.special_requests }}</p>
             </div>
           }
           @if (r.internal_notes) {
             <div class="notes-section">
-              <span class="notes-label">Internal Notes</span>
+              <span class="notes-label">{{ 'Internal Notes' | translate }}</span>
               <p class="notes-text">{{ r.internal_notes }}</p>
             </div>
           }
@@ -676,18 +676,18 @@
     @if (r.status_history && r.status_history.length > 0) {
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Status History</h3>
+          <h3 class="card-title">{{ 'Status History' | translate }}</h3>
         </div>
         <div class="card-body">
           <div class="table-container">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Reason</th>
-                  <th>Changed By</th>
-                  <th>Date</th>
+                  <th>{{ 'From' | translate }}</th>
+                  <th>{{ 'To' | translate }}</th>
+                  <th>{{ 'Reason' | translate }}</th>
+                  <th>{{ 'Changed By' | translate }}</th>
+                  <th>{{ 'Date' | translate }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -716,15 +716,15 @@
     } @loading (minimum 200ms) {
       <div class="loading-state">
         <mat-spinner diameter="24"></mat-spinner>
-        <span class="text-muted">Rendering details…</span>
+        <span class="text-muted">{{ 'Rendering details…' | translate }}</span>
       </div>
     }
 
     <!-- Meta -->
     <div class="meta-line">
-      Created {{ formatDate(r.created_at) }}
+      {{ 'Created' | translate }} {{ formatDate(r.created_at) }}
       @if (r.updated_at) {
-        · Updated {{ formatDate(r.updated_at) }}
+        · {{ 'Updated' | translate }} {{ formatDate(r.updated_at) }}
       }
     </div>
   </div>

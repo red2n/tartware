@@ -59,14 +59,14 @@
 
   <!-- Filter tabs + search -->
   <div class="filter-bar">
-    <nav class="filter-tabs" aria-label="Room status filters">
+    <nav class="filter-tabs" [attr.aria-label]="'Room status filters' | translate">
       @for (f of statusFilters; track f.key) {
         <button
           class="filter-tab"
           [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
           (click)="setFilter(f.key)">
-          {{ f.label }}
+          {{ f.label | translate }}
           <span class="counter">{{ filterCounts()[f.key] }}</span>
         </button>
       }
@@ -99,7 +99,7 @@
       </span>
     }
     @if (checkInDate() || checkOutDate()) {
-      <button class="btn btn-invisible btn-sm rec-clear-btn" (click)="clearRecommendations()" matTooltip="Clear">
+      <button class="btn btn-invisible btn-sm rec-clear-btn" (click)="clearRecommendations()" [matTooltip]="'Clear' | translate">
         <mat-icon>close</mat-icon>
       </button>
     }

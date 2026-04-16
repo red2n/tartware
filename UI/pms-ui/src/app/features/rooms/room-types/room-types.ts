@@ -11,6 +11,7 @@ import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
@@ -32,6 +33,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 		MatTooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./room-types.html",
 	styleUrl: "./room-types.scss",

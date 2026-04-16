@@ -1,66 +1,66 @@
 <h2 mat-dialog-title>
   <mat-icon class="dialog-title-icon">category</mat-icon>
-  {{ isEditMode ? 'Edit Room Type' : 'New Room Type' }}
+  {{ isEditMode ? ('Edit Room Type' | translate) : ('New Room Type' | translate) }}
 </h2>
 
 <mat-dialog-content>
   <div class="form-fields">
     <!-- Basic Info -->
     <section class="form-section">
-      <span class="form-section-title">Basic Information</span>
+      <span class="form-section-title">{{ 'Basic Information' | translate }}</span>
 
       <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['typeName'] && !typeName.trim()">
-          <label class="field-label" for="rt-name">Type name</label>
+          <label class="field-label" for="rt-name">{{ 'Type name' | translate }}</label>
           <input
             id="rt-name"
             type="text"
             class="field-input"
-            placeholder="Deluxe Room"
+            [placeholder]="'Deluxe Room' | translate"
             maxlength="160"
             [(ngModel)]="typeName"
             (blur)="markTouched('typeName')"
             [disabled]="saving()" />
           @if (touched['typeName'] && !typeName.trim()) {
-            <span class="field-hint-error">Name is required</span>
+            <span class="field-hint-error">{{ 'Name is required' | translate }}</span>
           }
         </div>
         <div class="field-group field-required" [class.field-error]="touched['typeCode'] && !typeCode.trim()">
-          <label class="field-label" for="rt-code">Type code</label>
+          <label class="field-label" for="rt-code">{{ 'Type code' | translate }}</label>
           <input
             id="rt-code"
             type="text"
             class="field-input"
-            placeholder="DLX"
+            [placeholder]="'DLX' | translate"
             maxlength="50"
             [(ngModel)]="typeCode"
             (blur)="markTouched('typeCode')"
             [disabled]="saving() || isEditMode" />
           @if (touched['typeCode'] && !typeCode.trim()) {
-            <span class="field-hint-error">Code is required</span>
+            <span class="field-hint-error">{{ 'Code is required' | translate }}</span>
           }
-          <span class="field-hint">Alphanumeric, uppercase</span>
+          <span class="field-hint">{{ 'Alphanumeric, uppercase' | translate }}</span>
         </div>
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="rt-short-desc">Short description</label>
+        <label class="field-label" for="rt-short-desc">{{ 'Short description' | translate }}</label>
         <input
           id="rt-short-desc"
           type="text"
           class="field-input"
-          placeholder="Brief description for listings"
+          [placeholder]="'Brief description for listings' | translate"
           maxlength="500"
           [(ngModel)]="shortDescription"
           [disabled]="saving()" />
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="rt-desc">Description</label>
+        <label class="field-label" for="rt-desc">{{ 'Description' | translate }}</label>
         <textarea
           id="rt-desc"
           class="field-input field-textarea"
-          placeholder="Full room type description..."
+          [placeholder]="'Full room type description...' | translate"
           maxlength="2000"
           rows="3"
           [(ngModel)]="description"
@@ -69,7 +69,7 @@
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="rt-category">Category</label>
+          <label class="field-label" for="rt-category">{{ 'Category' | translate }}</label>
           <select
             id="rt-category"
             class="field-input"
@@ -86,11 +86,11 @@
 
     <!-- Occupancy -->
     <section class="form-section">
-      <span class="form-section-title">Occupancy</span>
+      <span class="form-section-title">{{ 'Occupancy' | translate }}</span>
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="rt-base-occ">Base occupancy</label>
+          <label class="field-label" for="rt-base-occ">{{ 'Base occupancy' | translate }}</label>
           <input
             id="rt-base-occ"
             type="number"
@@ -101,7 +101,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-max-occ">Max occupancy</label>
+          <label class="field-label" for="rt-max-occ">{{ 'Max occupancy' | translate }}</label>
           <input
             id="rt-max-occ"
             type="number"
@@ -112,7 +112,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-max-adults">Max adults</label>
+          <label class="field-label" for="rt-max-adults">{{ 'Max adults' | translate }}</label>
           <input
             id="rt-max-adults"
             type="number"
@@ -126,7 +126,7 @@
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="rt-max-children">Max children</label>
+          <label class="field-label" for="rt-max-children">{{ 'Max children' | translate }}</label>
           <input
             id="rt-max-children"
             type="number"
@@ -137,7 +137,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-extra-beds">Extra bed capacity</label>
+          <label class="field-label" for="rt-extra-beds">{{ 'Extra bed capacity' | translate }}</label>
           <input
             id="rt-extra-beds"
             type="number"
@@ -148,7 +148,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-size">Size (sqm)</label>
+          <label class="field-label" for="rt-size">{{ 'Size (sqm)' | translate }}</label>
           <input
             id="rt-size"
             type="number"
@@ -163,22 +163,22 @@
 
     <!-- Bedding & Pricing -->
     <section class="form-section">
-      <span class="form-section-title">Bedding & Pricing</span>
+      <span class="form-section-title">{{ 'Bedding & Pricing' | translate }}</span>
 
       <div class="field-row field-row-3">
         <div class="field-group">
-          <label class="field-label" for="rt-bed-type">Bed type</label>
+          <label class="field-label" for="rt-bed-type">{{ 'Bed type' | translate }}</label>
           <input
             id="rt-bed-type"
             type="text"
             class="field-input"
-            placeholder="King, Twin, etc."
+            [placeholder]="'King, Twin, etc.' | translate"
             maxlength="80"
             [(ngModel)]="bedType"
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-num-beds">Number of beds</label>
+          <label class="field-label" for="rt-num-beds">{{ 'Number of beds' | translate }}</label>
           <input
             id="rt-num-beds"
             type="number"
@@ -189,7 +189,7 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-display-order">Display order</label>
+          <label class="field-label" for="rt-display-order">{{ 'Display order' | translate }}</label>
           <input
             id="rt-display-order"
             type="number"
@@ -202,7 +202,7 @@
 
       <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['basePrice'] && basePrice < 0">
-          <label class="field-label" for="rt-price">Base price</label>
+          <label class="field-label" for="rt-price">{{ 'Base price' | translate }}</label>
           <input
             id="rt-price"
             type="number"
@@ -214,12 +214,12 @@
             [disabled]="saving()" />
         </div>
         <div class="field-group">
-          <label class="field-label" for="rt-currency">Currency</label>
+          <label class="field-label" for="rt-currency">{{ 'Currency' | translate }}</label>
           <input
             id="rt-currency"
             type="text"
             class="field-input"
-            placeholder="USD"
+            [placeholder]="'USD' | translate"
             maxlength="3"
             [(ngModel)]="currency"
             [disabled]="saving()" />

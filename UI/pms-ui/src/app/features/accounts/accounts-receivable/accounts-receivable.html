@@ -339,7 +339,7 @@
                 </div>
                 <div class="form-field">
                   <label>{{ 'Payment Reference' | translate }}</label>
-                  <input type="text" class="field-input" placeholder="Check #, Wire ref, etc."
+                  <input type="text" class="field-input" [placeholder]="'Check #, Wire ref, etc.' | translate"
                          [ngModel]="paymentForm().payment_reference" (ngModelChange)="updatePaymentForm({ payment_reference: $event })" />
                 </div>
                 <div class="form-field">
@@ -355,7 +355,7 @@
                 </div>
                 <div class="form-field">
                   <label>{{ 'Notes' | translate }}</label>
-                  <input type="text" class="field-input" placeholder="Optional"
+                  <input type="text" class="field-input" [placeholder]="'Optional' | translate"
                          [ngModel]="paymentForm().notes" (ngModelChange)="updatePaymentForm({ notes: $event })" />
                 </div>
               </div>
@@ -380,7 +380,7 @@
                 </div>
                 <div class="form-field">
                   <label>{{ 'Reason' | translate }}</label>
-                  <input type="text" class="field-input" placeholder="Reason for write-off (required)"
+                  <input type="text" class="field-input" [placeholder]="'Reason for write-off (required)' | translate"
                          [ngModel]="writeOffForm().reason" (ngModelChange)="updateWriteOffForm({ reason: $event })" />
                 </div>
               </div>

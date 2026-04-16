@@ -121,6 +121,52 @@ View the HTML report:
 npx playwright show-report
 ```
 
+## Docker Deployment
+
+### Local Build & Deploy
+
+Build, purge old container/image, and deploy fresh to local Docker:
+
+```bash
+# From repository root
+pnpm run build:ui && \
+cd UI/pms-ui && \
+sudo docker rm -f tartware-pms-ui 2>/dev/null; \
+sudo docker rmi -f tartware-pms-ui 2>/dev/null; \
+sudo docker build --no-cache -t tartware-pms-ui . && \
+sudo docker run -d --name tartware-pms-ui --add-host=host.docker.internal:host-gateway -p 80:80 tartware-pms-ui
+```
+
+Access at `http://localhost`. The nginx config proxies `/v1/` requests to the backend on `host.docker.internal:8080`.
+
+### Build, Push to GHCR & Deploy
+
+Prerequisites — log in to GitHub Container Registry (one-time):
+
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u red2n --password-stdin
+```
+
+```bash
+# 1. Build schemas + Angular production bundle (from repo root)
+pnpm run build:ui && \
+
+# 2. Build Docker image & push to GHCR
+cd UI/pms-ui && \
+docker build -t ghcr.io/red2n/tartware-pms-ui:latest . && \
+docker push ghcr.io/red2n/tartware-pms-ui:latest && \
+
+# 3. Pull from GHCR & deploy locally
+docker pull ghcr.io/red2n/tartware-pms-ui:latest && \
+docker rm -f tartware-pms-ui 2>/dev/null; \
+docker run -d \
+  --name tartware-pms-ui \
+  --add-host=host.docker.internal:host-gateway \
+  -p 80:80 \
+  --restart unless-stopped \
+  ghcr.io/red2n/tartware-pms-ui:latest
+```
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

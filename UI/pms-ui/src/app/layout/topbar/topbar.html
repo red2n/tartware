@@ -1,6 +1,6 @@
 <header class="title-bar">
   <div class="title-bar-left">
-    <button class="mobile-menu-toggle" (click)="menuToggle.emit()" aria-label="Toggle sidebar">
+    <button class="mobile-menu-toggle" (click)="menuToggle.emit()" [attr.aria-label]="'Toggle sidebar' | translate">
       <mat-icon>menu</mat-icon>
     </button>
     <a class="app-brand" routerLink="/dashboard" [matTooltip]="'Go to Dashboard' | translate">
@@ -142,14 +142,14 @@
     </div>
 
     <!-- Language selector -->
-    <button class="title-bar-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate">
+    <button class="title-bar-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate" [attr.aria-label]="'Language' | translate">
       <mat-icon>translate</mat-icon>
     </button>
 
     <mat-menu #langMenu="matMenu">
       @for (lang of supportedLanguages; track lang.code) {
         <button mat-menu-item (click)="setLanguage(lang.code)">
-          <span>{{ lang.label }}</span>
+          <span>{{ lang.label | translate }}</span>
           @if (currentLang() === lang.code) {
             <mat-icon class="check-icon">check</mat-icon>
           }
@@ -158,7 +158,7 @@
     </mat-menu>
 
     <!-- Theme toggle -->
-    <button class="title-bar-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate">
+    <button class="title-bar-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate" [attr.aria-label]="'Theme' | translate">
       <mat-icon>{{ isDark() ? 'dark_mode' : 'light_mode' }}</mat-icon>
     </button>
 
@@ -187,7 +187,7 @@
     </mat-menu>
 
     <!-- User menu -->
-    <button class="title-bar-btn avatar-btn" [matMenuTriggerFor]="userMenu">
+    <button class="title-bar-btn avatar-btn" [matMenuTriggerFor]="userMenu" [attr.aria-label]="'User menu' | translate">
       @if (user(); as u) {
         <span class="avatar avatar-sm user-avatar">
           {{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}
@@ -210,7 +210,7 @@
       <mat-divider></mat-divider>
       <button mat-menu-item (click)="toggleStatusBar()">
         <mat-icon>{{ statusBarVisible() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-        <span>{{ 'Status Bar' | translate }}</span>
+        <span>{{ 'Services Status' | translate }}</span>
         @if (statusBarVisible()) {
           <mat-icon class="check-icon">check</mat-icon>
         }

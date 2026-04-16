@@ -15,6 +15,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 type RoomType = Pick<RoomTypeItem, "room_type_id" | "type_name">;
 type Building = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-room-dialog",
 	standalone: true,
@@ -25,6 +26,7 @@ type Building = Pick<BuildingItem, "building_id" | "building_code" | "building_n
 		MatIconModule,
 		MatProgressSpinnerModule,
 		DialogActionsComponent,
+		TranslatePipe,
 	],
 	templateUrl: "./create-room-dialog.html",
 	styleUrl: "./create-room-dialog.scss",

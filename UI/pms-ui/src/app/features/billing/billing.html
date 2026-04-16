@@ -87,10 +87,10 @@
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'payments') {
     <div class="filter-bar filter-bar-with-action">
-      <nav class="filter-tabs" aria-label="Payment status filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Payment status filters' | translate">
         @for (f of paymentStatusFilters; track f.key) {
           <button class="filter-tab" [class.filter-tab-active]="activePaymentFilter() === f.key" (click)="setPaymentFilter(f.key)">
-            {{ f.label }}
+            {{ f.label | translate }}
             <span class="counter">{{ paymentFilterCounts()[f.key] }}</span>
           </button>
         }
@@ -107,7 +107,7 @@
         <div class="form-grid">
           <div class="form-field">
             <label>{{ 'Payment Reference' | translate }} *</label>
-            <input type="text" class="field-input" placeholder="e.g. RCPT-001, TXN-12345"
+            <input type="text" class="field-input" [placeholder]="'e.g. RCPT-001, TXN-12345' | translate"
                    [ngModel]="capturePaymentForm().payment_reference" (ngModelChange)="updateCapturePaymentForm({ payment_reference: $event })" />
           </div>
           <div class="form-field">
@@ -120,7 +120,7 @@
             <select class="field-input" [ngModel]="capturePaymentForm().payment_method"
                     (ngModelChange)="updateCapturePaymentForm({ payment_method: $event })">
               @for (opt of paymentMethodOptions; track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
+                <option [value]="opt.value">{{ opt.label | translate }}</option>
               }
             </select>
           </div>
@@ -135,7 +135,7 @@
                 }
               </select>
             } @else {
-              <input type="text" class="field-input" placeholder="Folio UUID (optional)"
+              <input type="text" class="field-input" [placeholder]="'Folio UUID (optional)' | translate"
                      [ngModel]="capturePaymentForm().folio_id" (ngModelChange)="updateCapturePaymentForm({ folio_id: $event })" />
             }
           </div>
@@ -216,7 +216,7 @@
                         <div class="form-inline-fields">
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }}</label>
-                            <input type="text" class="field-input field-sm" placeholder="Optional reason"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Optional reason' | translate"
                                    [ngModel]="voidPaymentReason()" (ngModelChange)="voidPaymentReason.set($event)" />
                           </div>
                         </div>
@@ -245,7 +245,7 @@
                           </div>
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }}</label>
-                            <input type="text" class="field-input field-sm" placeholder="Reason for refund"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for refund' | translate"
                                    [ngModel]="refundForm().reason" (ngModelChange)="refundForm.set({ ...refundForm(), reason: $event })" />
                           </div>
                         </div>
@@ -314,10 +314,10 @@
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'invoices') {
     <div class="filter-bar filter-bar-with-action">
-      <nav class="filter-tabs" aria-label="Invoice status filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Invoice status filters' | translate">
         @for (f of invoiceStatusFilters; track f.key) {
           <button class="filter-tab" [class.filter-tab-active]="activeInvoiceFilter() === f.key" (click)="setInvoiceFilter(f.key)">
-            {{ f.label }}
+            {{ f.label | translate }}
             <span class="counter">{{ invoiceFilterCounts()[f.key] }}</span>
           </button>
         }
@@ -343,7 +343,7 @@
                 }
               </select>
             } @else {
-              <input type="text" class="field-input" placeholder="Guest UUID"
+              <input type="text" class="field-input" [placeholder]="'Guest UUID' | translate"
                      [ngModel]="createInvoiceForm().guest_id" (ngModelChange)="updateCreateInvoiceForm({ guest_id: $event })" />
             }
           </div>
@@ -354,11 +354,11 @@
                       (ngModelChange)="updateCreateInvoiceForm({ reservation_id: $event })">
                 <option value="">{{ 'Standalone (no reservation)' | translate }}</option>
                 @for (r of availableReservations(); track r.id) {
-                  <option [value]="r.id">{{ r.label }}</option>
+                  <option [value]="r.id">{{ r.label | translate }}</option>
                 }
               </select>
             } @else {
-              <input type="text" class="field-input" placeholder="Reservation UUID (optional)"
+              <input type="text" class="field-input" [placeholder]="'Reservation UUID (optional)' | translate"
                      [ngModel]="createInvoiceForm().reservation_id" (ngModelChange)="updateCreateInvoiceForm({ reservation_id: $event })" />
             }
           </div>
@@ -374,7 +374,7 @@
           </div>
           <div class="form-field full-width">
             <label>{{ 'Notes' | translate }}</label>
-            <input type="text" class="field-input" placeholder="Optional notes"
+            <input type="text" class="field-input" [placeholder]="'Optional notes' | translate"
                    [ngModel]="createInvoiceForm().notes" (ngModelChange)="updateCreateInvoiceForm({ notes: $event })" />
           </div>
         </div>
@@ -468,7 +468,7 @@
                         <div class="form-inline-fields">
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }}</label>
-                            <input type="text" class="field-input field-sm" placeholder="Reason for voiding"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for voiding' | translate"
                                    [ngModel]="voidInvoiceReason()" (ngModelChange)="voidInvoiceReason.set($event)" />
                           </div>
                         </div>
@@ -497,7 +497,7 @@
                           </div>
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }} *</label>
-                            <input type="text" class="field-input field-sm" placeholder="Reason for credit note (required)"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for credit note (required)' | translate"
                                    [ngModel]="creditNoteForm().reason" (ngModelChange)="creditNoteForm.set({ ...creditNoteForm(), reason: $event })" />
                           </div>
                         </div>
@@ -521,7 +521,7 @@
                         <div class="form-inline-fields">
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }} *</label>
-                            <input type="text" class="field-input field-sm" placeholder="Reason for reopening"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for reopening' | translate"
                                    [ngModel]="reopenInvoiceReason()" (ngModelChange)="reopenInvoiceReason.set($event)" />
                           </div>
                         </div>
@@ -555,10 +555,10 @@
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'folios') {
     <div class="filter-bar filter-bar-with-action">
-      <nav class="filter-tabs" aria-label="Folio status filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Folio status filters' | translate">
         @for (f of folioStatusFilters; track f.key) {
           <button class="filter-tab" [class.filter-tab-active]="activeFolioFilter() === f.key" (click)="setFolioFilter(f.key)">
-            {{ f.label }}
+            {{ f.label | translate }}
             <span class="counter">{{ folioFilterCounts()[f.key] }}</span>
           </button>
         }
@@ -583,12 +583,12 @@
           </div>
           <div class="form-field">
             <label>{{ 'Folio Name' | translate }}</label>
-            <input type="text" class="field-input" placeholder="e.g. Conference Room A"
+            <input type="text" class="field-input" [placeholder]="'e.g. Conference Room A' | translate"
                    [ngModel]="createFolioForm().folio_name" (ngModelChange)="updateCreateFolioForm({ folio_name: $event })" />
           </div>
           <div class="form-field full-width">
             <label>{{ 'Notes' | translate }}</label>
-            <input type="text" class="field-input" placeholder="Optional notes"
+            <input type="text" class="field-input" [placeholder]="'Optional notes' | translate"
                    [ngModel]="createFolioForm().notes" (ngModelChange)="updateCreateFolioForm({ notes: $event })" />
           </div>
         </div>
@@ -828,7 +828,7 @@
                         <div class="form-inline-fields">
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }}</label>
-                            <input type="text" class="field-input field-sm" placeholder="Close reason"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Close reason' | translate"
                                    [ngModel]="closeFolioReason()" (ngModelChange)="closeFolioReason.set($event)" />
                           </div>
                           @if (fol.balance > 0) {
@@ -860,7 +860,7 @@
                         <div class="form-inline-fields">
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }} *</label>
-                            <input type="text" class="field-input field-sm" placeholder="Reason for reopening"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for reopening' | translate"
                                    [ngModel]="reopenFolioReason()" (ngModelChange)="reopenFolioReason.set($event)" />
                           </div>
                         </div>
@@ -1091,10 +1091,10 @@
   <!-- ═════════════════════════════════════════════ -->
   @if (activeView() === 'charges') {
     <div class="filter-bar filter-bar-with-action">
-      <nav class="filter-tabs" aria-label="Charge type filters">
+      <nav class="filter-tabs" [attr.aria-label]="'Charge type filters' | translate">
         @for (f of chargeTypeFilters; track f.key) {
           <button class="filter-tab" [class.filter-tab-active]="activeChargeFilter() === f.key" (click)="setChargeFilter(f.key)">
-            {{ f.label }}
+            {{ f.label | translate }}
             <span class="counter">{{ chargeFilterCounts()[f.key] }}</span>
           </button>
         }
@@ -1120,7 +1120,7 @@
                 }
               </select>
             } @else {
-              <input type="text" class="field-input" placeholder="Folio UUID"
+              <input type="text" class="field-input" [placeholder]="'Folio UUID' | translate"
                      [ngModel]="postChargeForm().folio_id" (ngModelChange)="updatePostChargeForm({ folio_id: $event })" />
             }
           </div>
@@ -1129,7 +1129,7 @@
             <select class="field-input" [ngModel]="postChargeForm().charge_code"
                     (ngModelChange)="updatePostChargeForm({ charge_code: $event })">
               @for (opt of chargeCodeOptions; track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
+                <option [value]="opt.value">{{ opt.label | translate }}</option>
               }
             </select>
           </div>
@@ -1145,7 +1145,7 @@
           </div>
           <div class="form-field full-width">
             <label>{{ 'Description' | translate }}</label>
-            <input type="text" class="field-input" placeholder="Charge description"
+            <input type="text" class="field-input" [placeholder]="'Charge description' | translate"
                    [ngModel]="postChargeForm().description" (ngModelChange)="updatePostChargeForm({ description: $event })" />
           </div>
         </div>
@@ -1215,7 +1215,7 @@
                         <div class="form-inline-fields">
                           <div class="form-field">
                             <label>{{ 'Reason' | translate }}</label>
-                            <input type="text" class="field-input field-sm" placeholder="Reason for voiding"
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for voiding' | translate"
                                    [ngModel]="voidChargeReason()" (ngModelChange)="voidChargeReason.set($event)" />
                           </div>
                         </div>

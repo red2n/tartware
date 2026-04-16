@@ -112,10 +112,10 @@
         <div class="overview-section hk-section-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
           <div class="overview-label">
             <mat-icon>do_not_disturb</mat-icon>
-            <span>DND</span>
+            <span>{{ 'DND' | translate }}</span>
           </div>
           <div class="overview-value">{{ summary().dnd }}</div>
-          <div class="overview-sub text-muted">rooms</div>
+          <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
         </div>
       }
     </div>
@@ -156,7 +156,7 @@
             [attr.aria-pressed]="activeFilter() === f.key"
             [class.filter-tab-active]="activeFilter() === f.key"
             (click)="setFilter(f.key)">
-            {{ f.label }}
+            {{ f.label | translate }}
             <span class="counter">{{ filterCounts()[f.key] }}</span>
           </button>
         }
@@ -270,7 +270,7 @@
                               mat-menu-item
                               (click)="updateRoomOccupancy(room, action.value)">
                               <mat-icon [class]="'occ-icon-' + action.value.toLowerCase().replace('_', '-')">{{ action.icon }}</mat-icon>
-                              <span>{{ action.label }}</span>
+                              <span>{{ action.label | translate }}</span>
                             </button>
                           }
                         </mat-menu>
@@ -287,7 +287,7 @@
                               mat-menu-item
                               (click)="updateRoomHousekeeping(room, action.value)">
                               <mat-icon [class]="'hk-icon-' + action.value.toLowerCase().replace('_', '-')">{{ action.icon }}</mat-icon>
-                              <span>{{ action.label }}</span>
+                              <span>{{ action.label | translate }}</span>
                             </button>
                           }
                         </mat-menu>

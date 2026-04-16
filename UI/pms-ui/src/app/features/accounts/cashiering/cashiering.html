@@ -15,12 +15,12 @@
       <div class="form-grid">
         <div class="form-field">
           <label>{{ 'Cashier Name' | translate }}</label>
-          <input type="text" class="field-input" placeholder="Your name"
+          <input type="text" class="field-input" [placeholder]="'Your name' | translate"
                  [ngModel]="openForm().cashier_name" (ngModelChange)="updateOpenForm({ cashier_name: $event })" />
         </div>
         <div class="form-field">
           <label>{{ 'Terminal ID' | translate }}</label>
-          <input type="text" class="field-input" placeholder="e.g. POS-01"
+          <input type="text" class="field-input" [placeholder]="'e.g. POS-01' | translate"
                  [ngModel]="openForm().terminal_id" (ngModelChange)="updateOpenForm({ terminal_id: $event })" />
         </div>
         <div class="form-field">
@@ -95,7 +95,7 @@
 
   <!-- ═══ FILTERS ═══ -->
   <div class="filter-bar">
-    <nav class="filter-tabs" aria-label="Session status filters">
+    <nav class="filter-tabs" [attr.aria-label]="'Session status filters' | translate">
       @for (f of statusFilters; track f.key) {
         <button class="filter-tab" [class.filter-tab-active]="activeFilter() === f.key" (click)="setFilter(f.key)">
           {{ f.label | translate }}
@@ -370,7 +370,7 @@
                       </div>
                       <div class="form-field">
                         <label>{{ 'Notes' | translate }}</label>
-                        <input type="text" class="field-input field-sm" placeholder="Optional reconciliation notes"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Optional reconciliation notes' | translate"
                                [ngModel]="closeForm().notes" (ngModelChange)="updateCloseForm({ notes: $event })" />
                       </div>
                     </div>
@@ -406,7 +406,7 @@
                       </div>
                       <div class="form-field">
                         <label>{{ 'Handover Notes' | translate }}</label>
-                        <input type="text" class="field-input field-sm" placeholder="Notes for the next shift"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Notes for the next shift' | translate"
                                [ngModel]="handoverForm().handover_notes" (ngModelChange)="updateHandoverForm({ handover_notes: $event })" />
                       </div>
                     </div>
@@ -414,12 +414,12 @@
                     <div class="form-inline-fields">
                       <div class="form-field">
                         <label>{{ 'Incoming Cashier Name' | translate }} *</label>
-                        <input type="text" class="field-input field-sm" placeholder="Next cashier name"
+                        <input type="text" class="field-input field-sm" [placeholder]="'Next cashier name' | translate"
                                [ngModel]="handoverForm().incoming_cashier_name" (ngModelChange)="updateHandoverForm({ incoming_cashier_name: $event })" />
                       </div>
                       <div class="form-field">
                         <label>{{ 'Terminal ID' | translate }}</label>
-                        <input type="text" class="field-input field-sm" placeholder="e.g. POS-01"
+                        <input type="text" class="field-input field-sm" [placeholder]="'e.g. POS-01' | translate"
                                [ngModel]="handoverForm().incoming_terminal_id" (ngModelChange)="updateHandoverForm({ incoming_terminal_id: $event })" />
                       </div>
                       <div class="form-field">

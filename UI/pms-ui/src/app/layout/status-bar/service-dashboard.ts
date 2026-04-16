@@ -5,6 +5,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 
 /** Hardcoded descriptions for known services — presentation data owned by the UI. */
 const SERVICE_DESCRIPTIONS: Record<string, string> = {
@@ -23,7 +24,7 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
 @Component({
 	selector: "app-service-dashboard",
 	standalone: true,
-	imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule],
+	imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule, TranslatePipe],
 	templateUrl: "./service-dashboard.html",
 	styleUrl: "./service-dashboard.scss",
 })

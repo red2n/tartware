@@ -1,24 +1,24 @@
 <h2 mat-dialog-title>
   <mat-icon class="dialog-title-icon">manage_accounts</mat-icon>
-  Edit User
+  {{ 'Edit User' | translate }}
 </h2>
 
 <mat-dialog-content>
   <div class="form-fields">
     <!-- User info (read-only) -->
     <section class="form-section">
-      <span class="form-section-title">User Details</span>
+      <span class="form-section-title">{{ 'User Details' | translate }}</span>
       <div class="user-info-card">
         <div class="user-info-row">
-          <span class="field-label">Name</span>
+          <span class="field-label">{{ 'Name' | translate }}</span>
           <span class="field-value-locked">{{ fullName }}</span>
         </div>
         <div class="user-info-row">
-          <span class="field-label">Username</span>
+          <span class="field-label">{{ 'Username' | translate }}</span>
           <span class="field-value-locked">{{ data.user.username }}</span>
         </div>
         <div class="user-info-row">
-          <span class="field-label">Email</span>
+          <span class="field-label">{{ 'Email' | translate }}</span>
           <span class="field-value-locked">{{ data.user.email }}</span>
         </div>
       </div>
@@ -26,30 +26,30 @@
 
     <!-- Access control -->
     <section class="form-section">
-      <span class="form-section-title">Access Control</span>
+      <span class="form-section-title">{{ 'Access Control' | translate }}</span>
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label" for="eu-role">Role</label>
+          <label class="field-label" for="eu-role">{{ 'Role' | translate }}</label>
           <select
             id="eu-role"
             class="field-input"
             [(ngModel)]="selectedRole"
             [disabled]="saving()">
             @for (r of roles; track r.value) {
-              <option [value]="r.value">{{ r.label }}</option>
+              <option [value]="r.value">{{ r.label | translate }}</option>
             }
           </select>
-          <span class="field-hint">Controls permissions and access level</span>
+          <span class="field-hint">{{ 'Controls permissions and access level' | translate }}</span>
         </div>
         <div class="field-group">
-          <label class="field-label">Status</label>
+          <label class="field-label">{{ 'Status' | translate }}</label>
           <label class="toggle-label">
             <input
               type="checkbox"
               [(ngModel)]="isActive"
               [disabled]="saving()" />
-            {{ isActive ? 'Active — user can log in' : 'Inactive — access revoked' }}
+            {{ isActive ? ('Active — user can log in' | translate) : ('Inactive — access revoked' | translate) }}
           </label>
         </div>
       </div>
@@ -57,11 +57,11 @@
 
     <!-- Password reset -->
     <section class="form-section">
-      <span class="form-section-title">Security</span>
+      <span class="form-section-title">{{ 'Security' | translate }}</span>
       <div class="reset-row">
         <div>
-          <span class="field-label">Password</span>
-          <span class="field-hint">Reset to the default temporary password</span>
+          <span class="field-label">{{ 'Password' | translate }}</span>
+          <span class="field-hint">{{ 'Reset to the default temporary password' | translate }}</span>
         </div>
         <button
           class="btn btn-danger btn-sm"
@@ -72,7 +72,7 @@
           } @else {
             <mat-icon>lock_reset</mat-icon>
           }
-          Reset Password
+          {{ 'Reset Password' | translate }}
         </button>
       </div>
     </section>
@@ -80,13 +80,13 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">Cancel</button>
+  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
   <button class="btn btn-primary" (click)="save()" [disabled]="!hasChanges || saving()">
     @if (saving()) {
       <mat-spinner diameter="16"></mat-spinner>
     } @else {
       <mat-icon>save</mat-icon>
     }
-    Save Changes
+    {{ 'Save Changes' | translate }}
   </button>
 </mat-dialog-actions>

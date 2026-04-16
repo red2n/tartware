@@ -9,10 +9,13 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-package-dialog",
 	standalone: true,
-	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
+	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule,
+		TranslatePipe,
+	],
 	templateUrl: "./create-package-dialog.html",
 	styleUrl: "./create-package-dialog.scss",
 })

@@ -124,7 +124,7 @@
                                 <div class="json-field-group">
                                   @if (jgroup.type === 'primitive') {
                                     <div class="json-field-row">
-                                      <span class="json-field-label">{{ jgroup.label }}</span>
+                                      <span class="json-field-label">{{ jgroup.label | translate }}</span>
                                       @if (jgroup.valueType === 'boolean') {
                                         <span class="badge" [ngClass]="jgroup.value ? 'badge-success' : 'badge-muted'">
                                           {{ jgroup.value ? ('Enabled' | translate) : ('Disabled' | translate) }}
@@ -135,10 +135,10 @@
                                     </div>
                                   } @else if (jgroup.type === 'object') {
                                     <div class="json-sub-group">
-                                      <span class="json-sub-group-label">{{ jgroup.label }}</span>
+                                      <span class="json-sub-group-label">{{ jgroup.label | translate }}</span>
                                       @for (child of jgroup.children; track child.key) {
                                         <div class="json-field-row json-field-row-indent">
-                                          <span class="json-field-label">{{ child.label }}</span>
+                                          <span class="json-field-label">{{ child.label | translate }}</span>
                                           @if (child.valueType === 'boolean') {
                                             <span class="badge" [ngClass]="child.value ? 'badge-success' : 'badge-muted'">
                                               {{ child.value ? ('Enabled' | translate) : ('Disabled' | translate) }}
@@ -151,7 +151,7 @@
                                     </div>
                                   } @else if (jgroup.type === 'array-objects') {
                                     <div class="json-array-group">
-                                      <span class="json-sub-group-label">{{ jgroup.label }}</span>
+                                      <span class="json-sub-group-label">{{ jgroup.label | translate }}</span>
                                       @if (jgroup.rows.length > 0) {
                                         <div class="json-array-table-wrap">
                                           <table class="json-array-table">
@@ -179,7 +179,7 @@
                                     </div>
                                   } @else if (jgroup.type === 'array-primitive') {
                                     <div class="json-field-row">
-                                      <span class="json-field-label">{{ jgroup.label }}</span>
+                                      <span class="json-field-label">{{ jgroup.label | translate }}</span>
                                       <div class="json-chips">
                                         @for (item of jgroup.items; track $index) {
                                           <span class="json-chip">{{ item }}</span>
@@ -225,7 +225,7 @@
                                 <div class="json-field-group">
                                   @if (jgroup.type === 'primitive') {
                                     <div class="json-field-row">
-                                      <label class="json-field-label">{{ jgroup.label }}</label>
+                                      <label class="json-field-label">{{ jgroup.label | translate }}</label>
                                       @if (jgroup.valueType === 'boolean') {
                                         <mat-slide-toggle
                                           [checked]="jgroup.value === true"
@@ -243,10 +243,10 @@
                                     </div>
                                   } @else if (jgroup.type === 'object') {
                                     <div class="json-sub-group">
-                                      <span class="json-sub-group-label">{{ jgroup.label }}</span>
+                                      <span class="json-sub-group-label">{{ jgroup.label | translate }}</span>
                                       @for (child of jgroup.children; track child.key) {
                                         <div class="json-field-row json-field-row-indent">
-                                          <label class="json-field-label">{{ child.label }}</label>
+                                          <label class="json-field-label">{{ child.label | translate }}</label>
                                           @if (child.valueType === 'boolean') {
                                             <mat-slide-toggle
                                               [checked]="child.value === true"
@@ -266,7 +266,7 @@
                                     </div>
                                   } @else if (jgroup.type === 'array-objects') {
                                     <div class="json-array-group">
-                                      <span class="json-sub-group-label">{{ jgroup.label }}</span>
+                                      <span class="json-sub-group-label">{{ jgroup.label | translate }}</span>
                                       @if (jgroup.rows.length > 0) {
                                         <div class="json-array-table-wrap">
                                           <table class="json-array-table json-array-table-edit">
@@ -305,7 +305,7 @@
                                                   <td class="json-array-actions-col">
                                                     <button class="btn btn-invisible btn-sm"
                                                       (click)="removeArrayRow(def.id, jgroup.key, i)"
-                                                      matTooltip="Remove row">
+                                                      [matTooltip]="'Remove row' | translate">
                                                       <mat-icon>close</mat-icon>
                                                     </button>
                                                   </td>
@@ -322,7 +322,7 @@
                                     </div>
                                   } @else if (jgroup.type === 'array-primitive') {
                                     <div class="json-field-row">
-                                      <label class="json-field-label">{{ jgroup.label }}</label>
+                                      <label class="json-field-label">{{ jgroup.label | translate }}</label>
                                       <input type="text" class="field-input json-field-input"
                                         [ngModel]="joinArray(jgroup.value)"
                                         (ngModelChange)="onArrayPrimitiveEdit(def.id, jgroup.key, $event)" />
@@ -337,7 +337,7 @@
                               [ngModel]="getEditState(def.id).editValue"
                               (ngModelChange)="onEditValueChange(def.id, $event)">
                               @for (opt of getOptions(def.id); track opt.id) {
-                                <option [value]="opt.value">{{ opt.label }}</option>
+                                <option [value]="opt.value">{{ opt.label | translate }}</option>
                               }
                             </select>
                           } @else if (isMultiSelectValue(def)) {
@@ -347,7 +347,7 @@
                                   <input type="checkbox" class="multi-select-checkbox"
                                     [ngModel]="isMultiSelectChecked(def.id, opt.value)"
                                     (ngModelChange)="onMultiSelectToggle(def.id, opt.value, $event)" />
-                                  {{ opt.label }}
+                                  {{ opt.label | translate }}
                                 </label>
                               } @empty {
                                 <span class="text-muted">{{ 'No options available' | translate }}</span>

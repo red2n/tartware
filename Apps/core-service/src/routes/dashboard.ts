@@ -302,7 +302,10 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
           WHERE r.tenant_id = $1::uuid
             AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
             AND r.is_deleted = false
-            AND r.created_at > NOW() - INTERVAL '48 hours'
+            AND (
+              r.created_at > NOW() - INTERVAL '48 hours'
+            AND false /* updated-status rows covered by union branches below */
+            )
 
           UNION ALL
 
@@ -312,6 +315,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
             'checkin',
             'Guest checked in · Room ' || COALESCE(r.room_number, 'TBD'),
             COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || ' · ' || r.confirmation_number
               || CASE WHEN g.vip_status IS NOT NULL AND g.vip_status <> 'NONE'
                       THEN ' · VIP ' || g.vip_status ELSE '' END,
             r.updated_at,
@@ -334,6 +338,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
             'checkout',
             'Guest checked out · Room ' || COALESCE(r.room_number, 'TBD'),
             COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest')
+              || ' · ' || r.confirmation_number
               || ' · Stay ' || r.check_in_date::text || ' → ' || r.check_out_date::text,
             r.updated_at,
             'logout',
@@ -463,7 +468,10 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         WITH activity AS (
           SELECT r.id::text FROM reservations r
           WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
-            AND r.is_deleted = false AND r.created_at > NOW() - INTERVAL '48 hours'
+            AND r.is_deleted = false
+            AND (r.created_at > NOW() - INTERVAL '48 hours'
+              OR (r.status IN ('CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'NO_SHOW')
+                  AND r.updated_at > NOW() - INTERVAL '48 hours'))
           UNION ALL
           SELECT r.id::text || '-ci' FROM reservations r
           WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
@@ -537,14 +545,14 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         ? `SELECT
              r.id::text as id,
              CASE
-               WHEN r.status = 'CONFIRMED' AND r.check_in_date = CURRENT_DATE THEN 'Check-in today'
-               WHEN r.status = 'CONFIRMED' AND r.check_in_date = CURRENT_DATE + 1 THEN 'Check-in tomorrow'
+               WHEN r.status IN ('CONFIRMED', 'PENDING') AND r.check_in_date = CURRENT_DATE THEN 'Check-in today'
+               WHEN r.status IN ('CONFIRMED', 'PENDING') AND r.check_in_date = CURRENT_DATE + 1 THEN 'Check-in tomorrow'
                WHEN r.status = 'CHECKED_IN' AND r.check_out_date = CURRENT_DATE THEN 'Check-out today'
                ELSE 'Upcoming reservation'
              END as title,
              COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
              CASE
-               WHEN r.status = 'CONFIRMED' THEN r.check_in_date
+               WHEN r.status IN ('CONFIRMED', 'PENDING') THEN r.check_in_date
                ELSE r.check_out_date
              END as due_time,
              CASE
@@ -553,7 +561,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                ELSE 'medium'
              END as priority,
              CASE
-               WHEN r.status = 'CONFIRMED' THEN 'login'
+               WHEN r.status IN ('CONFIRMED', 'PENDING') THEN 'login'
                WHEN r.status = 'CHECKED_IN' THEN 'logout'
                ELSE 'event'
              END as icon
@@ -562,7 +570,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            WHERE r.tenant_id = $1
            AND r.property_id = $2
            AND (
-             (r.status = 'CONFIRMED' AND (r.check_in_date = CURRENT_DATE OR r.check_in_date = CURRENT_DATE + 1))
+             (r.status IN ('CONFIRMED', 'PENDING') AND (r.check_in_date = CURRENT_DATE OR r.check_in_date = CURRENT_DATE + 1))
              OR (r.status = 'CHECKED_IN' AND r.check_out_date = CURRENT_DATE)
            )
            AND r.is_deleted = false
@@ -571,14 +579,14 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
         : `SELECT
              r.id::text as id,
              CASE
-               WHEN r.status = 'CONFIRMED' AND r.check_in_date = CURRENT_DATE THEN 'Check-in today'
-               WHEN r.status = 'CONFIRMED' AND r.check_in_date = CURRENT_DATE + 1 THEN 'Check-in tomorrow'
+               WHEN r.status IN ('CONFIRMED', 'PENDING') AND r.check_in_date = CURRENT_DATE THEN 'Check-in today'
+               WHEN r.status IN ('CONFIRMED', 'PENDING') AND r.check_in_date = CURRENT_DATE + 1 THEN 'Check-in tomorrow'
                WHEN r.status = 'CHECKED_IN' AND r.check_out_date = CURRENT_DATE THEN 'Check-out today'
                ELSE 'Upcoming reservation'
              END as title,
              COALESCE(r.room_number, 'TBD') || ' • ' || COALESCE(g.first_name || ' ' || g.last_name, r.guest_name, 'Unknown Guest') as description,
              CASE
-               WHEN r.status = 'CONFIRMED' THEN r.check_in_date
+               WHEN r.status IN ('CONFIRMED', 'PENDING') THEN r.check_in_date
                ELSE r.check_out_date
              END as due_time,
              CASE
@@ -587,7 +595,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
                ELSE 'medium'
              END as priority,
              CASE
-               WHEN r.status = 'CONFIRMED' THEN 'login'
+               WHEN r.status IN ('CONFIRMED', 'PENDING') THEN 'login'
                WHEN r.status = 'CHECKED_IN' THEN 'logout'
                ELSE 'event'
              END as icon
@@ -595,7 +603,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            LEFT JOIN guests g ON r.guest_id = g.id
            WHERE r.tenant_id = $1
            AND (
-             (r.status = 'CONFIRMED' AND (r.check_in_date = CURRENT_DATE OR r.check_in_date = CURRENT_DATE + 1))
+             (r.status IN ('CONFIRMED', 'PENDING') AND (r.check_in_date = CURRENT_DATE OR r.check_in_date = CURRENT_DATE + 1))
              OR (r.status = 'CHECKED_IN' AND r.check_out_date = CURRENT_DATE)
            )
            AND r.is_deleted = false

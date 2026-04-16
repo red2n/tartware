@@ -4,7 +4,7 @@
       <div class="toast" [class.toast-success]="t.type === 'success'" [class.toast-error]="t.type === 'error'">
         <mat-icon class="toast-icon">{{ t.type === 'success' ? 'check_circle' : 'error_outline' }}</mat-icon>
         <span class="toast-message">{{ t.message }}</span>
-        <button class="toast-dismiss" (click)="toast.dismiss(t.id)" aria-label="Dismiss">
+        <button class="toast-dismiss" (click)="toast.dismiss(t.id)" [attr.aria-label]="'Dismiss' | translate">
           <mat-icon>close</mat-icon>
         </button>
       </div>

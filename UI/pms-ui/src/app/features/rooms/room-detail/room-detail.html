@@ -2,7 +2,7 @@
   <div class="breadcrumb">
     <a routerLink="/rooms" class="breadcrumb-link">
       <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
-      Rooms
+      {{ 'Rooms' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
     @if (room(); as r) {
@@ -19,18 +19,18 @@
   <div class="flash flash-error">
     <mat-icon class="flash-icon">error_outline</mat-icon>
     {{ err }}
-    <button class="btn btn-invisible" (click)="goBack()">Go back</button>
+    <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
 } @else if (room(); as r) {
   <div class="detail-layout">
     <!-- Info section -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Room Information</h3>
+        <h3 class="card-title">{{ 'Room Information' | translate }}</h3>
         @if (!editingInfo()) {
           <button class="btn btn-invisible btn-sm" (click)="startEditInfo()">
             <mat-icon>edit</mat-icon>
-            Edit
+            {{ 'Edit' | translate }}
           </button>
         }
       </div>
@@ -38,18 +38,18 @@
         @if (editingInfo()) {
           <div class="edit-info-form">
             <div class="field-group">
-              <label class="field-label">Room Type</label>
+              <label class="field-label">{{ 'Room Type' | translate }}</label>
               <select class="field-input" [ngModel]="editRoomTypeId()" (ngModelChange)="editRoomTypeId.set($event)">
-                <option value="">— No room type —</option>
+                <option value="">{{ '— No room type —' | translate }}</option>
                 @for (rt of roomTypes(); track rt.room_type_id) {
                   <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
                 }
               </select>
             </div>
             <div class="field-group">
-              <label class="field-label">Building</label>
+              <label class="field-label">{{ 'Building' | translate }}</label>
               <select class="field-input" [ngModel]="editBuilding()" (ngModelChange)="editBuilding.set($event)">
-                <option value="">— No building —</option>
+                <option value="">{{ '— No building —' | translate }}</option>
                 @for (b of buildings(); track b.building_id) {
                   <option [value]="b.building_id">{{ b.building_name }} ({{ b.building_code }})</option>
                 }
@@ -57,12 +57,12 @@
             </div>
             <div class="field-row">
               <div class="field-group">
-                <label class="field-label">Floor</label>
-                <input type="text" class="field-input" [ngModel]="editFloor()" (ngModelChange)="editFloor.set($event)" placeholder="e.g. 3" />
+                <label class="field-label">{{ 'Floor' | translate }}</label>
+                <input type="text" class="field-input" [ngModel]="editFloor()" (ngModelChange)="editFloor.set($event)" [placeholder]="'e.g. 3' | translate" />
               </div>
               <div class="field-group">
-                <label class="field-label">Wing</label>
-                <input type="text" class="field-input" [ngModel]="editWing()" (ngModelChange)="editWing.set($event)" placeholder="e.g. East" />
+                <label class="field-label">{{ 'Wing' | translate }}</label>
+                <input type="text" class="field-input" [ngModel]="editWing()" (ngModelChange)="editWing.set($event)" [placeholder]="'e.g. East' | translate" />
               </div>
             </div>
             <div class="action-row">
@@ -73,10 +73,10 @@
                 @if (savingInfo()) {
                   <mat-spinner diameter="14"></mat-spinner>
                 }
-                Save
+                {{ 'Save' | translate }}
               </button>
               <button class="btn btn-invisible btn-sm" (click)="cancelEditInfo()">
-                Cancel
+                {{ 'Cancel' | translate }}
               </button>
             </div>
           </div>
@@ -84,7 +84,7 @@
           <dl class="detail-list">
             @for (row of infoRows(); track row.label) {
               <div class="detail-row">
-                <dt class="detail-label">{{ row.label }}</dt>
+                <dt class="detail-label">{{ row.label | translate }}</dt>
                 <dd class="detail-value">{{ row.value }}</dd>
               </div>
             }
@@ -96,13 +96,13 @@
     <!-- Status section -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Status</h3>
+        <h3 class="card-title">{{ 'Status' | translate }}</h3>
       </div>
       <div class="card-body">
         <dl class="detail-list">
           @for (row of statusRows(); track row.label) {
             <div class="detail-row">
-              <dt class="detail-label">{{ row.label }}</dt>
+              <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
                   <span class="status-badge" [ngClass]="row.badge">{{ row.value }}</span>
@@ -119,11 +119,11 @@
     <!-- Amenities section -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Housekeeping</h3>
+        <h3 class="card-title">{{ 'Housekeeping' | translate }}</h3>
       </div>
       <div class="card-body">
         <p class="hk-current">
-          Current:
+          {{ 'Current:' | translate }}
           <span class="status-badge" [ngClass]="hkClass(r.housekeeping_status)">
             {{ r.housekeeping_display }}
           </span>
@@ -142,7 +142,7 @@
               } @else {
                 <mat-icon>{{ opt.icon }}</mat-icon>
               }
-              {{ opt.label }}
+              {{ opt.label | translate }}
             </button>
           }
         </div>
@@ -154,18 +154,18 @@
       <!-- Amenities section -->
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Amenities</h3>
+          <h3 class="card-title">{{ 'Amenities' | translate }}</h3>
         @if (!editingAmenities()) {
           <button class="btn btn-invisible btn-sm" (click)="startEditAmenities()">
             <mat-icon>edit</mat-icon>
-            Edit
+            {{ 'Edit' | translate }}
           </button>
         }
       </div>
       <div class="card-body">
         @if (editingAmenities()) {
           <!-- Edit mode: toggleable chips -->
-          <p class="amenity-hint">Click to toggle amenities. Add custom ones below.</p>
+          <p class="amenity-hint">{{ 'Click to toggle amenities. Add custom ones below.' | translate }}</p>
           <div class="tag-list">
             @for (code of availableAmenities(); track code) {
               <button
@@ -187,7 +187,7 @@
             <input
               type="text"
               class="field-input add-amenity-input"
-              placeholder="Add custom amenity..."
+              [placeholder]="'Add custom amenity...' | translate"
               maxlength="80"
               [ngModel]="newAmenityInput()"
               (ngModelChange)="newAmenityInput.set($event)"
@@ -197,7 +197,7 @@
               [disabled]="!newAmenityInput().trim()"
               (click)="addCustomAmenity()">
               <mat-icon>add_circle</mat-icon>
-              Add
+              {{ 'Add' | translate }}
             </button>
           </div>
 
@@ -210,10 +210,10 @@
               @if (savingAmenities()) {
                 <mat-spinner diameter="14"></mat-spinner>
               }
-              Save amenities
+              {{ 'Save amenities' | translate }}
             </button>
             <button class="btn btn-invisible btn-sm" (click)="cancelEditAmenities()">
-              Cancel
+              {{ 'Cancel' | translate }}
             </button>
           </div>
         } @else {
@@ -225,7 +225,7 @@
               }
             </div>
           } @else {
-            <p class="empty-hint">No amenities configured.</p>
+            <p class="empty-hint">{{ 'No amenities configured.' | translate }}</p>
           }
         }
       </div>
@@ -235,13 +235,13 @@
     @if (r.status === 'setup') {
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Room Activation</h3>
+          <h3 class="card-title">{{ 'Room Activation' | translate }}</h3>
         </div>
         <div class="card-body">
           <p class="notice">
             <mat-icon class="notice-icon">info</mat-icon>
-            This room is in <strong>Setup</strong> mode and is not yet available for booking.
-            At least one active rate plan must be configured for the room type before activation.
+            {{ 'This room is in' | translate }} <strong>{{ 'Setup' | translate }}</strong> {{ 'mode and is not yet available for booking.' | translate }}
+            {{ 'At least one active rate plan must be configured for the room type before activation.' | translate }}
           </p>
           <button
             class="btn btn-primary"
@@ -249,10 +249,10 @@
             (click)="activateRoom()">
             @if (activating()) {
               <mat-spinner diameter="16"></mat-spinner>
-              Activating...
+              {{ 'Activating...' | translate }}
             } @else {
               <mat-icon>check_circle</mat-icon>
-              Activate Room
+              {{ 'Activate Room' | translate }}
             }
           </button>
         </div>
@@ -263,13 +263,13 @@
     @if (r.status === 'available') {
       <div class="detail-card">
         <div class="card-header">
-          <h3 class="card-title">Room Configuration</h3>
+          <h3 class="card-title">{{ 'Room Configuration' | translate }}</h3>
         </div>
         <div class="card-body">
           <p class="notice notice-muted">
             <mat-icon class="notice-icon">settings</mat-icon>
-            Move this room back to <strong>Setup</strong> mode to reconfigure rate plans or room type settings.
-            The room will be removed from booking availability.
+            {{ 'Move this room back to' | translate }} <strong>{{ 'Setup' | translate }}</strong> {{ 'mode to reconfigure rate plans or room type settings.' | translate }}
+            {{ 'The room will be removed from booking availability.' | translate }}
           </p>
           <button
             class="btn btn-danger btn-sm"
@@ -277,10 +277,10 @@
             (click)="deactivateRoom()">
             @if (deactivating()) {
               <mat-spinner diameter="16"></mat-spinner>
-              Deactivating...
+              {{ 'Deactivating...' | translate }}
             } @else {
               <mat-icon>settings_backup_restore</mat-icon>
-              Move to Setup
+              {{ 'Move to Setup' | translate }}
             }
           </button>
         </div>
@@ -290,7 +290,7 @@
     <!-- Out of Order toggle -->
     <div class="detail-card">
       <div class="card-header">
-        <h3 class="card-title">Out of Order</h3>
+        <h3 class="card-title">{{ 'Out of Order' | translate }}</h3>
       </div>
       <div class="card-body">
 
@@ -299,25 +299,25 @@
             [checked]="editOoo()"
             (change)="editOoo.set($event.checked)"
             [disabled]="saving()">
-            Mark room as Out of Order
+            {{ 'Mark room as Out of Order' | translate }}
           </mat-slide-toggle>
         </div>
 
         @if (editOoo()) {
           <div class="ooo-fields">
             <div class="field-group">
-              <label class="field-label" for="ooo-reason">Reason</label>
+              <label class="field-label" for="ooo-reason">{{ 'Reason' | translate }}</label>
               <input
                 id="ooo-reason"
                 type="text"
                 class="field-input"
-                placeholder="e.g. Plumbing repair"
+                [placeholder]="'e.g. Plumbing repair' | translate"
                 maxlength="500"
                 [ngModel]="editOooReason()"
                 (ngModelChange)="editOooReason.set($event)" />
             </div>
             <div class="field-group">
-              <label class="field-label" for="ooo-ready">Expected ready date</label>
+              <label class="field-label" for="ooo-ready">{{ 'Expected ready date' | translate }}</label>
               <input
                 id="ooo-ready"
                 type="date"
@@ -335,9 +335,9 @@
             (click)="saveOooStatus()">
             @if (saving()) {
               <mat-spinner diameter="16" />
-              Saving…
+              {{ 'Saving…' | translate }}
             } @else {
-              Save
+              {{ 'Save' | translate }}
             }
           </button>
         </div>

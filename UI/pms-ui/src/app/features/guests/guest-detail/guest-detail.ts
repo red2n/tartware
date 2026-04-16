@@ -54,6 +54,7 @@ type CommunicationItem = {
 
 type DetailTab = "profile" | "preferences" | "documents" | "communications";
 
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-guest-detail",
 	standalone: true,
@@ -64,6 +65,7 @@ type DetailTab = "profile" | "preferences" | "documents" | "communications";
 		MatButtonModule,
 		MatProgressSpinnerModule,
 		MatTooltipModule,
+		TranslatePipe,
 	],
 	templateUrl: "./guest-detail.html",
 	styleUrl: "./guest-detail.scss",

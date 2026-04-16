@@ -4,7 +4,7 @@
  * Ensures the OpenTelemetry collector is reachable before starting dev services.
  * 1. If OTEL exporter vars are unset/blank, exits successfully (telemetry disabled).
  * 2. Otherwise, attempts a TCP connection to the configured host/port.
- * 3. If unreachable, tries `docker compose up -d opensearch otel-collector`.
+ * 3. If unreachable, tries `docker compose up -d opensearch-node otel-collector`.
  * 4. If still unreachable, prints guidance and exits with code 1.
  */
 
@@ -59,12 +59,12 @@ const startCollector = () => {
   console.log("⚙️  Attempting to start OpenTelemetry collector via docker compose...");
   const result = spawnSync(
     "docker",
-    ["compose", "up", "-d", "opensearch", "otel-collector"],
+    ["compose", "up", "-d", "opensearch-node", "otel-collector"],
     { stdio: "inherit" },
   );
   if (result.status !== 0) {
     console.error(
-      "✗ Failed to start otel-collector via docker compose. Please ensure Docker is running and rerun `docker compose up -d opensearch otel-collector` manually.",
+      "✗ Failed to start otel-collector via docker compose. Please ensure Docker is running and rerun `docker compose up -d opensearch-node otel-collector` manually.",
     );
     return false;
   }
@@ -94,7 +94,7 @@ const main = async () => {
 
   console.error(
     `✗ Unable to reach OpenTelemetry collector at ${host}:${port}. ` +
-      "Start it manually with `docker compose up -d opensearch otel-collector`, " +
+      "Start it manually with `docker compose up -d opensearch-node otel-collector`, " +
       "or disable telemetry by clearing OTEL_EXPORTER_OTLP_* before running dev servers.",
   );
   process.exit(1);

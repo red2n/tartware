@@ -54,7 +54,7 @@
           } @else if (confirmingDateRoll()) {
             <div class="execute-confirm">
               <span class="confirm-text">{{ 'Advance business date without audit?' | translate }}</span>
-              <input type="text" class="field-input field-sm" placeholder="Reason (required)"
+              <input type="text" class="field-input field-sm" [placeholder]="'Reason (required)' | translate"
                      [ngModel]="dateRollReason()" (ngModelChange)="dateRollReason.set($event)" />
               <button class="btn btn-warning btn-sm" (click)="manualDateRoll()" [disabled]="dateRolling() || !dateRollReason()">
                 @if (dateRolling()) { <mat-spinner diameter="16"></mat-spinner> }
@@ -140,7 +140,7 @@
 
   <!-- ═══ TAB NAVIGATION ═══ -->
   <div class="filter-bar">
-    <nav class="filter-tabs" aria-label="Night audit sections">
+    <nav class="filter-tabs" [attr.aria-label]="'Night audit sections' | translate">
       <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'status'" (click)="setTab('status')">{{ 'Overview' | translate }}</button>
       <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'trial-balance'" (click)="setTab('trial-balance')">{{ 'Trial Balance' | translate }}</button>
       <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'pre-audit'" (click)="setTab('pre-audit')">
