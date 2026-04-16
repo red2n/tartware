@@ -27,7 +27,7 @@
     "build": "pnpm run check && npx nx run-many -t build && npx nx run-many -t typecheck --exclude=@tartware/pms-ui --exclude=@tartware/schemas",
     "build:core": "npx nx run @tartware/core-service:build",
     "build:schema": "npx nx run @tartware/schemas:build",
-    "build:ui": "npx nx run @tartware/schemas:build && npx nx run @tartware/pms-ui:build",
+    "build:ui": "npx nx run @tartware/schemas:build && node scripts/stamp-ui-version.mjs && npx nx run @tartware/pms-ui:build",
     "clean": "npx nx run-many -t clean",
     "clean:all": "node ./scripts/clean-all.mjs",
     "check": "pnpm run lint && pnpm run biome && pnpm run knip",

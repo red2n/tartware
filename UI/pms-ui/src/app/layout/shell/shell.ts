@@ -12,7 +12,6 @@ import { filter, type Subscription } from "rxjs";
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { NotificationService } from "../../core/notifications/notification.service";
-import { RegistryService } from "../../core/registry/registry.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { ToastContainerComponent } from "../../shared/toast/toast-container";
 import type { NavItem } from "../nav-config";
@@ -41,13 +40,11 @@ export class ShellComponent implements OnInit, OnDestroy {
 	private static readonly SIDEBAR_KEY = "sidebar-collapsed";
 	private static readonly RIGHT_DOCK_KEY = "right-dock-collapsed";
 	private readonly router = inject(Router);
-	private readonly registry = inject(RegistryService);
 	private readonly notificationService = inject(NotificationService);
 	private readonly screenPerms = inject(ScreenPermissionsService);
 	private readonly settings = inject(SettingsService);
 	readonly sidebarCollapsed = signal(this.loadSidebarState());
 	readonly rightDockCollapsed = signal(this.loadRightDockState());
-	readonly statusBarVisible = this.registry.statusBarVisible;
 	readonly activeParent = signal<NavItem | null>(null);
 	readonly filteredActiveChildren = computed(() => {
 		const parent = this.activeParent();
