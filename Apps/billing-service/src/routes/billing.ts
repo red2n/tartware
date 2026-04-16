@@ -228,7 +228,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         offset,
       } = ChargePostingListQuerySchema.parse(request.query);
 
-      const charges = await listChargePostings({
+      const data = await listChargePostings({
         tenantId: tenant_id,
         propertyId: property_id,
         folioId: folio_id,
@@ -240,7 +240,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         offset,
       });
 
-      return ChargePostingListResponseSchema.parse(charges);
+      return ChargePostingListResponseSchema.parse({ data, meta: { count: data.length } });
     },
   );
   // PRE-AUDIT CHECKLIST

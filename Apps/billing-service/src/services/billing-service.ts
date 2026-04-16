@@ -505,9 +505,12 @@ export const getBucketCheck = async (options: {
   );
   const totalSellable = Number(totalRooms[0]?.cnt ?? 0);
 
-  // 2. Rooms physically occupied (derived from reservations with CHECKED_IN status)
+  // 2. Rooms physically occupied (distinct rooms with CHECKED_IN reservations).
+  // COUNT(DISTINCT room_number) guards against data anomalies where a room
+  // could have multiple CHECKED_IN rows (e.g., room-move corrections), which
+  // would otherwise inflate the occupancy count and break the bucket check.
   const { rows: occupiedRooms } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(DISTINCT room_number)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND status = 'CHECKED_IN' AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],

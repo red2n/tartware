@@ -378,10 +378,7 @@
   &--mid   { width: 60%; }
 }
 
-@keyframes tl-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
+// tl-pulse animation is defined in styles/shared.scss — do not redefine here.
 
 .tl-footer {
   border-top: 1px solid var(--borderColor-muted);

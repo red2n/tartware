@@ -93,6 +93,7 @@ const DashboardStatsQueryJsonSchema = schemaFromZod(
   DashboardStatsQuerySchema,
   "DashboardStatsQuery",
 );
+const ActivityQueryJsonSchema = schemaFromZod(ActivityQuerySchema, "ActivityQuery");
 const DashboardStatsResponseJsonSchema = schemaFromZod(DashboardStatsSchema, "DashboardStats");
 const PaginatedActivityResponseJsonSchema = schemaFromZod(
   PaginatedActivitySchema,
@@ -270,7 +271,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: DASHBOARD_TAG,
         summary: "Recent reservations / activity feed",
-        querystring: DashboardStatsQueryJsonSchema,
+        querystring: ActivityQueryJsonSchema,
         response: {
           200: PaginatedActivityResponseJsonSchema,
         },
