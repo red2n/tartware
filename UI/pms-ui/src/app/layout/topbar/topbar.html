@@ -142,7 +142,7 @@
     </div>
 
     <!-- Language selector -->
-    <button class="title-bar-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate">
+    <button class="title-bar-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate" [attr.aria-label]="'Language' | translate">
       <mat-icon>translate</mat-icon>
     </button>
 
@@ -158,7 +158,7 @@
     </mat-menu>
 
     <!-- Theme toggle -->
-    <button class="title-bar-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate">
+    <button class="title-bar-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate" [attr.aria-label]="'Theme' | translate">
       <mat-icon>{{ isDark() ? 'dark_mode' : 'light_mode' }}</mat-icon>
     </button>
 
@@ -187,7 +187,7 @@
     </mat-menu>
 
     <!-- User menu -->
-    <button class="title-bar-btn avatar-btn" [matMenuTriggerFor]="userMenu">
+    <button class="title-bar-btn avatar-btn" [matMenuTriggerFor]="userMenu" [attr.aria-label]="'User menu' | translate">
       @if (user(); as u) {
         <span class="avatar avatar-sm user-avatar">
           {{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}

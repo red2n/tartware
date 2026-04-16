@@ -137,6 +137,7 @@
   border: 1px solid var(--color-header-search-border);
   border-radius: var(--borderRadius-medium);
   background: var(--color-header-search-bg);
+  color: var(--fgColor-default);
   cursor: text;
   font-size: var(--base-text-size-sm);
   transition: border-color var(--base-duration-100), background var(--base-duration-100);
@@ -196,8 +197,7 @@
   border: 1px solid var(--borderColor-default);
   border-radius: var(--borderRadius-small);
   background: var(--bgColor-muted);
-  color: var(--fgColor-muted);
-  opacity: 0.6;
+  color: var(--fgColor-default);
   white-space: nowrap;
 }
 

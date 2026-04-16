@@ -1,6 +1,6 @@
 <div class="dashboard-page">
   <app-page-header title="Dashboard" description="Real-time overview of property operations and key metrics">
-    <button class="btn btn-invisible" (click)="loadDashboard()" [matTooltip]="'Refresh' | translate">
+    <button class="btn btn-invisible" (click)="loadDashboard()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh dashboard' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </app-page-header>
@@ -154,14 +154,15 @@
     <!-- Recent Activity — @defer shows skeleton while loadActivity() runs -->
     <div class="detail-card changelog-panel">
       <div class="card-header changelog-header">
-        <h3 class="card-title">
+        <h2 class="card-title">
           <mat-icon class="changelog-title-icon">bolt</mat-icon>
           {{ 'Recent Activity' | translate }}
-        </h3>
+        </h2>
         <button class="btn btn-invisible btn-sm changelog-refresh-btn"
           (click)="refreshActivity()"
           [disabled]="refreshingActivity()"
-          [matTooltip]="'Refresh activity' | translate">
+          [matTooltip]="'Refresh activity' | translate"
+          [attr.aria-label]="'Refresh activity' | translate">
           @if (refreshingActivity()) {
             <mat-spinner diameter="14"></mat-spinner>
           } @else {
@@ -262,10 +263,10 @@
     <!-- Upcoming Tasks — @defer shows skeleton while loadTasks() runs -->
     <div class="detail-card changelog-panel">
       <div class="card-header changelog-header">
-        <h3 class="card-title">
+        <h2 class="card-title">
           <mat-icon class="changelog-title-icon">task_alt</mat-icon>
           {{ 'Upcoming Tasks' | translate }}
-        </h3>
+        </h2>
       </div>
       @defer (when tasksReady()) {
         <div class="card-body changelog-body">
@@ -327,10 +328,10 @@
       @if (roomSummary(); as rm) {
         <div class="detail-card clickable" (click)="navigateToRooms()">
           <div class="card-header">
-            <h3 class="card-title">
+            <h2 class="card-title">
               <mat-icon>meeting_room</mat-icon>
               {{ 'Room Availability' | translate }}
-            </h3>
+            </h2>
           </div>
           <div class="card-body">
             <div class="stat-row stat-row-primary">
@@ -399,10 +400,10 @@
       @if (roomSummary(); as rm) {
         <div class="detail-card clickable" (click)="navigateToHousekeeping()">
           <div class="card-header">
-            <h3 class="card-title">
+            <h2 class="card-title">
               <mat-icon>cleaning_services</mat-icon>
               {{ 'Housekeeping' | translate }}
-            </h3>
+            </h2>
           </div>
           <div class="card-body">
             <div class="stat-row stat-row-primary">
@@ -469,10 +470,10 @@
       @if (rateSummary(); as rt) {
         <div class="detail-card clickable" (click)="navigateToRates()">
           <div class="card-header">
-            <h3 class="card-title">
+            <h2 class="card-title">
               <mat-icon>sell</mat-icon>
               {{ 'Rate Plans' | translate }}
-            </h3>
+            </h2>
           </div>
           <div class="card-body">
             <div class="stat-row stat-row-primary">
@@ -532,10 +533,10 @@
       @if (sparkline(); as spark) {
         <div class="detail-card">
           <div class="card-header">
-            <h3 class="card-title">
+            <h2 class="card-title">
               <mat-icon>show_chart</mat-icon>
               {{ 'Booking Activity' | translate }}
-            </h3>
+            </h2>
           </div>
           <div class="card-body dashboard-sparkline-card">
             <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg sparkline-lg" aria-hidden="true">

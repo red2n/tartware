@@ -43,6 +43,10 @@
               "optimization": {
                 "fonts": {
                   "inline": false
+                },
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
                 }
               },
               "budgets": [
