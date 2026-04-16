@@ -365,6 +365,5 @@ test-results/
 playwright-report/
 
 # ============================================================================
-# Auto-generated build version
+# Environments
 # ============================================================================
-UI/pms-ui/src/environments/build-version.ts

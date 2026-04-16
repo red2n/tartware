@@ -60,15 +60,26 @@ export class StatusBarComponent implements OnInit, OnDestroy {
 		const ts = this.now();
 		const tz = this.propertyTimezone();
 		const d = new Date(ts);
-		return d.toLocaleString("en-US", {
-			timeZone: tz,
-			weekday: "short",
-			month: "short",
-			day: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-			hour12: true,
-		});
+		try {
+			return d.toLocaleString("en-US", {
+				timeZone: tz,
+				weekday: "short",
+				month: "short",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				hour12: true,
+			});
+		} catch {
+			return d.toLocaleString("en-US", {
+				weekday: "short",
+				month: "short",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				hour12: true,
+			});
+		}
 	});
 
 	readonly lastUpdatedText = computed(() => {

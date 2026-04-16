@@ -61,24 +61,27 @@ export const chargeCancellationPenalty = async (
   if (command.penalty_amount_override) {
     penaltyAmount = command.penalty_amount_override;
   } else {
-    // Derive from rate plan penalty definition (first-night charge is the standard)
-    let ratePlanPenalty: number | null = null;
+    // Derive from rate cancellation policy (first-night charge is the standard)
+    let ratePenalty: number | null = null;
     if (reservation.rate_id) {
-      const { rows: rpRows } = await query<{ penalty_amount: string | null }>(
+      const { rows: rateRows } = await query<{ penalty_amount: string | null }>(
         `SELECT (cancellation_policy->>'penalty')::text AS penalty_amount
          FROM public.rates
-         WHERE id = $1::uuid
+         WHERE id = $1::uuid AND tenant_id = $2::uuid
          LIMIT 1`,
-        [reservation.rate_id],
+        [reservation.rate_id, context.tenantId],
       );
-      const rp = rpRows[0];
-      if (rp?.penalty_amount) {
-        ratePlanPenalty = Number(rp.penalty_amount);
+      const rate = rateRows[0];
+      if (rate?.penalty_amount) {
+        const parsed = Number(rate.penalty_amount);
+        if (Number.isFinite(parsed)) {
+          ratePenalty = parsed;
+        }
       }
     }
 
     // Fall back to first-night room rate
-    penaltyAmount = ratePlanPenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
+    penaltyAmount = ratePenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
 
     if (penaltyAmount <= 0) {
       throw new BillingCommandError(

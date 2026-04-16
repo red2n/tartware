@@ -128,7 +128,8 @@ npx playwright show-report
 Build, purge old container/image, and deploy fresh to local Docker:
 
 ```bash
-cd /home/navin/tartware && pnpm run build:ui && \
+# From repository root
+pnpm run build:ui && \
 cd UI/pms-ui && \
 sudo docker rm -f tartware-pms-ui 2>/dev/null; \
 sudo docker rmi -f tartware-pms-ui 2>/dev/null; \
@@ -147,8 +148,8 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u red2n --password-stdin
 ```
 
 ```bash
-# 1. Build schemas + Angular production bundle
-cd /home/navin/tartware && pnpm run build:ui && \
+# 1. Build schemas + Angular production bundle (from repo root)
+pnpm run build:ui && \
 
 # 2. Build Docker image & push to GHCR
 cd UI/pms-ui && \

@@ -304,8 +304,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
             AND r.is_deleted = false
             AND (
               r.created_at > NOW() - INTERVAL '48 hours'
-              OR (r.status IN ('CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'NO_SHOW')
-                  AND r.updated_at > NOW() - INTERVAL '48 hours')
+            AND false /* updated-status rows covered by union branches below */
             )
 
           UNION ALL

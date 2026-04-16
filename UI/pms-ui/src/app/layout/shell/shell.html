@@ -39,6 +39,8 @@
   </div>
 
   <!-- Status Bar (full width, bottom — VS Code style) -->
-  <app-status-bar />
+  @if (statusBarVisible()) {
+    <app-status-bar />
+  }
 </div>
 <app-toast-container />
