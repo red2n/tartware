@@ -143,14 +143,16 @@ export const executeNightAudit = async (
     // Step 7+8: Advance business date + unlock postings + set audit status
     // Combined into a single UPDATE for atomicity — readers never see
     // an advanced date without COMPLETED status.
-    if (shouldAdvanceDate) {
+    // Only advance the date when the audit succeeded; failed audits must
+    // never roll the business date forward.
+    if (shouldAdvanceDate && auditSucceeded) {
       await query(
         `UPDATE public.business_dates
          SET business_date = ($3::date + INTERVAL '1 day')::date,
              previous_business_date = $3::date,
              date_rolled_at = NOW(), date_rolled_by = $4::uuid,
              allow_postings = true,
-             night_audit_status = $5,
+             night_audit_status = 'COMPLETED',
              night_audit_completed_at = NOW(),
              night_audit_completed_by = $4::uuid,
              is_locked = false,
@@ -161,10 +163,11 @@ export const executeNightAudit = async (
           context.tenantId,
           auditDate,
           actorId,
-          auditSucceeded ? "COMPLETED" : "FAILED",
         ],
       );
-    } else if (shouldLockPostings) {
+    } else if (shouldLockPostings || shouldAdvanceDate) {
+      // Unlock postings + record status (FAILED when audit didn't succeed,
+      // COMPLETED when advance wasn't requested but audit passed)
       await query(
         `UPDATE public.business_dates
          SET allow_postings = true,

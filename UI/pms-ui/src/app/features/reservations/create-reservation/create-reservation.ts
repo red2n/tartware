@@ -158,6 +158,9 @@ export class CreateReservationComponent implements OnInit {
 	/** Monotonically increasing counter to discard stale recommendation responses. */
 	private recRequestSeq = 0;
 
+	/** Monotonically increasing counter to discard stale calendar rate responses. */
+	private calRateSeq = 0;
+
 	/** Room types sorted: recommended first (by best score desc), then the rest. */
 	readonly sortedRoomTypes = computed(() => {
 		const recs = this.recommendations();
@@ -420,6 +423,8 @@ export class CreateReservationComponent implements OnInit {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) return;
 
+		const seq = ++this.calRateSeq;
+
 		try {
 			// end_date is exclusive (last night = checkOut - 1 day)
 			const lastNight = new Date(`${this.checkOutDate}T00:00:00`);
@@ -440,6 +445,7 @@ export class CreateReservationComponent implements OnInit {
 				"/rate-calendar",
 				params,
 			);
+			if (seq !== this.calRateSeq) return;
 			const map = new Map<string, number>();
 			if (Array.isArray(entries)) {
 				for (const e of entries) {
@@ -449,7 +455,7 @@ export class CreateReservationComponent implements OnInit {
 			this.calendarRates.set(map);
 		} catch {
 			// Non-blocking — fall back to base_rate pricing
-			this.calendarRates.set(new Map());
+			if (seq === this.calRateSeq) this.calendarRates.set(new Map());
 		}
 	}
 

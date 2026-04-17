@@ -181,6 +181,21 @@
 	line-height: var(--base-size-20);
 }
 
+.rec-score-high {
+	background: var(--bgColor-success-muted);
+	color: var(--fgColor-success);
+}
+
+.rec-score-medium {
+	background: var(--bgColor-attention-muted);
+	color: var(--fgColor-attention);
+}
+
+.rec-score-low {
+	background: var(--bgColor-danger-muted);
+	color: var(--fgColor-danger);
+}
+
 .rt-rec-rooms {
 	color: var(--fgColor-muted);
 	font-weight: var(--base-text-weight-medium);
