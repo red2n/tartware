@@ -158,12 +158,7 @@ export const executeNightAudit = async (
              is_locked = false,
              updated_at = NOW(), updated_by = $4
          WHERE property_id = $1 AND tenant_id = $2`,
-        [
-          command.property_id,
-          context.tenantId,
-          auditDate,
-          actorId,
-        ],
+        [command.property_id, context.tenantId, auditDate, actorId],
       );
     } else if (shouldLockPostings || shouldAdvanceDate) {
       // Unlock postings + record status (FAILED when audit didn't succeed,
