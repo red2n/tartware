@@ -19,7 +19,12 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-user-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule,
+	imports: [
+		FormsModule,
+		MatButtonModule,
+		MatDialogModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
 		TranslatePipe,
 	],
 	templateUrl: "./create-user-dialog.html",

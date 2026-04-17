@@ -15,9 +15,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-add-component-dialog",
 	standalone: true,
-	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule,
-		TranslatePipe,
-	],
+	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./add-component-dialog.html",
 	styleUrl: "./add-component-dialog.scss",
 })

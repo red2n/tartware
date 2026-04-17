@@ -7,15 +7,12 @@ import type { CreatePackageBody } from "@tartware/schemas";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
-import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
-
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 @Component({
 	selector: "app-create-package-dialog",
 	standalone: true,
-	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule,
-		TranslatePipe,
-	],
+	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./create-package-dialog.html",
 	styleUrl: "./create-package-dialog.scss",
 })

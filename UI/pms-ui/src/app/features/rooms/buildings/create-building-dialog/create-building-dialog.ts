@@ -10,8 +10,8 @@ import type { BuildingGridItem } from "@tartware/schemas";
 import { ApiService, ApiValidationError } from "../../../../core/api/api.service";
 import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
-import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { TranslatePipe } from "../../../../core/i18n/translate.pipe";
+import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
 import { ToastService } from "../../../../shared/toast/toast.service";
 
 const BUILDING_TYPES = [
