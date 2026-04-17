@@ -2,6 +2,55 @@
 
 A **command-driven Property Management System** built as a TypeScript monorepo targeting **20K ops/sec**. All write traffic flows through a central Command Center into Kafka; domain services consume commands asynchronously. Read traffic is proxied via the API Gateway directly to backend services.
 
+## Architecture
+<img width="2752" height="1536" alt="unnamed" src="https://github.com/user-attachments/assets/fc3212e2-17e9-408c-a82b-4d7921c826e0" />
+
+## Build Status
+
+### Monorepo
+
+[![Build](https://github.com/red2n/tartware/actions/workflows/build.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/build.yml)
+[![Duplo Duplicate Scan](https://github.com/red2n/tartware/actions/workflows/duplo.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/duplo.yml)
+[![CodeQL](https://github.com/red2n/tartware/actions/workflows/codeql.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/codeql.yml)
+
+### Services
+
+| Package | Status |
+|---------|--------|
+| API Gateway | [![CI · API Gateway](https://github.com/red2n/tartware/actions/workflows/ci-api-gateway.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-api-gateway.yml) |
+| Core Service | [![CI · Core Service](https://github.com/red2n/tartware/actions/workflows/ci-core-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-core-service.yml) |
+| Reservations Command Service | [![CI · Reservations Command Service](https://github.com/red2n/tartware/actions/workflows/ci-reservations-command-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-reservations-command-service.yml) |
+| Guests Service | [![CI · Guests Service](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guests-service.yml) |
+| Rooms Service | [![CI · Rooms Service](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-rooms-service.yml) |
+| Billing Service | [![CI · Billing Service](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-billing-service.yml) |
+| Housekeeping Service | [![CI · Housekeeping Service](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-housekeeping-service.yml) |
+| Availability Guard Service | [![CI · Availability Guard Service](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-availability-guard-service.yml) |
+| Notification Service | [![CI · Notification Service](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-notification-service.yml) |
+| Revenue Service | [![CI · Revenue Service](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-revenue-service.yml) |
+
+### UI
+
+| Package | Status |
+|---------|--------|
+| PMS UI | [![CI · PMS UI](https://github.com/red2n/tartware/actions/workflows/ci-pms-ui.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-pms-ui.yml) |
+| Guest Portal | [![CI · Guest Portal](https://github.com/red2n/tartware/actions/workflows/ci-guest-portal.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-guest-portal.yml) |
+
+### Shared Libraries
+
+| Package | Status |
+|---------|--------|
+| Schemas | [![CI · Schemas](https://github.com/red2n/tartware/actions/workflows/ci-schemas.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-schemas.yml) |
+| Command Center Shared | [![CI · Command Center Shared](https://github.com/red2n/tartware/actions/workflows/ci-command-center-shared.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-command-center-shared.yml) |
+| Candidate Pipeline | [![CI · Candidate Pipeline](https://github.com/red2n/tartware/actions/workflows/ci-candidate-pipeline.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-candidate-pipeline.yml) |
+| Fastify Server | [![CI · Fastify Server](https://github.com/red2n/tartware/actions/workflows/ci-fastify-server.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-fastify-server.yml) |
+| Outbox | [![CI · Outbox](https://github.com/red2n/tartware/actions/workflows/ci-outbox.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-outbox.yml) |
+| OpenAPI Utils | [![CI · OpenAPI Utils](https://github.com/red2n/tartware/actions/workflows/ci-openapi-utils.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-openapi-utils.yml) |
+| Command Consumer Utils | [![CI · Command Consumer Utils](https://github.com/red2n/tartware/actions/workflows/ci-command-consumer-utils.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-command-consumer-utils.yml) |
+| Config | [![CI · Config](https://github.com/red2n/tartware/actions/workflows/ci-config.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-config.yml) |
+| Telemetry | [![CI · Telemetry](https://github.com/red2n/tartware/actions/workflows/ci-telemetry.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-telemetry.yml) |
+| Tenant Auth | [![CI · Tenant Auth](https://github.com/red2n/tartware/actions/workflows/ci-tenant-auth.yml/badge.svg)](https://github.com/red2n/tartware/actions/workflows/ci-tenant-auth.yml) |
+
+
 ---
 
 ## Table of Contents
