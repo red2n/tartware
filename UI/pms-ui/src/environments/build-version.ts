@@ -1,2 +1,2 @@
-// Auto-generated at build time. Do not edit manually.
-export const BUILD_VERSION = '202604170755-3f8e904b';
+// Fallback — overwritten by scripts/stamp-ui-version.mjs at build time.
+export const BUILD_VERSION = "dev";
