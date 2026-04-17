@@ -138,23 +138,31 @@ export const executeNightAudit = async (
       }
     }
 
-    // Step 7: Advance business date
-    if (shouldAdvanceDate) {
+    auditSucceeded = true;
+  } finally {
+    // Step 7+8: Advance business date + unlock postings + set audit status
+    // Combined into a single UPDATE for atomicity — readers never see
+    // an advanced date without COMPLETED status.
+    // Only advance the date when the audit succeeded; failed audits must
+    // never roll the business date forward.
+    if (shouldAdvanceDate && auditSucceeded) {
       await query(
         `UPDATE public.business_dates
          SET business_date = ($3::date + INTERVAL '1 day')::date,
              previous_business_date = $3::date,
              date_rolled_at = NOW(), date_rolled_by = $4::uuid,
+             allow_postings = true,
+             night_audit_status = 'COMPLETED',
+             night_audit_completed_at = NOW(),
+             night_audit_completed_by = $4::uuid,
+             is_locked = false,
              updated_at = NOW(), updated_by = $4
          WHERE property_id = $1 AND tenant_id = $2`,
         [command.property_id, context.tenantId, auditDate, actorId],
       );
-    }
-
-    auditSucceeded = true;
-  } finally {
-    // Step 8: Unlock postings and update audit status
-    if (shouldLockPostings) {
+    } else if (shouldLockPostings || shouldAdvanceDate) {
+      // Unlock postings + record status (FAILED when audit didn't succeed,
+      // COMPLETED when advance wasn't requested but audit passed)
       await query(
         `UPDATE public.business_dates
          SET allow_postings = true,
@@ -165,6 +173,17 @@ export const executeNightAudit = async (
              updated_at = NOW(), updated_by = $3
          WHERE property_id = $1 AND tenant_id = $2`,
         [command.property_id, context.tenantId, actorId, auditSucceeded ? "COMPLETED" : "FAILED"],
+      );
+    } else {
+      // Neither locking nor advancing — still record audit status
+      await query(
+        `UPDATE public.business_dates
+         SET night_audit_status = $3,
+             night_audit_completed_at = NOW(),
+             night_audit_completed_by = $4::uuid,
+             updated_at = NOW(), updated_by = $4
+         WHERE property_id = $1 AND tenant_id = $2`,
+        [command.property_id, context.tenantId, auditSucceeded ? "COMPLETED" : "FAILED", actorId],
       );
     }
   }

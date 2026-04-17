@@ -35,6 +35,12 @@
   color: var(--fgColor-attention);
 }
 
+/* ── Rate card calendar-override total ── */
+.rate-total-override s {
+  font-size: var(--base-text-size-xs);
+  margin-right: var(--base-size-4);
+}
+
 /* ── Guest row enrichment ── */
 .guest-name-row {
   display: flex;
@@ -186,8 +192,8 @@
 }
 
 .rec-score-low {
-	background: var(--bgColor-neutral-muted);
-	color: var(--fgColor-muted);
+	background: var(--bgColor-danger-muted);
+	color: var(--fgColor-danger);
 }
 
 .rt-rec-rooms {
@@ -204,3 +210,251 @@
 		@include icon-size(14px);
 	}
 }
+
+/* ── Styles moved from shared.scss ── */
+/* ── Step number badges ── */
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  background: var(--borderColor-muted);
+  color: var(--fgColor-muted);
+  margin-right: var(--base-size-4);
+}
+
+.filter-tab-active .step-num {
+  background: var(--fgColor-accent);
+  color: var(--fgColor-onEmphasis);
+}
+
+.filter-tab-done .step-num {
+  background: var(--bgColor-success-emphasis);
+  color: var(--fgColor-onEmphasis);
+}
+
+.filter-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
+/* ── Styles moved from shared.scss ── */
+/* ── Selectable cards ── */
+.room-type-card,
+.rate-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  padding: var(--base-size-12) var(--base-size-16);
+  border-radius: var(--borderRadius-medium);
+  text-align: left;
+  cursor: pointer;
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
+
+  &:hover {
+    border-color: var(--bgColor-accent-muted);
+  }
+
+  &.selected {
+    border-color: var(--fgColor-accent);
+    box-shadow: 0 0 0 1px var(--fgColor-accent);
+    background: var(--bgColor-accent-muted);
+  }
+}
+
+
+/* ── Styles moved from shared.scss ── */
+/* ── Guest list ── */
+.guest-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  padding: var(--base-size-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+}
+
+.guest-row {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-radius: var(--borderRadius-medium);
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: background var(--base-duration-100);
+
+  &:hover {
+    background: var(--bgColor-muted);
+  }
+
+  &.selected {
+    background: var(--bgColor-accent-muted);
+  }
+}
+
+.guest-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  flex-shrink: 0;
+  background: var(--bgColor-accent-muted);
+  color: var(--fgColor-accent);
+}
+
+.guest-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.guest-name {
+  display: block;
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-default);
+}
+
+
+/* ── Styles moved from shared.scss ── */
+/* ── Step actions ── */
+.step-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--base-size-12);
+  margin-top: var(--base-size-20);
+  padding-top: var(--base-size-16);
+  border-top: 1px solid var(--borderColor-muted);
+}
+
+/* ── Selectable card sub-elements ── */
+.rt-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--base-size-8);
+}
+
+.rt-name,
+.rate-name {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+}
+
+.rt-code {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  font-family: var(--fontStack-monospace);
+}
+
+.rt-details,
+.rate-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-12);
+}
+
+.rt-detail,
+.rate-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-2);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+
+  mat-icon {
+    @include icon-size(14px);
+  }
+}
+
+.rt-price {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-accent);
+}
+
+.rt-check,
+.rate-check,
+.guest-check {
+  color: var(--fgColor-accent);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: var(--base-text-size-lg);
+}
+
+/* ── Rate card list layout ── */
+.rate-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+}
+
+.rate-card {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.rate-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rate-title {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-8);
+}
+
+.rate-occupancy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-12);
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+}
+
+.rate-pricing {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rate-per-night {
+  font-size: var(--base-text-size-lg);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+}
+
+.rate-unit {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+}
+
+.rate-total {
+  display: block;
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-accent);
+  margin-top: var(--base-size-2);
+}
+

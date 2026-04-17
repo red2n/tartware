@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { refundBillingPayment } from "../src/services/billing-command-service.js";
 
-const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
+const { queryMock, queryWithClientMock, withTransactionMock } = vi.hoisted(() => ({
+  queryMock: vi.fn(),
+  queryWithClientMock: vi.fn(),
+  withTransactionMock: vi.fn(),
+}));
 
 vi.mock("../src/lib/db.js", () => ({
   query: queryMock,
-  queryWithClient: vi.fn(),
-  withTransaction: vi.fn(),
+  queryWithClient: queryWithClientMock,
+  withTransaction: withTransactionMock,
 }));
 
 type PaymentRow = {
@@ -42,13 +46,14 @@ const buildRefundPayload = (amount: number) => ({
 describe("refundBillingPayment validation", () => {
   beforeEach(() => {
     queryMock.mockReset();
+    queryWithClientMock.mockReset();
+    withTransactionMock.mockReset();
+    withTransactionMock.mockImplementation(async (fn: (client: unknown) => Promise<unknown>) => fn({}));
   });
 
   it("allows refund equal to original payment", async () => {
-    queryMock.mockImplementation(async (text: string) => {
-      if (text.includes("FROM public.payments") && text.includes("LIMIT 1")) {
-        return { rows: [buildPaymentRow()], rowCount: 1 };
-      }
+    queryMock.mockResolvedValueOnce({ rows: [buildPaymentRow()], rowCount: 1 });
+    queryWithClientMock.mockImplementation(async (_client: unknown, text: string) => {
       if (text.includes("INSERT INTO public.payments")) {
         return { rows: [{ id: "refund-1" }], rowCount: 1 };
       }
@@ -78,13 +83,11 @@ describe("refundBillingPayment validation", () => {
   });
 
   it("allows multiple partial refunds up to original amount", async () => {
-    queryMock.mockImplementation(async (text: string) => {
-      if (text.includes("FROM public.payments") && text.includes("LIMIT 1")) {
-        return {
-          rows: [buildPaymentRow({ amount: 100, refund_amount: 50 })],
-          rowCount: 1,
-        };
-      }
+    queryMock.mockResolvedValueOnce({
+      rows: [buildPaymentRow({ amount: 100, refund_amount: 50 })],
+      rowCount: 1,
+    });
+    queryWithClientMock.mockImplementation(async (_client: unknown, text: string) => {
       if (text.includes("INSERT INTO public.payments")) {
         return { rows: [{ id: "refund-2" }], rowCount: 1 };
       }

@@ -5,6 +5,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { GuestFormFieldsComponent } from "../guest-form-fields/guest-form-fields";
@@ -14,8 +15,6 @@ import {
 	validateEmail,
 	validatePhone,
 } from "../guest-form-utils";
-
-import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-guest-dialog",
 	standalone: true,

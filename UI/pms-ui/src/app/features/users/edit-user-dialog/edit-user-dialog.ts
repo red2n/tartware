@@ -25,7 +25,12 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-edit-user-dialog",
 	standalone: true,
-	imports: [FormsModule, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule,
+	imports: [
+		FormsModule,
+		MatButtonModule,
+		MatDialogModule,
+		MatIconModule,
+		MatProgressSpinnerModule,
 		TranslatePipe,
 	],
 	templateUrl: "./edit-user-dialog.html",

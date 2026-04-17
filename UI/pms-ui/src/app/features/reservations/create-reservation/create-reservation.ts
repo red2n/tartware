@@ -144,6 +144,7 @@ export class CreateReservationComponent implements OnInit {
 	readonly roomTypes = signal<RoomType[]>([]);
 	readonly allRates = signal<RateDetail[]>([]);
 	readonly guests = signal<GuestOption[]>([]);
+	readonly calendarRates = signal<Map<string, number>>(new Map());
 	readonly saving = signal(false);
 	readonly loadingRef = signal(false);
 	readonly guestPage = signal(1);
@@ -156,6 +157,9 @@ export class CreateReservationComponent implements OnInit {
 
 	/** Monotonically increasing counter to discard stale recommendation responses. */
 	private recRequestSeq = 0;
+
+	/** Monotonically increasing counter to discard stale calendar rate responses. */
+	private calRateSeq = 0;
 
 	/** Room types sorted: recommended first (by best score desc), then the rest. */
 	readonly sortedRoomTypes = computed(() => {
@@ -196,11 +200,13 @@ export class CreateReservationComponent implements OnInit {
 			this.checkOutDate = this.minCheckOut;
 		}
 		this.fetchRecommendations();
+		this.fetchCalendarRates();
 	}
 
 	/** When check-out changes, refresh recommendations. */
 	onCheckOutChange(): void {
 		this.fetchRecommendations();
+		this.fetchCalendarRates();
 	}
 
 	// Step 2: Rate selection
@@ -289,7 +295,18 @@ export class CreateReservationComponent implements OnInit {
 	get totalAmount(): number {
 		const rate = this.selectedRate;
 		if (!rate || this.nights <= 0) return 0;
-		return rate.base_rate * this.nights;
+		const calRates = this.calendarRates();
+		if (calRates.size === 0) return rate.base_rate * this.nights;
+
+		let total = 0;
+		const ci = new Date(`${this.checkInDate}T00:00:00`);
+		for (let i = 0; i < this.nights; i++) {
+			const d = new Date(ci);
+			d.setDate(ci.getDate() + i);
+			const key = this.toDateString(d);
+			total += calRates.get(key) ?? rate.base_rate;
+		}
+		return total;
 	}
 
 	/** Step completion guards */
@@ -395,6 +412,53 @@ export class CreateReservationComponent implements OnInit {
 		}
 	}
 
+	/** Fetch rate calendar overrides for the selected rate + date range. */
+	async fetchCalendarRates(): Promise<void> {
+		const rate = this.selectedRate;
+		if (!rate || !this.checkInDate || !this.checkOutDate || this.nights <= 0) {
+			this.calendarRates.set(new Map());
+			return;
+		}
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		const seq = ++this.calRateSeq;
+
+		try {
+			// end_date is exclusive (last night = checkOut - 1 day)
+			const lastNight = new Date(`${this.checkOutDate}T00:00:00`);
+			lastNight.setDate(lastNight.getDate() - 1);
+			const endDate = this.toDateString(lastNight);
+
+			const params: Record<string, string> = {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				start_date: this.checkInDate,
+				end_date: endDate,
+				rate_id: rate.id,
+			};
+			if (this.roomTypeId) {
+				params["room_type_id"] = this.roomTypeId;
+			}
+			const entries = await this.api.get<{ stay_date: string; rate_amount: number }[]>(
+				"/rate-calendar",
+				params,
+			);
+			if (seq !== this.calRateSeq) return;
+			const map = new Map<string, number>();
+			if (Array.isArray(entries)) {
+				for (const e of entries) {
+					map.set(e.stay_date.slice(0, 10), e.rate_amount);
+				}
+			}
+			this.calendarRates.set(map);
+		} catch {
+			// Non-blocking — fall back to base_rate pricing
+			if (seq === this.calRateSeq) this.calendarRates.set(new Map());
+		}
+	}
+
 	/** Get recommendation data for a room type (if available). */
 	recForType(roomTypeId: string): RoomTypeRecommendation | undefined {
 		return this.recommendations().get(roomTypeId);
@@ -448,6 +512,7 @@ export class CreateReservationComponent implements OnInit {
 
 	selectRate(rate: RateDetail): void {
 		this.selectedRateCode = rate.rate_code;
+		this.fetchCalendarRates();
 	}
 
 	selectGuest(g: GuestOption): void {

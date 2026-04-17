@@ -205,7 +205,14 @@
             <div class="rate-pricing">
               <span class="rate-per-night">{{ fmtCurrency(r.base_rate, r.currency) }}</span>
               <span class="rate-unit">/{{ 'night' | translate }}</span>
-              <span class="rate-total">{{ fmtCurrency(r.base_rate * nights, r.currency) }} {{ 'total' | translate }}</span>
+              @if (selectedRateCode === r.rate_code && calendarRates().size > 0) {
+                <span class="rate-total rate-total-override">
+                  <s class="text-muted">{{ fmtCurrency(r.base_rate * nights, r.currency) }}</s>
+                  {{ fmtCurrency(totalAmount, r.currency) }} {{ 'total' | translate }}
+                </span>
+              } @else {
+                <span class="rate-total">{{ fmtCurrency(r.base_rate * nights, r.currency) }} {{ 'total' | translate }}</span>
+              }
             </div>
             @if (selectedRateCode === r.rate_code) {
               <mat-icon class="rate-check">check_circle</mat-icon>
@@ -241,7 +248,7 @@
     <div class="card-body">
 
       <!-- Cancellation & no-show policy info from settings -->
-      <div class="booking-policy-note">
+      <div class="booking-policy-warn">
         <mat-icon>event_busy</mat-icon>
         <span>
           {{ 'Free cancellation within' | translate }} <strong>{{ freeCancelHours() }}h</strong> {{ 'of arrival.' | translate }}

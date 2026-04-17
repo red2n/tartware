@@ -19,9 +19,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-rate-dialog",
 	standalone: true,
-	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule,
-		TranslatePipe,
-	],
+	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./create-rate-dialog.html",
 	styleUrl: "./create-rate-dialog.scss",
 })

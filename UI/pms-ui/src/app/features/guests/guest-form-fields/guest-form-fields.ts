@@ -1,20 +1,17 @@
 import { Component, input, output } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatIconModule } from "@angular/material/icon";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import {
 	GUEST_TITLES,
 	LOYALTY_TIERS,
 	NATIONALITIES,
 	VIP_STATUSES,
 } from "../../../shared/guest-constants";
-
-import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-guest-form-fields",
 	standalone: true,
-	imports: [FormsModule, MatIconModule,
-		TranslatePipe,
-	],
+	imports: [FormsModule, MatIconModule, TranslatePipe],
 	templateUrl: "./guest-form-fields.html",
 })
 export class GuestFormFieldsComponent {
