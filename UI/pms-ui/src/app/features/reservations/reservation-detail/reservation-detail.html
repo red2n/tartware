@@ -51,6 +51,12 @@
           {{ 'Cancellation Penalty' | translate }}
         </button>
       }
+      @if (canModifyDates()) {
+        <button class="btn btn-outline btn-sm" (click)="showModifyDatesConfirm()" [disabled]="actionLoading()" [matTooltip]="'Advance or postpone reservation dates' | translate">
+          <mat-icon>date_range</mat-icon>
+          {{ 'Modify Dates' | translate }}
+        </button>
+      }
     </div>
   }
 </div>
@@ -423,6 +429,68 @@
         } @else {
           <mat-icon>price_change</mat-icon>
           {{ 'Confirm Cancellation Penalty' | translate }}
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Modify reservation dates -->
+@if (confirmingModifyDates()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <mat-icon class="confirm-icon confirm-icon-checkin">date_range</mat-icon>
+      <h3 class="confirm-title">{{ 'Modify Reservation Dates' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      @if (isCheckInLocked()) {
+        <p>{{ 'The guest is already checked in. You may only postpone the check-out date.' | translate }}</p>
+      } @else {
+        <p>{{ 'Advance or postpone the check-in and check-out dates for this reservation.' | translate }}</p>
+      }
+      <div class="form-grid reservation-action-grid">
+        <div class="form-field">
+          <label class="field-label">{{ 'Check-in Date' | translate }} *</label>
+          <input type="date" class="field-input"
+                 [min]="modifyDatesMinCheckIn()"
+                 [disabled]="isCheckInLocked()"
+                 [ngModel]="modifyDatesForm().check_in_date"
+                 (ngModelChange)="modifyDatesForm.set({ ...modifyDatesForm(), check_in_date: $event ?? '' }); onModifyCheckInChange()" />
+          @if (isCheckInLocked()) {
+            <span class="confirm-note">{{ 'Locked — guest is already in-house.' | translate }}</span>
+          } @else {
+            <span class="confirm-note">{{ 'Cannot be set before today.' | translate }}</span>
+          }
+        </div>
+        <div class="form-field">
+          <label class="field-label">{{ 'Check-out Date' | translate }} *</label>
+          <input type="date" class="field-input"
+                 [min]="modifyDatesMinCheckOut()"
+                 [ngModel]="modifyDatesForm().check_out_date"
+                 (ngModelChange)="modifyDatesForm.set({ ...modifyDatesForm(), check_out_date: $event ?? '' })" />
+          @if (isCheckInLocked()) {
+            <span class="confirm-note">{{ 'Can only be postponed, not advanced.' | translate }}</span>
+          }
+        </div>
+      </div>
+      @if (modifyDatesNights(); as n) {
+        <div class="nights-pill">
+          <mat-icon>dark_mode</mat-icon>
+          {{ n }} {{ n > 1 ? ('nights' | translate) : ('night' | translate) }}
+        </div>
+      } @else if (modifyDatesForm().check_in_date && modifyDatesForm().check_out_date) {
+        <span class="field-hint-error">{{ 'Check-out must be after check-in' | translate }}</span>
+      }
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="modifyDates()" [disabled]="actionLoading() || modifyDatesNights() === 0">
+        @if (actionLoading()) {
+          <mat-spinner diameter="16"></mat-spinner>
+          {{ 'Updating...' | translate }}
+        } @else {
+          <mat-icon>date_range</mat-icon>
+          {{ 'Confirm Date Change' | translate }}
         }
       </button>
     </div>

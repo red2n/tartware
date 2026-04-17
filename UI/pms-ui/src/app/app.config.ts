@@ -4,7 +4,7 @@ import {
 	provideBrowserGlobalErrorListeners,
 } from "@angular/core";
 import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
-import { PreloadAllModules, provideRouter, withPreloading } from "@angular/router";
+import { provideRouter } from "@angular/router";
 import { provideServiceWorker } from "@angular/service-worker";
 
 import { routes } from "./app.routes";
@@ -13,7 +13,7 @@ export const appConfig: ApplicationConfig = {
 	providers: [
 		provideBrowserGlobalErrorListeners(),
 		provideAnimationsAsync(),
-		provideRouter(routes, withPreloading(PreloadAllModules)),
+		provideRouter(routes),
 		provideServiceWorker("ngsw-worker.js", {
 			enabled: !isDevMode(),
 			registrationStrategy: "registerWhenStable:30000",

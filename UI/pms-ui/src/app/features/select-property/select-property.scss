@@ -134,3 +134,107 @@
   margin-top: var(--base-size-24);
   text-align: center;
 }
+
+/* ── Styles moved from shared.scss ── */
+/* ── Property card (select-property) ── */
+.property-card-wrapper {
+  border-radius: var(--borderRadius-large);
+  transition: box-shadow var(--base-duration-100);
+
+  &.expanded {
+    box-shadow: 0 0 0 2px var(--bgColor-accent-emphasis);
+    border-radius: var(--borderRadius-large);
+  }
+}
+
+.property-card {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  padding: var(--base-size-12) var(--base-size-16);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-large);
+  cursor: pointer;
+  transition:
+    border-color var(--base-duration-100),
+    box-shadow var(--base-duration-100),
+    background var(--base-duration-100);
+  text-align: left;
+  width: 100%;
+
+  .expanded & {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: var(--borderColor-muted);
+    border-color: var(--bgColor-accent-emphasis);
+  }
+
+  &:hover {
+    border-color: var(--bgColor-accent-emphasis);
+    background: var(--bgColor-accent-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--bgColor-accent-emphasis);
+    outline-offset: 2px;
+  }
+}
+
+.property-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-accent-muted);
+  color: var(--fgColor-accent);
+  flex-shrink: 0;
+
+  mat-icon {
+    @include icon-size(20px);
+  }
+}
+
+.property-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-2);
+  min-width: 0;
+}
+
+.property-card-name {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-card-code {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  font-family: var(--fontStack-monospace);
+}
+
+.property-card-location {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.property-card-chevron {
+  color: var(--fgColor-muted);
+  @include icon-size(20px);
+  flex-shrink: 0;
+  transition: color var(--base-duration-100);
+
+  .property-card:hover & {
+    color: var(--fgColor-accent);
+  }
+}
+

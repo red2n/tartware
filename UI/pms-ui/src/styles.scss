@@ -4,8 +4,8 @@
 
 /* Layer 0: Primer Design System primitives (official tokens) */
 @import '@primer/primitives/dist/css/primitives.css';
-@import '@primer/primitives/dist/css/functional/themes/light.css';
-@import '@primer/primitives/dist/css/functional/themes/dark.css';
+@import url('./styles/primer-light.css');
+@import url('./styles/primer-dark.css');
 
 /* Layer 1: App-specific tokens (sidebar, hero, layout — no Primer equivalent) */
 @import url('./styles/tokens.css');

@@ -39,6 +39,8 @@ const NO_SHOW_CHARGE_ALLOWED = new Set(["CONFIRMED", "NO_SHOW"]);
 const LATE_CHECKOUT_CHARGE_ALLOWED = new Set(["CHECKED_IN"]);
 /** Statuses that allow a cancellation penalty posting. */
 const CANCELLATION_PENALTY_ALLOWED = new Set(["CANCELLED", "NO_SHOW"]);
+/** Statuses that allow date modification (advance/postpone). */
+const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED", "CHECKED_IN"]);
 
 @Component({
 	selector: "app-reservation-detail",
@@ -81,6 +83,7 @@ export class ReservationDetailComponent implements OnInit {
 	readonly confirmingNoShowCharge = signal(false);
 	readonly confirmingLateCheckoutCharge = signal(false);
 	readonly confirmingCancellationPenalty = signal(false);
+	readonly confirmingModifyDates = signal(false);
 	readonly folioBalance = signal<{
 		total_charges: number;
 		total_payments: number;
@@ -102,6 +105,10 @@ export class ReservationDetailComponent implements OnInit {
 		penalty_amount_override: "",
 		currency: "",
 		reason: "",
+	});
+	readonly modifyDatesForm = signal({
+		check_in_date: "",
+		check_out_date: "",
 	});
 
 	/* ── Charge posting ── */
@@ -162,6 +169,48 @@ export class ReservationDetailComponent implements OnInit {
 	readonly canChargeCancellationPenalty = computed(() => {
 		const r = this.reservation();
 		return r ? CANCELLATION_PENALTY_ALLOWED.has(r.status.toUpperCase()) : false;
+	});
+
+	/** Whether the reservation dates can be modified (advance/postpone). */
+	readonly canModifyDates = computed(() => {
+		const r = this.reservation();
+		return r ? MODIFY_DATES_ALLOWED.has(r.status.toUpperCase()) : false;
+	});
+
+	/** CHECKED_IN guests are already in-house — check-in date is locked. */
+	readonly isCheckInLocked = computed(() => {
+		const r = this.reservation();
+		return r?.status.toUpperCase() === "CHECKED_IN";
+	});
+
+	/** Minimum check-in date: today (cannot advance arrival to the past). */
+	readonly modifyDatesMinCheckIn = computed(() => this.todayDateString());
+
+	/**
+	 * Minimum check-out date:
+	 * - CHECKED_IN: original check-out date (can only postpone, not shorten)
+	 * - Others: day after selected check-in
+	 */
+	readonly modifyDatesMinCheckOut = computed(() => {
+		const r = this.reservation();
+		if (r?.status.toUpperCase() === "CHECKED_IN") {
+			return r.check_out_date.substring(0, 10);
+		}
+		const ci = this.modifyDatesForm().check_in_date;
+		if (!ci) return this.todayDateString();
+		const d = new Date(`${ci}T00:00:00`);
+		d.setDate(d.getDate() + 1);
+		return this.toDateString(d);
+	});
+
+	/** Computed nights preview for the modify-dates form. */
+	readonly modifyDatesNights = computed(() => {
+		const f = this.modifyDatesForm();
+		if (!f.check_in_date || !f.check_out_date) return 0;
+		const ci = new Date(`${f.check_in_date}T00:00:00`);
+		const co = new Date(`${f.check_out_date}T00:00:00`);
+		const diff = Math.round((co.getTime() - ci.getTime()) / 86_400_000);
+		return diff > 0 ? diff : 0;
 	});
 
 	/** Whether a miscellaneous charge can be posted — true for any active in-house or confirmed reservation. */
@@ -489,6 +538,26 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingCancellationPenalty.set(true);
 	}
 
+	showModifyDatesConfirm(): void {
+		const r = this.reservation();
+		this.clearActionState();
+		this.modifyDatesForm.set({
+			check_in_date: r?.check_in_date?.substring(0, 10) ?? "",
+			check_out_date: r?.check_out_date?.substring(0, 10) ?? "",
+		});
+		this.confirmingModifyDates.set(true);
+	}
+
+	/** Auto-correct check-out when check-in changes in the modify-dates form. */
+	onModifyCheckInChange(): void {
+		const f = this.modifyDatesForm();
+		if (f.check_out_date && f.check_out_date <= f.check_in_date) {
+			const d = new Date(`${f.check_in_date}T00:00:00`);
+			d.setDate(d.getDate() + 1);
+			this.modifyDatesForm.set({ ...f, check_out_date: this.toDateString(d) });
+		}
+	}
+
 	cancelAction(): void {
 		this.confirmingCheckIn.set(false);
 		this.showAllRoomTypes.set(false);
@@ -498,6 +567,7 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingNoShowCharge.set(false);
 		this.confirmingLateCheckoutCharge.set(false);
 		this.confirmingCancellationPenalty.set(false);
+		this.confirmingModifyDates.set(false);
 	}
 
 	/** Load available rooms matching the reservation's room type for manual selection. */
@@ -800,6 +870,72 @@ export class ReservationDetailComponent implements OnInit {
 		}
 	}
 
+	async modifyDates(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+
+		const form = this.modifyDatesForm();
+		if (!form.check_in_date || !form.check_out_date) {
+			this.toast.error("Both check-in and check-out dates are required.");
+			return;
+		}
+		if (form.check_out_date <= form.check_in_date) {
+			this.toast.error("Check-out date must be after check-in date.");
+			return;
+		}
+
+		const origIn = r.check_in_date.substring(0, 10);
+		const origOut = r.check_out_date.substring(0, 10);
+		const status = r.status.toUpperCase();
+		const today = this.todayDateString();
+
+		// CHECKED_IN: cannot change arrival, can only postpone checkout
+		if (status === "CHECKED_IN") {
+			if (form.check_in_date !== origIn) {
+				this.toast.error("Cannot change check-in date for an in-house guest.");
+				return;
+			}
+			if (form.check_out_date < origOut) {
+				this.toast.error("Cannot advance checkout for an in-house guest. You may only postpone.");
+				return;
+			}
+		}
+
+		// Pre-arrival: cannot advance check-in to before today
+		if (status !== "CHECKED_IN" && form.check_in_date < today) {
+			this.toast.error("Cannot set check-in date in the past.");
+			return;
+		}
+
+		if (form.check_in_date === origIn && form.check_out_date === origOut) {
+			this.toast.error("No date changes detected.");
+			return;
+		}
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+		this.actionSuccess.set(null);
+
+		try {
+			const payload: Record<string, unknown> = {
+				reservation_id: r.id,
+				property_id: r.property_id,
+			};
+			if (form.check_in_date !== origIn) payload["check_in_date"] = form.check_in_date;
+			if (form.check_out_date !== origOut) payload["check_out_date"] = form.check_out_date;
+
+			await this.api.post(`/tenants/${tenantId}/commands/reservation.modify`, payload);
+			this.toast.success("Reservation dates updated.");
+			this.confirmingModifyDates.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to modify reservation dates");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
 	private clearActionState(): void {
 		this.actionSuccess.set(null);
 		this.actionError.set(null);
@@ -810,6 +946,7 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingNoShowCharge.set(false);
 		this.confirmingLateCheckoutCharge.set(false);
 		this.confirmingCancellationPenalty.set(false);
+		this.confirmingModifyDates.set(false);
 	}
 
 	/**
@@ -865,5 +1002,16 @@ export class ReservationDetailComponent implements OnInit {
 	}
 	formatCurrency(amount: number, currency?: string): string {
 		return this.settings.formatCurrency(amount, currency);
+	}
+
+	private todayDateString(): string {
+		return this.toDateString(new Date());
+	}
+
+	private toDateString(d: Date): string {
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, "0");
+		const day = String(d.getDate()).padStart(2, "0");
+		return `${y}-${m}-${day}`;
 	}
 }

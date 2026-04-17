@@ -426,15 +426,19 @@ export class CreateReservationComponent implements OnInit {
 			lastNight.setDate(lastNight.getDate() - 1);
 			const endDate = this.toDateString(lastNight);
 
+			const params: Record<string, string> = {
+				tenant_id: tenantId,
+				property_id: propertyId,
+				start_date: this.checkInDate,
+				end_date: endDate,
+				rate_id: rate.id,
+			};
+			if (this.roomTypeId) {
+				params["room_type_id"] = this.roomTypeId;
+			}
 			const entries = await this.api.get<{ stay_date: string; rate_amount: number }[]>(
 				"/rate-calendar",
-				{
-					tenant_id: tenantId,
-					property_id: propertyId,
-					start_date: this.checkInDate,
-					end_date: endDate,
-					rate_id: rate.id,
-				},
+				params,
 			);
 			const map = new Map<string, number>();
 			if (Array.isArray(entries)) {
