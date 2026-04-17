@@ -100,6 +100,8 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
         night_audit_status: string | null;
         night_audit_started_at: string | null;
         night_audit_completed_at: string | null;
+        previous_business_date: string | null;
+        date_rolled_at: string | null;
         is_locked: boolean;
         allow_postings: boolean;
         allow_check_ins: boolean;
@@ -123,6 +125,8 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
            bd.night_audit_status,
            bd.night_audit_started_at::text,
            bd.night_audit_completed_at::text,
+           bd.previous_business_date::text,
+           bd.date_rolled_at::text,
            COALESCE(bd.is_locked, false) AS is_locked,
            COALESCE(bd.allow_postings, true) AS allow_postings,
            COALESCE(bd.allow_check_ins, true) AS allow_check_ins,
@@ -154,6 +158,8 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
             system_date: new Date().toISOString().slice(0, 10),
             date_status: "OPEN",
             date_status_display: "Open",
+            night_audit_status: "PENDING",
+            night_audit_status_display: "Pending",
             is_locked: false,
             allow_postings: true,
             allow_check_ins: true,
@@ -183,10 +189,12 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
           system_date: row.system_date,
           date_status: row.date_status,
           date_status_display: dateStatusDisplay,
-          night_audit_status: row.night_audit_status ?? undefined,
-          night_audit_status_display: nightAuditStatusDisplay,
+          night_audit_status: row.night_audit_status ?? "PENDING",
+          night_audit_status_display: nightAuditStatusDisplay ?? "Pending",
           night_audit_started_at: row.night_audit_started_at ?? undefined,
           night_audit_completed_at: row.night_audit_completed_at ?? undefined,
+          previous_business_date: row.previous_business_date ?? undefined,
+          date_rolled_at: row.date_rolled_at ?? undefined,
           is_locked: row.is_locked,
           allow_postings: row.allow_postings,
           allow_check_ins: row.allow_check_ins,

@@ -433,6 +433,14 @@
   border-radius: var(--borderRadius-medium);
   transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
 
+  /* Date/time inputs: restore native picker chrome stripped by appearance:none */
+  &[type="date"],
+  &[type="time"],
+  &[type="datetime-local"] {
+    appearance: auto;
+    -webkit-appearance: auto;
+  }
+
   &::placeholder {
     color: var(--fgColor-muted);
   }
@@ -451,6 +459,17 @@
     opacity: 0.6;
     cursor: not-allowed;
     background: var(--bgColor-inset);
+  }
+}
+
+/* Restore native date picker chrome that appearance:none removes */
+input[type="date"].field-input,
+input[type="time"].field-input,
+input[type="datetime-local"].field-input {
+  &::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    filter: var(--color-scheme-filter, none);
   }
 }
 

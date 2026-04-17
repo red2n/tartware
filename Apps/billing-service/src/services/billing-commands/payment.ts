@@ -475,85 +475,92 @@ const refundPayment = async (
   const refundReference =
     command.refund_reference ?? `${original.payment_reference}-RF-${Date.now().toString(36)}`;
 
-  const refundResult = await query<{ id: string }>(
-    `
-      INSERT INTO public.payments (
-        tenant_id,
-        property_id,
-        reservation_id,
-        guest_id,
-        payment_reference,
-        transaction_type,
-        payment_method,
-        amount,
-        currency,
-        status,
-        processed_at,
-        processed_by,
-        metadata,
-        notes,
-        created_by,
-        updated_by
-      ) VALUES (
-        $1::uuid,
-        $2::uuid,
-        $3::uuid,
-        $4::uuid,
-        $5,
-        $6::transaction_type,
-        UPPER($7)::payment_method,
-        $8,
-        UPPER($9),
-        'COMPLETED',
-        NOW(),
-        $10,
-        $11::jsonb,
-        $12,
-        $10,
-        $10
-      )
-      RETURNING id
-    `,
-    [
-      context.tenantId,
-      command.property_id,
-      command.reservation_id,
-      command.guest_id,
-      refundReference,
-      refundTransactionType,
-      command.payment_method ?? original.payment_method,
-      command.amount,
-      command.currency ?? original.currency ?? "USD",
-      actor,
-      JSON.stringify({ reason: command.reason ?? undefined }),
-      command.reason ?? null,
-    ],
-  );
+  return withTransaction(async (client) => {
+    const refundResult = await queryWithClient<{ id: string }>(
+      client,
+      `
+        INSERT INTO public.payments (
+          tenant_id,
+          property_id,
+          reservation_id,
+          guest_id,
+          payment_reference,
+          transaction_type,
+          payment_method,
+          amount,
+          currency,
+          status,
+          processed_at,
+          processed_by,
+          metadata,
+          notes,
+          created_by,
+          updated_by
+        ) VALUES (
+          $1::uuid,
+          $2::uuid,
+          $3::uuid,
+          $4::uuid,
+          $5,
+          $6::transaction_type,
+          UPPER($7)::payment_method,
+          $8,
+          UPPER($9),
+          'COMPLETED',
+          NOW(),
+          $10,
+          $11::jsonb,
+          $12,
+          $10,
+          $10
+        )
+        RETURNING id
+      `,
+      [
+        context.tenantId,
+        command.property_id,
+        command.reservation_id,
+        command.guest_id,
+        refundReference,
+        refundTransactionType,
+        command.payment_method ?? original.payment_method,
+        command.amount,
+        command.currency ?? original.currency ?? "USD",
+        actor,
+        JSON.stringify({ reason: command.reason ?? undefined }),
+        command.reason ?? null,
+      ],
+    );
 
-  const refundId = refundResult.rows[0]?.id;
-  if (!refundId) {
-    throw new BillingCommandError("REFUND_RECORD_FAILED", "Failed to record refund payment entry.");
-  }
+    const refundId = refundResult.rows[0]?.id;
+    if (!refundId) {
+      throw new BillingCommandError(
+        "REFUND_RECORD_FAILED",
+        "Failed to record refund payment entry.",
+      );
+    }
 
-  await query(
-    `
-      UPDATE public.payments
-      SET
-        refund_amount = COALESCE(refund_amount, 0) + $3,
-        status = $4::payment_status,
-        refund_reason = COALESCE($5, refund_reason),
-        refund_date = NOW(),
-        refunded_by = $6,
-        version = COALESCE(version, 0) + 1,
-        updated_at = NOW(),
-        updated_by = $6
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-    `,
-    [context.tenantId, original.id, command.amount, refundStatus, command.reason ?? null, actor],
-  );
+    await queryWithClient(
+      client,
+      `
+        UPDATE public.payments
+        SET
+          refund_amount = COALESCE(refund_amount, 0) + $3,
+          status = $4::payment_status,
+          refund_reason = COALESCE($5, refund_reason),
+          refund_date = NOW(),
+          refunded_by = $6,
+          version = COALESCE(version, 0) + 1,
+          updated_at = NOW(),
+          updated_by = $6
+        WHERE tenant_id = $1::uuid
+          AND id = $2::uuid
+      `,
+      [context.tenantId, original.id, command.amount, refundStatus, command.reason ?? null, actor],
+    );
 
-  return refundId;
+    return refundId;
+  });
 };
 
 /**

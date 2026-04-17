@@ -180,21 +180,25 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const revenueTrend = resolveTrend(revenueChange);
 
       // Get check-ins today
+      // total = CONFIRMED + PENDING + CHECKED_IN (excludes CANCELLED, NO_SHOW, CHECKED_OUT)
+      // pending = still awaiting check-in (CONFIRMED + PENDING)
       const checkInsQuery = effectivePropertyId
         ? `SELECT
              COUNT(*) as total,
-             COUNT(*) FILTER (WHERE status = 'CONFIRMED') as pending
+             COUNT(*) FILTER (WHERE status IN ('CONFIRMED', 'PENDING')) as pending
            FROM reservations
            WHERE tenant_id = $1
            AND property_id = $2
            AND check_in_date = CURRENT_DATE
+           AND status IN ('CONFIRMED', 'PENDING', 'CHECKED_IN')
            AND is_deleted = false`
         : `SELECT
              COUNT(*) as total,
-             COUNT(*) FILTER (WHERE status = 'CONFIRMED') as pending
+             COUNT(*) FILTER (WHERE status IN ('CONFIRMED', 'PENDING')) as pending
            FROM reservations
            WHERE tenant_id = $1
            AND check_in_date = CURRENT_DATE
+           AND status IN ('CONFIRMED', 'PENDING', 'CHECKED_IN')
            AND is_deleted = false`;
       const checkInsParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const checkInsResult = await query<{ total: string; pending: string }>(
@@ -206,6 +210,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       const checkInsCompleted = Math.max(0, checkInsTotal - checkInsPending);
 
       // Get check-outs today
+      // total = CHECKED_IN + CHECKED_OUT (excludes CANCELLED, NO_SHOW, CONFIRMED/PENDING)
+      // pending = still awaiting check-out (CHECKED_IN)
       const checkOutsQuery = effectivePropertyId
         ? `SELECT
              COUNT(*) as total,
@@ -214,6 +220,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            WHERE tenant_id = $1
            AND property_id = $2
            AND check_out_date = CURRENT_DATE
+           AND status IN ('CHECKED_IN', 'CHECKED_OUT')
            AND is_deleted = false`
         : `SELECT
              COUNT(*) as total,
@@ -221,6 +228,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            FROM reservations
            WHERE tenant_id = $1
            AND check_out_date = CURRENT_DATE
+           AND status IN ('CHECKED_IN', 'CHECKED_OUT')
            AND is_deleted = false`;
       const checkOutsParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const checkOutsResult = await query<{ total: string; pending: string }>(
