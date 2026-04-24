@@ -22,6 +22,43 @@ const FIELD_FAILURES = "f";
 const FIELD_OPENED_AT = "o";
 
 /**
+ * Lua script for atomic failure recording in Redis.
+ * Uses HINCRBY so concurrent recordFailure() calls never undercount.
+ *
+ * KEYS[1] = circuit-breaker hash key
+ * ARGV[1] = failure threshold
+ * ARGV[2] = TTL in seconds
+ * ARGV[3] = current timestamp (ms) for openedAt when opening
+ *
+ * Returns: {previousState, newState, newFailures, openedAt}
+ */
+const RECORD_FAILURE_LUA = `
+local state = redis.call('HGET', KEYS[1], 's')
+if not state then
+  state = 'CLOSED'
+  redis.call('HSET', KEYS[1], 's', 'CLOSED')
+end
+local oa = redis.call('HGET', KEYS[1], 'o') or '0'
+
+if state == 'HALF_OPEN' then
+  redis.call('HSET', KEYS[1], 's', 'OPEN', 'f', '0', 'o', ARGV[3])
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+  return {state, 'OPEN', '0', ARGV[3]}
+end
+
+local nf = redis.call('HINCRBY', KEYS[1], 'f', 1)
+
+if nf >= tonumber(ARGV[1]) then
+  redis.call('HSET', KEYS[1], 's', 'OPEN', 'o', ARGV[3])
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+  return {state, 'OPEN', tostring(nf), ARGV[3]}
+end
+
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+return {state, state, tostring(nf), oa}
+`;
+
+/**
  * Lightweight per-target circuit breaker with shared Redis state.
  *
  * When Redis is available, state is stored in a hash key per target so all
@@ -37,6 +74,13 @@ class CircuitBreaker {
   private localState: CircuitState = "CLOSED";
   private localFailures = 0;
   private localOpenedAt = 0;
+
+  /**
+   * Synchronous single-probe gate for the OPEN→HALF_OPEN transition.
+   * Set immediately (no await) so only the first caller in the event loop
+   * tick wins; cleared when the circuit moves out of HALF_OPEN.
+   */
+  private halfOpenProbeGranted = false;
 
   private readonly failureThreshold: number;
   private readonly resetTimeoutMs: number;
@@ -117,6 +161,10 @@ class CircuitBreaker {
 
     if (state === "OPEN") {
       if (Date.now() - openedAt >= this.resetTimeoutMs) {
+        // Synchronous gate: only the first caller between awaits wins.
+        // Subsequent concurrent callers see the flag and fall through.
+        if (this.halfOpenProbeGranted) return false;
+        this.halfOpenProbeGranted = true;
         await this.transitionTo("HALF_OPEN");
         return true;
       }
@@ -138,7 +186,48 @@ class CircuitBreaker {
 
   /** Record a failure — open the circuit if threshold reached. */
   async recordFailure(): Promise<void> {
-    const { state, failures, openedAt } = await this.readState();
+    const redis = getRedisClient();
+    if (redis) {
+      try {
+        const ttl = Math.ceil((this.resetTimeoutMs * 3) / 1000);
+        const now = String(Date.now());
+        const result = (await redis.eval(
+          RECORD_FAILURE_LUA,
+          1,
+          this.redisKey,
+          String(this.failureThreshold),
+          String(ttl),
+          now,
+        )) as string[];
+
+        const [previous, newState, failures, openedAt] = result;
+
+        // Keep local fallback in sync
+        this.localState = newState as CircuitState;
+        this.localFailures = Number(failures);
+        this.localOpenedAt = Number(openedAt);
+
+        // Side-effects for state transitions (logging + metrics)
+        if (previous !== newState) {
+          if (newState !== "HALF_OPEN") {
+            this.halfOpenProbeGranted = false;
+          }
+          this.logger.warn(
+            { circuit: this.name, from: previous, to: newState, failures: Number(failures) },
+            "circuit breaker state transition",
+          );
+          circuitBreakerStateTotal.inc({ target: this.name, state: newState });
+        }
+        return;
+      } catch {
+        // Redis unavailable — fall through to local path
+      }
+    }
+
+    // Local-only path: single-threaded Node.js, no race condition
+    const state = this.localState;
+    const failures = this.localFailures;
+    const openedAt = this.localOpenedAt;
     const newFailures = failures + 1;
 
     if (state === "HALF_OPEN") {
@@ -161,6 +250,11 @@ class CircuitBreaker {
 
   private async transitionTo(newState: CircuitState): Promise<void> {
     const { state: previous, failures } = await this.readState();
+
+    // Reset the single-probe gate when leaving HALF_OPEN
+    if (newState !== "HALF_OPEN") {
+      this.halfOpenProbeGranted = false;
+    }
 
     const openedAt = newState === "OPEN" ? Date.now() : 0;
     const newFailures = newState === "CLOSED" ? 0 : failures;
