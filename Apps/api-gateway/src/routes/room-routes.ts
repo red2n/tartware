@@ -18,6 +18,12 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { forwardCommandWithParamId, forwardRoomInventoryCommand } from "./command-helpers.js";
 import {
+  roomGridResponse,
+  roomListResponse,
+  roomTypeGridResponse,
+  roomTypeListResponse,
+} from "./response-schemas.js";
+import {
   AVAILABILITY_TAG,
   CORE_PROXY_TAG,
   commandAcceptedSchema,
@@ -31,9 +37,10 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
 
-  const tenantScopeFromParams = app.withTenantScope({
+  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "STAFF",
+    minRole: "MANAGER",
     requiredModules: "core",
   });
 
@@ -54,7 +61,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         summary: "Proxy room grid queries to the rooms service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: roomGridResponse,
         },
       }),
     },
@@ -70,7 +77,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         summary: "Proxy room queries to the rooms service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: roomListResponse,
         },
       }),
     },
@@ -118,7 +125,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         summary: "Proxy room type grid requests to the rooms service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: roomTypeGridResponse,
         },
       }),
     },
@@ -134,7 +141,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         summary: "Proxy room type list requests to the rooms service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: roomTypeListResponse,
         },
       }),
     },
@@ -426,7 +433,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/block",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Block a room's inventory via the Command Center.",
@@ -448,7 +455,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/release",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Release a manual room block via the Command Center.",
@@ -470,7 +477,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/status",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Update room status via Command Center.",
@@ -494,7 +501,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/housekeeping-status",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Update room housekeeping status via Command Center.",
@@ -518,7 +525,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/out-of-order",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Mark room out of order via Command Center.",
@@ -542,7 +549,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/out-of-service",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Mark room out of service via Command Center.",
@@ -566,7 +573,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/rooms/:roomId/features",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: ROOM_COMMAND_TAG,
         summary: "Update room features via Command Center.",

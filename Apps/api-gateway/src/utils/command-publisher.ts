@@ -88,7 +88,21 @@ export const submitCommand = async ({
     return reply;
   }
 
-  const validatedPayload = validateCommandPayload(commandName, payload);
+  let validatedPayload: Record<string, unknown>;
+  try {
+    validatedPayload = validateCommandPayload(commandName, payload);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Payload validation failed";
+    logger.warn({ commandName, err: error }, "command payload validation failed");
+    return reply.status(400).header("content-type", "application/problem+json").send({
+      type: "about:blank",
+      title: "Bad Request",
+      status: 400,
+      detail: message,
+      instance: request.url,
+      code: "COMMAND_PAYLOAD_INVALID",
+    });
+  }
 
   const correlationId = (request.headers["x-correlation-id"] as string | undefined) ?? undefined;
   const idempotencyKey = (request.headers["idempotency-key"] as string | undefined) ?? undefined;

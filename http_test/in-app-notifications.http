@@ -96,22 +96,65 @@ Content-Type: application/json
 ###############################################################################
 # 5. SSE STREAM (Real-time)
 #
-# VS Code REST Client does not support SSE streams. Use curl instead:
+# VS Code REST Client does not support SSE streams. Use curl instead.
+#
+# ─── Basic SSE subscription (Authorization header) ───────────
 #
 #   TOKEN=$(./http_test/get-token.sh)
 #   curl -N -H "Authorization: Bearer $TOKEN" \
+#     -H "Accept: text/event-stream" \
 #     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream"
 #
-# Or with query-param auth (for EventSource compatibility):
+# ─── Query-param auth (EventSource compatibility) ────────────
 #
 #   TOKEN=$(./http_test/get-token.sh)
-#   curl -N "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream?token=$TOKEN"
+#   curl -N -H "Accept: text/event-stream" \
+#     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream?token=$TOKEN"
 #
-# Expected output:
+# ─── Expected initial output ─────────────────────────────────
+#
 #   event: unread_count
 #   data: {"unread":3}
 #
+# ─── Heartbeat (every 30s) ───────────────────────────────────
+#
+#   event: heartbeat
+#   data: {"ts":1745507040000}
+#
+# ─── Notification push (triggered by reservation/payment/etc) ─
+#
 #   event: notification
 #   data: {"notification_id":"...","title":"New Reservation","message":"..."}
+#
+# ─── Reconnect / timeout testing ─────────────────────────────
+#
+# 1. Open two SSE connections (multi-tab simulation):
+#
+#   TOKEN=$(./http_test/get-token.sh)
+#   curl -N -H "Authorization: Bearer $TOKEN" -H "Accept: text/event-stream" \
+#     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream" &
+#   PID1=$!
+#   curl -N -H "Authorization: Bearer $TOKEN" -H "Accept: text/event-stream" \
+#     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream" &
+#   PID2=$!
+#
+# 2. Verify both receive the initial unread_count event.
+#
+# 3. Kill one connection and confirm the other still receives heartbeats:
+#   kill $PID1
+#   # Wait 30s — PID2 should print a heartbeat event
+#
+# 4. Kill both and verify clean disconnect:
+#   kill $PID2
+#
+# 5. Test expired token rejection:
+#   curl -v -N -H "Authorization: Bearer INVALID_TOKEN" -H "Accept: text/event-stream" \
+#     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream"
+#   # Expected: 401 Unauthorized
+#
+# 6. Test with no auth:
+#   curl -v -N -H "Accept: text/event-stream" \
+#     "http://localhost:8080/v1/tenants/11111111-1111-1111-1111-111111111111/in-app-notifications/stream"
+#   # Expected: 401 Unauthorized
 #
 ###############################################################################

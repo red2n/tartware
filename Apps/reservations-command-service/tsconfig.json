@@ -26,7 +26,9 @@
       "@tartware/outbox": ["../outbox/src/index.ts"],
       "@tartware/outbox/*": ["../outbox/src/*"],
       "@tartware/fastify-server": ["../fastify-server/src/index.ts"],
-      "@tartware/fastify-server/*": ["../fastify-server/src/*"]
+      "@tartware/fastify-server/*": ["../fastify-server/src/*"],
+      "@tartware/proto-types": ["../../proto/src/index.ts"],
+      "@tartware/proto-types/*": ["../../proto/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

@@ -1,11 +1,12 @@
 import type { RateLimitPluginOptions } from "@fastify/rate-limit";
 import rateLimit from "@fastify/rate-limit";
 import { buildFastifyServer, sseTokenPromotePlugin } from "@tartware/fastify-server";
-import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
-import { Redis } from "ioredis";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+
 import { devToolsConfig, gatewayConfig } from "./config.js";
 import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { metricsRegistry } from "./lib/metrics.js";
+import { initRedisClient, shutdownRedisClient } from "./lib/redis.js";
 import { gatewayLogger } from "./logger.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
@@ -31,7 +32,18 @@ export const buildServer = () => {
   const app = buildFastifyServer({
     logger: gatewayLogger,
     enableRequestLogging: gatewayConfig.logRequests,
-    corsOrigin: false,
+    corsOrigin: gatewayConfig.corsOrigin,
+    corsCredentials: true,
+    corsAllowedHeaders: [
+      "Accept",
+      "Idempotency-Key",
+      "X-Correlation-Id",
+      "X-Requested-With",
+      "DNT",
+      "sec-ch-ua",
+      "sec-ch-ua-mobile",
+      "sec-ch-ua-platform",
+    ],
     enableMetricsEndpoint: true,
     metricsRegistry,
   });
@@ -49,34 +61,24 @@ export const buildServer = () => {
   };
 
   if (gatewayConfig.redis.enabled) {
-    const redisClient = new Redis({
-      host: gatewayConfig.redis.host,
-      port: gatewayConfig.redis.port,
-      password: gatewayConfig.redis.password,
-      db: gatewayConfig.redis.db,
-      keyPrefix: gatewayConfig.redis.keyPrefix,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-      enableOfflineQueue: false,
+    // Initialise the shared Redis client (used by rate limiter + circuit breaker).
+    // initRedisClient is idempotent; connection is attempted eagerly at startup.
+    void initRedisClient().then((client) => {
+      if (client) {
+        gatewayLogger.info(
+          "Redis connected; using distributed rate-limit and circuit-breaker stores",
+        );
+        (rateLimitOptions as RateLimitPluginOptions & { redis: unknown }).redis = client;
+      } else {
+        gatewayLogger.warn(
+          "Redis unavailable; rate-limit and circuit-breaker fall back to in-memory",
+        );
+      }
     });
-
-    redisClient.on("error", (err: Error) => {
-      gatewayLogger.warn({ err }, "Redis rate-limit client error");
-    });
-
-    void redisClient
-      .connect()
-      .then(() => {
-        gatewayLogger.info("Redis rate-limit client connected; using distributed store");
-        (rateLimitOptions as RateLimitPluginOptions & { redis: unknown }).redis = redisClient;
-      })
-      .catch(() => {
-        gatewayLogger.warn("Redis rate-limit client failed to connect; using in-memory store");
-      });
 
     // Gracefully close the Redis client on shutdown
     app.addHook("onClose", async () => {
-      await redisClient.quit().catch(() => {});
+      await shutdownRedisClient();
     });
 
     // skipOnError: true → if Redis is transiently unavailable the rate limiter
@@ -97,23 +99,6 @@ export const buildServer = () => {
     } else {
       app.log.debug("Duplo dashboard disabled for this environment");
     }
-
-    const allowCorsHeaders = (reply: FastifyReply): FastifyReply =>
-      reply
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-        .header(
-          "Access-Control-Allow-Headers",
-          "Accept, Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
-        )
-        .header("Access-Control-Max-Age", "600");
-
-    app.addHook("onRequest", async (request, reply) => {
-      allowCorsHeaders(reply);
-      if (request.method.toUpperCase() === "OPTIONS") {
-        return reply.status(204).send();
-      }
-    });
 
     // Register all route groups
     // GET routes proxy to backend services; POST/PUT/PATCH/DELETE routes

@@ -87,9 +87,9 @@ export const proxyRequest = async (
 
   const breaker = getCircuitBreaker(targetBaseUrl, { logger: request.log });
 
-  if (!breaker.allowRequest()) {
+  if (!(await breaker.allowRequest())) {
     request.log.warn(
-      { targetUrl, method: request.method, circuitState: breaker.getState() },
+      { targetUrl, method: request.method, circuitState: await breaker.getState() },
       "circuit open — rejecting proxy request",
     );
     return reply.serviceUnavailable(
@@ -117,7 +117,7 @@ export const proxyRequest = async (
       );
       await new Promise((resolve) => setTimeout(resolve, delay + jitter));
 
-      if (!breaker.allowRequest()) {
+      if (!(await breaker.allowRequest())) {
         break;
       }
     }
@@ -134,7 +134,7 @@ export const proxyRequest = async (
       });
     } catch (error) {
       lastError = error;
-      breaker.recordFailure();
+      await breaker.recordFailure();
       clearTimeout(timeoutId);
       continue;
     } finally {
@@ -142,12 +142,12 @@ export const proxyRequest = async (
     }
 
     if (response.status >= 500) {
-      breaker.recordFailure();
+      await breaker.recordFailure();
       if (attempt < maxAttempts - 1) {
         continue;
       }
     } else {
-      breaker.recordSuccess();
+      await breaker.recordSuccess();
     }
 
     break;

@@ -1,0 +1,63 @@
+name: CI · Proto Types
+
+on:
+  push:
+    branches: [main, develop, deployment]
+    paths:
+      - 'proto/**'
+      - 'package.json'
+      - 'nx.json'
+  pull_request:
+    paths:
+      - 'proto/**'
+  workflow_dispatch:
+
+jobs:
+  generate-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate types from proto
+        working-directory: proto
+        run: pnpm run generate
+
+      - name: Check for uncommitted generated changes
+        run: |
+          if ! git diff --quiet proto/src/gen/; then
+            echo "::error::Proto-generated types are out of date. Run 'pnpm run proto:generate' and commit the result."
+            git diff --stat proto/src/gen/
+            exit 1
+          fi
+
+      - name: Build proto-types package
+        working-directory: proto
+        run: pnpm run build

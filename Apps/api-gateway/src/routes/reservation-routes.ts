@@ -18,6 +18,12 @@ import { proxyRequest } from "../utils/proxy.js";
 
 import { forwardCommandWithParamId, forwardReservationCommand } from "./command-helpers.js";
 import {
+  checkInBriefResponse,
+  reservationDetailResponse,
+  reservationGridResponse,
+  reservationListResponse,
+} from "./response-schemas.js";
+import {
   commandAcceptedSchema,
   paginationQuerySchema,
   RESERVATION_PROXY_TAG,
@@ -44,6 +50,13 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  const tenantWriteScopeFromParams = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
   const tenantScopeFromQuery = app.withTenantScope({
     resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "STAFF",
@@ -59,7 +72,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         summary: "Proxy reservation grid queries to core service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: reservationGridResponse,
         },
       }),
     },
@@ -75,7 +88,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         summary: "Proxy full reservation list queries to core service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: reservationListResponse,
         },
       }),
     },
@@ -91,7 +104,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         summary: "Proxy reservation queries to core service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: reservationListResponse,
         },
       }),
     },
@@ -106,7 +119,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         tag: RESERVATION_PROXY_TAG,
         summary: "Get a single reservation by ID with folio and status history.",
         response: {
-          200: jsonObjectSchema,
+          200: reservationDetailResponse,
         },
       }),
     },
@@ -137,7 +150,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         tag: RESERVATION_PROXY_TAG,
         summary: "Pre-check-in guest recognition brief.",
         response: {
-          200: jsonObjectSchema,
+          200: checkInBriefResponse,
         },
       }),
     },
@@ -165,7 +178,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/cancel",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Cancel a reservation via Command Center.",
@@ -189,7 +202,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/check-in",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Check in a reservation via Command Center.",
@@ -213,7 +226,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/check-out",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Check out a reservation via Command Center.",
@@ -237,7 +250,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/assign-room",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Assign a room to a reservation via Command Center.",
@@ -261,7 +274,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/unassign-room",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Unassign a room from a reservation via Command Center.",
@@ -285,7 +298,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/extend",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Extend a reservation stay via Command Center.",
@@ -309,7 +322,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/rate-override",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Override reservation rates via Command Center.",
@@ -333,7 +346,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/deposit/add",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Add a deposit to a reservation via Command Center.",
@@ -357,7 +370,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/deposit/release",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Release a reservation deposit via Command Center.",
@@ -381,7 +394,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/no-show",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Mark a reservation as no-show via Command Center.",
@@ -405,7 +418,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/walk-in",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary:
@@ -433,7 +446,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/waitlist",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Add a guest to the room waitlist.",
@@ -460,7 +473,7 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/reservations/waitlist/:waitlistId/convert",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: RESERVATION_PROXY_TAG,
         summary: "Convert a waitlist entry into a confirmed reservation.",

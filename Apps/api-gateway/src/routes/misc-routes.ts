@@ -22,6 +22,7 @@ import {
   forwardCommandWithTenant,
   forwardGenericCommand,
 } from "./command-helpers.js";
+import { notificationListResponse, unreadCountResponse } from "./response-schemas.js";
 import {
   commandAcceptedSchema,
   NOTIFICATION_COMMAND_TAG,
@@ -40,6 +41,13 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  const tenantWriteScopeFromParams = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
   const authenticatedOnly = app.withTenantScope({
     allowMissingTenantId: true,
     minRole: "VIEWER",
@@ -53,7 +61,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/commands/:commandName",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       config: {
         rateLimit: {
           max: gatewayConfig.rateLimit.commandMax,
@@ -227,7 +235,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/notifications/templates",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Create a notification template via the Command Center.",
@@ -249,7 +257,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.put(
     "/v1/tenants/:tenantId/notifications/templates/:templateId",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Update a notification template via the Command Center.",
@@ -272,7 +280,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.delete(
     "/v1/tenants/:tenantId/notifications/templates/:templateId",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Delete a notification template via the Command Center.",
@@ -294,7 +302,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/notifications/send",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Send a notification to a guest via the Command Center.",
@@ -378,7 +386,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/notifications/automated-messages",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Create an automated message rule via the Command Center.",
@@ -399,7 +407,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.put(
     "/v1/tenants/:tenantId/notifications/automated-messages/:messageId",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Update an automated message rule via the Command Center.",
@@ -422,7 +430,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   app.delete(
     "/v1/tenants/:tenantId/notifications/automated-messages/:messageId",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: NOTIFICATION_COMMAND_TAG,
         summary: "Delete an automated message rule via the Command Center.",
@@ -452,7 +460,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         summary: "List in-app notifications for the current user.",
         params: reservationParamsSchema,
         response: {
-          200: jsonObjectSchema,
+          200: notificationListResponse,
         },
       }),
     },
@@ -467,7 +475,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
         tag: NOTIFICATION_PROXY_TAG,
         summary: "Get unread notification count.",
         response: {
-          200: jsonObjectSchema,
+          200: unreadCountResponse,
         },
       }),
     },

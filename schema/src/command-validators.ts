@@ -927,11 +927,30 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	],
 ]);
 
+/**
+ * Set of all command names that have a registered payload validator.
+ * Exported for startup parity assertions against the `command_templates` DB table.
+ */
+export const registeredCommandNames: ReadonlySet<string> = new Set(
+	commandPayloadValidators.keys(),
+);
+
+/**
+ * Validate a command payload against its registered Zod schema.
+ *
+ * @throws {Error} if `commandName` has no registered validator — this prevents
+ *   unvalidated payloads from silently entering the command pipeline.
+ */
 export const validateCommandPayload = (
 	commandName: string,
 	payload: Record<string, unknown>,
 ): Record<string, unknown> => {
 	const validator = commandPayloadValidators.get(commandName);
-	if (typeof validator !== "function") return payload;
+	if (typeof validator !== "function") {
+		throw new Error(
+			`COMMAND_VALIDATOR_MISSING: no payload validator registered for "${commandName}". ` +
+				"Add an entry in schema/src/command-validators.ts.",
+		);
+	}
 	return validator(payload);
 };

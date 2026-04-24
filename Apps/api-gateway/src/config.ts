@@ -53,6 +53,28 @@ validateProductionSecrets({
 const runtimeEnvironment = (env.NODE_ENV ?? "development").toLowerCase();
 const isProduction = runtimeEnvironment === "production";
 
+/**
+ * Parse the CORS_ORIGIN env var into a value compatible with @fastify/cors.
+ *
+ * - `undefined` / empty in dev  → `true`  (reflect request origin — permissive for local dev)
+ * - `undefined` / empty in prod → `false` (CORS disabled — fail closed)
+ * - `"*"`                       → `true`  (any origin)
+ * - `"https://a.com,https://b.com"` → `["https://a.com","https://b.com"]`
+ * - single origin string        → that string
+ */
+const parseCorsOrigin = (value: string | undefined, prod: boolean): boolean | string | string[] => {
+  if (!value || value.trim().length === 0) {
+    return !prod;
+  }
+  const trimmed = value.trim();
+  if (trimmed === "*") return true;
+  const origins = trimmed
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  return origins.length === 1 ? origins[0] : origins;
+};
+
 export const gatewayConfig = {
   port: parseNumberEnv(env.API_GATEWAY_PORT, baseConfig.PORT ?? 8080),
   host: env.API_GATEWAY_HOST ?? baseConfig.HOST ?? "0.0.0.0",
@@ -78,6 +100,12 @@ export const gatewayConfig = {
     enabled: parseBooleanEnv(env.REDIS_ENABLED, true),
   },
   logRequests: parseBooleanEnv(env.API_GATEWAY_LOG_REQUESTS, false),
+  /**
+   * CORS allowed origins.  Accepts a comma-separated list of origins or `*`.
+   * In production, set CORS_ORIGIN to the exact UI domain(s).
+   * Defaults to `true` (reflect request origin) in dev, restrictive in prod.
+   */
+  corsOrigin: parseCorsOrigin(env.CORS_ORIGIN, isProduction),
 };
 export const devToolsConfig = {
   duploDashboard: {

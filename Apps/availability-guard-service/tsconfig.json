@@ -41,6 +41,12 @@
       ],
       "@tartware/fastify-server/*": [
         "../../fastify-server/src/*"
+      ],
+      "@tartware/proto-types": [
+        "../../../proto/src/index.ts"
+      ],
+      "@tartware/proto-types/*": [
+        "../../../proto/src/*"
       ]
     },
     "types": [

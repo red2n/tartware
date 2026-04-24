@@ -1,0 +1,9 @@
+version: v2
+plugins:
+  - local: protoc-gen-ts_proto
+    out: src/gen
+    opt:
+      - onlyTypes=true
+      - stringEnums=true
+      - esModuleInterop=true
+      - importSuffix=.js

@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
+
 import {
   type Client,
   credentials,
@@ -8,6 +9,14 @@ import {
   type ServiceError,
 } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
+import type {
+  BulkReleaseRequest,
+  BulkReleaseResponse,
+  LockRoomRequest,
+  LockRoomResponse,
+  ReleaseRoomRequest,
+  ReleaseRoomResponse,
+} from "@tartware/proto-types";
 import type { AvailabilityGuardMetadata } from "@tartware/schemas";
 
 import { availabilityGuardConfig } from "../config.js";
@@ -17,65 +26,25 @@ import {
 } from "../lib/metrics.js";
 import { reservationsLogger } from "../logger.js";
 
-type LockRoomRequestMessage = {
-  tenantId: string;
-  reservationId: string;
-  roomTypeId: string;
-  roomId?: string | null;
-  stayStart: string;
-  stayEnd: string;
-  reason: string;
-  correlationId?: string | null;
-  idempotencyKey?: string | null;
-  ttlSeconds?: number;
-  metadata?: Record<string, string>;
-};
-
-type LockRoomResponseMessage = {
-  status: string;
-  lock?: { id?: string } | null;
-  conflict?: { id?: string } | null;
-};
-
-type ReleaseRoomRequestMessage = {
-  tenantId: string;
-  lockId: string;
-  reservationId?: string | null;
-  reason?: string;
-  correlationId?: string | null;
-  metadata?: Record<string, string>;
-};
-
-type ReleaseRoomResponseMessage = {
-  released: boolean;
-};
-
-type BulkReleaseRequestMessage = {
-  tenantId: string;
-  lockIds: string[];
-  reason?: string;
-  correlationId?: string | null;
-};
-
 type AvailabilityGuardGrpcClient = Client & {
   lockRoom(
-    request: LockRoomRequestMessage,
-    callback: (error: ServiceError | null, response: LockRoomResponseMessage) => void,
+    request: LockRoomRequest,
+    callback: (error: ServiceError | null, response: LockRoomResponse) => void,
   ): void;
   releaseRoom(
-    request: ReleaseRoomRequestMessage,
-    callback: (error: ServiceError | null, response: ReleaseRoomResponseMessage) => void,
+    request: ReleaseRoomRequest,
+    callback: (error: ServiceError | null, response: ReleaseRoomResponse) => void,
   ): void;
   bulkRelease(
-    request: BulkReleaseRequestMessage,
-    callback: (error: ServiceError | null, response: { released: number }) => void,
+    request: BulkReleaseRequest,
+    callback: (error: ServiceError | null, response: BulkReleaseResponse) => void,
   ): void;
 };
 
 type GrpcMethodMap = {
-  lockRoom: [LockRoomRequestMessage, LockRoomResponseMessage];
-  releaseRoom: [ReleaseRoomRequestMessage, ReleaseRoomResponseMessage];
-  bulkRelease: [BulkReleaseRequestMessage, { released: number }];
+  lockRoom: [LockRoomRequest, LockRoomResponse];
+  releaseRoom: [ReleaseRoomRequest, ReleaseRoomResponse];
+  bulkRelease: [BulkReleaseRequest, BulkReleaseResponse];
 };
 
 type LockReservationInput = {
@@ -242,13 +211,14 @@ export const lockReservationHold = async (
           tenantId: input.tenantId,
           reservationId: input.reservationId,
           roomTypeId: input.roomTypeId,
-          roomId: input.roomId ?? undefined,
+          roomId: input.roomId ?? "",
           stayStart: input.stayStart.toISOString(),
           stayEnd: input.stayEnd.toISOString(),
           reason: input.reason,
-          correlationId: input.correlationId ?? null,
+          correlationId: input.correlationId ?? "",
           idempotencyKey: input.reservationId,
-          ttlSeconds: input.ttlSeconds,
+          ttlSeconds: input.ttlSeconds ?? 0,
+          metadata: {},
         }),
       {
         retries: 2,
@@ -330,9 +300,10 @@ export const releaseReservationHold = async (input: ReleaseReservationInput): Pr
     await callGrpc("releaseRoom", {
       tenantId: input.tenantId,
       lockId: input.lockId,
-      reservationId: input.reservationId ?? null,
+      reservationId: input.reservationId ?? "",
       reason: input.reason,
-      correlationId: input.correlationId ?? null,
+      correlationId: input.correlationId ?? "",
+      metadata: {},
     });
     recordAvailabilityGuardRequest(method, "SUCCESS");
   } catch (error) {
@@ -368,7 +339,7 @@ export const checkGuardHealth = async (): Promise<boolean> => {
 
   return new Promise<boolean>((resolve) => {
     const deadline = Date.now() + 3000;
-    const handler = healthClient!.check.bind(healthClient!) as unknown as (
+    const handler = healthClient?.check.bind(healthClient) as unknown as (
       req: { service: string },
       opts: { deadline: number },
       cb: (error: ServiceError | null, response: { status: string }) => void,

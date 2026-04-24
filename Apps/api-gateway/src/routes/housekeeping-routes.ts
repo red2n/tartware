@@ -21,6 +21,7 @@ import {
   forwardHousekeepingAssignCommand,
   forwardHousekeepingCompleteCommand,
 } from "./command-helpers.js";
+import { housekeepingTaskListResponse } from "./response-schemas.js";
 import {
   CORE_PROXY_TAG,
   commandAcceptedSchema,
@@ -35,9 +36,10 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   const proxyHousekeeping = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.housekeepingServiceUrl);
 
-  const tenantScopeFromParams = app.withTenantScope({
+  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "STAFF",
+    minRole: "MANAGER",
     requiredModules: "core",
   });
 
@@ -56,7 +58,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         summary: "Proxy housekeeping task queries to the housekeeping service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: housekeepingTaskListResponse,
         },
       }),
     },
@@ -66,7 +68,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks/:taskId/assign",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Assign a housekeeping task via the Command Center.",
@@ -83,7 +85,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks/:taskId/complete",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Complete a housekeeping task via the Command Center.",
@@ -100,7 +102,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Create a housekeeping task via the Command Center.",
@@ -122,7 +124,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks/:taskId/reassign",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Reassign a housekeeping task via the Command Center.",
@@ -146,7 +148,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks/:taskId/reopen",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Reopen a housekeeping task via the Command Center.",
@@ -170,7 +172,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks/:taskId/notes",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Add a housekeeping task note via the Command Center.",
@@ -194,7 +196,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/housekeeping/tasks/bulk-status",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: HOUSEKEEPING_COMMAND_TAG,
         summary: "Bulk update housekeeping tasks via the Command Center.",

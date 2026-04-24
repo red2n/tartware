@@ -5,6 +5,7 @@
   ],
   "ignoreDependencies": [
     "@tartware/openapi",
+    "@tartware/proto-types",
     "@tartware/schemas",
     "@tartware/telemetry",
     "@tartware/config",

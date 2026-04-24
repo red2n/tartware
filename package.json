@@ -27,6 +27,7 @@
     "build": "pnpm run check && npx nx run-many -t build && npx nx run-many -t typecheck --exclude=@tartware/pms-ui --exclude=@tartware/schemas",
     "build:core": "npx nx run @tartware/core-service:build",
     "build:schema": "npx nx run @tartware/schemas:build",
+    "proto:generate": "pnpm --filter @tartware/proto-types generate",
     "build:ui": "npx nx run @tartware/schemas:build && node scripts/stamp-ui-version.mjs && npx nx run @tartware/pms-ui:build",
     "clean": "npx nx run-many -t clean",
     "clean:all": "node ./scripts/clean-all.mjs",
@@ -54,6 +55,7 @@
     "telemetry:start": "docker compose up -d opensearch-node otel-collector",
     "telemetry:stop": "docker compose stop otel-collector opensearch-node",
     "export:openapi": "node scripts/export-openapi.mjs",
+    "validate:openapi": "node scripts/validate-openapi.mjs",
     "bootstrap:loadtest": "node scripts/bootstrap-loadtest-env.mjs",
     "samples:fetch": "node scripts/fetch-sample-records.mjs",
     "samples:api": "node scripts/fetch-sample-api-records.mjs"

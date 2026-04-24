@@ -21,6 +21,11 @@ import {
   forwardCommandWithTenant,
 } from "./command-helpers.js";
 import {
+  invoiceListResponse,
+  ledgerEntryListResponse,
+  paymentListResponse,
+} from "./response-schemas.js";
+import {
   BILLING_COMMAND_TAG,
   BILLING_PROXY_TAG,
   commandAcceptedSchema,
@@ -49,9 +54,10 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   const proxyFinanceAdmin = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
-  const tenantScopeFromParams = app.withTenantScope({
+  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "STAFF",
+    minRole: "MANAGER",
     requiredModules: "core",
   });
 
@@ -76,7 +82,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         summary: "Proxy billing payment requests to the billing service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: paymentListResponse,
         },
       }),
     },
@@ -86,7 +92,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/payments/capture",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Capture a payment via the Command Center.",
@@ -103,7 +109,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/payments/:paymentId/refund",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Refund a payment via the Command Center.",
@@ -120,7 +126,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/invoices",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Create an invoice via the Command Center.",
@@ -142,7 +148,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/invoices/:invoiceId/adjust",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Adjust an invoice via the Command Center.",
@@ -166,7 +172,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/charges",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Post a charge via the Command Center.",
@@ -188,7 +194,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/charges/:postingId/void",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Void a charge posting via the Command Center.",
@@ -212,7 +218,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/payments/:paymentId/apply",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Apply a payment via the Command Center.",
@@ -236,7 +242,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/transfer",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Transfer a folio balance via the Command Center.",
@@ -258,7 +264,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/close",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Close/settle a folio via the Command Center.",
@@ -280,7 +286,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/payments/:paymentId/void",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Void a previously authorized payment via the Command Center.",
@@ -304,7 +310,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/cashier-sessions/open",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Open a cashier session via the Command Center.",
@@ -326,7 +332,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/cashier-sessions/close",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Close a cashier session via the Command Center.",
@@ -352,7 +358,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Create a standalone folio (house account, city ledger, walk-in).",
@@ -374,7 +380,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/:folioId/split",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Split charges within a folio via the Command Center.",
@@ -398,7 +404,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/:folioId/windows",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Create a folio window (split billing by date range).",
@@ -422,7 +428,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/invoices/:invoiceId/finalize",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Finalize an invoice, locking it from further edits.",
@@ -446,7 +452,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/invoices/:invoiceId/void",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Void a DRAFT invoice. Issued invoices require a credit note instead.",
@@ -470,7 +476,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/invoices/:invoiceId/credit-note",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Create a credit note against a finalized/issued invoice.",
@@ -545,7 +551,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy invoice list to the accounts service.",
-        response: { 200: jsonObjectSchema },
+        response: { 200: invoiceListResponse },
       }),
     },
     proxyAccounts,
@@ -640,7 +646,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy ledger list to the finance admin service.",
-        response: { 200: jsonObjectSchema },
+        response: { 200: ledgerEntryListResponse },
       }),
     },
     proxyFinanceAdmin,
@@ -718,7 +724,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/cashier-sessions/handover",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Handover a cashier session to the next shift atomically.",
@@ -744,7 +750,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/tax-configurations",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Create a tax configuration via the Command Center.",
@@ -766,7 +772,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/tax-configurations/:taxConfigId/update",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Update a tax configuration via the Command Center.",
@@ -790,7 +796,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/tax-configurations/:taxConfigId/delete",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Delete a tax configuration via the Command Center.",
@@ -818,7 +824,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/:folioId/reopen",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Reopen a settled or closed folio for further postings.",
@@ -840,7 +846,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/merge",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Merge a source folio into a target folio.",
@@ -864,7 +870,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/invoices/:invoiceId/reopen",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Reopen a finalized invoice as a new draft correction.",
@@ -890,7 +896,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/chargebacks/:refundId/status",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary:
@@ -917,7 +923,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/reservations/:reservationId/no-show-charge",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Post a no-show penalty charge to the reservation folio.",
@@ -939,7 +945,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/reservations/:reservationId/late-checkout-charge",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Post a late checkout fee to the reservation folio (tier-based calculation).",
@@ -961,7 +967,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/reservations/:reservationId/cancellation-penalty",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Post a cancellation penalty charge per rate plan policy.",
@@ -987,7 +993,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/folios/:folioId/tax-exemption",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Apply a tax exemption certificate to an open folio.",
@@ -1013,7 +1019,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/billing/charges/comp",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: BILLING_COMMAND_TAG,
         summary: "Post a complimentary charge to a folio for budget tracking.",
