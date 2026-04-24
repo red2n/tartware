@@ -14,6 +14,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { gatewayConfig, serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
+import {
+  createPropertyResponse,
+  propertyListResponse,
+  tenantListResponse,
+} from "./response-schemas.js";
 import { CORE_PROXY_TAG, reservationParamsSchema } from "./schemas.js";
 
 /** Register core service proxy routes on the gateway. */
@@ -51,7 +56,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
         tag: CORE_PROXY_TAG,
         summary: "List tenants accessible to the authenticated user.",
         response: {
-          200: jsonObjectSchema,
+          200: tenantListResponse,
         },
       }),
     },
@@ -67,7 +72,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
         tag: CORE_PROXY_TAG,
         summary: "List properties for a tenant.",
         response: {
-          200: jsonObjectSchema,
+          200: propertyListResponse,
         },
       }),
     },
@@ -83,7 +88,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
         summary: "Create a new property.",
         body: jsonObjectSchema,
         response: {
-          201: jsonObjectSchema,
+          201: createPropertyResponse,
         },
       }),
     },

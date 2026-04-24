@@ -11,72 +11,26 @@ import {
   type sendUnaryData,
 } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
+import type {
+  BulkReleaseRequest,
+  BulkReleaseResponse,
+  GrpcInventoryLock,
+  HealthCheckRequest,
+  HealthCheckResponse,
+  LockRoomRequest,
+  LockRoomResponse,
+  ReleaseRoomRequest,
+  ReleaseRoomResponse,
+} from "@tartware/proto-types";
+import { HealthCheckResponse_ServingStatus, LockRoomResponse_Status } from "@tartware/proto-types";
 import type { FastifyBaseLogger } from "fastify";
+import { ZodError } from "zod";
 
 import { config } from "../config.js";
 import { checkDatabaseHealth } from "../lib/health-checks.js";
 import type { InventoryLock } from "../repositories/lock-repository.js";
 import { lockRoom, releaseLock, releaseLocksInBulk } from "../services/lock-service.js";
 import { bulkReleaseSchema, lockRoomSchema, releaseLockSchema } from "../types/lock-types.js";
-
-type GrpcInventoryLock = {
-  id?: string;
-  tenantId?: string;
-  reservationId?: string;
-  roomTypeId?: string;
-  roomId?: string;
-  stayStart?: string;
-  stayEnd?: string;
-  expiresAt?: string;
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-type LockRoomRequestMessage = {
-  tenantId: string;
-  reservationId: string;
-  roomTypeId: string;
-  roomId?: string | null;
-  stayStart: string;
-  stayEnd: string;
-  reason?: string;
-  correlationId?: string;
-  idempotencyKey?: string;
-  ttlSeconds?: number;
-  metadata?: Record<string, string>;
-};
-
-type LockRoomResponseMessage = {
-  status: number;
-  lock?: GrpcInventoryLock | null;
-  conflict?: GrpcInventoryLock | null;
-};
-
-type ReleaseRoomRequestMessage = {
-  tenantId: string;
-  lockId: string;
-  reservationId?: string;
-  reason?: string;
-  correlationId?: string;
-  metadata?: Record<string, string>;
-};
-
-type ReleaseRoomResponseMessage = {
-  released: boolean;
-  lock?: GrpcInventoryLock | null;
-};
-
-type BulkReleaseRequestMessage = {
-  tenantId: string;
-  lockIds: string[];
-  reason?: string;
-  correlationId?: string;
-};
-
-type BulkReleaseResponseMessage = {
-  released: number;
-};
 
 type AvailabilityGuardHandlers = {
   lockRoom: ReturnType<typeof buildLockRoomHandler>;
@@ -129,18 +83,39 @@ const mapInventoryLock = (lock: InventoryLock | null): GrpcInventoryLock | undef
   };
 };
 
-const mapLockResponseStatus = (status: "LOCKED" | "CONFLICT"): number => {
+/**
+ * Map a caught error to the most specific gRPC status code.
+ */
+const grpcStatusFromError = (error: unknown): GrpcStatus => {
+  if (error instanceof ZodError) return GrpcStatus.INVALID_ARGUMENT;
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("not found") || msg.includes("not_found")) return GrpcStatus.NOT_FOUND;
+    if (msg.includes("already exists") || msg.includes("duplicate"))
+      return GrpcStatus.ALREADY_EXISTS;
+  }
+  return GrpcStatus.INTERNAL;
+};
+
+const grpcErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ZodError) {
+    return error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+  }
+  return error instanceof Error ? error.message : fallback;
+};
+
+const mapLockResponseStatus = (status: "LOCKED" | "CONFLICT"): LockRoomResponse_Status => {
   if (status === "LOCKED") {
-    return 1;
+    return LockRoomResponse_Status.STATUS_LOCKED;
   }
   if (status === "CONFLICT") {
-    return 2;
+    return LockRoomResponse_Status.STATUS_CONFLICT;
   }
-  return 0;
+  return LockRoomResponse_Status.STATUS_UNKNOWN;
 };
 
 const buildLockRoomHandler =
-  (logger: FastifyBaseLogger): handleUnaryCall<LockRoomRequestMessage, LockRoomResponseMessage> =>
+  (logger: FastifyBaseLogger): handleUnaryCall<LockRoomRequest, LockRoomResponse> =>
   async (call, callback) => {
     try {
       const parsedInput = lockRoomSchema.parse({
@@ -171,21 +146,14 @@ const buildLockRoomHandler =
         conflict: mapInventoryLock(result.status === "CONFLICT" ? result.conflict : null),
       });
     } catch (error) {
-      logger.error({ err: error }, "lockRoom gRPC call failed");
-      callback(
-        {
-          code: GrpcStatus.INTERNAL,
-          message: error instanceof Error ? error.message : "lockRoom error",
-        },
-        null,
-      );
+      const code = grpcStatusFromError(error);
+      logger.error({ err: error, grpcCode: code }, "lockRoom gRPC call failed");
+      callback({ code, message: grpcErrorMessage(error, "lockRoom error") }, null);
     }
   };
 
 const buildReleaseRoomHandler =
-  (
-    logger: FastifyBaseLogger,
-  ): handleUnaryCall<ReleaseRoomRequestMessage, ReleaseRoomResponseMessage> =>
+  (logger: FastifyBaseLogger): handleUnaryCall<ReleaseRoomRequest, ReleaseRoomResponse> =>
   async (call, callback) => {
     try {
       const parsedInput = releaseLockSchema.parse({
@@ -203,21 +171,14 @@ const buildReleaseRoomHandler =
         lock: mapInventoryLock(releasedLock),
       });
     } catch (error) {
-      logger.error({ err: error }, "releaseRoom gRPC call failed");
-      callback(
-        {
-          code: GrpcStatus.INTERNAL,
-          message: error instanceof Error ? error.message : "releaseRoom error",
-        },
-        null,
-      );
+      const code = grpcStatusFromError(error);
+      logger.error({ err: error, grpcCode: code }, "releaseRoom gRPC call failed");
+      callback({ code, message: grpcErrorMessage(error, "releaseRoom error") }, null);
     }
   };
 
 const buildBulkReleaseHandler =
-  (
-    logger: FastifyBaseLogger,
-  ): handleUnaryCall<BulkReleaseRequestMessage, BulkReleaseResponseMessage> =>
+  (logger: FastifyBaseLogger): handleUnaryCall<BulkReleaseRequest, BulkReleaseResponse> =>
   async (call, callback) => {
     try {
       const parsedInput = bulkReleaseSchema.parse({
@@ -229,40 +190,25 @@ const buildBulkReleaseHandler =
       const released = await releaseLocksInBulk(parsedInput);
       callback(null, { released });
     } catch (error) {
-      logger.error({ err: error }, "bulkRelease gRPC call failed");
-      callback(
-        {
-          code: GrpcStatus.INTERNAL,
-          message: error instanceof Error ? error.message : "bulkRelease error",
-        },
-        null,
-      );
+      const code = grpcStatusFromError(error);
+      logger.error({ err: error, grpcCode: code }, "bulkRelease gRPC call failed");
+      callback({ code, message: grpcErrorMessage(error, "bulkRelease error") }, null);
     }
   };
-
-type HealthCheckRequestMessage = {
-  service: string;
-};
-
-type HealthCheckResponseMessage = {
-  status: string;
-};
 
 type HealthHandlers = {
   check: ReturnType<typeof buildHealthCheckHandler>;
 };
 
 const buildHealthCheckHandler =
-  (
-    logger: FastifyBaseLogger,
-  ): handleUnaryCall<HealthCheckRequestMessage, HealthCheckResponseMessage> =>
+  (logger: FastifyBaseLogger): handleUnaryCall<HealthCheckRequest, HealthCheckResponse> =>
   async (_call, callback) => {
     try {
       await checkDatabaseHealth();
-      callback(null, { status: "SERVING" });
+      callback(null, { status: HealthCheckResponse_ServingStatus.SERVING });
     } catch (error) {
       logger.warn({ err: error }, "Health check failed: database unreachable");
-      callback(null, { status: "NOT_SERVING" });
+      callback(null, { status: HealthCheckResponse_ServingStatus.NOT_SERVING });
     }
   };
 

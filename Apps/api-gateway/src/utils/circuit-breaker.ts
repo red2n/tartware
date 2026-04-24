@@ -1,4 +1,5 @@
 import { circuitBreakerStateTotal } from "../lib/metrics.js";
+import { getRedisClient } from "../lib/redis.js";
 
 type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
@@ -15,20 +16,32 @@ type CircuitBreakerOptions = {
   logger: MinimalLogger;
 };
 
+/** Redis hash field names for circuit state. */
+const FIELD_STATE = "s";
+const FIELD_FAILURES = "f";
+const FIELD_OPENED_AT = "o";
+
 /**
- * Lightweight per-target circuit breaker.
+ * Lightweight per-target circuit breaker with shared Redis state.
+ *
+ * When Redis is available, state is stored in a hash key per target so all
+ * gateway replicas share a single view of circuit health. When Redis is
+ * unavailable the breaker falls back to process-local state (same behaviour
+ * as the previous in-memory-only implementation).
  *
  * States: CLOSED → (failures reach threshold) → OPEN → (resetTimeout expires) → HALF_OPEN
  *   - HALF_OPEN: one probe request; success → CLOSED, failure → OPEN
  */
 class CircuitBreaker {
-  private state: CircuitState = "CLOSED";
-  private consecutiveFailures = 0;
-  private openedAt = 0;
+  /** In-memory fallback state — used when Redis is not available. */
+  private localState: CircuitState = "CLOSED";
+  private localFailures = 0;
+  private localOpenedAt = 0;
 
   private readonly failureThreshold: number;
   private readonly resetTimeoutMs: number;
   private readonly name: string;
+  private readonly redisKey: string;
   private readonly logger: MinimalLogger;
 
   constructor(name: string, options: CircuitBreakerOptions) {
@@ -36,15 +49,75 @@ class CircuitBreaker {
     this.failureThreshold = options.failureThreshold ?? 5;
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.logger = options.logger;
+    // Deterministic key; keyPrefix is applied by ioredis
+    this.redisKey = `cb:${name}`;
   }
 
-  /** Returns true when the circuit allows a request through. */
-  allowRequest(): boolean {
-    if (this.state === "CLOSED") return true;
+  // ---------------------------------------------------------------------------
+  // Redis helpers (all silently fall back to local state on error)
+  // ---------------------------------------------------------------------------
 
-    if (this.state === "OPEN") {
-      if (Date.now() - this.openedAt >= this.resetTimeoutMs) {
-        this.transitionTo("HALF_OPEN");
+  private async readState(): Promise<{ state: CircuitState; failures: number; openedAt: number }> {
+    const redis = getRedisClient();
+    if (!redis) {
+      return { state: this.localState, failures: this.localFailures, openedAt: this.localOpenedAt };
+    }
+    try {
+      const data = await redis.hgetall(this.redisKey);
+      if (!data || !data[FIELD_STATE]) {
+        return { state: "CLOSED", failures: 0, openedAt: 0 };
+      }
+      return {
+        state: (data[FIELD_STATE] as CircuitState) ?? "CLOSED",
+        failures: Number(data[FIELD_FAILURES] ?? 0),
+        openedAt: Number(data[FIELD_OPENED_AT] ?? 0),
+      };
+    } catch {
+      return { state: this.localState, failures: this.localFailures, openedAt: this.localOpenedAt };
+    }
+  }
+
+  private async writeState(state: CircuitState, failures: number, openedAt: number): Promise<void> {
+    // Always keep local copy in sync for fallback
+    this.localState = state;
+    this.localFailures = failures;
+    this.localOpenedAt = openedAt;
+
+    const redis = getRedisClient();
+    if (!redis) return;
+    try {
+      const ttl = Math.ceil((this.resetTimeoutMs * 3) / 1000);
+      await redis
+        .multi()
+        .hset(
+          this.redisKey,
+          FIELD_STATE,
+          state,
+          FIELD_FAILURES,
+          String(failures),
+          FIELD_OPENED_AT,
+          String(openedAt),
+        )
+        .expire(this.redisKey, ttl)
+        .exec();
+    } catch {
+      // Swallow — local state is still consistent
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Public API — all async to support Redis round-trip
+  // ---------------------------------------------------------------------------
+
+  /** Returns true when the circuit allows a request through. */
+  async allowRequest(): Promise<boolean> {
+    const { state, openedAt } = await this.readState();
+
+    if (state === "CLOSED") return true;
+
+    if (state === "OPEN") {
+      if (Date.now() - openedAt >= this.resetTimeoutMs) {
+        await this.transitionTo("HALF_OPEN");
         return true;
       }
       return false;
@@ -55,41 +128,47 @@ class CircuitBreaker {
   }
 
   /** Record a successful response — close the circuit. */
-  recordSuccess(): void {
-    if (this.state !== "CLOSED") {
-      this.transitionTo("CLOSED");
+  async recordSuccess(): Promise<void> {
+    const { state } = await this.readState();
+    if (state !== "CLOSED") {
+      await this.transitionTo("CLOSED");
     }
-    this.consecutiveFailures = 0;
+    await this.writeState("CLOSED", 0, 0);
   }
 
   /** Record a failure — open the circuit if threshold reached. */
-  recordFailure(): void {
-    this.consecutiveFailures += 1;
+  async recordFailure(): Promise<void> {
+    const { state, failures, openedAt } = await this.readState();
+    const newFailures = failures + 1;
 
-    if (this.state === "HALF_OPEN") {
-      this.transitionTo("OPEN");
+    if (state === "HALF_OPEN") {
+      await this.transitionTo("OPEN");
       return;
     }
 
-    if (this.consecutiveFailures >= this.failureThreshold) {
-      this.transitionTo("OPEN");
+    if (newFailures >= this.failureThreshold) {
+      await this.transitionTo("OPEN");
+      return;
     }
+
+    await this.writeState(state, newFailures, openedAt);
   }
 
-  getState(): CircuitState {
-    return this.state;
+  async getState(): Promise<CircuitState> {
+    const { state } = await this.readState();
+    return state;
   }
 
-  private transitionTo(newState: CircuitState): void {
-    const previous = this.state;
-    this.state = newState;
+  private async transitionTo(newState: CircuitState): Promise<void> {
+    const { state: previous, failures } = await this.readState();
 
-    if (newState === "OPEN") {
-      this.openedAt = Date.now();
-    }
+    const openedAt = newState === "OPEN" ? Date.now() : 0;
+    const newFailures = newState === "CLOSED" ? 0 : failures;
+
+    await this.writeState(newState, newFailures, openedAt);
 
     this.logger.warn(
-      { circuit: this.name, from: previous, to: newState, failures: this.consecutiveFailures },
+      { circuit: this.name, from: previous, to: newState, failures },
       "circuit breaker state transition",
     );
 

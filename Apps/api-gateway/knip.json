@@ -12,6 +12,7 @@
     "@tartware/command-center-shared",
     "@fastify/helmet",
     "@tartware/fastify-server",
+    "@tartware/tenant-auth",
     "pg"
   ],
   "ignoreBinaries": [

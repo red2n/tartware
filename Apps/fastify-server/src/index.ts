@@ -61,6 +61,16 @@ export interface BuildFastifyServerOptions {
 	corsMaxAge?: number;
 
 	/**
+	 * Additional CORS allowed request headers (merged with the defaults).
+	 */
+	corsAllowedHeaders?: string[];
+
+	/**
+	 * Additional CORS exposed response headers (merged with the defaults).
+	 */
+	corsExposedHeaders?: string[];
+
+	/**
 	 * Whether to add Cache-Control headers to API responses
 	 * @default true
 	 */
@@ -227,6 +237,8 @@ export const buildFastifyServer = (
 		corsOrigin = false,
 		corsCredentials = false,
 		corsMaxAge = 86400,
+		corsAllowedHeaders: extraAllowedHeaders = [],
+		corsExposedHeaders: extraExposedHeaders = [],
 		enableCacheControl = true,
 		enableMetricsEndpoint = true,
 		metricsRegistry,
@@ -345,12 +357,14 @@ export const buildFastifyServer = (
 			"X-Request-Id",
 			"X-Tenant-Id",
 			"X-Idempotency-Key",
+			...extraAllowedHeaders,
 		],
 		exposedHeaders: [
 			"X-Request-Id",
 			"X-RateLimit-Limit",
 			"X-RateLimit-Remaining",
 			"X-RateLimit-Reset",
+			...extraExposedHeaders,
 		],
 	});
 

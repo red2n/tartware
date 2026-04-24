@@ -1,0 +1,231 @@
+# =====================================================
+# network-policies.yaml
+# Kubernetes NetworkPolicy resources for Tartware PMS
+#
+# Enforces the network boundary contract:
+#   External traffic → api-gateway (only public entry point)
+#   api-gateway      → domain services (HTTP proxy + Kafka)
+#   domain services  ✗ direct external access
+#
+# Prerequisites:
+#   - All domain-service Deployments must carry the label
+#       tier: domain-service
+#   - The API gateway Deployment must carry
+#       app: api-gateway
+#   - A CNI plugin that supports NetworkPolicy (Calico, Cilium, etc.)
+#
+# Date: 2026-04-24
+# =====================================================
+
+---
+# ==========================================================
+# 1. DEFAULT DENY — block all ingress to domain services
+#    unless explicitly allowed by a more specific policy.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: domain-services-deny-all-ingress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      tier: domain-service
+  policyTypes:
+    - Ingress
+  # No ingress rules → all inbound traffic is denied by default.
+
+---
+# ==========================================================
+# 2. ALLOW gateway → domain services (HTTP ports)
+#    Only the api-gateway pods may reach the domain services'
+#    HTTP ports (3000-3075 range).
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-domain-services
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      tier: domain-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 3005
+        - protocol: TCP
+          port: 3010
+        - protocol: TCP
+          port: 3015
+        - protocol: TCP
+          port: 3020
+        - protocol: TCP
+          port: 3025
+        - protocol: TCP
+          port: 3030
+        - protocol: TCP
+          port: 3035
+        - protocol: TCP
+          port: 3040
+        - protocol: TCP
+          port: 3045
+        - protocol: TCP
+          port: 3050
+        - protocol: TCP
+          port: 3055
+        - protocol: TCP
+          port: 3060
+        - protocol: TCP
+          port: 3065
+        - protocol: TCP
+          port: 3070
+        - protocol: TCP
+          port: 3075
+
+---
+# ==========================================================
+# 3. ALLOW reservations-command-service → availability-guard
+#    gRPC port (4400). This is the only permitted
+#    inter-service call that bypasses the gateway.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-reservations-to-availability-guard-grpc
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      app: availability-guard-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: reservations-command-service
+      ports:
+        - protocol: TCP
+          port: 4400
+
+---
+# ==========================================================
+# 4. ALLOW Prometheus scraping on metrics endpoints.
+#    Assumes the monitoring stack runs in the
+#    'monitoring' namespace with label
+#    app.kubernetes.io/name: prometheus.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-domain-services
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      tier: domain-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 3005
+        - protocol: TCP
+          port: 3010
+        - protocol: TCP
+          port: 3015
+        - protocol: TCP
+          port: 3020
+        - protocol: TCP
+          port: 3025
+        - protocol: TCP
+          port: 3030
+        - protocol: TCP
+          port: 3035
+        - protocol: TCP
+          port: 3040
+        - protocol: TCP
+          port: 3045
+        - protocol: TCP
+          port: 3050
+        - protocol: TCP
+          port: 3055
+        - protocol: TCP
+          port: 3060
+        - protocol: TCP
+          port: 3065
+        - protocol: TCP
+          port: 3070
+        - protocol: TCP
+          port: 3075
+
+---
+# ==========================================================
+# 5. API GATEWAY — allow inbound from Ingress controller
+#    and deny everything else. The gateway is the only
+#    pod that should receive external traffic.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-ingress-only
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic from the ingress-nginx namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080

@@ -1,5 +1,5 @@
-import type { CreateReservationResult } from "@tartware/schemas";
-import { type ReservationUpdatedEvent, ReservationUpdatedEventSchema } from "@tartware/schemas";
+import type { CreateReservationResult, ReservationUpdatedEvent } from "@tartware/schemas";
+import { ReservationUpdatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../../config.js";

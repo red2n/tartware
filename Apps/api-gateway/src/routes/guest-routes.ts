@@ -20,6 +20,7 @@ import {
   forwardGuestMergeCommand,
   forwardGuestRegisterCommand,
 } from "./command-helpers.js";
+import { guestGridResponse, programBalanceResponse } from "./response-schemas.js";
 import {
   commandAcceptedSchema,
   GDPR_TAG,
@@ -39,6 +40,13 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  const tenantWriteScopeFromParams = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
   const tenantScopeFromQuery = app.withTenantScope({
     resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "STAFF",
@@ -54,7 +62,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         summary: "Proxy guest grid queries to the guests service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: guestGridResponse,
         },
       }),
     },
@@ -70,7 +78,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
         summary: "Proxy guest queries to the guests service.",
         querystring: paginationQuerySchema,
         response: {
-          200: jsonObjectSchema,
+          200: guestGridResponse,
         },
       }),
     },
@@ -110,7 +118,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/profile",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Update guest profile details via Command Center.",
@@ -134,7 +142,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/contact",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Update guest contact details via Command Center.",
@@ -158,7 +166,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/loyalty",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Update guest loyalty information via Command Center.",
@@ -182,7 +190,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/vip",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Update guest VIP status via Command Center.",
@@ -206,7 +214,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/blacklist",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Update guest blacklist status via Command Center.",
@@ -230,7 +238,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/gdpr-erase",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Erase guest data for GDPR via Command Center.",
@@ -272,7 +280,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/gdpr-rectify",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Rectify guest personal data (GDPR Art. 16).",
@@ -294,7 +302,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/gdpr-restrict",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Restrict processing of guest data (GDPR Art. 18).",
@@ -330,7 +338,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/consent",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Update guest consent preferences.",
@@ -352,7 +360,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/tenants/:tenantId/guests/:guestId/preferences",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantWriteScopeFromParams,
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Update guest preferences via Command Center.",
@@ -410,7 +418,7 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Get loyalty program balance.",
-        response: { 200: jsonObjectSchema },
+        response: { 200: programBalanceResponse },
       }),
     },
     proxyGuests,

@@ -1,20 +1,25 @@
-name: Package CI
+name: CI · OpenAPI Spec
 
 on:
-  workflow_call:
-    inputs:
-      package-scope:
-        description: 'pnpm workspace scope, e.g. @tartware/core-service'
-        required: true
-        type: string
-      has-tests:
-        description: 'Whether the package has a test script'
-        required: false
-        type: boolean
-        default: true
+  push:
+    branches: [main, develop]
+    paths:
+      - 'Apps/*/src/routes/**'
+      - 'Apps/*/src/server.ts'
+      - 'Apps/openapi-utils/**'
+      - 'scripts/export-openapi.mjs'
+      - 'scripts/validate-openapi.mjs'
+  pull_request:
+    paths:
+      - 'Apps/*/src/routes/**'
+      - 'Apps/*/src/server.ts'
+      - 'Apps/openapi-utils/**'
+      - 'scripts/export-openapi.mjs'
+      - 'scripts/validate-openapi.mjs'
+  workflow_dispatch:
 
 jobs:
-  ci:
+  openapi:
     runs-on: ubuntu-latest
 
     steps:
@@ -60,15 +65,19 @@ jobs:
         working-directory: proto
         run: pnpm run build
 
-      - name: Lint
-        run: npx nx run ${{ inputs.package-scope }}:lint
+      - name: Build all packages
+        run: pnpm run build
 
-      - name: Biome
-        run: npx nx run ${{ inputs.package-scope }}:biome
+      - name: Export OpenAPI specs
+        run: pnpm run export:openapi
 
-      - name: Knip
-        run: npx nx run ${{ inputs.package-scope }}:knip
+      - name: Validate OpenAPI specs
+        run: pnpm run validate:openapi
 
-      - name: Test
-        if: ${{ inputs.has-tests }}
-        run: npx nx run ${{ inputs.package-scope }}:test
+      - name: Upload OpenAPI specs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-specs
+          path: docs/openapi/*.json
+          if-no-files-found: warn

@@ -14,6 +14,12 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
+import {
+  allotmentListResponse,
+  bookingSourceListResponse,
+  channelMappingListResponse,
+  marketSegmentListResponse,
+} from "./response-schemas.js";
 import { BOOKING_CONFIG_TAG } from "./schemas.js";
 
 /** Register booking configuration proxy routes on the gateway. */
@@ -37,7 +43,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List allotments (room blocks for groups/events).",
-        response: { 200: jsonObjectSchema },
+        response: { 200: allotmentListResponse },
       }),
     },
     proxyCore,
@@ -63,7 +69,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List booking sources (OTAs, GDS, direct channels).",
-        response: { 200: jsonObjectSchema },
+        response: { 200: bookingSourceListResponse },
       }),
     },
     proxyCore,
@@ -89,7 +95,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List market segments for guest categorization.",
-        response: { 200: jsonObjectSchema },
+        response: { 200: marketSegmentListResponse },
       }),
     },
     proxyCore,
@@ -115,7 +121,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "List OTA/GDS channel mappings.",
-        response: { 200: jsonObjectSchema },
+        response: { 200: channelMappingListResponse },
       }),
     },
     proxyCore,

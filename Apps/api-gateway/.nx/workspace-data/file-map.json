@@ -1,0 +1,275 @@
+{
+  "version": "6.0",
+  "nxVersion": "22.5.0",
+  "pathMappings": {
+    "@tartware/openapi": [
+      "../openapi-utils/src/index.ts"
+    ],
+    "@tartware/openapi/*": [
+      "../openapi-utils/src/*"
+    ],
+    "@tartware/telemetry": [
+      "../telemetry/src/index.ts"
+    ],
+    "@tartware/telemetry/*": [
+      "../telemetry/src/*"
+    ],
+    "@tartware/config": [
+      "../config/src/index.ts"
+    ],
+    "@tartware/config/*": [
+      "../config/src/*"
+    ],
+    "@tartware/schemas": [
+      "../../schema/src/index.ts"
+    ],
+    "@tartware/schemas/*": [
+      "../../schema/src/*.ts"
+    ],
+    "@tartware/outbox": [
+      "../outbox/src/index.ts"
+    ],
+    "@tartware/outbox/*": [
+      "../outbox/src/*"
+    ],
+    "@tartware/command-center-shared": [
+      "../command-center-shared/src/index.ts"
+    ],
+    "@tartware/command-center-shared/*": [
+      "../command-center-shared/src/*"
+    ],
+    "@tartware/fastify-server": [
+      "../fastify-server/src/index.ts"
+    ],
+    "@tartware/fastify-server/*": [
+      "../fastify-server/src/*"
+    ]
+  },
+  "nxJsonPlugins": [],
+  "fileMap": {
+    "projectFileMap": {},
+    "nonProjectFiles": [
+      {
+        "file": ".eslintrc.cjs",
+        "hash": "14605040072233237680"
+      },
+      {
+        "file": "Dockerfile",
+        "hash": "13798463687434030383"
+      },
+      {
+        "file": "biome.json",
+        "hash": "7062643021218041994"
+      },
+      {
+        "file": "knip.json",
+        "hash": "5851137354364783972"
+      },
+      {
+        "file": "nx",
+        "hash": "3244421341483603138"
+      },
+      {
+        "file": "package.json",
+        "hash": "4021963569052549970"
+      },
+      {
+        "file": "src/command-center/command-dispatch-service.ts",
+        "hash": "4711349910819476391"
+      },
+      {
+        "file": "src/command-center/command-registry.ts",
+        "hash": "11942437744406956079"
+      },
+      {
+        "file": "src/command-center/index.ts",
+        "hash": "11441710870346533038"
+      },
+      {
+        "file": "src/command-center/outbox.ts",
+        "hash": "13595895516207210962"
+      },
+      {
+        "file": "src/command-center/sql/command-dispatches.ts",
+        "hash": "3483575529899014629"
+      },
+      {
+        "file": "src/command-center/sql/command-features.ts",
+        "hash": "5594547442272723671"
+      },
+      {
+        "file": "src/command-center/sql/command-registry.ts",
+        "hash": "14386566466812536119"
+      },
+      {
+        "file": "src/config.ts",
+        "hash": "13025040154800588993"
+      },
+      {
+        "file": "src/devtools/duplo-dashboard.ts",
+        "hash": "8744446097085135258"
+      },
+      {
+        "file": "src/index.ts",
+        "hash": "944909784694619198"
+      },
+      {
+        "file": "src/kafka/producer.ts",
+        "hash": "6702725814499976186"
+      },
+      {
+        "file": "src/lib/db.ts",
+        "hash": "4157254984612243371"
+      },
+      {
+        "file": "src/lib/jwt.ts",
+        "hash": "12886908690932054365"
+      },
+      {
+        "file": "src/lib/metrics.ts",
+        "hash": "1639775433658342588"
+      },
+      {
+        "file": "src/lib/redis.ts",
+        "hash": "2632406581358113368"
+      },
+      {
+        "file": "src/logger.ts",
+        "hash": "3630779339835630389"
+      },
+      {
+        "file": "src/plugins/auth-context.ts",
+        "hash": "903216122244305955"
+      },
+      {
+        "file": "src/plugins/swagger.ts",
+        "hash": "3452234002886565201"
+      },
+      {
+        "file": "src/routes/billing-routes.ts",
+        "hash": "2326465201318996820"
+      },
+      {
+        "file": "src/routes/booking-config-routes.ts",
+        "hash": "12505100594596609970"
+      },
+      {
+        "file": "src/routes/calculation-routes.ts",
+        "hash": "4421930341871531593"
+      },
+      {
+        "file": "src/routes/command-center-routes.ts",
+        "hash": "12103817804852703003"
+      },
+      {
+        "file": "src/routes/command-helpers.ts",
+        "hash": "16677205160610983523"
+      },
+      {
+        "file": "src/routes/core-proxy-routes.ts",
+        "hash": "5614456009336377128"
+      },
+      {
+        "file": "src/routes/guest-routes.ts",
+        "hash": "18406200888825408838"
+      },
+      {
+        "file": "src/routes/health-routes.ts",
+        "hash": "7220586921225457597"
+      },
+      {
+        "file": "src/routes/housekeeping-routes.ts",
+        "hash": "15270718566633398006"
+      },
+      {
+        "file": "src/routes/misc-routes.ts",
+        "hash": "16396039949730064083"
+      },
+      {
+        "file": "src/routes/operations-routes.ts",
+        "hash": "18251543818268985680"
+      },
+      {
+        "file": "src/routes/registry-proxy-routes.ts",
+        "hash": "15984731344469546996"
+      },
+      {
+        "file": "src/routes/reporting-routes.ts",
+        "hash": "13143056391019544186"
+      },
+      {
+        "file": "src/routes/reservation-routes.ts",
+        "hash": "12517408146083084168"
+      },
+      {
+        "file": "src/routes/revenue-routes.ts",
+        "hash": "9533787248798884671"
+      },
+      {
+        "file": "src/routes/room-routes.ts",
+        "hash": "5217832603213747841"
+      },
+      {
+        "file": "src/routes/schemas.ts",
+        "hash": "1624417532689375582"
+      },
+      {
+        "file": "src/routes/self-service-routes.ts",
+        "hash": "18426079357500306006"
+      },
+      {
+        "file": "src/routes/webhook-routes.ts",
+        "hash": "16786739074604090602"
+      },
+      {
+        "file": "src/server.ts",
+        "hash": "7439342449479490401"
+      },
+      {
+        "file": "src/services/membership-service.ts",
+        "hash": "4395377568093023691"
+      },
+      {
+        "file": "src/types/fastify.d.ts",
+        "hash": "9290758734121970817"
+      },
+      {
+        "file": "src/utils/circuit-breaker.ts",
+        "hash": "11537075537452379550"
+      },
+      {
+        "file": "src/utils/command-publisher.ts",
+        "hash": "13898069235464131935"
+      },
+      {
+        "file": "src/utils/proxy.ts",
+        "hash": "749914024194511995"
+      },
+      {
+        "file": "tests/kafka-config.test.ts",
+        "hash": "1620973467536525817"
+      },
+      {
+        "file": "tests/server.test.ts",
+        "hash": "5685671126932009377"
+      },
+      {
+        "file": "tests/setup.ts",
+        "hash": "15722829341968373963"
+      },
+      {
+        "file": "tsconfig.json",
+        "hash": "12196059330608979626"
+      },
+      {
+        "file": "views/duplo-dashboard.eta",
+        "hash": "8162336968925088514"
+      },
+      {
+        "file": "vitest.config.ts",
+        "hash": "13039153169925306329"
+      }
+    ]
+  },
+  "externalNodesHash": "3244421341483603138"
+}

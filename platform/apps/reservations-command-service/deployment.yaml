@@ -13,6 +13,7 @@ spec:
     metadata:
       labels:
         app: reservations-command-service
+        tier: domain-service
     spec:
       containers:
         - name: reservations-command-service

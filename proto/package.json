@@ -1,0 +1,28 @@
+{
+  "name": "@tartware/proto-types",
+  "version": "0.1.0",
+  "description": "TypeScript types generated from proto definitions",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "buf generate",
+    "build": "swc src -d dist --strip-leading-paths --config-file ../.swcrc -q && tsc --project tsconfig.json --emitDeclarationOnly",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.50.0",
+    "ts-proto": "^2.6.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
