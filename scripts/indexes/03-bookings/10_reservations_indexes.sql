@@ -17,12 +17,12 @@ CREATE INDEX IF NOT EXISTS idx_reservations_room_type_id ON reservations(room_ty
 CREATE INDEX IF NOT EXISTS idx_reservations_rate_id ON reservations(rate_id) WHERE deleted_at IS NULL;
 
 -- Confirmation number lookup (critical for guest queries)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_confirmation ON reservations(confirmation_number) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_confirmation ON reservations(tenant_id, confirmation_number) WHERE deleted_at IS NULL;
 
 -- Date range queries (most common queries)
 CREATE INDEX IF NOT EXISTS idx_reservations_check_in ON reservations(check_in_date) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_check_out ON reservations(check_out_date) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_reservations_dates ON reservations(check_in_date, check_out_date) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reservations_dates ON reservations(tenant_id, check_in_date, check_out_date) WHERE deleted_at IS NULL;
 
 -- Booking date (for reporting)
 CREATE INDEX IF NOT EXISTS idx_reservations_booking_date ON reservations(booking_date);
@@ -32,18 +32,18 @@ CREATE INDEX IF NOT EXISTS idx_reservations_room_number ON reservations(room_num
 
 -- Status queries (critical for operational views)
 CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_reservations_property_status ON reservations(property_id, status, deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reservations_property_status ON reservations(tenant_id, property_id, status, deleted_at) WHERE deleted_at IS NULL;
 
 -- Composite index for arrivals (today's check-ins)
-CREATE INDEX IF NOT EXISTS idx_reservations_arrivals ON reservations(property_id, check_in_date, status)
+CREATE INDEX IF NOT EXISTS idx_reservations_arrivals ON reservations(tenant_id, property_id, check_in_date, status)
     WHERE deleted_at IS NULL AND status IN ('CONFIRMED', 'PENDING');
 
 -- Composite index for departures (today's check-outs)
-CREATE INDEX IF NOT EXISTS idx_reservations_departures ON reservations(property_id, check_out_date, status)
+CREATE INDEX IF NOT EXISTS idx_reservations_departures ON reservations(tenant_id, property_id, check_out_date, status)
     WHERE deleted_at IS NULL AND status = 'CHECKED_IN';
 
 -- In-house guests (currently checked in)
-CREATE INDEX IF NOT EXISTS idx_reservations_in_house ON reservations(property_id, status, check_in_date, check_out_date)
+CREATE INDEX IF NOT EXISTS idx_reservations_in_house ON reservations(tenant_id, property_id, status, check_in_date, check_out_date)
     WHERE deleted_at IS NULL AND status = 'CHECKED_IN';
 
 -- Reservation type segmentation
@@ -81,7 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_reservations_promo_code ON reservations(promo_cod
 CREATE INDEX IF NOT EXISTS idx_reservations_metadata_gin ON reservations USING GIN(metadata);
 
 -- Composite for property + date range + status (critical for dashboard)
-CREATE INDEX IF NOT EXISTS idx_reservations_dashboard ON reservations(property_id, check_in_date, check_out_date, status, deleted_at)
+CREATE INDEX IF NOT EXISTS idx_reservations_dashboard ON reservations(tenant_id, property_id, check_in_date, check_out_date, status, deleted_at)
     WHERE deleted_at IS NULL;
 
 -- Audit trail indexes

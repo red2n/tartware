@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_reservation_id ON payments(reservation_i
 CREATE INDEX IF NOT EXISTS idx_payments_guest_id ON payments(guest_id) WHERE deleted_at IS NULL;
 
 -- Payment reference lookup (unique)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_reference ON payments(payment_reference) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_reference ON payments(tenant_id, payment_reference) WHERE deleted_at IS NULL;
 
 -- External transaction ID
 CREATE INDEX IF NOT EXISTS idx_payments_external_transaction ON payments(external_transaction_id)
@@ -28,11 +28,11 @@ CREATE INDEX IF NOT EXISTS idx_payments_payment_method ON payments(payment_metho
 
 -- Status queries (critical for payment processing)
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_payments_pending ON payments(status, created_at)
+CREATE INDEX IF NOT EXISTS idx_payments_pending ON payments(tenant_id, status, created_at)
     WHERE status = 'PENDING' AND deleted_at IS NULL;
 
 -- Composite for property payments
-CREATE INDEX IF NOT EXISTS idx_payments_property_date ON payments(property_id, processed_at, deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_property_date ON payments(tenant_id, property_id, processed_at, deleted_at) WHERE deleted_at IS NULL;
 
 -- Amount queries (for reporting)
 CREATE INDEX IF NOT EXISTS idx_payments_amount ON payments(amount) WHERE deleted_at IS NULL;
@@ -58,10 +58,10 @@ CREATE INDEX IF NOT EXISTS idx_payments_gateway_response_gin ON payments USING G
 CREATE INDEX IF NOT EXISTS idx_payments_metadata_gin ON payments USING GIN(metadata);
 
 -- Composite for reservation payments (common query)
-CREATE INDEX IF NOT EXISTS idx_payments_reservation_status ON payments(reservation_id, status, deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_reservation_status ON payments(tenant_id, reservation_id, status, deleted_at) WHERE deleted_at IS NULL;
 
 -- Failed payments tracking
-CREATE INDEX IF NOT EXISTS idx_payments_failed ON payments(status, created_at)
+CREATE INDEX IF NOT EXISTS idx_payments_failed ON payments(tenant_id, status, created_at)
     WHERE status = 'FAILED' AND deleted_at IS NULL;
 
 -- Audit trail indexes

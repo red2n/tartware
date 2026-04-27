@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_rooms_room_type_id ON rooms(room_type_id) WHERE d
 
 -- Room number lookup (unique within property)
 CREATE INDEX IF NOT EXISTS idx_rooms_room_number ON rooms(room_number) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_rooms_property_number ON rooms(property_id, room_number) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rooms_property_number ON rooms(tenant_id, property_id, room_number) WHERE deleted_at IS NULL;
 
 -- Status indexes (critical for availability)
 CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status) WHERE deleted_at IS NULL;
@@ -24,12 +24,12 @@ CREATE INDEX IF NOT EXISTS idx_rooms_housekeeping_status ON rooms(housekeeping_s
 CREATE INDEX IF NOT EXISTS idx_rooms_maintenance_status ON rooms(maintenance_status) WHERE deleted_at IS NULL;
 
 -- Composite status index (most common query: available clean rooms)
-CREATE INDEX IF NOT EXISTS idx_rooms_availability ON rooms(property_id, room_type_id, status, housekeeping_status, deleted_at)
+CREATE INDEX IF NOT EXISTS idx_rooms_availability ON rooms(tenant_id, property_id, room_type_id, status, housekeeping_status, deleted_at)
     WHERE deleted_at IS NULL AND is_blocked = false AND is_out_of_order = false;
 
 -- Blocking status
 CREATE INDEX IF NOT EXISTS idx_rooms_is_blocked ON rooms(is_blocked) WHERE is_blocked = true AND deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_rooms_blocked_dates ON rooms(blocked_from, blocked_until) WHERE is_blocked = true AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rooms_blocked_dates ON rooms(tenant_id, blocked_from, blocked_until) WHERE is_blocked = true AND deleted_at IS NULL;
 
 -- Out of order status
 CREATE INDEX IF NOT EXISTS idx_rooms_is_out_of_order ON rooms(is_out_of_order) WHERE is_out_of_order = true AND deleted_at IS NULL;
@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_rooms_features_gin ON rooms USING GIN(features);
 CREATE INDEX IF NOT EXISTS idx_rooms_amenities_gin ON rooms USING GIN(amenities);
 
 -- Composite for property + type + status
-CREATE INDEX IF NOT EXISTS idx_rooms_property_type_status ON rooms(property_id, room_type_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rooms_property_type_status ON rooms(tenant_id, property_id, room_type_id, status) WHERE deleted_at IS NULL;
 
 -- Audit trail indexes
 CREATE INDEX IF NOT EXISTS idx_rooms_created_at ON rooms(created_at);

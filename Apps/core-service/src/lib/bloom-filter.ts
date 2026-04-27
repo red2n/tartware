@@ -315,10 +315,12 @@ export class BloomFilter {
 }
 
 /**
- * Username Bloom Filter - specialized for username existence checks
+ * Username Bloom Filter - specialized for username existence checks.
+ * Supports per-tenant partitioning: bloom:usernames:{tenantId}
  */
 export class UsernameBloomFilter extends BloomFilter {
   private static instance: UsernameBloomFilter;
+  private static tenantInstances = new Map<string, BloomFilter>();
 
   private constructor() {
     super("usernames", {
@@ -332,6 +334,22 @@ export class UsernameBloomFilter extends BloomFilter {
       UsernameBloomFilter.instance = new UsernameBloomFilter();
     }
     return UsernameBloomFilter.instance;
+  }
+
+  /**
+   * Get a tenant-scoped Bloom filter instance.
+   * Key: bloom:usernames:{tenantId}
+   */
+  public static forTenant(tenantId: string): BloomFilter {
+    let instance = UsernameBloomFilter.tenantInstances.get(tenantId);
+    if (!instance) {
+      instance = new BloomFilter(`usernames:${tenantId}`, {
+        hashFunctions: 4,
+        bitArraySize: 100000,
+      });
+      UsernameBloomFilter.tenantInstances.set(tenantId, instance);
+    }
+    return instance;
   }
 }
 
