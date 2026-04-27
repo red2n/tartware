@@ -79,6 +79,17 @@
 \i :scripts_dir/triggers/verify-triggers.sql
 
 -- =====================================================
+-- PHASE 6: MULTI-TENANT INFRASTRUCTURE VERIFICATION
+-- =====================================================
+\echo ''
+\echo '======================================================'
+\echo '  PHASE 6: MULTI-TENANT INFRASTRUCTURE'
+\echo '======================================================'
+\echo ''
+\i :scripts_dir/tables/verify-composite-fks.sql
+\i :scripts_dir/tables/verify-rls.sql
+
+-- =====================================================
 -- FINAL SUMMARY
 -- =====================================================
 \echo ''
@@ -98,10 +109,13 @@ DECLARE
     v_procedure_count INTEGER;
     v_soft_delete_count INTEGER;
     v_tenant_id_count INTEGER;
+    v_rls_count INTEGER;
+    v_composite_fk_count INTEGER;
     v_index_per_table NUMERIC := 0;
     v_fk_per_table NUMERIC := 0;
     v_soft_delete_ratio NUMERIC := 0;
     v_tenant_ratio NUMERIC := 0;
+    v_rls_ratio NUMERIC := 0;
 BEGIN
     -- Count tables
     SELECT COUNT(*) INTO v_table_count
@@ -192,12 +206,47 @@ BEGIN
                 AND c.column_name = 'tenant_id'
         );
 
+    -- Count RLS-enabled tables (tables with tenant_id that have RLS + FORCE + policy)
+    SELECT COUNT(*) INTO v_rls_count
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_attribute a ON a.attrelid = c.oid
+    WHERE n.nspname IN ('public', 'availability')
+      AND c.relkind = 'r'
+      AND a.attname = 'tenant_id'
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND c.relrowsecurity = true
+      AND c.relforcerowsecurity = true
+      AND EXISTS (
+          SELECT 1 FROM pg_policies p
+          WHERE p.schemaname = n.nspname
+            AND p.tablename = c.relname
+            AND p.policyname = 'tenant_isolation_' || c.relname
+      );
+
+    -- Count composite FKs to parent tables
+    SELECT COUNT(*) INTO v_composite_fk_count
+    FROM pg_constraint con
+    JOIN pg_class parent_cls ON con.confrelid = parent_cls.oid
+    JOIN pg_namespace parent_ns ON parent_cls.relnamespace = parent_ns.oid
+    WHERE con.contype = 'f'
+      AND array_length(con.conkey, 1) = 2
+      AND parent_ns.nspname = 'public'
+      AND parent_cls.relname IN (
+        'properties', 'guests', 'reservations',
+        'rooms', 'room_types', 'companies'
+      );
+
     -- Compute derived metrics
     IF v_table_count > 0 THEN
         v_index_per_table := v_index_count::NUMERIC / v_table_count;
         v_fk_per_table := v_constraint_count::NUMERIC / v_table_count;
         v_soft_delete_ratio := (v_soft_delete_count::NUMERIC / v_table_count) * 100;
         v_tenant_ratio := (v_tenant_id_count::NUMERIC / v_table_count) * 100;
+    END IF;
+    IF v_tenant_id_count > 0 THEN
+        v_rls_ratio := (v_rls_count::NUMERIC / v_tenant_id_count) * 100;
     END IF;
 
     RAISE NOTICE '';
@@ -215,6 +264,8 @@ BEGIN
     RAISE NOTICE '│  Avg foreign keys per table:        %                      │', TO_CHAR(v_fk_per_table, 'FM99990.00');
     RAISE NOTICE '│  Soft delete coverage:              %                      │', TO_CHAR(v_soft_delete_ratio, 'FM99990.00') || '%';
     RAISE NOTICE '│  Multi-tenant coverage:             %                      │', TO_CHAR(v_tenant_ratio, 'FM99990.00') || '%';
+    RAISE NOTICE '│  RLS coverage (of tenant tables):   %                      │', TO_CHAR(v_rls_ratio, 'FM99990.00') || '%';
+    RAISE NOTICE '│  Composite FKs (tenant-scoped):     %                      │', LPAD(v_composite_fk_count::TEXT, 5, ' ');
     RAISE NOTICE '│                                                              │';
     RAISE NOTICE '└──────────────────────────────────────────────────────────────┘';
     RAISE NOTICE '';

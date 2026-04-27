@@ -76,7 +76,10 @@ DECLARE
         'command_idempotency',
 
         -- Transactional outbox (infrastructure, consumed by Kafka connect)
-        'transactional_outbox'
+        'transactional_outbox',
+
+        -- Tenant isolation audit (security infrastructure, written by triggers)
+        'tenant_access_audit'
     ];
 BEGIN
     FOR r IN

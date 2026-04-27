@@ -168,7 +168,10 @@ created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Creation ti
     is_deleted BOOLEAN DEFAULT FALSE, -- Soft delete flag
     deleted_at TIMESTAMP WITHOUT TIME ZONE,
     deleted_by UUID REFERENCES users(id),
-    version BIGINT DEFAULT 0 -- Optimistic locking counter
+    version BIGINT DEFAULT 0, -- Optimistic locking counter
+
+    -- Composite unique for tenant-scoped FK references
+    UNIQUE (tenant_id, company_id)
 );
 
 -- =============================================

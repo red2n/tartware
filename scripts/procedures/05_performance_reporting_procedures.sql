@@ -18,23 +18,14 @@
 -- =====================================================
 
 -- Generate daily performance report
-CREATE OR REPLACE FUNCTION generate_daily_performance_report()
+CREATE OR REPLACE FUNCTION generate_daily_performance_report(p_tenant_id UUID)
 RETURNS UUID
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_report_id UUID;
     v_report_data JSONB;
-    v_tenant_id UUID;
 BEGIN
-    SELECT id INTO v_tenant_id
-    FROM tenants
-    ORDER BY created_at NULLS LAST, id
-    LIMIT 1;
-
-    IF v_tenant_id IS NULL THEN
-        v_tenant_id := '11111111-1111-1111-1111-111111111111';
-    END IF;
 
     -- Collect all performance metrics
     v_report_data := jsonb_build_object(
@@ -149,7 +140,7 @@ BEGIN
         report_data,
         severity
     ) VALUES (
-        v_tenant_id,
+        p_tenant_id,
         'DAILY_PERFORMANCE',
         FORMAT('Daily Performance Report - %s', CURRENT_DATE),
         v_report_data,
@@ -166,12 +157,12 @@ BEGIN
     RETURN v_report_id;
 END $$;
 
-COMMENT ON FUNCTION generate_daily_performance_report() IS
-'Generates comprehensive daily performance report.
-Usage: SELECT generate_daily_performance_report();';
+COMMENT ON FUNCTION generate_daily_performance_report(UUID) IS
+'Generates comprehensive daily performance report for a specific tenant.
+Usage: SELECT generate_daily_performance_report(''<tenant-uuid>'');';
 
 -- Generate hourly health check
-CREATE OR REPLACE FUNCTION generate_health_check_report()
+CREATE OR REPLACE FUNCTION generate_health_check_report(p_tenant_id UUID)
 RETURNS UUID
 LANGUAGE plpgsql
 AS $$
@@ -179,16 +170,7 @@ DECLARE
     v_report_id UUID;
     v_issues JSONB := '[]'::JSONB;
     v_severity TEXT := 'INFO';
-    v_tenant_id UUID;
 BEGIN
-    SELECT id INTO v_tenant_id
-    FROM tenants
-    ORDER BY created_at NULLS LAST, id
-    LIMIT 1;
-
-    IF v_tenant_id IS NULL THEN
-        v_tenant_id := '11111111-1111-1111-1111-111111111111';
-    END IF;
 
     -- Check connection pool saturation
     IF (SELECT COUNT(*)::NUMERIC / current_setting('max_connections')::INT
@@ -264,7 +246,7 @@ BEGIN
         report_data,
         severity
     ) VALUES (
-        v_tenant_id,
+        p_tenant_id,
         'HEALTH_CHECK',
         FORMAT('Health Check - %s', NOW()::TIMESTAMP(0)),
         jsonb_build_object(
@@ -293,9 +275,9 @@ BEGIN
     RETURN v_report_id;
 END $$;
 
-COMMENT ON FUNCTION generate_health_check_report() IS
-'Generates quick health check report.
-Usage: SELECT generate_health_check_report();';
+COMMENT ON FUNCTION generate_health_check_report(UUID) IS
+'Generates quick health check report for a specific tenant.
+Usage: SELECT generate_health_check_report(''<tenant-uuid>'');';
 
 -- =====================================================
 -- THRESHOLD CHECKING FUNCTIONS
@@ -473,21 +455,11 @@ Usage: SELECT * FROM get_latest_report(''DAILY_PERFORMANCE'');';
 -- =====================================================
 
 -- Initialize default report schedules
-CREATE OR REPLACE FUNCTION init_report_schedules()
+CREATE OR REPLACE FUNCTION init_report_schedules(p_tenant_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 AS $$
-DECLARE
-    v_tenant_id UUID;
 BEGIN
-    SELECT id INTO v_tenant_id
-    FROM tenants
-    ORDER BY created_at NULLS LAST, id
-    LIMIT 1;
-
-    IF v_tenant_id IS NULL THEN
-        v_tenant_id := '11111111-1111-1111-1111-111111111111';
-    END IF;
 
     -- Daily performance report at 2 AM
     INSERT INTO report_schedules (
@@ -497,37 +469,37 @@ BEGIN
         recipients
     ) VALUES
     (
-        v_tenant_id,
+        p_tenant_id,
         'DAILY_PERFORMANCE',
         '0 2 * * *',  -- Daily at 2 AM
         ARRAY['admin@tartware.com', 'dba@tartware.com']
     ),
     (
-        v_tenant_id,
+        p_tenant_id,
         'HEALTH_CHECK',
         '0 * * * *',  -- Every hour
         ARRAY['ops@tartware.com']
     ),
     (
-        v_tenant_id,
+        p_tenant_id,
         'WEEKLY_SUMMARY',
         '0 9 * * 1',  -- Monday at 9 AM
         ARRAY['management@tartware.com']
     ),
     (
-        v_tenant_id,
+        p_tenant_id,
         'THRESHOLD_ALERTS',
         '*/5 * * * *',  -- Every 5 minutes
         ARRAY['alerts@tartware.com']
     )
-    ON CONFLICT (report_type) DO NOTHING;
+    ON CONFLICT (tenant_id, report_type) DO NOTHING;
 
     RAISE NOTICE 'Report schedules initialized';
 END $$;
 
-COMMENT ON FUNCTION init_report_schedules() IS
-'Initializes default report schedules.
-Usage: SELECT init_report_schedules();';
+COMMENT ON FUNCTION init_report_schedules(UUID) IS
+'Initializes default report schedules for a specific tenant.
+Usage: SELECT init_report_schedules(''<tenant-uuid>'');';
 
 -- =====================================================
 -- MONITORING VIEWS
@@ -580,8 +552,8 @@ COMMENT ON VIEW v_recent_reports IS
 -- INITIALIZATION
 -- =====================================================
 
--- Initialize schedules
-SELECT init_report_schedules();
+-- Initialize schedules (using default seed tenant)
+SELECT init_report_schedules('11111111-1111-1111-1111-111111111111');
 
 \echo ''
 \echo '✓ Performance reporting functions created'

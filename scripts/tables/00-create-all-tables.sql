@@ -264,6 +264,9 @@
 \echo '>>> Enforcing tenant_id and soft delete coverage'
 \ir 99_enforce_tenant_soft_delete.sql
 
+\echo '>>> Enforcing composite foreign keys for tenant isolation'
+\ir 97_composite_foreign_keys.sql
+
 \echo '>>> Enabling Row-Level Security on business tables'
 \ir 98_row_level_security.sql
 

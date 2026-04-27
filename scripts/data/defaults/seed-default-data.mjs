@@ -379,7 +379,7 @@ const upsertRoomAmenityCatalog = async (client, amenities = []) => {
           COALESCE($14::jsonb, '{}'::jsonb),
           NOW(), NOW(), $15, $15
         )
-        ON CONFLICT (property_id, amenity_code) DO UPDATE
+        ON CONFLICT (tenant_id, property_id, amenity_code) DO UPDATE
         SET
           tenant_id = EXCLUDED.tenant_id,
           display_name = EXCLUDED.display_name,
@@ -593,7 +593,7 @@ const upsertServices = async (client, services = []) => {
           COALESCE($14::jsonb, '{}'::jsonb),
           NOW(), NOW(), $15, $15
         )
-        ON CONFLICT (property_id, service_code) DO UPDATE
+        ON CONFLICT (tenant_id, property_id, service_code) DO UPDATE
         SET
           tenant_id = EXCLUDED.tenant_id,
           service_name = EXCLUDED.service_name,

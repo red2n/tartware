@@ -116,7 +116,10 @@ CONSTRAINT guests_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]
     CONSTRAINT guests_loyalty_points_check CHECK (loyalty_points >= 0), -- Prevent negative points
     CONSTRAINT guests_total_bookings_check CHECK (total_bookings >= 0), -- Ensure non-negative counts
     CONSTRAINT guests_total_nights_check CHECK (total_nights >= 0), -- Ensure non-negative nights
-    CONSTRAINT guests_total_revenue_check CHECK (total_revenue >= 0) -- Lifetime revenue cannot be negative
+    CONSTRAINT guests_total_revenue_check CHECK (total_revenue >= 0), -- Lifetime revenue cannot be negative
+
+    -- Composite unique for tenant-scoped FK references
+    UNIQUE (tenant_id, id)
 );
 
 -- =====================================================

@@ -312,6 +312,7 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
               ),
               headers: {
                 "x-tartware-dlq": input.serviceName,
+                ...(metadata.tenantId && { "x-tenant-id": metadata.tenantId }),
               },
             });
           } catch (dlqError) {
@@ -415,6 +416,7 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
           ),
           headers: {
             "x-tartware-dlq": input.serviceName,
+            ...(metadata.tenantId && { "x-tenant-id": metadata.tenantId }),
           },
         });
       } catch (dlqError) {

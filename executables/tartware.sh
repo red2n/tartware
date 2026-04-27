@@ -107,6 +107,50 @@ run_and_log() {
     fi
 }
 
+# Filtered runner for database setup.
+# Full output always goes to TARTWARE_LOG_FILE.
+# Console gets a noise-filtered view that strips psql idempotent NOTICEs,
+# npm warnings, and dotenv injection lines while preserving all status (✓/✗),
+# step markers, banners, verification results, and errors.
+run_db_setup() {
+    local cmd="$*"
+
+    printf '\n==> %s START Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+
+    if [ "${TARTWARE_QUIET}" = "true" ] || [ "${TARTWARE_VERBOSE}" != "true" ]; then
+        # Quiet / non-verbose: log only, no console output
+        if bash -c "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
+            :
+        else
+            printf '==> %s FAIL Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+            printf '%s\n' "[tartware] ERROR: Database setup failed. See ${TARTWARE_LOG_FILE} for details." >&2
+            tail -n 80 "$TARTWARE_LOG_FILE" >&2 || true
+            exit 1
+        fi
+    else
+        # Verbose: tee full output to log, filter noise for console
+        if bash -c "$cmd" 2>&1 \
+            | tee -a "$TARTWARE_LOG_FILE" \
+            | awk '
+                /already exists, skipping$/   { next }
+                /does not exist, skipping$/   { next }
+                /^npm warn/                   { next }
+                /^\[dotenv/                   { next }
+                /^Password for user/          { next }
+                /^psql:/ { sub(/^psql:[^:]+:[0-9]+: NOTICE:  ?/, "") }
+                { print; fflush() }
+            '; then
+            :
+        else
+            printf '==> %s FAIL Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+            printf '%s\n' "[tartware] ERROR: Database setup failed. See ${TARTWARE_LOG_FILE} for full details." >&2
+            exit 1
+        fi
+    fi
+
+    printf '==> %s SUCCESS Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+}
+
 ensure_env_vars() {
     # Ensure critical environment variables exist in .env file
     local env_file="$ENV_FILE_DEFAULT"
@@ -678,7 +722,7 @@ case "$cmd" in
                 if [ ! -f "$setup_script" ]; then
                     fail "Missing setup script: $setup_script"
                 fi
-                run_and_log "Database setup" "bash '$setup_script' $*"
+                run_db_setup "bash '$setup_script' $*"
                 # setup-database.sh already handles password reset internally
                 exit 0
                 ;;

@@ -134,7 +134,10 @@ CREATE TABLE IF NOT EXISTS reservations (
         discount_amount >= 0 AND
         paid_amount >= 0
     ),
-    CONSTRAINT reservations_email_format CHECK (guest_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+    CONSTRAINT reservations_email_format CHECK (guest_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+
+    -- Composite unique for tenant-scoped FK references
+    UNIQUE (tenant_id, id)
 );
 
 -- =====================================================
