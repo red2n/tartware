@@ -241,9 +241,7 @@ export class UserCacheService {
    * ```
    */
   async getUserByUsername(username: string, tenantId?: string): Promise<CachedUser | null> {
-    const bloomFilter = tenantId
-      ? UsernameBloomFilter.forTenant(tenantId)
-      : usernameBloomFilter;
+    const bloomFilter = tenantId ? UsernameBloomFilter.forTenant(tenantId) : usernameBloomFilter;
 
     // Step 1: Check Bloom filter (fast negative check)
     const mightExist = await bloomFilter.mightExist(username);

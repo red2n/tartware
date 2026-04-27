@@ -92,7 +92,10 @@ export const registerCheckoutRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const queryParams = CheckoutPreviewQuerySchema.parse(request.query);
 
-      const reservation = await lookupCheckedInReservation(queryParams.tenant_id, queryParams.confirmation_code);
+      const reservation = await lookupCheckedInReservation(
+        queryParams.tenant_id,
+        queryParams.confirmation_code,
+      );
       if (!reservation) {
         return reply.notFound(
           "No checked-in reservation found with the provided confirmation code",

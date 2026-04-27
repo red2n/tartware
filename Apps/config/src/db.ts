@@ -248,5 +248,13 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     await pool.end();
   };
 
-  return { pool, query, queryWithClient, withTransaction, tenantQuery, withTenantTransaction, close };
+  return {
+    pool,
+    query,
+    queryWithClient,
+    withTransaction,
+    tenantQuery,
+    withTenantTransaction,
+    close,
+  };
 }

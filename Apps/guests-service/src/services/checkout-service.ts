@@ -18,7 +18,10 @@ export class CheckoutServiceError extends Error {
 /**
  * Look up a checked-in reservation by confirmation code for self-service checkout.
  */
-export async function lookupCheckedInReservation(tenantId: string, confirmationCode: string): Promise<{
+export async function lookupCheckedInReservation(
+  tenantId: string,
+  confirmationCode: string,
+): Promise<{
   id: string;
   tenant_id: string;
   guest_id: string;
