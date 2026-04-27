@@ -261,7 +261,7 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
     if [ -f "$RESET_PASSWORD_SCRIPT" ]; then
         if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
             AUTH_DEFAULT_PASSWORD=TempPass123 NODE_ENV=development \
-            npx tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
+            npx --yes tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
             "$RESET_PASSWORD_SCRIPT"; then
             echo -e "${GREEN}✓ Default passwords reset to TempPass123${NC}"
         else
@@ -320,7 +320,11 @@ if ! command -v gcc &> /dev/null || ! command -v make &> /dev/null; then
 fi
 
 # Check for PostgreSQL client tools (psql/pg_isready)
-if ! command -v psql &> /dev/null || ! command -v pg_isready &> /dev/null; then
+# Ubuntu's postgresql-client-common installs stub wrappers that pass
+# `command -v` but fail at runtime with "install at least one
+# postgresql-client-<version>".  Verify the tools actually work.
+if ! command -v psql &> /dev/null || ! command -v pg_isready &> /dev/null \
+   || ! psql --version &> /dev/null || ! pg_isready --version &> /dev/null; then
     MISSING_TOOLS+=("postgresql-client")
     INSTALL_NEEDED=true
 fi
@@ -386,11 +390,12 @@ else
     exit 1
 fi
 
-if command -v psql &> /dev/null && command -v pg_isready &> /dev/null; then
+if command -v psql &> /dev/null && command -v pg_isready &> /dev/null \
+   && psql --version &> /dev/null && pg_isready --version &> /dev/null; then
     echo -e "${GREEN}✓ PostgreSQL client tools (psql, pg_isready) are available${NC}"
 else
-    echo -e "${RED}✗ PostgreSQL client tools are missing${NC}"
-    echo -e "${YELLOW}Install package: postgresql-client${NC}"
+    echo -e "${RED}✗ PostgreSQL client tools are missing or only stubs are installed${NC}"
+    echo -e "${YELLOW}Install package: sudo apt-get install -y postgresql-client${NC}"
     exit 1
 fi
 echo ""
@@ -756,7 +761,7 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
     if [ -f "$DEFAULT_DATA_SCRIPT" ]; then
         seeded=false
         if command -v node >/dev/null 2>&1; then
-            if node "$DEFAULT_DATA_SCRIPT"; then
+            if NODE_PATH="$REPO_ROOT/node_modules" node "$DEFAULT_DATA_SCRIPT"; then
                 echo -e "${GREEN}✓ Default baseline data inserted${NC}"
                 seeded=true
             else
@@ -767,7 +772,7 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
         # If not seeded and running under sudo, try the original user's environment (nvm installs)
         if [ "$seeded" = false ] && [ -n "${SUDO_USER:-}" ]; then
             echo -e "${CYAN}Attempting to seed defaults as user '${SUDO_USER}' (to use user's Node/npm environment)...${NC}"
-            seed_cmd='export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; if command -v node >/dev/null 2>&1; then node "'"$DEFAULT_DATA_SCRIPT"'"; else exit 2; fi'
+            seed_cmd='export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; if command -v node >/dev/null 2>&1; then NODE_PATH="'"$REPO_ROOT"'/node_modules" node "'"$DEFAULT_DATA_SCRIPT"'"; else exit 2; fi'
             if sudo -u "$SUDO_USER" -H bash -lc "$seed_cmd"; then
                 echo -e "${GREEN}✓ Default baseline data inserted (using ${SUDO_USER}'s Node environment)${NC}"
                 seeded=true

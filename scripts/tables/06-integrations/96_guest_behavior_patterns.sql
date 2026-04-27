@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS guest_behavior_patterns (
     updated_by UUID,
 
     -- Constraints
-    UNIQUE (guest_id, analysis_date)
+    UNIQUE (tenant_id, guest_id, analysis_date)
 );
 
 -- =============================================

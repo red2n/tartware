@@ -1,12 +1,15 @@
 -- =====================================================
 -- property_settings.sql
 -- Property-level settings overrides
+-- Pattern: Tenant-scoped configuration
+-- Date: 2026-04-27
 -- =====================================================
 
 \c tartware \echo 'Creating property_settings table...'
 
 CREATE TABLE IF NOT EXISTS property_settings (
     property_setting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (), -- Unique identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
     property_id UUID NOT NULL, -- FK to properties
     setting_id UUID NOT NULL, -- FK to setting_definitions
     value JSONB NOT NULL, -- Stored as JSON to accommodate complex structures
@@ -19,6 +22,7 @@ CREATE TABLE IF NOT EXISTS property_settings (
     created_by UUID, -- Audit fields
     updated_by UUID, -- Audit fields
     UNIQUE (
+        tenant_id,
         property_id,
         setting_id,
         effective_from

@@ -11,8 +11,11 @@ CREATE TABLE IF NOT EXISTS report_schedules (
     -- Primary Key
     schedule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+    -- Multi-tenancy
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
     -- Report Configuration
-    report_type VARCHAR(50) NOT NULL UNIQUE,
+    report_type VARCHAR(50) NOT NULL,
     schedule_expression VARCHAR(100) NOT NULL, -- cron expression
 
     -- Status
@@ -30,7 +33,9 @@ CREATE TABLE IF NOT EXISTS report_schedules (
 
     -- Audit Fields
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE (tenant_id, report_type)
 );
 
 COMMENT ON TABLE report_schedules IS

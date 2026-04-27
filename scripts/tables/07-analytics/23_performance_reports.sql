@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS performance_reports (
     -- Primary Key
     report_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+    -- Multi-tenancy
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
     -- Report Classification
     report_type VARCHAR(50) NOT NULL,
     report_name VARCHAR(200) NOT NULL,

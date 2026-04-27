@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS performance_baselines (
     -- Primary Key
     baseline_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+    -- Multi-tenancy
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
     -- Metric Identification
     metric_name VARCHAR(100) NOT NULL,
     time_window VARCHAR(50) NOT NULL, -- 'hourly', 'daily', 'weekly'
@@ -28,7 +31,7 @@ CREATE TABLE IF NOT EXISTS performance_baselines (
 
     -- Constraints
     CONSTRAINT chk_time_window CHECK (time_window IN ('hourly', 'daily', 'weekly', 'monthly')),
-    UNIQUE(metric_name, time_window)
+    UNIQUE(tenant_id, metric_name, time_window)
 );
 
 COMMENT ON TABLE performance_baselines IS

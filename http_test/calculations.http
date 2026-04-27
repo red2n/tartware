@@ -749,3 +749,32 @@ X-Tenant-Id: 11111111-1111-1111-1111-111111111111
   "adults_included": 2,
   "children_included": 0
 }
+
+###############################################################################
+# AUTH ENFORCEMENT (P0-4)
+# After the multi-tenant audit, /v1/calculations/* now requires a valid JWT.
+# These requests verify that unauthenticated calls are rejected.
+###############################################################################
+
+### Unauthenticated request — should return 401
+POST {{baseUrl}}/v1/calculations/tax/taxable-amount
+Content-Type: application/json
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "amount": 100.00,
+  "quantity": 1,
+  "negate": false
+}
+
+### Bogus token — should return 401
+POST {{baseUrl}}/v1/calculations/tax/taxable-amount
+Content-Type: application/json
+Authorization: Bearer invalid-token-value
+X-Tenant-Id: 11111111-1111-1111-1111-111111111111
+
+{
+  "amount": 100.00,
+  "quantity": 1,
+  "negate": false
+}

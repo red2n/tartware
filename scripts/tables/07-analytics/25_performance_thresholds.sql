@@ -9,7 +9,8 @@
 
 CREATE TABLE IF NOT EXISTS performance_thresholds (
     threshold_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    metric_name VARCHAR(100) NOT NULL UNIQUE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+    metric_name VARCHAR(100) NOT NULL,
     warning_threshold NUMERIC,
     critical_threshold NUMERIC,
     check_interval INTERVAL DEFAULT '5 minutes',
@@ -17,7 +18,9 @@ CREATE TABLE IF NOT EXISTS performance_thresholds (
     last_checked TIMESTAMP,
     alert_recipients TEXT[],
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE (tenant_id, metric_name)
 );
 
 COMMENT ON TABLE performance_thresholds IS

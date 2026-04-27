@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS report_property_ids (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Constraints
-    CONSTRAINT report_property_unique UNIQUE (report_id, property_id)
+    CONSTRAINT report_property_unique UNIQUE (tenant_id, report_id, property_id)
 );
 
 -- =====================================================

@@ -14,7 +14,7 @@
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { serviceTargets } from "../config.js";
+import { gatewayConfig, serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
 import { commandAcceptedSchema, SELF_SERVICE_PROXY_TAG } from "./schemas.js";
@@ -24,11 +24,26 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   const proxySelfService = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestsServiceUrl);
 
+  // Rate-limit tiers for guest-facing routes (no JWT — auth via confirmation code downstream)
+  const selfServiceWriteLimit = {
+    rateLimit: {
+      max: gatewayConfig.rateLimit.authMax,
+      timeWindow: gatewayConfig.rateLimit.authTimeWindow,
+    },
+  };
+  const selfServiceReadLimit = {
+    rateLimit: {
+      max: gatewayConfig.rateLimit.commandMax,
+      timeWindow: gatewayConfig.rateLimit.commandTimeWindow,
+    },
+  };
+
   // ─── Check-In Routes ──────────────────────────────────────
 
   app.post(
     "/v1/self-service/check-in/start",
     {
+      config: selfServiceWriteLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Start mobile check-in for a reservation.",
@@ -42,6 +57,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/self-service/check-in/:checkinId/complete",
     {
+      config: selfServiceWriteLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Complete a mobile check-in.",
@@ -55,6 +71,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/check-in/:checkinId",
     {
+      config: selfServiceReadLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get mobile check-in status.",
@@ -69,6 +86,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/registration-card/:reservationId",
     {
+      config: selfServiceReadLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get registration card for a reservation.",
@@ -81,6 +99,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/registration-card/:reservationId/html",
     {
+      config: selfServiceReadLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get registration card as HTML.",
@@ -95,6 +114,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/keys/:reservationId",
     {
+      config: selfServiceReadLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Get active mobile keys for a reservation.",
@@ -109,6 +129,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/search",
     {
+      config: selfServiceReadLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Search available room types.",
@@ -121,6 +142,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/self-service/book",
     {
+      config: selfServiceWriteLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Create a direct booking.",
@@ -134,6 +156,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/self-service/booking/:confirmationCode",
     {
+      config: selfServiceReadLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Look up a booking by confirmation code.",
@@ -148,6 +171,7 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/self-service/*",
     {
+      config: selfServiceWriteLimit,
       schema: buildRouteSchema({
         tag: SELF_SERVICE_PROXY_TAG,
         summary: "Proxy self-service requests to the guest-experience service.",

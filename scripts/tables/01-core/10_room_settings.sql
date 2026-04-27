@@ -1,12 +1,15 @@
 -- =====================================================
 -- room_settings.sql
 -- Room/unit level settings overrides
+-- Pattern: Tenant-scoped configuration
+-- Date: 2026-04-27
 -- =====================================================
 
 \c tartware \echo 'Creating room_settings table...'
 
 CREATE TABLE IF NOT EXISTS room_settings (
     room_setting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (), -- Unique identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
     room_id UUID NOT NULL, -- FK to rooms/units
     setting_id UUID NOT NULL, -- FK to setting_definitions
     value JSONB NOT NULL, -- Stored as JSON to accommodate complex structures
@@ -19,6 +22,7 @@ CREATE TABLE IF NOT EXISTS room_settings (
     created_by UUID, -- Audit fields
     updated_by UUID, -- Audit fields
     UNIQUE (
+        tenant_id,
         room_id,
         setting_id,
         effective_from

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS room_amenity_catalog (
     updated_at TIMESTAMPTZ, -- Last modification timestamp
     created_by UUID, -- User who created the record
     updated_by UUID, -- User who last modified the record
-    CONSTRAINT room_amenity_catalog_unique_code UNIQUE (property_id, amenity_code),
+    CONSTRAINT room_amenity_catalog_unique_code UNIQUE (tenant_id, property_id, amenity_code),
     CONSTRAINT room_amenity_catalog_code_format CHECK (amenity_code ~ '^[A-Z0-9_\\-]+$')
 );
 

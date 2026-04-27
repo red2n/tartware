@@ -230,7 +230,7 @@ CREATE TABLE vehicles (
 
     -- Constraints
     CONSTRAINT vehicle_number_unique UNIQUE (tenant_id, property_id, vehicle_number),
-    CONSTRAINT vehicle_license_unique UNIQUE (license_plate, registration_number),
+    CONSTRAINT vehicle_license_unique UNIQUE (tenant_id, license_plate, registration_number),
     CONSTRAINT vehicle_capacity_check CHECK (passenger_capacity > 0),
     CONSTRAINT vehicle_wheelchair_check CHECK (
         wheelchair_capacity = 0 OR wheelchair_accessible = TRUE

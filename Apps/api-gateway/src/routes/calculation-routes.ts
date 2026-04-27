@@ -20,9 +20,15 @@ export const registerCalculationRoutes = (app: FastifyInstance): void => {
   const proxyCalculation = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
+  const authenticatedOnly = app.withTenantScope({
+    allowMissingTenantId: true,
+    minRole: "VIEWER",
+  });
+
   app.all(
     "/v1/calculations/*",
     {
+      preHandler: authenticatedOnly,
       schema: buildRouteSchema({
         tag: CALCULATION_PROXY_TAG,
         summary: "Proxy calculation service requests.",

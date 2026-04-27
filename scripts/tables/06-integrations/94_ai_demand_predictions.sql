@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS ai_demand_predictions (
     -- Constraints
     CHECK (predicted_demand >= 0 AND predicted_demand <= 100),
     CHECK (confidence_level >= 0 AND confidence_level <= 100),
-    UNIQUE (property_id, prediction_date, room_type_id, predicted_at)
+    UNIQUE (tenant_id, property_id, prediction_date, room_type_id, predicted_at)
 );
 
 -- =============================================

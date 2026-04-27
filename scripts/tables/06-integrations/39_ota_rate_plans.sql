@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS ota_rate_plans (
     CONSTRAINT chk_ota_rate_plan_markup CHECK (markup_percentage >= 0 AND markup_percentage <= 100),
     CONSTRAINT chk_ota_rate_plan_markdown CHECK (markdown_percentage >= 0 AND markdown_percentage <= 100),
     CONSTRAINT chk_ota_rate_plan_min_los CHECK (min_length_of_stay >= 1),
-    CONSTRAINT uq_ota_rate_plan_mapping UNIQUE (ota_configuration_id, rate_id, ota_rate_plan_id)
+    CONSTRAINT uq_ota_rate_plan_mapping UNIQUE (tenant_id, ota_configuration_id, rate_id, ota_rate_plan_id)
 );
 
 -- Add comments

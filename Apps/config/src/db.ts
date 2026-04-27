@@ -71,6 +71,26 @@ export interface DbPool {
   /** Run `fn` inside BEGIN / COMMIT with automatic ROLLBACK on error. */
   withTransaction: <T>(fn: (client: PoolClient) => Promise<T>) => Promise<T>;
 
+  /**
+   * Execute a single query with RLS tenant context.
+   * Wraps the query in BEGIN → SET LOCAL → query → COMMIT so that
+   * `app.current_tenant_id` is scoped to this statement only.
+   */
+  tenantQuery: <T extends QueryResultRow = QueryResultRow>(
+    tenantId: string,
+    textOrConfig: string | QueryConfig,
+    params?: unknown[],
+  ) => Promise<QueryResult<T>>;
+
+  /**
+   * Run `fn` inside a transaction with `app.current_tenant_id` set
+   * via SET LOCAL (automatically scoped to the transaction).
+   */
+  withTenantTransaction: <T>(
+    tenantId: string,
+    fn: (client: PoolClient) => Promise<T>,
+  ) => Promise<T>;
+
   /** Drain the pool (graceful shutdown). */
   close: () => Promise<void>;
 }
@@ -159,9 +179,74 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     }
   };
 
+  /** SET LOCAL scopes to current transaction — safe with connection pooling. */
+  const setTenantContext = async (client: PoolClient, tenantId: string): Promise<void> => {
+    await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId]);
+  };
+
+  const tenantQuery = async <T extends QueryResultRow = QueryResultRow>(
+    tenantId: string,
+    textOrConfig: string | QueryConfig,
+    params: unknown[] = [],
+  ): Promise<QueryResult<T>> => {
+    const client = await pool.connect();
+    let rollbackError: unknown = null;
+
+    try {
+      await client.query("BEGIN");
+      await setTenantContext(client, tenantId);
+      const result =
+        typeof textOrConfig === "string"
+          ? await client.query<T>(textOrConfig, params)
+          : await client.query<T>(textOrConfig);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rbError) {
+        rollbackError = rbError;
+        dbLogger.error({ err: rbError }, "tenantQuery rollback failed");
+      }
+      throw error;
+    } finally {
+      client.release(rollbackError !== null);
+    }
+  };
+
+  const withTenantTransaction = async <T>(
+    tenantId: string,
+    fn: (client: PoolClient) => Promise<T>,
+  ): Promise<T> => {
+    const client = await pool.connect();
+    let transactionStarted = false;
+    let rollbackError: unknown = null;
+
+    try {
+      await client.query("BEGIN");
+      transactionStarted = true;
+      await setTenantContext(client, tenantId);
+      const result = await fn(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      if (transactionStarted) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rbError) {
+          rollbackError = rbError;
+          dbLogger.error({ err: rbError }, "Transaction rollback failed");
+        }
+      }
+      throw error;
+    } finally {
+      client.release(rollbackError !== null);
+    }
+  };
+
   const close = async (): Promise<void> => {
     await pool.end();
   };
 
-  return { pool, query, queryWithClient, withTransaction, close };
+  return { pool, query, queryWithClient, withTransaction, tenantQuery, withTenantTransaction, close };
 }

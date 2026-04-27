@@ -170,8 +170,8 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
 
       // Fetch property name
       const propResult = await query<{ property_name: string }>(
-        `SELECT property_name FROM public.properties WHERE id = $1 LIMIT 1`,
-        [property_id],
+        `SELECT property_name FROM public.properties WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+        [property_id, tenant_id],
       );
 
       const dateStatusDisplay = formatStatus(row.date_status);
@@ -596,7 +596,12 @@ export const registerNightAuditRoutes = (app: FastifyInstance): void => {
         allow_check_ins: boolean;
         allow_check_outs: boolean;
       }>(
-        `INSERT INTO public.business_dates
+        `WITH close_existing AS (
+           UPDATE business_dates SET date_status = 'CLOSED', updated_at = NOW()
+           WHERE tenant_id = $1 AND property_id = $2 AND date_status = 'OPEN'
+             AND business_date != $3::date AND deleted_at IS NULL
+         )
+         INSERT INTO public.business_dates
            (tenant_id, property_id, business_date, date_status, night_audit_status)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (tenant_id, property_id, business_date)

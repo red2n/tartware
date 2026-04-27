@@ -230,7 +230,7 @@ deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
 deleted_by UUID, -- Actor who deleted
 
 -- Unique Constraint
-UNIQUE(property_id, calendar_date) );
+UNIQUE(tenant_id, property_id, calendar_date) );
 
 -- Indexes for demand_calendar
 

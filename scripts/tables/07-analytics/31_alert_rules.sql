@@ -11,8 +11,11 @@ CREATE TABLE IF NOT EXISTS alert_rules (
     -- Primary Key
     rule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+    -- Multi-tenancy
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
     -- Rule Identification
-    rule_name VARCHAR(100) NOT NULL UNIQUE,
+    rule_name VARCHAR(100) NOT NULL,
 
     -- Metric Configuration
     metric_query TEXT NOT NULL,
@@ -36,7 +39,8 @@ CREATE TABLE IF NOT EXISTS alert_rules (
 
     -- Constraints
     CONSTRAINT chk_condition_type CHECK (condition_type IN ('threshold', 'deviation', 'trend', 'spike')),
-    CONSTRAINT chk_rule_severity CHECK (severity IN ('INFO', 'WARNING', 'CRITICAL'))
+    CONSTRAINT chk_rule_severity CHECK (severity IN ('INFO', 'WARNING', 'CRITICAL')),
+    UNIQUE (tenant_id, rule_name)
 );
 
 COMMENT ON TABLE alert_rules IS

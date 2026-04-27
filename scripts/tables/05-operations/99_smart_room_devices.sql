@@ -355,6 +355,9 @@ CREATE TABLE IF NOT EXISTS device_events_log (
     -- Primary Key
     event_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
 
+    -- Multi-tenancy
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
     -- Device
     device_id UUID NOT NULL REFERENCES smart_room_devices(device_id) ON DELETE CASCADE,
 

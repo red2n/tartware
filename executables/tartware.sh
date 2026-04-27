@@ -48,7 +48,7 @@ run_and_log_filtered() {
     # Run the command, append full output to the log, but print a filtered
     # summary to stdout (only show Image/Container/Volume/Network status and
     # key keywords like Pulled/Created/Removed/Running/Healthy).
-    if bash -lc "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE" | awk '/^Container|^Image|^Volume|^Network|Pulled|Created|Removed|Running|Starting|Started|Healthy|\[\+\]/{print}' ; then
+    if bash -c "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE" | awk '/^Container|^Image|^Volume|^Network|Pulled|Created|Removed|Running|Starting|Started|Healthy|\[\+\]/{print}' ; then
         :
     else
         printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
@@ -88,10 +88,10 @@ run_and_log() {
 
     if [ "${TARTWARE_VERBOSE}" = "true" ]; then
         # show live output to console and also append to log
-        bash -lc "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"
+        bash -c "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"
     else
         # quiet mode: redirect command output to log only
-        if bash -lc "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
+        if bash -c "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
             :
         else
             printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
@@ -152,7 +152,7 @@ reset_default_passwords() {
     if [ -f "$reset_script" ]; then
         if command -v npx >/dev/null 2>&1; then
             info "Resetting user passwords to default"
-            run_and_log "Reset default passwords" "DB_HOST='${DB_HOST:-127.0.0.1}' DB_PORT='${DB_PORT:-5432}' DB_USER='${DB_USER:-postgres}' DB_PASSWORD='${DB_PASSWORD:-postgres}' DB_NAME='${DB_NAME:-tartware}' AUTH_DEFAULT_PASSWORD='${default_password}' NODE_ENV=development npx tsx --tsconfig '$REPO_ROOT/Apps/core-service/tsconfig.json' '$reset_script'"
+            run_and_log "Reset default passwords" "DB_HOST='${DB_HOST:-127.0.0.1}' DB_PORT='${DB_PORT:-5432}' DB_USER='${DB_USER:-postgres}' DB_PASSWORD='${DB_PASSWORD:-postgres}' DB_NAME='${DB_NAME:-tartware}' AUTH_DEFAULT_PASSWORD='${default_password}' NODE_ENV=development npx --yes tsx --tsconfig '$REPO_ROOT/Apps/core-service/tsconfig.json' '$reset_script'"
             ok "Default passwords reset to '${default_password}'"
         else
             warn "npx (Node.js) not installed; skipping password reset. Install Node.js and npm (npx) to enable this step. Script path: $reset_script"
@@ -692,6 +692,10 @@ case "$cmd" in
         sub="${1:-up}"
         shift || true
         require_cmd docker
+        # Verify Docker daemon is accessible (catches permission denied on docker socket)
+        if ! docker info >/dev/null 2>&1; then
+            fail "Cannot connect to Docker daemon. Make sure Docker is running and your user is in the 'docker' group (sudo usermod -aG docker \$USER), then log out and back in. Alternatively, run with sudo."
+        fi
         compose_cmd="$(docker_compose_cmd)"
         case "$sub" in
             up)

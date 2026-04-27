@@ -7,6 +7,7 @@
 
 CREATE TABLE IF NOT EXISTS user_settings (
     user_setting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (), -- Unique identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
     user_id UUID NOT NULL, -- FK to users
     setting_id UUID NOT NULL, -- FK to setting_definitions
     value JSONB NOT NULL, -- Stored as JSON to accommodate complex structures
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Audit fields
     created_by UUID, -- Audit fields
     updated_by UUID, -- Audit fields
-    UNIQUE (user_id, setting_id)
+    UNIQUE (tenant_id, user_id, setting_id)
 );
 
 COMMENT ON TABLE user_settings IS 'Persona/role level preferences such as UI, notifications, accessibility.';

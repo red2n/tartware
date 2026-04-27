@@ -914,3 +914,48 @@ Content-Type: application/json
   "description": "Complimentary welcome drink",
   "idempotency_key": "comp-fb-001"
 }
+
+###############################################################################
+# 12. GENERAL LEDGER ENTRIES
+# Route: GET /v1/billing/ledger
+# Requires: ADMIN role + finance-automation module
+###############################################################################
+
+### List all GL entries for tenant
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by property
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&property_id={{propertyId}}&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by GL account code
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&gl_account_code=4100&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by department code
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&department_code=ROOMS&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by date range
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&start_date=2026-01-01&end_date=2026-12-31&limit=100
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by entry status
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&status=POSTED&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Filter by batch status
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&batch_status=COMPLETED&limit=50
+Authorization: Bearer {{authToken}}
+
+###
+# Combined: property + date range + GL account
+GET {{baseUrl}}/v1/billing/ledger?tenant_id={{tenantId}}&property_id={{propertyId}}&gl_account_code=4100&start_date=2026-01-01&end_date=2026-12-31&limit=50
+Authorization: Bearer {{authToken}}
