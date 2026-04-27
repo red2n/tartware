@@ -1,5 +1,6 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
+import { enterTenantScope } from "@tartware/config/db";
 import {
   ReservationMobileCheckinCompleteCommandSchema,
   ReservationMobileCheckinStartCommandSchema,
@@ -150,6 +151,7 @@ const { start: startGuests, shutdown: shutdownGuests } = createConsumerLifecycle
   logger: consumerLogger,
   routeCommand,
   publishDlqEvent,
+  onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,
@@ -237,6 +239,7 @@ const { start: startGE, shutdown: shutdownGE } = createConsumerLifecycle({
   logger: guestExperienceLogger,
   routeCommand: routeGuestExperienceCommand,
   publishDlqEvent,
+  onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

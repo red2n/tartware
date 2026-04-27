@@ -4,6 +4,7 @@ import {
   createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
 import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
+import { enterTenantScope } from "@tartware/config/db";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import { createServiceLogger } from "@tartware/telemetry";
 import type { Consumer } from "kafkajs";
@@ -84,6 +85,8 @@ const routeSettingsCommand = async (
   envelope: CommandEnvelope,
   metadata: CommandMetadata,
 ): Promise<void> => {
+  enterTenantScope(metadata.tenantId);
+
   switch (metadata.commandName) {
     case "settings.value.set":
       await setSettingsValue(envelope.payload, {

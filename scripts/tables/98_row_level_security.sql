@@ -63,6 +63,11 @@ DECLARE
         'system_admin_break_glass_codes',
         'system_admin_audit_log',       -- has its own RLS policy
 
+        -- Auth tables — queried cross-tenant by user_id during JWT validation
+        -- (the onRequest hook loads all memberships before tenant is known)
+        'user_tenant_associations',
+        'users',
+
         -- Kafka consumer infrastructure (offsets, not tenant data)
         'reservation_event_offsets',
         'roll_service_consumer_offsets',

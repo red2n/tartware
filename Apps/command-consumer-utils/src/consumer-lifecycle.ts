@@ -68,6 +68,8 @@ export type CreateConsumerLifecycleInput = {
   idempotencyFailureMode?: "fail-open" | "fail-closed";
   /** Predicate to decide if a caught error should be retried. */
   isRetryable?: (error: unknown) => boolean;
+  /** Called before routing a command — wire `enterTenantScope` here for RLS. */
+  onTenantResolved?: (tenantId: string) => void;
 };
 
 /**
@@ -93,6 +95,12 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
       fromBeginning: false,
     });
 
+    // Wrap routeCommand to set RLS tenant scope before each command.
+    const wrappedRouteCommand: typeof input.routeCommand = async (envelope, metadata) => {
+      input.onTenantResolved?.(metadata.tenantId);
+      return input.routeCommand(envelope, metadata);
+    };
+
     const { handleBatch } = createCommandCenterHandlers({
       targetServiceId: input.commandCenterConfig.targetServiceId,
       serviceName: input.serviceName,
@@ -110,7 +118,7 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
       RetryExhaustedError,
       publishDlqEvent: input.publishDlqEvent,
       buildDlqPayload,
-      routeCommand: input.routeCommand,
+      routeCommand: wrappedRouteCommand,
       commandLabel: input.commandLabel,
       metrics: input.metrics,
       ...(input.checkIdempotency && {

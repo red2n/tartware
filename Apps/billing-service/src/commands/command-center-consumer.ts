@@ -1,5 +1,6 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
+import { enterTenantScope } from "@tartware/config/db";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -431,6 +432,7 @@ const { start, shutdown } = createConsumerLifecycle({
   recordIdempotency: recordCommandIdempotency,
   idempotencyFailureMode: "fail-open",
   isRetryable: (error) => !(error instanceof BillingCommandError),
+  onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

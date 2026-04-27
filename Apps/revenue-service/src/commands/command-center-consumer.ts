@@ -1,5 +1,6 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
+import { enterTenantScope } from "@tartware/config/db";
 import { createServiceLogger } from "@tartware/telemetry";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -372,6 +373,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeRevenueCommand,
   publishDlqEvent,
+  onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

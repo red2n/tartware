@@ -249,6 +249,7 @@ const loadChargeSources = async (
       FROM public.charge_postings cp
       LEFT JOIN public.charge_codes cc
         ON cc.code = cp.charge_code
+       AND cc.tenant_id = cp.tenant_id
       LEFT JOIN public.reservations r
         ON r.id = cp.reservation_id
        AND COALESCE(r.is_deleted, false) = false

@@ -1,3 +1,4 @@
+import { enterTenantScope } from "@tartware/config/db";
 import { TenantRoleEnum } from "@tartware/schemas";
 import type {
   FastifyPluginAsync,
@@ -171,6 +172,9 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
     }
 
     request.auth.authorizedTenantIds.add(tenantId);
+
+    // Set DB-level RLS context for downstream queries.
+    enterTenantScope(tenantId);
   };
 };
 

@@ -1,3 +1,4 @@
+import { enterTenantScope } from "@tartware/config/db";
 import type { TenantMembership } from "@tartware/schemas";
 import {
   type AuthContext,
@@ -32,6 +33,7 @@ const authContextPlugin = createTenantAuthPlugin<TenantMembership>({
   extractBearerToken,
   verifyAccessToken,
   rolePriority: ROLE_PRIORITY,
+  onTenantResolved: enterTenantScope,
   shouldBypassAuth: (request: FastifyRequest) => {
     // Health and readiness endpoints should stay unauthenticated for infra probes.
     // Use the registered route pattern (not request.url) to prevent query-string bypass.
