@@ -68,7 +68,7 @@
     "concurrently": "^9.2.1",
     "eslint": "8.57.0",
     "get-tsconfig": "^4.13.1",
-    "is-fullwidth-code-point": "^4.0.0",
+    "is-fullwidth-code-point": "^5.1.0",
     "nx": "^22.4.5",
     "resolve-pkg-maps": "^1.0.0",
     "tinyglobby": "^0.2.15",
