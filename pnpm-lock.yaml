@@ -212,8 +212,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.4
       fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
+        specifier: ^5.1.0
+        version: 5.1.0
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -480,8 +480,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.4
       fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
+        specifier: ^5.1.0
+        version: 5.1.0
       ioredis:
         specifier: ^5.8.2
         version: 5.9.2
@@ -589,8 +589,8 @@ importers:
         specifier: ^5.8.3
         version: 5.8.4
       fastify-plugin:
-        specifier: ^4.5.1
-        version: 4.5.1
+        specifier: ^5.1.0
+        version: 5.1.0
     devDependencies:
       '@types/node':
         specifier: ^20.11.16
