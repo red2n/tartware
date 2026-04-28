@@ -35,7 +35,7 @@
     "@tartware/config": "workspace:*",
     "@tartware/telemetry": "workspace:*",
     "fastify": "^5.2.0",
-    "fastify-plugin": "^4.5.1"
+    "fastify-plugin": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.16",
