@@ -175,3 +175,11 @@
 \echo 'All Foreign Key Constraints Created!'
 \echo 'Total: 109 unique FK files across 7 categories'
 \echo '========================================='
+
+-- ============================================================================
+-- POST-CONSTRAINT PASS: Upgrade any remaining single-column FKs to composite
+-- Must run after all constraint files to catch FKs added in this script.
+-- ============================================================================
+\echo ''
+\echo '>>> Upgrading single-column FKs to composite (post-constraint pass)'
+\ir ../tables/97_composite_foreign_keys.sql

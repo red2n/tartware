@@ -132,7 +132,7 @@ BEGIN
 
     RAISE NOTICE '';
     IF v_remaining > 0 THEN
-        RAISE WARNING '  ⚠ Found % single-column FKs that should be composite (tenant_id, col)', v_remaining;
+        RAISE EXCEPTION '  ✗ Found % single-column FKs that should be composite (tenant_id, col) — run 97_composite_foreign_keys.sql', v_remaining;
     ELSE
         RAISE NOTICE '  ✓✓✓ No remaining single-column FKs to target parent tables — all upgraded to composite!';
     END IF;

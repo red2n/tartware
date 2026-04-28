@@ -153,7 +153,7 @@ COMMENT ON FUNCTION current_query_execution_time(INTEGER) IS
 -- =====================================================
 
 -- Detect query performance degradation
-CREATE OR REPLACE FUNCTION detect_query_degradation()
+CREATE OR REPLACE FUNCTION detect_query_degradation(p_tenant_id UUID)
 RETURNS TABLE(
     query_fingerprint TEXT,
     current_mean_time NUMERIC,
@@ -172,16 +172,18 @@ BEGIN
     SELECT baseline_value, stddev_value
     INTO v_baseline, v_stddev
     FROM performance_baselines
-    WHERE metric_name = 'query_execution_time'
+    WHERE tenant_id = p_tenant_id
+    AND metric_name = 'query_execution_time'
     AND time_window = 'hourly';
 
     IF v_baseline IS NULL THEN
         -- No baseline yet, calculate one
-        PERFORM update_performance_baselines();
+        PERFORM update_performance_baselines(p_tenant_id);
         SELECT baseline_value, stddev_value
         INTO v_baseline, v_stddev
         FROM performance_baselines
-        WHERE metric_name = 'query_execution_time'
+        WHERE tenant_id = p_tenant_id
+        AND metric_name = 'query_execution_time'
         AND time_window = 'hourly';
 
         IF v_baseline IS NULL THEN
@@ -215,9 +217,9 @@ BEGIN
     END;
 END $$;
 
-COMMENT ON FUNCTION detect_query_degradation() IS
+COMMENT ON FUNCTION detect_query_degradation(UUID) IS
 'Detects queries with significant performance degradation.
-Usage: SELECT * FROM detect_query_degradation();';
+Usage: SELECT * FROM detect_query_degradation(''<tenant-uuid>'');';
 
 -- Detect sudden spike in connections
 CREATE OR REPLACE FUNCTION detect_connection_spike()
@@ -694,7 +696,7 @@ ON CONFLICT (tenant_id, rule_name) DO NOTHING;
 \echo '✓ Performance alerting functions created'
 \echo ''
 \echo 'Quick start:'
-\echo '  SELECT update_performance_baselines();      -- Establish baselines'
+\echo '  SELECT update_performance_baselines(''<tenant-uuid>'');  -- Establish baselines'
 \echo '  SELECT * FROM monitor_performance_degradation();  -- Check for issues'
 \echo '  SELECT * FROM v_active_performance_alerts;  -- View active alerts'
 \echo '  SELECT * FROM v_performance_trends;         -- Check trends'
