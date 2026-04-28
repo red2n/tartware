@@ -41,7 +41,7 @@
     "resend": "^4.6.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.5",
+    "@biomejs/biome": "^2.4.13",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.19",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
@@ -51,7 +51,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "jsonwebtoken": "^9.0.3",
-    "knip": "^5.67.0",
+    "knip": "^6.7.0",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
     "vitest": "^4.0.18"
