@@ -186,7 +186,7 @@ export const BOOKING_PACE_SNAPSHOT_SQL = `
   LEFT JOIN pickup_7 p7 ON p7.calendar_date = d.calendar_date
   LEFT JOIN pickup_30 p30 ON p30.calendar_date = d.calendar_date
   LEFT JOIN ly ON ly.future_date = d.calendar_date
-  ON CONFLICT (property_id, calendar_date)
+  ON CONFLICT (tenant_id, property_id, calendar_date)
   DO UPDATE SET
     rooms_reserved = EXCLUDED.rooms_reserved,
     pickup_last_7_days = EXCLUDED.pickup_last_7_days,

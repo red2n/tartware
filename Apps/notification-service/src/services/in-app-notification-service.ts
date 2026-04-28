@@ -96,7 +96,7 @@ const MARK_READ_BROADCAST_SQL = `
     AND n.notification_id = ANY($2::uuid[])
     AND n.user_id IS NULL
     AND n.is_deleted = FALSE
-  ON CONFLICT (notification_id, user_id) DO NOTHING
+  ON CONFLICT (tenant_id, notification_id, user_id) DO NOTHING
 `;
 
 const MARK_ALL_READ_USER_SCOPED_SQL = `
@@ -119,7 +119,7 @@ const MARK_ALL_READ_BROADCAST_SQL = `
     AND n.is_deleted = FALSE
     AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
     AND nrr.receipt_id IS NULL
-  ON CONFLICT (notification_id, user_id) DO NOTHING
+  ON CONFLICT (tenant_id, notification_id, user_id) DO NOTHING
 `;
 
 /**

@@ -23,7 +23,7 @@ export const DEMAND_CALENDAR_INCREMENT_OTB_SQL = `
     trim(to_char($3::date, 'Day')),
     'moderate', 0, 1, CURRENT_TIMESTAMP
   )
-  ON CONFLICT (property_id, calendar_date)
+  ON CONFLICT (tenant_id, property_id, calendar_date)
   DO UPDATE SET
     rooms_reserved = COALESCE(demand_calendar.rooms_reserved, 0) + 1,
     updated_at = CURRENT_TIMESTAMP

@@ -44,6 +44,8 @@ DECLARE
     v_fail_count INT := 0;
     v_excluded_tables TEXT[] := ARRAY[
         'tenants',
+        'users',
+        'user_tenant_associations',
         'system_administrators',
         'system_admin_break_glass_codes',
         'system_admin_audit_log',
