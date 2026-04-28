@@ -76,6 +76,10 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
         await client.query("BEGIN");
 
         const newTenantId = randomUUID();
+        // Set tenant context so RLS policies (including FORCE ROW SECURITY) allow inserts
+        // into tenant-scoped tables during bootstrap.
+        await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [newTenantId]);
+
         const tenantResult = await client.query<{ id: string; name: string; slug: string }>(
           `INSERT INTO tenants
             (id, tenant_id, name, slug, type, status, email, phone, website, config, subscription, metadata, created_by, updated_by)

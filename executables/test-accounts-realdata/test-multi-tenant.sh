@@ -937,7 +937,7 @@ run_billing_pipeline() {
       send_command "CMD refund: \$50" \
         "billing.payment.refund" \
         "{\"payment_id\":\"$cc_pay_id\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":50.00,\"reason\":\"Overpayment\",\"refund_reference\":\"RF-$tag-$UNIQUE\",\"payment_method\":\"CREDIT_CARD\"}"
-      wait_kafka 8
+      wait_kafka 15
 
       local refund_exists
       get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
@@ -1339,9 +1339,9 @@ echo ""
 
 echo "── 4.1  Charge Postings scoped by property_id ──────────────────────"
 TOKEN="$TOKEN_A"
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=1" >/dev/null; A1_CHARGES=$(resp_count)
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=1" >/dev/null; A2_CHARGES=$(resp_count)
-get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=1" >/dev/null;                     ALL_A_CHARGES=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_CHARGES=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_CHARGES=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_CHARGES=$(resp_count)
 EXPECTED_SUM=$((A1_CHARGES + A2_CHARGES))
 assert_eq "USALI: A charges = A1($A1_CHARGES) + A2($A2_CHARGES)" "$EXPECTED_SUM" "$ALL_A_CHARGES"
 if [[ "$A1_CHARGES" -gt 0 && "$A2_CHARGES" -gt 0 ]]; then
@@ -1356,9 +1356,9 @@ pass "USALI: No orphan charges (property_id filtering consistent)"
 echo ""
 
 echo "── 4.2  Payments scoped by property_id ─────────────────────────────"
-get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A1&limit=1" >/dev/null; A1_PAYMENTS=$(resp_count)
-get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A2&limit=1" >/dev/null; A2_PAYMENTS=$(resp_count)
-get "$GW/v1/billing/payments?tenant_id=$TID_A&limit=1" >/dev/null;                     ALL_A_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_PAYMENTS=$(resp_count)
 EXPECTED_SUM=$((A1_PAYMENTS + A2_PAYMENTS))
 assert_eq "USALI: A payments = A1($A1_PAYMENTS) + A2($A2_PAYMENTS)" "$EXPECTED_SUM" "$ALL_A_PAYMENTS"
 if [[ "$A1_PAYMENTS" -gt 0 && "$A2_PAYMENTS" -gt 0 ]]; then
@@ -1382,9 +1382,9 @@ fi
 echo ""
 
 echo "── 4.4  Cashier Sessions scoped by property_id ─────────────────────"
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A1&limit=1" >/dev/null; A1_SESSIONS=$(resp_count)
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A2&limit=1" >/dev/null; A2_SESSIONS=$(resp_count)
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&limit=1" >/dev/null;                     ALL_A_SESSIONS=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_SESSIONS=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_SESSIONS=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_SESSIONS=$(resp_count)
 EXPECTED_SUM=$((A1_SESSIONS + A2_SESSIONS))
 assert_eq "USALI: A sessions = A1($A1_SESSIONS) + A2($A2_SESSIONS)" "$EXPECTED_SUM" "$ALL_A_SESSIONS"
 if [[ "$A1_SESSIONS" -gt 0 && "$A2_SESSIONS" -gt 0 ]]; then

@@ -1,4 +1,6 @@
 import { performance } from "node:perf_hooks";
+
+import { enterTenantScope } from "@tartware/config/db";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import {
   type FailureCause,
@@ -6,6 +8,7 @@ import {
   ReservationEventSchema,
 } from "@tartware/schemas";
 import type { Consumer, EachBatchPayload } from "kafkajs";
+
 import { kafkaConfig } from "../config.js";
 import {
   observeProcessingDuration,
@@ -132,6 +135,8 @@ const handleBatch = async ({
     }
 
     try {
+      enterTenantScope(parsedEvent.metadata.tenantId);
+
       await updateLifecycleStateSafe(parsedEvent.metadata.id, "CONSUMED", {
         topic: batch.topic,
         partition: batch.partition,

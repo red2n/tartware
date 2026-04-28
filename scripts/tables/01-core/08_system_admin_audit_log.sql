@@ -45,10 +45,17 @@ WHERE
 ALTER TABLE system_admin_audit_log ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS system_admin_audit_self_only ON system_admin_audit_log;
+DROP POLICY IF EXISTS system_admin_audit_insert ON system_admin_audit_log;
 
+-- SELECT: admins may only read their own audit events
 CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log FOR
 SELECT USING (
         admin_id = current_setting('app.current_admin_id', true)::UUID
     );
+
+-- INSERT: application service always allowed — audit events are written by the service,
+-- not by end-users, so unrestricted insert is correct here.
+CREATE POLICY system_admin_audit_insert ON system_admin_audit_log
+    FOR INSERT WITH CHECK (true);
 
 \echo 'system_admin_audit_log table created.'

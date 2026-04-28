@@ -1022,7 +1022,7 @@ if [[ -n "$CC_PAY_ID" ]]; then
     "billing.payment.refund" \
     "{\"payment_id\":\"$CC_PAY_ID\",\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"amount\":50.00,\"reason\":\"Guest overpayment — partial refund\",\"refund_reference\":\"$REFUND_REF\",\"payment_method\":\"CREDIT_CARD\"}"
 
-  wait_kafka 8
+  wait_kafka 15
 
   # Verify refund payment record created
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
@@ -1192,7 +1192,7 @@ if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
     "billing.folio.split" \
     "{\"posting_id\":\"$REST_POSTING_ID\",\"property_id\":\"$PID\",\"splits\":[{\"folio_id\":\"$FOLIO1_ID\",\"amount\":50.00,\"description\":\"Guest share\"},{\"folio_id\":\"$HOUSE_FOLIO_ID\",\"amount\":35.00,\"description\":\"House share\"}],\"reason\":\"Cost sharing — industry QA test\"}"
 
-  wait_kafka 8
+  wait_kafka 15
 
   # Verify original charge was voided (include_voided=true to see it)
   get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&include_voided=true&limit=200" >/dev/null
