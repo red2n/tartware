@@ -5,7 +5,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { Kafka, type Producer } from "kafkajs";
 
 import { config } from "../config.js";
-import { query } from "../lib/db.js";
+import { pool } from "../lib/db.js";
 
 // =====================================================
 // Types
@@ -232,9 +232,22 @@ export const buildDateRollScheduler = (
   const checkAndDispatch = async () => {
     status.lastCheckAt = new Date().toISOString();
 
-    const { rows } = await query<
+    // Reset tenant GUC before cross-tenant scan — pooled connections may have
+    // a stale app.current_tenant_id = '' from a previous SET LOCAL that causes
+    // the RLS ::uuid cast to fail with "invalid input syntax for type uuid: ''"
+    const client = await pool.connect();
+    let rows: Array<
       PropertySchedule & { timezone: string | null; night_audit_status: string | null }
-    >(ELIGIBLE_PROPERTIES_SQL, []);
+    >;
+    try {
+      await client.query("RESET app.current_tenant_id");
+      const result = await client.query<
+        PropertySchedule & { timezone: string | null; night_audit_status: string | null }
+      >(ELIGIBLE_PROPERTIES_SQL, []);
+      rows = result.rows;
+    } finally {
+      client.release();
+    }
 
     status.scheduledProperties = rows.map((r) => ({
       tenantId: r.tenantId ?? ((r as Record<string, unknown>).tenant_id as string),

@@ -97,9 +97,12 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Check if composite FK already exists
+    -- Check if composite FK already exists for this specific child column
     SELECT EXISTS (
       SELECT 1 FROM pg_constraint c2
+      JOIN pg_attribute a ON a.attrelid = c2.conrelid
+        AND a.attnum = ANY(c2.conkey)
+        AND a.attname = v_child_col
       WHERE c2.conrelid = (SELECT oid FROM pg_class WHERE relname = r.child_table AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = r.child_schema))
         AND c2.contype = 'f'
         AND array_length(c2.conkey, 1) = 2

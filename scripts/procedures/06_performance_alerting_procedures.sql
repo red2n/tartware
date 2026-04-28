@@ -348,7 +348,7 @@ BEGIN
 
     -- Check query degradation
     FOR v_alert IN
-        SELECT * FROM detect_query_degradation()
+        SELECT * FROM detect_query_degradation(p_tenant_id)
         WHERE alert_level IN ('WARNING', 'CRITICAL')
     LOOP
         -- Log alert
@@ -697,10 +697,10 @@ ON CONFLICT (tenant_id, rule_name) DO NOTHING;
 \echo ''
 \echo 'Quick start:'
 \echo '  SELECT update_performance_baselines(''<tenant-uuid>'');  -- Establish baselines'
-\echo '  SELECT * FROM monitor_performance_degradation();  -- Check for issues'
+\echo '  SELECT * FROM monitor_performance_degradation(''<tenant-uuid>'');  -- Check for issues'
 \echo '  SELECT * FROM v_active_performance_alerts;  -- View active alerts'
 \echo '  SELECT * FROM v_performance_trends;         -- Check trends'
 \echo ''
 \echo 'Set up automated monitoring with cron:'
-\echo '  */5 * * * * psql -U postgres -d tartware -c "SELECT monitor_performance_degradation();"'
+\echo '  */5 * * * * psql -U postgres -d tartware -c "SELECT monitor_performance_degradation(''<tenant-uuid>'');"'
 \echo ''

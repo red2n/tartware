@@ -22,6 +22,11 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tartware_app') THEN
         CREATE ROLE tartware_app LOGIN PASSWORD 'tartware_app_dev' NOSUPERUSER NOCREATEDB NOCREATEROLE;
         RAISE NOTICE 'Created role tartware_app';
+    ELSE
+        -- Role already exists (e.g. created by 01-database-setup.sql without LOGIN).
+        -- Ensure it has LOGIN capability and the expected dev password.
+        ALTER ROLE tartware_app LOGIN PASSWORD 'tartware_app_dev';
+        RAISE NOTICE 'Updated role tartware_app (ensured LOGIN + password)';
     END IF;
 END
 $$;
