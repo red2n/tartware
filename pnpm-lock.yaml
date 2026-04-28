@@ -409,9 +409,15 @@ importers:
       '@tartware/config':
         specifier: workspace:*
         version: link:../config
+      '@tartware/schemas':
+        specifier: workspace:*
+        version: link:../../schema
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
+      pg:
+        specifier: ^8.13.3
+        version: 8.18.0
       prom-client:
         specifier: ^15.1.3
         version: 15.1.3

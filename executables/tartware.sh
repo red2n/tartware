@@ -278,7 +278,7 @@ DB:
         db verify   Run verification SQL scripts (verify-installation, verify-setup, tables)
 
 Docker:
-    docker up|down|restart|ps|logs|purge
+    docker up|down|restart|ps|logs|purge|fresh
 
 Dev:
     dev ui
@@ -301,6 +301,7 @@ Deploy:
     -dp            Docker purge (custom purge script)
     -da            Docker purge-all (down -v + system prune)
     -dg            Docker postgres (start only + follow logs)
+    -df            Docker fresh (purge ALL system images/containers + start Tartware — requires sudo)
 
     -e, -ei        Env init
     -er            Env run
@@ -332,14 +333,17 @@ USAGE
 interactive_menu() {
     while true; do
         echo ""
-        echo "Tartware CLI - Interactive"
-        echo "1) env"
-        echo "2) db"
-        echo "3) docker"
-        echo "4) dev"
-        echo "5) deploy"
-        echo "6) retry"
-        echo "0) exit"
+        echo "╔══════════════════════════════════════════════════════════════╗"
+        echo "║                   Tartware CLI — Interactive                 ║"
+        echo "╠══════════════════════════════════════════════════════════════╣"
+        echo "║  1) env      Manage .env file (init, show, run with env)     ║"
+        echo "║  2) db       Run database setup and verification             ║"
+        echo "║  3) docker   Start, stop, and manage Docker containers       ║"
+        echo "║  4) dev      Developer tools (UI, OTel, load test, MFA)      ║"
+        echo "║  5) deploy   Deploy to Kubernetes or DuploCloud              ║"
+        echo "║  6) retry    Re-run the last tartware command                ║"
+        echo "║  0) exit     Quit                                            ║"
+        echo "╚══════════════════════════════════════════════════════════════╝"
         echo ""
         read -r -p "Select option [0-6]: " choice
         case "$choice" in
@@ -357,11 +361,14 @@ interactive_menu() {
 
 interactive_env() {
     echo ""
-    echo "Env"
-    echo "1) init"
-    echo "2) show"
-    echo "3) run"
-    echo "0) back"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║                  Environment File Helpers                    ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║  1) init   Create .env from template (prompts for paths)     ║"
+    echo "║  2) show   Print the current .env file path and status       ║"
+    echo "║  3) run    Run any shell command with .env variables loaded  ║"
+    echo "║  0) back   Return to main menu                               ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
     read -r -p "Select option [0-3]: " choice
     case "$choice" in
         1)
@@ -393,10 +400,13 @@ interactive_env() {
 
 interactive_db() {
     echo ""
-    echo "DB"
-    echo "1) setup"
-    echo "2) verify"
-    echo "0) back"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║                     Database Helpers                         ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║  1) setup    Create tables, enums, indexes, and seed data    ║"
+    echo "║  2) verify   Run SQL verification suite (counts, FKs, etc.)  ║"
+    echo "║  0) back     Return to main menu                             ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
     read -r -p "Select option [0-2]: " choice
     case "$choice" in
         1)
@@ -420,17 +430,22 @@ interactive_db() {
 
 interactive_docker() {
     echo ""
-    echo "Docker"
-    echo "1) up"
-    echo "2) down"
-    echo "3) restart"
-    echo "4) ps"
-    echo "5) logs"
-    echo "6) purge"
-    echo "7) purge-all"
-    echo "8) postgres"
-    echo "0) back"
-    read -r -p "Select option [0-8]: " choice
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║                  Docker Compose Helpers                      ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║  1) up          Start all Tartware containers (-d)           ║"
+    echo "║  2) down        Stop and remove all containers               ║"
+    echo "║  3) restart     Down then up in one step                     ║"
+    echo "║  4) ps          List running containers and their status     ║"
+    echo "║  5) logs        Follow live logs for all containers          ║"
+    echo "║  6) purge       Run the custom docker-purge script           ║"
+    echo "║  7) purge-all   Down + remove images, volumes, networks      ║"
+    echo "║  8) postgres    Start only Postgres and follow its logs      ║"
+    echo "║  9) fresh       Purge ALL system images then start Tartware  ║"
+    echo "║                 (kills zombie port holders — requires sudo)  ║"
+    echo "║  0) back        Return to main menu                          ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    read -r -p "Select option [0-9]: " choice
     case "$choice" in
         1) "$EXEC_DIR/tartware.sh" docker up ;;
         2) "$EXEC_DIR/tartware.sh" docker down ;;
@@ -440,6 +455,7 @@ interactive_docker() {
         6) "$EXEC_DIR/tartware.sh" docker purge ;;
         7) "$EXEC_DIR/tartware.sh" docker purge-all ;;
         8) "$EXEC_DIR/tartware.sh" docker postgres ;;
+        9) "$EXEC_DIR/tartware.sh" docker fresh ;;
         0) return ;;
         *) echo "Invalid option" ;;
     esac
@@ -447,14 +463,17 @@ interactive_docker() {
 
 interactive_dev() {
     echo ""
-    echo "Dev"
-    echo "1) ui"
-    echo "2) otel"
-    echo "3) duplo"
-    echo "4) loadtest"
-    echo "5) mfa-generate"
-    echo "6) mfa-show"
-    echo "0) back"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║                     Developer Tools                          ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║  1) ui            Open the Super-Admin UI in a browser       ║"
+    echo "║  2) otel          Run an app with OpenTelemetry tracing      ║"
+    echo "║  3) duplo         Launch the Duplo local dashboard           ║"
+    echo "║  4) loadtest      Run the k6 load test suite                 ║"
+    echo "║  5) mfa-generate  Generate TOTP MFA credentials for a user   ║"
+    echo "║  6) mfa-show      Show QR code for an existing MFA secret    ║"
+    echo "║  0) back          Return to main menu                        ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
     read -r -p "Select option [0-6]: " choice
     case "$choice" in
         1) "$EXEC_DIR/tartware.sh" dev ui ;;
@@ -476,10 +495,13 @@ interactive_dev() {
 
 interactive_deploy() {
     echo ""
-    echo "Deploy"
-    echo "1) kubernetes"
-    echo "2) duplo"
-    echo "0) back"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║                    Deployment Helpers                        ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║  1) kubernetes   Deploy to a Kubernetes cluster              ║"
+    echo "║  2) duplo        Deploy via DuploCloud managed infrastructure║"
+    echo "║  0) back         Return to main menu                         ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
     read -r -p "Select option [0-2]: " choice
     case "$choice" in
         1) "$EXEC_DIR/tartware.sh" deploy kubernetes ;;
@@ -543,6 +565,7 @@ if [ $# -ge 1 ]; then
                         s) set -- docker ps "$@" ;;        # -ds
                         l) set -- docker logs "$@" ;;      # -dl
                         g) set -- docker postgres "$@" ;;  # -dg (postgres start+logs)
+                        f) set -- docker fresh "$@" ;;    # -df (purge all + fresh start)
                         "") set -- docker up "$@" ;;      # -d defaults to up
                         *) fail "Unknown short option: -${short_opt}" ;;
                     esac
@@ -759,7 +782,23 @@ case "$cmd" in
                 # TARTWARE_SKIP_POST_SETUP=false to enable these steps.
                 if [ "${TARTWARE_SKIP_POST_SETUP:-true}" != "true" ]; then
                     if command -v pnpm >/dev/null 2>&1; then
-                        run_and_log "Bootstrapping Kafka topics" "cd '$REPO_ROOT' && pnpm run kafka:topics"
+                        info "Waiting for Kafka to be ready before bootstrapping topics..."
+                        _kafka_broker="${KAFKA_BROKERS:-localhost:29092}"
+                        _kafka_host="${_kafka_broker%%:*}"
+                        _kafka_port="${_kafka_broker##*:}"
+                        _kafka_ready=false
+                        for _i in $(seq 1 60); do
+                            if nc -z "$_kafka_host" "$_kafka_port" 2>/dev/null; then
+                                _kafka_ready=true
+                                break
+                            fi
+                            sleep 1
+                        done
+                        if [ "$_kafka_ready" = true ]; then
+                            run_and_log "Bootstrapping Kafka topics" "cd '$REPO_ROOT' && pnpm run kafka:topics"
+                        else
+                            warn "Kafka not reachable after 60s — run manually: cd $REPO_ROOT && pnpm run kafka:topics"
+                        fi
                     else
                         warn "pnpm not installed; skipping Kafka bootstrap. Install pnpm to run 'pnpm run kafka:topics' or run it manually: cd $REPO_ROOT && pnpm run kafka:topics"
                     fi
@@ -795,6 +834,29 @@ case "$cmd" in
                 # Full tear-down and prune of Docker resources (images, volumes, networks)
                 run_and_log_filtered "Tear down Docker Compose and remove images" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' down -v --rmi all --remove-orphans"
                 run_and_log_filtered "Prune Docker system" "docker system prune -a --volumes -f"
+                ;;
+            fresh)
+                # Purge ALL system Docker images/containers/volumes/networks, then start Tartware
+                if [ "$(id -u)" -ne 0 ]; then
+                    fail "docker fresh requires root. Re-run: sudo ${EXEC_DIR}/tartware.sh docker fresh"
+                fi
+                info "Purging ALL Docker containers and images from the system..."
+                run_and_log "Stop all running containers" "docker stop \$(docker ps -aq 2>/dev/null) 2>/dev/null || true"
+                run_and_log "Remove all containers" "docker rm -f \$(docker ps -aq 2>/dev/null) 2>/dev/null || true"
+                run_and_log "Remove all images" "docker rmi -f \$(docker images -aq 2>/dev/null) 2>/dev/null || true"
+                run_and_log_filtered "Prune Docker system (volumes, networks, build cache)" "docker system prune -af --volumes"
+                run_and_log "Prune Docker networks" "docker network prune -f"
+                run_and_log "Kill zombie docker-proxy processes" "pkill -9 docker-proxy 2>/dev/null || true"
+                ok "System fully purged."
+                info "Starting Tartware containers..."
+                ensure_env_vars
+                if [ -f "$ENV_FILE_DEFAULT" ]; then
+                    set -a
+                    # shellcheck disable=SC1090
+                    source "$ENV_FILE_DEFAULT"
+                    set +a
+                fi
+                run_and_log_filtered "Start Docker Compose" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' up -d"
                 ;;
             postgres)
                 # Start only postgres and follow logs
