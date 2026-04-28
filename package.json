@@ -61,7 +61,7 @@
     "samples:api": "node scripts/fetch-sample-api-records.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.12",
+    "@biomejs/biome": "^2.4.13",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.24",
     "@types/node": "^25.2.0",

@@ -44,7 +44,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.5",
+    "@biomejs/biome": "^2.4.13",
     "@types/node": "^20.11.19",
     "@types/pg": "^8.11.0",
     "@types/uuid": "^10.0.0",
@@ -55,7 +55,7 @@
     "eslint": "8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "knip": "^5.67.0",
+    "knip": "^6.7.0",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
     "vitest": "^4.0.18"
