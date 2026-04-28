@@ -10,7 +10,9 @@ import {
   type FolioListItem,
   FolioListItemSchema,
   type FolioRow,
+  formatEnumDisplay,
   type PreAuditCheckItem,
+  toIsoString,
 } from "@tartware/schemas";
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
 import { query } from "../lib/db.js";
@@ -28,32 +30,6 @@ import {
  */
 export const BillingPaymentSchema = BillingPaymentListItemSchema;
 export type BillingPayment = BillingPaymentListItem;
-
-const formatEnumDisplay = (
-  value: string | null,
-  fallback: string,
-): { value: string; display: string } => {
-  if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
-  }
-  const normalized = value.toLowerCase();
-  const display = normalized
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  return { value: normalized, display };
-};
-
-const toIsoString = (value: string | Date | null): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  return value;
-};
 
 const resolveGuestName = (row: BillingPaymentRow): string | undefined => {
   if (row.reservation_guest_name) {

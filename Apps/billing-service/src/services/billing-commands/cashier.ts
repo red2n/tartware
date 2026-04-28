@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
-
+import { openCashierSession as _openCashierSession } from "@tartware/command-consumer-utils/cashier";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
-
 import { query, queryWithClient } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -16,9 +14,6 @@ import {
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
-const buildSessionNumber = (businessDate: string, sessionId: string): string =>
-  `CS-${businessDate.replace(/-/g, "")}-${sessionId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
-
 const runQuery = async <T extends QueryResultRow = QueryResultRow>(
   client: PoolClient | undefined,
   text: string,
@@ -28,7 +23,7 @@ const runQuery = async <T extends QueryResultRow = QueryResultRow>(
 
 /**
  * Open a new cashier session (shift start).
- * Generates session_number, records opening float, and marks session OPEN.
+ * Delegates to the shared implementation in @tartware/command-consumer-utils.
  */
 export const openCashierSession = async (
   payload: unknown,
@@ -36,54 +31,12 @@ export const openCashierSession = async (
   client?: PoolClient,
 ): Promise<string> => {
   const command = BillingCashierOpenCommandSchema.parse(payload);
-  const tenantId = context.tenantId;
-  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
-  const sessionId = randomUUID();
-  const businessDate = command.business_date
-    ? new Date(command.business_date).toISOString().slice(0, 10)
-    : new Date().toISOString().slice(0, 10);
-
-  const sessionNumber = buildSessionNumber(businessDate, sessionId);
-
-  await runQuery(
+  return _openCashierSession(command, context, {
+    query,
+    queryWithClient,
+    logger: appLogger,
     client,
-    `INSERT INTO cashier_sessions (
-       session_id, tenant_id, property_id, session_number,
-       cashier_id, cashier_name, terminal_id,
-       session_status, opened_at, business_date, shift_type,
-       opening_float_declared, opening_float_counted,
-       total_transactions, cash_transactions, card_transactions,
-       total_cash_received, total_card_received, total_revenue, total_refunds,
-       created_at, updated_at, created_by, updated_by
-     ) VALUES (
-       $1, $2, $3, $4,
-       $5, $6, $7,
-       'open', NOW(), $8, $9,
-       $10, $10,
-       0, 0, 0,
-       0, 0, 0, 0,
-       NOW(), NOW(), $11, $11
-     )`,
-    [
-      sessionId,
-      tenantId,
-      command.property_id,
-      sessionNumber,
-      command.cashier_id,
-      command.cashier_name,
-      command.terminal_id ?? null,
-      businessDate,
-      command.shift_type,
-      command.opening_float,
-      actorId,
-    ],
-  );
-
-  appLogger.info(
-    { sessionId, sessionNumber, cashierId: command.cashier_id },
-    "Cashier session opened",
-  );
-  return sessionId;
+  });
 };
 
 /**

@@ -248,6 +248,21 @@ Canonical dev port assignments (set via `PORT=` env var in root `package.json` d
 - The gateway provides unified authentication, rate limiting, and routing to backend services.
 - Direct database access is only permitted for read-only diagnostics (e.g., verifying record counts) or one-time migration scripts—never for routine data manipulation during testing.
 
+## Task Completion Gate — MANDATORY
+
+> **A task is NOT complete until `pnpm run build` passes with 0 errors.**
+
+After finishing every task or phase (code change, refactor, schema addition, etc.):
+1. Run `pnpm run build` from the monorepo root.
+2. If it fails, fix all errors before marking the task complete or moving to the next one.
+3. Only mark a todo item as `completed` **after** a clean build is confirmed.
+
+```bash
+pnpm run build   # must exit 0 — lint + biome + knip + compile all projects
+```
+
+This rule supersedes any other completion signal (typecheck passing, no TS errors in one service, etc.). A task is done when the full monorepo build is green.
+
 ## Pre-Push Quality Gates
 - **Before every `git push`**, run these three checks on all affected services and fix any failures:
   1. **Biome**: `cd Apps/<service> && npx biome check --write src/` (auto-fix formatting/lint)

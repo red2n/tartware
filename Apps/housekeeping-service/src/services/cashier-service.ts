@@ -3,7 +3,9 @@ import {
   type CashierSessionListItem,
   CashierSessionListItemSchema,
   type CashierSessionRow,
+  formatEnumDisplay,
   type ShiftSummaryResponse,
+  toIsoString,
 } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
@@ -11,32 +13,6 @@ import {
   CASHIER_SESSION_LIST_SQL,
   SHIFT_SUMMARY_SQL,
 } from "../sql/cashier-queries.js";
-
-const formatEnumDisplay = (
-  value: string | null,
-  fallback: string,
-): { value: string; display: string } => {
-  if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
-  }
-  const normalized = value.toLowerCase();
-  const display = normalized
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  return { value: normalized, display };
-};
-
-const toIsoString = (value: string | Date | null): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  return value;
-};
 
 // ============================================================================
 // CASHIER SESSIONS

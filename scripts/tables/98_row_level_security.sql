@@ -126,9 +126,11 @@ BEGIN
         -- Create tenant isolation policy
         -- current_setting('app.current_tenant_id', true) returns NULL when not set
         -- (the `true` flag avoids raising an error), making the policy deny all rows
-        -- when the session variable is missing — fail-safe by default.
+        -- when the session variable is missing or empty — fail-safe by default.
+        -- NULLIF converts '' (empty string left by RESET or uninitialised session) to
+        -- NULL so that the ::uuid cast never errors; NULL = tenant_id is always FALSE.
         EXECUTE format(
-            'CREATE POLICY %I ON public.%I FOR ALL USING (tenant_id = current_setting(''app.current_tenant_id'', true)::uuid)',
+            'CREATE POLICY %I ON public.%I FOR ALL USING (tenant_id = NULLIF(current_setting(''app.current_tenant_id'', true), '''')::uuid)',
             v_policy_name,
             r.table_name
         );
@@ -165,7 +167,7 @@ BEGIN
             END IF;
 
             EXECUTE format(
-                'CREATE POLICY %I ON availability.%I FOR ALL USING (tenant_id = current_setting(''app.current_tenant_id'', true)::uuid)',
+                'CREATE POLICY %I ON availability.%I FOR ALL USING (tenant_id = NULLIF(current_setting(''app.current_tenant_id'', true), '''')::uuid)',
                 v_policy_name,
                 r.table_name
             );

@@ -68,12 +68,6 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
         `Comp posting requires OPEN folio. Current: ${folio.folio_status}.`,
       );
     }
-    if (!folio.guest_id) {
-      throw new BillingCommandError(
-        "COMP_GUEST_REQUIRED",
-        "Comp posting requires a guest folio (guest_id must be set on the folio).",
-      );
-    }
 
     // Map command comp_type to the comp_category DB enum values
     const COMP_TYPE_TO_CATEGORY: Record<string, string> = {

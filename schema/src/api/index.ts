@@ -56,6 +56,8 @@ export * from "./roll.js";
 export * from "./rooms.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./rooms-rows.js";
+export * from "./compliance-utils.js";
+export * from "./display-utils.js";
 export * from "./settings.js";
 export * from "./system-admin.js";
 export * from "./system-session.js";

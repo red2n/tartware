@@ -227,6 +227,21 @@ Before every commit intended for push, run on **all affected services**:
 2. `cd Apps/<service> && npx knip`
 3. `cd Apps/<service> && npx eslint src/` (0 errors required)
 
+## Task Completion Gate — MANDATORY
+
+> **A task is NOT complete until `pnpm run build` passes with 0 errors.**
+
+After finishing every task or phase (code change, refactor, schema addition, etc.):
+1. Run `pnpm run build` from the monorepo root.
+2. If it fails, fix all errors before marking the task complete or moving to the next one.
+3. Only mark a todo item as `completed` **after** a clean build is confirmed.
+
+```bash
+pnpm run build   # must exit 0 — lint + biome + knip + compile all projects
+```
+
+This rule supersedes any other completion signal (typecheck passing, no TS errors in one service, etc.). A task is done when the full monorepo build is green.
+
 ## Git & GitHub
 
 - **NEVER push without asking the user first.** Commits are fine; pushes need explicit approval.

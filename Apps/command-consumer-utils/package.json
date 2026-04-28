@@ -24,6 +24,18 @@
     "./metrics": {
       "types": "./dist/metrics.d.ts",
       "import": "./dist/metrics.js"
+    },
+    "./idempotency": {
+      "types": "./dist/idempotency-repository.d.ts",
+      "import": "./dist/idempotency-repository.js"
+    },
+    "./command-utils": {
+      "types": "./dist/command-utils.d.ts",
+      "import": "./dist/command-utils.js"
+    },
+    "./cashier": {
+      "types": "./dist/cashier.d.ts",
+      "import": "./dist/cashier.js"
     }
   },
   "main": "dist/index.js",
@@ -40,7 +52,9 @@
   },
   "dependencies": {
     "@tartware/config": "workspace:*",
+    "@tartware/schemas": "workspace:*",
     "kafkajs": "^2.2.4",
+    "pg": "^8.13.3",
     "prom-client": "^15.1.3"
   },
   "engines": {

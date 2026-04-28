@@ -12,6 +12,7 @@ import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
+import { type RoomQueryRow, rowToRoomCandidate } from "./room-query-utils.js";
 
 export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "similar_rooms";
@@ -45,17 +46,7 @@ export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, Room
     // - Same room types they've enjoyed
     // - Similar price range (within 20% of their average)
     // - Not already in the available pool (handled by dedup filter)
-    const result = await query<{
-      room_id: string;
-      room_type_id: string;
-      room_type_name: string;
-      room_number: string;
-      floor: string;
-      view_type: string | null;
-      base_rate: number;
-      status: string;
-      max_occupancy: number;
-    }>(
+    const result = await query<RoomQueryRow>(
       `
       SELECT DISTINCT
         r.id AS room_id,
@@ -106,18 +97,9 @@ export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, Room
       ],
     );
 
-    const candidates: RoomCandidate[] = result.rows.map((row) => ({
-      roomId: row.room_id,
-      roomTypeId: row.room_type_id,
-      roomTypeName: row.room_type_name,
-      roomNumber: row.room_number,
-      floor: row.floor,
-      viewType: row.view_type ?? undefined,
-      baseRate: Number(row.base_rate),
-      status: row.status,
-      maxOccupancy: row.max_occupancy,
-      source: this.name,
-    }));
+    const candidates: RoomCandidate[] = result.rows.map((row) =>
+      rowToRoomCandidate(row, this.name),
+    );
 
     context.logger.debug({ count: candidates.length }, "Similar rooms fetched");
     return candidates;

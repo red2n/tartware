@@ -21,13 +21,13 @@ const SWEEP_INTERVAL_MS =
  * for each. Auto-reoffers to the next ACTIVE entry by default.
  */
 const runSweep = async (): Promise<void> => {
-  // Reset tenant GUC before cross-tenant scan — pooled connections may have
-  // a stale app.current_tenant_id = '' from a previous SET LOCAL that causes
-  // the RLS ::uuid cast to fail with "invalid input syntax for type uuid: ''"
+  // Cross-tenant scan: acquire a dedicated client and run the query directly
+  // without setting or resetting the tenant GUC. RESET poisons the pool
+  // connection by leaving app.current_tenant_id = '' which causes the RLS
+  // ::uuid cast to fail for all subsequent queries on that connection.
   const client = await pool.connect();
   let rows: Array<{ tenant_id: string; property_id: string }>;
   try {
-    await client.query("RESET app.current_tenant_id");
     const result = await client.query<{ tenant_id: string; property_id: string }>(
       `SELECT DISTINCT tenant_id, property_id
        FROM waitlist_entries

@@ -232,15 +232,17 @@ export const buildDateRollScheduler = (
   const checkAndDispatch = async () => {
     status.lastCheckAt = new Date().toISOString();
 
-    // Reset tenant GUC before cross-tenant scan — pooled connections may have
-    // a stale app.current_tenant_id = '' from a previous SET LOCAL that causes
-    // the RLS ::uuid cast to fail with "invalid input syntax for type uuid: ''"
+    // Cross-tenant scan: acquire a dedicated client and run the query directly
+    // without setting any tenant GUC — RLS is bypassed for this service role
+    // when no tenant context is active (returns NULL → no rows filtered in by
+    // the NULLIF-guarded policy), which is correct for a scheduler that needs
+    // to see all properties. The pool connection is NOT poisoned because we
+    // never call RESET (which leaves the GUC as '' and breaks other queries).
     const client = await pool.connect();
     let rows: Array<
       PropertySchedule & { timezone: string | null; night_audit_status: string | null }
     >;
     try {
-      await client.query("RESET app.current_tenant_id");
       const result = await client.query<
         PropertySchedule & { timezone: string | null; night_audit_status: string | null }
       >(ELIGIBLE_PROPERTIES_SQL, []);

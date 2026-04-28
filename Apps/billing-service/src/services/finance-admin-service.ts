@@ -5,6 +5,7 @@ import {
   type FiscalPeriodListItem,
   FiscalPeriodListItemSchema,
   type FiscalPeriodRow,
+  formatEnumDisplay,
   type LedgerEntryListItem,
   LedgerEntryListItemSchema,
   type LedgerEntryRow,
@@ -13,6 +14,7 @@ import {
   type TaxConfigurationRow,
   type TaxSummaryItem,
   type TrialBalanceResponse,
+  toIsoString,
 } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
@@ -21,28 +23,6 @@ import {
   TAX_CONFIGURATION_BY_ID_SQL,
   TAX_CONFIGURATION_LIST_SQL,
 } from "../sql/finance-admin-queries.js";
-
-const formatEnumDisplay = (
-  value: string | null,
-  fallback: string,
-): { value: string; display: string } => {
-  if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
-  }
-  const normalized = value.toLowerCase();
-  const display = normalized
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  return { value: normalized, display };
-};
-
-const toIsoString = (value: string | Date | null): string | undefined => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  return value;
-};
 
 const mapRowToTaxConfiguration = (row: TaxConfigurationRow): TaxConfigurationListItem => {
   const { value: taxType, display: taxTypeDisplay } = formatEnumDisplay(row.tax_type, "Other");

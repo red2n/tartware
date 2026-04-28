@@ -255,3 +255,20 @@ export type CalendarRow = {
 	rooms_sold: number;
 	source: string;
 };
+
+// =====================================================
+// ROOM QUERY ROW (candidate pipeline sources)
+// =====================================================
+
+/** Raw row shape returned by available-rooms, upgrade-opportunity, and similar-rooms source queries. */
+export type RoomQueryRow = {
+	room_id: string;
+	room_type_id: string;
+	room_type_name: string;
+	room_number: string;
+	floor: string;
+	view_type: string | null;
+	base_rate: number;
+	status: string;
+	max_occupancy: number;
+};

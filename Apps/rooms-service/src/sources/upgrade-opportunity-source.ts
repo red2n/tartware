@@ -9,6 +9,7 @@ import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import { query } from "../lib/db.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
+import { type RoomQueryRow, rowToRoomCandidate } from "./room-query-utils.js";
 
 export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
   readonly name = "upgrade_opportunity";
@@ -44,17 +45,7 @@ export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery
     // 1. Higher tier than what guest typically books
     // 2. Available for the dates
     // 3. Can be offered at a discounted rate
-    const result = await query<{
-      room_id: string;
-      room_type_id: string;
-      room_type_name: string;
-      room_number: string;
-      floor: string;
-      view_type: string | null;
-      base_rate: number;
-      status: string;
-      max_occupancy: number;
-    }>(
+    const result = await query<RoomQueryRow>(
       `
       SELECT
         r.id AS room_id,
@@ -100,20 +91,9 @@ export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery
       ],
     );
 
-    const candidates: RoomCandidate[] = result.rows.map((row) => ({
-      roomId: row.room_id,
-      roomTypeId: row.room_type_id,
-      roomTypeName: row.room_type_name,
-      roomNumber: row.room_number,
-      floor: row.floor,
-      viewType: row.view_type ?? undefined,
-      baseRate: Number(row.base_rate),
-      status: row.status,
-      maxOccupancy: row.max_occupancy,
-      source: this.name,
-      isUpgrade: true,
-      upgradeDiscount: discountPercent,
-    }));
+    const candidates: RoomCandidate[] = result.rows.map((row) =>
+      rowToRoomCandidate(row, this.name, { isUpgrade: true, upgradeDiscount: discountPercent }),
+    );
 
     context.logger.debug(
       { count: candidates.length, discountPercent },

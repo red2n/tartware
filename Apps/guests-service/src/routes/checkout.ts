@@ -1,3 +1,4 @@
+import { enterTenantScope } from "@tartware/config/db";
 import { CheckoutPreviewQuerySchema, CheckoutStartBodySchema } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import {
@@ -91,6 +92,9 @@ export const registerCheckoutRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const queryParams = CheckoutPreviewQuerySchema.parse(request.query);
+
+      // Self-service route has no JWT auth — set RLS tenant scope from query param
+      enterTenantScope(queryParams.tenant_id);
 
       const reservation = await lookupCheckedInReservation(
         queryParams.tenant_id,
