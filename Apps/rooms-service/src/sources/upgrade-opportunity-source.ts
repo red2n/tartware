@@ -80,7 +80,8 @@ export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery
         AND COALESCE(rt.base_price, 100) < $6 * 2.0
         AND NOT EXISTS (
           SELECT 1 FROM reservations res
-          WHERE res.property_id = r.property_id
+          WHERE res.tenant_id = r.tenant_id
+            AND res.property_id = r.property_id
             AND res.room_number = r.room_number
             AND LOWER(res.status::TEXT) NOT IN ('cancelled', 'no_show', 'checked_out')
             AND res.check_in_date < $4

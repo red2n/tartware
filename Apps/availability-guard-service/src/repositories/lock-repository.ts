@@ -122,10 +122,10 @@ export const releaseLockRecord = async (
       SET
         status = 'RELEASED',
         release_reason = $3,
-        updated_at = $4,
+        updated_at = $4::timestamptz,
         metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
-          'releasedAt', $4,
-          'correlationId', $5
+          'releasedAt', $4::text,
+          'correlationId', $5::text
         )
       WHERE id = $1
         AND tenant_id = $2

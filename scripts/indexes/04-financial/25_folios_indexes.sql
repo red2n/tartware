@@ -27,7 +27,7 @@ COMMENT ON INDEX idx_folios_tenant IS 'Tenant/property filtering with recency';
 
 -- Property-wide queries
 CREATE INDEX idx_folios_property
-    ON folios(property_id, folio_status, created_at DESC)
+    ON folios(tenant_id, property_id, folio_status, created_at DESC)
     WHERE deleted_at IS NULL;
 
 COMMENT ON INDEX idx_folios_property IS 'Property folio management with status filtering';
@@ -41,42 +41,42 @@ COMMENT ON INDEX idx_folios_number IS 'Fast folio number lookup';
 
 -- Reservation association
 CREATE INDEX idx_folios_reservation
-    ON folios(reservation_id, folio_status)
+    ON folios(tenant_id, reservation_id, folio_status)
     WHERE deleted_at IS NULL AND reservation_id IS NOT NULL;
 
 COMMENT ON INDEX idx_folios_reservation IS 'Reservation-to-folio relationship';
 
 -- Guest folio history
 CREATE INDEX idx_folios_guest
-    ON folios(guest_id, created_at DESC)
+    ON folios(tenant_id, guest_id, created_at DESC)
     WHERE deleted_at IS NULL AND guest_id IS NOT NULL;
 
 COMMENT ON INDEX idx_folios_guest IS 'Guest billing history';
 
 -- Status-based queries (open folios, etc.)
 CREATE INDEX idx_folios_status
-    ON folios(property_id, folio_status, updated_at DESC)
+    ON folios(tenant_id, property_id, folio_status, updated_at DESC)
     WHERE deleted_at IS NULL;
 
 COMMENT ON INDEX idx_folios_status IS 'Status filtering for daily operations';
 
 -- Folio type filtering
 CREATE INDEX idx_folios_type
-    ON folios(property_id, folio_type, folio_status)
+    ON folios(tenant_id, property_id, folio_type, folio_status)
     WHERE deleted_at IS NULL;
 
 COMMENT ON INDEX idx_folios_type IS 'Type-based filtering (GUEST, MASTER, CITY_LEDGER)';
 
 -- Outstanding balance tracking
 CREATE INDEX idx_folios_balance
-    ON folios(property_id, balance, updated_at DESC)
+    ON folios(tenant_id, property_id, balance, updated_at DESC)
     WHERE deleted_at IS NULL AND balance != 0;
 
 COMMENT ON INDEX idx_folios_balance IS 'Find folios with outstanding balance';
 
 -- Creation date for reporting
 CREATE INDEX idx_folios_created
-    ON folios(property_id, created_at DESC)
+    ON folios(tenant_id, property_id, created_at DESC)
     WHERE deleted_at IS NULL;
 
 COMMENT ON INDEX idx_folios_created IS 'Date-based reporting and analytics';

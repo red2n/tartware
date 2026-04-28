@@ -163,7 +163,7 @@ deleted_at TIMESTAMP WITH TIME ZONE, -- Deletion timestamp
 deleted_by UUID, -- Deleting user identifier
 
 -- Unique Constraint
-UNIQUE(property_id, forecast_date, forecast_period, forecast_type, forecast_scenario)
+UNIQUE(tenant_id, property_id, forecast_date, forecast_period, forecast_type, forecast_scenario)
 );
 
 -- Indexes for revenue_forecasts

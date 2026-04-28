@@ -112,8 +112,8 @@ const rebuildLedgerBatch = async (
 
     await queryWithClient(
       client,
-      `DELETE FROM public.general_ledger_entries WHERE gl_batch_id = $1::uuid`,
-      [batchId],
+      `DELETE FROM public.general_ledger_entries WHERE gl_batch_id = $1::uuid AND tenant_id = $2::uuid`,
+      [batchId, context.tenantId],
     );
 
     const chargeRows = await loadChargeSources(
@@ -168,9 +168,9 @@ const rebuildLedgerBatch = async (
           batch_status = $5,
           updated_at = NOW(),
           updated_by = $6::uuid
-        WHERE gl_batch_id = $1::uuid
+        WHERE gl_batch_id = $1::uuid AND tenant_id = $7::uuid
       `,
-      [batchId, debitTotal, creditTotal, entries.length, batchStatus, actorId],
+      [batchId, debitTotal, creditTotal, entries.length, batchStatus, actorId, context.tenantId],
     );
 
     appLogger.info(
@@ -249,6 +249,7 @@ const loadChargeSources = async (
       FROM public.charge_postings cp
       LEFT JOIN public.charge_codes cc
         ON cc.code = cp.charge_code
+       AND cc.tenant_id = cp.tenant_id
       LEFT JOIN public.reservations r
         ON r.id = cp.reservation_id
        AND COALESCE(r.is_deleted, false) = false

@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS rate_calendar (
     updated_by VARCHAR(100),
 
     -- Constraints
-    CONSTRAINT rate_calendar_unique UNIQUE (property_id, room_type_id, rate_id, stay_date),
+    CONSTRAINT rate_calendar_unique UNIQUE (tenant_id, property_id, room_type_id, rate_id, stay_date),
     CONSTRAINT rate_calendar_amount_positive CHECK (rate_amount >= 0),
     CONSTRAINT rate_calendar_los_valid CHECK (
         min_length_of_stay IS NULL OR max_length_of_stay IS NULL

@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS performance_alerts (
     -- Primary Key
     alert_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+    -- Multi-tenancy
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
     -- Alert Classification
     alert_type VARCHAR(50) NOT NULL,
     severity VARCHAR(20) NOT NULL,

@@ -285,7 +285,7 @@ export const getTrialBalance = async (options: {
        COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) -
        COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0) AS net
      FROM charge_postings cp
-     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
+     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code AND cc.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid
        AND cp.business_date = $2::date
        AND COALESCE(cp.is_voided, false) = false
@@ -390,7 +390,7 @@ export const getDepartmentalRevenue = async (options: {
        (COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0)
         - COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0))::text AS net_revenue
      FROM charge_postings cp
-     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
+     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code AND cc.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid
        AND cp.business_date >= $2::date AND cp.business_date <= $3::date
        AND COALESCE(cp.is_voided, false) = false
@@ -506,7 +506,7 @@ export const getCommissionReport = async (options: {
        COALESCE(SUM(CASE WHEN cc.department_name = 'Rooms Division' THEN cp.total_amount ELSE 0 END), 0)::text AS room_revenue,
        COALESCE(SUM(CASE WHEN cc.department_code = 'COMMISSION' OR cp.charge_code LIKE '%COMM%' THEN cp.total_amount ELSE 0 END), 0)::text AS commission_amount
      FROM charge_postings cp
-     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code
+     LEFT JOIN charge_codes cc ON cc.code = cp.charge_code AND cc.tenant_id = cp.tenant_id
      LEFT JOIN folios f ON f.folio_id = cp.folio_id AND f.tenant_id = cp.tenant_id
      LEFT JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid

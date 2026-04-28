@@ -51,6 +51,10 @@
 -- Reference data (dynamic enums)
 \i tables/09-reference-data/verify-09-reference-data.sql
 
+-- Multi-tenant infrastructure (composite FKs + RLS)
+\i tables/verify-composite-fks.sql
+\i tables/verify-rls.sql
+
 \echo ''
 \echo '======================================================'
 \echo '  TABLE VERIFICATION COMPLETE'

@@ -45,10 +45,15 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   });
 
   const tenantScopeFromQuery = app.withTenantScope({
-    resolveTenantId: (request) =>
-      (request.query as { tenant_id?: string }).tenant_id ??
-      (request.body as { tenant_id?: string } | null)?.tenant_id,
+    resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "VIEWER",
+    requiredModules: "core",
+  });
+
+  /** Write scope for POST/PUT/PATCH — reads tenant_id from request body. */
+  const tenantWriteScopeFromBody = app.withTenantScope({
+    resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+    minRole: "MANAGER",
     requiredModules: "core",
   });
 
@@ -87,7 +92,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/rooms",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room creation to the rooms service.",
@@ -151,7 +156,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/room-types",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type creation to the rooms service.",

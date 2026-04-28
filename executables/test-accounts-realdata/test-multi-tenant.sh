@@ -937,7 +937,7 @@ run_billing_pipeline() {
       send_command "CMD refund: \$50" \
         "billing.payment.refund" \
         "{\"payment_id\":\"$cc_pay_id\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":50.00,\"reason\":\"Overpayment\",\"refund_reference\":\"RF-$tag-$UNIQUE\",\"payment_method\":\"CREDIT_CARD\"}"
-      wait_kafka 8
+      wait_kafka 15
 
       local refund_exists
       get "$GW/v1/billing/payments?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
@@ -1339,9 +1339,9 @@ echo ""
 
 echo "── 4.1  Charge Postings scoped by property_id ──────────────────────"
 TOKEN="$TOKEN_A"
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=1" >/dev/null; A1_CHARGES=$(resp_count)
-get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=1" >/dev/null; A2_CHARGES=$(resp_count)
-get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=1" >/dev/null;                     ALL_A_CHARGES=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_CHARGES=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_CHARGES=$(resp_count)
+get "$GW/v1/billing/charges?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_CHARGES=$(resp_count)
 EXPECTED_SUM=$((A1_CHARGES + A2_CHARGES))
 assert_eq "USALI: A charges = A1($A1_CHARGES) + A2($A2_CHARGES)" "$EXPECTED_SUM" "$ALL_A_CHARGES"
 if [[ "$A1_CHARGES" -gt 0 && "$A2_CHARGES" -gt 0 ]]; then
@@ -1356,9 +1356,9 @@ pass "USALI: No orphan charges (property_id filtering consistent)"
 echo ""
 
 echo "── 4.2  Payments scoped by property_id ─────────────────────────────"
-get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A1&limit=1" >/dev/null; A1_PAYMENTS=$(resp_count)
-get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A2&limit=1" >/dev/null; A2_PAYMENTS=$(resp_count)
-get "$GW/v1/billing/payments?tenant_id=$TID_A&limit=1" >/dev/null;                     ALL_A_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_PAYMENTS=$(resp_count)
+get "$GW/v1/billing/payments?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_PAYMENTS=$(resp_count)
 EXPECTED_SUM=$((A1_PAYMENTS + A2_PAYMENTS))
 assert_eq "USALI: A payments = A1($A1_PAYMENTS) + A2($A2_PAYMENTS)" "$EXPECTED_SUM" "$ALL_A_PAYMENTS"
 if [[ "$A1_PAYMENTS" -gt 0 && "$A2_PAYMENTS" -gt 0 ]]; then
@@ -1382,9 +1382,9 @@ fi
 echo ""
 
 echo "── 4.4  Cashier Sessions scoped by property_id ─────────────────────"
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A1&limit=1" >/dev/null; A1_SESSIONS=$(resp_count)
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A2&limit=1" >/dev/null; A2_SESSIONS=$(resp_count)
-get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&limit=1" >/dev/null;                     ALL_A_SESSIONS=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_SESSIONS=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_SESSIONS=$(resp_count)
+get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_SESSIONS=$(resp_count)
 EXPECTED_SUM=$((A1_SESSIONS + A2_SESSIONS))
 assert_eq "USALI: A sessions = A1($A1_SESSIONS) + A2($A2_SESSIONS)" "$EXPECTED_SUM" "$ALL_A_SESSIONS"
 if [[ "$A1_SESSIONS" -gt 0 && "$A2_SESSIONS" -gt 0 ]]; then
@@ -1624,6 +1624,94 @@ else
   else
     fail "API isolation: Cross-tenant charge was persisted!" "$ATTACK_CHARGE rows"
   fi
+fi
+echo ""
+
+echo "── 5.6  P0 fixes: Additional isolation assertions ──────────────────"
+
+# --- P0-1: Self-service checkout tenant isolation ---
+# Attempt checkout preview with Tenant B's token using Tenant A's tenant_id
+TOKEN="$TOKEN_B"
+code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  "$GW/v1/self-service/check-out/preview?confirmation_code=FAKE-CONF-CODE&tenant_id=$TID_A")
+if [[ "$code" =~ ^(401|403|404) ]] || [[ "$(jq -r '.data // empty' "$RESP_FILE" 2>/dev/null)" == "" ]]; then
+  pass "P0-1 isolation: Cross-tenant checkout preview blocked (HTTP=$code)"
+else
+  fail "P0-1 isolation: Cross-tenant checkout preview leaked data" "HTTP=$code"
+fi
+
+# --- P0-2: GL ledger tenant isolation ---
+# Tenant B should see zero GL entries for Tenant A's property
+TOKEN="$TOKEN_B"
+code=$(get "$GW/v1/billing/ledger?tenant_id=$TID_B&property_id=$PID_A1&limit=1")
+GL_CROSS=$(resp_count)
+if [[ "$code" =~ ^(401|403) ]] || [[ "$GL_CROSS" == "0" ]]; then
+  pass "P0-2 isolation: B GL ledger has no A1 property entries (HTTP=$code count=$GL_CROSS)"
+else
+  fail "P0-2 isolation: B GL ledger leaks A1 property data" "HTTP=$code count=$GL_CROSS"
+fi
+
+# Tenant A should see zero GL entries for Tenant B's property
+TOKEN="$TOKEN_A"
+code=$(get "$GW/v1/billing/ledger?tenant_id=$TID_A&property_id=$PID_B1&limit=1")
+GL_CROSS_REV=$(resp_count)
+if [[ "$code" =~ ^(401|403) ]] || [[ "$GL_CROSS_REV" == "0" ]]; then
+  pass "P0-2 isolation: A GL ledger has no B1 property entries (HTTP=$code count=$GL_CROSS_REV)"
+else
+  fail "P0-2 isolation: A GL ledger leaks B1 property data" "HTTP=$code count=$GL_CROSS_REV"
+fi
+
+# --- P0-3: Night-audit property name isolation ---
+# Night-audit status for Tenant A property should work
+TOKEN="$TOKEN_A"
+code=$(get "$GW/v1/night-audit/status?tenant_id=$TID_A&property_id=$PID_A1")
+NA_PROP_NAME=$(jq -r '.data.property_name // empty' "$RESP_FILE" 2>/dev/null)
+assert_http "P0-3: Night-audit status A/A1" "200" "$code"
+
+# Night-audit for Tenant A but with Tenant B's property should return no property_name
+code=$(get "$GW/v1/night-audit/status?tenant_id=$TID_A&property_id=$PID_B1")
+NA_CROSS_PROP=$(jq -r '.data.property_name // empty' "$RESP_FILE" 2>/dev/null)
+if [[ -z "$NA_CROSS_PROP" || "$NA_CROSS_PROP" == "null" ]]; then
+  pass "P0-3 isolation: Night-audit A + B1 property returns no property_name"
+else
+  fail "P0-3 isolation: Night-audit A + B1 property leaked name" "name=$NA_CROSS_PROP"
+fi
+
+# --- P0-4: Calculation auth enforcement ---
+# Unauthenticated calculation request should be rejected
+CALC_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X POST "$GW/v1/calculations/tax/taxable-amount" \
+  -H "Content-Type: application/json" \
+  -d '{"amount":100,"quantity":1,"negate":false}')
+if [[ "$CALC_CODE" =~ ^(401|403) ]]; then
+  pass "P0-4 auth: Unauthenticated calculation rejected (HTTP=$CALC_CODE)"
+else
+  fail "P0-4 auth: Unauthenticated calculation NOT rejected" "HTTP=$CALC_CODE"
+fi
+
+# Bogus token should also be rejected
+CALC_CODE2=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X POST "$GW/v1/calculations/tax/taxable-amount" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer totally-bogus-jwt-token" \
+  -d '{"amount":100,"quantity":1,"negate":false}')
+if [[ "$CALC_CODE2" =~ ^(401|403) ]]; then
+  pass "P0-4 auth: Bogus-token calculation rejected (HTTP=$CALC_CODE2)"
+else
+  fail "P0-4 auth: Bogus-token calculation NOT rejected" "HTTP=$CALC_CODE2"
+fi
+
+# Valid token should succeed
+TOKEN="$TOKEN_A"
+CALC_CODE3=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X POST "$GW/v1/calculations/tax/taxable-amount" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -d '{"amount":100,"quantity":1,"negate":false}')
+if [[ "$CALC_CODE3" =~ ^2 ]]; then
+  pass "P0-4 auth: Authenticated calculation succeeds (HTTP=$CALC_CODE3)"
+else
+  fail "P0-4 auth: Authenticated calculation failed" "HTTP=$CALC_CODE3"
 fi
 echo ""
 

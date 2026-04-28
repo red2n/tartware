@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 
+import { enterTenantScope } from "@tartware/config/db";
 import { createTenantThrottler, type OutboxRecord } from "@tartware/outbox";
 
 import { kafkaConfig, outboxConfig } from "../config.js";
@@ -99,6 +100,7 @@ const processOutboxBatch = async (): Promise<void> => {
     const throttledAt = performance.now();
     await throttleTenant(record.tenantId);
     observeOutboxThrottleWait(secondsSince(throttledAt));
+    enterTenantScope(record.tenantId);
     await handleOutboxRecord(record);
   }
 };

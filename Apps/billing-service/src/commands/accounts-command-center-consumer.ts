@@ -7,6 +7,7 @@
  */
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
+import { enterTenantScope } from "@tartware/config/db";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -77,6 +78,7 @@ const { start, shutdown } = createConsumerLifecycle({
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
   isRetryable: (error) => !(error instanceof BillingCommandError),
+  onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

@@ -48,7 +48,7 @@ run_and_log_filtered() {
     # Run the command, append full output to the log, but print a filtered
     # summary to stdout (only show Image/Container/Volume/Network status and
     # key keywords like Pulled/Created/Removed/Running/Healthy).
-    if bash -lc "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE" | awk '/^Container|^Image|^Volume|^Network|Pulled|Created|Removed|Running|Starting|Started|Healthy|\[\+\]/{print}' ; then
+    if bash -c "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE" | awk '/^Container|^Image|^Volume|^Network|Pulled|Created|Removed|Running|Starting|Started|Healthy|\[\+\]/{print}' ; then
         :
     else
         printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
@@ -88,10 +88,10 @@ run_and_log() {
 
     if [ "${TARTWARE_VERBOSE}" = "true" ]; then
         # show live output to console and also append to log
-        bash -lc "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"
+        bash -c "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"
     else
         # quiet mode: redirect command output to log only
-        if bash -lc "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
+        if bash -c "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
             :
         else
             printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
@@ -105,6 +105,50 @@ run_and_log() {
     if [ "${TARTWARE_QUIET}" != "true" ]; then
         printf '%s\n' "[tartware] ${desc} - done"
     fi
+}
+
+# Filtered runner for database setup.
+# Full output always goes to TARTWARE_LOG_FILE.
+# Console gets a noise-filtered view that strips psql idempotent NOTICEs,
+# npm warnings, and dotenv injection lines while preserving all status (✓/✗),
+# step markers, banners, verification results, and errors.
+run_db_setup() {
+    local cmd="$*"
+
+    printf '\n==> %s START Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+
+    if [ "${TARTWARE_QUIET}" = "true" ] || [ "${TARTWARE_VERBOSE}" != "true" ]; then
+        # Quiet / non-verbose: log only, no console output
+        if bash -c "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
+            :
+        else
+            printf '==> %s FAIL Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+            printf '%s\n' "[tartware] ERROR: Database setup failed. See ${TARTWARE_LOG_FILE} for details." >&2
+            tail -n 80 "$TARTWARE_LOG_FILE" >&2 || true
+            exit 1
+        fi
+    else
+        # Verbose: tee full output to log, filter noise for console
+        if bash -c "$cmd" 2>&1 \
+            | tee -a "$TARTWARE_LOG_FILE" \
+            | awk '
+                /already exists, skipping$/   { next }
+                /does not exist, skipping$/   { next }
+                /^npm warn/                   { next }
+                /^\[dotenv/                   { next }
+                /^Password for user/          { next }
+                /^psql:/ { sub(/^psql:[^:]+:[0-9]+: NOTICE:  ?/, "") }
+                { print; fflush() }
+            '; then
+            :
+        else
+            printf '==> %s FAIL Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
+            printf '%s\n' "[tartware] ERROR: Database setup failed. See ${TARTWARE_LOG_FILE} for full details." >&2
+            exit 1
+        fi
+    fi
+
+    printf '==> %s SUCCESS Database setup\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TARTWARE_LOG_FILE"
 }
 
 ensure_env_vars() {
@@ -152,7 +196,7 @@ reset_default_passwords() {
     if [ -f "$reset_script" ]; then
         if command -v npx >/dev/null 2>&1; then
             info "Resetting user passwords to default"
-            run_and_log "Reset default passwords" "DB_HOST='${DB_HOST:-127.0.0.1}' DB_PORT='${DB_PORT:-5432}' DB_USER='${DB_USER:-postgres}' DB_PASSWORD='${DB_PASSWORD:-postgres}' DB_NAME='${DB_NAME:-tartware}' AUTH_DEFAULT_PASSWORD='${default_password}' NODE_ENV=development npx tsx --tsconfig '$REPO_ROOT/Apps/core-service/tsconfig.json' '$reset_script'"
+            run_and_log "Reset default passwords" "DB_HOST='${DB_HOST:-127.0.0.1}' DB_PORT='${DB_PORT:-5432}' DB_USER='${DB_USER:-postgres}' DB_PASSWORD='${DB_PASSWORD:-postgres}' DB_NAME='${DB_NAME:-tartware}' AUTH_DEFAULT_PASSWORD='${default_password}' NODE_ENV=development npx --yes tsx --tsconfig '$REPO_ROOT/Apps/core-service/tsconfig.json' '$reset_script'"
             ok "Default passwords reset to '${default_password}'"
         else
             warn "npx (Node.js) not installed; skipping password reset. Install Node.js and npm (npx) to enable this step. Script path: $reset_script"
@@ -678,7 +722,7 @@ case "$cmd" in
                 if [ ! -f "$setup_script" ]; then
                     fail "Missing setup script: $setup_script"
                 fi
-                run_and_log "Database setup" "bash '$setup_script' $*"
+                run_db_setup "bash '$setup_script' $*"
                 # setup-database.sh already handles password reset internally
                 exit 0
                 ;;
@@ -692,6 +736,10 @@ case "$cmd" in
         sub="${1:-up}"
         shift || true
         require_cmd docker
+        # Verify Docker daemon is accessible (catches permission denied on docker socket)
+        if ! docker info >/dev/null 2>&1; then
+            fail "Cannot connect to Docker daemon. Make sure Docker is running and your user is in the 'docker' group (sudo usermod -aG docker \$USER), then log out and back in. Alternatively, run with sudo."
+        fi
         compose_cmd="$(docker_compose_cmd)"
         case "$sub" in
             up)

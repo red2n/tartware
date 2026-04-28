@@ -93,7 +93,10 @@ version BIGINT DEFAULT 0, -- Concurrency control version
 
 -- Constraints
 CONSTRAINT rooms_number_unique UNIQUE (property_id, room_number), -- Room numbers unique per property
-    CONSTRAINT rooms_block_dates CHECK (blocked_from IS NULL OR blocked_until IS NULL OR blocked_from < blocked_until) -- Validate block window
+    CONSTRAINT rooms_block_dates CHECK (blocked_from IS NULL OR blocked_until IS NULL OR blocked_from < blocked_until), -- Validate block window
+
+    -- Composite unique for tenant-scoped FK references
+    UNIQUE (tenant_id, id)
 );
 
 -- =====================================================

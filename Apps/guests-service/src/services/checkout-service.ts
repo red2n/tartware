@@ -18,7 +18,10 @@ export class CheckoutServiceError extends Error {
 /**
  * Look up a checked-in reservation by confirmation code for self-service checkout.
  */
-export async function lookupCheckedInReservation(confirmationCode: string): Promise<{
+export async function lookupCheckedInReservation(
+  tenantId: string,
+  confirmationCode: string,
+): Promise<{
   id: string;
   tenant_id: string;
   guest_id: string;
@@ -50,10 +53,11 @@ export async function lookupCheckedInReservation(confirmationCode: string): Prom
        ORDER BY created_at DESC LIMIT 1
      ) f ON true
      WHERE r.confirmation_number = $1
+       AND r.tenant_id = $2
        AND r.status = 'CHECKED_IN'
        AND r.is_deleted = false
      LIMIT 1`,
-    [confirmationCode],
+    [confirmationCode, tenantId],
   );
 
   const row = result.rows[0];

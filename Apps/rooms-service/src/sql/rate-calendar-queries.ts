@@ -52,7 +52,7 @@ export const RATE_CALENDAR_UPSERT_SQL = `
     $15, $16,
     $17, $18
   )
-  ON CONFLICT (property_id, room_type_id, rate_id, stay_date)
+  ON CONFLICT (tenant_id, property_id, room_type_id, rate_id, stay_date)
   DO UPDATE SET
     rate_amount         = EXCLUDED.rate_amount,
     currency            = EXCLUDED.currency,

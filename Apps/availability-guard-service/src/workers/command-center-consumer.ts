@@ -1,3 +1,4 @@
+import { enterTenantScope } from "@tartware/config/db";
 import type { FastifyBaseLogger } from "fastify";
 import type { Consumer, KafkaMessage } from "kafkajs";
 
@@ -138,6 +139,7 @@ const processMessage = async (
   }
 
   try {
+    enterTenantScope(metadata.tenantId);
     await routeCommand(envelope.payload, metadata, logger);
   } catch (error) {
     logger.error(

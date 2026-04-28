@@ -9,6 +9,7 @@
  * - `reservation.updated` (checkout) → move from reserved to occupied
  */
 
+import { enterTenantScope } from "@tartware/config/db";
 import type { ReservationEventEnvelope } from "@tartware/schemas";
 import { createServiceLogger } from "@tartware/telemetry";
 import type { Consumer, EachMessagePayload } from "kafkajs";
@@ -179,6 +180,7 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           logger.warn({ offset: message.offset }, "skipping malformed reservation event");
           return;
         }
+        enterTenantScope(envelope.metadata.tenantId);
         await processReservationEvent(envelope);
       } catch (err) {
         logger.error({ err, offset: message.offset }, "failed to process reservation event");

@@ -94,7 +94,10 @@ CONSTRAINT room_types_code_unique UNIQUE (property_id, type_code), -- Prevent du
     CONSTRAINT room_types_max_adults_check CHECK (max_adults > 0), -- Require at least one adult
     CONSTRAINT room_types_max_children_check CHECK (max_children >= 0), -- Disallow negative child count
     CONSTRAINT room_types_size_check CHECK (size_sqm IS NULL OR size_sqm > 0), -- Positive room size if provided
-    CONSTRAINT room_types_base_price_check CHECK (base_price >= 0) -- Price must be non-negative
+    CONSTRAINT room_types_base_price_check CHECK (base_price >= 0), -- Price must be non-negative
+
+    -- Composite unique for tenant-scoped FK references
+    UNIQUE (tenant_id, id)
 );
 
 -- =====================================================

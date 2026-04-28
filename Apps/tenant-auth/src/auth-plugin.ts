@@ -13,6 +13,8 @@ type QueryFn = <T extends Record<string, unknown>>(
 export interface StandardAuthPluginOptions {
   jwtConfig: JwtConfig;
   query: QueryFn;
+  /** Called after `withTenantScope` validates a tenant — wire `enterTenantScope` here for RLS. */
+  onTenantResolved?: (tenantId: string) => void;
 }
 
 declare module "fastify" {
@@ -62,5 +64,6 @@ export const createStandardAuthPlugin = (
     extractBearerToken,
     verifyAccessToken,
     rolePriority: STANDARD_ROLE_PRIORITY,
+    onTenantResolved: options.onTenantResolved,
   });
 };

@@ -214,6 +214,9 @@ CREATE TABLE IF NOT EXISTS group_room_blocks (
     -- Primary Key
     block_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY, -- Unique block identifier
 
+-- Multi-tenancy
+tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
+
 -- Foreign Keys
 group_booking_id UUID NOT NULL REFERENCES group_bookings (group_booking_id) ON DELETE CASCADE, -- Parent group booking
 room_type_id UUID NOT NULL REFERENCES room_types (id) ON DELETE RESTRICT, -- Room type allocated
@@ -250,7 +253,7 @@ updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Last update
 updated_by UUID REFERENCES users (id),
 
 -- Constraints
-UNIQUE (group_booking_id, room_type_id, block_date),
+UNIQUE (tenant_id, group_booking_id, room_type_id, block_date),
     CHECK (picked_rooms <= blocked_rooms),
     CHECK (confirmed_rooms <= picked_rooms)
 );

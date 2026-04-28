@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import {
   Pool,
   type PoolClient,
@@ -6,6 +8,25 @@ import {
   type QueryResultRow,
   types,
 } from "pg";
+
+// ── Request-scoped tenant context (RLS) ────────────────────────
+// When a service sets this before executing queries (e.g. via the
+// tenant-auth preHandler or Kafka consumer routing), `query()` and
+// `withTransaction()` automatically wrap in a transaction with
+// `SET LOCAL app.current_tenant_id`, making RLS enforce isolation.
+const tenantContextStore = new AsyncLocalStorage<{ tenantId: string }>();
+
+/**
+ * Set the RLS tenant scope for the current async execution chain.
+ * Call this from auth middleware / Kafka consumer before any DB access.
+ * Uses `enterWith` so the scope persists for all downstream awaits.
+ */
+export const enterTenantScope = (tenantId: string): void => {
+  tenantContextStore.enterWith({ tenantId });
+};
+
+/** Read the current tenant scope (or `undefined` when unset). */
+export const getTenantScope = (): string | undefined => tenantContextStore.getStore()?.tenantId;
 
 // ── Type parsers (global, idempotent) ──────────────────────────
 let typeParsersRegistered = false;
@@ -71,6 +92,26 @@ export interface DbPool {
   /** Run `fn` inside BEGIN / COMMIT with automatic ROLLBACK on error. */
   withTransaction: <T>(fn: (client: PoolClient) => Promise<T>) => Promise<T>;
 
+  /**
+   * Execute a single query with RLS tenant context.
+   * Wraps the query in BEGIN → SET LOCAL → query → COMMIT so that
+   * `app.current_tenant_id` is scoped to this statement only.
+   */
+  tenantQuery: <T extends QueryResultRow = QueryResultRow>(
+    tenantId: string,
+    textOrConfig: string | QueryConfig,
+    params?: unknown[],
+  ) => Promise<QueryResult<T>>;
+
+  /**
+   * Run `fn` inside a transaction with `app.current_tenant_id` set
+   * via SET LOCAL (automatically scoped to the transaction).
+   */
+  withTenantTransaction: <T>(
+    tenantId: string,
+    fn: (client: PoolClient) => Promise<T>,
+  ) => Promise<T>;
+
   /** Drain the pool (graceful shutdown). */
   close: () => Promise<void>;
 }
@@ -112,10 +153,82 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     dbLogger.error({ err: error }, "Unexpected PostgreSQL pool error");
   });
 
+  /** SET LOCAL scopes to current transaction — safe with connection pooling. */
+  const setTenantContext = async (client: PoolClient, tenantId: string): Promise<void> => {
+    await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId]);
+  };
+
+  const tenantQuery = async <T extends QueryResultRow = QueryResultRow>(
+    tenantId: string,
+    textOrConfig: string | QueryConfig,
+    params: unknown[] = [],
+  ): Promise<QueryResult<T>> => {
+    const client = await pool.connect();
+    let rollbackError: unknown = null;
+
+    try {
+      await client.query("BEGIN");
+      await setTenantContext(client, tenantId);
+      const result =
+        typeof textOrConfig === "string"
+          ? await client.query<T>(textOrConfig, params)
+          : await client.query<T>(textOrConfig);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rbError) {
+        rollbackError = rbError;
+        dbLogger.error({ err: rbError }, "tenantQuery rollback failed");
+      }
+      throw error;
+    } finally {
+      client.release(rollbackError !== null);
+    }
+  };
+
+  const withTenantTransaction = async <T>(
+    tenantId: string,
+    fn: (client: PoolClient) => Promise<T>,
+  ): Promise<T> => {
+    const client = await pool.connect();
+    let transactionStarted = false;
+    let rollbackError: unknown = null;
+
+    try {
+      await client.query("BEGIN");
+      transactionStarted = true;
+      await setTenantContext(client, tenantId);
+      const result = await fn(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      if (transactionStarted) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rbError) {
+          rollbackError = rbError;
+          dbLogger.error({ err: rbError }, "Transaction rollback failed");
+        }
+      }
+      throw error;
+    } finally {
+      client.release(rollbackError !== null);
+    }
+  };
+
   const query = async <T extends QueryResultRow = QueryResultRow>(
     textOrConfig: string | QueryConfig,
     params: unknown[] = [],
   ): Promise<QueryResult<T>> => {
+    // When a tenant scope is active (set by auth middleware or command
+    // consumer), transparently wrap the query in a transaction with
+    // SET LOCAL app.current_tenant_id so RLS policies take effect.
+    const scopedTenantId = tenantContextStore.getStore()?.tenantId;
+    if (scopedTenantId) {
+      return tenantQuery<T>(scopedTenantId, textOrConfig, params);
+    }
     if (typeof textOrConfig === "string") {
       return pool.query<T>(textOrConfig, params);
     }
@@ -134,6 +247,12 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
   };
 
   const withTransaction = async <T>(fn: (client: PoolClient) => Promise<T>): Promise<T> => {
+    // Promote to tenant-scoped transaction when ALS tenant scope is active.
+    const scopedTenantId = tenantContextStore.getStore()?.tenantId;
+    if (scopedTenantId) {
+      return withTenantTransaction<T>(scopedTenantId, fn);
+    }
+
     const client = await pool.connect();
     let transactionStarted = false;
     let rollbackError: unknown = null;
@@ -163,5 +282,13 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     await pool.end();
   };
 
-  return { pool, query, queryWithClient, withTransaction, close };
+  return {
+    pool,
+    query,
+    queryWithClient,
+    withTransaction,
+    tenantQuery,
+    withTenantTransaction,
+    close,
+  };
 }

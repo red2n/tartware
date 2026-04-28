@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS channel_mappings (
     version BIGINT DEFAULT 0,
 
     -- Constraints
-    CONSTRAINT channel_mappings_unique UNIQUE (property_id, channel_code, entity_type, entity_id),
-    CONSTRAINT channel_mappings_external_unique UNIQUE (channel_code, external_id)
+    CONSTRAINT channel_mappings_unique UNIQUE (tenant_id, property_id, channel_code, entity_type, entity_id),
+    CONSTRAINT channel_mappings_external_unique UNIQUE (tenant_id, channel_code, external_id)
 );
 
 -- =====================================================

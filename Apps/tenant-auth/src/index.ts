@@ -76,6 +76,11 @@ export interface TenantAuthPluginOptions<Membership extends TenantMembershipBase
    * auth entirely.
    */
   shouldBypassAuth?: (request: FastifyRequest) => boolean;
+  /**
+   * Called after `withTenantScope` successfully validates a tenant.
+   * Use this to set DB-level RLS context (e.g. `enterTenantScope`).
+   */
+  onTenantResolved?: (tenantId: string) => void;
 }
 
 const TENANT_SCOPE_DECORATOR_KEY: string = "withTenantScope";
@@ -115,6 +120,7 @@ const createAuthContextFactory =
 
 const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
   options: TenantScopeOptions<Membership> = {},
+  onTenantResolved?: (tenantId: string) => void,
 ): preHandlerHookHandler => {
   const {
     minRole,
@@ -191,6 +197,9 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
     }
 
     scopedRequest.auth.authorizedTenantIds.add(tenantId);
+
+    // Set DB-level RLS context for downstream queries.
+    onTenantResolved?.(tenantId);
   };
 };
 
@@ -203,6 +212,7 @@ export const createTenantAuthPlugin = <Membership extends TenantMembershipBase>(
     verifyAccessToken,
     rolePriority,
     shouldBypassAuth,
+    onTenantResolved,
   } = options;
   const createAuthContext = createAuthContextFactory<Membership>(rolePriority);
 
@@ -221,7 +231,7 @@ export const createTenantAuthPlugin = <Membership extends TenantMembershipBase>(
 
     const tenantScopeDecorator: TenantScopeDecorator<Membership> = (
       scopeOptions?: TenantScopeOptions<Membership>,
-    ) => buildTenantScopeGuard(scopeOptions);
+    ) => buildTenantScopeGuard(scopeOptions, onTenantResolved);
 
     fastify.decorate(TENANT_SCOPE_DECORATOR_KEY, tenantScopeDecorator);
 

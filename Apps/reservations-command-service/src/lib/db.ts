@@ -5,4 +5,4 @@ import { reservationsLogger } from "../logger.js";
 
 const db = createDbPool(databaseConfig, reservationsLogger);
 
-export const { query, withTransaction } = db;
+export const { query, withTransaction, pool } = db;

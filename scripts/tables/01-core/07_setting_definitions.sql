@@ -7,6 +7,7 @@
 
 CREATE TABLE IF NOT EXISTS setting_definitions (
     setting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (), -- Unique identifier
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
     category_id UUID NOT NULL, -- FK to setting_categories
     setting_key VARCHAR(150) NOT NULL, -- e.g., rbac.role_matrix
     setting_name VARCHAR(255) NOT NULL, -- Human-readable label
@@ -41,7 +42,7 @@ CREATE TABLE IF NOT EXISTS setting_definitions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Audit fields
     created_by UUID, -- Audit fields
     updated_by UUID, -- Audit fields
-    UNIQUE (setting_key)
+    UNIQUE (tenant_id, setting_key)
 );
 
 COMMENT ON TABLE setting_definitions IS 'Canonical setting catalogue with storage level, data type, and rich documentation.';

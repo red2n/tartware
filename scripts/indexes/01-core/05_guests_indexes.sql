@@ -18,7 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_guests_email ON guests(email) WHERE deleted_at IS
 -- Name search (for autocomplete)
 CREATE INDEX IF NOT EXISTS idx_guests_first_name ON guests(first_name) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_guests_last_name ON guests(last_name) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_guests_full_name ON guests(first_name, last_name) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_full_name ON guests(tenant_id, first_name, last_name) WHERE deleted_at IS NULL;
 
 -- Full-text search on names
 CREATE INDEX IF NOT EXISTS idx_guests_name_trgm ON guests USING gin((first_name || ' ' || last_name) gin_trgm_ops) WHERE deleted_at IS NULL;

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS notification_read_receipts (
     read_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, -- When the user read it
 
     -- Uniqueness: one receipt per user per notification
-    CONSTRAINT uq_notification_read_receipts_notification_user UNIQUE (notification_id, user_id),
+    CONSTRAINT uq_notification_read_receipts_notification_user UNIQUE (tenant_id, notification_id, user_id),
 
     -- Foreign Key
     CONSTRAINT fk_notification_read_receipts_notification

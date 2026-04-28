@@ -3,7 +3,7 @@ import { performance } from "node:perf_hooks";
 import { v4 as uuid } from "uuid";
 
 import { config } from "../config.js";
-import { withTransaction } from "../lib/db.js";
+import { withTenantTransaction } from "../lib/db.js";
 import {
   observeGuardRequestDuration,
   recordGuardRequest,
@@ -30,7 +30,7 @@ type LockRoomResult =
 export const lockRoom = async (input: LockRoomInput): Promise<LockRoomResult> => {
   const startedAt = performance.now();
   try {
-    const result = await withTransaction(async (client) => {
+    const result = await withTenantTransaction(input.tenantId, async (client) => {
       const conflict = await findConflictingLock(
         client,
         input,
@@ -75,7 +75,7 @@ export const lockRoom = async (input: LockRoomInput): Promise<LockRoomResult> =>
 export const releaseLock = async (input: ReleaseLockInput): Promise<InventoryLock | null> => {
   const startedAt = performance.now();
   try {
-    const result = await withTransaction((client) =>
+    const result = await withTenantTransaction(input.tenantId, (client) =>
       releaseLockRecord(client, {
         ...input,
         releasedAt: new Date(),

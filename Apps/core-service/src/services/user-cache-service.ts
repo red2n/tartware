@@ -104,7 +104,7 @@ import { UserSchema, UserTenantAssociationSchema } from "@tartware/schemas";
 import { z } from "zod";
 
 import { config } from "../config.js";
-import { usernameBloomFilter } from "../lib/bloom-filter.js";
+import { UsernameBloomFilter, usernameBloomFilter } from "../lib/bloom-filter.js";
 import { cacheService } from "../lib/cache.js";
 import { pool } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
@@ -240,12 +240,23 @@ export class UserCacheService {
    * // Non-existent users: <1ms (Bloom filter rejection)
    * ```
    */
-  async getUserByUsername(username: string): Promise<CachedUser | null> {
+  async getUserByUsername(username: string, tenantId?: string): Promise<CachedUser | null> {
+    const bloomFilter = tenantId ? UsernameBloomFilter.forTenant(tenantId) : usernameBloomFilter;
+
     // Step 1: Check Bloom filter (fast negative check)
-    const mightExist = await usernameBloomFilter.mightExist(username);
+    const mightExist = await bloomFilter.mightExist(username);
     if (!mightExist) {
       // Definitely doesn't exist, skip cache and DB
       return null;
+    }
+
+    if (tenantId) {
+      const user = await this.fetchUserFromDbForTenant(username, tenantId);
+      if (user) {
+        await this.cacheUser(user);
+        await bloomFilter.add(username);
+      }
+      return user;
     }
 
     // Step 2: Check cache for username → user_id mapping
@@ -268,7 +279,7 @@ export class UserCacheService {
     if (user) {
       // Step 5: Populate cache and Bloom filter
       await this.cacheUser(user);
-      await usernameBloomFilter.add(username);
+      await bloomFilter.add(username);
     }
 
     return user;
@@ -438,8 +449,11 @@ export class UserCacheService {
    * });
    * ```
    */
-  async getUserWithMemberships(username: string): Promise<CachedUserWithMemberships | null> {
-    const user = await this.getUserByUsername(username);
+  async getUserWithMemberships(
+    username: string,
+    tenantId?: string,
+  ): Promise<CachedUserWithMemberships | null> {
+    const user = await this.getUserByUsername(username, tenantId);
     if (!user) {
       return null;
     }
@@ -631,6 +645,38 @@ export class UserCacheService {
         await usernameBloomFilter.addBatch(usernames);
       }
 
+      const tenantUsernamesResult = await pool.query<{
+        tenant_id: string;
+        username: string;
+      }>(
+        `SELECT DISTINCT uta.tenant_id, u.username
+         FROM users u
+         INNER JOIN user_tenant_associations uta ON uta.user_id = u.id
+         WHERE u.is_active = true
+           AND u.deleted_at IS NULL
+           AND COALESCE(uta.is_deleted, false) = false
+           AND uta.deleted_at IS NULL`,
+      );
+
+      const usernamesByTenant = new Map<string, string[]>();
+      for (const row of tenantUsernamesResult.rows) {
+        const existing = usernamesByTenant.get(row.tenant_id);
+        if (existing) {
+          existing.push(row.username);
+        } else {
+          usernamesByTenant.set(row.tenant_id, [row.username]);
+        }
+      }
+
+      await Promise.all(
+        Array.from(usernamesByTenant.entries()).map(async ([tenantId, tenantUsernames]) => {
+          if (tenantUsernames.length === 0) {
+            return;
+          }
+          await UsernameBloomFilter.forTenant(tenantId).addBatch(tenantUsernames);
+        }),
+      );
+
       return usernames.length;
     } catch (error) {
       console.error("Error warming Bloom filter:", error);
@@ -662,6 +708,38 @@ export class UserCacheService {
       return CachedUserSchema.parse(result.rows[0]);
     } catch (error) {
       console.error(`Error fetching user ${username}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetches user from database by username scoped to a tenant membership.
+   *
+   * @private
+   */
+  private async fetchUserFromDbForTenant(
+    username: string,
+    tenantId: string,
+  ): Promise<CachedUser | null> {
+    try {
+      const result = await pool.query(
+        `SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.is_active
+         FROM users u
+         INNER JOIN user_tenant_associations uta ON uta.user_id = u.id
+         WHERE u.username = $1
+           AND uta.tenant_id = $2
+           AND u.deleted_at IS NULL
+           AND COALESCE(uta.is_deleted, false) = false
+           AND uta.deleted_at IS NULL
+         LIMIT 1`,
+        [username, tenantId],
+      );
+
+      if (result.rows.length === 0) return null;
+
+      return CachedUserSchema.parse(result.rows[0]);
+    } catch (error) {
+      console.error(`Error fetching user ${username} for tenant ${tenantId}:`, error);
       return null;
     }
   }

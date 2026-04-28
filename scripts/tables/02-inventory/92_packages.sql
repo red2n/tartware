@@ -16,7 +16,7 @@ property_id UUID REFERENCES properties (id) ON DELETE CASCADE, -- Optional prope
 
 -- Package Information
 package_name VARCHAR(255) NOT NULL, -- Display name
-package_code VARCHAR(50) UNIQUE NOT NULL, -- Booking reference code
+package_code VARCHAR(50) NOT NULL, -- Booking reference code (unique per tenant)
 package_type VARCHAR(50) NOT NULL CHECK (
     package_type IN (
         'room_only',
@@ -157,7 +157,8 @@ version BIGINT DEFAULT 0, -- Optimistic locking
 -- Constraints
 CHECK (valid_from < valid_to),
     CHECK (base_price >= 0),
-    CHECK (min_nights <= COALESCE(max_nights, 999))
+    CHECK (min_nights <= COALESCE(max_nights, 999)),
+    UNIQUE (tenant_id, package_code)
 );
 
 -- =============================================
@@ -167,6 +168,9 @@ CHECK (valid_from < valid_to),
 CREATE TABLE IF NOT EXISTS package_components (
     -- Primary Key
     component_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY, -- Unique component identifier
+
+-- Multi-tenancy
+tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
 
 -- Foreign Key
 package_id UUID NOT NULL REFERENCES packages (package_id) ON DELETE CASCADE, -- Parent package
@@ -247,6 +251,9 @@ created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 CREATE TABLE IF NOT EXISTS package_bookings (
     -- Primary Key
     package_booking_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY, -- Unique booking identifier
+
+-- Multi-tenancy
+tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, -- Tenant scope
 
 -- Foreign Keys
 package_id UUID NOT NULL REFERENCES packages (package_id) ON DELETE RESTRICT,

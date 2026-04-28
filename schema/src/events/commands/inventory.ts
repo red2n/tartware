@@ -10,7 +10,6 @@
 import { z } from "zod";
 
 export const InventoryLockRoomCommandSchema = z.object({
-	tenantId: z.string().uuid(),
 	reservationId: z.string().uuid(),
 	roomTypeId: z.string().uuid(),
 	roomId: z.string().uuid().optional().nullable(),
@@ -27,7 +26,6 @@ export type InventoryLockRoomCommand = z.infer<
 >;
 
 export const InventoryReleaseRoomCommandSchema = z.object({
-	tenantId: z.string().uuid(),
 	lockId: z.string().uuid(),
 	reservationId: z.string().uuid().optional(),
 	reason: z.string().default("RELEASE_REQUEST"),
@@ -39,7 +37,6 @@ export type InventoryReleaseRoomCommand = z.infer<
 >;
 
 export const InventoryBulkReleaseCommandSchema = z.object({
-	tenantId: z.string().uuid(),
 	lockIds: z.array(z.string().uuid()).min(1),
 	reason: z.string().default("BULK_RELEASE"),
 	correlationId: z.string().optional(),

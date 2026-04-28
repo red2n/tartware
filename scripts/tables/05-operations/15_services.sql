@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS services (
     version BIGINT DEFAULT 0,
 
     -- Constraints
-    CONSTRAINT services_code_unique UNIQUE (property_id, service_code),
+    CONSTRAINT services_code_unique UNIQUE (tenant_id, property_id, service_code),
     CONSTRAINT services_code_format CHECK (service_code ~ '^[A-Z0-9_-]+$'),
     CONSTRAINT services_price_check CHECK (price >= 0),
     CONSTRAINT services_capacity_check CHECK (max_capacity IS NULL OR max_capacity > 0)

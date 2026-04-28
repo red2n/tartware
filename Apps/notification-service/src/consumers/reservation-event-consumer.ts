@@ -1,5 +1,5 @@
+import { enterTenantScope } from "@tartware/config/db";
 import type { Consumer, EachMessagePayload } from "kafkajs";
-
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { appLogger } from "../lib/logger.js";
@@ -539,6 +539,7 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           return;
         }
         const event = toReservationEvent(envelope);
+        enterTenantScope(event.tenantId);
         await processReservationEvent(event);
       } catch (err) {
         logger.error({ err, offset: message.offset }, "Failed to parse reservation event message");

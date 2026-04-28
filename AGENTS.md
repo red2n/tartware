@@ -218,15 +218,15 @@ Every entry in `pnpm.overrides` (root `package.json`) must have a documented rea
 Canonical dev port assignments (set via `PORT=` env var in root `package.json` dev scripts). Ports increment by 5.
 
 | Port | Service | Dev Script | Notes |
-|------|---------|------------|-------|
-| 3000 | core-service | `dev:core` | |
-| 3005 | settings-service | `dev:settings` | |
+|------|---------|------------|---------|
+| 3000 | core-service | `dev:core` | Also handles settings routes (Phase 5 consolidation) |
+| 3005 | ~~settings-service~~ | ~~`dev:settings`~~ | **Absorbed into core-service** — no standalone process |
 | 3010 | guests-service | `dev:guests` | |
 | 3015 | rooms-service | `dev:rooms` | |
 | 3020 | reservations-command-service | `dev:reservations` | Kafka + outbox |
 | 3025 | billing-service | `dev:billing` | |
 | 3030 | housekeeping-service | `dev:housekeeping` | |
-| 3035 | command-center-service | `dev:command-center` | Kafka + outbox |
+| 3035 | ~~command-center-service~~ | ~~`dev:command-center`~~ | **Absorbed into api-gateway** — no standalone process |
 | 3040 | recommendation-service | `dev:recommendation` | |
 | 3045 | availability-guard-service | `dev:availability-guard` | + gRPC on 4400 |
 | 3050 | roll-service | `dev:roll-service` | Internal consumer |
@@ -235,7 +235,7 @@ Canonical dev port assignments (set via `PORT=` env var in root `package.json` d
 | 3065 | guest-experience-service | `dev:guest-experience` | Kafka consumer |
 | 3070 | calculation-service | `dev:calculation` | Stateless |
 | 3075 | service-registry | `dev:registry` | In-memory registry |
-| 8080 | api-gateway | `dev:gateway` | Entry point |
+| 8080 | api-gateway | `dev:gateway` | Entry point; hosts command-center routes |
 
 - When adding a new service, assign the next port in the sequence (next: **3080**) and add it to `dev:backend`/`dev:stack` in root `package.json`.
 - Add the service URL env var (`<SERVICE>_SERVICE_URL=http://localhost:<port>`) to the `dev:gateway` script.

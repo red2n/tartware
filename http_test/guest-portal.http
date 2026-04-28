@@ -12,6 +12,8 @@
 #   3. Look up the booking by confirmation code
 #   4. Start mobile check-in
 #   5. Complete mobile check-in
+#   6. Self-service checkout (with tenant_id)
+#   7. Tenant isolation — cross-tenant rejection tests
 ###############################################################################
 
 @baseUrl = http://localhost:8080
@@ -130,20 +132,46 @@ GET {{baseUrl}}/v1/self-service/check-in/{{checkinId}}?tenant_id={{tenantId}}
 # 5. SELF-SERVICE CHECKOUT
 ###############################################################################
 
-### Initiate express checkout
+### Initiate express checkout (tenant_id required after P0-1 fix)
 # @name checkout
 POST {{baseUrl}}/v1/self-service/check-out
 Content-Type: application/json
 
 {
+  "tenant_id": "{{tenantId}}",
   "confirmation_code": "{{confirmationCode}}",
   "express": true,
   "notes": "Testing express checkout via portal"
 }
 
-### Get folio summary before checkout
+### Get folio summary before checkout (tenant_id required after P0-1 fix)
 # @name folioSummary
-GET {{baseUrl}}/v1/self-service/check-out/preview?confirmation_code={{confirmationCode}}
+GET {{baseUrl}}/v1/self-service/check-out/preview?confirmation_code={{confirmationCode}}&tenant_id={{tenantId}}
+
+###############################################################################
+# 7. TENANT ISOLATION (P0-1 verification)
+# These requests verify that a confirmation code from one tenant cannot be
+# used to look up or check out a reservation under a different tenant_id.
+###############################################################################
+
+@fakeTenantId = ffffffff-ffff-ffff-ffff-ffffffffffff
+
+### Cross-tenant checkout — should return 404 or empty (wrong tenant_id)
+POST {{baseUrl}}/v1/self-service/check-out
+Content-Type: application/json
+
+{
+  "tenant_id": "{{fakeTenantId}}",
+  "confirmation_code": "{{confirmationCode}}",
+  "express": true,
+  "notes": "Cross-tenant isolation test — must fail"
+}
+
+### Cross-tenant folio preview — should return 404 or empty
+GET {{baseUrl}}/v1/self-service/check-out/preview?confirmation_code={{confirmationCode}}&tenant_id={{fakeTenantId}}
+
+### Cross-tenant booking lookup — should return 404 or empty
+GET {{baseUrl}}/v1/self-service/booking/{{confirmationCode}}?tenant_id={{fakeTenantId}}
 
 ###############################################################################
 # 6. REGISTRATION CARD

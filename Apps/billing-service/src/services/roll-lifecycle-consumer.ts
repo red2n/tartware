@@ -1,10 +1,10 @@
 import { performance } from "node:perf_hooks";
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { enterTenantScope } from "@tartware/config/db";
 import { type ReservationEvent, ReservationEventSchema } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 import { type Consumer, type EachBatchPayload, Kafka, logLevel } from "kafkajs";
-
 import { config } from "../config.js";
 import {
   batchDurationHistogram,
@@ -156,6 +156,7 @@ class RollLifecycleConsumer {
               }
 
               try {
+                enterTenantScope(event.metadata.tenantId);
                 const ledgerEntry = buildLedgerEntryFromReservationEvent(event);
                 const driftStatus = await upsertRollLedgerEntry(ledgerEntry);
                 recordReplayDrift(driftStatus);

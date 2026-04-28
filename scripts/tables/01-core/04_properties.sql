@@ -100,7 +100,10 @@ version BIGINT DEFAULT 0, -- Version counter for concurrency
 -- Constraints
 CONSTRAINT properties_code_format CHECK (property_code ~ '^[A-Z0-9_-]+$'), -- Restrict code format
     CONSTRAINT properties_email_format CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'), -- Email validation
-    CONSTRAINT properties_total_rooms_check CHECK (total_rooms >= 0) -- Prevent negative inventory
+    CONSTRAINT properties_total_rooms_check CHECK (total_rooms >= 0), -- Prevent negative inventory
+
+    -- Composite unique for tenant-scoped FK references
+    UNIQUE (tenant_id, id)
 );
 -- =====================================================
 -- TABLE COMMENTS

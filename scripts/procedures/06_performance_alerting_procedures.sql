@@ -18,21 +18,11 @@
 -- =====================================================
 
 -- Calculate and update performance baselines
-CREATE OR REPLACE FUNCTION update_performance_baselines()
+CREATE OR REPLACE FUNCTION update_performance_baselines(p_tenant_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 AS $$
-DECLARE
-    v_tenant_id UUID;
 BEGIN
-    SELECT id INTO v_tenant_id
-    FROM tenants
-    ORDER BY created_at NULLS LAST, id
-    LIMIT 1;
-
-    IF v_tenant_id IS NULL THEN
-        v_tenant_id := '11111111-1111-1111-1111-111111111111';
-    END IF;
 
     -- Query execution time baseline
     BEGIN
@@ -47,7 +37,7 @@ BEGIN
             sample_count
         )
         SELECT
-            v_tenant_id,
+            p_tenant_id,
             'query_execution_time',
             'hourly',
             AVG(mean_exec_time),
@@ -57,7 +47,7 @@ BEGIN
             COUNT(*)::INTEGER
         FROM pg_stat_statements
         WHERE calls > 10
-        ON CONFLICT (metric_name, time_window)
+        ON CONFLICT (tenant_id, metric_name, time_window)
         DO UPDATE SET
             baseline_value = EXCLUDED.baseline_value,
             stddev_value = EXCLUDED.stddev_value,
@@ -79,12 +69,12 @@ BEGIN
         sample_count
     )
     SELECT
-        v_tenant_id,
+        p_tenant_id,
         'connection_count',
         'hourly',
         (SELECT COUNT(*)::NUMERIC FROM pg_stat_activity),
         1
-    ON CONFLICT (metric_name, time_window)
+    ON CONFLICT (tenant_id, metric_name, time_window)
     DO UPDATE SET
         baseline_value = (performance_baselines.baseline_value * 0.9) + (EXCLUDED.baseline_value * 0.1),
         sample_count = performance_baselines.sample_count + 1,
@@ -98,14 +88,14 @@ BEGIN
         baseline_value
     )
     SELECT
-        v_tenant_id,
+        p_tenant_id,
         'cache_hit_rate',
         'daily',
         ROUND(
             100.0 * SUM(heap_blks_hit) / NULLIF(SUM(heap_blks_hit) + SUM(heap_blks_read), 0), 2
         )
     FROM pg_statio_user_tables
-    ON CONFLICT (metric_name, time_window)
+    ON CONFLICT (tenant_id, metric_name, time_window)
     DO UPDATE SET
         baseline_value = EXCLUDED.baseline_value,
         last_updated = CURRENT_TIMESTAMP;
@@ -118,20 +108,20 @@ BEGIN
         baseline_value
     )
     SELECT
-        v_tenant_id,
+        p_tenant_id,
         'sequential_scan_rate',
         'daily',
         SUM(seq_scan)::NUMERIC / NULLIF(SUM(seq_scan + idx_scan), 0) * 100
     FROM pg_stat_user_tables
-    ON CONFLICT (metric_name, time_window)
+    ON CONFLICT (tenant_id, metric_name, time_window)
     DO UPDATE SET
         baseline_value = EXCLUDED.baseline_value,
         last_updated = CURRENT_TIMESTAMP;
 END $$;
 
-COMMENT ON FUNCTION update_performance_baselines() IS
+COMMENT ON FUNCTION update_performance_baselines(UUID) IS
 'Updates performance baselines for anomaly detection.
-Run periodically via cron: SELECT update_performance_baselines();';
+Run periodically via cron: SELECT update_performance_baselines(''<tenant-uuid>'');';
 
 -- Helper: safely fetch current mean execution time from pg_stat_statements
 CREATE OR REPLACE FUNCTION current_query_execution_time(min_calls INTEGER DEFAULT 5)
@@ -163,7 +153,7 @@ COMMENT ON FUNCTION current_query_execution_time(INTEGER) IS
 -- =====================================================
 
 -- Detect query performance degradation
-CREATE OR REPLACE FUNCTION detect_query_degradation()
+CREATE OR REPLACE FUNCTION detect_query_degradation(p_tenant_id UUID)
 RETURNS TABLE(
     query_fingerprint TEXT,
     current_mean_time NUMERIC,
@@ -182,16 +172,18 @@ BEGIN
     SELECT baseline_value, stddev_value
     INTO v_baseline, v_stddev
     FROM performance_baselines
-    WHERE metric_name = 'query_execution_time'
+    WHERE tenant_id = p_tenant_id
+    AND metric_name = 'query_execution_time'
     AND time_window = 'hourly';
 
     IF v_baseline IS NULL THEN
         -- No baseline yet, calculate one
-        PERFORM update_performance_baselines();
+        PERFORM update_performance_baselines(p_tenant_id);
         SELECT baseline_value, stddev_value
         INTO v_baseline, v_stddev
         FROM performance_baselines
-        WHERE metric_name = 'query_execution_time'
+        WHERE tenant_id = p_tenant_id
+        AND metric_name = 'query_execution_time'
         AND time_window = 'hourly';
 
         IF v_baseline IS NULL THEN
@@ -225,9 +217,9 @@ BEGIN
     END;
 END $$;
 
-COMMENT ON FUNCTION detect_query_degradation() IS
+COMMENT ON FUNCTION detect_query_degradation(UUID) IS
 'Detects queries with significant performance degradation.
-Usage: SELECT * FROM detect_query_degradation();';
+Usage: SELECT * FROM detect_query_degradation(''<tenant-uuid>'');';
 
 -- Detect sudden spike in connections
 CREATE OR REPLACE FUNCTION detect_connection_spike()
@@ -339,7 +331,7 @@ Usage: SELECT * FROM detect_cache_degradation();';
 -- =====================================================
 
 -- Main monitoring function (call every minute)
-CREATE OR REPLACE FUNCTION monitor_performance_degradation()
+CREATE OR REPLACE FUNCTION monitor_performance_degradation(p_tenant_id UUID)
 RETURNS TABLE(
     alert_type TEXT,
     severity TEXT,
@@ -352,20 +344,11 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     v_alert RECORD;
-    v_tenant_id UUID;
 BEGIN
-    SELECT id INTO v_tenant_id
-    FROM tenants
-    ORDER BY created_at NULLS LAST, id
-    LIMIT 1;
-
-    IF v_tenant_id IS NULL THEN
-        v_tenant_id := '11111111-1111-1111-1111-111111111111';
-    END IF;
 
     -- Check query degradation
     FOR v_alert IN
-        SELECT * FROM detect_query_degradation()
+        SELECT * FROM detect_query_degradation(p_tenant_id)
         WHERE alert_level IN ('WARNING', 'CRITICAL')
     LOOP
         -- Log alert
@@ -380,7 +363,7 @@ BEGIN
             alert_message,
             details
         ) VALUES (
-            v_tenant_id,
+            p_tenant_id,
             'QUERY_DEGRADATION',
             v_alert.alert_level,
             'query_execution_time',
@@ -417,7 +400,7 @@ BEGIN
             deviation_percent,
             alert_message
         ) VALUES (
-            v_tenant_id,
+            p_tenant_id,
             'CONNECTION_SPIKE',
             v_alert.alert_level,
             'connection_count',
@@ -450,7 +433,7 @@ BEGIN
             deviation_percent,
             alert_message
         ) VALUES (
-            v_tenant_id,
+            p_tenant_id,
             'CACHE_DEGRADATION',
             v_alert.alert_level,
             'cache_hit_rate',
@@ -472,14 +455,14 @@ BEGIN
     END LOOP;
 END $$;
 
-COMMENT ON FUNCTION monitor_performance_degradation() IS
+COMMENT ON FUNCTION monitor_performance_degradation(UUID) IS
 'Main monitoring function to detect performance degradation.
 Run every minute via cron:
-    * * * * * psql -U postgres -d tartware -c "SELECT * FROM monitor_performance_degradation();"
+    * * * * * psql -U postgres -d tartware -c "SELECT * FROM monitor_performance_degradation(''<tenant-uuid>'');"
 
 Or set up with pg_cron:
     SELECT cron.schedule(''perf-monitoring'', ''* * * * *'',
-        $$SELECT monitor_performance_degradation();$$);';
+        $$SELECT monitor_performance_degradation(''<tenant-uuid>'');$$);';
 
 -- =====================================================
 -- ALERT MANAGEMENT FUNCTIONS
@@ -671,8 +654,8 @@ COMMENT ON VIEW v_alert_summary IS
 -- INITIALIZATION
 -- =====================================================
 
--- Create initial baselines
-SELECT update_performance_baselines();
+-- Create initial baselines (using default seed tenant)
+SELECT update_performance_baselines('11111111-1111-1111-1111-111111111111');
 
 -- Insert default alert rules
 INSERT INTO alert_rules (
@@ -707,17 +690,17 @@ INSERT INTO alert_rules (
     85,
     'WARNING'
 )
-ON CONFLICT (rule_name) DO NOTHING;
+ON CONFLICT (tenant_id, rule_name) DO NOTHING;
 
 \echo ''
 \echo '✓ Performance alerting functions created'
 \echo ''
 \echo 'Quick start:'
-\echo '  SELECT update_performance_baselines();      -- Establish baselines'
-\echo '  SELECT * FROM monitor_performance_degradation();  -- Check for issues'
+\echo '  SELECT update_performance_baselines(''<tenant-uuid>'');  -- Establish baselines'
+\echo '  SELECT * FROM monitor_performance_degradation(''<tenant-uuid>'');  -- Check for issues'
 \echo '  SELECT * FROM v_active_performance_alerts;  -- View active alerts'
 \echo '  SELECT * FROM v_performance_trends;         -- Check trends'
 \echo ''
 \echo 'Set up automated monitoring with cron:'
-\echo '  */5 * * * * psql -U postgres -d tartware -c "SELECT monitor_performance_degradation();"'
+\echo '  */5 * * * * psql -U postgres -d tartware -c "SELECT monitor_performance_degradation(''<tenant-uuid>'');"'
 \echo ''
