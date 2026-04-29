@@ -253,10 +253,13 @@ export const buildFastifyServer = (
 	// Use X-Request-Id header if present, otherwise generate a UUID
 	const app = Fastify({
 		loggerInstance: logger as FastifyBaseLogger,
-		disableRequestLogging: !enableRequestLogging,
 		requestIdHeader: "x-request-id",
 		genReqId: () => randomUUID(),
 		...serverOptions,
+		// Must be last — withRequestLogging (telemetry) handles request/response
+		// logging. This must not be overrideable by serverOptions or it produces
+		// two "request completed" log lines per request (2× log volume at 20K ops/sec).
+		disableRequestLogging: true,
 	});
 
 	// Propagate request ID back in response header for client correlation

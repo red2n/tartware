@@ -52,7 +52,7 @@ export const sendNotification = async (
   );
 
   if (!rendered) {
-    logger.warn(
+    logger.error(
       { tenantId: params.tenantId, templateCode: params.templateCode },
       "No active template found — cannot send notification",
     );

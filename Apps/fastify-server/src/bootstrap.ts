@@ -95,7 +95,13 @@ export async function bootstrapService(
 				);
 			}
 
-			await app.listen({ port: config.port, host: config.host });
+			await app.listen({
+				port: config.port,
+				host: config.host,
+				// Suppress Fastify's per-interface "Server listening at" lines —
+				// bootstrapService logs a single clean "<service> started" line below.
+				listenTextResolver: () => "",
+			});
 			app.log.info(
 				{
 					port: config.port,

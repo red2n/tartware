@@ -23,7 +23,7 @@ const defaultRetryScheduleMs = parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_
 export const serviceConfig = {
   port: configValues.PORT,
   host: configValues.HOST,
-  serviceId: process.env.RESERVATION_COMMAND_ID ?? "reservations-command-service",
+  serviceId: process.env.RESERVATION_COMMAND_ID ?? "@tartware/reservations-command-service",
   requestLogging: parseBooleanEnv(process.env.RESERVATION_COMMAND_LOG_REQUESTS, false),
 };
 
@@ -40,7 +40,8 @@ export const kafkaConfig = {
 
 export const outboxConfig = {
   workerId: process.env.OUTBOX_WORKER_ID ?? `${serviceConfig.serviceId}-outbox`,
-  pollIntervalMs: parseNumberEnv(process.env.OUTBOX_POLL_INTERVAL_MS, 2000),
+  // Enforce a 100ms floor so a mis-set OUTBOX_POLL_INTERVAL_MS=0 never spin-loops.
+  pollIntervalMs: Math.max(100, parseNumberEnv(process.env.OUTBOX_POLL_INTERVAL_MS, 2000)),
   batchSize: parseNumberEnv(process.env.OUTBOX_BATCH_SIZE, 25),
   lockTimeoutMs: parseNumberEnv(process.env.OUTBOX_LOCK_TIMEOUT_MS, 30000),
   maxRetries: parseNumberEnv(process.env.OUTBOX_MAX_RETRIES, 5),

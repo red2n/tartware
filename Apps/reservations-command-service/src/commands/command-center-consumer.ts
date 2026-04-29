@@ -2,7 +2,7 @@ import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consume
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
 
-import { commandCenterConfig } from "../config.js";
+import { commandCenterConfig, serviceConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishCommandDlqEvent } from "../kafka/producer.js";
 import {
@@ -325,7 +325,7 @@ const routeReservationCommand = async (
 const { start, shutdown } = createConsumerLifecycle({
   kafka,
   commandCenterConfig,
-  serviceName: "reservations-command-service",
+  serviceName: serviceConfig.serviceId,
   commandLabel: "reservation",
   logger,
   routeCommand: routeReservationCommand,

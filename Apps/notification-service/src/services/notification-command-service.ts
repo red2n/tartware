@@ -53,7 +53,7 @@ export const handleSendNotification = async (
   });
 
   if (!result) {
-    logger.warn({ templateCode, guestId }, "Notification send skipped — template not found");
+    logger.error({ templateCode, guestId }, "Notification send skipped — template not found");
     return;
   }
 
