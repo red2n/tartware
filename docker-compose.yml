@@ -76,7 +76,7 @@ services:
   # app connections. All services should connect via pgbouncer:5433.
   # Direct port 5432 is kept for DBA/admin access only.
   pgbouncer:
-    image: pgbouncer/pgbouncer:1.23.1
+    image: pgbouncer/pgbouncer:latest
     container_name: tartware-pgbouncer
     restart: always
     environment:

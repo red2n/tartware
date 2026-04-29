@@ -10,39 +10,63 @@ html {
   @include mat.theme((
     color: (
       primary: mat.$blue-palette,
-      tertiary: mat.$green-palette,
+      tertiary: mat.$violet-palette,
       theme-type: light,
     ),
-    typography: -apple-system,
+    typography: 'Inter',
     density: 0,
   ));
+  /* OpenSea-style border radius on all Material components */
+  --mdc-shape-small: 10px;
+  --mdc-shape-medium: 12px;
+  --mdc-shape-large: 16px;
+  /* Inter across all text */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html[data-theme='dark'] {
   @include mat.theme((
     color: (
       primary: mat.$blue-palette,
-      tertiary: mat.$green-palette,
+      tertiary: mat.$violet-palette,
       theme-type: dark,
     ),
-    typography: -apple-system,
+    typography: 'Inter',
     density: 0,
   ));
 }
 
-/* ── Button overrides ── */
+/* ── Button overrides — OpenSea gradient primary ── */
 .mat-mdc-button.mat-primary,
 .mat-mdc-raised-button.mat-primary,
 .mat-mdc-flat-button.mat-primary {
-  --mdc-filled-button-container-color: var(--bgColor-accent-emphasis);
-  --mdc-filled-button-label-text-color: var(--fgColor-onEmphasis);
+  --mdc-filled-button-container-color: #2081e2;
+  --mdc-filled-button-label-text-color: #ffffff;
+  background: linear-gradient(135deg, #2081e2 0%, #7b3fe4 100%) !important;
+  border-radius: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px #2081e240 !important;
+  transition: opacity 150ms ease, box-shadow 150ms ease !important;
+
+  &:hover {
+    opacity: 0.9;
+    box-shadow: 0 6px 20px #2081e266 !important;
+  }
 }
 
-/* ── Card overrides ── */
+/* ── Card overrides — glass surface ── */
 .mat-mdc-card {
-  --mdc-elevated-card-container-color: var(--bgColor-default);
+  --mdc-elevated-card-container-color: var(--bgColor-muted);
   border: 1px solid var(--borderColor-default);
-  box-shadow: var(--shadow-resting-small) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-resting-medium) !important;
+  transition: box-shadow 150ms ease, border-color 150ms ease;
+
+  &:hover {
+    border-color: var(--borderColor-accent-muted);
+    box-shadow: 0 0 0 1px var(--borderColor-accent-muted), var(--shadow-resting-medium) !important;
+  }
 }
 
 /* ── Toolbar overrides (legacy — header now uses custom styles) ── */
@@ -62,10 +86,13 @@ html[data-theme='dark'] {
   background: var(--bgColor-muted) !important;
 }
 
-/* ── Dialog overrides ── */
+/* ── Dialog overrides — glass modal ── */
 .mat-mdc-dialog-surface {
   background: var(--overlay-bgColor) !important;
   border: 1px solid var(--borderColor-default);
+  border-radius: 16px !important;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-floating-large) !important;
 }
 
 /* ── Snackbar overrides ── */
@@ -75,13 +102,16 @@ html[data-theme='dark'] {
   border: 1px solid var(--borderColor-default);
 }
 
-/* ── Form field overrides ── */
+/* ── Form field overrides — rounded with blue focus ring ── */
 .mat-mdc-form-field {
+  --mdc-outlined-text-field-container-shape: 10px;
   --mdc-outlined-text-field-outline-color: var(--borderColor-default);
-  --mdc-outlined-text-field-hover-outline-color: var(--fgColor-muted);
-  --mdc-outlined-text-field-focus-outline-color: var(--fgColor-accent);
+  --mdc-outlined-text-field-hover-outline-color: var(--borderColor-accent-muted);
+  --mdc-outlined-text-field-focus-outline-color: var(--bgColor-accent-emphasis);
+  --mdc-outlined-text-field-focus-outline-width: 2px;
   --mdc-outlined-text-field-label-text-color: var(--fgColor-muted);
   --mdc-outlined-text-field-input-text-color: var(--fgColor-default);
+  --mdc-outlined-text-field-container-color: var(--bgColor-inset);
 }
 
 /* ── Menu overrides ── */

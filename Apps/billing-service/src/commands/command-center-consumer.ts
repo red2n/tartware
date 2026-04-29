@@ -61,6 +61,7 @@ import {
   createTaxConfig,
   deleteRoutingRule,
   deleteTaxConfig,
+  exportGlBatch,
   expressCheckout,
   lockFiscalPeriod,
   mergeFolios,
@@ -150,6 +151,12 @@ const routeBillingCommand = async (
       return;
     case "billing.ledger.post":
       await postLedger(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.gl_batch.export":
+      await exportGlBatch(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

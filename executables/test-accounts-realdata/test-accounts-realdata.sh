@@ -267,6 +267,8 @@ REQUIRED_COMMANDS=(
   "billing.date_roll.manual"
   "billing.folio.transfer"
   "billing.fiscal_period.close"
+  "billing.ledger.post"
+  "billing.gl_batch.export"
 )
 
 echo "── Enabling required commands ────────────────────────────────────────"
@@ -963,6 +965,88 @@ else
 fi
 echo ""
 
+# ── 1.12b  GL Batch — GAP-01: GL Journal Entry Wiring ──
+echo "── 1.12b GL Batch (USALI double-entry) ──────────────────────────────"
+echo "  Night audit step 6.5 auto-builds a GL batch. Verify it exists,"
+echo "  then call billing.ledger.post directly (idempotent rebuild),"
+echo "  read entries, verify debit==credit balance, export to POSTED."
+
+GL_BATCH_DATE="${POST_BDATE:-$TODAY}"
+
+# Direct call to ledger.post (idempotent — safe to re-run)
+send_command "CMD billing.ledger.post: rebuild GL batch" \
+  "billing.ledger.post" \
+  "{\"property_id\":\"$PID\",\"business_date\":\"$GL_BATCH_DATE\"}"
+
+wait_kafka 8
+
+# List GL batches for this property+date
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID&property_id=$PID&start_date=$GL_BATCH_DATE&end_date=$GL_BATCH_DATE")
+assert_http "GET gl-batches" "200" "$code"
+GL_BATCH_COUNT=$(resp_count)
+GL_BATCH_ID=$(resp_first "gl_batch_id")
+
+if [[ -n "$GL_BATCH_ID" && "${GL_BATCH_COUNT:-0}" -ge 1 ]]; then
+  pass "DB: GL batch exists (batch_id=${GL_BATCH_ID:0:8}…)"
+  GL_BATCH_STATUS=$(resp_first "batch_status")
+  GL_BATCH_DEBITS=$(resp_first "debit_total")
+  GL_BATCH_CREDITS=$(resp_first "credit_total")
+  GL_ENTRY_COUNT=$(resp_first "entry_count")
+  pass "GL: status=$GL_BATCH_STATUS debits=$GL_BATCH_DEBITS credits=$GL_BATCH_CREDITS entries=$GL_ENTRY_COUNT"
+
+  # Verify double-entry balance: debit_total must equal credit_total (within 1¢)
+  if [[ -n "$GL_BATCH_DEBITS" && -n "$GL_BATCH_CREDITS" ]]; then
+    DIFF=$(echo "$GL_BATCH_DEBITS - $GL_BATCH_CREDITS" | bc 2>/dev/null || echo "999")
+    ABS_DIFF=$(echo "${DIFF#-}")
+    if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
+      pass "GL: batch is balanced (debits=$GL_BATCH_DEBITS == credits=$GL_BATCH_CREDITS)"
+    else
+      fail "GL: batch imbalanced" "debits=$GL_BATCH_DEBITS credits=$GL_BATCH_CREDITS diff=$DIFF"
+    fi
+  fi
+
+  # Read batch entries via /gl-batches/:id/entries
+  code=$(get "$GW/v1/billing/gl-batches/$GL_BATCH_ID/entries?tenant_id=$TID")
+  assert_http "GET gl-batches/:id/entries" "200" "$code"
+  RETURNED_ENTRIES=$(jq -r '.entry_count // (.data | length) // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  if [[ "$RETURNED_ENTRIES" -ge 2 ]]; then
+    pass "GL: entries returned (count=$RETURNED_ENTRIES)"
+  else
+    skip "GL: batch entries" "count=$RETURNED_ENTRIES (may have no posted charges)"
+  fi
+
+  # Verify entries have account_code (joined from gl_chart_of_accounts)
+  ENTRY_WITH_CODE=$(jq '[.data // . | .[] | select(.account_code != null and .account_code != "")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  if [[ "$RETURNED_ENTRIES" -ge 1 ]]; then
+    if [[ "$ENTRY_WITH_CODE" -ge 1 ]]; then
+      pass "GL: entries have account_code ($ENTRY_WITH_CODE/$RETURNED_ENTRIES)"
+    else
+      fail "GL: entries missing account_code" "0/$RETURNED_ENTRIES have it"
+    fi
+  fi
+
+  # Export GL batch → sets batch_status = POSTED (only valid from REVIEW state)
+  if [[ "$GL_BATCH_STATUS" == "REVIEW" ]]; then
+    send_command "CMD billing.gl_batch.export: mark POSTED" \
+      "billing.gl_batch.export" \
+      "{\"property_id\":\"$PID\",\"gl_batch_id\":\"$GL_BATCH_ID\",\"export_format\":\"USALI\"}"
+
+    wait_kafka 5
+
+    code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID&property_id=$PID&start_date=$GL_BATCH_DATE&end_date=$GL_BATCH_DATE")
+    assert_http "GET gl-batches post-export" "200" "$code"
+    POST_EXPORT_STATUS=$(resp_ffirst ".gl_batch_id == \"$GL_BATCH_ID\"" "batch_status")
+    assert_eq_ci "GL: batch_status after export = POSTED" "POSTED" "$POST_EXPORT_STATUS"
+  elif [[ "$GL_BATCH_STATUS" == "OPEN" ]]; then
+    skip "GL: export batch" "status=OPEN (no charges posted — empty batch)"
+  else
+    skip "GL: export batch" "status=$GL_BATCH_STATUS (may already be POSTED from prior run)"
+  fi
+else
+  fail "DB: GL batch not found" "count=${GL_BATCH_COUNT:-0} (billing.ledger.post may have failed)"
+fi
+echo ""
+
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 1B — REAL-WORLD ACCOUNTING SCENARIOS (PMS Industry Standard)
 #  Ref: docs/pms_accounting_real_world_scenarios.md
@@ -1026,7 +1110,7 @@ if [[ -n "$CC_PAY_ID" ]]; then
 
   # Verify refund payment record created
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-  REFUND_EXISTS=$(jq '[.data // . | .[] | select((.transaction_type == "refund" or .transaction_type == "partial_refund") and .amount == 50)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  REFUND_EXISTS=$(resp_fcount '(.transaction_type == "refund" or .transaction_type == "partial_refund") and ((.amount | tostring | tonumber) == 50)')
   if [[ "${REFUND_EXISTS:-0}" -ge 1 ]]; then
     pass "DB: refund payment record exists (amount=50)"
   else
@@ -1200,8 +1284,8 @@ if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
   assert_eq "DB: original RESTAURANT charge voided after split" "true" "$SPLIT_VOIDED"
 
   # Verify two new split postings exist (check for charges with amounts 50 and 35)
-  SPLIT_50=$(jq '[.data // . | .[] | select(.total_amount == 50 and .transaction_type == "charge")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
-  SPLIT_35=$(jq '[.data // . | .[] | select(.total_amount == 35 and .transaction_type == "charge")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  SPLIT_50=$(resp_fcount '.total_amount == 50 and .transaction_type == "charge"')
+  SPLIT_35=$(resp_fcount '.total_amount == 35 and .transaction_type == "charge"')
   assert_gte "DB: \$50 split posting exists" "1" "$SPLIT_50"
   assert_gte "DB: \$35 split posting exists" "1" "$SPLIT_35"
 else
@@ -1906,7 +1990,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
 
   send_command "CMD comp.post: F&B \$45" \
     "billing.comp.post" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":45.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Complimentary dinner — VIP guest — QA test\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":45.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Complimentary dinner — VIP guest — QA test\"}"
 
   wait_kafka 8
 

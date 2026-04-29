@@ -175,6 +175,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.payment.void', 'Void an authorized payment', 'billing-service', ARRAY['finance-automation']),
         ('billing.night_audit.execute', 'Execute nightly audit: post room charges, mark no-shows, advance business date', 'billing-service', ARRAY['finance-automation']),
         ('billing.ledger.post', 'Rebuild the general ledger batch for a property business date from billing source tables', 'billing-service', ARRAY['finance-automation']),
+        ('billing.gl_batch.export', 'Mark a GL batch as exported and record the export destination for ERP integration', 'billing-service', ARRAY['finance-automation']),
         ('billing.charge.void', 'Void a charge posting and create reversal entry', 'billing-service', ARRAY['finance-automation']),
         ('billing.invoice.finalize', 'Finalize an invoice, locking it from edits', 'accounts-service', ARRAY['finance-automation']),
         ('settings.value.set', 'Set a configuration value', 'settings-service', ARRAY['core']),

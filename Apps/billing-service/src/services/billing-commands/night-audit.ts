@@ -6,6 +6,7 @@ import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.js";
 import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
+import { buildGlBatchForDate } from "./ledger.js";
 
 /**
  * Execute the nightly audit process (industry-standard 8-step sequence):
@@ -307,6 +308,24 @@ export const executeNightAudit = async (
       }
     }
 
+    // Step 6.5: Rebuild GL batch for the audit date (outside main TX)
+    // This converts charge_postings and payments into USALI-aligned double-entry
+    // GL entries.  It runs after trial balance so all charges are already posted.
+    // Failure here is non-fatal — the audit is still considered successful;
+    // operators can re-run billing.ledger.post manually.
+    try {
+      const glBatchId = await buildGlBatchForDate(command.property_id, auditDate, context);
+      appLogger.info(
+        { auditDate, glBatchId, tenantId: context.tenantId, propertyId: command.property_id },
+        "Night audit: GL batch rebuilt",
+      );
+    } catch (glErr) {
+      appLogger.error(
+        { glErr, auditDate, tenantId: context.tenantId, propertyId: command.property_id },
+        "Night audit: GL batch rebuild failed (non-fatal) — run billing.ledger.post manually",
+      );
+    }
+
     auditSucceeded = true;
   } catch (err) {
     // ── Error path: write a FAILED checkpoint OUTSIDE the transaction ──────
@@ -321,6 +340,7 @@ export const executeNightAudit = async (
       4: "ota-commissions",
       5: "no-shows",
       6: "trial-balance",
+      7: "gl-batch-rebuild",
     };
     try {
       await query(

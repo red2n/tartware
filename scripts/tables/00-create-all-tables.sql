@@ -254,6 +254,8 @@
 \ir 09-reference-data/08_reason_codes.sql
 \ir 09-reference-data/09_pet_types.sql
 \ir 09-reference-data/10_departments.sql
+\ir 09-reference-data/11_gl_chart_of_accounts.sql
+\ir 09-reference-data/12_charge_code_gl_mapping.sql
 
 -- =========================================================================
 -- CATEGORY 10: COMPLIANCE (Data retention, breach tracking)

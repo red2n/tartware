@@ -1,5 +1,5 @@
 /* =====================================================
- * App-Specific Design Tokens
+ * App-Specific Design Tokens — OpenSea-inspired
  *
  * All standard design tokens (colors, typography, spacing,
  * radius, motion, shadows) come from @primer/primitives
@@ -15,35 +15,41 @@
 	--color-sidebar-border: var(--borderColor-default);
 
 	/* ── Activity Bar ── */
-	--color-activity-bar-bg: var(--bgColor-muted);
+	--color-activity-bar-bg: var(--bgColor-inset);
 	--color-activity-bar-border: var(--borderColor-default);
 
 	/* ── Status Bar ── */
-	--color-statusbar-bg: var(--bgColor-muted);
+	--color-statusbar-bg: var(--bgColor-inset);
 	--color-statusbar-text: var(--fgColor-muted);
-	--color-statusbar-hover-bg: var(--bgColor-neutral-muted);
+	--color-statusbar-hover-bg: var(--bgColor-muted);
 
-	/* ── Header (aliased to sidebar) ── */
-	--color-header-bg: var(--color-sidebar-bg);
+	/* ── Header ── */
+	--color-header-bg: var(--bgColor-inset);
 	--color-header-text: var(--fgColor-default);
 	--color-header-text-muted: var(--fgColor-muted);
-	--color-header-border: var(--color-sidebar-border);
-	--color-header-logo: var(--fgColor-default);
-	--color-header-search-bg: var(--bgColor-default);
+	--color-header-border: var(--borderColor-default);
+	--color-header-logo: var(--fgColor-accent);
+	--color-header-search-bg: var(--bgColor-muted);
 	--color-header-search-border: var(--borderColor-default);
 
-	/* ── Topbar (aliased to header) ── */
+	/* ── Topbar ── */
 	--color-topbar-bg: var(--color-header-bg);
 	--color-topbar-border: var(--color-header-border);
 
-	/* ── Login hero panel ── */
-	--color-hero-bg-start: #1b2838;
-	--color-hero-bg-mid: #0d1926;
-	--color-hero-bg-end: #0a1628;
+	/* ── Login hero — dark navy gradient matching OpenSea ── */
+	--color-hero-bg-start: #0b0e1a;
+	--color-hero-bg-mid: #10142a;
+	--color-hero-bg-end: #07091a;
 	--color-hero-text: #f0f6fc;
-	--color-hero-text-muted: #9198a1;
+	--color-hero-text-muted: #8b929e;
 	--color-hero-text-subtle: #c9d1d9;
-	--color-hero-text-faint: #484f58;
+	--color-hero-text-faint: #2a3060;
+
+	/* ── Global border-radius override — OpenSea rounded style ── */
+	--borderRadius-small: 6px;
+	--borderRadius-medium: 10px;
+	--borderRadius-large: 14px;
+	--borderRadius-full: 999px;
 
 	/* ── Layout ── */
 	--sidebar-width: 240px;
@@ -53,18 +59,19 @@
 	--topbar-height: 48px;
 }
 
-/* ── Dark theme — app-specific overrides only ──
- * Primer handles all color/typography/motion switching
- * via data-color-mode="dark". Only app-specific tokens
- * with hardcoded values need dark overrides here.
- * ─────────────────────────────────────────────── */
+/* ── Dark theme ── */
 [data-theme="dark"] {
+	--color-activity-bar-bg: #070912;
+	--color-sidebar-bg: #10142a;
+	--color-header-bg: #070912;
+	--color-statusbar-bg: #070912;
+
 	/* ── Login hero ── */
-	--color-hero-bg-start: #0d1117;
-	--color-hero-bg-mid: #010409;
-	--color-hero-bg-end: #010409;
+	--color-hero-bg-start: #070912;
+	--color-hero-bg-mid: #0b0e1a;
+	--color-hero-bg-end: #070912;
 	--color-hero-text: #f0f6fc;
-	--color-hero-text-muted: #9198a1;
+	--color-hero-text-muted: #8b929e;
 	--color-hero-text-subtle: #c9d1d9;
-	--color-hero-text-faint: #3d444d;
+	--color-hero-text-faint: #1a1f36;
 }

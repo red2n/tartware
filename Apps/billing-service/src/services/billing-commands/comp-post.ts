@@ -127,6 +127,24 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
       [context.tenantId, folioId, command.amount, actorId],
     );
 
+    // Resolve guest_id: prefer folio.guest_id, fall back to reservation
+    let guestId = folio.guest_id;
+    if (!guestId && command.reservation_id) {
+      const { rows: resRows } = await queryWithClient<{ guest_id: string | null }>(
+        client,
+        `SELECT guest_id FROM public.reservations
+         WHERE tenant_id = $1::uuid AND id = $2::uuid LIMIT 1`,
+        [context.tenantId, command.reservation_id],
+      );
+      guestId = resRows[0]?.guest_id ?? null;
+    }
+    if (!guestId) {
+      throw new BillingCommandError(
+        "GUEST_NOT_FOUND",
+        "guest_id could not be resolved for comp transaction. Provide a folio or reservation with a linked guest.",
+      );
+    }
+
     // Generate comp number: COMP-YYYY-XXXXX
     const compNumber = `COMP-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -156,7 +174,7 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
         folio.property_id,
         command.reservation_id ?? null,
         folioId,
-        folio.guest_id,
+        guestId,
         postingId,
         compNumber,
         compCategory,

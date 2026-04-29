@@ -37,6 +37,7 @@ import {
 	BillingFolioSplitCommandSchema,
 	BillingFolioTransferCommandSchema,
 	BillingFolioWindowCreateCommandSchema,
+	BillingGlBatchExportCommandSchema,
 	BillingInvoiceAdjustCommandSchema,
 	BillingInvoiceCreateCommandSchema,
 	BillingInvoiceFinalizeCommandSchema,
@@ -288,6 +289,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.ledger.post",
 		(payload) => BillingLedgerPostCommandSchema.parse(payload),
+	],
+	[
+		"billing.gl_batch.export",
+		(payload) => BillingGlBatchExportCommandSchema.parse(payload),
 	],
 	[
 		"billing.folio.close",

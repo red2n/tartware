@@ -65,8 +65,8 @@ export const databaseConfig = buildDbConfig(configValues);
 export const commandCenterConfig = {
   topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
   consumerGroupId:
-    process.env.COMMAND_CENTER_CONSUMER_GROUP ?? `${serviceConfig.serviceId}-command-consumer`,
-  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? serviceConfig.serviceId,
+    process.env.COMMAND_CENTER_CONSUMER_GROUP ?? "reservations-command-center-consumer",
+  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "reservations-command-service",
   maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
   dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
   maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),

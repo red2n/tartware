@@ -561,6 +561,8 @@ REQUIRED_COMMANDS=(
   "billing.cancellation.penalty"
   "billing.tax_exemption.apply"
   "billing.comp.post"
+  "billing.ledger.post"
+  "billing.gl_batch.export"
 )
 
 enable_commands_via_api() {
@@ -926,6 +928,53 @@ run_billing_pipeline() {
   assert_gte "Night audit executed ($label)" "$audit_count" 1
   echo ""
 
+  # ── GL Batch (GAP-01: GL Journal Entry Wiring) ──
+  echo "── ${tag} — GL Batch (USALI double-entry) ────────────────────────"
+
+  # billing.ledger.post rebuilds the GL batch idempotently for the business date
+  send_command "CMD billing.ledger.post: rebuild GL batch" \
+    "billing.ledger.post" \
+    "{\"property_id\":\"$pid\",\"business_date\":\"$TODAY\"}"
+  wait_kafka 6
+
+  local gl_count gl_batch_id gl_status
+  get "$GW/v1/billing/gl-batches?tenant_id=$tid&property_id=$pid&start_date=$TODAY&end_date=$TODAY" >/dev/null
+  gl_count=$(resp_count)
+  gl_batch_id=$(resp_first "gl_batch_id")
+
+  if [[ "${gl_count:-0}" -ge 1 && -n "$gl_batch_id" ]]; then
+    pass "GL batch created ($label)"
+    gl_status=$(resp_first "batch_status")
+
+    # Read batch entries
+    get "$GW/v1/billing/gl-batches/$gl_batch_id/entries?tenant_id=$tid" >/dev/null
+    local gl_entry_count
+    gl_entry_count=$(jq -r '.entry_count // (.data | length) // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+    if [[ "$gl_entry_count" -ge 2 ]]; then
+      pass "GL entries returned ($label, count=$gl_entry_count)"
+    else
+      skip "GL entries ($label)" "count=$gl_entry_count (may have no posted charges)"
+    fi
+
+    # Export: marks batch_status POSTED (only from REVIEW state)
+    if [[ "$gl_status" == "REVIEW" ]]; then
+      send_command "CMD billing.gl_batch.export: mark POSTED" \
+        "billing.gl_batch.export" \
+        "{\"property_id\":\"$pid\",\"gl_batch_id\":\"$gl_batch_id\",\"export_format\":\"USALI\"}"
+      wait_kafka 5
+
+      get "$GW/v1/billing/gl-batches?tenant_id=$tid&property_id=$pid&start_date=$TODAY&end_date=$TODAY" >/dev/null
+      local gl_post_status
+      gl_post_status=$(resp_ffirst ".gl_batch_id == \"$gl_batch_id\"" "batch_status")
+      assert_eq_ci "GL batch exported ($label)" "POSTED" "$gl_post_status"
+    else
+      skip "GL batch export ($label)" "status=$gl_status (need REVIEW to export)"
+    fi
+  else
+    fail "GL batch not found ($label)" "count=${gl_count:-0}"
+  fi
+  echo ""
+
   # ── Full-mode extras: Refund, Charge Void, House Account ──
   if [[ "$mode" == "full" ]]; then
     # ── Refund ──
@@ -1255,7 +1304,7 @@ run_billing_pipeline() {
       pre_comp=$(resp_count)
       send_command "CMD comp.post: F&B \$35" \
         "billing.comp.post" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":35.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Comp dinner — pipeline $tag\"}"
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":35.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Comp dinner — pipeline $tag\"}"
       wait_kafka 8
       local post_comp
       get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
@@ -1457,6 +1506,20 @@ if [[ $(echo "$A1_CHARGE_SUM > 0" | bc 2>/dev/null) == "1" && $(echo "$A2_CHARGE
   pass "USALI: Both properties generating independent revenue"
 else
   fail "USALI: Independent revenue" "A1=\$$A1_CHARGE_SUM A2=\$$A2_CHARGE_SUM"
+fi
+echo ""
+
+echo "── 4.11  GL Batches scoped by property_id ──────────────────────────"
+TOKEN="$TOKEN_A"
+get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_GL=$(resp_count)
+get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_GL=$(resp_count)
+get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_GL=$(resp_count)
+EXPECTED_SUM=$((A1_GL + A2_GL))
+assert_eq "USALI: A GL batches = A1($A1_GL) + A2($A2_GL)" "$EXPECTED_SUM" "$ALL_A_GL"
+if [[ "$A1_GL" -gt 0 || "$A2_GL" -gt 0 ]]; then
+  pass "USALI: GL batches property-scoped (A1=$A1_GL A2=$A2_GL)"
+else
+  skip "USALI: GL batch distribution" "no batches yet (night audit step 6.5 non-fatal)"
 fi
 echo ""
 
@@ -1713,6 +1776,27 @@ if [[ "$CALC_CODE3" =~ ^2 ]]; then
 else
   fail "P0-4 auth: Authenticated calculation failed" "HTTP=$CALC_CODE3"
 fi
+
+# --- P0-5: GL batch cross-tenant isolation ---
+# Tenant B should see zero GL batches for Tenant A's property
+TOKEN="$TOKEN_B"
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_B&property_id=$PID_A1&limit=1")
+GL_CROSS_B=$(resp_count)
+if [[ "$code" =~ ^(401|403) ]] || [[ "${GL_CROSS_B:-0}" == "0" ]]; then
+  pass "P0-5 isolation: B GL batches have no A1 property (HTTP=$code count=$GL_CROSS_B)"
+else
+  fail "P0-5 isolation: B GL batches leak A1 property data" "HTTP=$code count=$GL_CROSS_B"
+fi
+
+# Tenant A should see zero GL batches for Tenant B's property
+TOKEN="$TOKEN_A"
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_B1&limit=1")
+GL_CROSS_A=$(resp_count)
+if [[ "$code" =~ ^(401|403) ]] || [[ "${GL_CROSS_A:-0}" == "0" ]]; then
+  pass "P0-5 isolation: A GL batches have no B1 property (HTTP=$code count=$GL_CROSS_A)"
+else
+  fail "P0-5 isolation: A GL batches leak B1 property data" "HTTP=$code count=$GL_CROSS_A"
+fi
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1764,6 +1848,11 @@ assert_http "API A: night-audit status" "200" "$code"
 
 code=$(get "$GW/v1/billing/reports/trial-balance?tenant_id=$TID_A&property_id=$PID_A1&business_date=$TODAY")
 assert_http "API A: trial-balance" "200" "$code"
+
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&limit=10")
+assert_http "API A: gl-batches" "200" "$code"
+GL_A_COUNT=$(resp_count)
+pass "XCHECK A: GL batches (count=$GL_A_COUNT)"
 echo ""
 
 # ── Tenant B endpoints ──
@@ -1784,6 +1873,11 @@ api_check "B cashier-sessions" \
 
 code=$(get "$GW/v1/night-audit/status?tenant_id=$TID_B&property_id=$PID_B1")
 assert_http "API B: night-audit status" "200" "$code"
+
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_B&limit=10")
+assert_http "API B: gl-batches" "200" "$code"
+GL_B_COUNT=$(resp_count)
+pass "XCHECK B: GL batches (count=$GL_B_COUNT)"
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════

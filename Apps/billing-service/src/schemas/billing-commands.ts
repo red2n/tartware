@@ -29,6 +29,8 @@ export {
   type BillingFolioTransferCommand,
   BillingFolioTransferCommandSchema,
   BillingFolioWindowCreateCommandSchema,
+  type BillingGlBatchExportCommand,
+  BillingGlBatchExportCommandSchema,
   type BillingInvoiceAdjustCommand,
   BillingInvoiceAdjustCommandSchema,
   type BillingInvoiceCreateCommand,

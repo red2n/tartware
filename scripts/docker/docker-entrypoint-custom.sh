@@ -45,9 +45,9 @@ needs_initialization() {
 # Function to setup Tartware initialization scripts
 setup_init_scripts() {
     log_info "Setting up Tartware initialization scripts..."
-    
+
     local init_dir="/docker-entrypoint-initdb.d"
-    
+
     # Make scripts executable
     if [ -d "${init_dir}/scripts" ]; then
         log_info "Making scripts executable..."
@@ -56,7 +56,7 @@ setup_init_scripts() {
         done
         find "${init_dir}/scripts" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
     fi
-    
+
     # Create a master initialization script
     cat > "${init_dir}/00-tartware-init.sh" << 'INIT_SCRIPT'
 #!/bin/bash
@@ -93,19 +93,19 @@ DB_EXISTS=$(psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgr
 
 if [ "$DB_EXISTS" = "1" ]; then
     echo "Database 'tartware' already exists"
-    
+
     if [ "$TARTWARE_DROP_EXISTING" = "true" ]; then
         echo "Dropping existing database..."
-        
+
         if [ "$TARTWARE_BACKUP_BEFORE_DROP" = "true" ]; then
             echo "Creating backup..."
             pg_dump -U "$POSTGRES_USER" tartware > /tmp/tartware_backup_$(date +%Y%m%d_%H%M%S).sql || true
         fi
-        
+
         # Terminate existing connections
         psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgres" -c \
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='tartware' AND pid <> pg_backend_pid();" || true
-        
+
         # Drop database
         psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgres" -c "DROP DATABASE IF EXISTS tartware;"
         echo "Database dropped"
@@ -125,7 +125,7 @@ SCRIPTS_DIR="/docker-entrypoint-initdb.d/scripts"
 if [ -d "$SCRIPTS_DIR" ]; then
     echo ""
     echo "Running initialization scripts..."
-    
+
     # Run scripts in specific order
     for script_num in 01 02; do
         for script in "$SCRIPTS_DIR"/${script_num}-*.sql; do
@@ -134,7 +134,7 @@ if [ -d "$SCRIPTS_DIR" ]; then
             fi
         done
     done
-    
+
     # Run table creation scripts
     if [ -d "$SCRIPTS_DIR/tables" ]; then
         echo ""
@@ -145,7 +145,7 @@ if [ -d "$SCRIPTS_DIR" ]; then
             fi
         done
     fi
-    
+
     # Run constraint scripts
     if [ -d "$SCRIPTS_DIR/constraints" ]; then
         echo ""
@@ -163,7 +163,7 @@ if [ -d "$SCRIPTS_DIR" ]; then
         echo "Creating missing foreign key indexes..."
         run_sql "$SCRIPTS_DIR/indexes/99_auto_fk_indexes.sql" "tartware"
     fi
-    
+
     # Run index scripts
     if [ -d "$SCRIPTS_DIR/indexes" ]; then
         echo ""
@@ -174,7 +174,7 @@ if [ -d "$SCRIPTS_DIR" ]; then
             fi
         done
     fi
-    
+
     # Run procedure scripts
     if [ -d "$SCRIPTS_DIR/procedures" ]; then
         echo ""
@@ -185,7 +185,7 @@ if [ -d "$SCRIPTS_DIR" ]; then
             fi
         done
     fi
-    
+
     # Run trigger scripts
     if [ -d "$SCRIPTS_DIR/triggers" ]; then
         echo ""
@@ -196,14 +196,14 @@ if [ -d "$SCRIPTS_DIR" ]; then
             fi
         done
     fi
-    
+
     # Run friendly constraint messages
     if [ -f "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" ]; then
         echo ""
         echo "Adding friendly constraint messages..."
         run_sql "$SCRIPTS_DIR/add_friendly_constraint_messages.sql" "tartware"
     fi
-    
+
     # Run verification if requested
     if [ "$TARTWARE_RUN_VERIFICATION" = "true" ]; then
         echo ""
@@ -215,7 +215,7 @@ if [ -d "$SCRIPTS_DIR" ]; then
             fi
         done
     fi
-    
+
     echo ""
     echo "============================================"
     echo "Tartware Database Initialization Complete"
@@ -239,7 +239,7 @@ if needs_initialization; then
     setup_init_scripts
 else
     log_info "Data directory exists - using existing data"
-    
+
     # Still setup scripts in case of re-initialization
     if [ "${TARTWARE_DROP_EXISTING:-false}" = "true" ]; then
         log_warn "TARTWARE_DROP_EXISTING is set - database will be dropped and recreated"
@@ -255,5 +255,6 @@ export POSTGRES_DB="${POSTGRES_DB:-postgres}"
 log_info "Handing off to PostgreSQL entrypoint..."
 echo ""
 
-# Call the original PostgreSQL entrypoint
-exec docker-entrypoint.sh postgres "$@"
+# Call the original PostgreSQL entrypoint.
+# $@ already contains "postgres -c ..." from docker-compose command:, so pass it directly.
+exec docker-entrypoint.sh "$@"

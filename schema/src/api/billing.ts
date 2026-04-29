@@ -1482,3 +1482,86 @@ export const PosChargeResponseSchema = z.object({
 });
 
 export type PosChargeResponse = z.infer<typeof PosChargeResponseSchema>;
+
+// ============================================================================
+// GL BATCH LIST (GAP-01: GL Journal Entry Wiring)
+// ============================================================================
+
+/**
+ * Summary item returned from GET /v1/billing/gl-batches.
+ */
+export const GlBatchListItemSchema = z.object({
+	gl_batch_id: uuid,
+	property_id: uuid,
+	batch_number: z.string(),
+	batch_date: z.string(),            // ISO date string (YYYY-MM-DD)
+	accounting_period: z.string(),
+	source_module: z.string(),
+	currency: z.string().default("USD"),
+	debit_total: z.number(),
+	credit_total: z.number(),
+	variance: z.number().optional(),
+	entry_count: z.number().int(),
+	batch_status: z.string(),
+	export_format: z.string().optional(),
+	exported_at: z.string().optional(), // ISO datetime string
+});
+
+export type GlBatchListItem = z.infer<typeof GlBatchListItemSchema>;
+
+export const GlBatchListResponseSchema = z.object({
+	data: z.array(GlBatchListItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type GlBatchListResponse = z.infer<typeof GlBatchListResponseSchema>;
+
+export const GlBatchListQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	start_date: z.string().optional(),
+	end_date: z.string().optional(),
+	batch_status: z.string().optional(),
+	limit: z.coerce.number().int().positive().max(500).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type GlBatchListQuery = z.infer<typeof GlBatchListQuerySchema>;
+
+/**
+ * Summary item for GL batch entries (returned from GET /v1/billing/gl-batches/:batchId/entries).
+ */
+export const GlBatchEntryItemSchema = z.object({
+	entry_id: uuid,
+	gl_batch_id: uuid,
+	entry_number: z.number().int(),
+	transaction_date: z.string(),
+	account_code: z.string(),
+	account_name: z.string().optional(),
+	folio_id: uuid.optional(),
+	reservation_id: uuid.optional(),
+	confirmation_number: z.string().optional(),
+	department_code: z.string().optional(),
+	description: z.string(),
+	debit_amount: z.number(),
+	credit_amount: z.number(),
+	currency_code: z.string().default("USD"),
+	source_reference: z.string().optional(),
+	entry_status: z.string(),
+});
+
+export type GlBatchEntryItem = z.infer<typeof GlBatchEntryItemSchema>;
+
+export const GlBatchEntriesResponseSchema = z.object({
+	gl_batch_id: uuid,
+	batch_number: z.string(),
+	batch_date: z.string(),
+	batch_status: z.string(),
+	debit_total: z.number(),
+	credit_total: z.number(),
+	entry_count: z.number().int(),
+	data: z.array(GlBatchEntryItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type GlBatchEntriesResponse = z.infer<typeof GlBatchEntriesResponseSchema>;

@@ -28,12 +28,18 @@
 /* ── Text combination utilities ── */
 
 
-/* ── Card ── */
+/* ── Card — glass surface ── */
 .card {
-  background: var(--bgColor-default);
+  background: var(--bgColor-muted);
   border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
+  border-radius: 12px;
   padding: var(--base-size-16);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+
+  &:hover {
+    border-color: var(--borderColor-accent-muted);
+    box-shadow: 0 0 0 1px var(--borderColor-accent-muted), var(--shadow-resting-medium);
+  }
 }
 
 
@@ -56,9 +62,10 @@
 
 .page-title {
   font-size: var(--text-title-size-medium);
-  font-weight: var(--base-text-weight-semibold);
+  font-weight: 700;
   color: var(--fgColor-default);
   margin: 0;
+  letter-spacing: -0.3px;
 }
 
 .page-tagline {
@@ -174,6 +181,13 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--borderColor-default) transparent;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--borderColor-default);
+    border-radius: 999px;
+  }
 }
 
 /* ── Responsive content area ── */
@@ -206,36 +220,38 @@
   min-height: var(--control-medium-size);
   padding: var(--control-medium-paddingBlock) var(--control-medium-paddingInline-normal);
   font-size: var(--text-body-size-medium);
-  font-weight: var(--base-text-weight-medium);
+  font-weight: 600;
   line-height: var(--text-body-lineHeight-medium);
-  border-radius: var(--borderRadius-medium);
+  border-radius: 10px;
   cursor: pointer;
-  transition: background var(--base-duration-100), border-color var(--base-duration-100);
+  transition: opacity 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
   white-space: nowrap;
   border: 1px solid;
   text-decoration: none;
+  font-family: inherit;
 }
 
 .btn-primary {
-  background: var(--button-primary-bgColor-rest);
-  color: var(--fgColor-onEmphasis);
-  border-color: var(--button-primary-borderColor-rest);
+  background: linear-gradient(135deg, #2081e2 0%, #7b3fe4 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 4px 16px #2081e233;
 
   &:hover {
-    background: var(--button-primary-bgColor-hover);
-    border-color: var(--button-primary-borderColor-rest);
+    opacity: 0.9;
+    box-shadow: 0 6px 20px #2081e24d;
     text-decoration: none;
   }
 }
 
 .btn-outline {
-  background: var(--bgColor-default);
+  background: transparent;
   color: var(--fgColor-accent);
   border-color: var(--borderColor-default);
 
   &:hover {
     background: var(--bgColor-accent-muted);
-    border-color: var(--bgColor-accent-muted);
+    border-color: var(--borderColor-accent-muted);
     text-decoration: none;
   }
 }

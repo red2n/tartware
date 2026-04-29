@@ -323,6 +323,26 @@ export type BillingLedgerPostCommand = z.infer<
 >;
 
 /**
+ * Mark a GL batch as exported and record the export destination.
+ * Used for ERP integration — stamps exported_at, sets batch_status = 'POSTED'.
+ */
+export const BillingGlBatchExportCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	/** Target GL batch to export; omit to auto-select REVIEW-status batch for the business date. */
+	gl_batch_id: z.string().uuid().optional(),
+	/** Business date to export; required when gl_batch_id is omitted. */
+	business_date: z.coerce.date().optional(),
+	/** Export format: USALI (default), CSV, XML, API. */
+	export_format: z.enum(["USALI", "CSV", "XML", "API"]).default("USALI"),
+	/** Optional URL where the export file was written (set by ERP integration layer). */
+	export_file_url: z.string().url().max(500).optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingGlBatchExportCommand = z.infer<typeof BillingGlBatchExportCommandSchema>;
+
+/**
  * Close/settle a folio. Sets folio_status to CLOSED or SETTLED
  * depending on balance. Zero balance → SETTLED, otherwise CLOSED.
  */
