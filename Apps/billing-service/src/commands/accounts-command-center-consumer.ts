@@ -77,7 +77,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
-  isRetryable: (error) => !(error instanceof BillingCommandError),
+  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,

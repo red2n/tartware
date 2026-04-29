@@ -130,9 +130,12 @@ export const chargeLateCheckout = async (
 
   const postingId = postingRows[0]?.posting_id;
   if (!postingId) {
+    // Unexpected: INSERT succeeded without error but returned no posting_id.
+    // Mark retryable — may succeed on a subsequent attempt.
     throw new BillingCommandError(
       "LATE_CHECKOUT_CHARGE_FAILED",
       "Failed to post late checkout charge.",
+      true,
     );
   }
 

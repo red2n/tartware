@@ -110,7 +110,10 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
 
     const postingId = postingRows[0]?.posting_id;
     if (!postingId) {
-      throw new BillingCommandError("COMP_POST_FAILED", "Failed to post comp charge.");
+      // Unexpected: INSERT succeeded without error but returned no posting_id.
+      // Mark retryable — may succeed on a subsequent attempt (e.g. transient
+      // trigger or constraint timing issue).
+      throw new BillingCommandError("COMP_POST_FAILED", "Failed to post comp charge.", true);
     }
 
     // Reduce folio balance (credit reduces amount owed)

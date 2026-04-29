@@ -50,6 +50,7 @@ export const executeNightAudit = async (
   let packageChargesPosted = 0;
   let commissionsPosted = 0;
   let trialBalanceVariance = 0;
+  let trialBalanceMismatches: TrialBalanceMismatch[] = [];
 
   // Step 1: Lock postings — prevent new charges during audit
   if (shouldLockPostings) {
@@ -120,11 +121,9 @@ export const executeNightAudit = async (
 
     // Step 6: Generate trial balance (debits = credits)
     if (shouldGenerateTrialBalance) {
-      trialBalanceVariance = await computeTrialBalance(
-        context.tenantId,
-        command.property_id,
-        auditDate,
-      );
+      const tb = await computeTrialBalance(context.tenantId, command.property_id, auditDate);
+      trialBalanceVariance = tb.variance;
+      trialBalanceMismatches = tb.mismatches;
       if (trialBalanceVariance !== 0) {
         appLogger.warn(
           {
@@ -132,6 +131,14 @@ export const executeNightAudit = async (
             propertyId: command.property_id,
             auditDate,
             variance: trialBalanceVariance,
+            totalDebits: tb.totalDebits,
+            totalCredits: tb.totalCredits,
+            totalPayments: tb.totalPayments,
+            // Per-folio breakdown: which folios and charge types are unbalanced.
+            // Capped at 50 rows to keep log size bounded; full data queryable
+            // via GET /v1/billing/trial-balance?date=<auditDate>&propertyId=<id>
+            mismatchCount: trialBalanceMismatches.length,
+            mismatches: trialBalanceMismatches.slice(0, 50),
           },
           "Night audit trial balance has non-zero variance",
         );
@@ -226,6 +233,7 @@ export const executeNightAudit = async (
       commissionsPosted,
       noShowsMarked,
       trialBalanceVariance,
+      trialBalanceBalanced: Math.abs(trialBalanceVariance) < 0.01,
       auditRunId,
     },
     "Night audit completed",
@@ -573,19 +581,42 @@ async function postOtaCommissions(
 
 // ─── Step 6: Trial balance (debits = credits verification) ───
 
+type TrialBalanceMismatch = {
+  folio_id: string | null;
+  reservation_id: string | null;
+  charge_code: string | null;
+  debit_total: number;
+  credit_total: number;
+  net: number;
+};
+
+type TrialBalanceResult = {
+  variance: number;
+  totalDebits: number;
+  totalCredits: number;
+  totalPayments: number;
+  mismatches: TrialBalanceMismatch[];
+};
+
 async function computeTrialBalance(
   tenantId: string,
   propertyId: string,
   auditDate: string,
-): Promise<number> {
-  const result = await query<{
+): Promise<TrialBalanceResult> {
+  // Totals query — single aggregate for variance calculation
+  const totalsResult = await query<{
     total_debits: string;
     total_credits: string;
+    total_payments: string;
     variance: string;
   }>(
     `SELECT
        COALESCE(SUM(CASE WHEN posting_type = 'DEBIT' THEN total_amount ELSE 0 END), 0) AS total_debits,
        COALESCE(SUM(CASE WHEN posting_type = 'CREDIT' THEN total_amount ELSE 0 END), 0) AS total_credits,
+       COALESCE((SELECT SUM(amount) FROM payments
+                 WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+                   AND processed_at::date = $3::date AND status = 'COMPLETED'
+                   AND transaction_type IN ('CAPTURE', 'REFUND', 'PARTIAL_REFUND')), 0) AS total_payments,
        COALESCE(SUM(CASE WHEN posting_type = 'DEBIT' THEN total_amount ELSE 0 END), 0) -
        COALESCE(SUM(CASE WHEN posting_type = 'CREDIT' THEN total_amount ELSE 0 END), 0) -
        COALESCE((SELECT SUM(amount) FROM payments
@@ -599,5 +630,67 @@ async function computeTrialBalance(
     [tenantId, propertyId, auditDate],
   );
 
-  return Number(result.rows[0]?.variance ?? 0);
+  const row = totalsResult.rows[0];
+  const variance = Number(row?.variance ?? 0);
+
+  // If balanced, skip the expensive per-folio breakdown query
+  if (Math.abs(variance) < 0.01) {
+    return {
+      variance: 0,
+      totalDebits: Number(row?.total_debits ?? 0),
+      totalCredits: Number(row?.total_credits ?? 0),
+      totalPayments: Number(row?.total_payments ?? 0),
+      mismatches: [],
+    };
+  }
+
+  // Breakdown query: group by folio + charge_code to pinpoint which entries
+  // are unbalanced. Folios with net = 0 are excluded — only mismatched rows.
+  const breakdownResult = await query<{
+    folio_id: string | null;
+    reservation_id: string | null;
+    charge_code: string | null;
+    debit_total: string;
+    credit_total: string;
+    net: string;
+  }>(
+    `SELECT
+       cp.folio_id,
+       cp.reservation_id,
+       cp.charge_code,
+       COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) AS debit_total,
+       COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0) AS credit_total,
+       COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) -
+       COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0) AS net
+     FROM charge_postings cp
+     WHERE cp.tenant_id = $1::uuid AND cp.property_id = $2::uuid
+       AND cp.business_date = $3::date
+       AND COALESCE(cp.is_voided, false) = false
+     GROUP BY cp.folio_id, cp.reservation_id, cp.charge_code
+     HAVING
+       ABS(
+         COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) -
+         COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0)
+       ) >= 0.01
+     ORDER BY ABS(
+       COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0) -
+       COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0)
+     ) DESC`,
+    [tenantId, propertyId, auditDate],
+  );
+
+  return {
+    variance,
+    totalDebits: Number(row?.total_debits ?? 0),
+    totalCredits: Number(row?.total_credits ?? 0),
+    totalPayments: Number(row?.total_payments ?? 0),
+    mismatches: breakdownResult.rows.map((r) => ({
+      folio_id: r.folio_id,
+      reservation_id: r.reservation_id,
+      charge_code: r.charge_code,
+      debit_total: Number(r.debit_total),
+      credit_total: Number(r.credit_total),
+      net: Number(r.net),
+    })),
+  };
 }

@@ -5,14 +5,23 @@ export type { CommandContext };
 
 export class BillingCommandError extends Error {
   code: string;
+  /**
+   * When true the command consumer will retry this error rather than routing
+   * immediately to the DLQ. Set to true only for transient failures (e.g.
+   * unexpected DB write failures) that may succeed on a subsequent attempt.
+   * Business-logic validation errors (wrong status, missing FK) should leave
+   * this false — retrying them wastes attempts and delays DLQ diagnosis.
+   */
+  retryable: boolean;
 
-  constructor(code: string, message: string) {
+  constructor(code: string, message: string, retryable = false) {
     super(message);
     this.code = code;
+    this.retryable = retryable;
   }
 
   toJSON() {
-    return { code: this.code, message: this.message, name: this.name };
+    return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
   }
 }
 

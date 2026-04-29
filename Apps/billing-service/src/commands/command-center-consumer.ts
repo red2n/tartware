@@ -431,7 +431,7 @@ const { start, shutdown } = createConsumerLifecycle({
   checkIdempotency: checkCommandIdempotency,
   recordIdempotency: recordCommandIdempotency,
   idempotencyFailureMode: "fail-open",
-  isRetryable: (error) => !(error instanceof BillingCommandError),
+  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
