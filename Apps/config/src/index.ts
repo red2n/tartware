@@ -30,7 +30,7 @@ export const baseConfigSchema = z.object({
 
 export const databaseSchema = z.object({
   DB_HOST: z.string().default("127.0.0.1"),
-  DB_PORT: z.coerce.number().int().default(5432),
+  DB_PORT: z.coerce.number().int().default(5433),
   DB_NAME: z.string().default("tartware"),
   DB_USER: z.string().default("postgres"),
   DB_PASSWORD: z

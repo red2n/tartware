@@ -10,7 +10,7 @@ data:
   LOG_LEVEL: "info"
   # Database config - use Kubernetes service DNS
   DATABASE_HOST: "postgres-service"
-  DATABASE_PORT: "5432"
+  DATABASE_PORT: "5433"
   DATABASE_NAME: "tartware"
   DATABASE_USER: "postgres"
   # Redis config - use Kubernetes service DNS

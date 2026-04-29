@@ -136,7 +136,7 @@ metadata:
   namespace: tartware-system
 data:
   host: "postgres-postgresql.database.svc.cluster.local"
-  port: "5432"
+  port: "5433"
   database: "tartware"
   # Connection pool settings for high throughput
   pool-min: "10"

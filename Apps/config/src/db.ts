@@ -135,9 +135,9 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     max: dbConfig.max,
     idleTimeoutMillis: dbConfig.idleTimeoutMillis,
     connectionTimeoutMillis: dbConfig.connectionTimeoutMs ?? 5_000,
-    statement_timeout: dbConfig.statementTimeoutMs,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10_000,
+    // statement_timeout and keepAlive are session-level startup parameters
+    // that PgBouncer transaction mode does not support. statement_timeout
+    // must be applied per-transaction via SET LOCAL if needed.
   });
 
   // 57P01 = admin_shutdown — expected during PG restarts; pool self-heals.
