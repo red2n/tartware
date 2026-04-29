@@ -1,4 +1,5 @@
 import { queryWithClient, withTransaction } from "../../lib/db.js";
+import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   type BillingChargePostCommand,
@@ -409,6 +410,10 @@ const applyChargePost = async (
   });
 
   const postingId = await withTransaction(async (client) => {
+    // Acquire advisory lock on the source folio before any balance mutations to
+    // prevent concurrent checkout from reading a stale balance mid-transaction
+    await acquireFolioLock(client, folioId);
+
     // Post routed portions to destination folios
     for (const decision of routing.decisions) {
       const routedSubtotal = decision.routedAmount;

@@ -276,6 +276,7 @@ Env:
 DB:
         db setup [--mode=direct|docker] [extra setup-database args]
         db verify   Run verification SQL scripts (verify-installation, verify-setup, tables)
+        db health   Run DB architecture health check for 20K ops/sec readiness
 
 Docker:
     docker up|down|restart|ps|logs|purge|fresh
@@ -309,6 +310,7 @@ Deploy:
 
     -db            DB setup (default)
     -dbv           DB verify
+    -dbh           DB health check
 
     -devu          Dev UI
     -devo          Dev otel
@@ -405,9 +407,10 @@ interactive_db() {
     echo "╠══════════════════════════════════════════════════════════════╣"
     echo "║  1) setup    Create tables, enums, indexes, and seed data    ║"
     echo "║  2) verify   Run SQL verification suite (counts, FKs, etc.)  ║"
+    echo "║  3) health   Run DB architecture health check (20K ops/s)    ║"
     echo "║  0) back     Return to main menu                             ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
-    read -r -p "Select option [0-2]: " choice
+    read -r -p "Select option [0-3]: " choice
     case "$choice" in
         1)
             read -r -p "Mode (direct/docker) [direct]: " mode
@@ -422,6 +425,9 @@ interactive_db() {
             ;;
         2)
             "$EXEC_DIR/tartware.sh" db verify
+            ;;
+        3)
+            "$EXEC_DIR/tartware.sh" db health
             ;;
         0) return ;;
         *) echo "Invalid option" ;;
@@ -534,6 +540,7 @@ if [ $# -ge 1 ]; then
             case "$subch" in
                 v) set -- db verify "$@" ;;   # -dbv
                 s) set -- db setup "$@" ;;    # -dbs
+                h) set -- db health "$@" ;;   # -dbh
                 "") set -- db setup "$@" ;;  # -db defaults to setup
                 *) fail "Unknown short option: -${short_opt}" ;;
             esac
@@ -747,6 +754,15 @@ case "$cmd" in
                 fi
                 run_db_setup "bash '$setup_script' $*"
                 # setup-database.sh already handles password reset internally
+                exit 0
+                ;;
+
+            health)
+                health_script="$EXEC_DIR/db-health-check/db-health-check.sh"
+                if [ ! -f "$health_script" ]; then
+                    fail "Missing health check script: $health_script"
+                fi
+                run_and_log "DB architecture health check" "bash '$health_script' $*"
                 exit 0
                 ;;
             *)

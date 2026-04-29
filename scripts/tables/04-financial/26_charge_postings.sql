@@ -100,6 +100,9 @@ CREATE TABLE charge_postings (
     -- Routing Rule (if charge was auto-routed by folio routing engine)
     routing_rule_id UUID, -- FK to folio_routing_rules.rule_id
 
+    -- Night Audit Traceability
+    audit_run_id UUID, -- UUID of the night_audit_log run that created this posting; NULL for manual charges
+
     -- Staff Information
     server_name VARCHAR(100), -- Waiter/server name
     cashier_name VARCHAR(100),
@@ -160,9 +163,61 @@ COMMENT ON COLUMN charge_postings.is_voided IS 'Whether this transaction has bee
 COMMENT ON COLUMN charge_postings.void_posting_id IS 'Reference to the void transaction if this was voided';
 COMMENT ON COLUMN charge_postings.gl_account IS 'General ledger account code for accounting integration';
 COMMENT ON COLUMN charge_postings.routing_rule_id IS 'FK to folio_routing_rules — set when charge was auto-routed by the routing engine';
+COMMENT ON COLUMN charge_postings.audit_run_id IS 'UUID of the night audit run that created this posting; NULL for manually-posted charges';
+
+-- Idempotent migration: add audit_run_id to existing deployments
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS audit_run_id UUID;
+
+-- Index: look up all postings for a given audit run (used by rollback / idempotency checks)
+CREATE INDEX IF NOT EXISTS idx_charge_postings_audit_run_id
+    ON charge_postings (audit_run_id)
+    WHERE audit_run_id IS NOT NULL;
+
+-- Partial index for fast idempotency check: "does a non-voided room charge already
+-- exist for this reservation on this business date from any night audit?"
+CREATE INDEX IF NOT EXISTS idx_charge_postings_nightly_dedup
+    ON charge_postings (tenant_id, reservation_id, business_date, charge_code)
+    WHERE audit_run_id IS NOT NULL AND COALESCE(is_voided, false) = false;
+
+-- =====================================================
+-- HTNG POS Integration columns (ACCT-05)
+-- =====================================================
+-- POS transaction ID from external POS system (HTNG-standard idempotency key)
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS pos_transaction_id VARCHAR(100);
+-- POS outlet code: F&B, SPA, MINIBAR, GOLF, RETAIL, PARKING, etc.
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS outlet_code VARCHAR(50);
+-- POS check/receipt number
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS check_number VARCHAR(50);
+-- Number of covers/guests on the POS check
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS covers INTEGER;
+
+COMMENT ON COLUMN charge_postings.pos_transaction_id IS 'HTNG POS transaction ID — unique per POS terminal; used as idempotency key to prevent duplicate charges on POS retry';
+COMMENT ON COLUMN charge_postings.outlet_code IS 'POS outlet identifier: F&B, SPA, MINIBAR, GOLF, RETAIL, PARKING, etc. Maps to USALI department codes';
+COMMENT ON COLUMN charge_postings.check_number IS 'POS check/receipt number for cross-reference with POS system';
+COMMENT ON COLUMN charge_postings.covers IS 'Number of guests/covers on the POS check (relevant for F&B revenue analytics)';
+
+-- Unique partial index on pos_transaction_id for POS deduplication (ACCT-05)
+-- Scoped per tenant; allows NULL (non-POS charges)
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_charge_postings_pos_txn
+    ON charge_postings (tenant_id, pos_transaction_id)
+    WHERE pos_transaction_id IS NOT NULL;
+
+-- Supporting index for POS charge lookups by tenant + outlet
+CREATE INDEX IF NOT EXISTS idx_charge_postings_outlet
+    ON charge_postings (tenant_id, outlet_code)
+    WHERE outlet_code IS NOT NULL;
 
 
 GRANT SELECT, INSERT, UPDATE ON charge_postings TO tartware_app;
+
+-- ── Per-table autovacuum tuning ─────────────────────────────────────────────
+-- charge_postings grows by millions of rows per night audit; default scale_factor
+-- of 0.2 would delay vacuum for too long.
+ALTER TABLE charge_postings SET (
+    autovacuum_vacuum_scale_factor     = 0.01,
+    autovacuum_vacuum_cost_delay       = 0,
+    autovacuum_analyze_scale_factor    = 0.005
+);
 
 \echo '✓ Table created: charge_postings (26/37)'
 \echo '  - All folio transactions'

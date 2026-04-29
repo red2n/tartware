@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingFolioCloseCommandSchema,
@@ -104,6 +105,11 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
   }
 
   return withTransaction(async (client) => {
+    // Acquire advisory lock first, then SELECT FOR UPDATE, to guarantee mutual
+    // exclusion with capturePayment / postCharge / expressCheckout which all
+    // acquire the same advisory lock before mutating the folio balance.
+    await acquireFolioLock(client, folioId as string);
+
     // Lock the folio row to prevent concurrent close/settle races
     const { rows } = await queryWithClient<{ folio_status: string; balance: string }>(
       client,

@@ -53,4 +53,12 @@ COMMENT ON COLUMN reservation_status_history.change_reason IS 'Brief reason for 
 COMMENT ON COLUMN reservation_status_history.changed_by IS 'User who made the change';
 COMMENT ON COLUMN reservation_status_history.changed_at IS 'Timestamp of change';
 
+-- ── Per-table autovacuum tuning ─────────────────────────────────────────────
+-- reservation_status_history is append-only; every check-in/out/cancel writes a row.
+ALTER TABLE reservation_status_history SET (
+    autovacuum_vacuum_scale_factor     = 0.01,
+    autovacuum_vacuum_cost_delay       = 0,
+    autovacuum_analyze_scale_factor    = 0.005
+);
+
 \echo 'Reservation_status_history table created successfully!'

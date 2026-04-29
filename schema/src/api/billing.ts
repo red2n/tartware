@@ -1366,3 +1366,119 @@ export const BucketCheckQuerySchema = z.object({
 });
 
 export type BucketCheckQuery = z.infer<typeof BucketCheckQuerySchema>;
+
+// =====================================================
+// HTNG POS Integration schemas (ACCT-05)
+// =====================================================
+
+/**
+ * A single itemized line on a POS check.
+ * Follows HTNG §14.1 charge_items structure.
+ */
+export const PosChargeItemSchema = z.object({
+	/** POS item identifier (SKU or menu item code). */
+	item_code: z.string().max(50),
+	/** Human-readable description of the item. */
+	description: z.string().max(500),
+	/** Number of units ordered. */
+	quantity: z.coerce.number().positive().default(1),
+	/** Unit price before tax and service charge. */
+	unit_price: z.coerce.number().nonnegative(),
+	/** Pre-tax, pre-service-charge subtotal (quantity × unit_price). */
+	subtotal: z.coerce.number().nonnegative(),
+	/** USALI department/charge code for this line (e.g. FB, SPA, MINI). */
+	charge_code: z.string().max(50).optional(),
+	/** USALI department code (e.g. F&B-RESTAURANT, SPA-SERVICE). */
+	department_code: z.string().max(20).optional(),
+	/** GL account code for this line item. */
+	gl_account: z.string().max(50).optional(),
+});
+
+export type PosChargeItem = z.infer<typeof PosChargeItemSchema>;
+
+/**
+ * HTNG-compatible POS charge request body.
+ * Posted to POST /v1/billing/charges/pos.
+ * §2.2 — POS charge posting standard.
+ */
+export const PosChargeInputSchema = z
+	.object({
+		/** Multi-tenant scoping. */
+		tenant_id: uuid,
+		/** Property receiving the charge. */
+		property_id: uuid,
+		/**
+		 * HTNG POS transaction ID — must be unique per tenant.
+		 * Used as the idempotency key; POS systems may retry on timeout.
+		 */
+		pos_transaction_id: z.string().trim().min(1).max(100),
+		/**
+		 * Room number for in-room charge lookup.
+		 * Either room_number or reservation_id must be provided.
+		 */
+		room_number: z.string().max(50).optional(),
+		/**
+		 * Reservation UUID — alternative to room_number.
+		 * Preferred when the POS system has access to the PMS reservation ID.
+		 */
+		reservation_id: uuid.optional(),
+		/**
+		 * POS outlet code identifying the revenue centre (HTNG §14.1).
+		 * Common values: FB (food & beverage), SPA, MINI (minibar), GOLF, RETAIL, PARK.
+		 */
+		outlet_code: z.string().trim().max(50),
+		/** Human-readable outlet name (e.g. "The Garden Restaurant"). */
+		outlet_name: z.string().max(200).optional(),
+		/** POS check/receipt number for cross-reference. */
+		check_number: z.string().trim().max(50),
+		/** Number of covers/guests on the check (F&B revenue analytics). */
+		covers: z.coerce.number().int().nonnegative().default(1),
+		/** Server/waiter name as reported by the POS system. */
+		server_name: z.string().max(100).optional(),
+		/**
+		 * Guest name as captured by the POS (used for verification).
+		 * The service performs a fuzzy match against the reservation guest name.
+		 */
+		guest_name_provided: z.string().max(200).optional(),
+		/** Itemized charge lines. At least one item is required. */
+		charge_items: z.array(PosChargeItemSchema).min(1),
+		/**
+		 * Aggregate service charge across all items.
+		 * Must equal the sum of per-item service charges when items carry them.
+		 */
+		service_charge: z.coerce.number().nonnegative().default(0),
+		/** Aggregate tax amount across all items. */
+		tax_amount: z.coerce.number().nonnegative().default(0),
+		/** Discount applied at the check level. */
+		discount_amount: z.coerce.number().nonnegative().default(0),
+		/** ISO-4217 currency code. Defaults to USD. */
+		currency: z.string().length(3).default("USD"),
+		/** Timestamp when the POS check was closed. Defaults to now. */
+		posted_at: z.coerce.date().optional(),
+	})
+	.refine(
+		(v) => Boolean(v.room_number || v.reservation_id),
+		"room_number or reservation_id is required",
+	);
+
+export type PosChargeInput = z.infer<typeof PosChargeInputSchema>;
+
+/**
+ * Response returned after a successful POS charge post.
+ */
+export const PosChargeResponseSchema = z.object({
+	/** UUID of the primary charge_postings row (first/aggregated line). */
+	posting_id: uuid,
+	/** IDs for each itemized line posting created (one per charge_items entry). */
+	line_posting_ids: z.array(uuid),
+	/** Resolved folio ID where the charges were posted. */
+	folio_id: uuid,
+	/** Whether the charge was routed to a suspense folio (room not found / guest mismatch). */
+	posted_to_suspense: z.boolean(),
+	/** Idempotent — true when this pos_transaction_id was already processed. */
+	duplicate: z.boolean(),
+	/** Total amount posted (subtotal + service_charge + tax_amount - discount_amount). */
+	total_posted: z.number(),
+});
+
+export type PosChargeResponse = z.infer<typeof PosChargeResponseSchema>;

@@ -31,6 +31,7 @@ export * from "./gdpr-consent-logs.js";
 export * from "./green-certifications.js";
 export * from "./guest-journey-tracking.js";
 export * from "./insurance-claims.js";
+export * from "./night-audit-checkpoints.js";
 export * from "./night-audit-log.js";
 export * from "./performance-alerts.js";
 export * from "./performance-baselines.js";

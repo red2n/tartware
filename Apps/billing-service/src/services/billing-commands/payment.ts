@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { PaymentRow } from "@tartware/schemas";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   type BillingPaymentApplyCommand,
@@ -330,6 +331,12 @@ const capturePayment = async (
     (reservationIdForFolio ? await resolveFolioId(context.tenantId, reservationIdForFolio) : null);
 
   const paymentId = await withTransaction(async (client) => {
+    // Acquire advisory lock on the folio before any balance mutation to prevent
+    // concurrent payment + checkout race conditions
+    if (resolvedFolioId) {
+      await acquireFolioLock(client, resolvedFolioId);
+    }
+
     const result = await queryWithClient<{ id: string }>(
       client,
       `
@@ -475,7 +482,16 @@ const refundPayment = async (
   const refundReference =
     command.refund_reference ?? `${original.payment_reference}-RF-${Date.now().toString(36)}`;
 
+  // Resolve folio so we can lock it before writing — prevents a concurrent
+  // checkout from closing the folio while the refund is in flight
+  const refundFolioId = await resolveFolioId(context.tenantId, command.reservation_id);
+
   return withTransaction(async (client) => {
+    // Acquire advisory lock on the folio to prevent concurrent checkout race
+    if (refundFolioId) {
+      await acquireFolioLock(client, refundFolioId);
+    }
+
     const refundResult = await queryWithClient<{ id: string }>(
       client,
       `

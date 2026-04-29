@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import type { NightAuditCheckpointStatus } from "@tartware/schemas";
+import type { PoolClient } from "pg";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
@@ -6,15 +8,24 @@ import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.j
 import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
 
 /**
- * Execute the nightly audit process (industry-standard 10-step sequence):
- * 1. Lock postings (prevent new charges during audit)
- * 2. Post room+tax charges for all CHECKED_IN reservations (supports compound taxes)
- * 3. Post package component charges for in-house guests with active packages
- * 4. Post OTA commission accruals for reservations checked in today
- * 5. Mark stale PENDING/CONFIRMED reservations as NO_SHOW
- * 6. Generate trial balance (debits = credits verification)
- * 7. Advance the business date
- * 8. Unlock postings
+ * Execute the nightly audit process (industry-standard 8-step sequence):
+ * 1. Lock postings (prevent new charges during audit) — outside main TX
+ * 2–5. All charge posting steps run inside a SINGLE database transaction:
+ *       2. Post room+tax charges for all CHECKED_IN reservations
+ *       3. Post package component charges for in-house guests
+ *       4. Post OTA commission accruals
+ *       5. Mark stale PENDING/CONFIRMED reservations as NO_SHOW
+ *      On any failure the entire transaction rolls back atomically.
+ *      Each completed step writes a night_audit_checkpoints row inside
+ *      the same transaction so checkpoints are never orphaned.
+ * 6. Generate trial balance (read-only, outside main TX)
+ * 7. Advance the business date — outside main TX
+ * 8. Unlock postings — outside main TX
+ *
+ * Idempotency: before posting room charges the function checks whether
+ * non-voided audit charges already exist for this property + business_date.
+ * If they do the entire charge-posting phase is skipped, preventing
+ * double-posting when the same command is retried.
  */
 export const executeNightAudit = async (
   payload: unknown,
@@ -51,8 +62,11 @@ export const executeNightAudit = async (
   let commissionsPosted = 0;
   let trialBalanceVariance = 0;
   let trialBalanceMismatches: TrialBalanceMismatch[] = [];
+  // Tracks the last step to complete so the catch path can record the failed step.
+  let lastCompletedStep = 1;
+  let auditFailureError: Error | undefined;
 
-  // Step 1: Lock postings — prevent new charges during audit
+  // Step 1: Lock postings — prevent new charges during audit (outside main TX)
   if (shouldLockPostings) {
     await query(
       `UPDATE public.business_dates
@@ -69,57 +83,205 @@ export const executeNightAudit = async (
 
   let auditSucceeded = false;
   try {
-    // Step 2: Post room charges + taxes for in-house guests
-    if (shouldPostCharges) {
-      const result = await postRoomChargesAndTaxes(
+    // ── Steps 2–5: single atomic transaction ───────────────────────────────
+    // All charge postings, commission accruals, and no-show updates are
+    // executed inside one PostgreSQL transaction.  Any failure causes a full
+    // rollback — no partial charges survive a failed audit run.
+    await withTransaction(async (client) => {
+      // ── Idempotency guard ──────────────────────────────────────────────
+      // Skip charge posting entirely if a prior successful audit already
+      // posted charges for this property + business_date.  This prevents
+      // double-posting when the same command is replayed by Kafka or an
+      // operator retries a completed audit.
+      if (shouldPostCharges || shouldPostPackages || shouldPostCommissions) {
+        const { rows: existingCharges } = await queryWithClient<{ cnt: string }>(
+          client,
+          `SELECT COUNT(*) AS cnt
+           FROM charge_postings
+           WHERE tenant_id = $1::uuid
+             AND property_id = $2::uuid
+             AND business_date = $3::date
+             AND audit_run_id IS NOT NULL
+             AND COALESCE(is_voided, false) = false
+           LIMIT 1`,
+          [context.tenantId, command.property_id, auditDate],
+        );
+        if (Number(existingCharges[0]?.cnt ?? 0) > 0) {
+          appLogger.warn(
+            { tenantId: context.tenantId, propertyId: command.property_id, auditDate },
+            "Night audit: charges already exist for this business date — skipping charge posting (idempotency guard)",
+          );
+          // Mark the posting steps as skipped and continue to no-shows / trial balance
+          await insertCheckpoint(
+            client,
+            context.tenantId,
+            command.property_id,
+            auditRunId,
+            actorId,
+            2,
+            "room-charges",
+            "SKIPPED",
+            0,
+          );
+          await insertCheckpoint(
+            client,
+            context.tenantId,
+            command.property_id,
+            auditRunId,
+            actorId,
+            3,
+            "package-charges",
+            "SKIPPED",
+            0,
+          );
+          await insertCheckpoint(
+            client,
+            context.tenantId,
+            command.property_id,
+            auditRunId,
+            actorId,
+            4,
+            "ota-commissions",
+            "SKIPPED",
+            0,
+          );
+          // Fall through to no-shows below
+          if (shouldMarkNoShows) {
+            const { rowCount } = await queryWithClient(
+              client,
+              `UPDATE reservations
+               SET status = 'NO_SHOW', is_no_show = true,
+                   no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                   version = version + 1, updated_at = NOW()
+               WHERE tenant_id = $1 AND property_id = $2
+                 AND status IN ('PENDING', 'CONFIRMED')
+                 AND check_in_date <= $3::date
+                 AND is_deleted = false`,
+              [context.tenantId, command.property_id, auditDate],
+            );
+            noShowsMarked = rowCount ?? 0;
+            await insertCheckpoint(
+              client,
+              context.tenantId,
+              command.property_id,
+              auditRunId,
+              actorId,
+              5,
+              "no-shows",
+              "COMPLETED",
+              noShowsMarked,
+            );
+          }
+          return; // exit withTransaction callback early
+        }
+      }
+
+      // Step 2: Post room charges + taxes for in-house guests
+      if (shouldPostCharges) {
+        const result = await postRoomChargesAndTaxes(
+          client,
+          context.tenantId,
+          command.property_id,
+          auditDate,
+          actorId,
+          auditRunId,
+          shouldUseCompoundTaxes,
+        );
+        chargesPosted = result.chargesPosted;
+        taxChargesPosted = result.taxChargesPosted;
+      }
+      await insertCheckpoint(
+        client,
         context.tenantId,
         command.property_id,
-        auditDate,
+        auditRunId,
         actorId,
-        shouldUseCompoundTaxes,
+        2,
+        "room-charges",
+        shouldPostCharges ? "COMPLETED" : "SKIPPED",
+        chargesPosted,
       );
-      chargesPosted = result.chargesPosted;
-      taxChargesPosted = result.taxChargesPosted;
-    }
+      lastCompletedStep = 2;
 
-    // Step 3: Post package component charges
-    if (shouldPostPackages) {
-      packageChargesPosted = await postPackageCharges(
+      // Step 3: Post package component charges
+      if (shouldPostPackages) {
+        packageChargesPosted = await postPackageCharges(
+          client,
+          context.tenantId,
+          command.property_id,
+          auditDate,
+          actorId,
+          auditRunId,
+        );
+      }
+      await insertCheckpoint(
+        client,
         context.tenantId,
         command.property_id,
-        auditDate,
+        auditRunId,
         actorId,
+        3,
+        "package-charges",
+        shouldPostPackages ? "COMPLETED" : "SKIPPED",
+        packageChargesPosted,
       );
-    }
+      lastCompletedStep = 3;
 
-    // Step 4: Post OTA commission accruals
-    if (shouldPostCommissions) {
-      commissionsPosted = await postOtaCommissions(
+      // Step 4: Post OTA commission accruals
+      if (shouldPostCommissions) {
+        commissionsPosted = await postOtaCommissions(
+          client,
+          context.tenantId,
+          command.property_id,
+          auditDate,
+          actorId,
+        );
+      }
+      await insertCheckpoint(
+        client,
         context.tenantId,
         command.property_id,
-        auditDate,
+        auditRunId,
         actorId,
+        4,
+        "ota-commissions",
+        shouldPostCommissions ? "COMPLETED" : "SKIPPED",
+        commissionsPosted,
       );
-    }
+      lastCompletedStep = 4;
 
-    // Step 5: Mark no-shows
-    if (shouldMarkNoShows) {
-      const noShowResult = await query<{ count: string }>(
-        `UPDATE reservations
-         SET status = 'NO_SHOW', is_no_show = true,
-             no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
-             version = version + 1, updated_at = NOW()
-         WHERE tenant_id = $1 AND property_id = $2
-           AND status IN ('PENDING', 'CONFIRMED')
-           AND check_in_date <= $3::date
-           AND is_deleted = false
-         RETURNING id`,
-        [context.tenantId, command.property_id, auditDate],
+      // Step 5: Mark no-shows
+      if (shouldMarkNoShows) {
+        const { rowCount } = await queryWithClient(
+          client,
+          `UPDATE reservations
+           SET status = 'NO_SHOW', is_no_show = true,
+               no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+               version = version + 1, updated_at = NOW()
+           WHERE tenant_id = $1 AND property_id = $2
+             AND status IN ('PENDING', 'CONFIRMED')
+             AND check_in_date <= $3::date
+             AND is_deleted = false`,
+          [context.tenantId, command.property_id, auditDate],
+        );
+        noShowsMarked = rowCount ?? 0;
+      }
+      await insertCheckpoint(
+        client,
+        context.tenantId,
+        command.property_id,
+        auditRunId,
+        actorId,
+        5,
+        "no-shows",
+        shouldMarkNoShows ? "COMPLETED" : "SKIPPED",
+        noShowsMarked,
       );
-      noShowsMarked = noShowResult.rowCount ?? 0;
-    }
+      lastCompletedStep = 5;
+    });
+    // ── end single atomic transaction ─────────────────────────────────────
 
-    // Step 6: Generate trial balance (debits = credits)
+    // Step 6: Generate trial balance (read-only, outside main TX)
     if (shouldGenerateTrialBalance) {
       const tb = await computeTrialBalance(context.tenantId, command.property_id, auditDate);
       trialBalanceVariance = tb.variance;
@@ -146,6 +308,56 @@ export const executeNightAudit = async (
     }
 
     auditSucceeded = true;
+  } catch (err) {
+    // ── Error path: write a FAILED checkpoint OUTSIDE the transaction ──────
+    // The main TX has already rolled back, so all COMPLETED/SKIPPED checkpoints
+    // inside it are gone.  We write one FAILED row here so recovery tooling can
+    // see exactly which step threw (lastCompletedStep + 1 = the failing step).
+    auditFailureError = err instanceof Error ? err : new Error(String(err));
+    const failedStep = lastCompletedStep + 1;
+    const stepNames: Record<number, string> = {
+      2: "room-charges",
+      3: "package-charges",
+      4: "ota-commissions",
+      5: "no-shows",
+      6: "trial-balance",
+    };
+    try {
+      await query(
+        `INSERT INTO night_audit_checkpoints
+           (tenant_id, property_id, audit_run_id, step_number, step_name,
+            status, records_processed, completed_at, created_by)
+         VALUES
+           ($1::uuid, $2::uuid, $3::uuid, $4, $5,
+            'FAILED', 0, NOW(), $6::uuid)
+         ON CONFLICT (audit_run_id, step_number) DO NOTHING`,
+        [
+          context.tenantId,
+          command.property_id,
+          auditRunId,
+          failedStep,
+          stepNames[failedStep] ?? `step-${failedStep}`,
+          actorId,
+        ],
+      );
+    } catch (checkpointErr) {
+      appLogger.error(
+        { checkpointErr, auditRunId, failedStep },
+        "Night audit: failed to write FAILED checkpoint — continuing to finally block",
+      );
+    }
+    appLogger.error(
+      {
+        err: auditFailureError.message,
+        auditRunId,
+        auditDate,
+        lastCompletedStep,
+        failedStep,
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+      },
+      "Night audit failed — transaction rolled back, no charges posted",
+    );
   } finally {
     // Step 7+8: Advance business date + unlock postings + set audit status
     // Combined into a single UPDATE for atomicity — readers never see
@@ -193,36 +405,52 @@ export const executeNightAudit = async (
         [command.property_id, context.tenantId, auditSucceeded ? "COMPLETED" : "FAILED", actorId],
       );
     }
+
+    // Log audit run in night_audit_log — always written (success or failure)
+    // so operators can see every attempt including failed ones.
+    const totalRecords = chargesPosted + noShowsMarked + packageChargesPosted + commissionsPosted;
+    const auditLogStatus = auditSucceeded ? "COMPLETED" : "FAILED";
+    try {
+      await query(
+        `INSERT INTO public.night_audit_log (
+           tenant_id, property_id, audit_run_id, business_date,
+           audit_status, step_number, step_name, step_category, step_status,
+           started_at, completed_at, step_completed_at,
+           records_processed, records_succeeded,
+           error_message, error_details,
+           initiated_by, created_by
+         ) VALUES (
+           $1::uuid, $2::uuid, $3::uuid, $4::date,
+           $5, 1, 'night_audit_full', 'AUDIT', $5,
+           $6::timestamptz, NOW(), NOW(),
+           $7, $7,
+           $8, $9,
+           $10::uuid, $10::uuid
+         )
+         ON CONFLICT DO NOTHING`,
+        [
+          context.tenantId,
+          command.property_id,
+          auditRunId,
+          auditDate,
+          auditLogStatus,
+          auditStartedAt.toISOString(),
+          totalRecords,
+          auditFailureError?.message ?? null,
+          auditFailureError
+            ? JSON.stringify({ message: auditFailureError.message, lastCompletedStep })
+            : null,
+          actorId,
+        ],
+      );
+    } catch (logErr) {
+      appLogger.error({ logErr, auditRunId }, "Night audit: failed to write night_audit_log entry");
+    }
   }
 
-  // Log audit run in night_audit_log
-  const totalRecords = chargesPosted + noShowsMarked + packageChargesPosted + commissionsPosted;
-  const auditLogResult = await query<{ audit_log_id: string }>(
-    `INSERT INTO public.night_audit_log (
-       tenant_id, property_id, audit_run_id, business_date,
-       audit_status, step_number, step_name, step_category, step_status,
-       started_at, completed_at, step_completed_at,
-       records_processed, records_succeeded,
-       initiated_by, created_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, $4::date,
-       'COMPLETED', 1, 'night_audit_full', 'AUDIT', 'COMPLETED',
-       $5::timestamptz, NOW(), NOW(),
-       $6, $6,
-       $7::uuid, $7::uuid
-     )
-     ON CONFLICT DO NOTHING
-     RETURNING audit_log_id`,
-    [
-      context.tenantId,
-      command.property_id,
-      auditRunId,
-      auditDate,
-      auditStartedAt.toISOString(),
-      totalRecords,
-      actorId,
-    ],
-  );
+  if (auditFailureError) {
+    throw auditFailureError;
+  }
 
   appLogger.info(
     {
@@ -239,22 +467,24 @@ export const executeNightAudit = async (
     "Night audit completed",
   );
 
-  return auditLogResult.rows[0]?.audit_log_id ?? `audit-${auditDate}`;
+  return auditRunId;
 };
 
 // ─── Step 2: Room charges + taxes (supports compound tax calculation) ───
 
 async function postRoomChargesAndTaxes(
+  client: PoolClient,
   tenantId: string,
   propertyId: string,
   auditDate: string,
   actorId: string,
+  auditRunId: string,
   useCompoundTaxes: boolean,
 ): Promise<{ chargesPosted: number; taxChargesPosted: number }> {
   let chargesPosted = 0;
   let taxChargesPosted = 0;
 
-  const inHouseResult = await query<{
+  const inHouseResult = await queryWithClient<{
     id: string;
     room_rate: string;
     room_number: string;
@@ -262,6 +492,7 @@ async function postRoomChargesAndTaxes(
     guest_id: string;
     folio_id: string | null;
   }>(
+    client,
     `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id,
             f.folio_id
      FROM reservations r
@@ -277,13 +508,14 @@ async function postRoomChargesAndTaxes(
   );
 
   // Fetch tax config ONCE: include compound order for cascading tax support
-  const taxResult = await query<{
+  const taxResult = await queryWithClient<{
     tax_code: string;
     tax_name: string;
     tax_rate: string;
     is_compound_tax: boolean;
     compound_order: number | null;
   }>(
+    client,
     `SELECT tax_code, tax_name, tax_rate,
             COALESCE(is_compound_tax, false) AS is_compound_tax,
             compound_order
@@ -307,87 +539,99 @@ async function postRoomChargesAndTaxes(
     const folioId = res.folio_id;
     if (!folioId) continue;
 
-    try {
-      await withTransaction(async (client) => {
-        // Post room charge
-        await queryWithClient(
-          client,
-          `INSERT INTO public.charge_postings (
-             tenant_id, property_id, folio_id, reservation_id,
-             transaction_type, posting_type, charge_code, charge_description,
-             quantity, unit_price, subtotal, total_amount,
-             currency_code, posting_time, business_date,
-             notes, created_by, updated_by
-           ) VALUES (
-             $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-             'CHARGE', 'DEBIT', 'ROOM', 'Room charge - night audit',
-             1, $5, $5, $5,
-             'USD', NOW(), $6::date,
-             'Auto-posted by night audit', $7::uuid, $7::uuid
-           )`,
-          [tenantId, propertyId, folioId, res.id, roomRate, auditDate, actorId],
-        );
-
-        // Post applicable taxes — compound taxes apply sequentially on base + prior taxes
-        let totalTaxAmount = 0;
-        for (const tax of taxes) {
-          const taxRate = Number(tax.tax_rate);
-          // Compound taxes apply on (room rate + all prior tax amounts)
-          const taxableBase =
-            useCompoundTaxes && tax.is_compound_tax ? roomRate + totalTaxAmount : roomRate;
-          const taxAmount = Number(((taxableBase * taxRate) / 100).toFixed(2));
-          if (taxAmount <= 0) continue;
-
-          await queryWithClient(
-            client,
-            `INSERT INTO public.charge_postings (
-               tenant_id, property_id, folio_id, reservation_id,
-               transaction_type, posting_type, charge_code, charge_description,
-               quantity, unit_price, subtotal, total_amount,
-               currency_code, posting_time, business_date,
-               department_code, notes, created_by, updated_by
-             ) VALUES (
-               $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-               'CHARGE', 'DEBIT', 'ROOM_TAX', $5,
-               1, $6, $6, $6,
-               'USD', NOW(), $7::date,
-               'ROOMS', $8, $9::uuid, $9::uuid
-             )`,
-            [
-              tenantId,
-              propertyId,
-              folioId,
-              res.id,
-              `${tax.tax_name} (${taxRate}%)`,
-              taxAmount,
-              auditDate,
-              `${tax.tax_code}: ${taxRate}% on ${useCompoundTaxes && tax.is_compound_tax ? "cumulative" : "room"} charge`,
-              actorId,
-            ],
-          );
-          totalTaxAmount += taxAmount;
-          taxChargesPosted++;
-        }
-
-        // Update folio balance (room charge + all taxes)
-        const chargeTotal = roomRate + totalTaxAmount;
-        await queryWithClient(
-          client,
-          `UPDATE public.folios
-           SET total_charges = total_charges + $2,
-               balance = balance + $2,
-               updated_at = NOW(), updated_by = $3::uuid
-           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-          [tenantId, chargeTotal, actorId, folioId],
-        );
-      });
-      chargesPosted++;
-    } catch (error) {
-      appLogger.error(
-        { tenantId, propertyId, reservationId: res.id, folioId, auditDate, error },
-        "Night audit: failed to post nightly room charges for reservation",
+    // Idempotency: skip if a non-voided room charge already exists for this
+    // reservation on this business date from any prior audit run.
+    const { rows: existing } = await queryWithClient<{ cnt: string }>(
+      client,
+      `SELECT COUNT(*) AS cnt FROM charge_postings
+       WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
+         AND business_date = $3::date AND charge_code = 'ROOM'
+         AND audit_run_id IS NOT NULL
+         AND COALESCE(is_voided, false) = false`,
+      [tenantId, res.id, auditDate],
+    );
+    if (Number(existing[0]?.cnt ?? 0) > 0) {
+      appLogger.debug(
+        { reservationId: res.id, auditDate },
+        "Night audit: room charge already posted, skipping",
       );
+      chargesPosted++; // count as posted for metrics
+      continue;
     }
+
+    // Post room charge (inside the outer withTransaction — no nested TX needed)
+    await queryWithClient(
+      client,
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         quantity, unit_price, subtotal, total_amount,
+         currency_code, posting_time, business_date,
+         notes, audit_run_id, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'CHARGE', 'DEBIT', 'ROOM', 'Room charge - night audit',
+         1, $5, $5, $5,
+         'USD', NOW(), $6::date,
+         'Auto-posted by night audit', $7::uuid, $8::uuid, $8::uuid
+       )`,
+      [tenantId, propertyId, folioId, res.id, roomRate, auditDate, auditRunId, actorId],
+    );
+
+    // Post applicable taxes — compound taxes apply sequentially on base + prior taxes
+    let totalTaxAmount = 0;
+    for (const tax of taxes) {
+      const taxRate = Number(tax.tax_rate);
+      // Compound taxes apply on (room rate + all prior tax amounts)
+      const taxableBase =
+        useCompoundTaxes && tax.is_compound_tax ? roomRate + totalTaxAmount : roomRate;
+      const taxAmount = Number(((taxableBase * taxRate) / 100).toFixed(2));
+      if (taxAmount <= 0) continue;
+
+      await queryWithClient(
+        client,
+        `INSERT INTO public.charge_postings (
+           tenant_id, property_id, folio_id, reservation_id,
+           transaction_type, posting_type, charge_code, charge_description,
+           quantity, unit_price, subtotal, total_amount,
+           currency_code, posting_time, business_date,
+           department_code, notes, audit_run_id, created_by, updated_by
+         ) VALUES (
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+           'CHARGE', 'DEBIT', 'ROOM_TAX', $5,
+           1, $6, $6, $6,
+           'USD', NOW(), $7::date,
+           'ROOMS', $8, $9::uuid, $10::uuid, $10::uuid
+         )`,
+        [
+          tenantId,
+          propertyId,
+          folioId,
+          res.id,
+          `${tax.tax_name} (${taxRate}%)`,
+          taxAmount,
+          auditDate,
+          `${tax.tax_code}: ${taxRate}% on ${useCompoundTaxes && tax.is_compound_tax ? "cumulative" : "room"} charge`,
+          auditRunId,
+          actorId,
+        ],
+      );
+      totalTaxAmount += taxAmount;
+      taxChargesPosted++;
+    }
+
+    // Update folio balance (room charge + all taxes)
+    const chargeTotal = roomRate + totalTaxAmount;
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges + $2,
+           balance = balance + $2,
+           updated_at = NOW(), updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+      [tenantId, chargeTotal, actorId, folioId],
+    );
+    chargesPosted++;
   }
 
   return { chargesPosted, taxChargesPosted };
@@ -396,15 +640,17 @@ async function postRoomChargesAndTaxes(
 // ─── Step 3: Post package component charges ───
 
 async function postPackageCharges(
+  client: PoolClient,
   tenantId: string,
   propertyId: string,
   auditDate: string,
   actorId: string,
+  auditRunId: string,
 ): Promise<number> {
   let packageChargesPosted = 0;
 
   // Find in-house reservations that have active package bookings with per_night components
-  const packageResult = await query<{
+  const packageResult = await queryWithClient<{
     reservation_id: string;
     folio_id: string;
     component_name: string;
@@ -413,6 +659,7 @@ async function postPackageCharges(
     department_code: string;
     package_booking_id: string;
   }>(
+    client,
     `SELECT r.id AS reservation_id, f.folio_id,
             pc.component_name, pc.unit_price,
             'PACKAGE' AS charge_code,
@@ -442,54 +689,61 @@ async function postPackageCharges(
     const price = Number(pkg.unit_price ?? 0);
     if (price <= 0) continue;
 
-    try {
-      await withTransaction(async (client) => {
-        await queryWithClient(
-          client,
-          `INSERT INTO public.charge_postings (
-             tenant_id, property_id, folio_id, reservation_id,
-             transaction_type, posting_type, charge_code, charge_description,
-             quantity, unit_price, subtotal, total_amount,
-             currency_code, posting_time, business_date,
-             department_code, notes, created_by, updated_by
-           ) VALUES (
-             $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-             'CHARGE', 'DEBIT', $5, $6,
-             1, $7, $7, $7,
-             'USD', NOW(), $8::date,
-             $9, 'Package component - night audit', $10::uuid, $10::uuid
-           )`,
-          [
-            tenantId,
-            propertyId,
-            pkg.folio_id,
-            pkg.reservation_id,
-            pkg.charge_code,
-            `Package: ${pkg.component_name}`,
-            price,
-            auditDate,
-            pkg.department_code,
-            actorId,
-          ],
-        );
-
-        await queryWithClient(
-          client,
-          `UPDATE public.folios
-           SET total_charges = total_charges + $2,
-               balance = balance + $2,
-               updated_at = NOW(), updated_by = $3::uuid
-           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-          [tenantId, price, actorId, pkg.folio_id],
-        );
-      });
+    // Idempotency: skip if a package charge already exists for this reservation on this date
+    const { rows: existing } = await queryWithClient<{ cnt: string }>(
+      client,
+      `SELECT COUNT(*) AS cnt FROM charge_postings
+       WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
+         AND business_date = $3::date AND charge_code = 'PACKAGE'
+         AND audit_run_id IS NOT NULL
+         AND COALESCE(is_voided, false) = false`,
+      [tenantId, pkg.reservation_id, auditDate],
+    );
+    if (Number(existing[0]?.cnt ?? 0) > 0) {
       packageChargesPosted++;
-    } catch (error) {
-      appLogger.error(
-        { tenantId, propertyId, reservationId: pkg.reservation_id, auditDate, error },
-        "Night audit: failed to post package charge",
-      );
+      continue;
     }
+
+    await queryWithClient(
+      client,
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         quantity, unit_price, subtotal, total_amount,
+         currency_code, posting_time, business_date,
+         department_code, notes, audit_run_id, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'CHARGE', 'DEBIT', $5, $6,
+         1, $7, $7, $7,
+         'USD', NOW(), $8::date,
+         $9, 'Package component - night audit', $10::uuid, $11::uuid, $11::uuid
+       )`,
+      [
+        tenantId,
+        propertyId,
+        pkg.folio_id,
+        pkg.reservation_id,
+        pkg.charge_code,
+        `Package: ${pkg.component_name}`,
+        price,
+        auditDate,
+        pkg.department_code,
+        auditRunId,
+        actorId,
+      ],
+    );
+
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges + $2,
+           balance = balance + $2,
+           updated_at = NOW(), updated_by = $3::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+      [tenantId, price, actorId, pkg.folio_id],
+    );
+    packageChargesPosted++;
   }
 
   return packageChargesPosted;
@@ -498,6 +752,7 @@ async function postPackageCharges(
 // ─── Step 4: Post OTA commission accruals ───
 
 async function postOtaCommissions(
+  client: PoolClient,
   tenantId: string,
   propertyId: string,
   auditDate: string,
@@ -506,13 +761,14 @@ async function postOtaCommissions(
   let commissionsPosted = 0;
 
   // Find in-house OTA reservations without commission already tracked for this date
-  const otaResult = await query<{
+  const otaResult = await queryWithClient<{
     reservation_id: string;
     room_rate: string;
     source: string;
     commission_percentage: string;
     booking_source_id: string;
   }>(
+    client,
     `SELECT r.id AS reservation_id, r.room_rate, r.source::text,
             bs.commission_percentage, bs.source_id AS booking_source_id
      FROM reservations r
@@ -540,43 +796,68 @@ async function postOtaCommissions(
     const commissionAmount = Number(((roomRate * commPct) / 100).toFixed(2));
     const commissionNumber = `COMM-${ota.reservation_id.slice(0, 8)}-${auditDate}`;
 
-    try {
-      await query(
-        `INSERT INTO commission_tracking (
-           tenant_id, property_id, reservation_id, source_id,
-           commission_number, commission_amount, commission_percent, base_amount,
-           transaction_date, commission_status, commission_type,
-           calculation_method, notes, created_by, updated_by
-         ) VALUES (
-           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-           $5, $6, $7, $8,
-           $9::date, 'pending', 'ota',
-           'percentage', 'Auto-accrued by night audit', $10::uuid, $10::uuid
-         )
-         ON CONFLICT DO NOTHING`,
-        [
-          tenantId,
-          propertyId,
-          ota.reservation_id,
-          ota.booking_source_id,
-          commissionNumber,
-          commissionAmount,
-          commPct,
-          roomRate,
-          auditDate,
-          actorId,
-        ],
-      );
-      commissionsPosted++;
-    } catch (error) {
-      appLogger.error(
-        { tenantId, propertyId, reservationId: ota.reservation_id, auditDate, error },
-        "Night audit: failed to post OTA commission",
-      );
-    }
+    await queryWithClient(
+      client,
+      `INSERT INTO commission_tracking (
+         tenant_id, property_id, reservation_id, source_id,
+         commission_number, commission_amount, commission_percent, base_amount,
+         transaction_date, commission_status, commission_type,
+         calculation_method, notes, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         $5, $6, $7, $8,
+         $9::date, 'pending', 'ota',
+         'percentage', 'Auto-accrued by night audit', $10::uuid, $10::uuid
+       )
+       ON CONFLICT DO NOTHING`,
+      [
+        tenantId,
+        propertyId,
+        ota.reservation_id,
+        ota.booking_source_id,
+        commissionNumber,
+        commissionAmount,
+        commPct,
+        roomRate,
+        auditDate,
+        actorId,
+      ],
+    );
+    commissionsPosted++;
   }
 
   return commissionsPosted;
+}
+
+// ─── Checkpoint helper ───
+
+/**
+ * Write a step completion record into night_audit_checkpoints.
+ * Must be called inside an active transaction so the checkpoint commits
+ * atomically with the charge postings it describes.
+ */
+async function insertCheckpoint(
+  client: PoolClient,
+  tenantId: string,
+  propertyId: string,
+  auditRunId: string,
+  actorId: string,
+  stepNumber: number,
+  stepName: string,
+  status: NightAuditCheckpointStatus,
+  recordsProcessed: number,
+): Promise<void> {
+  await queryWithClient(
+    client,
+    `INSERT INTO night_audit_checkpoints
+       (tenant_id, property_id, audit_run_id, step_number, step_name,
+        status, records_processed, completed_at, created_by)
+     VALUES
+       ($1::uuid, $2::uuid, $3::uuid, $4, $5,
+        $6, $7, NOW(), $8::uuid)
+     ON CONFLICT (audit_run_id, step_number) DO NOTHING`,
+    [tenantId, propertyId, auditRunId, stepNumber, stepName, status, recordsProcessed, actorId],
+  );
 }
 
 // ─── Step 6: Trial balance (debits = credits verification) ───

@@ -300,11 +300,7 @@ SELECT
     sc.required_modules,
     jsonb_build_object('seeded', true)
 FROM seed_commands sc
-ON CONFLICT (command_name) DO UPDATE SET
-    description = EXCLUDED.description,
-    default_target_service = EXCLUDED.default_target_service,
-    required_modules = EXCLUDED.required_modules
-WHERE command_templates.metadata->>'seeded' = 'true';
+ON CONFLICT (command_name) DO NOTHING;
 
 INSERT INTO command_routes (command_name, environment, tenant_id, service_id, topic, metadata)
 SELECT
@@ -337,6 +333,15 @@ WHERE NOT EXISTS (
     WHERE cf.command_name = ct.command_name
       AND cf.environment = 'development'
       AND cf.tenant_id IS NULL
+);
+
+-- ── Per-table autovacuum tuning ─────────────────────────────────────────────
+-- command_dispatches accumulates one row per command at 20K ops/sec;
+-- aggressive autovacuum prevents bloat from completed/failed rows.
+ALTER TABLE command_dispatches SET (
+    autovacuum_vacuum_scale_factor     = 0.01,
+    autovacuum_vacuum_cost_delay       = 0,
+    autovacuum_analyze_scale_factor    = 0.005
 );
 
 \echo 'Command center catalog ready.'

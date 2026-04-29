@@ -30,6 +30,7 @@ import { registerYieldRoutes } from "./routes/calculations/yield.js";
 import { registerFinanceAdminRoutes } from "./routes/finance-admin.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerNightAuditRoutes } from "./routes/night-audit.js";
+import { registerPosChargeRoutes } from "./routes/pos.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureBillingEncryptionRequirementsMet();
@@ -53,6 +54,8 @@ export const buildServer = (): FastifyInstance => {
       registerFinanceAdminRoutes(app);
       // Night audit read endpoints
       registerNightAuditRoutes(app);
+      // HTNG POS charge endpoint (ACCT-05)
+      registerPosChargeRoutes(app);
       // Absorbed from calculation-service (Phase 6)
       registerAllowanceRoutes(app);
       registerAuthorizationRoutes(app);

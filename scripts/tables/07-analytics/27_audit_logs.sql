@@ -130,6 +130,15 @@ COMMENT ON COLUMN audit_logs.response_time_ms IS 'Operation duration in millisec
 GRANT SELECT, INSERT ON audit_logs TO tartware_app;
 -- Note: No UPDATE or DELETE permissions - audit logs are immutable
 
+-- ── Per-table autovacuum tuning ─────────────────────────────────────────────
+-- audit_logs is append-only at ~20K ops/sec; aggressive autovacuum prevents
+-- index bloat without disrupting queries.
+ALTER TABLE audit_logs SET (
+    autovacuum_vacuum_scale_factor     = 0.01,
+    autovacuum_vacuum_cost_delay       = 0,
+    autovacuum_analyze_scale_factor    = 0.005
+);
+
 -- Success message
 \echo '✓ Table created: audit_logs (27/37)'
 \echo '  - Compliance audit trail'

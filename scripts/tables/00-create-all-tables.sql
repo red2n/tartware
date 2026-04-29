@@ -227,6 +227,7 @@
 \ir 07-analytics/80_forecasting_models.sql
 \ir 07-analytics/81_ab_test_results.sql
 \ir 07-analytics/82_recommendation_interactions.sql
+\ir 07-analytics/83_night_audit_checkpoints.sql
 \ir 07-analytics/98_sustainability_metrics.sql
 
 -- =========================================================================
@@ -269,6 +270,9 @@
 
 \echo '>>> Enabling Row-Level Security on business tables'
 \ir 98_row_level_security.sql
+
+\echo '>>> Applying performance tuning (indexes, autovacuum, synchronous_commit)'
+\ir 96_performance_tuning.sql
 
 \echo ''
 \echo '========================================='
