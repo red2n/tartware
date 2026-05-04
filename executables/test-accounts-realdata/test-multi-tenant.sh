@@ -63,6 +63,12 @@ IN5DAYS=$(date -d "+5 days" +%Y-%m-%d 2>/dev/null || date -v+5d +%Y-%m-%d)
 KAFKA_WAIT=4
 UNIQUE=$(date +%s)
 
+# Per-run unique tag injected into Tenant B + dynamic property codes/usernames/emails.
+# Lets every invocation create fresh tenant/property/user records and surface real
+# uniqueness errors instead of silently reusing prior-run data.
+RUN_TAG="$(date +%H%M%S)$(printf '%02d' $((RANDOM % 100)))"  # 8 chars, e.g. 1530457
+echo "┌─ RUN_TAG=$RUN_TAG (used to suffix Tenant B slug, property codes, B-side usernames)"
+
 PASS=0; FAIL=0; TOTAL=0; SKIP=0
 SKIP_SEED=false
 FULL_API=true   # set false with --no-full-api to skip Phase 6b smoke coverage
@@ -280,9 +286,14 @@ echo ""
 # ── 0.1  Bootstrap Tenant B ─────────────────────────────────────────────
 echo "── 0.1  Bootstrap Tenant B ──────────────────────────────────────────"
 
-TENANT_B_USER="beacon.admin"
+TENANT_B_USER="beacon.admin.${RUN_TAG}"
 TENANT_B_PASS="BeaconPass123!"
-TENANT_B_EMAIL="admin@beaconhotels.test"
+TENANT_B_EMAIL="admin+${RUN_TAG}@beaconhotels.test"
+TENANT_B_SLUG="beacon-hotels-${RUN_TAG}"
+TENANT_B_NAME="Beacon Hotels ${RUN_TAG}"
+PROPERTY_B1_CODE="BCN-HV-${RUN_TAG}"
+PROPERTY_B2_CODE="BCN-MT-${RUN_TAG}"
+PROPERTY_A2_CODE="TAR-BH-${RUN_TAG}"
 
 # Check if Tenant B already exists via API (system admin endpoint)
 echo "  Generating system admin token..."
@@ -299,7 +310,7 @@ echo "  ✓ System admin token acquired"
 # Look up tenant by slug via system admin API
 SYS_RESP=$(curl -s "$CORE_SVC/v1/system/tenants?limit=200" \
   -H "Authorization: Bearer $SYS_TOKEN")
-EXISTING_B=$(echo "$SYS_RESP" | jq -r '.tenants // [] | map(select(.slug == "beacon-hotels")) | .[0].id // empty' 2>/dev/null)
+EXISTING_B=$(echo "$SYS_RESP" | jq -r --arg slug "$TENANT_B_SLUG" '.tenants // [] | map(select(.slug == $slug)) | .[0].id // empty' 2>/dev/null)
 
 if [[ -n "$EXISTING_B" ]]; then
   TID_B="$EXISTING_B"
@@ -313,9 +324,9 @@ if [[ -n "$EXISTING_B" ]]; then
     code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
       "$GW/v1/properties?tenant_id=$TID_B&limit=10" \
       -H "Authorization: Bearer $TOKEN_B")
-    # Pick BCN-HV explicitly (Beacon Harborview = property B1)
-    PID_B1=$(jq -r '(if type == "array" then . else (.data // .properties // []) end) | map(select(.property_code == "BCN-HV")) | .[0].id // empty' "$RESP_FILE" 2>/dev/null)
-    # Fallback: any property if BCN-HV not present yet
+    # Pick this run's B1 property by dynamic code
+    PID_B1=$(jq -r --arg code "$PROPERTY_B1_CODE" '(if type == "array" then . else (.data // .properties // []) end) | map(select(.property_code == $code)) | .[0].id // empty' "$RESP_FILE" 2>/dev/null)
+    # Fallback: any property if dynamic code not present yet
     if [[ -z "$PID_B1" ]]; then
       PID_B1=$(jq -r '(if type == "array" then .[0] else (.data[0] // .properties[0] // null) end) | .id // empty' "$RESP_FILE" 2>/dev/null)
     fi
@@ -329,18 +340,18 @@ else
     -H "Content-Type: application/json" \
     -d "{
       \"tenant\": {
-        \"name\": \"Beacon Hotels\",
-        \"slug\": \"beacon-hotels\",
+        \"name\": \"$TENANT_B_NAME\",
+        \"slug\": \"$TENANT_B_SLUG\",
         \"type\": \"INDEPENDENT\",
         \"email\": \"$TENANT_B_EMAIL\"
       },
       \"property\": {
-        \"property_name\": \"Beacon Harborview\",
-        \"property_code\": \"BCN-HV\",
+        \"property_name\": \"Beacon Harborview $RUN_TAG\",
+        \"property_code\": \"$PROPERTY_B1_CODE\",
         \"property_type\": \"hotel\",
         \"star_rating\": 4,
         \"total_rooms\": 80,
-        \"email\": \"harbor@beaconhotels.test\",
+        \"email\": \"harbor+${RUN_TAG}@beaconhotels.test\",
         \"timezone\": \"America/Chicago\",
         \"currency\": \"USD\"
       },
@@ -407,24 +418,24 @@ echo "── 0.2  Create Property A2 ──────────────�
 
 TOKEN="$TOKEN_A"
 get "$GW/v1/properties?tenant_id=$TID_A" >/dev/null
-EXISTING_A2=$(resp_ffirst '.property_code == "TAR-BH"' "id")
+EXISTING_A2=$(resp_ffirst ".property_code == \"$PROPERTY_A2_CODE\"" "id")
 if [[ -n "$EXISTING_A2" ]]; then
   PID_A2="$EXISTING_A2"
   echo "  ℹ Property A2 already exists: $PID_A2"
 else
   code=$(post "$GW/v1/properties" \
-    "{\"tenant_id\":\"$TID_A\",\"property_name\":\"Tartware Beach Resort\",\"property_code\":\"TAR-BH\",\"property_type\":\"RESORT\",\"star_rating\":4,\"total_rooms\":100,\"email\":\"beach@tartware.test\",\"currency\":\"USD\",\"timezone\":\"America/New_York\"}")
+    "{\"tenant_id\":\"$TID_A\",\"property_name\":\"Tartware Beach Resort $RUN_TAG\",\"property_code\":\"$PROPERTY_A2_CODE\",\"property_type\":\"RESORT\",\"star_rating\":4,\"total_rooms\":100,\"email\":\"beach+${RUN_TAG}@tartware.test\",\"currency\":\"USD\",\"timezone\":\"America/New_York\"}")
   if [[ "$code" =~ ^2 ]]; then
     PID_A2=$(jq -r '.id // .data.id // .property_id // empty' "$RESP_FILE" 2>/dev/null)
     if [[ -z "$PID_A2" ]]; then
       get "$GW/v1/properties?tenant_id=$TID_A" >/dev/null
-      PID_A2=$(resp_ffirst '.property_code == "TAR-BH"' "id")
+      PID_A2=$(resp_ffirst ".property_code == \"$PROPERTY_A2_CODE\"" "id")
     fi
     echo "  ✓ Property A2 created: $PID_A2"
   else
     echo "  ⚠ Could not create Property A2 (HTTP $code)"
     get "$GW/v1/properties?tenant_id=$TID_A" >/dev/null
-    PID_A2=$(resp_ffirst '.property_code == "TAR-BH"' "id")
+    PID_A2=$(resp_ffirst ".property_code == \"$PROPERTY_A2_CODE\"" "id")
     if [[ -n "$PID_A2" ]]; then echo "  ℹ Found via API: $PID_A2"; fi
   fi
 fi
@@ -436,24 +447,24 @@ echo "── 0.3  Create Property B2 ──────────────�
 
 TOKEN="$TOKEN_B"
 get "$GW/v1/properties?tenant_id=$TID_B" >/dev/null
-EXISTING_B2=$(resp_ffirst '.property_code == "BCN-MT"' "id")
+EXISTING_B2=$(resp_ffirst ".property_code == \"$PROPERTY_B2_CODE\"" "id")
 if [[ -n "$EXISTING_B2" ]]; then
   PID_B2="$EXISTING_B2"
   echo "  ℹ Property B2 already exists: $PID_B2"
 else
   code=$(post "$GW/v1/properties" \
-    "{\"tenant_id\":\"$TID_B\",\"property_name\":\"Beacon Mountain Lodge\",\"property_code\":\"BCN-MT\",\"property_type\":\"RESORT\",\"star_rating\":3,\"total_rooms\":60,\"email\":\"mountain@beaconhotels.test\",\"currency\":\"USD\",\"timezone\":\"America/Denver\"}")
+    "{\"tenant_id\":\"$TID_B\",\"property_name\":\"Beacon Mountain Lodge $RUN_TAG\",\"property_code\":\"$PROPERTY_B2_CODE\",\"property_type\":\"RESORT\",\"star_rating\":3,\"total_rooms\":60,\"email\":\"mountain+${RUN_TAG}@beaconhotels.test\",\"currency\":\"USD\",\"timezone\":\"America/Denver\"}")
   if [[ "$code" =~ ^2 ]]; then
     PID_B2=$(jq -r '.id // .data.id // .property_id // empty' "$RESP_FILE" 2>/dev/null)
     if [[ -z "$PID_B2" ]]; then
       get "$GW/v1/properties?tenant_id=$TID_B" >/dev/null
-      PID_B2=$(resp_ffirst '.property_code == "BCN-MT"' "id")
+      PID_B2=$(resp_ffirst ".property_code == \"$PROPERTY_B2_CODE\"" "id")
     fi
     echo "  ✓ Property B2 created: $PID_B2"
   else
     echo "  ⚠ Could not create Property B2 (HTTP $code)"
     get "$GW/v1/properties?tenant_id=$TID_B" >/dev/null
-    PID_B2=$(resp_ffirst '.property_code == "BCN-MT"' "id")
+    PID_B2=$(resp_ffirst ".property_code == \"$PROPERTY_B2_CODE\"" "id")
     if [[ -n "$PID_B2" ]]; then echo "  ℹ Found via API: $PID_B2"; fi
   fi
 fi
@@ -496,7 +507,7 @@ create_room() {
 }
 
 # Property A2 — room type + rooms
-RTID_A2=$(create_room_type "$TOKEN_A" "$TID_A" "$PID_A2" "Beach Standard" "BST" "179.00")
+RTID_A2=$(create_room_type "$TOKEN_A" "$TID_A" "$PID_A2" "Beach Standard $RUN_TAG" "BST-${RUN_TAG}" "179.00")
 echo "  Room type A2: ${RTID_A2:-(FAILED)}"
 if [[ -n "$RTID_A2" ]]; then
   for r in 501 502 503 504 505 506 507 508 509 510; do
@@ -509,7 +520,7 @@ if [[ -n "$RTID_A2" ]]; then
 fi
 
 # Property B1 — room type + rooms
-RTID_B1=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B1" "Harbor King" "HBK" "189.00")
+RTID_B1=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B1" "Harbor King $RUN_TAG" "HBK-${RUN_TAG}" "189.00")
 echo "  Room type B1: ${RTID_B1:-(FAILED)}"
 if [[ -n "$RTID_B1" ]]; then
   for r in 101 102 103 104 105 106 107 108 109 110; do
@@ -522,7 +533,7 @@ if [[ -n "$RTID_B1" ]]; then
 fi
 
 # Property B2 — room type + rooms
-RTID_B2=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B2" "Mountain Cabin" "MTC" "149.00")
+RTID_B2=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B2" "Mountain Cabin $RUN_TAG" "MTC-${RUN_TAG}" "149.00")
 echo "  Room type B2: ${RTID_B2:-(FAILED)}"
 if [[ -n "$RTID_B2" ]]; then
   for r in 201 202 203 204 205 206 207 208 209 210; do
@@ -713,7 +724,7 @@ run_billing_pipeline() {
   echo "── ${tag} — Guest Creation ────────────────────────────────────────"
   if ! $SKIP_SEED; then
     local guest_first="Test" guest_last="Guest-${tag}"
-    local guest_email="${tag,,}@tartware-test.local"
+    local guest_email="${tag,,}-${RUN_TAG}@tartware-test.local"
     local phone1="+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))"
     seed_rest "REST guest: $guest_first $guest_last" \
       "$GW/v1/guests" \
@@ -734,10 +745,10 @@ run_billing_pipeline() {
     if ! $SKIP_SEED; then
       send_command "CMD tax: Sales Tax 8.875%" \
         "billing.tax_config.create" \
-        "{\"property_id\":\"$pid\",\"tax_name\":\"State Sales Tax\",\"tax_code\":\"SST-$tag\",\"tax_rate\":8.875,\"tax_type\":\"sales_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\",\"FOOD_BEVERAGE\",\"OTHER\"],\"is_active\":true}"
+        "{\"property_id\":\"$pid\",\"tax_name\":\"State Sales Tax\",\"tax_code\":\"SST-$tag-${RUN_TAG}\",\"tax_rate\":8.875,\"tax_type\":\"sales_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\",\"FOOD_BEVERAGE\",\"OTHER\"],\"is_active\":true}"
       send_command "CMD tax: City Occupancy 5.875%" \
         "billing.tax_config.create" \
-        "{\"property_id\":\"$pid\",\"tax_name\":\"City Occupancy Tax\",\"tax_code\":\"COT-$tag\",\"tax_rate\":5.875,\"tax_type\":\"occupancy_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\"],\"is_active\":true}"
+        "{\"property_id\":\"$pid\",\"tax_name\":\"City Occupancy Tax\",\"tax_code\":\"COT-$tag-${RUN_TAG}\",\"tax_rate\":5.875,\"tax_type\":\"occupancy_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\"],\"is_active\":true}"
       wait_kafka 5
     fi
     local tax_count
@@ -772,7 +783,7 @@ run_billing_pipeline() {
   if [[ "$mode" == "full" ]]; then
     echo "── ${tag} — Second Reservation ──────────────────────────────────────"
     if ! $SKIP_SEED; then
-      local guest2_email="${tag,,}-b@tartware-test.local"
+      local guest2_email="${tag,,}-b-${RUN_TAG}@tartware-test.local"
       local phone2="+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))"
       seed_rest "REST guest 2" \
         "$GW/v1/guests" \
@@ -851,7 +862,7 @@ run_billing_pipeline() {
   # ── Payments ──
   echo "── ${tag} — Payments ────────────────────────────────────────────────"
   if ! $SKIP_SEED && [[ -n "$res_id" && -n "$guest_id" ]]; then
-    payref1="CC-$tag-$UNIQUE-001"
+    payref1="CC-$tag-${RUN_TAG}-${UNIQUE}-001"
     send_command "CMD payment: CC \$300" \
       "billing.payment.capture" \
       "{\"payment_reference\":\"$payref1\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":300.00,\"payment_method\":\"CREDIT_CARD\"}"
@@ -859,7 +870,7 @@ run_billing_pipeline() {
     if [[ "$mode" == "full" ]]; then
       send_command "CMD payment: Cash \$100" \
         "billing.payment.capture" \
-        "{\"payment_reference\":\"CASH-$tag-$UNIQUE-001\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":100.00,\"payment_method\":\"CASH\"}"
+        "{\"payment_reference\":\"CASH-$tag-${RUN_TAG}-${UNIQUE}-001\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":100.00,\"payment_method\":\"CASH\"}"
     fi
 
     wait_kafka 8
