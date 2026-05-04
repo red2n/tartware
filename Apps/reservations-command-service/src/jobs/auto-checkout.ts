@@ -41,23 +41,31 @@ const runAutoCheckout = async (): Promise<void> => {
   let successes = 0;
   let failures = 0;
 
-  for (const row of rows) {
-    try {
-      await checkOutReservation(row.tenant_id, {
-        reservation_id: row.id,
-        express: true,
-        notes: "Auto-checkout: departure date reached",
-        metadata: { auto_checkout: true },
-      });
-      successes++;
-    } catch (err) {
-      failures++;
-      logger.error(
-        { err, reservationId: row.id, tenantId: row.tenant_id },
-        "Auto-checkout failed for reservation",
-      );
+  // Bounded concurrency: avoid storming downstream services + DB pool.
+  const CONCURRENCY = 8;
+  const queue = [...rows];
+  const worker = async (): Promise<void> => {
+    while (queue.length > 0) {
+      const row = queue.shift();
+      if (!row) return;
+      try {
+        await checkOutReservation(row.tenant_id, {
+          reservation_id: row.id,
+          express: true,
+          notes: "Auto-checkout: departure date reached",
+          metadata: { auto_checkout: true },
+        });
+        successes++;
+      } catch (err) {
+        failures++;
+        logger.error(
+          { err, reservationId: row.id, tenantId: row.tenant_id },
+          "Auto-checkout failed for reservation",
+        );
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, rows.length) }, () => worker()));
 
   logger.info({ total: rows.length, successes, failures }, "Auto-checkout sweep cycle completed");
 };

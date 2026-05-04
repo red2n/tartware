@@ -1,19 +1,17 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
+import { pool } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   observeCommandDuration,
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import {
-  checkCommandIdempotency,
-  recordCommandIdempotency,
-} from "../repositories/idempotency-repository.js";
 import {
   adjustInvoice,
   ageArEntries,
@@ -442,8 +440,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeBillingCommand,
   publishDlqEvent,
-  checkIdempotency: checkCommandIdempotency,
-  recordIdempotency: recordCommandIdempotency,
+  ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
   isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,

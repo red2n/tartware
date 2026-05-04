@@ -14,10 +14,8 @@
  */
 
 import { randomUUID } from "node:crypto";
-
-import type { PoolClient } from "pg";
-
 import type { BillingAuditEventInput } from "@tartware/schemas";
+import type { PoolClient } from "pg";
 
 import { query, queryWithClient } from "./db.js";
 
@@ -98,7 +96,10 @@ function buildParams(e: BillingAuditEventInput): unknown[] {
  *
  * @param client - Active pg PoolClient with an open transaction.
  */
-export async function auditWithClient(client: PoolClient, event: BillingAuditEventInput): Promise<void> {
+export async function auditWithClient(
+  client: PoolClient,
+  event: BillingAuditEventInput,
+): Promise<void> {
   await queryWithClient(client, INSERT_AUDIT_SQL, buildParams(event));
 }
 

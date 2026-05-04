@@ -24,10 +24,9 @@
  *   Generic: X-Webhook-Signature: sha256=<hex>
  */
 
+import { BillingPaymentGatewayProviderEnum } from "@tartware/schemas";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-
-import { BillingPaymentGatewayProviderEnum } from "@tartware/schemas";
 
 import {
   dispatchWebhookEvent,

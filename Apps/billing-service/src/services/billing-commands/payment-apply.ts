@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query } from "../../lib/db.js";
 import {
   type BillingPaymentApplyCommand,
@@ -95,6 +96,23 @@ const applyPaymentToInvoice = async (
   if (!invoiceId) {
     throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
   }
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actor,
+    action: "PAYMENT_APPLY",
+    entityType: "invoice",
+    entityId: invoiceId,
+    severity: "INFO",
+    isPciRelevant: true,
+    description: `Applied payment ${command.payment_id} (${applyAmount}) to invoice ${invoiceId}`,
+    newValues: {
+      payment_id: command.payment_id,
+      invoice_id: invoiceId,
+      amount: applyAmount,
+      total_amount: rows[0]?.total_amount,
+      paid_amount: rows[0]?.paid_amount,
+    },
+  });
   return invoiceId;
 };
 

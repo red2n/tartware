@@ -23,20 +23,31 @@
  *     so each `postGlPair` call costs ONE round-trip on the steady-state path.
  */
 
+import { createReferenceCache } from "@tartware/fastify-server/reference-cache";
 import type { GlPostingPairInput } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { queryWithClient } from "./db.js";
 
 // ---------------------------------------------------------------------------
-// Daily batch resolver with in-process cache.
+// Daily batch resolver — backed by shared reference cache (LRU + TTL).
 // Cache key: `${tenantId}|${propertyId}|${businessDate}`
-// Entries expire automatically when the date rolls over (size-bounded LRU).
+// TTL is 26 h so a still-active batch survives a midnight rollover; LRU
+// eviction caps memory growth on long-lived processes.
 // ---------------------------------------------------------------------------
 
-type BatchCacheKey = string;
-const BATCH_CACHE = new Map<BatchCacheKey, string>();
-const BATCH_CACHE_MAX = 4096; // bounded so a long-lived process can't leak
+type BatchKey = { tenantId: string; propertyId: string; businessDate: string; currency: string };
+
+const BATCH_CACHE = createReferenceCache<BatchKey, string>({
+  name: "gl-batch",
+  maxSize: 4096,
+  ttlMs: 26 * 60 * 60 * 1000,
+  keyFn: (k) => `${k.tenantId}|${k.propertyId}|${k.businessDate}`,
+  // Loader is unused — `getOrOpenDailyBatch` does the upsert directly because
+  // the helper needs a `PoolClient` from the caller's transaction. We treat
+  // this cache as a write-through store: invalidate on miss, fill manually.
+  loader: async () => null,
+});
 
 const buildBatchNumber = (businessDate: string): string => {
   // YYYYMMDD-PMS — one batch per day per property
@@ -56,8 +67,13 @@ const getOrOpenDailyBatch = async (
     currency: string;
   },
 ): Promise<string> => {
-  const cacheKey: BatchCacheKey = `${params.tenantId}|${params.propertyId}|${params.businessDate}`;
-  const cached = BATCH_CACHE.get(cacheKey);
+  const cacheKey: BatchKey = {
+    tenantId: params.tenantId,
+    propertyId: params.propertyId,
+    businessDate: params.businessDate,
+    currency: params.currency,
+  };
+  const cached = await BATCH_CACHE.get(cacheKey);
   if (cached) {
     return cached;
   }
@@ -99,14 +115,7 @@ const getOrOpenDailyBatch = async (
     );
   }
 
-  if (BATCH_CACHE.size >= BATCH_CACHE_MAX) {
-    // Simple bounded eviction — drop the oldest entry. We don't need strict LRU.
-    const firstKey = BATCH_CACHE.keys().next().value;
-    if (firstKey !== undefined) {
-      BATCH_CACHE.delete(firstKey);
-    }
-  }
-  BATCH_CACHE.set(cacheKey, batchId);
+  BATCH_CACHE.primeMany([[cacheKey, batchId]]);
   return batchId;
 };
 
@@ -218,25 +227,41 @@ export const postGlPair = async (
 // In-process cache; refreshed on first miss per tenant per code.
 // ---------------------------------------------------------------------------
 
-type ChargeCodeMappingCacheKey = string; // `${tenantId}|${chargeCode}`
-const CHARGE_CODE_MAPPING_CACHE = new Map<
-  ChargeCodeMappingCacheKey,
-  { debit: string; credit: string; usali: string | null; department: string | null }
->();
-const CHARGE_CODE_MAPPING_CACHE_MAX = 8192;
+type ChargeCodeMapping = {
+  debit: string;
+  credit: string;
+  usali: string | null;
+  department: string | null;
+};
+
+const CHARGE_CODE_MAPPING_CACHE = createReferenceCache<
+  { tenantId: string; chargeCode: string },
+  ChargeCodeMapping
+>({
+  name: "charge-code-gl-mapping",
+  maxSize: 8192,
+  ttlMs: 60 * 60 * 1000, // 1 h
+  keyFn: (k) => `${k.tenantId}|${k.chargeCode}`,
+  // Write-through pattern — the lookup helper performs the DB read using the
+  // caller's PoolClient (preserves RLS / transaction scope) and primes here.
+  loader: async () => null,
+});
+
+/**
+ * Invalidate a single tenant/charge-code mapping after a write command.
+ * Call this from any handler that modifies `charge_code_gl_mapping`.
+ */
+export const invalidateChargeCodeMapping = (tenantId: string, chargeCode: string): void => {
+  CHARGE_CODE_MAPPING_CACHE.invalidate({ tenantId, chargeCode });
+};
 
 export const lookupChargeCodeMapping = async (
   client: PoolClient,
   tenantId: string,
   chargeCode: string,
-): Promise<{
-  debit: string;
-  credit: string;
-  usali: string | null;
-  department: string | null;
-} | null> => {
-  const key = `${tenantId}|${chargeCode}`;
-  const cached = CHARGE_CODE_MAPPING_CACHE.get(key);
+): Promise<ChargeCodeMapping | null> => {
+  const cacheKey = { tenantId, chargeCode };
+  const cached = await CHARGE_CODE_MAPPING_CACHE.get(cacheKey);
   if (cached) {
     return cached;
   }
@@ -262,20 +287,13 @@ export const lookupChargeCodeMapping = async (
     return null;
   }
 
-  if (CHARGE_CODE_MAPPING_CACHE.size >= CHARGE_CODE_MAPPING_CACHE_MAX) {
-    const firstKey = CHARGE_CODE_MAPPING_CACHE.keys().next().value;
-    if (firstKey !== undefined) {
-      CHARGE_CODE_MAPPING_CACHE.delete(firstKey);
-    }
-  }
-
-  const value = {
+  const value: ChargeCodeMapping = {
     debit: row.debit_account,
     credit: row.credit_account,
     usali: row.usali_category,
     department: row.department_code,
   };
-  CHARGE_CODE_MAPPING_CACHE.set(key, value);
+  CHARGE_CODE_MAPPING_CACHE.primeMany([[cacheKey, value]]);
   return value;
 };
 

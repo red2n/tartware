@@ -4,6 +4,12 @@ export type TenantThrottlerOptions = {
 	minSpacingMs: number;
 	maxJitterMs: number;
 	cleanupIntervalMs?: number;
+	/**
+	 * Hard cap on number of tenants tracked. When exceeded, oldest entries (by
+	 * insertion order) are evicted. Prevents unbounded memory growth on
+	 * high-tenant deployments. Default: 50_000.
+	 */
+	maxTrackedTenants?: number;
 	now?: () => number;
 	delayFn?: (ms: number) => Promise<void>;
 	random?: () => number;
@@ -34,6 +40,10 @@ export const createTenantThrottler = (
 	const cleanupInterval = Math.max(
 		options.cleanupIntervalMs ?? Math.max(minSpacing * 10, 60_000),
 		1_000,
+	);
+	const maxTrackedTenants = Math.max(
+		1,
+		Math.trunc(options.maxTrackedTenants ?? 50_000),
 	);
 
 	const lastPublished = new Map<string, number>();
@@ -82,6 +92,15 @@ export const createTenantThrottler = (
 			await delayFn(waitMs);
 		}
 
+		// LRU bump: re-insert key so it becomes most-recently-used in iteration order.
+		lastPublished.delete(key);
 		lastPublished.set(key, startedAt + waitMs);
+
+		// Hard cap: evict oldest entries (front of insertion order) when over the limit.
+		while (lastPublished.size > maxTrackedTenants) {
+			const oldestKey = lastPublished.keys().next().value;
+			if (oldestKey === undefined) break;
+			lastPublished.delete(oldestKey);
+		}
 	};
 };

@@ -167,6 +167,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
         guest_name,
         guest_email,
         confirmation_number,
+        cancellation_policy_snapshot,
         created_at,
         updated_at
       ) VALUES (
@@ -174,7 +175,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
         $6, $7, $8,
         $9, $10, $11, $12,
         $13, $14, $15,
-        $16, $17, NOW(), NOW()
+        $16, $17, $18, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE
         SET
@@ -193,6 +194,8 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
           guest_name = EXCLUDED.guest_name,
           guest_email = EXCLUDED.guest_email,
           confirmation_number = EXCLUDED.confirmation_number,
+          -- Never overwrite a non-null snapshot with null on event re-delivery.
+          cancellation_policy_snapshot = COALESCE(reservations.cancellation_policy_snapshot, EXCLUDED.cancellation_policy_snapshot),
           updated_at = NOW();
     `,
     [
@@ -213,6 +216,9 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
       guestName,
       guestEmail,
       confirmation,
+      payload.cancellation_policy_snapshot
+        ? JSON.stringify(payload.cancellation_policy_snapshot)
+        : null,
     ],
   );
 

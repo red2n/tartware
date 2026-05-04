@@ -6,12 +6,14 @@
  * All handler implementations live in billing-command-service / billing-commands.
  */
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
+import { pool } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   observeCommandDuration,
@@ -79,6 +81,8 @@ const { start, shutdown } = createConsumerLifecycle({
   publishDlqEvent,
   isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
+  ...createIdempotencyHandlers(pool),
+  idempotencyFailureMode: "fail-open",
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

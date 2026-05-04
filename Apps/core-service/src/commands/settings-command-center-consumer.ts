@@ -4,6 +4,7 @@ import {
   createCommandCenterHandlers,
 } from "@tartware/command-consumer-utils";
 import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
+import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { enterTenantScope } from "@tartware/config/db";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import { createServiceLogger } from "@tartware/telemetry";
@@ -12,6 +13,7 @@ import type { Consumer } from "kafkajs";
 import { config } from "../config.js";
 import { kafka } from "../kafka/settings-kafka-client.js";
 import { publishDlqEvent } from "../kafka/settings-kafka-producer.js";
+import { pool } from "../lib/db.js";
 import {
   observeCommandDuration,
   recordCommandOutcome,
@@ -138,6 +140,8 @@ const { handleBatch } = createCommandCenterHandlers({
   buildDlqPayload,
   routeCommand: routeSettingsCommand,
   commandLabel: "settings",
+  ...createIdempotencyHandlers(pool),
+  idempotencyFailureMode: "fail-open",
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

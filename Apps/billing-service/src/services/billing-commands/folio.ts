@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
@@ -71,6 +72,24 @@ export const createFolio = async (payload: unknown, context: CommandContext): Pr
     { folioId, folioType: command.folio_type, folioNumber },
     "Standalone folio created",
   );
+  auditAsync({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    userId: actor,
+    action: "FOLIO_CREATE",
+    entityType: "folio",
+    entityId: folioId,
+    severity: "INFO",
+    description: `Folio ${folioNumber} created (type=${command.folio_type})`,
+    newValues: {
+      folio_id: folioId,
+      folio_number: folioNumber,
+      folio_type: command.folio_type,
+      reservation_id: command.reservation_id ?? null,
+      guest_id: command.guest_id ?? null,
+      currency,
+    },
+  });
   return folioId;
 };
 
@@ -152,6 +171,17 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
       { folioId, newStatus, balance, reservationId: command.reservation_id },
       "Folio closed/settled",
     );
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      userId: actor,
+      action: newStatus === "SETTLED" ? "FOLIO_SETTLE" : "FOLIO_CLOSE",
+      entityType: "folio",
+      entityId: folioId,
+      severity: "INFO",
+      description: `Folio ${folioId} \u2192 ${newStatus} (balance=${balance.toFixed(2)})`,
+      oldValues: { folio_status: folio.folio_status },
+      newValues: { folio_status: newStatus, balance, force: command.force ?? false },
+    });
     return folioId as string;
   });
 };
@@ -202,6 +232,21 @@ const applyFolioTransfer = async (
       `,
       [context.tenantId, command.amount, fromFolioId, actorId, toFolioId],
     );
+
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      userId: actor,
+      action: "FOLIO_TRANSFER",
+      entityType: "folio",
+      entityId: toFolioId,
+      severity: "INFO",
+      description: `Transferred ${command.amount} from folio ${fromFolioId} to ${toFolioId}`,
+      newValues: {
+        from_folio_id: fromFolioId,
+        to_folio_id: toFolioId,
+        amount: command.amount,
+      },
+    });
   });
 
   return toFolioId;
@@ -268,6 +313,17 @@ export const reopenFolio = async (payload: unknown, context: CommandContext): Pr
     );
 
     appLogger.info({ folioId, previousStatus: folio.folio_status }, "Folio reopened");
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      userId: actorId,
+      action: "FOLIO_REOPEN",
+      entityType: "folio",
+      entityId: folioId,
+      severity: "WARNING",
+      description: `Folio ${folioId} reopened (was ${folio.folio_status}). Reason: ${command.reason}`,
+      oldValues: { folio_status: folio.folio_status },
+      newValues: { folio_status: "OPEN", reason: command.reason },
+    });
     return folioId as string;
   });
 };
@@ -407,6 +463,27 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
       },
       "Folio merge complete",
     );
+
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      userId: actorId,
+      action: "FOLIO_MERGE",
+      entityType: "folio",
+      entityId: command.target_folio_id,
+      severity: "WARNING",
+      description: `Merged folio ${command.source_folio_id} into ${command.target_folio_id}. Reason: ${command.reason}`,
+      oldValues: {
+        source_folio_id: command.source_folio_id,
+        source_balance: sourceBalance,
+        source_charges: sourceCharges,
+        source_credits: sourceCredits,
+        source_payments: sourcePayments,
+      },
+      newValues: {
+        target_folio_id: command.target_folio_id,
+        reason: command.reason,
+      },
+    });
 
     return command.target_folio_id;
   });

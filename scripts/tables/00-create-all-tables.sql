@@ -134,6 +134,7 @@
 \ir 04-financial/75_fiscal_periods.sql
 \ir 04-financial/76_folio_windows.sql
 \ir 04-financial/77_payment_gateway_webhooks.sql
+\ir 04-financial/78_night_audit_runs.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)

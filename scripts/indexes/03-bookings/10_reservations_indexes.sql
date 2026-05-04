@@ -62,6 +62,12 @@ CREATE INDEX IF NOT EXISTS idx_reservations_guest_phone ON reservations(guest_ph
 -- Full-text search on guest name
 CREATE INDEX IF NOT EXISTS idx_reservations_guest_name_trgm ON reservations USING gin(guest_name gin_trgm_ops) WHERE deleted_at IS NULL;
 
+-- Trigram search on confirmation_number (front-desk "find by partial code" UX)
+CREATE INDEX IF NOT EXISTS idx_reservations_confirmation_trgm ON reservations USING gin(confirmation_number gin_trgm_ops) WHERE deleted_at IS NULL;
+
+-- Trigram search on guest_email (substring search from reservation list)
+CREATE INDEX IF NOT EXISTS idx_reservations_guest_email_trgm ON reservations USING gin(guest_email gin_trgm_ops) WHERE deleted_at IS NULL;
+
 -- Financial queries
 CREATE INDEX IF NOT EXISTS idx_reservations_total_amount ON reservations(total_amount) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_balance_due ON reservations(balance_due) WHERE balance_due > 0 AND deleted_at IS NULL;

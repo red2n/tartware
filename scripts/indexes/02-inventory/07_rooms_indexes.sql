@@ -18,6 +18,9 @@ CREATE INDEX IF NOT EXISTS idx_rooms_room_type_id ON rooms(room_type_id) WHERE d
 CREATE INDEX IF NOT EXISTS idx_rooms_room_number ON rooms(room_number) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_rooms_property_number ON rooms(tenant_id, property_id, room_number) WHERE deleted_at IS NULL;
 
+-- Trigram search on room_number ("find rooms starting with 12")
+CREATE INDEX IF NOT EXISTS idx_rooms_room_number_trgm ON rooms USING gin(room_number gin_trgm_ops) WHERE deleted_at IS NULL;
+
 -- Status indexes (critical for availability)
 CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_rooms_housekeeping_status ON rooms(housekeeping_status) WHERE deleted_at IS NULL;

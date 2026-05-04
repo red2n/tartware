@@ -1,20 +1,18 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
 
 import { commandCenterConfig, serviceConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishCommandDlqEvent } from "../kafka/producer.js";
+import { pool } from "../lib/db.js";
 import {
   observeCommandDuration,
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
 import { reservationsLogger } from "../logger.js";
-import {
-  checkCommandIdempotency,
-  recordCommandIdempotency,
-} from "../repositories/idempotency-repository.js";
 import {
   GroupAddRoomsCommandSchema,
   GroupBillingSetupCommandSchema,
@@ -330,8 +328,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeReservationCommand,
   publishDlqEvent: publishCommandDlqEvent,
-  checkIdempotency: checkCommandIdempotency,
-  recordIdempotency: recordCommandIdempotency,
+  ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
   onTenantResolved: enterTenantScope,
   metrics: {

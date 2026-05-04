@@ -23,6 +23,9 @@ CREATE INDEX IF NOT EXISTS idx_guests_full_name ON guests(tenant_id, first_name,
 -- Full-text search on names
 CREATE INDEX IF NOT EXISTS idx_guests_name_trgm ON guests USING gin((first_name || ' ' || last_name) gin_trgm_ops) WHERE deleted_at IS NULL;
 
+-- Trigram search on email (substring/typo-tolerant guest lookup)
+CREATE INDEX IF NOT EXISTS idx_guests_email_trgm ON guests USING gin(email gin_trgm_ops) WHERE deleted_at IS NULL;
+
 -- Phone lookup
 CREATE INDEX IF NOT EXISTS idx_guests_phone ON guests(phone) WHERE deleted_at IS NULL;
 

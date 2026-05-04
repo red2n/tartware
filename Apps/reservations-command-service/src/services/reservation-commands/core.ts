@@ -124,6 +124,7 @@ export const createReservation = async (
       status: command.status ?? "PENDING",
       source: command.source ?? "DIRECT",
       reservation_type: command.reservation_type ?? "TRANSIENT",
+      cancellation_policy_snapshot: rateResolution.cancellationPolicySnapshot ?? null,
     },
   };
 

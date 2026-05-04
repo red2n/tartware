@@ -20,6 +20,9 @@ CREATE INDEX IF NOT EXISTS idx_room_types_property_active ON room_types(property
 CREATE INDEX IF NOT EXISTS idx_room_types_code ON room_types(type_code) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_room_types_name ON room_types(type_name) WHERE deleted_at IS NULL;
 
+-- Trigram search on type_name (autocomplete in booking UI)
+CREATE INDEX IF NOT EXISTS idx_room_types_name_trgm ON room_types USING gin(type_name gin_trgm_ops) WHERE deleted_at IS NULL;
+
 -- Category filter
 CREATE INDEX IF NOT EXISTS idx_room_types_category ON room_types(category) WHERE deleted_at IS NULL;
 

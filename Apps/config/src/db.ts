@@ -56,8 +56,12 @@ export interface DbPoolConfig {
   ssl: boolean;
   max: number;
   idleTimeoutMillis: number;
-  /** PostgreSQL statement_timeout in ms (0 = no limit). Default: 30 000 */
+  /** PostgreSQL statement_timeout in ms (0 = no limit). Default: 15 000 */
   statementTimeoutMs?: number;
+  /** Client-side query_timeout in ms (works under PgBouncer). Default: 20 000 */
+  queryTimeoutMs?: number;
+  /** idle_in_transaction_session_timeout in ms, applied per-tx. Default: 10 000 */
+  idleInTransactionTimeoutMs?: number;
   /** Connection acquire timeout in ms. Default: 5 000 */
   connectionTimeoutMs?: number;
 }
@@ -135,6 +139,8 @@ export function createDbPool(dbConfig: DbPoolConfig, logger: ParentLogger): DbPo
     max: dbConfig.max,
     idleTimeoutMillis: dbConfig.idleTimeoutMillis,
     connectionTimeoutMillis: dbConfig.connectionTimeoutMs ?? 5_000,
+    // node-pg query_timeout is a client-side timer; safe under PgBouncer transaction mode.
+    query_timeout: dbConfig.queryTimeoutMs ?? 20_000,
     // statement_timeout and keepAlive are session-level startup parameters
     // that PgBouncer transaction mode does not support. statement_timeout
     // must be applied per-transaction via SET LOCAL if needed.

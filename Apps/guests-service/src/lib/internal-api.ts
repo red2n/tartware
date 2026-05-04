@@ -5,6 +5,7 @@
  * calls rooms-service, guests-service, and core-service via HTTP.
  * Authenticates using a service account (login creds in config).
  */
+import { createCircuitBreaker } from "@tartware/fastify-server/circuit-breaker";
 import { config } from "../config.js";
 import { appLogger } from "./logger.js";
 
@@ -15,6 +16,22 @@ const INTERNAL_TIMEOUT_MS = 10_000;
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
+/** Per-host circuit breaker so a failing downstream doesn't drag every call down. */
+const breakers = new Map<string, ReturnType<typeof createCircuitBreaker>>();
+const breakerFor = (key: string) => {
+  let b = breakers.get(key);
+  if (!b) {
+    b = createCircuitBreaker({
+      name: `internal-api:${key}`,
+      failureThreshold: 5,
+      resetTimeoutMs: 30_000,
+      logger,
+    });
+    breakers.set(key, b);
+  }
+  return b;
+};
+
 /**
  * Obtain a JWT token via the core-service login endpoint.
  * Caches the token and refreshes when nearing expiry.
@@ -24,15 +41,17 @@ const getServiceToken = async (): Promise<string> => {
     return cachedToken;
   }
 
-  const response = await fetch(`${config.internalServices.coreServiceUrl}/v1/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: config.serviceAuth.username,
-      password: config.serviceAuth.password,
+  const response = await breakerFor("core-service").exec(() =>
+    fetch(`${config.internalServices.coreServiceUrl}/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: config.serviceAuth.username,
+        password: config.serviceAuth.password,
+      }),
+      signal: AbortSignal.timeout(INTERNAL_TIMEOUT_MS),
     }),
-    signal: AbortSignal.timeout(INTERNAL_TIMEOUT_MS),
-  });
+  );
 
   if (!response.ok) {
     const text = await response.text();
@@ -66,14 +85,16 @@ export const internalGet = async <T>(
     }
   }
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    signal: AbortSignal.timeout(INTERNAL_TIMEOUT_MS),
-  });
+  const response = await breakerFor(new URL(baseUrl).host).exec(() =>
+    fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(INTERNAL_TIMEOUT_MS),
+    }),
+  );
 
   if (!response.ok) {
     const text = await response.text();

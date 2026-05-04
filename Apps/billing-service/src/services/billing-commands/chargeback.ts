@@ -1,3 +1,4 @@
+import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -10,6 +11,7 @@ import {
   type CommandContext,
   resolveActorId,
   resolveFolioId,
+  SYSTEM_ACTOR_ID,
 } from "./common.js";
 
 /**
@@ -144,6 +146,22 @@ export const recordChargeback = async (
     },
     "Chargeback recorded",
   );
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: resolveActorId(context.initiatedBy),
+    action: "CHARGEBACK_RECORD",
+    entityType: "refund",
+    entityId: refundId ?? payment.id,
+    severity: "WARNING",
+    isPciRelevant: true,
+    description: `Chargeback recorded for payment ${payment.id} (amount=${command.chargeback_amount}, reason=${command.chargeback_reason})`,
+    newValues: {
+      payment_id: payment.id,
+      refund_id: refundId,
+      chargeback_amount: command.chargeback_amount,
+      chargeback_reason: command.chargeback_reason,
+    },
+  });
 
   return refundId ?? payment.id;
 };
@@ -279,6 +297,18 @@ export const updateChargebackStatus = async (
       },
       "Chargeback status updated",
     );
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      userId: actor ?? SYSTEM_ACTOR_ID,
+      action: "CHARGEBACK_STATUS_UPDATE",
+      entityType: "refund",
+      entityId: command.refund_id,
+      severity: command.chargeback_status === "LOST" ? "WARNING" : "INFO",
+      isPciRelevant: true,
+      description: `Chargeback ${command.refund_id} \u2192 ${command.chargeback_status} (was ${currentStatus})`,
+      oldValues: { chargeback_status: currentStatus },
+      newValues: { chargeback_status: command.chargeback_status },
+    });
 
     return command.refund_id;
   });

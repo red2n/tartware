@@ -121,6 +121,8 @@ export function buildDbConfig(configValues: z.infer<typeof databaseSchema>) {
     max: configValues.DB_POOL_MAX,
     idleTimeoutMillis: configValues.DB_POOL_IDLE_TIMEOUT_MS,
     statementTimeoutMs: configValues.DB_STATEMENT_TIMEOUT_MS,
+    queryTimeoutMs: configValues.DB_QUERY_TIMEOUT_MS,
+    idleInTransactionTimeoutMs: configValues.DB_IDLE_IN_TX_TIMEOUT_MS,
   };
 }
 
