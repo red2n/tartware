@@ -52,6 +52,7 @@ CREATE TABLE folios (
     total_charges DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     total_payments DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     total_credits DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    credit_balance DECIMAL(12, 2) NOT NULL DEFAULT 0.00, -- Guest credit balance (overpayment). USALI 12th Ed §7.3
     currency_code CHAR(3) DEFAULT 'USD',
 
     -- Billing Information

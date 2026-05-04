@@ -43,6 +43,8 @@ export {
   BillingLedgerPostCommandSchema,
   BillingNightAuditCommandSchema,
   BillingNoShowChargeCommandSchema,
+  type BillingOverpaymentHandleCommand,
+  BillingOverpaymentHandleCommandSchema,
   type BillingPaymentApplyCommand,
   BillingPaymentApplyCommandSchema,
   BillingPaymentAuthorizeCommandSchema,

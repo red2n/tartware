@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingCompPostCommandSchema } from "../../schemas/billing-commands.js";
@@ -46,7 +47,7 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
   const currency = (command.currency ?? "USD").toUpperCase();
   const chargeCode = command.charge_code ?? `COMP_${command.comp_type}`;
 
-  return withTransaction(async (client) => {
+  const resultFolioId = await withTransaction(async (client) => {
     // Verify folio is OPEN
     const { rows: folioRows } = await queryWithClient<{
       folio_status: string;
@@ -199,4 +200,25 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
 
     return folioId as string;
   });
+
+  // Async audit — WARNING severity, comp postings are high-value actions.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "COMP_POST",
+    entityType: "comp_transaction",
+    entityId: resultFolioId,
+    severity: "WARNING",
+    description: `Comp posted: ${command.comp_type} ${command.amount} ${currency} authorized_by=${command.authorized_by ?? "self"}`,
+    newValues: {
+      folio_id: resultFolioId,
+      comp_type: command.comp_type,
+      amount: command.amount,
+      currency,
+      authorized_by: command.authorized_by,
+      reservation_id: command.reservation_id,
+    },
+  });
+
+  return resultFolioId;
 };

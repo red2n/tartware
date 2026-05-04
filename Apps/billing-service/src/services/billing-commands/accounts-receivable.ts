@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -245,8 +245,8 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const tenantId = context.tenantId;
 
-  const { rows } = await query<{ ar_id: string; outstanding_balance: string }>(
-    `SELECT ar_id, outstanding_balance FROM accounts_receivable
+  const { rows } = await query<{ ar_id: string; outstanding_balance: string; ar_status: string }>(
+    `SELECT ar_id, outstanding_balance, ar_status FROM accounts_receivable
      WHERE ar_id = $1::uuid AND tenant_id = $2::uuid
        AND ar_status NOT IN ('paid', 'written_off', 'cancelled')`,
     [command.ar_id, tenantId],
@@ -294,5 +294,24 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
     { arId: command.ar_id, writeOffAmount, newOutstanding, newStatus },
     "AR entry written off",
   );
+
+  // CRITICAL severity — bad debt write-off is highest financial risk action.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "AR_WRITE_OFF",
+    entityType: "accounts_receivable",
+    entityId: command.ar_id,
+    severity: "CRITICAL",
+    description: `AR bad debt write-off: ${writeOffAmount} on entry ${command.ar_id} reason=${command.reason}`,
+    oldValues: { outstanding_balance: outstanding, ar_status: ar.ar_status ?? "open" },
+    newValues: {
+      write_off_amount: writeOffAmount,
+      new_outstanding: newOutstanding,
+      new_status: newStatus,
+      approved_by: command.approved_by,
+    },
+  });
+
   return command.ar_id;
 };

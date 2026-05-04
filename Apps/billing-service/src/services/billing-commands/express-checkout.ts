@@ -44,9 +44,12 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
     // 3. Check folio balance inside the transaction with FOR UPDATE so no
     //    concurrent payment can slip in between the read and the close.
     if (!command.skip_balance_check) {
-      const { rows: balanceRows } = await queryWithClient<{ balance: number }>(
+      const { rows: balanceRows } = await queryWithClient<{
+        balance: number;
+        credit_balance: number;
+      }>(
         client,
-        `SELECT COALESCE(balance, 0) AS balance
+        `SELECT COALESCE(balance, 0) AS balance, COALESCE(credit_balance, 0) AS credit_balance
 			   FROM folios
 			   WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
 			     AND COALESCE(is_deleted, false) = false
@@ -59,6 +62,15 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
         throw new BillingCommandError(
           "BALANCE_NOT_ZERO",
           `Folio ${folioId} has outstanding balance of ${balance}. Settle before express checkout.`,
+        );
+      }
+
+      // USALI 12th Ed §7.3 — credit balance must be resolved before checkout
+      const creditBalance = balanceRows[0]?.credit_balance ?? 0;
+      if (creditBalance > 0) {
+        throw new BillingCommandError(
+          "CREDIT_BALANCE_UNRESOLVED",
+          `Folio ${folioId} has unresolved credit balance of ${creditBalance}. Issue a refund or apply to charges before checkout.`,
         );
       }
     }

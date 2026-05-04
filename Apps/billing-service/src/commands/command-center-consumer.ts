@@ -30,6 +30,7 @@ import {
   evaluatePricingRules,
   executeNightAudit,
   finalizeInvoice,
+  handleOverpayment,
   incrementAuthorization,
   manualDateRoll,
   markCommissionPaid,
@@ -169,6 +170,12 @@ const routeBillingCommand = async (
       return;
     case "billing.payment.void":
       await voidPayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.payment.overpayment.handle":
+      await handleOverpayment(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

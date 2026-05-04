@@ -48,6 +48,8 @@ export const FoliosSchema = z.object({
 	total_charges: money,
 	total_payments: money,
 	total_credits: money,
+	/** Guest credit balance — arises when payment exceeds folio balance (overpayment). USALI 12th Ed §7.3. */
+	credit_balance: money.default(0),
 	currency_code: z.string().optional(),
 	billing_address_line1: z.string().optional(),
 	billing_address_line2: z.string().optional(),

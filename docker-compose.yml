@@ -98,18 +98,21 @@ services:
       PGBOUNCER_SERVER_CONNECT_TIMEOUT: "5"
       PGBOUNCER_QUERY_TIMEOUT: "30"
       PGBOUNCER_IGNORE_STARTUP_PARAMETERS: "extra_float_digits,options"
-      PGBOUNCER_AUTH_TYPE: plain
+      PGBOUNCER_AUTH_TYPE: trust
+      PGBOUNCER_AUTH_FILE: /etc/pgbouncer/userlist.txt
       PGBOUNCER_ADMIN_USERS: postgres
       PGBOUNCER_STATS_USERS: postgres
+    volumes:
+      - ./docker/pgbouncer-userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
-      - "5433:5432"
+      - "5433:6432"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - tartware_network
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 5432 || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 6432 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

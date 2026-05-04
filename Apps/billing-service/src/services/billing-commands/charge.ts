@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
@@ -536,6 +537,24 @@ const applyChargePost = async (
     return sourcePostingId ?? routing.decisions[0]?.ruleId ?? "";
   });
 
+  // Async audit — fire-and-forget; must not block or fail the charge post.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "CHARGE_POST",
+    entityType: "charge_posting",
+    entityId: postingId,
+    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${command.amount} on folio ${folioId}`,
+    newValues: {
+      posting_id: postingId,
+      folio_id: folioId,
+      charge_code: command.charge_code,
+      amount: command.amount * command.quantity,
+      posting_type: command.posting_type,
+      reservation_id: command.reservation_id,
+    },
+  });
+
   return postingId;
 };
 
@@ -554,7 +573,7 @@ const applyChargeVoid = async (
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
 
-  return withTransaction(async (client) => {
+  const voidPostingId = await withTransaction(async (client) => {
     const { rows: postingRows } = await queryWithClient<{
       posting_id: string;
       tenant_id: string;
@@ -701,4 +720,19 @@ const applyChargeVoid = async (
 
     return voidPostingId;
   });
+
+  // Async audit — fires after the transaction commits; never blocks the response.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "CHARGE_VOID",
+    entityType: "charge_posting",
+    entityId: command.posting_id,
+    severity: "WARNING",
+    description: `Charge voided: posting ${command.posting_id} reason=${command.void_reason ?? "not provided"}`,
+    oldValues: { posting_id: command.posting_id },
+    newValues: { void_posting_id: voidPostingId, void_reason: command.void_reason },
+  });
+
+  return voidPostingId;
 };

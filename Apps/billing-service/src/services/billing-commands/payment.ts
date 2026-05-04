@@ -2,10 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import type { PaymentRow } from "@tartware/schemas";
 
+import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
 import {
+  type BillingOverpaymentHandleCommand,
+  BillingOverpaymentHandleCommandSchema,
   type BillingPaymentApplyCommand,
   BillingPaymentApplyCommandSchema,
   BillingPaymentAuthorizeCommandSchema,
@@ -295,7 +298,32 @@ export const voidPayment = async (payload: unknown, context: CommandContext): Pr
         actorId,
       ],
     );
-    return result.rows[0]?.id ?? randomUUID();
+    const newVoidId = result.rows[0]?.id ?? randomUUID();
+
+    // PCI-DSS Req 10: audit payment voids synchronously within the transaction.
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      userId: actorId,
+      action: "PAYMENT_VOID",
+      entityType: "payment",
+      entityId: authPayment.id,
+      severity: "WARNING",
+      isPciRelevant: true,
+      description: `Payment authorization voided: ${command.payment_reference} reason=${command.reason ?? "not provided"}`,
+      oldValues: {
+        original_payment_id: authPayment.id,
+        original_status: "AUTHORIZED",
+        amount: parseDbMoneyOrZero(authPayment.amount),
+      },
+      newValues: {
+        void_payment_id: newVoidId,
+        new_status: "CANCELLED",
+        reason: command.reason,
+      },
+    });
+
+    return newVoidId;
   });
 
   appLogger.info(
@@ -418,28 +446,94 @@ const capturePayment = async (
       throw new BillingCommandError("PAYMENT_CAPTURE_FAILED", "Failed to record captured payment.");
     }
 
-    // Update folio balance atomically within the same transaction
+    // Update folio balance atomically. Overpayment detection in one round-trip:
+    //   balance     → GREATEST(0, balance - amount)          never go negative
+    //   credit_balance → existing + GREATEST(0, amount - balance)  capture excess
+    // RETURNING both values so we can detect and audit overpayments without a 2nd query.
+    let creditBalance = 0;
     if (resolvedFolioId) {
-      await queryWithClient(
+      const { rows: folioRows } = await queryWithClient<{
+        balance: string;
+        credit_balance: string;
+      }>(
         client,
         `
         UPDATE public.folios
         SET
-          total_payments = total_payments + $2,
-          balance = balance - $2,
-          updated_at = NOW(),
-          updated_by = $3
+          total_payments  = total_payments + $2,
+          balance         = GREATEST(0, balance - $2),
+          credit_balance  = credit_balance + GREATEST(0, $2 - balance),
+          updated_at      = NOW(),
+          updated_by      = $3
         WHERE tenant_id = $1::uuid
-          AND folio_id = $4::uuid
-      `,
+          AND folio_id  = $4::uuid
+        RETURNING balance, credit_balance
+        `,
         [context.tenantId, command.amount, actor, resolvedFolioId],
       );
+      creditBalance = Number(folioRows[0]?.credit_balance ?? 0);
     }
 
-    return id;
+    // PCI-DSS Req 10: audit all payment captures synchronously within the transaction.
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      userId: actor,
+      action: "PAYMENT_CAPTURE",
+      entityType: "payment",
+      entityId: id,
+      severity: "INFO",
+      isPciRelevant: true,
+      isGdprRelevant: true,
+      description: `Payment captured: ${command.amount} ${command.currency ?? "USD"} via ${command.payment_method}`,
+      newValues: {
+        payment_id: id,
+        amount: command.amount,
+        currency: command.currency ?? "USD",
+        payment_method: command.payment_method,
+        transaction_type: command.transaction_type,
+        folio_id: resolvedFolioId,
+        reservation_id: command.reservation_id,
+        payment_reference: command.payment_reference,
+        credit_balance: creditBalance > 0 ? creditBalance : undefined,
+      },
+    });
+
+    return { paymentId: id, creditBalance };
   });
 
-  return paymentId;
+  // Fire async overpayment audit outside the transaction (zero hot-path latency).
+  // The credit_balance column is already persisted above; this is informational only.
+  if (paymentId.creditBalance > 0 && resolvedFolioId) {
+    auditAsync({
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      userId: actor,
+      action: "OVERPAYMENT_DETECTED",
+      entityType: "folio",
+      entityId: resolvedFolioId,
+      category: "FINANCIAL",
+      severity: "WARNING",
+      isPciRelevant: true,
+      description: `Overpayment of ${paymentId.creditBalance} credited to folio ${resolvedFolioId}`,
+      newValues: {
+        folio_id: resolvedFolioId,
+        credit_balance: paymentId.creditBalance,
+        payment_reference: command.payment_reference,
+        payment_amount: command.amount,
+      },
+    });
+    appLogger.warn(
+      {
+        folioId: resolvedFolioId,
+        creditBalance: paymentId.creditBalance,
+        tenantId: context.tenantId,
+      },
+      "Overpayment detected — credit_balance updated on folio",
+    );
+  }
+
+  return paymentId.paymentId;
 };
 
 const refundPayment = async (
@@ -574,6 +668,31 @@ const refundPayment = async (
       `,
       [context.tenantId, original.id, command.amount, refundStatus, command.reason ?? null, actor],
     );
+
+    // PCI-DSS Req 10: audit all payment refunds synchronously within the transaction.
+    await auditWithClient(client, {
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      userId: actor,
+      action: "PAYMENT_REFUND",
+      entityType: "payment",
+      entityId: refundId,
+      severity: "WARNING",
+      isPciRelevant: true,
+      isGdprRelevant: true,
+      description: `Payment refund: ${command.amount} ${command.currency ?? "USD"} reason=${command.reason ?? "not provided"}`,
+      oldValues: {
+        original_payment_id: original.id,
+        original_amount: originalAmount,
+      },
+      newValues: {
+        refund_id: refundId,
+        refund_amount: command.amount,
+        refund_reference: refundReference,
+        new_payment_status: refundStatus,
+        reservation_id: command.reservation_id,
+      },
+    });
 
     return refundId;
   });
@@ -780,4 +899,141 @@ export const incrementAuthorization = async (
   );
 
   return existing.id;
+};
+
+/**
+ * Handle a detected overpayment on a folio.
+ * REFUND: clears credit_balance and creates a refund transaction.
+ * CREDIT: marks credit_balance as intentional (no-op on the amount — already stored).
+ * HOLD:   logs for front-desk review; no financial mutation.
+ *
+ * Standard: USALI 12th Ed §7.3 (Guest Credit Balance), GAAP credit liability.
+ */
+export const handleOverpayment = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<{ action: string; creditBalance: number }> => {
+  const command = BillingOverpaymentHandleCommandSchema.parse(
+    payload,
+  ) as BillingOverpaymentHandleCommand;
+  const actor = resolveActorId(context.initiatedBy);
+
+  // Read current credit_balance with FOR UPDATE lock
+  const { rows: folioRows } = await query<{ credit_balance: string; folio_id: string }>(
+    `SELECT folio_id, credit_balance
+     FROM public.folios
+     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+       AND COALESCE(is_deleted, false) = false`,
+    [context.tenantId, command.folio_id],
+  );
+
+  const folio = folioRows[0];
+  if (!folio) {
+    throw new BillingCommandError("FOLIO_NOT_FOUND", `Folio ${command.folio_id} not found`);
+  }
+
+  const currentCredit = Number(folio.credit_balance);
+  const actAmount = command.amount ?? currentCredit;
+
+  if (actAmount <= 0 || actAmount > currentCredit) {
+    throw new BillingCommandError(
+      "INVALID_CREDIT_AMOUNT",
+      `Action amount ${actAmount} is invalid. Current credit balance is ${currentCredit}`,
+    );
+  }
+
+  if (command.action === "HOLD") {
+    auditAsync({
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      userId: actor,
+      action: "OVERPAYMENT_HOLD",
+      entityType: "folio",
+      entityId: command.folio_id,
+      category: "FINANCIAL",
+      severity: "WARNING",
+      description: `Overpayment of ${actAmount} flagged for front-desk review on folio ${command.folio_id}`,
+      metadata: { notes: command.notes },
+    });
+    return { action: "HOLD", creditBalance: currentCredit };
+  }
+
+  // REFUND or CREDIT — both require a transaction
+  const newCredit = await withTransaction(async (client) => {
+    await acquireFolioLock(client, command.folio_id);
+
+    if (command.action === "REFUND") {
+      // Reduce credit_balance and record a REFUND payment row
+      await queryWithClient(
+        client,
+        `UPDATE public.folios
+         SET credit_balance = credit_balance - $2,
+             updated_at = NOW(), updated_by = $3
+         WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
+        [context.tenantId, actAmount, actor, command.folio_id],
+      );
+
+      await queryWithClient(
+        client,
+        `INSERT INTO public.payments (
+           tenant_id, property_id,
+           payment_reference, transaction_type, payment_method,
+           amount, currency, status, processed_at, processed_by,
+           notes, created_by, updated_by
+         ) VALUES (
+           $1::uuid, $2::uuid,
+           $3, 'REFUND', 'CREDIT_CARD',
+           $4, 'USD', 'COMPLETED', NOW(), $5::uuid,
+           $6, $5::uuid, $5::uuid
+         )`,
+        [
+          context.tenantId,
+          command.property_id,
+          `OVERPAY-REFUND-${command.folio_id.slice(0, 8)}-${Date.now().toString(36)}`,
+          actAmount,
+          asUuid(actor) ?? SYSTEM_ACTOR_ID,
+          command.notes ?? "Overpayment refund",
+        ],
+      );
+
+      await auditWithClient(client, {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        userId: actor,
+        action: "OVERPAYMENT_REFUNDED",
+        entityType: "folio",
+        entityId: command.folio_id,
+        category: "FINANCIAL",
+        severity: "INFO",
+        isPciRelevant: true,
+        description: `Overpayment of ${actAmount} refunded from folio ${command.folio_id}`,
+        oldValues: { credit_balance: currentCredit },
+        newValues: { credit_balance: currentCredit - actAmount },
+      });
+    } else {
+      // CREDIT — intentional credit, just log; credit_balance stays as-is
+      await auditWithClient(client, {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        userId: actor,
+        action: "OVERPAYMENT_CREDITED",
+        entityType: "folio",
+        entityId: command.folio_id,
+        category: "FINANCIAL",
+        severity: "INFO",
+        description: `Overpayment of ${actAmount} retained as credit on folio ${command.folio_id}`,
+        newValues: { credit_balance: currentCredit, notes: command.notes },
+      });
+    }
+
+    const { rows: updated } = await queryWithClient<{ credit_balance: string }>(
+      client,
+      `SELECT credit_balance FROM public.folios
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, command.folio_id],
+    );
+    return Number(updated[0]?.credit_balance ?? 0);
+  });
+
+  return { action: command.action, creditBalance: newCredit };
 };

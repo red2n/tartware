@@ -7,6 +7,47 @@
  */
 
 // =====================================================
+// BILLING AUDIT EVENT INPUT
+// =====================================================
+
+/**
+ * Input shape for writing a billing audit event via audit-logger.ts.
+ *
+ * Severity values map to the audit_logs.severity CHECK constraint (INFO | WARNING | CRITICAL | SECURITY).
+ * Category values map to audit_logs.action_category (FINANCIAL | SECURITY | DATA_ACCESS | CONFIGURATION).
+ *
+ * Design note: kept as a `type` (not Zod) — this is a service-layer input contract,
+ * not a DB row shape that needs runtime validation. All callers are internal TypeScript code.
+ */
+export type BillingAuditEventInput = {
+	tenantId: string;
+	propertyId?: string | null;
+	/** Resolved actor UUID (use resolveActorId output). */
+	userId: string;
+	/** Short action key, e.g. "PAYMENT_CAPTURE". Prefixed with "BILLING." for event_type column. */
+	action: string;
+	/** Table/resource affected, e.g. "payment", "charge_posting", "invoice". */
+	entityType: string;
+	/** UUID of the affected row. */
+	entityId?: string | null;
+	/** Defaults to FINANCIAL. */
+	category?: "FINANCIAL" | "SECURITY" | "DATA_ACCESS" | "CONFIGURATION";
+	/** Defaults to INFO. */
+	severity?: "INFO" | "WARNING" | "CRITICAL" | "SECURITY";
+	/** Snapshot of record state before the change. Exclude card numbers and PAN. */
+	oldValues?: Record<string, unknown>;
+	/** Snapshot of record state after the change. Exclude card numbers and PAN. */
+	newValues?: Record<string, unknown>;
+	/** true for any operation touching payment amounts or instrument data (PCI-DSS Req 10). */
+	isPciRelevant?: boolean;
+	/** true for operations touching personal data: name, email, address (GDPR Art. 30). */
+	isGdprRelevant?: boolean;
+	/** Human-readable description for audit reviewers. */
+	description?: string;
+	metadata?: Record<string, unknown>;
+};
+
+// =====================================================
 // BILLING PAYMENT ROW
 // =====================================================
 
@@ -244,6 +285,38 @@ export type TaxConfigurationRow = {
 	last_applied_at: string | Date | null;
 	created_at: string | Date;
 	updated_at: string | Date | null;
+};
+
+// =====================================================
+// WEBHOOK EVENT ROW
+// =====================================================
+
+/** Raw row from payment_gateway_webhooks for idempotency checks and status updates. */
+export type WebhookEventRow = {
+	webhook_id: string;
+	tenant_id: string;
+	property_id: string | null;
+	gateway_provider: string;
+	/** Unique event ID sent by the gateway (e.g. evt_xxx from Stripe). Dedup key. */
+	gateway_event_id: string;
+	/** Normalized event type, e.g. payment.captured, refund.completed, dispute.created. */
+	event_type: string;
+	/** PENDING | PROCESSED | FAILED | SKIPPED */
+	status: string;
+	raw_payload: Record<string, unknown> | null;
+	processing_error: string | null;
+	received_at: string | Date;
+	processed_at: string | Date | null;
+	created_at: string | Date;
+	updated_at: string | Date;
+};
+
+/** Minimal gateway config row needed for HMAC verification. */
+export type WebhookGatewayConfigRow = {
+	config_id: string;
+	gateway_provider: string;
+	/** Vault reference for the webhook signing secret — in dev treated as the raw secret. */
+	webhook_secret_ref: string | null;
 };
 
 // =====================================================
