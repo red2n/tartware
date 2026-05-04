@@ -109,7 +109,11 @@ CREATE TABLE folios (
     CONSTRAINT uk_folios_number UNIQUE (tenant_id, property_id, folio_number),
 
     -- Check Constraints
-    CONSTRAINT chk_folios_balance CHECK (balance = total_charges - total_payments - total_credits),
+    -- Folio accounting identity: charges minus payments minus credits, plus any
+    -- guest credit (overpayment held on file) sums to the running balance.
+    -- This allows overpayments to clamp balance at 0 and accumulate on credit_balance
+    -- without violating the constraint (USALI 12th Ed §7.3 guest credit treatment).
+    CONSTRAINT chk_folios_balance CHECK (balance = total_charges - total_payments - total_credits + credit_balance),
     CONSTRAINT chk_folios_settled CHECK (
         (folio_status = 'SETTLED' AND settled_at IS NOT NULL) OR
         (folio_status != 'SETTLED' AND settled_at IS NULL)
@@ -124,7 +128,7 @@ COMMENT ON COLUMN folios.folio_id IS 'Unique identifier for folio';
 COMMENT ON COLUMN folios.folio_number IS 'Human-readable folio number (e.g., F-2024-001234)';
 COMMENT ON COLUMN folios.folio_type IS 'Type of folio: GUEST (individual), MASTER (group/company), CITY_LEDGER (direct billing)';
 COMMENT ON COLUMN folios.folio_status IS 'Current status: OPEN, CLOSED, TRANSFERRED, SETTLED';
-COMMENT ON COLUMN folios.balance IS 'Current balance = total_charges - total_payments - total_credits';
+COMMENT ON COLUMN folios.balance IS 'Current balance = total_charges - total_payments - total_credits + credit_balance (guest credit clamps balance at zero)';
 COMMENT ON COLUMN folios.tax_exempt IS 'Whether this folio is tax exempt';
 COMMENT ON COLUMN folios.transferred_from_folio_id IS 'Source folio if this was created from a transfer';
 COMMENT ON COLUMN folios.transferred_to_folio_id IS 'Destination folio if this was transferred';

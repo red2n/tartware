@@ -2037,7 +2037,7 @@ compliance-breach|/v1/compliance/breach-incidents?tenant_id={TID}&limit=10
 loyalty-tier-rules|/v1/loyalty/tier-rules?tenant_id={TID}
 loyalty-transactions|/v1/loyalty/transactions?tenant_id={TID}&limit=10
 revenue-pricing-rules|/v1/revenue/pricing-rules?tenant_id={TID}&limit=10
-self-service-search|/v1/self-service/search?tenant_id={TID}&start_date={TODAY}&end_date={IN3DAYS}
+self-service-search|/v1/self-service/search?tenant_id={TID}&property_id={PID}&check_in_date={TODAY}&check_out_date={IN3DAYS}&adults=2
 housekeeping-tasks|/v1/housekeeping/tasks?tenant_id={TID}&limit=10
 night-audit-status|/v1/night-audit/status?tenant_id={TID}&property_id={PID}
 night-audit-history|/v1/night-audit/history?tenant_id={TID}&limit=10
