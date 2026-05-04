@@ -53,6 +53,7 @@ export { manualDateRoll } from "./date-roll.js";
 export { expressCheckout } from "./express-checkout.js";
 export {
   closeFiscalPeriod,
+  createFiscalPeriod,
   lockFiscalPeriod,
   reopenFiscalPeriod,
 } from "./fiscal-period.js";

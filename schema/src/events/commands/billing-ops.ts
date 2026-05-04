@@ -84,6 +84,31 @@ export const BillingGlBatchExportCommandSchema = z.object({
 export type BillingGlBatchExportCommand = z.infer<typeof BillingGlBatchExportCommandSchema>;
 
 /**
+ * Create a new fiscal period for a property.
+ * Inserts an OPEN (or FUTURE) period into the fiscal_periods table.
+ * Used for initial setup or when a new accounting year begins.
+ * Idempotent: if a period with the same (property_id, fiscal_year, period_number)
+ * already exists, the command is a no-op.
+ */
+export const BillingFiscalPeriodCreateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	fiscal_year: z.number().int().min(2000).max(2100),
+	period_number: z.number().int().min(1).max(13),
+	period_name: z.string().max(100),
+	period_start: z.string().date(),
+	period_end: z.string().date(),
+	fiscal_year_start: z.string().date(),
+	fiscal_year_end: z.string().date(),
+	period_status: z.enum(["FUTURE", "OPEN"]).default("OPEN"),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type BillingFiscalPeriodCreateCommand = z.infer<
+	typeof BillingFiscalPeriodCreateCommandSchema
+>;
+
+/**
  * Close a fiscal period, transitioning it from OPEN to SOFT_CLOSE.
  * Prevents new postings to journal entries for the period.
  */

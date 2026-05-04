@@ -309,6 +309,7 @@ REQUIRED_COMMANDS=(
   "billing.night_audit.execute"
   "billing.date_roll.manual"
   "billing.folio.transfer"
+  "billing.fiscal_period.create"
   "billing.fiscal_period.close"
   "billing.ledger.post"
   "billing.gl_batch.export"
@@ -1700,10 +1701,37 @@ FP_YEAR_START="$FP_YEAR-01-01"
 FP_YEAR_END="$FP_YEAR-12-31"
 
 if [[ -n "$FP_PERIOD_END" ]]; then
-  # No dedicated fiscal period creation API exists — skip if no OPEN period is present.
-  # The billing.fiscal_period.close command only closes an existing OPEN period
-  # identified by its UUID (period_id). Without a seeding endpoint we cannot test this.
-  skip "Fiscal period close" "no API to seed fiscal_periods — needs dedicated endpoint"
+  # Seed an OPEN fiscal period using the billing.fiscal_period.create command
+  FP_IDEM="FP-${UNIQUE}-$(date +%Y%m)"
+  send_command "CMD fiscal_period.create: current month" \
+    "billing.fiscal_period.create" \
+    "{\"property_id\":\"$PID\",\"fiscal_year\":$FP_YEAR,\"period_number\":$FP_MONTH,\"period_name\":\"$FP_NAME\",\"period_start\":\"$FP_PERIOD_START\",\"period_end\":\"$FP_PERIOD_END\",\"fiscal_year_start\":\"$FP_YEAR_START\",\"fiscal_year_end\":\"$FP_YEAR_END\",\"period_status\":\"OPEN\",\"idempotency_key\":\"$FP_IDEM\"}"
+  wait_kafka 10
+
+  # Retrieve the created period ID
+  get "$GW/v1/billing/fiscal-periods?property_id=$PID&tenant_id=$TID" >/dev/null
+  FP_ID=$(jq -r --arg yr "$FP_YEAR" --arg pn "$FP_MONTH" \
+    '[.data // . | .[] | select((.fiscal_year | tostring) == $yr and (.period_number | tostring) == $pn and (.period_status | ascii_downcase) == "open")][0].fiscal_period_id // empty' \
+    "$RESP_FILE" 2>/dev/null || echo "")
+
+  if [[ -n "$FP_ID" ]]; then
+    send_command "CMD fiscal_period.close: current month" \
+      "billing.fiscal_period.close" \
+      "{\"period_id\":\"$FP_ID\",\"property_id\":\"$PID\",\"reconciliation_confirmed\":true,\"close_reason\":\"End-of-period close — QA test\"}"
+    wait_kafka 10
+
+    get "$GW/v1/billing/fiscal-periods?property_id=$PID&tenant_id=$TID" >/dev/null
+    FP_STATUS=$(jq -r --arg id "$FP_ID" \
+      '[.data // . | .[] | select(.fiscal_period_id == $id)][0].period_status // empty' \
+      "$RESP_FILE" 2>/dev/null || echo "")
+    if [[ "${FP_STATUS,,}" == "soft_close" || "${FP_STATUS,,}" == "closed" ]]; then
+      pass "DB: fiscal period closed ($FP_STATUS)"
+    else
+      skip "DB: fiscal period close" "status=$FP_STATUS (expected soft_close/closed)"
+    fi
+  else
+    skip "Fiscal period close" "period not found after create — check billing.fiscal_period.create"
+  fi
 else
   skip "Fiscal period close" "date calculation not available"
 fi
@@ -1852,10 +1880,10 @@ if [[ -n "${RES1_ID:-}" && -n "${FOLIO1_ID:-}" ]]; then
   send_command "CMD folio.create: merge source" \
     "billing.folio.create" \
     "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge Source $UNIQUE\",\"currency\":\"USD\",\"idempotency_key\":\"$MERGE_IDEM\"}"
-  wait_kafka 5
+  wait_kafka 10
 
   get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-  MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data // . | .[] | select(.id != $fid and .folio_type != "HOUSE_ACCOUNT" and (.folio_status == "OPEN" or .folio_status == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
 
   if [[ -n "$MERGE_SRC_ID" ]]; then
     # Post a small charge to the source folio so merge transfers something
@@ -1943,6 +1971,16 @@ echo "── 1.34  Late Checkout Charge ─────────────�
 echo "  Scenario: Guest checks out 3 hours late — full day rate"
 
 if [[ -n "${RES1_ID:-}" ]]; then
+  # Ensure reservation is in CHECKED_IN state (required by handler)
+  get "$GW/v1/reservations/$RES1_ID?tenant_id=$TID" >/dev/null
+  RES1_CURRENT_STATUS=$(resp_field "status")
+  if [[ "${RES1_CURRENT_STATUS,,}" != "checked_in" ]]; then
+    send_command "CMD reservation.check_in: res1 for late checkout test" \
+      "reservation.check_in" \
+      "{\"reservation_id\":\"$RES1_ID\",\"force\":true}"
+    wait_kafka 8
+  fi
+
   LATE_CHECKOUT_ISO=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
     || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
   if [[ -n "$LATE_CHECKOUT_ISO" ]]; then

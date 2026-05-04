@@ -192,32 +192,18 @@ assert_http() {
 
 # send_command <label> <command_name> <payload_json> [idempotency_key]
 send_command() {
-  local label="$1" cmd="$2" payload="$3" idem="${4:-}"
+  local label="$1" cmd="$2" payload="$3" idem="${4:-$(gen_uuid)}"
   local body="{\"tenant_id\":\"$CUR_TID\",\"payload\":$payload}"
-  local idem_header=""
-  if [[ -n "$idem" ]]; then
-    idem_header="-H \"Idempotency-Key: $idem\""
-    printf "  ▸ %-55s " "$label"
-  else
-    printf "  ▸ %-55s " "$label"
-  fi
+  printf "  ▸ %-55s " "$label"
   local code
-  if [[ -n "$idem" ]]; then
-    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-      -X POST "$GW/v1/commands/$cmd/execute" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Content-Type: application/json" \
-      -H "Idempotency-Key: $idem" \
-      -d "$body")
-  else
-    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-      -X POST "$GW/v1/commands/$cmd/execute" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "$body")
-  fi
+  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/commands/$cmd/execute" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$body")
   if [[ "$code" =~ ^2 ]]; then printf "✓ %s\n" "$code"
-  else printf "✗ %s\n" "$code"; fi
+  else printf "✗ %s ← %s\n" "$code" "$(jq -r '.message // .error // .code // .' "$RESP_FILE" 2>/dev/null | head -c 180)"; fi
 }
 
 # REST-style seed: POST with auto-assertion
@@ -563,7 +549,7 @@ seed_bar_rate() {
   elif [[ "$code" == "409" ]]; then
     echo "  ℹ BAR rate already exists for $lbl"
   else
-    echo "  ⚠ BAR rate seed for $lbl failed (HTTP $code)"
+    echo "  ⚠ BAR rate seed for $lbl failed (HTTP $code): $(jq -r '.detail // .message // .error // empty' "$RESP_FILE" 2>/dev/null | head -c 200)"
   fi
 }
 
@@ -583,68 +569,42 @@ if [[ -n "$RTID_B2" ]]; then
 fi
 echo ""
 
-# ── 0.5  Enable billing commands for both tenants ────────────────────────
-echo "── 0.5  Enable Billing Commands ─────────────────────────────────────"
+# ── 0.5  Enable ALL commands (global — not per-tenant) ───────────────────
+echo "── 0.5  Enable All Commands ──────────────────────────────────────────"
+# Dynamically fetch every command name from the catalog and enable them all.
+# This avoids the "forgot guest.register / reservation.create" trap that causes
+# Phase 2/3 guest+reservation creation to fail with FEATURE_DISABLED.
+TOKEN="$TOKEN_A"
+ALL_CMDS=$(curl -s -H "Authorization: Bearer $TOKEN_A" \
+  "$GW/v1/commands/features?limit=500" \
+  | jq -r '.[]? // .data[]? | .command_name' 2>/dev/null)
+CMD_COUNT=0
+UPDATES_PAYLOAD="["
+FIRST_CMD=true
+while IFS= read -r cmd_name; do
+  [[ -z "$cmd_name" ]] && continue
+  if $FIRST_CMD; then FIRST_CMD=false; else UPDATES_PAYLOAD+=","; fi
+  UPDATES_PAYLOAD+="{\"command_name\":\"$cmd_name\",\"status\":\"enabled\"}"
+  CMD_COUNT=$((CMD_COUNT + 1))
+done <<< "$ALL_CMDS"
+UPDATES_PAYLOAD+="]"
 
-REQUIRED_COMMANDS=(
-  "billing.charge.post" "billing.charge.void" "billing.charge.transfer"
-  "billing.payment.capture" "billing.payment.authorize"
-  "billing.payment.authorize_increment" "billing.payment.void"
-  "billing.payment.refund"
-  "billing.invoice.create" "billing.invoice.adjust" "billing.invoice.finalize"
-  "billing.invoice.void" "billing.credit_note.create"
-  "billing.folio.create" "billing.folio.close" "billing.folio.transfer"
-  "billing.folio.split"
-  "billing.cashier.open" "billing.cashier.close" "billing.cashier.handover"
-  "billing.ar.post" "billing.ar.apply_payment" "billing.ar.write_off"
-  "billing.chargeback.record"
-  "billing.chargeback.update_status"
-  "billing.night_audit.execute"
-  "billing.express_checkout"
-  "billing.fiscal_period.close"
-  "billing.tax_config.create"
-  "billing.invoice.reopen"
-  "billing.folio.reopen"
-  "billing.folio.merge"
-  "billing.no_show.charge"
-  "billing.late_checkout.charge"
-  "billing.cancellation.penalty"
-  "billing.tax_exemption.apply"
-  "billing.comp.post"
-  "billing.ledger.post"
-  "billing.gl_batch.export"
-)
-
-enable_commands_via_api() {
-  local tok="$1" label="$2"
-  # Build batch update payload
-  local updates="["
-  local first=true
-  for cmd in "${REQUIRED_COMMANDS[@]}"; do
-    if $first; then first=false; else updates+=","; fi
-    updates+="{\"command_name\":\"$cmd\",\"status\":\"enabled\"}"
-  done
-  updates+="]"
-
-  local code
-  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+if [[ $CMD_COUNT -eq 0 ]]; then
+  echo "  ⚠ No commands found in catalog — skipping enable step"
+else
+  enable_code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
     -X PATCH "$GW/v1/commands/features/batch" \
-    -H "Authorization: Bearer $tok" \
+    -H "Authorization: Bearer $TOKEN_A" \
     -H "Content-Type: application/json" \
-    -d "{\"updates\":$updates}")
-
-  if [[ "$code" =~ ^2 ]]; then
-    local updated_count
-    updated_count=$(jq '.updated | length' "$RESP_FILE" 2>/dev/null || echo "?")
-    echo "  $label: $updated_count commands enabled (HTTP $code)"
+    -d "{\"updates\":$UPDATES_PAYLOAD}")
+  if [[ "$enable_code" =~ ^2 ]]; then
+    updated=$(jq '.updated | length' "$RESP_FILE" 2>/dev/null || echo "?")
+    echo "  ✓ $updated / $CMD_COUNT commands enabled globally (HTTP $enable_code)"
   else
-    echo "  ⚠ $label: Failed to enable commands (HTTP $code)"
-    jq '.message // .error // .' "$RESP_FILE" 2>/dev/null
+    echo "  ⚠ Batch enable failed (HTTP $enable_code) — body:"
+    jq '.message // .error // .' "$RESP_FILE" 2>/dev/null | head -3
   fi
-}
-
-# Command features are global (not per-tenant) — one call enables for all tenants
-enable_commands_via_api "$TOKEN_A" "Global"
+fi
 
 echo "  Waiting 32s for gateway command cache refresh..."
 sleep 32
@@ -1208,11 +1168,11 @@ run_billing_pipeline() {
       send_command "CMD folio.create: merge source" \
         "billing.folio.create" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge-Src $tag\",\"currency\":\"USD\",\"idempotency_key\":\"MERGE-$tag-$UNIQUE\"}"
-      wait_kafka 5
+      wait_kafka 10
 
       local merge_src
       get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
-      merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and .folio_type != "HOUSE_ACCOUNT" and (.folio_status == "OPEN" or .folio_status == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+      merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
       if [[ -n "$merge_src" ]]; then
         send_command "CMD folio.merge: src → primary" \
           "billing.folio.merge" \

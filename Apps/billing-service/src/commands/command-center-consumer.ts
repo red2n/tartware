@@ -54,6 +54,7 @@ import {
   cloneRoutingRuleTemplate,
   closeFiscalPeriod,
   createCreditNote,
+  createFiscalPeriod,
   createFolio,
   createFolioWindow,
   createRoutingRule,
@@ -270,6 +271,12 @@ const routeBillingCommand = async (
       return;
     case "billing.chargeback.record":
       await recordChargeback(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.fiscal_period.create":
+      await createFiscalPeriod(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

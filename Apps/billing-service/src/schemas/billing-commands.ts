@@ -19,6 +19,7 @@ export {
   BillingDateRollManualCommandSchema,
   BillingExpressCheckoutCommandSchema,
   BillingFiscalPeriodCloseCommandSchema,
+  BillingFiscalPeriodCreateCommandSchema,
   BillingFiscalPeriodLockCommandSchema,
   BillingFiscalPeriodReopenCommandSchema,
   BillingFolioCloseCommandSchema,

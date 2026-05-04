@@ -220,6 +220,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.payment.authorize_increment', 'Increment an existing payment authorization hold', 'billing-service', ARRAY['finance-automation']),
         ('billing.pricing.evaluate', 'Evaluate dynamic pricing rules for a room type', 'finance-admin-service', ARRAY['finance-automation']),
         ('billing.pricing.bulk_recommend', 'Bulk generate pricing recommendations', 'finance-admin-service', ARRAY['finance-automation']),
+        ('billing.fiscal_period.create', 'Create a new fiscal period for a property', 'billing-service', ARRAY['finance-automation']),
         ('billing.fiscal_period.close', 'Close a fiscal period to prevent new postings', 'finance-admin-service', ARRAY['finance-automation']),
         ('billing.fiscal_period.lock', 'Lock a closed fiscal period against all changes', 'finance-admin-service', ARRAY['finance-automation']),
         ('billing.fiscal_period.reopen', 'Reopen a closed fiscal period for adjustments', 'finance-admin-service', ARRAY['finance-automation']),
