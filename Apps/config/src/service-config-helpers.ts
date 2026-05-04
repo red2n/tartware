@@ -9,6 +9,22 @@ import type { baseConfigSchema, databaseSchema } from "./index.js";
 import { parseNumberEnv, parseNumberList } from "./kafka.js";
 
 /**
+ * Centralised dev-only fallback values. Any change here MUST also be added to
+ * `INSECURE_LITERALS` in {@link ./index.ts} so production deployments fail fast
+ * if a value ever leaks past the env layer.
+ */
+const DEV_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
+const DEV_DEFAULT_PASSWORD = "TempPass123";
+
+/** Throw with a consistent, actionable error when a required prod secret is missing. */
+function requireInProduction(name: string): never {
+  throw new Error(
+    `${name} must be set in production and cannot use a default value. ` +
+      `Provide it via environment variable or secret manager.`,
+  );
+}
+
+/**
  * Set SERVICE_NAME and SERVICE_VERSION env vars if not already defined.
  * Must be called before `loadServiceConfig()`.
  */
@@ -24,20 +40,53 @@ export function initServiceIdentity(name: string, version = "0.1.0"): void {
 export function ensureAuthDefaults(overrides?: { issuer?: string; audience?: string }): void {
   if (!process.env.AUTH_JWT_SECRET) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
+      requireInProduction("AUTH_JWT_SECRET");
     }
-    process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
+    process.env.AUTH_JWT_SECRET = DEV_JWT_SECRET;
   }
   process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? overrides?.issuer ?? "tartware-core";
   process.env.AUTH_JWT_AUDIENCE =
     process.env.AUTH_JWT_AUDIENCE ?? overrides?.audience ?? "tartware";
 }
 
-/** Build the standard `config.auth` block from env vars. */
+/**
+ * Ensure AUTH_DEFAULT_PASSWORD (used to seed the bootstrap admin) is set.
+ * Throws in production if missing; falls back to a dev-only default otherwise.
+ */
+export function ensureDefaultPassword(): void {
+  if (!process.env.AUTH_DEFAULT_PASSWORD) {
+    if (process.env.NODE_ENV === "production") {
+      requireInProduction("AUTH_DEFAULT_PASSWORD");
+    }
+    process.env.AUTH_DEFAULT_PASSWORD = DEV_DEFAULT_PASSWORD;
+  }
+}
+
+/**
+ * Ensure SERVICE_AUTH_PASSWORD (used for service-to-service auth) is set.
+ * Throws in production if missing; falls back to a dev-only default otherwise.
+ */
+export function ensureServiceAuthPassword(): void {
+  if (!process.env.SERVICE_AUTH_PASSWORD) {
+    if (process.env.NODE_ENV === "production") {
+      requireInProduction("SERVICE_AUTH_PASSWORD");
+    }
+    process.env.SERVICE_AUTH_PASSWORD = DEV_DEFAULT_PASSWORD;
+  }
+}
+
+/**
+ * Build the standard `config.auth` block from env vars.
+ * Assumes {@link ensureAuthDefaults} has already run, so AUTH_JWT_SECRET is guaranteed set.
+ */
 export function buildAuthConfig() {
+  const secret = process.env.AUTH_JWT_SECRET;
+  if (!secret) {
+    requireInProduction("AUTH_JWT_SECRET");
+  }
   return {
     jwt: {
-      secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
+      secret,
       issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core",
       audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware",
     },

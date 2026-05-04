@@ -178,7 +178,18 @@ export const listBreachIncidents = async (params: BreachListParams) => {
 export const getBreachIncidentById = async (tenantId: string, incidentId: string) => {
   const { rows } = await query(
     `
-      SELECT *
+      SELECT
+        incident_id, tenant_id, property_id,
+        incident_title, incident_description,
+        severity, breach_type, status,
+        discovered_at, occurred_at, contained_at, resolved_at,
+        notification_deadline,
+        authority_notified, authority_notified_at, authority_reference,
+        subjects_notified, subjects_notified_at, subjects_affected_count,
+        data_categories_affected, systems_affected,
+        reported_by, assigned_to,
+        remediation_steps, root_cause, preventive_measures,
+        metadata, created_at, updated_at, created_by, updated_by
       FROM public.data_breach_incidents
       WHERE tenant_id = $1::uuid
         AND incident_id = $2::uuid

@@ -122,7 +122,20 @@ const INSECURE_PATTERNS = [
   /^postgres$/i,
   /^admin$/i,
   /^local-dev/i,
+  /^dev-secret/i,
 ];
+
+/**
+ * Literal known dev fallbacks. Catches any value that slipped past the regex list
+ * (e.g. constants exported from config helpers). Production must never see these.
+ */
+const INSECURE_LITERALS = new Set<string>([
+  "dev-secret-minimum-32-chars-change-me!",
+  "TempPass123",
+  "TempPass123!",
+  "local-dev-guest-key",
+  "local-dev-billing-key",
+]);
 
 /**
  * Validates that sensitive configuration values don't use insecure defaults in production.
@@ -134,6 +147,9 @@ export const validateProductionSecrets = (config: {
   AUTH_DEFAULT_PASSWORD?: string;
   DB_PASSWORD?: string;
   SYSTEM_ADMIN_JWT_SECRET?: string;
+  SERVICE_AUTH_PASSWORD?: string;
+  GUEST_DATA_ENCRYPTION_KEY?: string;
+  BILLING_DATA_ENCRYPTION_KEY?: string;
 }): void => {
   if (config.NODE_ENV !== "production") {
     return;
@@ -142,16 +158,40 @@ export const validateProductionSecrets = (config: {
   const errors: string[] = [];
 
   const checkInsecure = (name: string, value: string | undefined): void => {
-    if (!value) return;
+    if (!value) {
+      errors.push(`${name} must be set in production`);
+      return;
+    }
+    if (INSECURE_LITERALS.has(value)) {
+      errors.push(`${name} is using a known dev default value`);
+      return;
+    }
     if (INSECURE_PATTERNS.some((pattern) => pattern.test(value))) {
       errors.push(`${name} appears to use an insecure default value`);
     }
   };
 
+  // Required in every production deployment
   checkInsecure("AUTH_JWT_SECRET", config.AUTH_JWT_SECRET);
-  checkInsecure("AUTH_DEFAULT_PASSWORD", config.AUTH_DEFAULT_PASSWORD);
   checkInsecure("DB_PASSWORD", config.DB_PASSWORD);
-  checkInsecure("SYSTEM_ADMIN_JWT_SECRET", config.SYSTEM_ADMIN_JWT_SECRET);
+
+  // Optional fields — only validate if set (skip the missing-in-prod error)
+  const checkOptional = (name: string, value: string | undefined): void => {
+    if (!value) return;
+    if (INSECURE_LITERALS.has(value)) {
+      errors.push(`${name} is using a known dev default value`);
+      return;
+    }
+    if (INSECURE_PATTERNS.some((pattern) => pattern.test(value))) {
+      errors.push(`${name} appears to use an insecure default value`);
+    }
+  };
+
+  checkOptional("AUTH_DEFAULT_PASSWORD", config.AUTH_DEFAULT_PASSWORD);
+  checkOptional("SYSTEM_ADMIN_JWT_SECRET", config.SYSTEM_ADMIN_JWT_SECRET);
+  checkOptional("SERVICE_AUTH_PASSWORD", config.SERVICE_AUTH_PASSWORD);
+  checkOptional("GUEST_DATA_ENCRYPTION_KEY", config.GUEST_DATA_ENCRYPTION_KEY);
+  checkOptional("BILLING_DATA_ENCRYPTION_KEY", config.BILLING_DATA_ENCRYPTION_KEY);
 
   if (errors.length > 0) {
     // eslint-disable-next-line no-console
@@ -324,5 +364,7 @@ export {
   buildLogConfig,
   buildServiceInfo,
   ensureAuthDefaults,
+  ensureDefaultPassword,
+  ensureServiceAuthPassword,
   initServiceIdentity,
 } from "./service-config-helpers.js";

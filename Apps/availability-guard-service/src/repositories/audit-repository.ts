@@ -5,6 +5,17 @@ import { query } from "../lib/db.js";
 
 export type { LockAuditRecord };
 
+/**
+ * Canonical column list for the `inventory_lock_audits` table.
+ * Kept in sync with the {@link LockAuditRecord} row type in `@tartware/schemas`.
+ * Avoids `SELECT *` per AGENTS.md data-access rules.
+ */
+const AUDIT_COLUMNS = `
+  id, lock_id, tenant_id, action,
+  performed_by_id, performed_by_name, performed_by_email,
+  reason, metadata, created_at
+`;
+
 type LockAuditInput = {
   lockId: string;
   tenantId: string;
@@ -33,7 +44,7 @@ export const insertLockAuditRecord = async (
         metadata
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *;
+      RETURNING ${AUDIT_COLUMNS};
     `,
     [
       input.lockId,
@@ -78,14 +89,16 @@ export const listLockAuditRecords = async (
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
+  params.push(limit);
+  const limitPlaceholder = `$${params.length}::int`;
 
   const result = await query<LockAuditRecord>(
     `
-      SELECT *
+      SELECT ${AUDIT_COLUMNS}
       FROM inventory_lock_audits
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT ${limit};
+      LIMIT ${limitPlaceholder};
     `,
     params,
   );

@@ -10,6 +10,30 @@ import { z } from "zod";
 import { uuid } from "../shared/base-schemas.js";
 import { CommandFeatureStatusEnum } from "../shared/enums.js";
 
+// =====================================================
+// IDEMPOTENCY — envelope-level deduplication contract
+// =====================================================
+// Single source of truth for idempotency-key semantics across the platform.
+// Every write command MUST carry an idempotency key supplied by the caller
+// (HTTP `Idempotency-Key` header). The key is propagated through the outbox
+// envelope as `metadata.requestId` / `metadata.idempotencyKey` and consumed
+// by the dedupe table (`command_idempotency`) before handler execution.
+//
+// Format rules (aligned with IETF draft-ietf-httpapi-idempotency-key-header):
+//   • opaque token between 8 and 128 chars
+//   • only URL-safe characters (alphanumeric, '-', '_', ':')
+//   • case-sensitive
+//   • UUIDs are recommended but any opaque token is accepted
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_:-]{8,128}$/;
+
+export const IdempotencyKeySchema = z
+	.string()
+	.regex(
+		IDEMPOTENCY_KEY_PATTERN,
+		"Idempotency-Key must be 8-128 URL-safe characters (alphanumeric, '-', '_', ':')",
+	);
+export type IdempotencyKey = z.infer<typeof IdempotencyKeySchema>;
+
 export const CommandExecuteRequestSchema = z.object({
 	tenant_id: uuid,
 	payload: z.record(z.unknown()),

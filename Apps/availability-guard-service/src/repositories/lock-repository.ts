@@ -8,6 +8,18 @@ export type { InventoryLock };
 
 const ACTIVE_STATUSES = ["ACTIVE"] as const;
 
+/**
+ * Canonical column list for the `inventory_locks_shadow` table.
+ * Kept in sync with the {@link InventoryLock} row type in `@tartware/schemas`.
+ * Avoids `SELECT *` per AGENTS.md data-access rules.
+ */
+const LOCK_COLUMNS = `
+  id, tenant_id, reservation_id, room_type_id, room_id,
+  stay_start, stay_end, reason, correlation_id,
+  expires_at, ttl_seconds, metadata, status, release_reason,
+  created_at, updated_at
+`;
+
 export const findConflictingLock = async (
   client: PoolClient,
   input: LockRoomInput,
@@ -15,7 +27,7 @@ export const findConflictingLock = async (
 ): Promise<InventoryLock | null> => {
   const result = await client.query<InventoryLock>(
     `
-      SELECT *
+      SELECT ${LOCK_COLUMNS}
       FROM inventory_locks_shadow
       WHERE tenant_id = $1
         AND status = ANY($2)
@@ -88,7 +100,7 @@ export const insertLock = async (
         status = 'ACTIVE',
         release_reason = NULL,
         updated_at = NOW()
-      RETURNING *;
+      RETURNING ${LOCK_COLUMNS};
     `,
     [
       input.lockId,
@@ -129,7 +141,7 @@ export const releaseLockRecord = async (
         )
       WHERE id = $1
         AND tenant_id = $2
-      RETURNING *;
+      RETURNING ${LOCK_COLUMNS};
     `,
     [input.lockId, input.tenantId, input.reason, input.releasedAt, input.correlationId ?? null],
   );

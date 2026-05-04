@@ -1,6 +1,6 @@
 import { STATUS_CODES } from "node:http";
 
-import { validateCommandPayload } from "@tartware/schemas";
+import { IdempotencyKeySchema, validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 import {
@@ -105,8 +105,40 @@ export const submitCommand = async ({
   }
 
   const correlationId = (request.headers["x-correlation-id"] as string | undefined) ?? undefined;
-  const idempotencyKey = (request.headers["idempotency-key"] as string | undefined) ?? undefined;
-  const requestId = idempotencyKey ?? request.id;
+  // Canonical header is `Idempotency-Key` (IETF draft / Stripe / Square).
+  // `X-Idempotency-Key` is accepted for backward compatibility with legacy clients.
+  const rawIdempotencyKey =
+    request.headers["idempotency-key"] ?? request.headers["x-idempotency-key"];
+  const idempotencyKeyHeader = Array.isArray(rawIdempotencyKey)
+    ? rawIdempotencyKey[0]
+    : rawIdempotencyKey;
+
+  if (!idempotencyKeyHeader || idempotencyKeyHeader.trim() === "") {
+    return reply.status(400).header("content-type", "application/problem+json").send({
+      type: "about:blank",
+      title: "Bad Request",
+      status: 400,
+      detail:
+        "Missing required 'Idempotency-Key' header. All command writes must include a client-supplied idempotency key (8-128 URL-safe characters; UUID recommended).",
+      instance: request.url,
+      code: "IDEMPOTENCY_KEY_REQUIRED",
+    });
+  }
+
+  const idempotencyParse = IdempotencyKeySchema.safeParse(idempotencyKeyHeader);
+  if (!idempotencyParse.success) {
+    return reply.status(400).header("content-type", "application/problem+json").send({
+      type: "about:blank",
+      title: "Bad Request",
+      status: 400,
+      detail: idempotencyParse.error.issues[0]?.message ?? "Invalid Idempotency-Key header.",
+      instance: request.url,
+      code: "IDEMPOTENCY_KEY_INVALID",
+    });
+  }
+
+  const idempotencyKey = idempotencyParse.data;
+  const requestId = idempotencyKey;
   const initiatedBy =
     request.auth.userId && membership
       ? { userId: request.auth.userId, role: membership.role }

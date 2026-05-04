@@ -6,6 +6,7 @@ import {
   coreAuthSchema,
   databaseSchema,
   ensureAuthDefaults,
+  ensureDefaultPassword,
   initServiceIdentity,
   loadServiceConfig,
   parseBooleanEnv,
@@ -17,7 +18,7 @@ import {
 
 initServiceIdentity("@tartware/core-service");
 ensureAuthDefaults({ issuer: "tartware-core-service", audience: "tartware-core" });
-process.env.AUTH_DEFAULT_PASSWORD = process.env.AUTH_DEFAULT_PASSWORD ?? "TempPass123";
+ensureDefaultPassword();
 
 const configValues = loadServiceConfig(databaseSchema.merge(redisSchema).merge(coreAuthSchema));
 validateProductionSecrets(configValues);

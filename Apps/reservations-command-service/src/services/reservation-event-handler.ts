@@ -20,6 +20,60 @@ class ReservationEventError extends Error {
 }
 
 /**
+ * MED-008 + N+1 elimination: Validate property belongs to tenant AND fetch
+ * guest details in a single round-trip. Property validation is mandatory
+ * (raises if missing); guest is best-effort (falls back to "Unknown Guest"
+ * if the guest row hasn't replicated yet).
+ *
+ * Hot path: called once per `reservation.created` event. At 20K ops/sec this
+ * replaces 2 sequential SELECTs with one.
+ */
+const validateAndFetchGuest = async (
+  tenantId: string,
+  propertyId: string,
+  guestId: string,
+): Promise<{
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+} | null> => {
+  const { rows } = await query<{
+    property_exists: boolean;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  }>(
+    `
+      SELECT
+        TRUE AS property_exists,
+        g.first_name,
+        g.last_name,
+        g.email
+      FROM properties p
+      LEFT JOIN guests g
+        ON g.id = $3::uuid AND g.tenant_id = $1::uuid
+      WHERE p.id = $2::uuid AND p.tenant_id = $1::uuid
+      LIMIT 1
+    `,
+    [tenantId, propertyId, guestId],
+  );
+
+  if (rows.length === 0) {
+    throw new ReservationEventError(
+      "PROPERTY_NOT_FOUND_FOR_TENANT",
+      `Property ${propertyId} does not belong to tenant ${tenantId}`,
+    );
+  }
+
+  const row = rows[0];
+  // No guest match → callers fall back to placeholder name/email.
+  if (!row || row.first_name === null) {
+    return null;
+  }
+  return { first_name: row.first_name, last_name: row.last_name, email: row.email };
+};
+
+/**
  * MED-008: Validate that property_id belongs to the given tenant
  * to prevent cross-tenant data pollution from malformed events
  */
@@ -75,8 +129,13 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
     (payload as { confirmation_number?: string }).confirmation_number ??
     `TW-${reservationId.slice(0, 8).toUpperCase()}`;
 
-  // MED-008: Validate property belongs to tenant before creating reservation
-  await validatePropertyBelongsToTenant(tenantId, payload.property_id);
+  // MED-008 + N+1 fix: Validate property and fetch guest in ONE round-trip
+  // (was 2 sequential SELECTs).
+  const guest = await validateAndFetchGuest(tenantId, payload.property_id, payload.guest_id);
+  const guestName = guest
+    ? `${guest.first_name ?? ""} ${guest.last_name ?? ""}`.trim()
+    : "Unknown Guest";
+  const guestEmail = guest?.email ?? "unknown@unknown.com";
 
   // Calculate nightly room_rate from total_amount / nights
   const checkIn = new Date(payload.check_in_date);
@@ -87,19 +146,6 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
   );
   const totalAmount = Number(payload.total_amount ?? 0);
   const roomRate = Number((totalAmount / nights).toFixed(2));
-
-  // Look up guest details for denormalized guest_name / guest_email columns
-  const guestResult = await query(
-    `SELECT first_name, last_name, email FROM guests WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
-    [payload.guest_id, tenantId],
-  );
-  const guest = guestResult.rows?.[0] as
-    | { first_name: string; last_name: string; email: string }
-    | undefined;
-  const guestName = guest
-    ? `${guest.first_name ?? ""} ${guest.last_name ?? ""}`.trim()
-    : "Unknown Guest";
-  const guestEmail = guest?.email ?? "unknown@unknown.com";
 
   await query(
     `
@@ -170,18 +216,20 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
     ],
   );
 
-  // Auto-create a GUEST folio for this reservation (PMS industry standard)
-  await createFolioForReservation({
-    reservationId,
-    tenantId,
-    propertyId: payload.property_id,
-    guestId: payload.guest_id,
-    guestName,
-    currency: payload.currency ?? "USD",
-  });
-
-  // Increment guest total_bookings on new reservation (PMS industry standard)
-  await incrementGuestBookingCount(tenantId, payload.guest_id);
+  // N+1 fix: Auto-create folio AND increment guest booking count in parallel.
+  // Both are best-effort (errors are logged inside each helper, never thrown);
+  // running concurrently saves one DB round-trip on the hot path.
+  await Promise.all([
+    createFolioForReservation({
+      reservationId,
+      tenantId,
+      propertyId: payload.property_id,
+      guestId: payload.guest_id,
+      guestName,
+      currency: payload.currency ?? "USD",
+    }),
+    incrementGuestBookingCount(tenantId, payload.guest_id),
+  ]);
 
   return reservationId;
 };
@@ -267,62 +315,85 @@ const handleReservationCancelled = async (event: ReservationCancelledEvent): Pro
   );
 
   // S21: Auto-offer to waitlisted guests when a reservation is cancelled.
-  // Find the cancelled reservation's property + room type + dates, then
-  // look for the highest-priority ACTIVE waitlist entry and offer it.
+  // N+1 fix: a single writable CTE reads the cancelled reservation, picks the
+  // top-priority active waitlist entry that overlaps the freed dates, and
+  // updates its status to OFFERED in one round-trip (was 3 sequential queries).
   try {
-    const { rows: resRows } = await query<Record<string, unknown>>(
-      `SELECT property_id, room_type_id, check_in_date, check_out_date
-       FROM reservations WHERE id = $1 AND tenant_id = $2`,
-      [payload.id, tenantId],
-    );
-    const res = resRows[0];
-    if (res?.property_id && res?.room_type_id) {
-      const { rows: waitlistRows } = await query<Record<string, unknown>>(
-        `SELECT waitlist_id, guest_id FROM waitlist_entries
-         WHERE tenant_id = $1 AND property_id = $2
-           AND requested_room_type_id = $3
-           AND waitlist_status = 'ACTIVE'
-           AND arrival_date <= $4 AND departure_date >= $5
-           AND is_deleted = false
-         ORDER BY priority_score DESC, vip_flag DESC, created_at ASC
-         LIMIT 1`,
-        [tenantId, res.property_id, res.room_type_id, res.check_in_date, res.check_out_date],
-      );
-      if (waitlistRows[0]) {
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24);
-        await query(
-          `UPDATE waitlist_entries
-           SET waitlist_status = 'OFFERED',
-               offer_expiration_at = $3,
-               offer_response = 'PENDING',
-               last_notified_at = NOW(),
-               last_notified_via = 'EMAIL',
-               updated_at = NOW()
-           WHERE waitlist_id = $1 AND tenant_id = $2`,
-          [waitlistRows[0].waitlist_id, tenantId, expiresAt.toISOString()],
-        );
-        reservationsLogger.info(
-          {
-            waitlistId: waitlistRows[0].waitlist_id,
-            guestId: waitlistRows[0].guest_id,
-            reservationId: payload.id,
-          },
-          "Auto-offered freed room to waitlisted guest after cancellation",
-        );
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
 
-        // S21: Notify the waitlisted guest about the offer
-        await dispatchNotificationCommand({
-          tenantId,
-          guestId: waitlistRows[0].guest_id as string,
-          propertyId: res.property_id as string,
-          templateCode: "WAITLIST_OFFER",
-          waitlistId: waitlistRows[0].waitlist_id as string,
-          arrivalDate: String(res.check_in_date),
-          departureDate: String(res.check_out_date),
-          expiresAt: expiresAt.toISOString(),
-        });
-      }
+    const { rows: offerRows } = await query<{
+      waitlist_id: string;
+      guest_id: string;
+      property_id: string;
+      check_in_date: string;
+      check_out_date: string;
+    }>(
+      `
+        WITH res AS (
+          SELECT property_id, room_type_id, check_in_date, check_out_date
+          FROM reservations
+          WHERE id = $1::uuid AND tenant_id = $2::uuid
+        ),
+        candidate AS (
+          SELECT we.waitlist_id
+          FROM waitlist_entries we, res
+          WHERE we.tenant_id = $2::uuid
+            AND we.property_id = res.property_id
+            AND we.requested_room_type_id = res.room_type_id
+            AND we.waitlist_status = 'ACTIVE'
+            AND we.arrival_date <= res.check_in_date
+            AND we.departure_date >= res.check_out_date
+            AND we.is_deleted = false
+          ORDER BY we.priority_score DESC, we.vip_flag DESC, we.created_at ASC
+          LIMIT 1
+        ),
+        offered AS (
+          UPDATE waitlist_entries we
+          SET waitlist_status = 'OFFERED',
+              offer_expiration_at = $3::timestamptz,
+              offer_response = 'PENDING',
+              last_notified_at = NOW(),
+              last_notified_via = 'EMAIL',
+              updated_at = NOW()
+          WHERE we.waitlist_id = (SELECT waitlist_id FROM candidate)
+            AND we.tenant_id = $2::uuid
+          RETURNING we.waitlist_id, we.guest_id
+        )
+        SELECT
+          o.waitlist_id,
+          o.guest_id,
+          r.property_id,
+          r.check_in_date::text AS check_in_date,
+          r.check_out_date::text AS check_out_date
+        FROM offered o
+        CROSS JOIN res r
+      `,
+      [payload.id, tenantId, expiresAt.toISOString()],
+    );
+
+    const offer = offerRows[0];
+    if (offer) {
+      reservationsLogger.info(
+        {
+          waitlistId: offer.waitlist_id,
+          guestId: offer.guest_id,
+          reservationId: payload.id,
+        },
+        "Auto-offered freed room to waitlisted guest after cancellation",
+      );
+
+      // S21: Notify the waitlisted guest about the offer
+      await dispatchNotificationCommand({
+        tenantId,
+        guestId: offer.guest_id,
+        propertyId: offer.property_id,
+        templateCode: "WAITLIST_OFFER",
+        waitlistId: offer.waitlist_id,
+        arrivalDate: offer.check_in_date,
+        departureDate: offer.check_out_date,
+        expiresAt: expiresAt.toISOString(),
+      });
     }
   } catch (err) {
     // Non-critical: log but don't fail the cancellation

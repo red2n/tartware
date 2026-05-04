@@ -11,6 +11,19 @@ import { query } from "../lib/db.js";
 const SettingsValueArraySchema = z.array(SettingsValuesSchema);
 const SettingsValueSchema = SettingsValuesSchema;
 
+/**
+ * Canonical column list for the `settings_values` table.
+ * Kept in sync with the `SettingsValuesSchema` Zod schema in `@tartware/schemas`.
+ * Avoids `SELECT *` per AGENTS.md data-access rules.
+ */
+const SETTINGS_VALUE_COLUMNS = `
+  id, setting_id, scope_level, tenant_id, property_id, unit_id, user_id,
+  value, is_overridden, is_inherited, inheritance_path, inherited_from_value_id,
+  locked_until, effective_from, effective_to, source, status, notes,
+  context, metadata,
+  created_at, updated_at, created_by, updated_by
+`;
+
 export type { ValueFilters, CreateSettingsValueInput, UpdateSettingsValueInput };
 
 export const listValues = async (filters: ValueFilters) => {
@@ -44,7 +57,7 @@ export const listValues = async (filters: ValueFilters) => {
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT * FROM settings_values ${where} ORDER BY created_at DESC`,
+    `SELECT ${SETTINGS_VALUE_COLUMNS} FROM settings_values ${where} ORDER BY created_at DESC`,
     params,
   );
   return SettingsValueArraySchema.parse(rows);
@@ -56,7 +69,7 @@ export const createValue = async (input: CreateSettingsValueInput) => {
       (setting_id, scope_level, tenant_id, property_id, unit_id, user_id, value, status, notes, effective_from, effective_to, context, metadata, created_by, updated_by)
      VALUES
       ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'ACTIVE'), $9, $10, $11, COALESCE($12, '{}'::jsonb), COALESCE($13, '{}'::jsonb), $14, $14)
-     RETURNING *`,
+     RETURNING ${SETTINGS_VALUE_COLUMNS}`,
     [
       input.settingId,
       input.scopeLevel,
@@ -91,7 +104,7 @@ export const updateValue = async (input: UpdateSettingsValueInput) => {
          updated_at = NOW(),
          updated_by = COALESCE($9, updated_by)
      WHERE id = $10 AND tenant_id = $11
-     RETURNING *`,
+     RETURNING ${SETTINGS_VALUE_COLUMNS}`,
     [
       input.value ?? null,
       input.status ?? null,
