@@ -42,6 +42,7 @@ export * from "./notifications.js";
 export * from "./operations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./operations-rows.js";
+export * from "./payment-gateway.js";
 export * from "./properties.js";
 export * from "./rate-calendar.js";
 export * from "./rates.js";

@@ -27,6 +27,8 @@
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
+import { BillingPaymentGatewayProviderEnum } from "@tartware/schemas";
+
 import {
   dispatchWebhookEvent,
   extractEventType,
@@ -37,7 +39,9 @@ import {
 } from "../services/webhook-dispatcher.js";
 
 // ---------------------------------------------------------------------------
-// Route-local query param schema (allowed: route-specific param schemas)
+// Route-local query param schema (allowed: route-specific param schemas).
+// `provider` is validated against the canonical PaymentGatewayProviderEnum
+// from @tartware/schemas — the single source of truth for supported PSPs.
 // ---------------------------------------------------------------------------
 const WebhookQuerySchema = z.object({
   tenant_id: z.string().uuid(),
@@ -45,7 +49,8 @@ const WebhookQuerySchema = z.object({
     .string()
     .min(1)
     .max(50)
-    .transform((s) => s.toUpperCase()),
+    .transform((s) => s.toUpperCase())
+    .pipe(BillingPaymentGatewayProviderEnum),
   property_id: z.string().uuid().optional(),
 });
 

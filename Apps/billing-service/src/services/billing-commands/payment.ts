@@ -43,7 +43,7 @@ import {
  * against the effective limit (including any temporary increase).
  * Returns a warning string if warning threshold is reached, or throws if blocked.
  */
-async function enforceCreditLimit(
+export async function enforceCreditLimit(
   tenantId: string,
   guestId: string | undefined | null,
   chargeAmount: number,
