@@ -1,5 +1,6 @@
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingLateCheckoutChargeCommandSchema } from "../../schemas/billing-commands.js";
 import {
@@ -174,6 +175,34 @@ export const chargeLateCheckout = async (
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
       [context.tenantId, folioId, chargeAmount, actorId],
     );
+
+    // GL: paired DR/CR for the late checkout fee. Missing mapping logs a
+    // warning but never blocks the charge post.
+    const glMapping = await lookupChargeCodeMapping(client, context.tenantId, "LATE_CHECKOUT");
+    if (glMapping) {
+      await postGlPair(client, {
+        tenant_id: context.tenantId,
+        property_id: reservation.property_id,
+        folio_id: folioId,
+        reservation_id: command.reservation_id,
+        debit_account: glMapping.debit,
+        credit_account: glMapping.credit,
+        amount: chargeAmount,
+        currency,
+        posting_date: new Date().toISOString().slice(0, 10),
+        department_code: glMapping.department ?? undefined,
+        usali_category: glMapping.usali ?? undefined,
+        description: `Late checkout fee — ${command.actual_checkout_time}`,
+        source_table: "charge_postings",
+        source_id: newPostingId,
+        created_by: actorId,
+      });
+    } else {
+      appLogger.warn(
+        { tenantId: context.tenantId, chargeCode: "LATE_CHECKOUT" },
+        "Missing charge_code_gl_mapping — GL pair skipped on late checkout",
+      );
+    }
 
     return newPostingId;
   });

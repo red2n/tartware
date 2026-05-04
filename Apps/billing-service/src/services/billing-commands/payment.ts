@@ -5,6 +5,7 @@ import type { PaymentRow } from "@tartware/schemas";
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { debitAccountForPaymentMethod, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   type BillingOverpaymentHandleCommand,
@@ -474,6 +475,28 @@ const capturePayment = async (
       creditBalance = Number(folioRows[0]?.credit_balance ?? 0);
     }
 
+    // GL posting (USALI double-entry): DR cash account / CR Guest Ledger (1100).
+    // Inside the same transaction as the payments INSERT and folios UPDATE so a
+    // failed GL pair rolls back the entire payment — books stay balanced.
+    const businessDate = new Date().toISOString().slice(0, 10);
+    await postGlPair(client, {
+      tenant_id: context.tenantId,
+      property_id: command.property_id,
+      folio_id: resolvedFolioId ?? undefined,
+      reservation_id: command.reservation_id ?? undefined,
+      debit_account: debitAccountForPaymentMethod(command.payment_method),
+      credit_account: "1100", // Guest Ledger — payment reduces guest receivable
+      amount: command.amount,
+      currency,
+      posting_date: businessDate,
+      usali_category: "Cash & Equivalents",
+      description: `Payment captured via ${command.payment_method}: ${command.payment_reference}`,
+      source_table: "payments",
+      source_id: id,
+      reference_number: command.payment_reference,
+      created_by: asUuid(actor) ?? SYSTEM_ACTOR_ID,
+    });
+
     // PCI-DSS Req 10: audit all payment captures synchronously within the transaction.
     await auditWithClient(client, {
       tenantId: context.tenantId,
@@ -692,6 +715,28 @@ const refundPayment = async (
         new_payment_status: refundStatus,
         reservation_id: command.reservation_id,
       },
+    });
+
+    // GL: paired DR/CR for the refund. Sides are swapped relative to the
+    // original capture — DR Guest Ledger (1100) restores the receivable,
+    // CR cash account reduces cash on hand.
+    const refundMethod = command.payment_method ?? original.payment_method ?? "CREDIT_CARD";
+    await postGlPair(client, {
+      tenant_id: context.tenantId,
+      property_id: command.property_id,
+      folio_id: refundFolioId ?? undefined,
+      reservation_id: command.reservation_id ?? undefined,
+      debit_account: "1100", // Guest Ledger restored
+      credit_account: debitAccountForPaymentMethod(refundMethod), // cash side reduced
+      amount: command.amount,
+      currency: command.currency ?? original.currency ?? "USD",
+      posting_date: new Date().toISOString().slice(0, 10),
+      usali_category: "Refunds",
+      description: `Refund of ${original.payment_reference}: ${command.reason ?? "not provided"}`,
+      source_table: "payments",
+      source_id: refundId,
+      reference_number: refundReference,
+      created_by: asUuid(actor) ?? SYSTEM_ACTOR_ID,
     });
 
     return refundId;
