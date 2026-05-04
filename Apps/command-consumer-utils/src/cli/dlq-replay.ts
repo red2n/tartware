@@ -48,7 +48,7 @@ const kafka = new Kafka({
 const rl = createInterface({ input, output });
 
 const promptAction = async (): Promise<Action> => {
-  while (true) {
+  for (;;) {
     const answer = (await rl.question("Action — [i]nspect / [r]epublish / [d]rop / [q]uit: "))
       .trim()
       .toLowerCase();

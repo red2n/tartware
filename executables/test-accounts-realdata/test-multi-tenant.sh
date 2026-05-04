@@ -65,9 +65,14 @@ UNIQUE=$(date +%s)
 
 PASS=0; FAIL=0; TOTAL=0; SKIP=0
 SKIP_SEED=false
+FULL_API=true   # set false with --no-full-api to skip Phase 6b smoke coverage
 
 for arg in "$@"; do
-  case "$arg" in --skip-seed) SKIP_SEED=true ;; esac
+  case "$arg" in
+    --skip-seed)    SKIP_SEED=true ;;
+    --no-full-api)  FULL_API=false ;;
+    --full-api)     FULL_API=true ;;
+  esac
 done
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -75,11 +80,35 @@ done
 RESP_FILE=$(mktemp /tmp/tartware-mt-resp.XXXXXX.json)
 trap "rm -f $RESP_FILE" EXIT
 
+# Generate a UUID for Idempotency-Key (required by all command writes since IDEMP-01).
+gen_uuid() {
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then
+    cat /proc/sys/kernel/random/uuid
+  elif command -v uuidgen >/dev/null 2>&1; then
+    uuidgen
+  else
+    printf '%08x-%04x-%04x-%04x-%012x\n' \
+      $((RANDOM*RANDOM)) $RANDOM $RANDOM $RANDOM $((RANDOM*RANDOM*RANDOM))
+  fi
+}
+
 post() {
+  local idem="${3:-$(gen_uuid)}"
   curl -s -o "$RESP_FILE" -w "%{http_code}" \
     -X POST "$1" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+put() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PUT "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
     -d "$2"
 }
 
@@ -226,12 +255,12 @@ echo "  ✓ Tenant A auth token acquired"
 TOKEN="$TOKEN_A"
 
 # Ensure finance-automation module is enabled for Tenant A
-echo "  Enabling finance-automation module for Tenant A..."
+echo "  Enabling all modules for Tenant A..."
 MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_A/modules" \
   -H "Authorization: Bearer $TOKEN_A" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant A (HTTP $MOD_CODE)"
 else
@@ -274,13 +303,23 @@ EXISTING_B=$(echo "$SYS_RESP" | jq -r '.tenants // [] | map(select(.slug == "bea
 
 if [[ -n "$EXISTING_B" ]]; then
   TID_B="$EXISTING_B"
-  # Get first property for Tenant B via API
-  TOKEN="$TOKEN_A"  # temp token for property lookup; will get B token below
-  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    "$CORE_SVC/v1/properties?tenant_id=$TID_B&limit=10" \
-    -H "Authorization: Bearer $SYS_TOKEN")
-  PID_B1=$(jq -r '(if type == "array" then .[0] else (.data[0] // null) end) | .id // empty' "$RESP_FILE" 2>/dev/null)
   echo "  ℹ Tenant B already exists: $TID_B"
+  # Get tenant B token first (system token can't read tenant-scoped routes)
+  TOKEN_B=$(curl -s -X POST "$GW/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$TENANT_B_USER\",\"password\":\"$TENANT_B_PASS\"}" \
+    | jq -r '.access_token // .token // .data.access_token // empty')
+  if [[ -n "$TOKEN_B" ]]; then
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      "$GW/v1/properties?tenant_id=$TID_B&limit=10" \
+      -H "Authorization: Bearer $TOKEN_B")
+    # Pick BCN-HV explicitly (Beacon Harborview = property B1)
+    PID_B1=$(jq -r '(if type == "array" then . else (.data // .properties // []) end) | map(select(.property_code == "BCN-HV")) | .[0].id // empty' "$RESP_FILE" 2>/dev/null)
+    # Fallback: any property if BCN-HV not present yet
+    if [[ -z "$PID_B1" ]]; then
+      PID_B1=$(jq -r '(if type == "array" then .[0] else (.data[0] // .properties[0] // null) end) | .id // empty' "$RESP_FILE" 2>/dev/null)
+    fi
+  fi
   echo "  ℹ Property B1: $PID_B1"
 else
 
@@ -348,13 +387,13 @@ fi
 [[ -n "$TOKEN_B" ]] || { echo "FATAL: Cannot get auth token for Tenant B"; exit 1; }
 echo "  ✓ Tenant B auth token acquired"
 
-# Enable finance-automation module for Tenant B
-echo "  Enabling finance-automation module for Tenant B..."
+# Enable all modules for Tenant B
+echo "  Enabling all modules for Tenant B..."
 MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_B/modules" \
   -H "Authorization: Bearer $TOKEN_B" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant B (HTTP $MOD_CODE)"
 else
@@ -1879,6 +1918,211 @@ assert_http "API B: gl-batches" "200" "$code"
 GL_B_COUNT=$(resp_count)
 pass "XCHECK B: GL batches (count=$GL_B_COUNT)"
 echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 6b — COMPREHENSIVE API ENDPOINT COVERAGE (smoke)
+#  GETs every public read endpoint exposed via the API gateway, per tenant.
+#  Endpoint is "responsive" if HTTP 2xx / 204 / 400 / 404 (reachable + auth OK).
+#  5xx / 0 / 401 / 403 are failures.
+# ═════════════════════════════════════════════════════════════════════════════
+
+if [[ "$FULL_API" == true ]]; then
+  echo ""
+  echo "╔═══════════════════════════════════════════════════════════════════════╗"
+  echo "║  PHASE 6b: Comprehensive API Endpoint Coverage                       ║"
+  echo "╚═══════════════════════════════════════════════════════════════════════╝"
+  echo ""
+
+  # api_smoke <label> <url>
+  # PASS: 2xx, 204, 400, 404 (endpoint reachable; data may be missing)
+  # SKIP: 403 with code TENANT_MODULE_NOT_ENABLED (endpoint reachable but module off)
+  # FAIL: 5xx, 0, 401, other 403, 502, 503, 504
+  api_smoke() {
+    local label="$1" url="$2"
+    local code
+    # Throttle to stay below gateway rate limit
+    sleep 0.05
+    code=$(get "$url")
+    case "$code" in
+      2*|400|404)         pass "$label  HTTP=$code" ;;
+      403)
+        local err
+        err=$(jq -r '.code // .detail // empty' "$RESP_FILE" 2>/dev/null)
+        if [[ "$err" == "TENANT_MODULE_NOT_ENABLED" ]]; then
+          skip "$label" "module-not-enabled (HTTP 403)"
+        elif [[ "$err" == *"Rate limit"* || "$err" == *"rate limit"* ]]; then
+          # Back off and retry once
+          sleep 16
+          code=$(get "$url")
+          case "$code" in
+            2*|400|404) pass "$label  HTTP=$code (after retry)" ;;
+            *)          skip "$label" "rate-limited (HTTP $code)" ;;
+          esac
+        else
+          fail "$label" "forbidden HTTP=$code ($err)"
+        fi
+        ;;
+      401)                fail "$label" "unauthenticated HTTP=$code" ;;
+      5*|0|"")            fail "$label" "server/network HTTP=$code" ;;
+      *)                  fail "$label" "unexpected HTTP=$code" ;;
+    esac
+  }
+
+  # Smoke a list of "label|url" pairs against the current $TOKEN.
+  api_smoke_batch() {
+    local label_prefix="$1"; shift
+    local pair label url
+    for pair in "$@"; do
+      label="${pair%%|*}"
+      url="${pair#*|}"
+      api_smoke "${label_prefix} ${label}" "$GW${url}"
+    done
+  }
+
+  # ── 6b.1  Tenant-agnostic / system-wide endpoints ───────────────────
+  echo "── 6b.1  System / global endpoints ──────────────────────────────────"
+  TOKEN="$TOKEN_A"
+  api_smoke "SYS registry/services"        "$GW/v1/registry/services"
+  api_smoke "SYS modules/catalog"          "$GW/v1/modules/catalog"
+  api_smoke "SYS commands/definitions"     "$GW/v1/commands/definitions"
+  api_smoke "SYS tenants"                  "$GW/v1/tenants"
+  api_smoke "SYS users"                    "$GW/v1/users"
+  api_smoke "SYS user-tenant-associations" "$GW/v1/user-tenant-associations"
+  api_smoke "SYS settings"                 "$GW/v1/settings"
+  echo ""
+
+  # Endpoint inventory (read-only). Each entry = "label|/v1/path?query"
+  # The {TID} placeholder is substituted per tenant in the loop below.
+  read -r -d '' INVENTORY_TENANT_QUERY <<'EOF' || true
+properties|/v1/properties?tenant_id={TID}&limit=10
+buildings|/v1/buildings?tenant_id={TID}&limit=10
+buildings-grid|/v1/buildings/grid?tenant_id={TID}
+rooms|/v1/rooms?tenant_id={TID}&limit=10
+rooms-grid|/v1/rooms/grid?tenant_id={TID}
+room-types|/v1/room-types?tenant_id={TID}&limit=10
+room-types-grid|/v1/room-types/grid?tenant_id={TID}
+rates|/v1/rates?tenant_id={TID}&limit=10
+rate-calendar|/v1/rate-calendar?tenant_id={TID}&start_date={TODAY}&end_date={IN5DAYS}
+availability|/v1/availability?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+availability-calendar|/v1/availability/calendar?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+availability-room-types|/v1/availability/room-types?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+recommendations|/v1/recommendations?tenant_id={TID}&limit=10
+guests|/v1/guests?tenant_id={TID}&limit=10
+guests-grid|/v1/guests/grid?tenant_id={TID}
+reservations|/v1/reservations?tenant_id={TID}&limit=10
+reservations-list|/v1/reservations/list?tenant_id={TID}&limit=10
+reservations-grid|/v1/reservations/grid?tenant_id={TID}&start_date={TODAY}&end_date={IN5DAYS}
+waitlist|/v1/waitlist?tenant_id={TID}&limit=10
+booking-sources|/v1/booking-sources?tenant_id={TID}&limit=10
+companies|/v1/companies?tenant_id={TID}&limit=10
+channel-mappings|/v1/channel-mappings?tenant_id={TID}&limit=10
+market-segments|/v1/market-segments?tenant_id={TID}&limit=10
+packages|/v1/packages?tenant_id={TID}&limit=10
+promo-codes|/v1/promo-codes?tenant_id={TID}&limit=10
+ota-connections|/v1/ota-connections?tenant_id={TID}&limit=10
+metasearch-configs|/v1/metasearch-configs?tenant_id={TID}&limit=10
+metasearch-performance|/v1/metasearch-configs/performance?tenant_id={TID}
+group-bookings|/v1/group-bookings?tenant_id={TID}&limit=10
+event-bookings|/v1/event-bookings?tenant_id={TID}&limit=10
+banquet-orders|/v1/banquet-orders?tenant_id={TID}&limit=10
+meeting-rooms|/v1/meeting-rooms?tenant_id={TID}&limit=10
+allotments|/v1/allotments?tenant_id={TID}&limit=10
+incidents|/v1/incidents?tenant_id={TID}&limit=10
+lost-and-found|/v1/lost-and-found?tenant_id={TID}&limit=10
+police-reports|/v1/police-reports?tenant_id={TID}&limit=10
+shift-handovers|/v1/shift-handovers?tenant_id={TID}&limit=10
+cashier-sessions-alt|/v1/cashier-sessions?tenant_id={TID}&limit=10
+guest-feedback|/v1/guest-feedback?tenant_id={TID}&limit=10
+compliance-breach|/v1/compliance/breach-incidents?tenant_id={TID}&limit=10
+loyalty-tier-rules|/v1/loyalty/tier-rules?tenant_id={TID}
+loyalty-transactions|/v1/loyalty/transactions?tenant_id={TID}&limit=10
+revenue-pricing-rules|/v1/revenue/pricing-rules?tenant_id={TID}&limit=10
+self-service-search|/v1/self-service/search?tenant_id={TID}&start_date={TODAY}&end_date={IN3DAYS}
+housekeeping-tasks|/v1/housekeeping/tasks?tenant_id={TID}&limit=10
+night-audit-status|/v1/night-audit/status?tenant_id={TID}&property_id={PID}
+night-audit-history|/v1/night-audit/history?tenant_id={TID}&limit=10
+billing-charges|/v1/billing/charges?tenant_id={TID}&limit=10
+billing-payments|/v1/billing/payments?tenant_id={TID}&limit=10
+billing-invoices|/v1/billing/invoices?tenant_id={TID}&limit=10
+billing-folios|/v1/billing/folios?tenant_id={TID}&limit=10
+billing-cashier-sessions|/v1/billing/cashier-sessions?tenant_id={TID}&limit=10
+billing-ar|/v1/billing/accounts-receivable?tenant_id={TID}&limit=10
+billing-ar-aging|/v1/billing/accounts-receivable/aging-summary?tenant_id={TID}&property_id={PID}
+billing-ledger|/v1/billing/ledger?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+billing-fiscal-periods|/v1/billing/fiscal-periods?tenant_id={TID}&property_id={PID}
+billing-routing-rules|/v1/billing/routing-rules?tenant_id={TID}
+billing-routing-rule-templates|/v1/billing/routing-rules/templates?tenant_id={TID}
+billing-tax-configs|/v1/billing/tax-configurations?tenant_id={TID}
+billing-trial-balance|/v1/billing/reports/trial-balance?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+billing-tax-summary|/v1/billing/reports/tax-summary?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN3DAYS}
+billing-departmental|/v1/billing/reports/departmental-revenue?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN3DAYS}
+billing-commissions|/v1/billing/reports/commissions?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN3DAYS}
+report-arrivals|/v1/reports/arrivals?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-departures|/v1/reports/departures?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-in-house|/v1/reports/in-house?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-no-show|/v1/reports/no-show?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-occupancy|/v1/reports/occupancy?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-forecast|/v1/reports/forecast?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-revenue-summary|/v1/reports/revenue-summary?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-daily-revenue|/v1/reports/daily-revenue?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-manager-flash|/v1/reports/manager-flash?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-str-metrics|/v1/reports/str-metrics?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-housekeeping|/v1/reports/housekeeping-status?tenant_id={TID}&property_id={PID}
+report-night-audit|/v1/reports/night-audit-summary?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+EOF
+
+  # Tenant-scoped endpoints with :tenantId in path (no query tenant_id).
+  read -r -d '' INVENTORY_TENANT_PATH <<'EOF' || true
+modules|/v1/tenants/{TID}/modules
+webhooks|/v1/tenants/{TID}/webhooks
+notif-templates|/v1/tenants/{TID}/notifications/templates
+in-app-notif|/v1/tenants/{TID}/in-app-notifications
+in-app-notif-unread|/v1/tenants/{TID}/in-app-notifications/unread
+hk-tasks|/v1/tenants/{TID}/housekeeping/tasks
+EOF
+
+  # Per-tenant endpoint sweep
+  sweep_tenant() {
+    local prefix="$1" tid="$2" pid="$3" tok="$4"
+    TOKEN="$tok"
+    local line label url_template url
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      label="${line%%|*}"
+      url_template="${line#*|}"
+      url="${url_template//\{TID\}/$tid}"
+      url="${url//\{PID\}/$pid}"
+      url="${url//\{TODAY\}/$TODAY}"
+      url="${url//\{IN3DAYS\}/$IN3DAYS}"
+      url="${url//\{IN5DAYS\}/$IN5DAYS}"
+      api_smoke "$prefix $label" "$GW$url"
+    done <<< "$INVENTORY_TENANT_QUERY"
+
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      label="${line%%|*}"
+      url_template="${line#*|}"
+      url="${url_template//\{TID\}/$tid}"
+      api_smoke "$prefix $label" "$GW$url"
+    done <<< "$INVENTORY_TENANT_PATH"
+  }
+
+  echo "── 6b.2  Tenant A / Property A1 sweep ───────────────────────────────"
+  sweep_tenant "A1" "$TID_A" "$PID_A1" "$TOKEN_A"
+  echo ""
+
+  echo "── 6b.3  Tenant A / Property A2 sweep ───────────────────────────────"
+  sweep_tenant "A2" "$TID_A" "$PID_A2" "$TOKEN_A"
+  echo ""
+
+  echo "── 6b.4  Tenant B / Property B1 sweep ───────────────────────────────"
+  sweep_tenant "B1" "$TID_B" "$PID_B1" "$TOKEN_B"
+  echo ""
+
+  echo "── 6b.5  Tenant B / Property B2 sweep ───────────────────────────────"
+  sweep_tenant "B2" "$TID_B" "$PID_B2" "$TOKEN_B"
+  echo ""
+fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 7 — POST-TEST DB SNAPSHOT + FINAL REPORT

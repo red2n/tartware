@@ -127,14 +127,17 @@ export const submitCommand = async ({
 
   const idempotencyParse = IdempotencyKeySchema.safeParse(idempotencyKeyHeader);
   if (!idempotencyParse.success) {
-    return reply.status(400).header("content-type", "application/problem+json").send({
-      type: "about:blank",
-      title: "Bad Request",
-      status: 400,
-      detail: idempotencyParse.error.issues[0]?.message ?? "Invalid Idempotency-Key header.",
-      instance: request.url,
-      code: "IDEMPOTENCY_KEY_INVALID",
-    });
+    return reply
+      .status(400)
+      .header("content-type", "application/problem+json")
+      .send({
+        type: "about:blank",
+        title: "Bad Request",
+        status: 400,
+        detail: idempotencyParse.error.issues[0]?.message ?? "Invalid Idempotency-Key header.",
+        instance: request.url,
+        code: "IDEMPOTENCY_KEY_INVALID",
+      });
   }
 
   const idempotencyKey = idempotencyParse.data;

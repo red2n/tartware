@@ -12,7 +12,8 @@
     "eslint",
     "knip",
     "tsc",
-    "swc"
+    "swc",
+    "tsx"
   ],
   "ignoreExportsUsedInFile": {
     "type": true,

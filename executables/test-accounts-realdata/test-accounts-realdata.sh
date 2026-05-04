@@ -57,12 +57,55 @@ get_token() {
 RESP_FILE=$(mktemp /tmp/tartware-test-resp.XXXXXX.json)
 trap "rm -f $RESP_FILE" EXIT
 
+# Generate a UUID for Idempotency-Key (required by all command writes since IDEMP-01).
+gen_uuid() {
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then
+    cat /proc/sys/kernel/random/uuid
+  elif command -v uuidgen >/dev/null 2>&1; then
+    uuidgen
+  else
+    # Fallback: pseudo-uuid from $RANDOM + epoch
+    printf '%08x-%04x-%04x-%04x-%012x\n' \
+      $((RANDOM*RANDOM)) $RANDOM $RANDOM $RANDOM $((RANDOM*RANDOM*RANDOM))
+  fi
+}
+
 post() {
+  local idem="${3:-$(gen_uuid)}"
   curl -s -o "$RESP_FILE" -w "%{http_code}" \
     -X POST "$1" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
     -d "$2"
+}
+
+put() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PUT "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+patch_req() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PATCH "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+delete_req() {
+  local idem="${2:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X DELETE "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem"
 }
 
 get() {

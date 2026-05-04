@@ -247,14 +247,6 @@ const CHARGE_CODE_MAPPING_CACHE = createReferenceCache<
   loader: async () => null,
 });
 
-/**
- * Invalidate a single tenant/charge-code mapping after a write command.
- * Call this from any handler that modifies `charge_code_gl_mapping`.
- */
-export const invalidateChargeCodeMapping = (tenantId: string, chargeCode: string): void => {
-  CHARGE_CODE_MAPPING_CACHE.invalidate({ tenantId, chargeCode });
-};
-
 export const lookupChargeCodeMapping = async (
   client: PoolClient,
   tenantId: string,

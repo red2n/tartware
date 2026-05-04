@@ -216,7 +216,7 @@ export const defaultNightAuditSteps: NightAuditStep[] = [
   },
   {
     name: "post_room_charges",
-    run: async (_ctx, _client) => {
+    run: async () => {
       // Stub: insert nightly room+tax postings into charge_postings for every
       // CHECKED_IN reservation whose nightly cycle has elapsed.
       return { metrics: { posted_room_charges: 0 } };
@@ -224,21 +224,21 @@ export const defaultNightAuditSteps: NightAuditStep[] = [
   },
   {
     name: "post_taxes",
-    run: async (_ctx, _client) => {
+    run: async () => {
       // Stub: post derived taxes referencing tax_configurations.
       return { metrics: { posted_tax_lines: 0 } };
     },
   },
   {
     name: "snapshot_financial_closure",
-    run: async (_ctx, _client) => {
+    run: async () => {
       // Stub: write summary row(s) into financial_closures for the business_date.
       return { metrics: { closure_rows: 0 } };
     },
   },
   {
     name: "roll_business_date_forward",
-    run: async (_ctx, _client) => {
+    run: async () => {
       // Stub: advance property.business_date and emit RollAdvanced event.
       return { metrics: { advanced: 1 } };
     },
