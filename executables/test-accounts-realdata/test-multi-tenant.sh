@@ -1921,6 +1921,8 @@ if [[ "$FULL_API" == true ]]; then
         err=$(jq -r '.code // .detail // empty' "$RESP_FILE" 2>/dev/null)
         if [[ "$err" == "TENANT_MODULE_NOT_ENABLED" ]]; then
           skip "$label" "module-not-enabled (HTTP 403)"
+        elif [[ "$err" == "SYSTEM_ADMIN_SCOPE_REQUIRED" || "$err" == *"System administrator scope"* ]]; then
+          skip "$label" "system-admin-required (HTTP 403)"
         elif [[ "$err" == *"Rate limit"* || "$err" == *"rate limit"* ]]; then
           # Back off and retry once
           sleep 16
@@ -1955,7 +1957,11 @@ if [[ "$FULL_API" == true ]]; then
   TOKEN="$TOKEN_A"
   api_smoke "SYS registry/services"        "$GW/v1/registry/services"
   api_smoke "SYS modules/catalog"          "$GW/v1/modules/catalog"
+  # commands/definitions requires system admin scope — use SYS_TOKEN
+  local _prev_token="$TOKEN"
+  TOKEN="$SYS_TOKEN"
   api_smoke "SYS commands/definitions"     "$GW/v1/commands/definitions"
+  TOKEN="$_prev_token"
   api_smoke "SYS tenants"                  "$GW/v1/tenants"
   api_smoke "SYS users"                    "$GW/v1/users"
   api_smoke "SYS user-tenant-associations" "$GW/v1/user-tenant-associations"

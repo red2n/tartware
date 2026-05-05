@@ -2610,7 +2610,7 @@ echo ""
 
 # ── Folio Balance Integrity (v2 §3.1 — Trial Balance) ──
 echo "── Folio Balance Integrity (v2 §3.1) ─────────────────────────────────"
-echo "  Verify: Folio balance = total_charges - total_payments - total_credits"
+echo "  Verify: Folio balance = total_charges - total_payments - total_credits + credit_balance"
 echo "  (stored totals maintained by DB CHECK constraint)"
 
 if [[ -n "$FOLIO1_ID" ]]; then
@@ -2619,16 +2619,19 @@ if [[ -n "$FOLIO1_ID" ]]; then
   FOLIO_CHARGES=$(jq -r '.total_charges // .data.total_charges // empty' "$RESP_FILE" 2>/dev/null || echo "")
   FOLIO_PAYMENTS=$(jq -r '.total_payments // .data.total_payments // empty' "$RESP_FILE" 2>/dev/null || echo "")
   FOLIO_CREDITS=$(jq -r '.total_credits // .data.total_credits // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  FOLIO_CREDIT_BAL=$(jq -r '.credit_balance // .data.credit_balance // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  FOLIO_CREDIT_BAL="${FOLIO_CREDIT_BAL:-0}"
 
   if [[ -n "$FOLIO_BAL" && -n "$FOLIO_CHARGES" ]]; then
-    CALC_BAL=$(echo "$FOLIO_CHARGES - $FOLIO_PAYMENTS - $FOLIO_CREDITS" | bc 2>/dev/null || echo "")
+    # DB CHECK: balance = total_charges - total_payments - total_credits + credit_balance
+    CALC_BAL=$(echo "$FOLIO_CHARGES - $FOLIO_PAYMENTS - $FOLIO_CREDITS + $FOLIO_CREDIT_BAL" | bc 2>/dev/null || echo "")
     if [[ -n "$CALC_BAL" ]]; then
       DIFF=$(echo "($FOLIO_BAL) - ($CALC_BAL)" | bc 2>/dev/null || echo "999")
       ABS_DIFF=$(echo "$DIFF" | tr -d '-')
       if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
-        pass "Folio balance integrity: bal=$FOLIO_BAL = charges=$FOLIO_CHARGES - payments=$FOLIO_PAYMENTS - credits=$FOLIO_CREDITS"
+        pass "Folio balance integrity: bal=$FOLIO_BAL = charges=$FOLIO_CHARGES - payments=$FOLIO_PAYMENTS - credits=$FOLIO_CREDITS + credit_bal=$FOLIO_CREDIT_BAL"
       else
-        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF (C=$FOLIO_CHARGES P=$FOLIO_PAYMENTS Cr=$FOLIO_CREDITS)"
+        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF (C=$FOLIO_CHARGES P=$FOLIO_PAYMENTS Cr=$FOLIO_CREDITS CB=$FOLIO_CREDIT_BAL)"
       fi
     else
       skip "Folio balance calc" "bc computation failed"
