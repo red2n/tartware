@@ -218,6 +218,42 @@ seed_rest() {
 
 wait_kafka() { sleep "${1:-$KAFKA_WAIT}"; }
 
+# poll_delta — poll an API endpoint until the item-count delta >= min_delta,
+# retrying with exponential backoff when the initial check shows Δ=0.
+# Emits pass on success, skip after all retries (never a hard fail — Δ=0 may
+# be a handler no-op rather than a test defect).
+#
+# Usage: poll_delta <label> <url> <baseline> [min_delta=1] [max_retries=1] [first_retry_wait=16]
+poll_delta() {
+  local label="$1" url="$2" baseline="$3"
+  local min_delta="${4:-1}" max_retries="${5:-1}" wait="${6:-16}"
+  local current delta
+
+  get "$url" >/dev/null
+  current=$(resp_count)
+  delta=$((current - baseline))
+
+  if [[ "$delta" -ge "$min_delta" ]]; then
+    pass "$label (Δ=$delta)"; return 0
+  fi
+
+  local attempt=1
+  while [[ $attempt -le $max_retries ]]; do
+    printf "  ⏳ Retry %d/%d in %ds: %s (Δ=%d so far)\n" \
+           "$attempt" "$max_retries" "$wait" "$label" "$delta"
+    sleep "$wait"
+    get "$url" >/dev/null
+    current=$(resp_count)
+    delta=$((current - baseline))
+    if [[ "$delta" -ge "$min_delta" ]]; then
+      pass "$label (Δ=$delta, retry $attempt)"; return 0
+    fi
+    wait=$((wait * 2)); attempt=$((attempt + 1))
+  done
+
+  skip "$label" "Δ=$delta after $((max_retries + 1)) checks"
+}
+
 # ─── Preflight checks ───────────────────────────────────────────────────────
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  MULTI-TENANT E2E BILLING TEST"
@@ -1170,9 +1206,16 @@ run_billing_pipeline() {
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge-Src $tag\",\"currency\":\"USD\",\"idempotency_key\":\"MERGE-$tag-$UNIQUE\"}"
       wait_kafka 10
 
-      local merge_src
-      get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
-      merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+      local merge_src="" _mwait=8 _mattempt
+      for _mattempt in 1 2 3; do
+        get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
+        merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+        [[ -n "$merge_src" ]] && break
+        if [[ $_mattempt -lt 3 ]]; then
+          printf "  ⏳ Retry %d/3 in %ds: waiting for merge-source folio...\n" "$_mattempt" "$_mwait"
+          sleep "$_mwait"; _mwait=$((_mwait * 2))
+        fi
+      done
       if [[ -n "$merge_src" ]]; then
         send_command "CMD folio.merge: src → primary" \
           "billing.folio.merge" \
@@ -1219,14 +1262,9 @@ run_billing_pipeline() {
         "billing.no_show.charge" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
       wait_kafka 8
-      local post_ns
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      post_ns=$(resp_count)
-      if [[ $((post_ns - pre_ns)) -ge 1 ]]; then
-        pass "No-show charge ($label)"
-      else
-        skip "No-show charge ($label)" "Δ=$((post_ns - pre_ns))"
-      fi
+      poll_delta "No-show charge ($label)" \
+        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+        "$pre_ns"
     else
       skip "No-show charge ($label)" "no reservation"
     fi
@@ -1246,14 +1284,9 @@ run_billing_pipeline() {
           "billing.late_checkout.charge" \
           "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"actual_checkout_time\":\"$late_iso\",\"standard_checkout_time\":\"12:00\",\"currency\":\"USD\"}"
         wait_kafka 8
-        local post_late
-        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-        post_late=$(resp_count)
-        if [[ $((post_late - pre_late)) -ge 1 ]]; then
-          pass "Late checkout charge ($label)"
-        else
-          skip "Late checkout charge ($label)" "Δ=$((post_late - pre_late))"
-        fi
+        poll_delta "Late checkout charge ($label)" \
+          "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+          "$pre_late"
       else
         skip "Late checkout charge ($label)" "date calc unavailable"
       fi
@@ -1272,14 +1305,9 @@ run_billing_pipeline() {
         "billing.cancellation.penalty" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
       wait_kafka 8
-      local post_cp
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      post_cp=$(resp_count)
-      if [[ $((post_cp - pre_cp)) -ge 1 ]]; then
-        pass "Cancellation penalty ($label)"
-      else
-        skip "Cancellation penalty ($label)" "Δ=$((post_cp - pre_cp))"
-      fi
+      poll_delta "Cancellation penalty ($label)" \
+        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+        "$pre_cp"
     else
       skip "Cancellation penalty ($label)" "no reservation"
     fi
@@ -1316,14 +1344,9 @@ run_billing_pipeline() {
         "billing.comp.post" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":35.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Comp dinner — pipeline $tag\"}"
       wait_kafka 8
-      local post_comp
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      post_comp=$(resp_count)
-      if [[ $((post_comp - pre_comp)) -ge 1 ]]; then
-        pass "Comp post ($label)"
-      else
-        skip "Comp post ($label)" "Δ=$((post_comp - pre_comp))"
-      fi
+      poll_delta "Comp post ($label)" \
+        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+        "$pre_comp"
     else
       skip "Comp post ($label)" "no reservation"
     fi
@@ -1907,13 +1930,18 @@ if [[ "$FULL_API" == true ]]; then
   # api_smoke <label> <url>
   # PASS: 2xx, 204, 400, 404 (endpoint reachable; data may be missing)
   # SKIP: 403 with code TENANT_MODULE_NOT_ENABLED (endpoint reachable but module off)
-  # FAIL: 5xx, 0, 401, other 403, 502, 503, 504
+  # FAIL: 5xx, 0, 401, other 403 (5xx/0 retried once with 4s backoff before failing)
   api_smoke() {
     local label="$1" url="$2"
     local code
     # Throttle to stay below gateway rate limit
     sleep 0.05
     code=$(get "$url")
+    # Retry once on transient server/network failure with exponential backoff (4s)
+    if [[ "$code" =~ ^5 || "$code" == "0" || -z "$code" ]]; then
+      sleep 4
+      code=$(get "$url")
+    fi
     case "$code" in
       2*|400|404)         pass "$label  HTTP=$code" ;;
       403)

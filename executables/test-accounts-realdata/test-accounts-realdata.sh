@@ -229,6 +229,42 @@ wait_kafka() {
   sleep "$secs"
 }
 
+# poll_delta — poll an API endpoint until the item-count delta >= min_delta,
+# retrying with exponential backoff when the initial check shows Δ=0.
+# Emits pass on success, skip after all retries (never a hard fail — Δ=0 may
+# be a handler no-op rather than a test defect).
+#
+# Usage: poll_delta <label> <url> <baseline> [min_delta=1] [max_retries=1] [first_retry_wait=16]
+poll_delta() {
+  local label="$1" url="$2" baseline="$3"
+  local min_delta="${4:-1}" max_retries="${5:-1}" wait="${6:-16}"
+  local current delta
+
+  get "$url" >/dev/null
+  current=$(resp_count)
+  delta=$((current - baseline))
+
+  if [[ "$delta" -ge "$min_delta" ]]; then
+    pass "$label (Δ=$delta)"; return 0
+  fi
+
+  local attempt=1
+  while [[ $attempt -le $max_retries ]]; do
+    printf "  ⏳ Retry %d/%d in %ds: %s (Δ=%d so far)\n" \
+           "$attempt" "$max_retries" "$wait" "$label" "$delta"
+    sleep "$wait"
+    get "$url" >/dev/null
+    current=$(resp_count)
+    delta=$((current - baseline))
+    if [[ "$delta" -ge "$min_delta" ]]; then
+      pass "$label (Δ=$delta, retry $attempt)"; return 0
+    fi
+    wait=$((wait * 2)); attempt=$((attempt + 1))
+  done
+
+  skip "$label" "Δ=$delta after $((max_retries + 1)) checks"
+}
+
 # ─── Preflight ───────────────────────────────────────────────────────────────
 
 preflight() {
@@ -1882,8 +1918,17 @@ if [[ -n "${RES1_ID:-}" && -n "${FOLIO1_ID:-}" ]]; then
     "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge Source $UNIQUE\",\"currency\":\"USD\",\"idempotency_key\":\"$MERGE_IDEM\"}"
   wait_kafka 10
 
-  get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-  MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  MERGE_SRC_ID=""
+  _msrc_wait=8
+  for _msrc_attempt in 1 2 3; do
+    get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
+    MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+    [[ -n "$MERGE_SRC_ID" ]] && break
+    if [[ $_msrc_attempt -lt 3 ]]; then
+      printf "  ⏳ Retry %d/3 in %ds: waiting for merge-source folio...\n" "$_msrc_attempt" "$_msrc_wait"
+      sleep "$_msrc_wait"; _msrc_wait=$((_msrc_wait * 2))
+    fi
+  done
 
   if [[ -n "$MERGE_SRC_ID" ]]; then
     # Post a small charge to the source folio so merge transfers something
@@ -1992,15 +2037,9 @@ if [[ -n "${RES1_ID:-}" ]]; then
       "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"actual_checkout_time\":\"$LATE_CHECKOUT_ISO\",\"standard_checkout_time\":\"12:00\",\"currency\":\"USD\"}"
 
     wait_kafka 8
-
-    get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
-    POST_LATE_CHARGES=$(resp_count)
-    LATE_DELTA=$((POST_LATE_CHARGES - PRE_LATE_CHARGES))
-    if [[ "$LATE_DELTA" -ge 1 ]]; then
-      pass "DB: late checkout charge posted (Δ=$LATE_DELTA)"
-    else
-      skip "DB: late checkout charge" "no new charge postings (Δ=$LATE_DELTA)"
-    fi
+    poll_delta "DB: late checkout charge posted" \
+      "$GW/v1/billing/charges?tenant_id=$TID&limit=200" \
+      "$PRE_LATE_CHARGES"
   else
     skip "Late checkout charge" "date computation not available"
   fi
