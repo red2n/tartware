@@ -6,6 +6,7 @@ import {
   GlBatchEntriesResponseSchema,
   GlBatchListQuerySchema,
   GlBatchListResponseSchema,
+  GlTrialBalanceResponseSchema,
   type LedgerEntryListQuery,
   LedgerEntryListQuerySchema,
   LedgerEntryListResponseSchema,
@@ -21,6 +22,7 @@ import {
   getCommissionReport,
   getDepartmentalRevenue,
   getGlBatchEntries,
+  getGlTrialBalance,
   getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
@@ -318,6 +320,57 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       });
     },
   );
+
+  // ============================================================================
+  // GL-SOURCED TRIAL BALANCE (USALI double-entry, reads general_ledger_entries)
+  // ============================================================================
+
+  {
+    const GlTrialBalanceQuerySchema = z.object({
+      tenant_id: z.string().uuid(),
+      property_id: z.string().uuid().optional(),
+      business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    });
+    type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;
+    const GlTrialBalanceQueryJsonSchema = schemaFromZod(
+      GlTrialBalanceQuerySchema,
+      "GlTrialBalanceQuery",
+    );
+    const GlTrialBalanceResponseJsonSchema = schemaFromZod(
+      GlTrialBalanceResponseSchema,
+      "GlTrialBalanceResponse",
+    );
+
+    app.get<{ Querystring: GlTrialBalanceQuery }>(
+      "/v1/billing/reports/gl-trial-balance",
+      {
+        preHandler: app.withTenantScope({
+          resolveTenantId: (request) => (request.query as GlTrialBalanceQuery).tenant_id,
+          minRole: "ADMIN",
+          requiredModules: "finance-automation",
+        }),
+        schema: buildRouteSchema({
+          tag: FINANCE_TAG,
+          summary: "GL trial balance — reads general_ledger_entries (USALI GAAP double-entry)",
+          description:
+            "Returns debits vs credits per GL account for the given business_date. " +
+            "is_balanced=true means the batch is double-entry balanced (variance < 0.005).",
+          querystring: GlTrialBalanceQueryJsonSchema,
+          response: { 200: GlTrialBalanceResponseJsonSchema },
+        }),
+      },
+      async (request) => {
+        const { tenant_id, property_id, business_date } = GlTrialBalanceQuerySchema.parse(
+          request.query,
+        );
+        return getGlTrialBalance({
+          tenantId: tenant_id,
+          propertyId: property_id,
+          businessDate: business_date,
+        });
+      },
+    );
+  }
 
   // ============================================================================
   // DEPARTMENTAL REVENUE REPORT

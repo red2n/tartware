@@ -9,6 +9,9 @@ import {
   formatEnumDisplay,
   type GlBatchEntriesResponse,
   type GlBatchListItem,
+  GlTrialBalanceLineSchema,
+  type GlTrialBalanceResponse,
+  GlTrialBalanceResponseSchema,
   type LedgerEntryListItem,
   LedgerEntryListItemSchema,
   type LedgerEntryRow,
@@ -842,4 +845,95 @@ export const listChargebacks = async (options: {
     requested_at: r.requested_at ?? undefined,
     created_at: r.created_at ?? undefined,
   }));
+};
+
+/**
+ * GL-sourced trial balance — reads from general_ledger_entries (not charge_postings).
+ * Returns totals per GL account code for the given business_date / property.
+ * Checks double-entry invariant: total_debits == total_credits.
+ */
+export const getGlTrialBalance = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  businessDate: string;
+}): Promise<GlTrialBalanceResponse> => {
+  const { tenantId, propertyId, businessDate } = options;
+
+  // Resolve the batch for the day.
+  const batchParams: unknown[] = [tenantId, businessDate];
+  let batchPropFilter = "";
+  if (propertyId) {
+    batchParams.push(propertyId);
+    batchPropFilter = `AND property_id = $${batchParams.length}::uuid`;
+  }
+
+  const batchRes = await query<{ gl_batch_id: string; batch_status: string }>(
+    `SELECT gl_batch_id, batch_status
+     FROM public.general_ledger_batches
+     WHERE tenant_id  = $1::uuid
+       AND batch_date  = $2::date
+       ${batchPropFilter}
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    batchParams,
+  );
+
+  const batch = batchRes.rows[0] ?? null;
+
+  // Aggregate GL entries by account code.
+  const lineParams: unknown[] = [tenantId, businessDate];
+  let linePropFilter = "";
+  if (propertyId) {
+    lineParams.push(propertyId);
+    linePropFilter = `AND e.property_id = $${lineParams.length}::uuid`;
+  }
+
+  const lineRes = await query<{
+    gl_account_code: string;
+    usali_category: string | null;
+    debit_total: string;
+    credit_total: string;
+    net: string;
+  }>(
+    `SELECT
+       e.gl_account_code,
+       e.usali_category,
+       COALESCE(SUM(e.debit_amount),  0)::numeric AS debit_total,
+       COALESCE(SUM(e.credit_amount), 0)::numeric AS credit_total,
+       (COALESCE(SUM(e.debit_amount), 0) - COALESCE(SUM(e.credit_amount), 0))::numeric AS net
+     FROM public.general_ledger_entries e
+     WHERE e.tenant_id    = $1::uuid
+       AND e.posting_date = $2::date
+       AND e.status NOT IN ('VOIDED')
+       ${linePropFilter}
+     GROUP BY e.gl_account_code, e.usali_category
+     ORDER BY e.gl_account_code`,
+    lineParams,
+  );
+
+  const lineItems = lineRes.rows.map((r) =>
+    GlTrialBalanceLineSchema.parse({
+      gl_account_code: r.gl_account_code,
+      usali_category: r.usali_category ?? null,
+      debit_total: Number(r.debit_total),
+      credit_total: Number(r.credit_total),
+      net: Number(r.net),
+    }),
+  );
+
+  const totalDebits = lineItems.reduce((s, l) => s + l.debit_total, 0);
+  const totalCredits = lineItems.reduce((s, l) => s + l.credit_total, 0);
+  const variance = Math.abs(totalDebits - totalCredits);
+
+  return GlTrialBalanceResponseSchema.parse({
+    business_date: businessDate,
+    property_id: propertyId ?? null,
+    gl_batch_id: batch?.gl_batch_id ?? null,
+    batch_status: batch?.batch_status ?? null,
+    line_items: lineItems,
+    total_debits: totalDebits,
+    total_credits: totalCredits,
+    variance,
+    is_balanced: variance < 0.005,
+  });
 };

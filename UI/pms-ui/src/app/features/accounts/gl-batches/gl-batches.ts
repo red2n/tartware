@@ -51,6 +51,14 @@ export class GlBatchesComponent {
 	readonly entriesLoading = signal(false);
 	readonly entriesError = signal<string | null>(null);
 
+	/** Debit/credit totals + variance for the currently-expanded batch entries. */
+	readonly entryTotals = computed(() => {
+		const rows = this.entries();
+		const totalDebit  = rows.reduce((s, r) => s + Number(r.debit_amount  ?? 0), 0);
+		const totalCredit = rows.reduce((s, r) => s + Number(r.credit_amount ?? 0), 0);
+		return { totalDebit, totalCredit, variance: Math.abs(totalDebit - totalCredit) };
+	});
+
 	readonly filtered = computed(() => {
 		const status = this.statusFilter();
 		const items = this.batches();
@@ -185,6 +193,73 @@ export class GlBatchesComponent {
 	canExport(batch: GlBatchListItem): boolean {
 		const status = batch.batch_status?.toUpperCase();
 		return status === "REVIEW" || status === "OPEN";
+	}
+
+	/**
+	 * Download GL entries for the selected batch as a CSV file.
+	 * Only available once entries have been loaded (drill-down opened).
+	 */
+	downloadCsv(batch: GlBatchListItem): void {
+		const rows = this.entries();
+		if (!rows.length) {
+			this.toast.error("No entries loaded — open the batch first.");
+			return;
+		}
+		const headers = [
+			"entry_id",
+			"entry_number",
+			"transaction_date",
+			"account_code",
+			"account_name",
+			"folio_id",
+			"reservation_id",
+			"confirmation_number",
+			"department_code",
+			"description",
+			"debit_amount",
+			"credit_amount",
+			"currency_code",
+			"source_reference",
+			"entry_status",
+		];
+		const escape = (v: unknown): string => {
+			const s = v == null ? "" : String(v);
+			return s.includes(",") || s.includes('"') || s.includes("\n")
+				? `"${s.replace(/"/g, '""')}"`
+				: s;
+		};
+		const csv = [
+			headers.join(","),
+			...rows.map((r) =>
+				[
+					r.entry_id,
+					r.entry_number,
+					r.transaction_date,
+					r.account_code,
+					r.account_name ?? "",
+					r.folio_id ?? "",
+					r.reservation_id ?? "",
+					r.confirmation_number ?? "",
+					r.department_code ?? "",
+					r.description,
+					r.debit_amount,
+					r.credit_amount,
+					r.currency_code,
+					r.source_reference ?? "",
+					r.entry_status,
+				]
+					.map(escape)
+					.join(","),
+			),
+		].join("\r\n");
+
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `gl-batch-${batch.batch_number}-${batch.batch_date}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
 	}
 
 	statusBadge(status: string | undefined): string {

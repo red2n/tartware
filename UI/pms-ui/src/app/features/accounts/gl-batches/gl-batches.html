@@ -128,6 +128,12 @@
                       {{ 'Export' | translate }}
                     </button>
                   }
+                  @if (expandedBatchId() === b.gl_batch_id && entries().length > 0) {
+                    <button class="btn btn-outline btn-xs" (click)="downloadCsv(b)" [pTooltip]="'Download entries as CSV' | translate">
+                      <app-icon name="download" />
+                      {{ 'CSV' | translate }}
+                    </button>
+                  }
                 </div>
               </td>
             </tr>
@@ -180,6 +186,22 @@
                             </tr>
                           }
                         </tbody>
+                        <tfoot>
+                          <tr class="font-semibold">
+                            <td colspan="6" class="text-right">{{ 'Totals' | translate }}</td>
+                            <td class="text-right">{{ formatCurrency(entryTotals().totalDebit) }}</td>
+                            <td class="text-right">{{ formatCurrency(entryTotals().totalCredit) }}</td>
+                            <td>
+                              @if (entryTotals().variance > 0.005) {
+                                <span class="badge badge-danger" [pTooltip]="'Out of balance: variance ' + formatCurrency(entryTotals().variance) | translate">
+                                  <app-icon name="warning" /> {{ 'Imbalanced' | translate }}
+                                </span>
+                              } @else {
+                                <span class="badge badge-success">{{ 'Balanced' | translate }}</span>
+                              }
+                            </td>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   }

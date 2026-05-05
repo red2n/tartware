@@ -237,6 +237,118 @@ export const defaultNightAuditSteps: NightAuditStep[] = [
     },
   },
   {
+    /**
+     * Step 6 — GL Batch Consolidation
+     *
+     * Sums all DRAFT/READY general_ledger_entries for the business_date into the
+     * day's OPEN batch, verifies that total_debits == total_credits (USALI
+     * double-entry invariant), then transitions the batch from OPEN → REVIEW so
+     * the finance team can inspect before exporting.
+     *
+     * If no entries exist for the day the step is a no-op (returns 0 entries).
+     * If the batch is already in REVIEW/POSTED this step is idempotent.
+     * If debits ≠ credits the step throws, failing the audit run — the imbalance
+     * must be corrected before the run can be replayed.
+     */
+    name: "consolidate_gl_batch",
+    run: async (ctx, client) => {
+      // Resolve (or no-op) the OPEN batch for this business_date.
+      const batchRes = await client.query<{
+        gl_batch_id: string;
+        batch_status: string;
+        debit_total: string;
+        credit_total: string;
+        entry_count: string;
+      }>(
+        `SELECT gl_batch_id, batch_status, debit_total, credit_total, entry_count
+         FROM public.general_ledger_batches
+         WHERE tenant_id  = $1::uuid
+           AND property_id = $2::uuid
+           AND batch_date  = $3::date
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [ctx.tenantId, ctx.propertyId, ctx.businessDate],
+      );
+
+      const batch = batchRes.rows[0];
+
+      if (!batch) {
+        // No GL activity today — nothing to consolidate.
+        return { metrics: { gl_entries_consolidated: 0, gl_variance: 0 } };
+      }
+
+      if (batch.batch_status === "POSTED" || batch.batch_status === "REVIEW") {
+        // Already consolidated by a previous (successful) run — idempotent.
+        return {
+          metrics: {
+            gl_entries_consolidated: Number(batch.entry_count),
+            gl_variance: 0,
+          },
+        };
+      }
+
+      // Recalculate totals from individual entries (source of truth).
+      const totalsRes = await client.query<{
+        total_debit: string;
+        total_credit: string;
+        entry_count: string;
+      }>(
+        `SELECT
+           COALESCE(SUM(debit_amount),  0)::numeric AS total_debit,
+           COALESCE(SUM(credit_amount), 0)::numeric AS total_credit,
+           COUNT(*)::text                           AS entry_count
+         FROM public.general_ledger_entries
+         WHERE gl_batch_id = $1::uuid
+           AND status NOT IN ('VOIDED')`,
+        [batch.gl_batch_id],
+      );
+
+      const totals = totalsRes.rows[0];
+      const totalDebit = Number(totals?.total_debit ?? 0);
+      const totalCredit = Number(totals?.total_credit ?? 0);
+      const entryCount = Number(totals?.entry_count ?? 0);
+      const variance = Math.abs(totalDebit - totalCredit);
+
+      // USALI double-entry invariant: debits must equal credits.
+      if (variance > 0.005) {
+        throw new Error(
+          `GL batch ${batch.gl_batch_id} is out of balance: debits=${totalDebit.toFixed(2)} credits=${totalCredit.toFixed(2)} variance=${variance.toFixed(2)}`,
+        );
+      }
+
+      // Stamp recalculated totals and transition batch to REVIEW.
+      await client.query(
+        `UPDATE public.general_ledger_batches
+         SET debit_total   = $2,
+             credit_total  = $3,
+             entry_count   = $4,
+             batch_status  = 'REVIEW',
+             updated_at    = NOW()
+         WHERE gl_batch_id = $1::uuid
+           AND tenant_id   = $5::uuid`,
+        [batch.gl_batch_id, totalDebit, totalCredit, entryCount, ctx.tenantId],
+      );
+
+      // Mark all DRAFT entries in this batch as READY.
+      await client.query(
+        `UPDATE public.general_ledger_entries
+         SET status     = 'READY',
+             updated_at = NOW()
+         WHERE gl_batch_id = $1::uuid
+           AND status      = 'DRAFT'`,
+        [batch.gl_batch_id],
+      );
+
+      return {
+        metrics: {
+          gl_entries_consolidated: entryCount,
+          gl_variance: variance,
+          gl_batch_id: batch.gl_batch_id,
+        },
+      };
+    },
+  },
+  {
     name: "roll_business_date_forward",
     run: async () => {
       // Stub: advance property.business_date and emit RollAdvanced event.
