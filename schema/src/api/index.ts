@@ -65,3 +65,5 @@ export * from "./system-admin.js";
 export * from "./system-session.js";
 export * from "./tenants.js";
 export * from "./users.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./webhook-delivery-rows.js";

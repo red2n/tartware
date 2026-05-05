@@ -259,6 +259,12 @@ export const routes: Routes = [
 					import("./features/loyalty/loyalty").then((m) => m.LoyaltyComponent),
 			},
 			{
+				path: "webhooks",
+				canActivate: [screenGuard("webhooks")],
+				loadComponent: () =>
+					import("./features/webhooks/webhooks").then((m) => m.WebhooksComponent),
+			},
+			{
 				path: "screen-permissions",
 				canActivate: [screenGuard("users")],
 				loadComponent: () =>

@@ -1,0 +1,198 @@
+<app-page-header
+  title="Webhooks"
+  description="Manage webhook subscriptions and HMAC delivery for outbound integrations.">
+  <button class="btn btn-primary btn-sm" (click)="openCreate()" [disabled]="showCreate()">
+    <app-icon name="add" /> {{ 'New webhook' | translate }}
+  </button>
+</app-page-header>
+
+@if (showCreate()) {
+  <div class="detail-card">
+    <h3 class="card-title">
+      {{ (editingId() ? 'Edit webhook' : 'New webhook') | translate }}
+    </h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="field-label">{{ 'Name' | translate }} *</label>
+        <input class="field-input" type="text"
+          [ngModel]="form().webhook_name"
+          (ngModelChange)="updateForm('webhook_name', $event ?? '')" />
+      </div>
+      <div class="form-group form-group-grow">
+        <label class="field-label">{{ 'URL' | translate }} *</label>
+        <input class="field-input" type="url" placeholder="https://"
+          [ngModel]="form().webhook_url"
+          (ngModelChange)="updateForm('webhook_url', $event ?? '')" />
+      </div>
+      <div class="form-group form-group-grow">
+        <label class="field-label">{{ 'Event types (comma-separated)' | translate }} *</label>
+        <input class="field-input" type="text" placeholder="reservation.created, reservation.cancelled"
+          [ngModel]="form().event_types_csv"
+          (ngModelChange)="updateForm('event_types_csv', $event ?? '')" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'HTTP method' | translate }}</label>
+        <select class="field-input"
+          [ngModel]="form().http_method"
+          (ngModelChange)="updateForm('http_method', $event)">
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Authentication' | translate }}</label>
+        <select class="field-input"
+          [ngModel]="form().authentication_type"
+          (ngModelChange)="updateForm('authentication_type', $event)">
+          <option value="NONE">None</option>
+          <option value="HMAC">HMAC</option>
+          <option value="BEARER">Bearer</option>
+          <option value="BASIC">Basic</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="field-label">
+          <input type="checkbox"
+            [checked]="form().is_active"
+            (change)="updateForm('is_active', $any($event.target).checked)" />
+          {{ 'Active' | translate }}
+        </label>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="processing() !== null">
+        {{ 'Cancel' | translate }}
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="submitForm()"
+        [disabled]="processing() === (editingId() ?? 'create')">
+        @if (processing() === (editingId() ?? 'create')) {
+          <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
+        } @else {
+          <app-icon name="save" />
+        }
+        {{ 'Save' | translate }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (loading()) {
+  <div class="loading-state"><p-progressSpinner [style]="{ width: '24px', height: '24px' }" /></div>
+} @else if (!hasSubscriptions()) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="webhook" />
+    <h3>{{ 'No webhook subscriptions' | translate }}</h3>
+    <p>{{ 'Create one to receive event notifications.' | translate }}</p>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Name' | translate }}</th>
+          <th>{{ 'URL' | translate }}</th>
+          <th>{{ 'Events' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th>{{ 'Last success' | translate }}</th>
+          <th>{{ 'Last failure' | translate }}</th>
+          <th>{{ 'Counts' | translate }}</th>
+          <th class="actions-cell">{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (w of subscriptions(); track w.subscription_id) {
+          <tr>
+            <td class="cell-primary"><strong>{{ w.webhook_name }}</strong></td>
+            <td class="cell-notes" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ w.webhook_url }}
+            </td>
+            <td class="cell-notes">{{ (w.event_types ?? []).join(', ') }}</td>
+            <td>
+              @if (w.is_active) { <span class="badge badge-success">Active</span> }
+              @else { <span class="badge">Disabled</span> }
+            </td>
+            <td>{{ w.last_success_at ? (w.last_success_at | date:'short') : '—' }}</td>
+            <td>{{ w.last_failure_at ? (w.last_failure_at | date:'short') : '—' }}</td>
+            <td>
+              <span pTooltip="Successes / Failures">
+                {{ w.success_count ?? 0 }} / {{ w.failure_count ?? 0 }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="btn btn-outline btn-xs" (click)="openEdit(w)" pTooltip="Edit">
+                <app-icon name="edit" />
+              </button>
+              <button class="btn btn-outline btn-xs" (click)="sendTest(w)"
+                [disabled]="processing() === ('test-' + w.subscription_id)" pTooltip="Send test event">
+                <app-icon name="send" />
+              </button>
+              <button class="btn btn-outline btn-xs" (click)="rotateSecret(w)"
+                [disabled]="processing() === ('rotate-' + w.subscription_id)" pTooltip="Rotate signing secret">
+                <app-icon name="key" />
+              </button>
+              <button class="btn btn-outline btn-xs" (click)="showDeliveries(w)" pTooltip="View deliveries">
+                <app-icon name="history" />
+              </button>
+              <button class="btn btn-outline btn-xs" (click)="replayFailures(w)"
+                [disabled]="processing() === ('replay-' + w.subscription_id)" pTooltip="Replay failed deliveries">
+                <app-icon name="replay" />
+              </button>
+              <button class="btn btn-outline btn-xs btn-danger" (click)="deleteWebhook(w)"
+                [disabled]="processing() === w.subscription_id" pTooltip="Delete">
+                <app-icon name="delete" />
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (deliveriesFor()) {
+  <div class="detail-card">
+    <div class="card-header-row">
+      <h3 class="card-title">{{ 'Delivery history' | translate }}</h3>
+      <button class="btn btn-outline btn-xs" (click)="closeDeliveries()">
+        <app-icon name="close" /> {{ 'Close' | translate }}
+      </button>
+    </div>
+    @if (loadingDeliveries()) {
+      <div class="loading-state"><p-progressSpinner [style]="{ width: '20px', height: '20px' }" /></div>
+    } @else if (deliveries().length === 0) {
+      <div class="empty-state"><p>{{ 'No deliveries recorded.' | translate }}</p></div>
+    } @else {
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Time' | translate }}</th>
+              <th>{{ 'Event' | translate }}</th>
+              <th>{{ 'Status' | translate }}</th>
+              <th>{{ 'HTTP' | translate }}</th>
+              <th>{{ 'Attempt' | translate }}</th>
+              <th>{{ 'Error' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of deliveries(); track d.delivery_id) {
+              <tr>
+                <td>{{ d.created_at ? (d.created_at | date:'short') : '—' }}</td>
+                <td>{{ d.event_type ?? '—' }}</td>
+                <td>
+                  @if (d.status === 'SUCCESS') { <span class="badge badge-success">Success</span> }
+                  @else if (d.status === 'FAILED') { <span class="badge badge-error">Failed</span> }
+                  @else { <span class="badge">{{ d.status ?? '—' }}</span> }
+                </td>
+                <td>{{ d.http_status_code ?? '—' }}</td>
+                <td>{{ d.attempt ?? '—' }}</td>
+                <td class="cell-notes">{{ d.error_message ?? '' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
