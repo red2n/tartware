@@ -59,7 +59,7 @@ const start = async () => {
     app.log.info("Dependencies available; starting HTTP server");
 
     // Shadow mode disables authoritative inventory locks — refuse to start in production.
-    const isDev = (process.env.NODE_ENV ?? "development") === "development";
+    const isDev = (process.env.NODE_ENV ?? "development") !== "production";
     if (config.guard.shadowMode && !isDev) {
       app.log.error(
         { shadowMode: true, nodeEnv: process.env.NODE_ENV },

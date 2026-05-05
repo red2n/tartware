@@ -19,8 +19,8 @@ export const ensureGuestEncryptionRequirementsMet = (): void => {
   }
 
   if (config.compliance.encryption.guestDataKey === "local-dev-guest-key") {
-    const isDev = (process.env.NODE_ENV ?? "development") === "development";
-    if (!isDev) {
+    const isNonProd = (process.env.NODE_ENV ?? "development") !== "production";
+    if (!isNonProd) {
       appLogger.error(
         { nodeEnv: process.env.NODE_ENV },
         "guest data encryption key cannot use development placeholder outside NODE_ENV=development",

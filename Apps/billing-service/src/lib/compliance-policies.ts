@@ -23,7 +23,7 @@ export const ensureBillingEncryptionRequirementsMet = (): void => {
     throw new Error("Billing encryption requirements not satisfied");
   }
 
-  const isDev = (process.env.NODE_ENV ?? "development") === "development";
+  const isDev = (process.env.NODE_ENV ?? "development") !== "production";
 
   if (config.compliance.encryption.billingDataKey === "local-dev-billing-key") {
     if (isDev) {
