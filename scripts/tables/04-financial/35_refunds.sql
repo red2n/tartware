@@ -123,6 +123,12 @@ CREATE TABLE refunds (
     chargeback_date DATE,
     chargeback_reason VARCHAR(200),
     chargeback_reference VARCHAR(100),
+    chargeback_status VARCHAR(30)
+        CHECK (chargeback_status IS NULL OR chargeback_status IN ('RECEIVED', 'EVIDENCE_SUBMITTED', 'WON', 'LOST')), -- Dispute lifecycle for is_chargeback rows
+    chargeback_notes TEXT, -- Operator notes captured per status transition
+    chargeback_evidence JSONB, -- Supporting evidence (file URLs, descriptions)
+    chargeback_status_updated_at TIMESTAMP, -- Last state-machine transition timestamp
+    chargeback_status_updated_by UUID, -- User who advanced the status
 
     -- Guest Communication
     guest_notified BOOLEAN DEFAULT FALSE,
@@ -221,6 +227,9 @@ COMMENT ON COLUMN refunds.net_refund_amount IS 'Refund amount minus processing f
 COMMENT ON COLUMN refunds.reason_category IS 'High-level reason: CANCELLATION, NO_SHOW, EARLY_DEPARTURE, SERVICE_ISSUE, OVERCHARGE, etc.';
 COMMENT ON COLUMN refunds.requires_approval IS 'TRUE if manager approval needed before processing';
 COMMENT ON COLUMN refunds.is_chargeback IS 'TRUE if initiated by credit card chargeback';
+COMMENT ON COLUMN refunds.chargeback_status IS 'Dispute lifecycle: RECEIVED → EVIDENCE_SUBMITTED → WON|LOST. NULL when is_chargeback=FALSE.';
+COMMENT ON COLUMN refunds.chargeback_notes IS 'Operator notes appended during chargeback status transitions';
+COMMENT ON COLUMN refunds.chargeback_evidence IS 'JSONB array of supporting documents (RECEIPT, CORRESPONDENCE, CONTRACT, PHOTO, OTHER)';
 COMMENT ON COLUMN refunds.is_full_refund IS 'TRUE if refunding 100% of original payment';
 
 -- Create indexes (will be created via indexes file)

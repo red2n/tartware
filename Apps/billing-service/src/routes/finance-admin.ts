@@ -1,5 +1,7 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  ChargebackListQuerySchema,
+  ChargebackListResponseSchema,
   FiscalPeriodListResponseSchema,
   GlBatchEntriesResponseSchema,
   GlBatchListQuerySchema,
@@ -22,6 +24,7 @@ import {
   getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
+  listChargebacks,
   listFiscalPeriods,
   listGlBatches,
   listLedgerEntries,
@@ -497,6 +500,54 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       const { tenant_id, limit, offset } = GlBatchEntriesQuerySchema.parse(request.query);
       const { batchId } = request.params;
       return getGlBatchEntries({ tenantId: tenant_id, batchId, limit, offset });
+    },
+  );
+
+  // ============================================================================
+  // CHARGEBACKS / DISPUTES (GAP-03)
+  // ============================================================================
+
+  type ChargebackListQueryType = z.infer<typeof ChargebackListQuerySchema>;
+
+  const ChargebackListQueryJsonSchema = schemaFromZod(
+    ChargebackListQuerySchema,
+    "ChargebackListQuery",
+  );
+  const ChargebackListResponseJsonSchema = schemaFromZod(
+    ChargebackListResponseSchema,
+    "ChargebackListResponse",
+  );
+
+  app.get<{ Querystring: ChargebackListQueryType }>(
+    "/v1/billing/chargebacks",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as ChargebackListQueryType).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "List chargebacks/disputes with optional status and date filters",
+        querystring: ChargebackListQueryJsonSchema,
+        response: {
+          200: ChargebackListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, chargeback_status, start_date, end_date, limit, offset } =
+        ChargebackListQuerySchema.parse(request.query);
+      const data = await listChargebacks({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        chargebackStatus: chargeback_status,
+        startDate: start_date,
+        endDate: end_date,
+        limit,
+        offset,
+      });
+      return ChargebackListResponseSchema.parse({ data, meta: { count: data.length } });
     },
   );
 };

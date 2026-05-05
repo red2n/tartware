@@ -1,9 +1,8 @@
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import type { TenantRole, UserWithTenants } from "@tartware/schemas";
 
@@ -27,10 +26,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
 		TranslatePipe,
 	],
 	templateUrl: "./edit-user-dialog.html",
@@ -38,9 +36,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 })
 export class EditUserDialogComponent {
 	private readonly api = inject(ApiService);
-	private readonly dialogRef = inject(MatDialogRef<EditUserDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
-	readonly data: DialogData = inject(MAT_DIALOG_DATA);
+	readonly data: DialogData = inject(DynamicDialogConfig).data;
 
 	readonly saving = signal(false);
 

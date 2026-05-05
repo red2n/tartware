@@ -1,10 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 
 import type { FiscalPeriodListItem } from "@tartware/schemas";
 
@@ -25,10 +24,9 @@ type StatusFilter = "ALL" | "FUTURE" | "OPEN" | "SOFT_CLOSE" | "CLOSED" | "LOCKE
 	imports: [
 		NgClass,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
 	],

@@ -1,7 +1,7 @@
 <div class="housekeeping-page">
   <app-page-header title="Housekeeping" description="Room cleaning schedules, task assignments, and inspections">
-    <button class="btn btn-invisible" (click)="refresh()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="refresh()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -10,40 +10,40 @@
     <div class="hk-policy-flags">
       @if (inspectionsRequired()) {
         <span class="hk-policy-flag hk-policy-flag-warn">
-          <mat-icon>verified</mat-icon>
+          <app-icon name="verified" />
           {{ 'Inspections required before CLEAN' | translate }}
         </span>
       }
       @if (turndownEnabled()) {
         <span class="hk-policy-flag hk-policy-flag-info">
-          <mat-icon>bedtime</mat-icon>
+          <app-icon name="bedtime" />
           {{ 'Turndown service active' | translate }}
         </span>
       }
       @if (autoTaskOnCheckout()) {
         <span class="hk-policy-flag hk-policy-flag-info">
-          <mat-icon>playlist_add_check</mat-icon>
+          <app-icon name="playlist_add_check" />
           {{ 'Auto-task on checkout' | translate }}
         </span>
       }
       <span class="hk-policy-flag">
-        <mat-icon>schedule</mat-icon>
+        <app-icon name="schedule" />
         {{ 'Shift start' | translate }}: <strong>{{ hkShiftStart() }}</strong>
       </span>
       <span class="hk-policy-flag">
-        <mat-icon>cleaning_services</mat-icon>
+        <app-icon name="cleaning_services" />
         {{ 'Post-checkout status' | translate }}: <strong>{{ defaultStatusOnCheckout() }}</strong>
       </span>
       <span class="hk-policy-flag">
-        <mat-icon>do_not_disturb</mat-icon>
+        <app-icon name="do_not_disturb" />
         {{ 'DND max' | translate }}: <strong>{{ dndMaxDays() }}d</strong>
       </span>
       <span class="hk-policy-flag">
-        <mat-icon>event_repeat</mat-icon>
+        <app-icon name="event_repeat" />
         {{ 'Stayover clean every' | translate }}: <strong>{{ stayoverCleanInterval() }}d</strong>
       </span>
       <span class="hk-policy-flag">
-        <mat-icon>build</mat-icon>
+        <app-icon name="build" />
         {{ 'Maintenance SLA' | translate }}: <strong>{{ maintenanceSlaHours() }}h</strong> ({{ maintenanceDefaultPriority() }})
       </span>
     </div>
@@ -65,7 +65,7 @@
     <div class="overview-bar">
       <div class="overview-section hk-section-ready">
         <div class="overview-label">
-          <mat-icon>verified</mat-icon>
+          <app-icon name="verified" />
           <span>{{ 'Rooms Ready' | translate }}</span>
         </div>
         <div class="overview-value">{{ summary().readyPct }}%</div>
@@ -74,7 +74,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section hk-section-dirty clickable" (click)="setView('rooms'); setFilter('DIRTY')">
         <div class="overview-label">
-          <mat-icon>warning</mat-icon>
+          <app-icon name="warning" />
           <span>{{ 'Dirty' | translate }}</span>
         </div>
         <div class="overview-value">{{ summary().dirty }}</div>
@@ -83,7 +83,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section hk-section-progress clickable" (click)="setView('rooms'); setFilter('IN_PROGRESS')">
         <div class="overview-label">
-          <mat-icon>cleaning_services</mat-icon>
+          <app-icon name="cleaning_services" />
           <span>{{ 'In Progress' | translate }}</span>
         </div>
         <div class="overview-value">{{ summary().inProgress }}</div>
@@ -92,7 +92,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section hk-section-clean clickable" (click)="setView('rooms'); setFilter('CLEAN')">
         <div class="overview-label">
-          <mat-icon>check_circle</mat-icon>
+          <app-icon name="check_circle" />
           <span>{{ 'Clean' | translate }}</span>
         </div>
         <div class="overview-value">{{ summary().clean }}</div>
@@ -101,7 +101,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section clickable" (click)="setView('rooms'); setFilter('INSPECTED')">
         <div class="overview-label">
-          <mat-icon>verified</mat-icon>
+          <app-icon name="verified" />
           <span>{{ 'Inspected' | translate }}</span>
         </div>
         <div class="overview-value">{{ summary().inspected }}</div>
@@ -111,7 +111,7 @@
         <div class="overview-divider"></div>
         <div class="overview-section hk-section-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
           <div class="overview-label">
-            <mat-icon>do_not_disturb</mat-icon>
+            <app-icon name="do_not_disturb" />
             <span>{{ 'DND' | translate }}</span>
           </div>
           <div class="overview-value">{{ summary().dnd }}</div>
@@ -129,14 +129,14 @@
       class="view-tab"
       [class.view-tab-active]="activeView() === 'rooms'"
       (click)="setView('rooms')">
-      <mat-icon>hotel</mat-icon>
+      <app-icon name="hotel" />
       {{ 'Room Board' | translate }}
     </button>
     <button
       class="view-tab"
       [class.view-tab-active]="activeView() === 'tasks'"
       (click)="setView('tasks')">
-      <mat-icon>task_alt</mat-icon>
+      <app-icon name="task_alt" />
       {{ 'Tasks' | translate }}
       @if (tasks().length > 0) {
         <span class="counter">{{ tasks().length }}</span>
@@ -161,8 +161,8 @@
           </button>
         }
       </nav>
-      <span class="hk-priority-badge" [matTooltip]="'HK queue priority order' | translate">
-        <mat-icon>sort</mat-icon>
+      <span class="hk-priority-badge" [pTooltip]="'HK queue priority order' | translate">
+        <app-icon name="sort" />
         {{ hkPriorityOrder().replace(/_/g, ' ') | translate }}
       </span>
     </div>
@@ -170,14 +170,14 @@
     @defer (when roomsReady(); prefetch on idle) {
     @if (roomError(); as err) {
       <div class="error-state">
-        <mat-icon class="error-icon">error_outline</mat-icon>
+        <app-icon class="error-icon" name="error_outline" />
         <span>{{ err }}</span>
         <button class="btn btn-outline" (click)="loadRooms()">{{ 'Retry' | translate }}</button>
       </div>
     } @else if (filteredRooms().length === 0) {
       <div class="empty-state">
         <div class="empty-state-icon-wrap">
-          <mat-icon class="empty-icon">cleaning_services</mat-icon>
+          <app-icon class="empty-icon" name="cleaning_services" />
         </div>
         @if (rooms().length === 0) {
           <h3 class="empty-state-title">{{ 'No rooms found' | translate }}</h3>
@@ -193,19 +193,19 @@
             <thead>
               <tr>
                 <th class="col-room" [attr.aria-sort]="ariaSort('room_number')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('room_number')">{{ 'Room' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('room_number')">{{ 'Room' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('room_number')" /></button>
                 </th>
                 <th class="col-type" [attr.aria-sort]="ariaSort('room_type_name')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">{{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">{{ 'Type' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('room_type_name')" /></button>
                 </th>
                 <th class="col-floor" [attr.aria-sort]="ariaSort('floor')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('floor')">{{ 'Floor' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('floor')">{{ 'Floor' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('floor')" /></button>
                 </th>
                 <th class="col-occupancy" [attr.aria-sort]="ariaSort('status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Occupancy' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Occupancy' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('status')" /></button>
                 </th>
                 <th class="col-hk-status" [attr.aria-sort]="ariaSort('housekeeping_status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">{{ 'HK Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">{{ 'HK Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('housekeeping_status')" /></button>
                 </th>
                 <th class="col-notes">{{ 'Notes' | translate }}</th>
                 <th class="col-actions"></th>
@@ -232,10 +232,10 @@
                   <td>
                     <span class="badge" [ngClass]="statusClass(room.status)">{{ room.status_display }}</span>
                     @if (room.is_out_of_order) {
-                      <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">{{ 'OOO' | translate }}</span>
+                      <span class="badge badge-danger" [pTooltip]="room.out_of_order_reason ?? ''">{{ 'OOO' | translate }}</span>
                     }
                     @if (room.is_blocked) {
-                      <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">{{ 'Blocked' | translate }}</span>
+                      <span class="badge badge-warning" [pTooltip]="room.block_reason ?? ''">{{ 'Blocked' | translate }}</span>
                     }
                   </td>
                   <td>
@@ -243,7 +243,7 @@
                   </td>
                   <td class="cell-notes">
                     @if (room.housekeeping_notes) {
-                      <span [matTooltip]="room.housekeeping_notes">
+                      <span [pTooltip]="room.housekeeping_notes">
                         {{ room.housekeeping_notes.length > 30
                             ? room.housekeeping_notes.substring(0, 30) + '…'
                             : room.housekeeping_notes }}
@@ -254,49 +254,47 @@
                   </td>
                   <td class="cell-actions" (click)="$event.stopPropagation()">
                     @if (updatingRoomId() === room.room_id) {
-                      <mat-spinner diameter="18"></mat-spinner>
+                      <p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
                     } @else {
                       <div class="action-btn-group">
                         <button
                           class="btn btn-invisible btn-sm"
-                          [matMenuTriggerFor]="occMenu"
-                          [matTooltip]="'Set occupancy' | translate"
+                          (click)="occMenu.toggle($event)"
+                          [pTooltip]="'Set occupancy' | translate"
                           [attr.aria-label]="'Set occupancy status' | translate">
-                          <mat-icon>meeting_room</mat-icon>
+                          <app-icon name="meeting_room" />
                         </button>
-                        <mat-menu #occMenu="matMenu" class="hk-actions-menu">
+                        <p-popover #occMenu styleClass="hk-actions-menu">
                           @for (action of roomOccupancyActions(room); track action.value) {
                             <button
-                              mat-menu-item
                               (click)="updateRoomOccupancy(room, action.value)">
-                              <mat-icon [class]="'occ-icon-' + action.value.toLowerCase().replace('_', '-')">{{ action.icon }}</mat-icon>
+                              <app-icon [class]="'occ-icon-' + action.value.toLowerCase().replace('_', '-')" [name]="action.icon" />
                               <span>{{ action.label | translate }}</span>
                             </button>
                           }
-                        </mat-menu>
+                        </p-popover>
                         <button
                           class="btn btn-invisible btn-sm"
-                          [matMenuTriggerFor]="hkMenu"
-                          [matTooltip]="'Set HK status' | translate"
+                          (click)="hkMenu.toggle($event)"
+                          [pTooltip]="'Set HK status' | translate"
                           [attr.aria-label]="'Set housekeeping status' | translate">
-                          <mat-icon>cleaning_services</mat-icon>
+                          <app-icon name="cleaning_services" />
                         </button>
-                        <mat-menu #hkMenu="matMenu" class="hk-actions-menu">
+                        <p-popover #hkMenu styleClass="hk-actions-menu">
                           @for (action of roomActions(room); track action.value) {
                             <button
-                              mat-menu-item
                               (click)="updateRoomHousekeeping(room, action.value)">
-                              <mat-icon [class]="'hk-icon-' + action.value.toLowerCase().replace('_', '-')">{{ action.icon }}</mat-icon>
+                              <app-icon [class]="'hk-icon-' + action.value.toLowerCase().replace('_', '-')" [name]="action.icon" />
                               <span>{{ action.label | translate }}</span>
                             </button>
                           }
-                        </mat-menu>
+                        </p-popover>
                         <a
                           class="btn btn-invisible btn-sm"
                           [routerLink]="['/rooms', room.room_id]"
-                          [matTooltip]="'View details' | translate"
+                          [pTooltip]="'View details' | translate"
                           [attr.aria-label]="'View room details' | translate">
-                          <mat-icon>chevron_right</mat-icon>
+                          <app-icon name="chevron_right" />
                         </a>
                       </div>
                     }
@@ -324,14 +322,14 @@
     @defer (when tasksReady(); prefetch on idle) {
     @if (taskError(); as err) {
       <div class="error-state">
-        <mat-icon class="error-icon">error_outline</mat-icon>
+        <app-icon class="error-icon" name="error_outline" />
         <span>{{ err }}</span>
         <button class="btn btn-outline" (click)="loadTasks()">{{ 'Retry' | translate }}</button>
       </div>
     } @else if (filteredTasks().length === 0) {
       <div class="empty-state">
         <div class="empty-state-icon-wrap">
-          <mat-icon class="empty-icon">assignment</mat-icon>
+          <app-icon class="empty-icon" name="assignment" />
         </div>
         <h3 class="empty-state-title">{{ 'No housekeeping tasks' | translate }}</h3>
         <p class="text-muted empty-state-desc">
@@ -350,6 +348,7 @@
                 <th>{{ 'Scheduled' | translate }}</th>
                 <th>{{ 'Assigned' | translate }}</th>
                 <th>{{ 'Notes' | translate }}</th>
+                <th>{{ 'Actions' | translate }}</th>
               </tr>
             </thead>
             <tbody>
@@ -368,10 +367,10 @@
                     <span class="badge" [ngClass]="hkClass(task.status)">{{ task.status_display }}</span>
                   </td>
                   <td>{{ task.scheduled_date | date:'shortDate' }}</td>
-                  <td>{{ task.assigned_to ?? '—' }}</td>
+                  <td>{{ staffName(task.assigned_to) }}</td>
                   <td class="cell-notes">
                     @if (task.special_instructions) {
-                      <span [matTooltip]="task.special_instructions">
+                      <span [pTooltip]="task.special_instructions">
                         {{ task.special_instructions.length > 40
                           ? task.special_instructions.substring(0, 40) + '…'
                           : task.special_instructions }}
@@ -380,7 +379,70 @@
                       <span class="text-muted">—</span>
                     }
                   </td>
+                  <td class="cell-actions">
+                    @if (processingTaskId() === task.id) {
+                      <p-progressSpinner styleClass="spinner-sm" />
+                    } @else {
+                      @if (canAssign(task)) {
+                        <button class="btn btn-outline btn-xs" (click)="showAction(task, 'assign')" [pTooltip]="'Assign' | translate">
+                          <app-icon name="person_add" />
+                        </button>
+                      }
+                      @if (canReassign(task)) {
+                        <button class="btn btn-outline btn-xs" (click)="showAction(task, 'reassign')" [pTooltip]="'Reassign' | translate">
+                          <app-icon name="swap_horiz" />
+                        </button>
+                      }
+                      @if (canComplete(task)) {
+                        <button class="btn btn-primary btn-xs" (click)="completeTask(task)" [pTooltip]="'Complete' | translate">
+                          <app-icon name="check" />
+                        </button>
+                      }
+                      @if (canReopen(task)) {
+                        <button class="btn btn-outline btn-xs" (click)="reopenTask(task)" [pTooltip]="'Reopen' | translate">
+                          <app-icon name="undo" />
+                        </button>
+                      }
+                      <button class="btn btn-invisible btn-xs" (click)="showAction(task, 'note')" [pTooltip]="'Add Note' | translate">
+                        <app-icon name="sticky_note_2" />
+                      </button>
+                    }
+                  </td>
                 </tr>
+                @if (actionTaskId() === task.id) {
+                  <tr class="action-row">
+                    <td colspan="8">
+                      <div class="filter-form">
+                        @if (actionMode() === 'assign' || actionMode() === 'reassign') {
+                          <div class="form-group">
+                            <label class="field-label">{{ 'Assignee' | translate }}</label>
+                            <select class="field-input field-sm" [ngModel]="assigneeInput()" (ngModelChange)="assigneeInput.set($event)">
+                              <option value="">{{ 'Select staff…' | translate }}</option>
+                              @for (s of staff(); track s.id) {
+                                <option [value]="s.id">{{ staffName(s.id) }}</option>
+                              }
+                            </select>
+                          </div>
+                          <div class="form-group form-group-grow">
+                            <label class="field-label">{{ 'Notes (optional)' | translate }}</label>
+                            <input type="text" class="field-input field-sm" [ngModel]="noteInput()" (ngModelChange)="noteInput.set($event)" />
+                          </div>
+                        } @else if (actionMode() === 'note') {
+                          <div class="form-group form-group-grow">
+                            <label class="field-label">{{ 'Note' | translate }}</label>
+                            <input type="text" class="field-input field-sm" [ngModel]="noteInput()" (ngModelChange)="noteInput.set($event)" autofocus />
+                          </div>
+                        }
+                        <button class="btn btn-primary btn-sm" (click)="submitAction(task)">
+                          <app-icon name="check" /> {{ 'Apply' | translate }}
+                        </button>
+                        <button class="btn btn-outline btn-sm" (click)="cancelAction()">
+                          {{ 'Cancel' | translate }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>

@@ -1,8 +1,7 @@
 import { Component, inject, signal } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
@@ -35,10 +34,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 	selector: "app-edit-guest-dialog",
 	standalone: true,
 	imports: [
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
 		DialogActionsComponent,
 		GuestFormFieldsComponent,
 		TranslatePipe,
@@ -49,9 +47,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 export class EditGuestDialogComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialogRef = inject(MatDialogRef<EditGuestDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
-	private readonly data = inject<EditGuestDialogData>(MAT_DIALOG_DATA);
+private readonly data = inject(DynamicDialogConfig).data as EditGuestDialogData;
 
 	readonly saving = signal(false);
 	readonly fieldErrors = signal<Record<string, string>>({});

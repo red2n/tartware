@@ -1,8 +1,7 @@
 import { Component, computed, inject, output } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
 
@@ -24,10 +23,9 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
 	selector: "app-service-dashboard",
 	standalone: true,
 	imports: [
-		MatIconModule,
-		MatButtonModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		TranslatePipe,
 	],
 	templateUrl: "./service-dashboard.html",

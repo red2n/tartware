@@ -1,8 +1,7 @@
 import { Component, inject, signal } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
@@ -19,10 +18,9 @@ import {
 	selector: "app-create-guest-dialog",
 	standalone: true,
 	imports: [
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
 		DialogActionsComponent,
 		GuestFormFieldsComponent,
 		TranslatePipe,
@@ -33,7 +31,7 @@ import {
 export class CreateGuestDialogComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialogRef = inject(MatDialogRef<CreateGuestDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);

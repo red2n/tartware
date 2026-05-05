@@ -1565,3 +1565,55 @@ export const GlBatchEntriesResponseSchema = z.object({
 });
 
 export type GlBatchEntriesResponse = z.infer<typeof GlBatchEntriesResponseSchema>;
+
+// ============================================================================
+// CHARGEBACK / DISPUTE LIST (GAP-03)
+// ============================================================================
+
+/**
+ * Summary item returned from GET /v1/billing/chargebacks.
+ * Sourced from refunds where is_chargeback = TRUE.
+ */
+export const ChargebackListItemSchema = z.object({
+	refund_id: uuid,
+	property_id: uuid,
+	refund_number: z.string().optional(),
+	original_payment_id: uuid.optional(),
+	original_payment_reference: z.string().optional(),
+	guest_id: uuid.optional(),
+	guest_name: z.string().optional(),
+	reservation_id: uuid.optional(),
+	confirmation_number: z.string().optional(),
+	folio_id: uuid.optional(),
+	chargeback_amount: z.number(),
+	currency_code: z.string().default("USD"),
+	chargeback_date: z.string().optional(), // ISO date
+	chargeback_reason: z.string().optional(),
+	chargeback_reference: z.string().optional(),
+	chargeback_status: z.enum(["RECEIVED", "EVIDENCE_SUBMITTED", "WON", "LOST"]),
+	chargeback_notes: z.string().optional(),
+	chargeback_status_updated_at: z.string().optional(), // ISO datetime
+	requested_at: z.string().optional(), // ISO datetime
+	created_at: z.string().optional(), // ISO datetime
+});
+
+export type ChargebackListItem = z.infer<typeof ChargebackListItemSchema>;
+
+export const ChargebackListResponseSchema = z.object({
+	data: z.array(ChargebackListItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type ChargebackListResponse = z.infer<typeof ChargebackListResponseSchema>;
+
+export const ChargebackListQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	chargeback_status: z.enum(["RECEIVED", "EVIDENCE_SUBMITTED", "WON", "LOST"]).optional(),
+	start_date: z.string().optional(),
+	end_date: z.string().optional(),
+	limit: z.coerce.number().int().positive().max(500).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type ChargebackListQuery = z.infer<typeof ChargebackListQuerySchema>;

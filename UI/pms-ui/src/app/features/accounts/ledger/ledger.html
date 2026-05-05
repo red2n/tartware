@@ -1,11 +1,11 @@
 <div class="ledger-page">
   <app-page-header title="Ledger" description="General ledger entries, batches, and posting review">
     <button class="btn btn-primary btn-sm" (click)="postLedger()" [disabled]="!dataReady() || posting()">
-      <mat-icon>{{ posting() ? "hourglass_top" : "upload" }}</mat-icon>
+      <app-icon [name]="posting() ? 'hourglass_top' : 'upload'" />
       {{ 'Post Ledger' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadLedger()" [matTooltip]="'Refresh' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadLedger()" [pTooltip]="'Refresh' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -53,12 +53,12 @@
     </div>
 
     <button class="btn btn-outline btn-sm" (click)="resetFilters()" [disabled]="!dataReady()">
-      <mat-icon>restart_alt</mat-icon>
+      <app-icon name="restart_alt" />
       {{ 'Reset' | translate }}
     </button>
 
     <button class="btn btn-primary btn-sm" (click)="loadLedger()" [disabled]="!dataReady()">
-      <mat-icon>search</mat-icon>
+      <app-icon name="search" />
       {{ 'Apply' | translate }}
     </button>
   </div>
@@ -66,28 +66,28 @@
   @if (dataReady() && items().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card">
-        <mat-icon>south</mat-icon>
+        <app-icon name="south" />
         <div class="kpi-body">
           <div class="kpi-value">{{ formatCurrency(totals().totalDebits, totals().currency) }}</div>
           <div class="kpi-label">{{ 'Total Debits' | translate }}</div>
         </div>
       </div>
       <div class="kpi-card">
-        <mat-icon>north</mat-icon>
+        <app-icon name="north" />
         <div class="kpi-body">
           <div class="kpi-value">{{ formatCurrency(totals().totalCredits, totals().currency) }}</div>
           <div class="kpi-label">{{ 'Total Credits' | translate }}</div>
         </div>
       </div>
       <div class="kpi-card">
-        <mat-icon>balance</mat-icon>
+        <app-icon name="balance" />
         <div class="kpi-body">
           <div class="kpi-value">{{ formatCurrency(totals().variance, totals().currency) }}</div>
           <div class="kpi-label">{{ 'Variance' | translate }}</div>
         </div>
       </div>
       <div class="kpi-card">
-        <mat-icon>task_alt</mat-icon>
+        <app-icon name="task_alt" />
         <div class="kpi-body">
           <div class="kpi-value">{{ totals().postedCount }}</div>
           <div class="kpi-label">{{ 'Posted Entries' | translate }}</div>
@@ -99,12 +99,12 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="empty-state">
-      <mat-icon>error_outline</mat-icon>
+      <app-icon name="error_outline" />
       <span>{{ err }}</span>
     </div>
   } @else if (sorted().length === 0) {
     <div class="empty-state">
-      <mat-icon>account_balance_wallet</mat-icon>
+      <app-icon name="account_balance_wallet" />
       <span>{{ 'No ledger entries found for the selected filters.' | translate }}</span>
     </div>
   } @else {
@@ -113,20 +113,20 @@
         <thead>
           <tr>
             <th class="sortable" (click)="toggleSort('posting_date')" [attr.aria-sort]="getAriaSort('posting_date')">
-              {{ 'Posting Date' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('posting_date') }}</mat-icon>
+              {{ 'Posting Date' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('posting_date')" />
             </th>
             <th>{{ 'Batch' | translate }}</th>
             <th class="sortable" (click)="toggleSort('gl_account_code')" [attr.aria-sort]="getAriaSort('gl_account_code')">
-              {{ 'GL Account' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('gl_account_code') }}</mat-icon>
+              {{ 'GL Account' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('gl_account_code')" />
             </th>
             <th>{{ 'Description' | translate }}</th>
             <th>{{ 'Reference' | translate }}</th>
             <th>{{ 'Source' | translate }}</th>
             <th class="text-right sortable" (click)="toggleSort('debit_amount')" [attr.aria-sort]="getAriaSort('debit_amount')">
-              {{ 'Debit' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('debit_amount') }}</mat-icon>
+              {{ 'Debit' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('debit_amount')" />
             </th>
             <th class="text-right sortable" (click)="toggleSort('credit_amount')" [attr.aria-sort]="getAriaSort('credit_amount')">
-              {{ 'Credit' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('credit_amount') }}</mat-icon>
+              {{ 'Credit' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('credit_amount')" />
             </th>
             <th>{{ 'Entry Status' | translate }}</th>
             <th>{{ 'Batch Status' | translate }}</th>

@@ -2,12 +2,12 @@
   <div class="status-bar-left">
     <!-- Connection status -->
     <span class="status-bar-item" [class.status-bar-item-warning]="!online()"
-      [matTooltip]="online() ? ('Connected to server' | translate) : ('No network connection' | translate)">
+      [pTooltip]="online() ? ('Connected to server' | translate) : ('No network connection' | translate)" tooltipPosition="top">
       @if (online()) {
-        <mat-icon class="status-bar-icon">wifi</mat-icon>
+        <app-icon class="status-bar-icon" name="wifi" />
         <span class="status-bar-text">{{ 'Online' | translate }}</span>
       } @else {
-        <mat-icon class="status-bar-icon">wifi_off</mat-icon>
+        <app-icon class="status-bar-icon" name="wifi_off" />
         <span class="status-bar-text">{{ 'Offline' | translate }}</span>
       }
     </span>
@@ -21,15 +21,15 @@
         [class.status-bar-item-warning]="registry.hasIssues()"
         [class.status-bar-item-active]="dashboardOpen()"
         (click)="toggleDashboard()"
-        [matTooltip]="('Services' | translate) + ': ' + registry.summary().up + ' ' + ('up' | translate) + ', ' + registry.summary().down + ' ' + ('down' | translate)">
+        [pTooltip]="('Services' | translate) + ': ' + registry.summary().up + ' ' + ('up' | translate) + ', ' + registry.summary().down + ' ' + ('down' | translate)" tooltipPosition="top">
         @if (registry.loading() && !registry.lastUpdated()) {
-          <mat-icon class="status-bar-icon spin">sync</mat-icon>
+          <app-icon class="status-bar-icon spin" name="sync" />
         } @else if (registry.error()) {
-          <mat-icon class="status-bar-icon">cloud_off</mat-icon>
+          <app-icon class="status-bar-icon" name="cloud_off" />
         } @else if (registry.hasIssues()) {
-          <mat-icon class="status-bar-icon">warning</mat-icon>
+          <app-icon class="status-bar-icon" name="warning" />
         } @else {
-          <mat-icon class="status-bar-icon">check_circle</mat-icon>
+          <app-icon class="status-bar-icon" name="check_circle" />
         }
         <span class="status-bar-text">
           {{ registry.summary().up }}/{{ registry.summary().total }} {{ 'Services' | translate }}
@@ -42,8 +42,8 @@
 
     <!-- User & Role -->
     @if (userName()) {
-      <span class="status-bar-item" [matTooltip]="('Logged in as' | translate) + ' ' + userName() + ' (' + userRole() + ')'">
-        <mat-icon class="status-bar-icon">person</mat-icon>
+      <span class="status-bar-item" [pTooltip]="('Logged in as' | translate) + ' ' + userName() + ' (' + userRole() + ')'" tooltipPosition="top">
+        <app-icon class="status-bar-icon" name="person" />
         <span class="status-bar-text">{{ userName() }}</span>
         @if (userRole()) {
           <span class="badge badge-accent badge-sm">{{ userRole() }}</span>
@@ -54,8 +54,8 @@
     <!-- Active Property -->
     @if (propertyName()) {
       <span class="status-bar-divider"></span>
-      <span class="status-bar-item" [matTooltip]="('Active property' | translate) + ': ' + propertyName()">
-        <mat-icon class="status-bar-icon">apartment</mat-icon>
+      <span class="status-bar-item" [pTooltip]="('Active property' | translate) + ': ' + propertyName()" tooltipPosition="top">
+        <app-icon class="status-bar-icon" name="apartment" />
         <span class="status-bar-text">{{ propertyName() }}</span>
       </span>
     }
@@ -63,30 +63,30 @@
 
   <div class="status-bar-right">
     @if (servicesVisible() && registry.error()) {
-      <span class="status-bar-item status-bar-item-warning" [matTooltip]="'Registry connection error' | translate">
-        <mat-icon class="status-bar-icon">error_outline</mat-icon>
+      <span class="status-bar-item status-bar-item-warning" [pTooltip]="'Registry connection error' | translate" tooltipPosition="top">
+        <app-icon class="status-bar-icon" name="error_outline" />
         <span class="status-bar-text">{{ 'Registry Offline' | translate }}</span>
       </span>
     }
     @if (servicesVisible()) {
-      <span class="status-bar-item" [matTooltip]="('Last updated' | translate) + ': ' + lastUpdatedText()">
-        <mat-icon class="status-bar-icon">schedule</mat-icon>
+      <span class="status-bar-item" [pTooltip]="('Last updated' | translate) + ': ' + lastUpdatedText()" tooltipPosition="top">
+        <app-icon class="status-bar-icon" name="schedule" />
         <span class="status-bar-text">{{ lastUpdatedText() }}</span>
       </span>
       <span class="status-bar-divider"></span>
     }
 
     <!-- Business date/time in property timezone -->
-    <span class="status-bar-item" [matTooltip]="('Property timezone' | translate) + ': ' + propertyTimezone()">
-      <mat-icon class="status-bar-icon">calendar_today</mat-icon>
+    <span class="status-bar-item" [pTooltip]="('Property timezone' | translate) + ': ' + propertyTimezone()" tooltipPosition="top">
+      <app-icon class="status-bar-icon" name="calendar_today" />
       <span class="status-bar-text">{{ clockText() }}</span>
     </span>
 
     <span class="status-bar-divider"></span>
 
     <!-- Build version -->
-    <span class="status-bar-item" [matTooltip]="'Build version' | translate">
-      <mat-icon class="status-bar-icon">info_outline</mat-icon>
+    <span class="status-bar-item" [pTooltip]="'Build version' | translate" tooltipPosition="top">
+      <app-icon class="status-bar-icon" name="info_outline" />
       <span class="status-bar-text">{{ buildVersion }}</span>
     </span>
   </div>

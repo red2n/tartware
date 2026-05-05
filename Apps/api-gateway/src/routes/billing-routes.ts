@@ -21,6 +21,9 @@ import {
   forwardCommandWithTenant,
 } from "./command-helpers.js";
 import {
+  chargebackListResponse,
+  glBatchEntriesResponse,
+  glBatchListResponse,
   invoiceListResponse,
   ledgerEntryListResponse,
   paymentListResponse,
@@ -210,6 +213,30 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "billing.charge.void",
+        paramKey: "postingId",
+        payloadKey: "posting_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/charges/:postingId/transfer",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Transfer a charge posting to another folio via the Command Center.",
+        params: tenantChargeParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.charge.transfer",
         paramKey: "postingId",
         payloadKey: "posting_id",
       }),
@@ -647,6 +674,45 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         tag: BILLING_PROXY_TAG,
         summary: "Proxy ledger list to the finance admin service.",
         response: { 200: ledgerEntryListResponse },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/gl-batches",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy GL batch list to the finance admin service.",
+        response: { 200: glBatchListResponse },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/gl-batches/:batchId/entries",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy GL batch entries to the finance admin service.",
+        response: { 200: glBatchEntriesResponse },
+      }),
+    },
+    proxyFinanceAdmin,
+  );
+
+  app.get(
+    "/v1/billing/chargebacks",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy chargeback / dispute list to the finance admin service.",
+        response: { 200: chargebackListResponse },
       }),
     },
     proxyFinanceAdmin,

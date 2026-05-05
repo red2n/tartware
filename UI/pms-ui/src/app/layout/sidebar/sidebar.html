@@ -14,7 +14,7 @@
 
   <div class="sidebar-footer">
     <button class="collapse-toggle" (click)="toggleCollapse.emit()" [attr.aria-label]="(collapsed() ? 'Expand sidebar' : 'Collapse sidebar') | translate">
-      <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      <app-icon [name]="collapsed() ? 'chevron_right' : 'chevron_left'" />
     </button>
   </div>
 </aside>
@@ -23,11 +23,11 @@
   @if (item.children) {
     <button class="nav-item nav-parent"
             [class.nav-item-active]="isParentActive(item)"
-            [matTooltip]="collapsed() ? (item.label | translate) : ''"
-            matTooltipPosition="right"
+            [pTooltip]="collapsed() ? (item.label | translate) : ''"
+            tooltipPosition="right"
             [attr.aria-label]="item.label | translate"
             (click)="onParentClick(item)">
-      <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+      <app-icon class="nav-icon" [name]="item.icon" />
       @if (!collapsed()) {
         <span class="nav-label">{{ item.label | translate }}</span>
       }
@@ -36,10 +36,10 @@
     <a class="nav-item"
        [routerLink]="item.route"
        routerLinkActive="nav-item-active"
-       [matTooltip]="collapsed() ? (item.label | translate) : ''"
-       matTooltipPosition="right"
+       [pTooltip]="collapsed() ? (item.label | translate) : ''"
+       tooltipPosition="right"
        [attr.aria-label]="item.label | translate">
-      <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+      <app-icon class="nav-icon" [name]="item.icon" />
       @if (!collapsed()) {
         <span class="nav-label">{{ item.label | translate }}</span>
       }

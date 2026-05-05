@@ -1,7 +1,7 @@
 <div class="page-header">
   <div class="breadcrumb">
     <a routerLink="/guests" class="breadcrumb-link">
-      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      <app-icon class="breadcrumb-icon" name="arrow_back" />
       {{ 'Guests' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
@@ -13,11 +13,11 @@
 
 @if (loading()) {
   <div class="loading-center">
-    <mat-spinner diameter="32" />
+    <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
   </div>
 } @else if (error(); as err) {
   <div class="flash flash-error">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
+    <app-icon class="flash-icon" name="error_outline" />
     {{ err }}
     <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
@@ -36,19 +36,19 @@
         <div class="guest-header-meta">
           @if (g.email) {
             <span class="meta-item">
-              <mat-icon class="meta-icon">email</mat-icon>
+              <app-icon class="meta-icon" name="email" />
               {{ g.email }}
             </span>
           }
           @if (g.phone) {
             <span class="meta-item">
-              <mat-icon class="meta-icon">phone</mat-icon>
+              <app-icon class="meta-icon" name="phone" />
               {{ g.phone }}
             </span>
           }
           @if (g.company_name) {
             <span class="meta-item">
-              <mat-icon class="meta-icon">business</mat-icon>
+              <app-icon class="meta-icon" name="business" />
               {{ g.company_name }}
             </span>
           }
@@ -63,14 +63,14 @@
             </span>
           }
           @if (g.is_blacklisted) {
-            <span class="badge badge-danger" [matTooltip]="g.blacklist_reason ?? ''">{{ 'Blacklisted' | translate }}</span>
+            <span class="badge badge-danger" [pTooltip]="g.blacklist_reason ?? ''">{{ 'Blacklisted' | translate }}</span>
           }
         </div>
       </div>
     </div>
     <div class="guest-header-actions">
-      <button class="btn btn-outline btn-sm" (click)="openEditDialog()" [matTooltip]="'Edit guest profile' | translate">
-        <mat-icon>edit</mat-icon>
+      <button class="btn btn-outline btn-sm" (click)="openEditDialog()" [pTooltip]="'Edit guest profile' | translate">
+        <app-icon name="edit" />
         {{ 'Edit' | translate }}
       </button>
     </div>
@@ -94,20 +94,24 @@
   <div class="filter-bar detail-tabs">
     <nav class="filter-tabs" [attr.aria-label]="'Guest detail sections' | translate">
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'profile'" [class.filter-tab-active]="activeTab() === 'profile'" (click)="setTab('profile')">
-        <mat-icon class="tab-icon">person</mat-icon>
+        <app-icon class="tab-icon" name="person" />
         {{ 'Profile' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'preferences'" [class.filter-tab-active]="activeTab() === 'preferences'" (click)="setTab('preferences')">
-        <mat-icon class="tab-icon">tune</mat-icon>
+        <app-icon class="tab-icon" name="tune" />
         {{ 'Preferences' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'documents'" [class.filter-tab-active]="activeTab() === 'documents'" (click)="setTab('documents')">
-        <mat-icon class="tab-icon">description</mat-icon>
+        <app-icon class="tab-icon" name="description" />
         {{ 'Documents' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'communications'" [class.filter-tab-active]="activeTab() === 'communications'" (click)="setTab('communications')">
-        <mat-icon class="tab-icon">chat</mat-icon>
+        <app-icon class="tab-icon" name="chat" />
         {{ 'Communications' | translate }}
+      </button>
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'account'" [class.filter-tab-active]="activeTab() === 'account'" (click)="setTab('account')">
+        <app-icon class="tab-icon" name="admin_panel_settings" />
+        {{ 'Account & Compliance' | translate }}
       </button>
     </nav>
   </div>
@@ -269,12 +273,12 @@
     @if (activeTab() === 'preferences') {
       @if (loadingTab()) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">{{ 'Loading preferences...' | translate }}</span>
       </div>
     } @else if (preferences().length === 0) {
       <div class="empty-state">
-        <mat-icon class="empty-icon">tune</mat-icon>
+        <app-icon class="empty-icon" name="tune" />
         <p>{{ 'No preferences recorded' | translate }}</p>
       </div>
     } @else {
@@ -322,12 +326,12 @@
   @if (activeTab() === 'documents') {
     @if (loadingTab()) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">{{ 'Loading documents...' | translate }}</span>
       </div>
     } @else if (documents().length === 0) {
       <div class="empty-state">
-        <mat-icon class="empty-icon">description</mat-icon>
+        <app-icon class="empty-icon" name="description" />
         <p>{{ 'No documents on file' | translate }}</p>
       </div>
     } @else {
@@ -383,12 +387,12 @@
   @if (activeTab() === 'communications') {
     @if (loadingTab()) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">{{ 'Loading communications...' | translate }}</span>
       </div>
     } @else if (communications().length === 0) {
       <div class="empty-state">
-        <mat-icon class="empty-icon">chat</mat-icon>
+        <app-icon class="empty-icon" name="chat" />
         <p>{{ 'No communications recorded' | translate }}</p>
       </div>
     } @else {
@@ -430,8 +434,197 @@
     </div>
   } @loading (minimum 200ms) {
     <div class="loading-state">
-      <mat-spinner diameter="24"></mat-spinner>
+      <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
       <span class="text-muted">{{ 'Rendering content…' | translate }}</span>
     </div>
   }
+}
+
+@if (activeTab() === 'account' && guest()) {
+  <div class="detail-layout">
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Contact details' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="form-group"><label class="field-label">{{ 'Email' | translate }}</label>
+          <input type="email" class="field-input" [ngModel]="contactForm().email"
+            (ngModelChange)="contactForm.set({ ...contactForm(), email: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Phone' | translate }}</label>
+          <input type="tel" class="field-input" [ngModel]="contactForm().phone"
+            (ngModelChange)="contactForm.set({ ...contactForm(), phone: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Secondary phone' | translate }}</label>
+          <input type="tel" class="field-input" [ngModel]="contactForm().secondary_phone"
+            (ngModelChange)="contactForm.set({ ...contactForm(), secondary_phone: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitContact()" [disabled]="processing() === 'contact'">
+            <app-icon name="save" /> {{ 'Save contact' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'VIP status' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="form-group"><label class="field-label">{{ 'VIP level' | translate }}</label>
+          <select class="field-input" [ngModel]="vipForm().vip_status"
+            (ngModelChange)="vipForm.set({ ...vipForm(), vip_status: $event })">
+            <option value="NONE">None</option>
+            <option value="VIP1">VIP 1</option>
+            <option value="VIP2">VIP 2</option>
+            <option value="VIP3">VIP 3</option>
+            <option value="VVIP">VVIP</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Reason' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="vipForm().reason"
+            (ngModelChange)="vipForm.set({ ...vipForm(), reason: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitVip()" [disabled]="processing() === 'vip'">
+            <app-icon name="star" /> {{ 'Update VIP' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Loyalty enrollment' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="form-group"><label class="field-label">{{ 'Tier' | translate }}</label>
+          <select class="field-input" [ngModel]="loyaltyForm().loyalty_tier"
+            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_tier: $event })">
+            <option value="">— None —</option>
+            <option value="BRONZE">Bronze</option>
+            <option value="SILVER">Silver</option>
+            <option value="GOLD">Gold</option>
+            <option value="PLATINUM">Platinum</option>
+            <option value="DIAMOND">Diamond</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Loyalty number' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="loyaltyForm().loyalty_number"
+            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_number: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Points adjustment (+/-)' | translate }}</label>
+          <input type="number" class="field-input" [ngModel]="loyaltyForm().points_adjustment"
+            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), points_adjustment: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitLoyalty()" [disabled]="processing() === 'loyalty'">
+            <app-icon name="card_membership" /> {{ 'Update loyalty' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Blacklist' | translate }}</h3></div>
+      <div class="card-body">
+        <label class="form-group"><input type="checkbox" [checked]="blacklistForm().is_blacklisted"
+          (change)="blacklistForm.set({ ...blacklistForm(), is_blacklisted: $any($event.target).checked })" />
+          {{ 'Blacklist this guest' | translate }}</label>
+        <div class="form-group"><label class="field-label">{{ 'Reason' | translate }} *</label>
+          <input type="text" class="field-input" [ngModel]="blacklistForm().reason"
+            (ngModelChange)="blacklistForm.set({ ...blacklistForm(), reason: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-danger btn-sm" (click)="submitBlacklist()" [disabled]="processing() === 'blacklist'">
+            <app-icon name="block" /> {{ 'Apply' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Merge duplicate guest' | translate }}</h3></div>
+      <div class="card-body">
+        <p class="text-muted">{{ 'Merges another guest record INTO this one. Reservations are reassigned.' | translate }}</p>
+        <div class="form-group"><label class="field-label">{{ 'Duplicate guest ID' | translate }}</label>
+          <input type="text" class="field-input" placeholder="UUID" [ngModel]="mergeForm().duplicate_guest_id"
+            (ngModelChange)="mergeForm.set({ duplicate_guest_id: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-warning btn-sm" (click)="submitMerge()" [disabled]="processing() === 'merge'">
+            <app-icon name="merge" /> {{ 'Merge guests' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Consent ledger' | translate }}</h3></div>
+      <div class="card-body">
+        <label class="form-group"><input type="checkbox" [checked]="!!consentForm().marketing_email"
+          (change)="toggleConsent('marketing_email', $any($event.target).checked)" />
+          {{ 'Marketing emails' | translate }}</label>
+        <label class="form-group"><input type="checkbox" [checked]="!!consentForm().marketing_sms"
+          (change)="toggleConsent('marketing_sms', $any($event.target).checked)" />
+          {{ 'Marketing SMS' | translate }}</label>
+        <label class="form-group"><input type="checkbox" [checked]="!!consentForm().analytics"
+          (change)="toggleConsent('analytics', $any($event.target).checked)" />
+          {{ 'Analytics' | translate }}</label>
+        <label class="form-group"><input type="checkbox" [checked]="!!consentForm().third_party_sharing"
+          (change)="toggleConsent('third_party_sharing', $any($event.target).checked)" />
+          {{ 'Third-party sharing' | translate }}</label>
+        @if (consentLedger()?.updated_at; as updatedAt) {
+          <p class="text-muted">{{ 'Last updated' | translate }}: {{ formatDate(updatedAt) }}</p>
+        }
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitConsent()" [disabled]="processing() === 'consent'">
+            <app-icon name="rule" /> {{ 'Save consent' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'GDPR / privacy actions' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="action-row">
+          <button class="btn btn-outline btn-sm" (click)="exportGdpr()" [disabled]="processing() === 'gdpr-export'">
+            <app-icon name="download" /> {{ 'Export data (Art. 15)' | translate }}
+          </button>
+          <button class="btn btn-danger btn-sm" (click)="eraseGdpr()" [disabled]="processing() === 'gdpr-erase'">
+            <app-icon name="delete_forever" /> {{ 'Erase (Art. 17)' | translate }}
+          </button>
+        </div>
+
+        <h4>{{ 'Rectify (Art. 16)' | translate }}</h4>
+        <div class="form-group"><label class="field-label">{{ 'Field' | translate }}</label>
+          <input type="text" class="field-input" placeholder="email | phone | first_name" [ngModel]="gdprRectifyForm().field"
+            (ngModelChange)="gdprRectifyForm.set({ ...gdprRectifyForm(), field: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'New value' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="gdprRectifyForm().new_value"
+            (ngModelChange)="gdprRectifyForm.set({ ...gdprRectifyForm(), new_value: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Reason' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="gdprRectifyForm().reason"
+            (ngModelChange)="gdprRectifyForm.set({ ...gdprRectifyForm(), reason: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="rectifyGdpr()" [disabled]="processing() === 'gdpr-rectify'">
+            <app-icon name="edit_note" /> {{ 'Submit rectification' | translate }}
+          </button>
+        </div>
+
+        <h4>{{ 'Restrict processing (Art. 18)' | translate }}</h4>
+        <label class="form-group"><input type="checkbox" [checked]="gdprRestrictForm().restrict"
+          (change)="gdprRestrictForm.set({ ...gdprRestrictForm(), restrict: $any($event.target).checked })" />
+          {{ 'Restrict processing of this guest data' | translate }}</label>
+        <div class="form-group"><label class="field-label">{{ 'Reason' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="gdprRestrictForm().reason"
+            (ngModelChange)="gdprRestrictForm.set({ ...gdprRestrictForm(), reason: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-warning btn-sm" (click)="restrictGdpr()" [disabled]="processing() === 'gdpr-restrict'">
+            <app-icon name="lock" /> {{ 'Apply restriction' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 }

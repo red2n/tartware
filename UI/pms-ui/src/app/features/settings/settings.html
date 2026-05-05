@@ -1,18 +1,18 @@
 <div class="settings-page">
   <app-page-header title="Settings" description="Property configuration, user preferences, and system setup">
-    <button class="btn btn-invisible" (click)="loadCategories()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh settings' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadCategories()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh settings' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
   @if (loadingCategories()) {
     <div class="loading-state">
-      <mat-spinner diameter="32"></mat-spinner>
+      <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
       <span class="text-muted">{{ 'Loading settings...' | translate }}</span>
     </div>
   } @else if (error() && categories().length === 0) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ error() }}</span>
       <button class="btn btn-outline" (click)="loadCategories()">{{ 'Retry' | translate }}</button>
     </div>
@@ -20,7 +20,7 @@
     @if (selectedCategory(); as cat) {
       <div class="settings-heading">
         <h2 class="settings-heading-title">
-          <mat-icon class="settings-heading-icon">{{ categoryIcon(cat) }}</mat-icon>
+          <app-icon class="settings-heading-icon" [name]="categoryIcon(cat)" />
           {{ cat.name }}
         </h2>
         @if (cat.description) {
@@ -31,17 +31,17 @@
       @defer (on idle) {
         @if (loadingCatalog()) {
           <div class="loading-state">
-            <mat-spinner diameter="24"></mat-spinner>
+            <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
             <span class="text-muted">{{ 'Loading...' | translate }}</span>
           </div>
         } @else if (error()) {
           <div class="error-state">
-            <mat-icon class="error-icon">error_outline</mat-icon>
+            <app-icon class="error-icon" name="error_outline" />
             <span>{{ error() }}</span>
           </div>
         } @else if (sectionDefinitions().length === 0) {
           <div class="empty-state">
-            <mat-icon class="empty-icon">tune</mat-icon>
+            <app-icon class="empty-icon" name="tune" />
             @if (globalSearch.query()) {
               <p>{{ 'No settings match "' | translate }}{{ globalSearch.query() }}{{ '"' }}</p>
               <button class="btn btn-outline" (click)="globalSearch.clear()">{{ 'Clear search' | translate }}</button>
@@ -71,15 +71,15 @@
                             <div class="settings-item-label">
                               {{ def.name }}
                               @if (hasTooltip(def)) {
-                                <mat-icon
+                                <app-icon
                                   class="settings-item-tip"
-                                  [matTooltip]="getTooltip(def)"
-                                  matTooltipPosition="above"
-                                  matTooltipClass="settings-tooltip">info_outline</mat-icon>
+                                  [pTooltip]="getTooltip(def)"
+                                  tooltipPosition="top"
+                                  name="info_outline" />
                               }
                               @if (getEditState(def.id).savedMessage) {
                                 <span class="settings-saved-badge">
-                                  <mat-icon class="settings-saved-icon">check</mat-icon>
+                                  <app-icon class="settings-saved-icon" name="check" />
                                   {{ getEditState(def.id).savedMessage }}
                                 </span>
                               }
@@ -92,13 +92,12 @@
                           <!-- Value + edit action -->
                           <div class="settings-item-control">
                             @if (isBooleanValue(def)) {
-                              <mat-slide-toggle
-                                [checked]="getDisplayValue(def) === true"
+                              <p-toggleSwitch
+                                [ngModel]="getDisplayValue(def) === true"
                                 [disabled]="def.is_readonly || getEditState(def.id).saving"
-                                (change)="onToggleChange(def, $event.checked)">
-                              </mat-slide-toggle>
+                                (onChange)="onToggleChange(def, $event.checked)" />
                               @if (getEditState(def.id).saving) {
-                                <mat-spinner diameter="16"></mat-spinner>
+                                <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
                               }
                             } @else {
                               <!-- Simple inline value (non-JSON, non-array) -->
@@ -227,10 +226,9 @@
                                     <div class="json-field-row">
                                       <label class="json-field-label">{{ jgroup.label | translate }}</label>
                                       @if (jgroup.valueType === 'boolean') {
-                                        <mat-slide-toggle
-                                          [checked]="jgroup.value === true"
-                                          (change)="onJsonFieldEdit(def.id, jgroup.key, null, $event.checked)">
-                                        </mat-slide-toggle>
+                                        <p-toggleSwitch
+                                          [ngModel]="jgroup.value === true"
+                                          (onChange)="onJsonFieldEdit(def.id, jgroup.key, null, $event.checked)" />
                                       } @else if (jgroup.valueType === 'number') {
                                         <input type="number" class="field-input json-field-input"
                                           [ngModel]="jgroup.value"
@@ -248,10 +246,9 @@
                                         <div class="json-field-row json-field-row-indent">
                                           <label class="json-field-label">{{ child.label | translate }}</label>
                                           @if (child.valueType === 'boolean') {
-                                            <mat-slide-toggle
-                                              [checked]="child.value === true"
-                                              (change)="onJsonFieldEdit(def.id, jgroup.key, child.key, $event.checked)">
-                                            </mat-slide-toggle>
+                                            <p-toggleSwitch
+                                              [ngModel]="child.value === true"
+                                              (onChange)="onJsonFieldEdit(def.id, jgroup.key, child.key, $event.checked)" />
                                           } @else if (child.valueType === 'number') {
                                             <input type="number" class="field-input json-field-input"
                                               [ngModel]="child.value"
@@ -305,8 +302,8 @@
                                                   <td class="json-array-actions-col">
                                                     <button class="btn btn-invisible btn-sm"
                                                       (click)="removeArrayRow(def.id, jgroup.key, i)"
-                                                      [matTooltip]="'Remove row' | translate">
-                                                      <mat-icon>close</mat-icon>
+                                                      [pTooltip]="'Remove row' | translate">
+                                                      <app-icon name="close" />
                                                     </button>
                                                   </td>
                                                 </tr>
@@ -317,7 +314,7 @@
                                       }
                                       <button class="btn btn-invisible btn-sm json-add-row-btn"
                                         (click)="addArrayRow(def.id, jgroup.key)">
-                                        <mat-icon>add</mat-icon> {{ 'Add row' | translate }}
+                                        <app-icon name="add" /> {{ 'Add row' | translate }}
                                       </button>
                                     </div>
                                   } @else if (jgroup.type === 'array-primitive') {
@@ -396,7 +393,7 @@
                               [disabled]="getEditState(def.id).saving || !getEditState(def.id).dirty"
                               (click)="saveValue(def)">
                               @if (getEditState(def.id).saving) {
-                                <mat-spinner diameter="14"></mat-spinner>
+                                <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
                               }
                               {{ 'Save' | translate }}
                             </button>

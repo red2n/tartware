@@ -1,9 +1,8 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router } from "@angular/router";
 
 import type { ReservationGridItem, ReservationGridResponse } from "@tartware/schemas";
@@ -33,9 +32,8 @@ type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED"
 	imports: [
 		NgClass,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatTooltipModule,
+		IconComponent,
+		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,

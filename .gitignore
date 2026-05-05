@@ -277,7 +277,7 @@ node_modules
 # Tooling artifacts
 duplo
 scripts/duplo
-reports/
+/reports/
 .tartware-last-command
 
 # ============================================================================

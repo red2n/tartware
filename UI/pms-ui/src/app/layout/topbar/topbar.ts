@@ -1,10 +1,8 @@
 import { Component, type ElementRef, HostListener, inject, output, viewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDividerModule } from "@angular/material/divider";
-import { MatIconModule } from "@angular/material/icon";
-import { MatMenuModule } from "@angular/material/menu";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { PopoverModule } from 'primeng/popover';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
@@ -24,11 +22,9 @@ import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 	selector: "app-topbar",
 	standalone: true,
 	imports: [
-		MatIconModule,
-		MatButtonModule,
-		MatMenuModule,
-		MatDividerModule,
-		MatTooltipModule,
+		IconComponent,
+		PopoverModule,
+		TooltipModule,
 		FormsModule,
 		RouterLink,
 		RelativeTimePipe,
@@ -57,7 +53,6 @@ export class TopbarComponent {
 
 	readonly user = this.auth.user;
 	readonly isDark = this.theme.isDark;
-	readonly themeMode = this.theme.themeMode;
 
 	readonly memberships = this.auth.memberships;
 	readonly activeMembership = this.auth.activeMembership;
@@ -84,10 +79,6 @@ export class TopbarComponent {
 	toggleTheme(): void {
 		const next = this.isDark() ? "LIGHT" : "DARK";
 		this.theme.setTheme(next);
-	}
-
-	async setTheme(mode: "LIGHT" | "DARK" | "SYSTEM"): Promise<void> {
-		await this.theme.setTheme(mode);
 	}
 
 	setLanguage(lang: LangCode): void {

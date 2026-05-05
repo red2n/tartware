@@ -1,10 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { DialogService } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 
 import type { RateItem } from "@tartware/schemas";
 
@@ -34,9 +33,8 @@ type TypeFilter = "ALL" | string;
 	imports: [
 		NgClass,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatTooltipModule,
+		IconComponent,
+		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -48,7 +46,7 @@ export class RatesComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -331,9 +329,9 @@ export class RatesComponent {
 		import("./create-rate-dialog/create-rate-dialog").then(({ CreateRateDialogComponent }) => {
 			const ref = this.dialog.open(CreateRateDialogComponent, {
 				width: "600px",
-				disableClose: true,
+				closable: false,
 			});
-			ref.afterClosed().subscribe((created: boolean) => {
+			ref!.onClose.subscribe((created: boolean) => {
 				if (created) {
 					this.toast.success("Rate plan created successfully.");
 					this.loadRates();

@@ -4,7 +4,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/app",
-    "types": ["google.maps"]
+    "types": ["google.maps"],
+    "paths": {
+      "@tartware/schemas": ["../../schema/dist/index.d.ts"]
+    }
   },
   "include": [
     "src/**/*.ts"

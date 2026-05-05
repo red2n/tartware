@@ -1,7 +1,7 @@
 <div class="page-header">
   <div class="breadcrumb">
     <a routerLink="/packages" class="breadcrumb-link">
-      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      <app-icon class="breadcrumb-icon" name="arrow_back" />
       {{ 'Packages' | translate }}
     </a>
     @if (pkg(); as p) {
@@ -13,12 +13,12 @@
 
 @if (loading()) {
   <div class="loading-state">
-    <mat-spinner diameter="32"></mat-spinner>
+    <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
     <span class="text-muted">{{ 'Loading package...' | translate }}</span>
   </div>
 } @else if (error(); as err) {
   <div class="error-state">
-    <mat-icon class="error-icon">error_outline</mat-icon>
+    <app-icon class="error-icon" name="error_outline" />
     <span>{{ err }}</span>
     <button class="btn btn-outline" (click)="loadDetail()">{{ 'Retry' | translate }}</button>
   </div>
@@ -32,7 +32,7 @@
         <div class="pkg-badges">
           <span class="badge" [ngClass]="statusBadge().cls">{{ statusBadge().label }}</span>
           @if (p.is_featured) {
-            <span class="badge badge-attention"><mat-icon class="badge-icon">star</mat-icon> Featured</span>
+            <span class="badge badge-attention"><app-icon class="badge-icon" name="star" /> Featured</span>
           }
           @if (p.is_published) {
             <span class="badge badge-accent">{{ 'Published' | translate }}</span>
@@ -44,14 +44,14 @@
       </div>
       <div class="pkg-header-actions">
         @if (updating()) {
-          <mat-spinner diameter="18"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
         } @else {
           <button
             class="btn btn-sm"
             [class.btn-outline]="p.is_active"
             [class.btn-primary]="!p.is_active"
             (click)="toggleActive()">
-            <mat-icon>{{ p.is_active ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+            <app-icon [name]="p.is_active ? 'toggle_on' : 'toggle_off'" />
             {{ p.is_active ? ('Deactivate' | translate) : ('Activate' | translate) }}
           </button>
         }
@@ -138,10 +138,10 @@
               [class.inclusion-off]="!inc.included"
               [disabled]="updating()"
               (click)="toggleInclusion(inc.key, !inc.included)"
-              [matTooltip]="inc.included ? ('Click to remove' | translate) : ('Click to add' | translate)">
-              <mat-icon>{{ inc.icon }}</mat-icon>
+              [pTooltip]="inc.included ? ('Click to remove' | translate) : ('Click to add' | translate)">
+              <app-icon [name]="inc.icon" />
               <span>{{ inc.label | translate }}</span>
-              <mat-icon class="inc-status-icon">{{ inc.included ? 'check_circle' : 'add_circle_outline' }}</mat-icon>
+              <app-icon class="inc-status-icon" [name]="inc.included ? 'check_circle' : 'add_circle_outline'" />
             </button>
           }
         </div>
@@ -170,7 +170,7 @@
       <div class="card-header-flex">
         <h3 class="card-title">Components @if (components().length) { <span class="counter">{{ components().length }}</span> }</h3>
         <button class="btn btn-sm btn-outline" (click)="openAddComponent()">
-          <mat-icon>add</mat-icon> Add
+          <app-icon name="add" /> Add
         </button>
       </div>
       @if (components().length > 0) {
@@ -178,7 +178,7 @@
           @for (comp of components(); track comp.component_id) {
             <div class="comp-item">
               <div class="comp-icon-box">
-                <mat-icon>{{ componentTypeIcon(comp.component_type) }}</mat-icon>
+                <app-icon [name]="componentTypeIcon(comp.component_type)" />
               </div>
               <div class="comp-info">
                 <span class="comp-name">{{ comp.component_name }}</span>
@@ -199,7 +199,7 @@
       } @else {
         <div class="card-body">
           <div class="empty-state empty-state-sm">
-            <mat-icon class="empty-icon">extension</mat-icon>
+            <app-icon class="empty-icon" name="extension" />
             <p>{{ 'No components configured yet.' | translate }}</p>
             <p class="empty-hint">Add services, amenities, or meals to this package.</p>
           </div>
@@ -214,7 +214,7 @@
       </div>
     } @loading (minimum 200ms) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">Rendering details…</span>
       </div>
     }

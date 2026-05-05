@@ -1,10 +1,9 @@
 import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 
 import type { FolioListItem } from "@tartware/schemas";
 
@@ -60,10 +59,9 @@ import {
 		NgClass,
 		NgTemplateOutlet,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -377,6 +375,9 @@ export class BillingComponent {
 	readonly voidingChargeId = this.folioActions.voidingChargeId;
 	readonly voidChargeReason = this.folioActions.voidChargeReason;
 	readonly processingChargeVoid = this.folioActions.processingChargeVoid;
+	readonly transferringChargeId = this.folioActions.transferringChargeId;
+	readonly transferChargeForm = this.folioActions.transferChargeForm;
+	readonly processingChargeTransfer = this.folioActions.processingChargeTransfer;
 	readonly closingFolioId = this.folioActions.closingFolioId;
 	readonly closeFolioReason = this.folioActions.closeFolioReason;
 	readonly closeFolioForce = this.folioActions.closeFolioForce;
@@ -408,6 +409,12 @@ export class BillingComponent {
 	readonly showVoidCharge = this.folioActions.showVoidCharge.bind(this.folioActions);
 	readonly cancelVoidCharge = this.folioActions.cancelVoidCharge.bind(this.folioActions);
 	readonly voidCharge = this.folioActions.voidCharge.bind(this.folioActions);
+	readonly showTransferCharge = this.folioActions.showTransferCharge.bind(this.folioActions);
+	readonly cancelTransferCharge = this.folioActions.cancelTransferCharge.bind(this.folioActions);
+	readonly updateTransferChargeForm = this.folioActions.updateTransferChargeForm.bind(
+		this.folioActions,
+	);
+	readonly transferCharge = this.folioActions.transferCharge.bind(this.folioActions);
 	readonly showCloseFolio = this.folioActions.showCloseFolio.bind(this.folioActions);
 	readonly cancelCloseFolio = this.folioActions.cancelCloseFolio.bind(this.folioActions);
 	readonly closeFolio = this.folioActions.closeFolio.bind(this.folioActions);

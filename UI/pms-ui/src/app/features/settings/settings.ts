@@ -1,11 +1,10 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router } from "@angular/router";
 import type {
 	SettingsCategory,
@@ -80,11 +79,10 @@ interface JsonFieldGroup {
 	imports: [
 		NgClass,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
-		MatSlideToggleModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
+		ToggleSwitchModule,
 		PageHeaderComponent,
 		TranslatePipe,
 	],

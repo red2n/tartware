@@ -1,10 +1,9 @@
 import { DecimalPipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { DialogService } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
 
 import type { GuestGridItem, GuestGridResponse, GuestSummaryStats } from "@tartware/schemas";
@@ -37,9 +36,8 @@ type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 		NgTemplateOutlet,
 		FormsModule,
 		RouterLink,
-		MatIconModule,
-		MatButtonModule,
-		MatTooltipModule,
+		IconComponent,
+		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -51,7 +49,7 @@ export class GuestsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -256,9 +254,9 @@ export class GuestsComponent {
 		import("./create-guest-dialog/create-guest-dialog").then(({ CreateGuestDialogComponent }) => {
 			const ref = this.dialog.open(CreateGuestDialogComponent, {
 				width: "600px",
-				disableClose: true,
+				closable: false,
 			});
-			ref.afterClosed().subscribe((created: boolean) => {
+			ref!.onClose.subscribe((created: boolean) => {
 				if (created) {
 					this.toast.success("Guest registration submitted. It may take a moment to appear.");
 					// Kafka consumer processes async — delay refresh

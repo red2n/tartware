@@ -12,8 +12,8 @@ const THEME_STORAGE_KEY = "theme_mode";
 function restoreTheme(): ThemeMode {
 	const stored =
 		typeof localStorage !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
-	if (stored === "LIGHT" || stored === "DARK" || stored === "SYSTEM") return stored;
-	return "SYSTEM";
+	if (stored === "LIGHT" || stored === "DARK") return stored;
+	return "LIGHT";
 }
 
 @Injectable({ providedIn: "root" })
@@ -53,12 +53,12 @@ export class ThemeService {
 			if (typeof document !== "undefined") {
 				const el = document.documentElement;
 				const isDark = theme === "DARK";
-				// Our custom selector (used by tokens.css app-specific overrides)
-				el.setAttribute("data-theme", theme.toLowerCase());
+				// PrimeNG dark mode selector — must match darkModeSelector in app.config.ts
+				el.setAttribute("data-theme", isDark ? "dark" : "light");
 				// Primer primitives selectors (activates @primer/primitives theme tokens)
 				el.setAttribute("data-color-mode", isDark ? "dark" : "light");
-				el.setAttribute("data-light-theme", isDark ? "dark" : "light");
-				el.setAttribute("data-dark-theme", isDark ? "dark" : "light");
+				el.setAttribute("data-light-theme", "light");
+				el.setAttribute("data-dark-theme", "dark");
 			}
 		});
 	}
@@ -72,12 +72,13 @@ export class ThemeService {
 			const prefs = await this.api.get<UserUiPreferences>("/users/me/ui-preferences", {
 				tenant_id: tenantId,
 			});
-			const mode = prefs.theme ?? "SYSTEM";
+			const raw = prefs.theme;
+			const mode: ThemeMode = raw === "LIGHT" || raw === "DARK" ? raw : "LIGHT";
 			this._themeMode.set(mode);
 			localStorage.setItem(THEME_STORAGE_KEY, mode);
 		} catch {
-			// Default to SYSTEM if backend unavailable
-			this._themeMode.set("SYSTEM");
+			// Default to LIGHT if backend unavailable
+			this._themeMode.set("LIGHT");
 		}
 	}
 

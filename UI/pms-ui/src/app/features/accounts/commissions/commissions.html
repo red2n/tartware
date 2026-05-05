@@ -1,7 +1,7 @@
 <div class="commissions-page">
   <app-page-header title="Commission Management" description="Commission report by source — reservations, revenue, and rates">
-    <button class="btn btn-invisible" (click)="loadReport()" [matTooltip]="'Refresh' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadReport()" [pTooltip]="'Refresh' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -18,7 +18,7 @@
              [ngModel]="periodEnd()" (ngModelChange)="periodEnd.set($event)" />
     </div>
     <button class="btn btn-outline btn-sm" (click)="loadReport()" [disabled]="!dataReady()">
-      <mat-icon>search</mat-icon>
+      <app-icon name="search" />
       {{ 'Apply' | translate }}
     </button>
   </div>
@@ -38,14 +38,14 @@
   } @else if (items().length > 0) {
     <div class="kpi-grid">
       <div class="kpi-card">
-        <mat-icon>payments</mat-icon>
+        <app-icon name="payments" />
         <div class="kpi-body">
           <div class="kpi-value">{{ formatCurrency(totalCommission()) }}</div>
           <div class="kpi-label">{{ 'Total Commission' | translate }}</div>
         </div>
       </div>
       <div class="kpi-card">
-        <mat-icon>receipt</mat-icon>
+        <app-icon name="receipt" />
         <div class="kpi-body">
           <div class="kpi-value">{{ items().length }}</div>
           <div class="kpi-label">{{ 'Sources' | translate }}</div>
@@ -57,10 +57,10 @@
   <!-- ═══ COMMISSION TABLE ═══ -->
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
-    <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadReport()">{{ 'Retry' | translate }}</button></div>
+    <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadReport()">{{ 'Retry' | translate }}</button></div>
   } @else if (items().length === 0) {
     <div class="empty-state">
-      <mat-icon>account_balance</mat-icon>
+      <app-icon name="account_balance" />
       <span>{{ 'No commission data for the selected period.' | translate }}</span>
     </div>
   } @else {
@@ -69,16 +69,16 @@
         <thead>
           <tr>
             <th class="sortable" (click)="toggleSort('source')" [attr.aria-sort]="getAriaSort('source')">
-              {{ 'Source' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('source') }}</mat-icon>
+              {{ 'Source' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('source')" />
             </th>
             <th class="text-right sortable" (click)="toggleSort('reservation_count')" [attr.aria-sort]="getAriaSort('reservation_count')">
-              {{ 'Reservations' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('reservation_count') }}</mat-icon>
+              {{ 'Reservations' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('reservation_count')" />
             </th>
             <th class="text-right sortable" (click)="toggleSort('room_revenue')" [attr.aria-sort]="getAriaSort('room_revenue')">
-              {{ 'Room Revenue' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('room_revenue') }}</mat-icon>
+              {{ 'Room Revenue' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('room_revenue')" />
             </th>
             <th class="text-right sortable" (click)="toggleSort('commission_amount')" [attr.aria-sort]="getAriaSort('commission_amount')">
-              {{ 'Commission' | translate }} <mat-icon class="sort-icon">{{ getSortIcon('commission_amount') }}</mat-icon>
+              {{ 'Commission' | translate }} <app-icon class="sort-icon" [name]="getSortIcon('commission_amount')" />
             </th>
             <th class="text-right">{{ 'Avg Rate' | translate }}</th>
           </tr>

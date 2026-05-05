@@ -17,7 +17,7 @@
       </div>
       @if (canCreateProperty()) {
         <button class="btn btn-primary btn-add-property" (click)="openCreateDialog()">
-          <mat-icon>add</mat-icon>
+          <app-icon name="add" />
           {{ 'Add property' | translate }}
         </button>
       }
@@ -25,19 +25,19 @@
 
     <!-- Search bar (always visible) -->
     <div class="select-property-search">
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput
+      <div class="form-field-outline">
+        <app-icon name="search" />
+        <input pInputText
           [placeholder]="'Search by name, code, or location…' | translate"
           [ngModel]="search()"
           (ngModelChange)="search.set($event)"
           autocomplete="off" />
         @if (search()) {
-          <button matSuffix mat-icon-button (click)="search.set('')">
-            <mat-icon>close</mat-icon>
+          <button class="btn btn-invisible btn-xs" (click)="search.set('')">
+            <app-icon name="close" />
           </button>
         }
-      </mat-form-field>
+      </div>
       @if (search() && filtered().length > 0) {
         <span class="search-count">{{ filtered().length }} of {{ properties().length }}</span>
       }
@@ -46,7 +46,7 @@
     @defer (on idle) {
     @if (loading()) {
       <div class="select-property-loading">
-        <mat-spinner diameter="32"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
         <span>{{ 'Loading properties…' | translate }}</span>
       </div>
     } @else {
@@ -55,7 +55,7 @@
           <div class="property-card-wrapper" [class.expanded]="expandedId() === p.id">
             <button class="property-card" (click)="toggleExpand(p)">
               <div class="property-card-icon">
-                <mat-icon>apartment</mat-icon>
+                <app-icon name="apartment" />
               </div>
               <div class="property-card-info">
                 <span class="property-card-name">{{ p.property_name }}</span>
@@ -64,9 +64,7 @@
               @if (p.address && (p.address['city'] || p.address['country'])) {
                 <span class="property-card-location">{{ formatLocation(p.address) }}</span>
               }
-              <mat-icon class="property-card-chevron">
-                {{ expandedId() === p.id ? 'expand_less' : 'expand_more' }}
-              </mat-icon>
+              <app-icon class="property-card-chevron" [name]="expandedId() === p.id ? 'expand_less' : 'expand_more'" />
             </button>
 
             <!-- Expand-in-place detail panel -->
@@ -114,7 +112,7 @@
                 <div class="detail-actions">
                   <button class="btn btn-primary" (click)="continueWith(p)">
                     {{ 'Continue' | translate }}
-                    <mat-icon>arrow_forward</mat-icon>
+                    <app-icon name="arrow_forward" />
                   </button>
                 </div>
               </div>
@@ -123,12 +121,12 @@
         } @empty {
           @if (search()) {
             <div class="select-property-empty">
-              <mat-icon>search_off</mat-icon>
+              <app-icon name="search_off" />
               <span>{{ 'No properties match' | translate }} "{{ search() }}"</span>
             </div>
           } @else {
             <div class="select-property-empty">
-              <mat-icon>apartment</mat-icon>
+              <app-icon name="apartment" />
               <span>{{ 'No properties available for this tenant' | translate }}</span>
             </div>
           }
@@ -143,14 +141,14 @@
       </div>
     } @loading (minimum 200ms) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">{{ 'Loading properties…' | translate }}</span>
       </div>
     }
 
     <div class="select-property-footer">
-      <button mat-button color="primary" (click)="logout()">
-        <mat-icon>logout</mat-icon>
+      <button class="btn btn-ghost btn-primary-text" (click)="logout()">
+        <app-icon name="logout" />
         {{ 'Sign out' | translate }}
       </button>
     </div>

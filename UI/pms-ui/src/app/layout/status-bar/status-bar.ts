@@ -1,6 +1,6 @@
 import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 
 import { BUILD_VERSION } from "../../../environments/build-version";
 import { AuthService } from "../../core/auth/auth.service";
@@ -12,7 +12,7 @@ import { ServiceDashboardComponent } from "./service-dashboard";
 @Component({
 	selector: "app-status-bar",
 	standalone: true,
-	imports: [MatIconModule, MatTooltipModule, ServiceDashboardComponent, TranslatePipe],
+	imports: [IconComponent, TooltipModule, ServiceDashboardComponent, TranslatePipe],
 	templateUrl: "./status-bar.html",
 	styleUrl: "./status-bar.scss",
 })

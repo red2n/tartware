@@ -170,6 +170,22 @@ export const routes: Routes = [
 					import("./features/accounts/ledger/ledger").then((m) => m.LedgerComponent),
 			},
 			{
+				path: "gl-batches",
+				canActivate: [propertyGuard, screenGuard("billing")],
+				loadComponent: () =>
+					import("./features/accounts/gl-batches/gl-batches").then(
+						(m) => m.GlBatchesComponent,
+					),
+			},
+			{
+				path: "chargebacks",
+				canActivate: [propertyGuard, screenGuard("billing")],
+				loadComponent: () =>
+					import("./features/accounts/chargebacks/chargebacks").then(
+						(m) => m.ChargebacksComponent,
+					),
+			},
+			{
 				path: "tax-config",
 				canActivate: [propertyGuard, screenGuard("tax-config")],
 				loadComponent: () =>
@@ -194,6 +210,12 @@ export const routes: Routes = [
 				canActivate: [propertyGuard, screenGuard("commissions")],
 				loadComponent: () =>
 					import("./features/accounts/commissions/commissions").then((m) => m.CommissionsComponent),
+			},
+			{
+				path: "reports",
+				canActivate: [propertyGuard, screenGuard("reports")],
+				loadComponent: () =>
+					import("./features/reports/reports").then((m) => m.ReportsComponent),
 			},
 			{
 				path: "settings",
@@ -223,6 +245,24 @@ export const routes: Routes = [
 				path: "users",
 				canActivate: [screenGuard("users")],
 				loadComponent: () => import("./features/users/users").then((m) => m.UsersComponent),
+			},
+			{
+				path: "modules",
+				canActivate: [screenGuard("modules")],
+				loadComponent: () =>
+					import("./features/modules/modules").then((m) => m.ModulesComponent),
+			},
+			{
+				path: "loyalty",
+				canActivate: [screenGuard("loyalty")],
+				loadComponent: () =>
+					import("./features/loyalty/loyalty").then((m) => m.LoyaltyComponent),
+			},
+			{
+				path: "webhooks",
+				canActivate: [screenGuard("webhooks")],
+				loadComponent: () =>
+					import("./features/webhooks/webhooks").then((m) => m.WebhooksComponent),
 			},
 			{
 				path: "screen-permissions",

@@ -1,9 +1,9 @@
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { FormsModule } from "@angular/forms";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { TooltipModule } from 'primeng/tooltip';
 
 import type { TenantRole } from "@tartware/schemas";
 
@@ -83,11 +83,11 @@ type ScreenRow = {
 	selector: "app-screen-permissions",
 	standalone: true,
 	imports: [
-		MatButtonModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatSlideToggleModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		FormsModule,
+		ToggleSwitchModule,
+		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
 	],

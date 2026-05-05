@@ -1,6 +1,6 @@
-/* Layer 3: Shared utility classes & Layer 4: Material overrides */
+/* Layer 3: Shared utility classes & Layer 4: PrimeNG theme overrides */
 @use './styles/shared';
-@use './styles/material-overrides';
+@use './styles/primeng-theme';
 
 /* Layer 0: Primer Design System primitives (official tokens) */
 @import '@primer/primitives/dist/css/primitives.css';

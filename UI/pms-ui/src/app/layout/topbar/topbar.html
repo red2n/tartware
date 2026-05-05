@@ -1,9 +1,9 @@
 <header class="title-bar">
   <div class="title-bar-left">
     <button class="mobile-menu-toggle" (click)="menuToggle.emit()" [attr.aria-label]="'Toggle sidebar' | translate">
-      <mat-icon>menu</mat-icon>
+      <app-icon name="menu" />
     </button>
-    <a class="app-brand" routerLink="/dashboard" [matTooltip]="'Go to Dashboard' | translate">
+    <a class="app-brand" routerLink="/dashboard" [pTooltip]="'Go to Dashboard' | translate" tooltipPosition="bottom">
       <img src="assets/logo.svg" class="app-logo" alt="Tartware" />
       <span class="app-title">Tartware</span>
     </a>
@@ -11,20 +11,20 @@
     <!-- Tenant switcher -->
     @if (showTenantSwitcher) {
       <span class="context-separator">/</span>
-      <button class="context-btn" [matMenuTriggerFor]="tenantMenu" [matTooltip]="'Switch tenant' | translate">
+      <button class="context-btn" (click)="tenantMenu.toggle($event)" [pTooltip]="'Switch tenant' | translate" tooltipPosition="bottom">
         <span class="context-label">{{ activeMembership()?.tenant_name ?? ('No tenant' | translate) }}</span>
-        <mat-icon class="context-caret">expand_more</mat-icon>
+        <app-icon class="context-caret" name="expand_more" />
       </button>
-      <mat-menu #tenantMenu="matMenu">
+      <p-popover #tenantMenu>
         @for (m of memberships(); track m.tenant_id) {
-          <button mat-menu-item
+          <button
             [class.active-menu-item]="m.tenant_id === activeMembership()?.tenant_id"
             (click)="switchTenant(m.tenant_id)">
-            <mat-icon>{{ m.tenant_id === activeMembership()?.tenant_id ? 'check' : 'business' }}</mat-icon>
+            <app-icon [name]="m.tenant_id === activeMembership()?.tenant_id ? 'check' : 'business'" />
             <span>{{ m.tenant_name ?? m.tenant_id }}</span>
           </button>
         }
-      </mat-menu>
+      </p-popover>
     } @else if (activeMembership(); as m) {
       <span class="context-separator">/</span>
       <span class="context-label-static">{{ m.tenant_name ?? ('Tenant' | translate) }}</span>
@@ -33,23 +33,23 @@
     <!-- Property selector -->
     @if (properties().length > 1) {
       <span class="context-separator">/</span>
-      <button class="context-btn" [matMenuTriggerFor]="propertyMenu" [matTooltip]="'Switch property' | translate">
+      <button class="context-btn" (click)="propertyMenu.toggle($event)" [pTooltip]="'Switch property' | translate" tooltipPosition="bottom">
         <span class="context-label">{{ activeProperty()?.property_name ?? ('All properties' | translate) }}</span>
-        <mat-icon class="context-caret">expand_more</mat-icon>
+        <app-icon class="context-caret" name="expand_more" />
       </button>
-      <mat-menu #propertyMenu="matMenu">
+      <p-popover #propertyMenu>
         @for (p of properties(); track p.id) {
-          <button mat-menu-item
+          <button
             [class.active-menu-item]="p.id === activeProperty()?.id"
             (click)="selectProperty(p.id)">
-            <mat-icon>{{ p.id === activeProperty()?.id ? 'check' : 'apartment' }}</mat-icon>
+            <app-icon [name]="p.id === activeProperty()?.id ? 'check' : 'apartment'" />
             <div class="property-menu-item">
               <span>{{ p.property_name }}</span>
               <span class="property-code">{{ p.property_code }}</span>
             </div>
           </button>
         }
-      </mat-menu>
+      </p-popover>
     } @else if (activeProperty(); as p) {
       <span class="context-separator">/</span>
       <span class="context-label-static">{{ p.property_name }}</span>
@@ -59,7 +59,7 @@
   <!-- Center: Search widget (VS Code command palette style) -->
   <div class="title-bar-center">
     <div class="search-widget" (click)="focusSearch()">
-      <mat-icon class="search-icon">search</mat-icon>
+      <app-icon class="search-icon" name="search" />
       <input #searchInputEl
              type="text"
              class="search-input"
@@ -68,7 +68,7 @@
              (ngModelChange)="globalSearch.setQuery($event)" />
       @if (globalSearch.query()) {
         <button class="search-clear" (click)="globalSearch.clear(); $event.stopPropagation()">
-          <mat-icon>close</mat-icon>
+          <app-icon name="close" />
         </button>
       } @else {
         <kbd class="search-kbd">Ctrl+K</kbd>
@@ -81,8 +81,8 @@
     <div class="notification-wrapper" #notifPanel>
       <button class="title-bar-btn notification-btn"
               (click)="toggleNotifications(); $event.stopPropagation()"
-              [matTooltip]="'Notifications' | translate">
-        <mat-icon>notifications</mat-icon>
+              [pTooltip]="'Notifications' | translate" tooltipPosition="bottom">
+        <app-icon name="notifications" />
         @if (notifications.unreadCount() > 0) {
           <span class="notification-badge">
             {{ notifications.unreadCount() > 99 ? '99+' : notifications.unreadCount() }}
@@ -113,7 +113,7 @@
               }
             } @else if (notifications.notifications().length === 0) {
               <div class="notification-empty">
-                <mat-icon>notifications_none</mat-icon>
+                <app-icon name="notifications_none" />
                 <span>{{ 'No notifications' | translate }}</span>
               </div>
             } @else {
@@ -121,10 +121,9 @@
                 <button class="notification-item"
                         [class.notification-unread]="!n.is_read"
                         (click)="onNotificationClick(n)">
-                  <mat-icon class="notification-item-icon"
-                            [class.notification-icon-urgent]="n.priority === 'urgent' || n.priority === 'high'">
-                    {{ notificationIcon(n.category) }}
-                  </mat-icon>
+                  <app-icon class="notification-item-icon"
+                            [class.notification-icon-urgent]="n.priority === 'urgent' || n.priority === 'high'"
+                            [name]="notificationIcon(n.category)" />
                   <div class="notification-item-body">
                     <span class="notification-item-title">{{ n.title }}</span>
                     <span class="notification-item-message">{{ n.message }}</span>
@@ -142,64 +141,44 @@
     </div>
 
     <!-- Language selector -->
-    <button class="title-bar-btn" [matMenuTriggerFor]="langMenu" [matTooltip]="'Language' | translate" [attr.aria-label]="'Language' | translate">
-      <mat-icon>translate</mat-icon>
+    <button class="title-bar-btn" (click)="langMenu.toggle($event)" [pTooltip]="'Language' | translate" tooltipPosition="bottom" [attr.aria-label]="'Language' | translate">
+      <app-icon name="translate" />
     </button>
 
-    <mat-menu #langMenu="matMenu">
+    <p-popover #langMenu>
       @for (lang of supportedLanguages; track lang.code) {
-        <button mat-menu-item (click)="setLanguage(lang.code)">
+        <button (click)="setLanguage(lang.code)">
           <span>{{ lang.label | translate }}</span>
           @if (currentLang() === lang.code) {
-            <mat-icon class="check-icon">check</mat-icon>
+            <app-icon class="check-icon" name="check" />
           }
         </button>
       }
-    </mat-menu>
+    </p-popover>
 
-    <!-- Theme toggle -->
-    <button class="title-bar-btn" [matMenuTriggerFor]="themeMenu" [matTooltip]="'Theme' | translate" [attr.aria-label]="'Theme' | translate">
-      <mat-icon>{{ isDark() ? 'dark_mode' : 'light_mode' }}</mat-icon>
+    <!-- Theme toggle (light / dark) -->
+    <button class="title-bar-btn"
+            (click)="toggleTheme()"
+            [pTooltip]="(isDark() ? 'Switch to light mode' : 'Switch to dark mode') | translate"
+            tooltipPosition="bottom"
+            [attr.aria-label]="(isDark() ? 'Switch to light mode' : 'Switch to dark mode') | translate">
+      <app-icon [name]="isDark() ? 'light_mode' : 'dark_mode'" />
     </button>
 
-    <mat-menu #themeMenu="matMenu">
-      <button mat-menu-item (click)="setTheme('LIGHT')">
-        <mat-icon>light_mode</mat-icon>
-        <span>{{ 'Light' | translate }}</span>
-        @if (themeMode() === 'LIGHT') {
-          <mat-icon class="check-icon">check</mat-icon>
-        }
-      </button>
-      <button mat-menu-item (click)="setTheme('DARK')">
-        <mat-icon>dark_mode</mat-icon>
-        <span>{{ 'Dark' | translate }}</span>
-        @if (themeMode() === 'DARK') {
-          <mat-icon class="check-icon">check</mat-icon>
-        }
-      </button>
-      <button mat-menu-item (click)="setTheme('SYSTEM')">
-        <mat-icon>computer</mat-icon>
-        <span>{{ 'System' | translate }}</span>
-        @if (themeMode() === 'SYSTEM') {
-          <mat-icon class="check-icon">check</mat-icon>
-        }
-      </button>
-    </mat-menu>
-
     <!-- User menu -->
-    <button class="title-bar-btn avatar-btn" [matMenuTriggerFor]="userMenu" [attr.aria-label]="'User menu' | translate">
+    <button class="title-bar-btn avatar-btn" (click)="userMenu.toggle($event)" [attr.aria-label]="'User menu' | translate">
       @if (user(); as u) {
         <span class="avatar avatar-sm user-avatar">
           {{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}
         </span>
       } @else {
-        <mat-icon>account_circle</mat-icon>
+        <app-icon name="account_circle" />
       }
     </button>
 
-    <mat-menu #userMenu="matMenu">
+    <p-popover #userMenu>
       @if (user(); as u) {
-        <div class="user-menu-header" mat-menu-item disabled>
+        <div class="user-menu-header" disabled>
           <span class="avatar avatar-sm user-avatar">{{ u.first_name.charAt(0) }}{{ u.last_name.charAt(0) }}</span>
           <div class="user-menu-info">
             <strong>{{ u.first_name }} {{ u.last_name }}</strong>
@@ -207,18 +186,18 @@
           </div>
         </div>
       }
-      <mat-divider></mat-divider>
-      <button mat-menu-item (click)="toggleStatusBar()">
-        <mat-icon>{{ statusBarVisible() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      <hr class="menu-divider" />
+      <button (click)="toggleStatusBar()">
+        <app-icon [name]="statusBarVisible() ? 'toggle_on' : 'toggle_off'" />
         <span>{{ 'Services Status' | translate }}</span>
         @if (statusBarVisible()) {
-          <mat-icon class="check-icon">check</mat-icon>
+          <app-icon class="check-icon" name="check" />
         }
       </button>
-      <button mat-menu-item (click)="logout()">
-        <mat-icon>logout</mat-icon>
+      <button (click)="logout()">
+        <app-icon name="logout" />
         <span>{{ 'Sign out' | translate }}</span>
       </button>
-    </mat-menu>
+    </p-popover>
   </div>
 </header>

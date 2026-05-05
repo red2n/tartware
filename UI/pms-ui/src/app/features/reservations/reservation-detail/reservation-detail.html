@@ -1,7 +1,7 @@
 <div class="page-header">
   <div class="breadcrumb">
     <a routerLink="/reservations" class="breadcrumb-link">
-      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      <app-icon class="breadcrumb-icon" name="arrow_back" />
       {{ 'Reservations' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
@@ -12,49 +12,77 @@
   @if (reservation(); as r) {
     <div class="page-actions">
       @if (canCheckIn()) {
-        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [matTooltip]="'Check in guest and assign room' | translate">
-          <mat-icon>login</mat-icon>
+        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [pTooltip]="'Check in guest and assign room' | translate">
+          <app-icon name="login" />
           {{ 'Check In' | translate }}
         </button>
       }
       @if (canChargeNoShow()) {
-        <button class="btn btn-danger btn-sm" (click)="showNoShowChargeConfirm()" [disabled]="actionLoading()" [matTooltip]="'Post a no-show penalty to the reservation folio' | translate">
-          <mat-icon>person_off</mat-icon>
+        <button class="btn btn-danger btn-sm" (click)="showNoShowChargeConfirm()" [disabled]="actionLoading()" [pTooltip]="'Post a no-show penalty to the reservation folio' | translate">
+          <app-icon name="person_off" />
           {{ 'No-Show Charge' | translate }}
         </button>
       }
       @if (canCheckOut()) {
-        <button class="btn btn-primary btn-sm" (click)="showExpressCheckout()" [disabled]="actionLoading()" [matTooltip]="'Express checkout: resolve folio, close, release room' | translate">
-          <mat-icon>flash_on</mat-icon>
+        <button class="btn btn-primary btn-sm" (click)="showExpressCheckout()" [disabled]="actionLoading()" [pTooltip]="'Express checkout: resolve folio, close, release room' | translate">
+          <app-icon name="flash_on" />
           {{ 'Express Check-Out' | translate }}
         </button>
-        <button class="btn btn-outline btn-sm" (click)="showCheckOutConfirm()" [disabled]="actionLoading()" [matTooltip]="'Check out guest and release room' | translate">
-          <mat-icon>logout</mat-icon>
+        <button class="btn btn-outline btn-sm" (click)="showCheckOutConfirm()" [disabled]="actionLoading()" [pTooltip]="'Check out guest and release room' | translate">
+          <app-icon name="logout" />
           {{ 'Check Out' | translate }}
         </button>
       }
       @if (canChargeLateCheckout()) {
-        <button class="btn btn-outline btn-sm" (click)="showLateCheckoutChargeConfirm()" [disabled]="actionLoading()" [matTooltip]="'Post a late checkout fee without checking the guest out' | translate">
-          <mat-icon>schedule</mat-icon>
+        <button class="btn btn-outline btn-sm" (click)="showLateCheckoutChargeConfirm()" [disabled]="actionLoading()" [pTooltip]="'Post a late checkout fee without checking the guest out' | translate">
+          <app-icon name="schedule" />
           {{ 'Late Checkout Fee' | translate }}
         </button>
       }
       @if (canCancel()) {
-        <button class="btn btn-danger btn-sm" (click)="showCancelConfirm()" [disabled]="actionLoading()" [matTooltip]="'Cancel this reservation' | translate">
-          <mat-icon>cancel</mat-icon>
+        <button class="btn btn-danger btn-sm" (click)="showCancelConfirm()" [disabled]="actionLoading()" [pTooltip]="'Cancel this reservation' | translate">
+          <app-icon name="cancel" />
           {{ 'Cancel' | translate }}
         </button>
       }
       @if (canChargeCancellationPenalty()) {
-        <button class="btn btn-outline btn-sm" (click)="showCancellationPenaltyConfirm()" [disabled]="actionLoading()" [matTooltip]="'Post a cancellation penalty to the reservation folio' | translate">
-          <mat-icon>price_change</mat-icon>
+        <button class="btn btn-outline btn-sm" (click)="showCancellationPenaltyConfirm()" [disabled]="actionLoading()" [pTooltip]="'Post a cancellation penalty to the reservation folio' | translate">
+          <app-icon name="price_change" />
           {{ 'Cancellation Penalty' | translate }}
         </button>
       }
       @if (canModifyDates()) {
-        <button class="btn btn-outline btn-sm" (click)="showModifyDatesConfirm()" [disabled]="actionLoading()" [matTooltip]="'Advance or postpone reservation dates' | translate">
-          <mat-icon>date_range</mat-icon>
+        <button class="btn btn-outline btn-sm" (click)="showModifyDatesConfirm()" [disabled]="actionLoading()" [pTooltip]="'Advance or postpone reservation dates' | translate">
+          <app-icon name="date_range" />
           {{ 'Modify Dates' | translate }}
+        </button>
+      }
+      @if (canAssignRoom()) {
+        <button class="btn btn-outline btn-sm" (click)="showAssignRoomConfirm()" [disabled]="actionLoading()">
+          <app-icon name="bed" /> {{ 'Assign Room' | translate }}
+        </button>
+      }
+      @if (canUnassignRoom()) {
+        <button class="btn btn-outline btn-sm" (click)="showUnassignRoomConfirm()" [disabled]="actionLoading()">
+          <app-icon name="bed" /> {{ 'Unassign Room' | translate }}
+        </button>
+      }
+      @if (canExtendStay()) {
+        <button class="btn btn-outline btn-sm" (click)="showExtendConfirm()" [disabled]="actionLoading()">
+          <app-icon name="more_time" /> {{ 'Extend Stay' | translate }}
+        </button>
+      }
+      @if (canRateOverride()) {
+        <button class="btn btn-outline btn-sm" (click)="showRateOverrideConfirm()" [disabled]="actionLoading()">
+          <app-icon name="price_change" /> {{ 'Override Rate' | translate }}
+        </button>
+      }
+      @if (canManageDeposit()) {
+        <button class="btn btn-outline btn-sm" (click)="showAddDepositConfirm()" [disabled]="actionLoading()">
+          <app-icon name="payments" /> {{ 'Add Deposit' | translate }}
+        </button>
+        <button class="btn btn-outline btn-sm" (click)="showReleaseDepositConfirm()" [disabled]="actionLoading()">
+          <app-icon name="undo" /> {{ 'Release Deposit' | translate }}
         </button>
       }
     </div>
@@ -65,7 +93,7 @@
 @if (confirmingCheckIn()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkin">login</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkin" name="login" />
       <h3 class="confirm-title">{{ 'Check-In — Assign Room' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -95,25 +123,25 @@
           class="room-option"
           [class.room-option-selected]="useAutoAssign()"
           (click)="selectAutoAssign()">
-          <mat-icon>auto_awesome</mat-icon>
+          <app-icon name="auto_awesome" />
           <div class="room-option-info">
             <span class="room-option-label">{{ 'Auto-assign' | translate }}</span>
             <span class="room-option-hint">{{ 'System picks the best available room' | translate }}</span>
           </div>
           @if (useAutoAssign()) {
-            <mat-icon class="room-check">check_circle</mat-icon>
+            <app-icon class="room-check" name="check_circle" />
           }
         </button>
 
         @if (loadingRooms()) {
           <div class="room-loading">
-            <mat-spinner diameter="20"></mat-spinner>
+            <p-progressSpinner [style]="{ width: '20px', height: '20px' }" />
             <span>{{ 'Loading available rooms...' | translate }}</span>
           </div>
         } @else if (availableRooms().length === 0) {
           @if (roomLoadError()) {
             <p class="room-empty-note room-load-error">
-              <mat-icon>warning</mat-icon> {{ 'Could not load rooms:' | translate }} {{ roomLoadError() }}
+              <app-icon name="warning" /> {{ 'Could not load rooms:' | translate }} {{ roomLoadError() }}
             </p>
           } @else {
             <p class="room-empty-note">{{ 'No available rooms found for this room type. Auto-assign will attempt to find one.' | translate }}</p>
@@ -124,7 +152,7 @@
               class="room-option room-option-detailed"
               [class.room-option-selected]="selectedRoomId() === room.room_id"
               (click)="selectRoom(room.room_id)">
-              <mat-icon>meeting_room</mat-icon>
+              <app-icon name="meeting_room" />
               <div class="room-option-info">
                 <span class="room-option-label">{{ 'Room' | translate }} {{ room.room_number }}</span>
                 <span class="room-option-hint">
@@ -151,7 +179,7 @@
                 }
               </div>
               @if (selectedRoomId() === room.room_id) {
-                <mat-icon class="room-check">check_circle</mat-icon>
+                <app-icon class="room-check" name="check_circle" />
               }
             </button>
           }
@@ -170,10 +198,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="checkIn()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Checking in...' | translate }}
         } @else {
-          <mat-icon>login</mat-icon>
+          <app-icon name="login" />
           {{ 'Confirm Check-In' | translate }}
         }
       </button>
@@ -185,13 +213,13 @@
 @if (confirmingExpressCheckout()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkin">flash_on</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkin" name="flash_on" />
       <h3 class="confirm-title">{{ 'Express Check-Out' | translate }}</h3>
     </div>
     <div class="confirm-body">
       @if (loadingFolioBalance()) {
         <div class="loading-state">
-          <mat-spinner diameter="20"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '20px', height: '20px' }" />
           <span>{{ 'Loading folio balance...' | translate }}</span>
         </div>
       } @else if (folioBalance(); as fb) {
@@ -226,10 +254,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="expressCheckout()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Processing...' | translate }}
         } @else {
-          <mat-icon>flash_on</mat-icon>
+          <app-icon name="flash_on" />
           {{ 'Confirm Express Check-Out' | translate }}
         }
       </button>
@@ -241,7 +269,7 @@
 @if (confirmingCheckOut()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkout">logout</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkout" name="logout" />
       <h3 class="confirm-title">{{ 'Confirm Check-Out' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -255,10 +283,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-outline btn-sm" (click)="checkOut()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Checking out...' | translate }}
         } @else {
-          <mat-icon>logout</mat-icon>
+          <app-icon name="logout" />
           {{ 'Confirm Check-Out' | translate }}
         }
       </button>
@@ -270,7 +298,7 @@
 @if (confirmingCancel()) {
   <div class="action-confirm-card action-confirm-danger">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-cancel">cancel</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-cancel" name="cancel" />
       <h3 class="confirm-title">{{ 'Cancel Reservation' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -280,10 +308,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Go Back' | translate }}</button>
       <button class="btn btn-danger btn-sm" (click)="cancelReservation()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Cancelling...' | translate }}
         } @else {
-          <mat-icon>cancel</mat-icon>
+          <app-icon name="cancel" />
           {{ 'Confirm Cancel' | translate }}
         }
       </button>
@@ -295,7 +323,7 @@
 @if (confirmingNoShowCharge()) {
   <div class="action-confirm-card action-confirm-danger">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-cancel">person_off</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-cancel" name="person_off" />
       <h3 class="confirm-title">{{ 'Post No-Show Charge' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -326,10 +354,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-danger btn-sm" (click)="chargeNoShow()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Posting...' | translate }}
         } @else {
-          <mat-icon>person_off</mat-icon>
+          <app-icon name="person_off" />
           {{ 'Confirm No-Show Charge' | translate }}
         }
       </button>
@@ -341,7 +369,7 @@
 @if (confirmingLateCheckoutCharge()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkout">schedule</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkout" name="schedule" />
       <h3 class="confirm-title">{{ 'Post Late Checkout Fee' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -378,10 +406,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="chargeLateCheckout()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Posting...' | translate }}
         } @else {
-          <mat-icon>schedule</mat-icon>
+          <app-icon name="schedule" />
           {{ 'Confirm Late Checkout Fee' | translate }}
         }
       </button>
@@ -393,7 +421,7 @@
 @if (confirmingCancellationPenalty()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkout">price_change</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkout" name="price_change" />
       <h3 class="confirm-title">{{ 'Post Cancellation Penalty' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -424,10 +452,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="chargeCancellationPenalty()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Posting...' | translate }}
         } @else {
-          <mat-icon>price_change</mat-icon>
+          <app-icon name="price_change" />
           {{ 'Confirm Cancellation Penalty' | translate }}
         }
       </button>
@@ -439,7 +467,7 @@
 @if (confirmingModifyDates()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkin">date_range</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkin" name="date_range" />
       <h3 class="confirm-title">{{ 'Modify Reservation Dates' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -475,7 +503,7 @@
       </div>
       @if (modifyDatesNights(); as n) {
         <div class="nights-pill">
-          <mat-icon>dark_mode</mat-icon>
+          <app-icon name="dark_mode" />
           {{ n }} {{ n > 1 ? ('nights' | translate) : ('night' | translate) }}
         </div>
       } @else if (modifyDatesForm().check_in_date && modifyDatesForm().check_out_date) {
@@ -486,10 +514,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="modifyDates()" [disabled]="actionLoading() || modifyDatesNights() === 0">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Updating...' | translate }}
         } @else {
-          <mat-icon>date_range</mat-icon>
+          <app-icon name="date_range" />
           {{ 'Confirm Date Change' | translate }}
         }
       </button>
@@ -499,11 +527,11 @@
 
 @if (loading()) {
   <div class="loading-center">
-    <mat-spinner diameter="32" />
+    <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
   </div>
 } @else if (error(); as err) {
   <div class="flash flash-error">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
+    <app-icon class="flash-icon" name="error_outline" />
     {{ err }}
     <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
@@ -545,7 +573,7 @@
               <dd class="detail-value guest-detail-value">
                 {{ row.value }}
                 @if (row.icon) {
-                  <mat-icon class="birthday-icon" [matTooltip]="row.hint ?? ''">{{ row.icon }}</mat-icon>
+                  <app-icon class="birthday-icon" [pTooltip]="row.hint ?? ''" [name]="row.icon" />
                   @if (row.hint) {
                     <span class="birthday-hint">{{ row.hint }}</span>
                   }
@@ -589,8 +617,8 @@
           <h3 class="card-title">{{ 'Folio & Charges' | translate }}</h3>
           @if (canPostCharge()) {
             <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()"
-                    [matTooltip]="'Post a charge to this reservation\'s folio' | translate">
-              <mat-icon>add</mat-icon> {{ 'Post Charge' | translate }}
+                    [pTooltip]="'Post a charge to this reservation\'s folio' | translate">
+              <app-icon name="add" /> {{ 'Post Charge' | translate }}
             </button>
           }
         </div>
@@ -632,7 +660,7 @@
               <div class="form-actions">
                 <button class="btn btn-primary btn-sm" (click)="postCharge()"
                         [disabled]="postingCharge() || postChargeForm().amount <= 0">
-                  @if (postingCharge()) { <mat-spinner diameter="16"></mat-spinner> }
+                  @if (postingCharge()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Post Charge' | translate }}
                 </button>
                 <button class="btn btn-outline btn-sm" (click)="togglePostChargeForm()">
@@ -681,7 +709,7 @@
         @if (loadingFolioCharges()) {
           <div class="card-body">
             <div class="loading-state">
-              <mat-spinner diameter="20"></mat-spinner>
+              <p-progressSpinner [style]="{ width: '20px', height: '20px' }" />
               <span class="text-muted">{{ 'Loading charges...' | translate }}</span>
             </div>
           </div>
@@ -783,7 +811,7 @@
       </div>
     } @loading (minimum 200ms) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">{{ 'Rendering details…' | translate }}</span>
       </div>
     }
@@ -794,6 +822,136 @@
       @if (r.updated_at) {
         · {{ 'Updated' | translate }} {{ formatDate(r.updated_at) }}
       }
+    </div>
+  </div>
+}
+
+@if (confirmingAssignRoom()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header"><app-icon class="confirm-icon" name="bed" /><h3 class="confirm-title">{{ 'Assign Room' | translate }}</h3></div>
+    <div class="confirm-body">
+      <div class="form-group">
+        <label class="field-label">{{ 'Room' | translate }}</label>
+        <select class="field-input" [ngModel]="assignRoomForm().room_id" (ngModelChange)="assignRoomForm.set({ room_id: $event })">
+          <option value="">{{ 'Select a room…' | translate }}</option>
+          @for (room of availableRooms(); track room.room_id) {
+            <option [value]="room.room_id">{{ room.room_number }} — {{ room.room_type_name }}</option>
+          }
+        </select>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="assignRoom()" [disabled]="actionLoading() || !assignRoomForm().room_id">{{ 'Assign' | translate }}</button>
+    </div>
+  </div>
+}
+
+@if (confirmingUnassignRoom()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header"><app-icon class="confirm-icon" name="bed" /><h3 class="confirm-title">{{ 'Unassign Room' | translate }}</h3></div>
+    <div class="confirm-body"><p>{{ 'Remove the assigned room from this reservation?' | translate }}</p></div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-warning btn-sm" (click)="unassignRoom()" [disabled]="actionLoading()">{{ 'Unassign' | translate }}</button>
+    </div>
+  </div>
+}
+
+@if (confirmingExtend()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header"><app-icon class="confirm-icon" name="more_time" /><h3 class="confirm-title">{{ 'Extend Stay' | translate }}</h3></div>
+    <div class="confirm-body">
+      <div class="form-group">
+        <label class="field-label">{{ 'New check-out date' | translate }}</label>
+        <input type="date" class="field-input" [ngModel]="extendForm().new_check_out_date"
+          (ngModelChange)="extendForm.set({ ...extendForm(), new_check_out_date: $event ?? '' })" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Reason' | translate }}</label>
+        <input type="text" class="field-input" [ngModel]="extendForm().reason"
+          (ngModelChange)="extendForm.set({ ...extendForm(), reason: $event ?? '' })" />
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="extendStay()" [disabled]="actionLoading()">{{ 'Extend' | translate }}</button>
+    </div>
+  </div>
+}
+
+@if (confirmingRateOverride()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header"><app-icon class="confirm-icon" name="price_change" /><h3 class="confirm-title">{{ 'Override Rate' | translate }}</h3></div>
+    <div class="confirm-body">
+      <div class="form-group">
+        <label class="field-label">{{ 'New room rate' | translate }}</label>
+        <input type="number" min="0" step="0.01" class="field-input" [ngModel]="rateOverrideForm().new_rate"
+          (ngModelChange)="rateOverrideForm.set({ ...rateOverrideForm(), new_rate: $event ?? '' })" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Reason' | translate }} *</label>
+        <input type="text" class="field-input" [ngModel]="rateOverrideForm().reason"
+          (ngModelChange)="rateOverrideForm.set({ ...rateOverrideForm(), reason: $event ?? '' })" />
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="overrideRate()" [disabled]="actionLoading()">{{ 'Override' | translate }}</button>
+    </div>
+  </div>
+}
+
+@if (confirmingAddDeposit()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header"><app-icon class="confirm-icon" name="payments" /><h3 class="confirm-title">{{ 'Add Deposit' | translate }}</h3></div>
+    <div class="confirm-body">
+      <div class="form-group">
+        <label class="field-label">{{ 'Amount' | translate }}</label>
+        <input type="number" min="0" step="0.01" class="field-input" [ngModel]="addDepositForm().amount"
+          (ngModelChange)="addDepositForm.set({ ...addDepositForm(), amount: $event ?? '' })" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Payment method' | translate }}</label>
+        <select class="field-input" [ngModel]="addDepositForm().method"
+          (ngModelChange)="addDepositForm.set({ ...addDepositForm(), method: $event })">
+          <option value="CARD">Card</option>
+          <option value="CASH">Cash</option>
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Reference' | translate }}</label>
+        <input type="text" class="field-input" [ngModel]="addDepositForm().reference"
+          (ngModelChange)="addDepositForm.set({ ...addDepositForm(), reference: $event ?? '' })" />
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="addDeposit()" [disabled]="actionLoading()">{{ 'Add Deposit' | translate }}</button>
+    </div>
+  </div>
+}
+
+@if (confirmingReleaseDeposit()) {
+  <div class="action-confirm-card">
+    <div class="confirm-header"><app-icon class="confirm-icon" name="undo" /><h3 class="confirm-title">{{ 'Release Deposit' | translate }}</h3></div>
+    <div class="confirm-body">
+      <div class="form-group">
+        <label class="field-label">{{ 'Amount to release' | translate }}</label>
+        <input type="number" min="0" step="0.01" class="field-input" [ngModel]="releaseDepositForm().amount"
+          (ngModelChange)="releaseDepositForm.set({ ...releaseDepositForm(), amount: $event ?? '' })" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Reason' | translate }}</label>
+        <input type="text" class="field-input" [ngModel]="releaseDepositForm().reason"
+          (ngModelChange)="releaseDepositForm.set({ ...releaseDepositForm(), reason: $event ?? '' })" />
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="releaseDeposit()" [disabled]="actionLoading()">{{ 'Release' | translate }}</button>
     </div>
   </div>
 }

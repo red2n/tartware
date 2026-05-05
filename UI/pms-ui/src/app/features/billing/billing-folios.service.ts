@@ -53,6 +53,12 @@ export class BillingFoliosService {
 	readonly voidingChargeId = signal<string | null>(null);
 	readonly voidChargeReason = signal("");
 	readonly processingChargeVoid = signal(false);
+	readonly transferringChargeId = signal<string | null>(null);
+	readonly transferChargeForm = signal({
+		target_folio_id: "",
+		reason: "",
+	});
+	readonly processingChargeTransfer = signal(false);
 	readonly closingFolioId = signal<string | null>(null);
 	readonly closeFolioReason = signal("");
 	readonly closeFolioForce = signal(false);
@@ -218,6 +224,55 @@ export class BillingFoliosService {
 			this.toast.error(e instanceof Error ? e.message : "Failed to void charge");
 		} finally {
 			this.processingChargeVoid.set(false);
+		}
+	}
+
+	showTransferCharge(postingId: string): void {
+		this.transferringChargeId.set(postingId);
+		this.transferChargeForm.set({ target_folio_id: "", reason: "" });
+	}
+
+	cancelTransferCharge(): void {
+		this.transferringChargeId.set(null);
+	}
+
+	updateTransferChargeForm(
+		partial: Partial<{ target_folio_id: string; reason: string }>,
+	): void {
+		this.transferChargeForm.set({ ...this.transferChargeForm(), ...partial });
+	}
+
+	async transferCharge(charge: ChargePostingListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		const form = this.transferChargeForm();
+		if (!form.target_folio_id) {
+			this.toast.error("Select a destination folio.");
+			return;
+		}
+		if (form.target_folio_id === charge.folio_id) {
+			this.toast.error("Destination folio must differ from the source folio.");
+			return;
+		}
+		this.processingChargeTransfer.set(true);
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/billing/charges/${charge.id}/transfer`,
+				{
+					posting_id: charge.id,
+					to_folio_id: form.target_folio_id,
+					reason: form.reason || undefined,
+				},
+			);
+			this.toast.success("Charge transfer submitted. Refreshing folios...");
+			this.transferringChargeId.set(null);
+			await settleCommandReadModel(() =>
+				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
+			);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to transfer charge");
+		} finally {
+			this.processingChargeTransfer.set(false);
 		}
 	}
 

@@ -1,0 +1,87 @@
+<div class="reports-page">
+  <app-page-header title="Reports" description="Operational reports, analytics, and CSV exports">
+    <button class="btn btn-invisible" (click)="loadReport()" [pTooltip]="'Refresh' | translate">
+      <app-icon name="refresh" />
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="exportCsv()" [disabled]="rows().length === 0">
+      <app-icon name="file_download" /> {{ 'Export CSV' | translate }}
+    </button>
+  </app-page-header>
+
+  <div class="filter-bar">
+    <nav class="filter-tabs" [attr.aria-label]="'Report selector' | translate">
+      @for (r of reports; track r.key) {
+        <button
+          class="filter-tab"
+          [class.filter-tab-active]="activeKey() === r.key"
+          (click)="setActive(r.key)"
+          [pTooltip]="r.description">
+          <app-icon [name]="r.icon" /> {{ r.label | translate }}
+        </button>
+      }
+    </nav>
+  </div>
+
+  <div class="filter-form">
+    @if (active().needsDate) {
+      <div class="form-group">
+        <label class="field-label">{{ 'Business Date' | translate }}</label>
+        <input type="date" class="field-input field-sm" [ngModel]="businessDate()" (ngModelChange)="businessDate.set($event)" />
+      </div>
+    }
+    @if (active().needsRange) {
+      <div class="form-group">
+        <label class="field-label">{{ 'From' | translate }}</label>
+        <input type="date" class="field-input field-sm" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'To' | translate }}</label>
+        <input type="date" class="field-input field-sm" [ngModel]="endDate()" (ngModelChange)="endDate.set($event)" />
+      </div>
+    }
+    <button class="btn btn-primary btn-sm" (click)="loadReport()" [disabled]="loading()">
+      <app-icon name="search" /> {{ 'Run Report' | translate }}
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="empty-state">
+      <p-progressSpinner styleClass="spinner-sm" />
+      <span>{{ 'Loading…' | translate }}</span>
+    </div>
+  } @else if (error(); as err) {
+    <div class="empty-state">
+      <app-icon name="error_outline" />
+      <span>{{ err }}</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="empty-state">
+      <app-icon [name]="active().icon" />
+      <span>{{ 'No data returned for the current filters.' | translate }}</span>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table table-compact">
+        <thead>
+          <tr>
+            @for (col of columns(); track col) {
+              <th>{{ formatHeader(col) }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track $index) {
+            <tr>
+              @for (col of columns(); track col) {
+                <td>{{ formatCell(row[col]) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="filter-bar">
+      <span class="text-muted">{{ rows().length }} {{ 'rows' | translate }}</span>
+    </div>
+  }
+</div>

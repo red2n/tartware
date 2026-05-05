@@ -1,5 +1,6 @@
 import { toNumberOrFallback } from "@tartware/config";
 import {
+  type ChargebackListItem,
   type CommissionReportItem,
   type DepartmentalRevenueItem,
   type FiscalPeriodListItem,
@@ -722,4 +723,123 @@ export const getGlBatchEntries = async (options: {
     data: entries,
     meta: { count: entries.length },
   };
+};
+
+// ============================================================================
+// CHARGEBACKS / DISPUTES (GAP-03)
+// ============================================================================
+
+export const listChargebacks = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  chargebackStatus?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ChargebackListItem[]> => {
+  const params: unknown[] = [options.tenantId];
+  const filters: string[] = [];
+
+  if (options.propertyId) {
+    params.push(options.propertyId);
+    filters.push(`AND r.property_id = $${params.length}::uuid`);
+  }
+  if (options.chargebackStatus) {
+    params.push(options.chargebackStatus);
+    filters.push(`AND COALESCE(r.chargeback_status, 'RECEIVED') = $${params.length}`);
+  }
+  if (options.startDate) {
+    params.push(options.startDate);
+    filters.push(`AND r.chargeback_date >= $${params.length}::date`);
+  }
+  if (options.endDate) {
+    params.push(options.endDate);
+    filters.push(`AND r.chargeback_date <= $${params.length}::date`);
+  }
+
+  params.push(options.limit ?? 100);
+  const limitPos = params.length;
+  params.push(options.offset ?? 0);
+  const offsetPos = params.length;
+
+  const { rows } = await query<{
+    refund_id: string;
+    property_id: string;
+    refund_number: string | null;
+    original_payment_id: string | null;
+    original_payment_reference: string | null;
+    guest_id: string | null;
+    guest_name: string | null;
+    reservation_id: string | null;
+    confirmation_number: string | null;
+    folio_id: string | null;
+    chargeback_amount: string;
+    currency_code: string | null;
+    chargeback_date: string | null;
+    chargeback_reason: string | null;
+    chargeback_reference: string | null;
+    chargeback_status: string | null;
+    chargeback_notes: string | null;
+    chargeback_status_updated_at: string | null;
+    requested_at: string | null;
+    created_at: string | null;
+  }>(
+    `SELECT
+       r.refund_id,
+       r.property_id,
+       r.refund_number,
+       r.original_payment_id,
+       p.payment_reference AS original_payment_reference,
+       r.guest_id,
+       TRIM(CONCAT_WS(' ', g.first_name, g.last_name)) AS guest_name,
+       r.reservation_id,
+       res.confirmation_number,
+       r.folio_id,
+       r.refund_amount AS chargeback_amount,
+       COALESCE(r.currency_code, 'USD') AS currency_code,
+       r.chargeback_date::text,
+       r.chargeback_reason,
+       r.chargeback_reference,
+       COALESCE(r.chargeback_status, 'RECEIVED') AS chargeback_status,
+       r.chargeback_notes,
+       r.chargeback_status_updated_at::text,
+       r.requested_at::text,
+       r.created_at::text
+     FROM public.refunds r
+     LEFT JOIN public.payments p ON p.id = r.original_payment_id
+     LEFT JOIN public.guests g ON g.guest_id = r.guest_id
+     LEFT JOIN public.reservations res ON res.id = r.reservation_id
+     WHERE r.tenant_id = $1::uuid
+       AND r.is_chargeback = TRUE
+       AND COALESCE(r.is_deleted, false) = false
+       ${filters.join("\n       ")}
+     ORDER BY r.chargeback_date DESC NULLS LAST, r.created_at DESC
+     LIMIT $${limitPos} OFFSET $${offsetPos}`,
+    params,
+  );
+
+  return rows.map((r) => ({
+    refund_id: r.refund_id,
+    property_id: r.property_id,
+    refund_number: r.refund_number ?? undefined,
+    original_payment_id: r.original_payment_id ?? undefined,
+    original_payment_reference: r.original_payment_reference ?? undefined,
+    guest_id: r.guest_id ?? undefined,
+    guest_name: r.guest_name ?? undefined,
+    reservation_id: r.reservation_id ?? undefined,
+    confirmation_number: r.confirmation_number ?? undefined,
+    folio_id: r.folio_id ?? undefined,
+    chargeback_amount: toNumberOrFallback(r.chargeback_amount),
+    currency_code: r.currency_code ?? "USD",
+    chargeback_date: r.chargeback_date ?? undefined,
+    chargeback_reason: r.chargeback_reason ?? undefined,
+    chargeback_reference: r.chargeback_reference ?? undefined,
+    chargeback_status: (r.chargeback_status ??
+      "RECEIVED") as ChargebackListItem["chargeback_status"],
+    chargeback_notes: r.chargeback_notes ?? undefined,
+    chargeback_status_updated_at: r.chargeback_status_updated_at ?? undefined,
+    requested_at: r.requested_at ?? undefined,
+    created_at: r.created_at ?? undefined,
+  }));
 };

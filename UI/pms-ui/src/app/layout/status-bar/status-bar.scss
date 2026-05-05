@@ -12,8 +12,8 @@
   background: var(--color-statusbar-bg);
   color: var(--color-statusbar-text);
   border-top: 1px solid var(--borderColor-default);
-  font-size: 12px;
-  font-family: var(--fontStack-sansSerif);
+  font-size: var(--base-text-size-xs);
+  font-family: inherit;
   padding: 0 var(--base-size-8);
   user-select: none;
   z-index: 100;
@@ -36,7 +36,7 @@
   border: none;
   background: transparent;
   color: var(--color-statusbar-text);
-  font-size: 12px;
+  font-size: var(--base-text-size-xs);
   font-family: inherit;
   cursor: default;
   border-radius: var(--borderRadius-small);
@@ -44,9 +44,9 @@
   white-space: nowrap;
 
   .badge {
-    font-size: 10px;
+    font-size: var(--base-text-size-xs);
     padding: 0 var(--base-size-4);
-    line-height: 16px;
+    line-height: var(--base-size-16);
     height: 16px;
     border-radius: var(--borderRadius-small);
   }

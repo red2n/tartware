@@ -1,10 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { DialogService } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 
 import type { BuildingGridItem } from "@tartware/schemas";
 
@@ -30,9 +29,8 @@ import { ToastService } from "../../../shared/toast/toast.service";
 	imports: [
 		NgClass,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatTooltipModule,
+		IconComponent,
+		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -44,7 +42,7 @@ export class BuildingsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -140,9 +138,9 @@ export class BuildingsComponent {
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
 					width: "580px",
-					disableClose: true,
+					closable: false,
 				});
-				ref.afterClosed().subscribe((created: boolean) => {
+				ref!.onClose.subscribe((created: boolean) => {
 					if (created) {
 						this.toast.success("Building created successfully.");
 						this.loadBuildings();
@@ -157,10 +155,10 @@ export class BuildingsComponent {
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
 					width: "580px",
-					disableClose: true,
+					closable: false,
 					data: building,
 				});
-				ref.afterClosed().subscribe((saved: boolean) => {
+				ref!.onClose.subscribe((saved: boolean) => {
 					if (saved) {
 						this.toast.success("Building updated successfully.");
 						this.loadBuildings();

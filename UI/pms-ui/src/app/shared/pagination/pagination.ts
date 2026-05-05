@@ -1,10 +1,10 @@
 import { Component, computed, input, output } from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
+import { IconComponent } from '../components/icon/icon';
 
 @Component({
 	selector: "app-pagination",
 	standalone: true,
-	imports: [MatIconModule],
+	imports: [IconComponent],
 	template: `
 		@if (totalPages() > 1) {
 			<nav class="pagination" aria-label="Table pagination">
@@ -16,13 +16,13 @@ import { MatIconModule } from "@angular/material/icon";
 							[disabled]="currentPage() <= 1"
 							(click)="pageChange.emit(1)"
 							aria-label="First page">
-						<mat-icon>first_page</mat-icon>
+					<app-icon name="first_page" />
 					</button>
 					<button type="button" class="btn btn-invisible btn-sm"
 							[disabled]="currentPage() <= 1"
 							(click)="pageChange.emit(currentPage() - 1)"
 							aria-label="Previous page">
-						<mat-icon>chevron_left</mat-icon>
+					<app-icon name="chevron_left" />
 					</button>
 					<span class="pagination-page">
 						Page {{ currentPage() }} of {{ totalPages() }}
@@ -31,13 +31,13 @@ import { MatIconModule } from "@angular/material/icon";
 							[disabled]="currentPage() >= totalPages()"
 							(click)="pageChange.emit(currentPage() + 1)"
 							aria-label="Next page">
-						<mat-icon>chevron_right</mat-icon>
+					<app-icon name="chevron_right" />
 					</button>
 					<button type="button" class="btn btn-invisible btn-sm"
 							[disabled]="currentPage() >= totalPages()"
 							(click)="pageChange.emit(totalPages())"
 							aria-label="Last page">
-						<mat-icon>last_page</mat-icon>
+					<app-icon name="last_page" />
 					</button>
 				</div>
 			</nav>

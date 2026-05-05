@@ -1,9 +1,8 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type { BuildingItem, RoomTypeItem } from "@tartware/schemas";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
@@ -21,10 +20,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
 	],
@@ -35,7 +33,7 @@ export class CreateRoomDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialogRef = inject(MatDialogRef<CreateRoomDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
 
 	readonly roomTypes = signal<RoomType[]>([]);

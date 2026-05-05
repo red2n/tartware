@@ -1,6 +1,5 @@
 import { Component, input, output } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatIconModule } from "@angular/material/icon";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import {
 	GUEST_TITLES,
@@ -11,7 +10,7 @@ import {
 @Component({
 	selector: "app-guest-form-fields",
 	standalone: true,
-	imports: [FormsModule, MatIconModule, TranslatePipe],
+  imports: [FormsModule, TranslatePipe],
 	templateUrl: "./guest-form-fields.html",
 })
 export class GuestFormFieldsComponent {

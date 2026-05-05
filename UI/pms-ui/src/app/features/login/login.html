@@ -14,15 +14,15 @@
 
       <div class="hero-features">
         <div class="hero-feature">
-          <mat-icon>speed</mat-icon>
+          <app-icon name="speed" />
           <span>{{ '20K ops/sec throughput' | translate }}</span>
         </div>
         <div class="hero-feature">
-          <mat-icon>domain</mat-icon>
+          <app-icon name="domain" />
           <span>{{ 'Multi-property support' | translate }}</span>
         </div>
         <div class="hero-feature">
-          <mat-icon>shield</mat-icon>
+          <app-icon name="shield" />
           <span>{{ 'Enterprise-grade security' | translate }}</span>
         </div>
       </div>
@@ -45,53 +45,52 @@
 
       @if (error(); as err) {
         <div class="login-error">
-          <mat-icon class="error-icon">error_outline</mat-icon>
+          <app-icon class="error-icon" name="error_outline" />
           <span>{{ err }}</span>
         </div>
       }
 
       <form (ngSubmit)="onSubmit()" method="post" class="login-form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Username' | translate }}</mat-label>
-          <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
-          <input matInput
+        <div class="form-field-outline">
+          <label class="form-label">{{ 'Username' | translate }}</label>
+          <app-icon class="field-icon" name="person_outline" />
+          <input pInputText
                  [(ngModel)]="username"
                  name="username"
                  autocomplete="username"
                  required />
-        </mat-form-field>
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Password' | translate }}</mat-label>
-          <mat-icon matPrefix class="field-icon">lock_outline</mat-icon>
-          <input matInput
+        <div class="form-field-outline">
+          <label class="form-label">{{ 'Password' | translate }}</label>
+          <app-icon class="field-icon" name="lock_outline" />
+          <input pInputText
                  [type]="hidePassword() ? 'password' : 'text'"
                  [(ngModel)]="password"
                  name="password"
                  autocomplete="current-password"
                  required
                  #passwordInput />
-          <button mat-icon-button matSuffix
+          <button class="btn btn-invisible btn-xs"
                   type="button"
                   (click)="togglePasswordVisibility()"
                   [attr.aria-label]="'Toggle password visibility' | translate">
-            <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+            <app-icon [name]="hidePassword() ? 'visibility' : 'visibility_off'" />
           </button>
-        </mat-form-field>
-
-        <div class="remember-me-row">
-          <mat-checkbox [(ngModel)]="rememberMe" name="rememberMe" color="primary">
-            {{ 'Remember me' | translate }}
-          </mat-checkbox>
         </div>
 
-        <button mat-flat-button
-                color="primary"
+        <div class="remember-me-row">
+          <label class="checkbox-label">
+            <p-checkbox [(ngModel)]="rememberMe" name="rememberMe" [binary]="true" />
+            {{ 'Remember me' | translate }}
+          </label>
+        </div>
+
+        <button class="btn btn-primary full-width login-button"
                 type="submit"
-                class="full-width login-button"
                 [disabled]="loading()">
           @if (loading()) {
-            <mat-spinner diameter="20"></mat-spinner>
+            <p-progressSpinner [style]="{ width: '20px', height: '20px' }" />
           } @else {
             {{ 'Sign in' | translate }}
           }
@@ -99,7 +98,7 @@
       </form>
 
       <div class="login-footer">
-        <mat-icon class="footer-lock-icon">verified_user</mat-icon>
+        <app-icon class="footer-lock-icon" name="verified_user" />
         <span>{{ 'Secured with TLS encryption' | translate }}</span>
       </div>
     </div>

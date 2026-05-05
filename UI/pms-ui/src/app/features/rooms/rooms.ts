@@ -1,12 +1,10 @@
 import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog } from "@angular/material/dialog";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatIconModule } from "@angular/material/icon";
-import { MatInputModule } from "@angular/material/input";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { DialogService } from 'primeng/dynamicdialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
 
 import type { RoomGridItem } from "@tartware/schemas";
@@ -38,11 +36,10 @@ type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "
 		NgTemplateOutlet,
 		FormsModule,
 		RouterLink,
-		MatIconModule,
-		MatButtonModule,
-		MatFormFieldModule,
-		MatInputModule,
-		MatTooltipModule,
+		IconComponent,
+		InputTextModule,
+		InputTextModule,
+		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -55,7 +52,7 @@ export class RoomsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -233,9 +230,9 @@ export class RoomsComponent {
 		import("./create-room-dialog/create-room-dialog").then(({ CreateRoomDialogComponent }) => {
 			const ref = this.dialog.open(CreateRoomDialogComponent, {
 				width: "520px",
-				disableClose: true,
+				closable: false,
 			});
-			ref.afterClosed().subscribe((created: boolean) => {
+			ref!.onClose.subscribe((created: boolean) => {
 				if (created) {
 					this.toast.success("Room created successfully.");
 					this.loadRooms();

@@ -1,26 +1,26 @@
 <div class="command-management-page">
   <app-page-header title="Command Management" description="Enable or disable system commands for your environment">
-    <span class="counter" [matTooltip]="'Enabled commands' | translate">{{ enabledCount() }} / {{ totalCount() }}</span>
+    <span class="counter" [pTooltip]="'Enabled commands' | translate">{{ enabledCount() }} / {{ totalCount() }}</span>
 
     @if (hasChanges()) {
     <span class="badge badge-warning pending-badge">{{ pendingCount() }} {{ 'changes pending' | translate }}</span>
     <button class="btn btn-outline" (click)="discardChanges()">
-      <mat-icon>undo</mat-icon>
+      <app-icon name="undo" />
       {{ 'Discard' | translate }}
     </button>
     <button class="btn btn-primary" (click)="saveChanges()" [disabled]="saving()">
       @if (saving()) {
-      <mat-spinner diameter="16"></mat-spinner>
+      <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
       } @else {
-      <mat-icon>save</mat-icon>
+      <app-icon name="save" />
       }
       {{ 'Save Changes' | translate }}
     </button>
     }
 
     <button class="btn btn-invisible" (click)="loadCommands()" [disabled]="saving()"
-      [matTooltip]="'Refresh' | translate">
-      <mat-icon>refresh</mat-icon>
+      [pTooltip]="'Refresh' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -38,7 +38,7 @@
   </div>
   } @else if (error() && commands().length === 0) {
   <div class="error-state">
-    <mat-icon class="error-icon">error_outline</mat-icon>
+    <app-icon class="error-icon" name="error_outline" />
     <span>{{ error() }}</span>
     <button class="btn btn-outline" (click)="loadCommands()">{{ 'Retry' | translate }}</button>
   </div>
@@ -46,7 +46,7 @@
 
   @if (error()) {
   <div class="error-state" style="margin-bottom: var(--base-size-16)">
-    <mat-icon class="error-icon">error_outline</mat-icon>
+    <app-icon class="error-icon" name="error_outline" />
     <span>{{ error() }}</span>
   </div>
   }
@@ -54,7 +54,7 @@
   @defer (on idle) {
   @if (filteredCommands().length === 0) {
   <div class="empty-state">
-    <mat-icon class="empty-icon">terminal</mat-icon>
+    <app-icon class="empty-icon" name="terminal" />
     @if (globalSearch.query()) {
     <p>{{ 'No commands match "' | translate }}{{ globalSearch.query() }}{{ '"' }}</p>
     <button class="btn btn-outline" (click)="globalSearch.clear()">{{ 'Clear search' | translate }}</button>
@@ -99,13 +99,12 @@
               {{ getEffectiveStatus(cmd) | translate }}
             </span>
             @if (isModified(cmd.command_name)) {
-            <mat-icon class="modified-icon" [matTooltip]="'Unsaved change' | translate">edit</mat-icon>
+            <app-icon class="modified-icon" [pTooltip]="'Unsaved change' | translate" name="edit" />
             }
           </td>
           <td class="td-actions">
-            <mat-slide-toggle [checked]="getEffectiveStatus(cmd) === 'enabled'" [disabled]="saving()"
-              (change)="toggleStatus(cmd)" color="primary">
-            </mat-slide-toggle>
+            <p-toggleSwitch [ngModel]="getEffectiveStatus(cmd) === 'enabled'" [disabled]="saving()"
+              (onChange)="toggleStatus(cmd)" />
           </td>
         </tr>
         }

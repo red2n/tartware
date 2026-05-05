@@ -1,7 +1,7 @@
 <div class="fiscal-periods-page">
   <app-page-header title="Fiscal Periods" description="Manage accounting periods — close, lock, and reopen periods">
-    <button class="btn btn-invisible" (click)="loadPeriods()" [matTooltip]="'Refresh' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadPeriods()" [pTooltip]="'Refresh' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -21,12 +21,12 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="empty-state">
-      <mat-icon>error_outline</mat-icon>
+      <app-icon name="error_outline" />
       <span>{{ err }}</span>
     </div>
   } @else if (filtered().length === 0) {
     <div class="empty-state">
-      <mat-icon>date_range</mat-icon>
+      <app-icon name="date_range" />
       <span>{{ 'No fiscal periods found.' | translate }}</span>
     </div>
   } @else {
@@ -56,9 +56,7 @@
               <td>{{ formatDate(p.period_end) }}</td>
               <td><span [class]="statusBadge(p.period_status)">{{ p.period_status_display }}</span></td>
               <td>
-                <mat-icon [ngClass]="p.is_reconciled ? 'icon-success' : 'icon-danger'">
-                  {{ p.is_reconciled ? 'check_circle' : 'cancel' }}
-                </mat-icon>
+                <app-icon [ngClass]="p.is_reconciled ? 'icon-success' : 'icon-danger'" [name]="p.is_reconciled ? 'check_circle' : 'cancel'" />
               </td>
               <td class="text-right">{{ p.total_revenue ? formatCurrency(p.total_revenue) : '—' }}</td>
               <td class="text-right">{{ p.total_expenses ? formatCurrency(p.total_expenses) : '—' }}</td>
@@ -67,18 +65,18 @@
               <td class="text-right">
                 <div class="action-btn-group">
                   @if (canClose(p)) {
-                    <button class="btn btn-outline btn-sm" (click)="showCloseDialog(p)" [disabled]="actionLoading()" [matTooltip]="'Close Period' | translate">
-                      <mat-icon>lock_open</mat-icon>
+                    <button class="btn btn-outline btn-sm" (click)="showCloseDialog(p)" [disabled]="actionLoading()" [pTooltip]="'Close Period' | translate">
+                      <app-icon name="lock_open" />
                     </button>
                   }
                   @if (canLock(p)) {
-                    <button class="btn btn-outline btn-sm" (click)="lockPeriod(p)" [disabled]="actionLoading()" [matTooltip]="'Lock Period' | translate">
-                      <mat-icon>lock</mat-icon>
+                    <button class="btn btn-outline btn-sm" (click)="lockPeriod(p)" [disabled]="actionLoading()" [pTooltip]="'Lock Period' | translate">
+                      <app-icon name="lock" />
                     </button>
                   }
                   @if (canReopen(p)) {
-                    <button class="btn btn-outline btn-sm" (click)="showReopenDialog(p)" [disabled]="actionLoading()" [matTooltip]="'Reopen Period' | translate">
-                      <mat-icon>lock_open</mat-icon>
+                    <button class="btn btn-outline btn-sm" (click)="showReopenDialog(p)" [disabled]="actionLoading()" [pTooltip]="'Reopen Period' | translate">
+                      <app-icon name="lock_open" />
                     </button>
                   }
                 </div>
@@ -105,7 +103,7 @@
                       <div class="form-group form-group-actions">
                         <button class="btn btn-outline btn-sm" (click)="cancelClose()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-warning btn-sm" (click)="submitClose()" [disabled]="actionLoading()">
-                          @if (actionLoading()) { <mat-spinner diameter="14"></mat-spinner> }
+                          @if (actionLoading()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Close Period' | translate }}
                         </button>
                       </div>
@@ -129,7 +127,7 @@
                       <div class="form-group form-group-actions">
                         <button class="btn btn-outline btn-sm" (click)="cancelReopen()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-primary btn-sm" (click)="submitReopen()" [disabled]="actionLoading() || !reopenReason()">
-                          @if (actionLoading()) { <mat-spinner diameter="14"></mat-spinner> }
+                          @if (actionLoading()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Reopen Period' | translate }}
                         </button>
                       </div>

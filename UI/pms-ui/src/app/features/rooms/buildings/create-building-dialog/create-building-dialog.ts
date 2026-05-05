@@ -1,9 +1,8 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import type { BuildingGridItem } from "@tartware/schemas";
 
@@ -35,10 +34,9 @@ const BUILDING_STATUSES = ["OPERATIONAL", "RENOVATION", "CLOSED", "SEASONAL"];
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
 		TranslatePipe,
@@ -50,9 +48,9 @@ export class CreateBuildingDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialogRef = inject(MatDialogRef<CreateBuildingDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
-	private readonly data = inject<BuildingGridItem | null>(MAT_DIALOG_DATA, { optional: true });
+private readonly data = inject(DynamicDialogConfig, { optional: true })?.data as BuildingGridItem | null;
 
 	readonly saving = signal(false);
 	readonly buildingTypes = BUILDING_TYPES;

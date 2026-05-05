@@ -1,7 +1,7 @@
 <div class="page-header">
   <div class="breadcrumb">
     <a routerLink="/groups" class="breadcrumb-link">
-      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      <app-icon class="breadcrumb-icon" name="arrow_back" />
       {{ 'Group Bookings' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
@@ -12,8 +12,8 @@
   @if (group(); as g) {
     <div class="page-actions">
       @if (canCheckIn()) {
-        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [matTooltip]="'Batch check-in all picked reservations with proximity-based room assignment' | translate">
-          <mat-icon>login</mat-icon>
+        <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [pTooltip]="'Batch check-in all picked reservations with proximity-based room assignment' | translate">
+          <app-icon name="login" />
           {{ 'Check In Group' | translate }}
         </button>
       }
@@ -25,7 +25,7 @@
 @if (confirmingCheckIn()) {
   <div class="action-confirm-card">
     <div class="confirm-header">
-      <mat-icon class="confirm-icon confirm-icon-checkin">login</mat-icon>
+      <app-icon class="confirm-icon confirm-icon-checkin" name="login" />
       <h3 class="confirm-title">{{ 'Group Check-In' | translate }}</h3>
     </div>
     <div class="confirm-body">
@@ -53,10 +53,10 @@
       <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="checkInGroup()" [disabled]="actionLoading()">
         @if (actionLoading()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Checking in...' | translate }}
         } @else {
-          <mat-icon>login</mat-icon>
+          <app-icon name="login" />
           {{ 'Confirm Group Check-In' | translate }}
         }
       </button>
@@ -66,11 +66,11 @@
 
 @if (loading()) {
   <div class="loading-center">
-    <mat-spinner diameter="32" />
+    <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
   </div>
 } @else if (error(); as err) {
   <div class="flash flash-error">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
+    <app-icon class="flash-icon" name="error_outline" />
     {{ err }}
     <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
@@ -81,7 +81,7 @@
       <div class="card-header">
         <h3 class="card-title">
           @if (groupTypeIcon[g.group_type.toUpperCase()]; as typeInfo) {
-            <mat-icon class="card-title-icon" [matTooltip]="typeInfo.tooltip">{{ typeInfo.icon }}</mat-icon>
+            <app-icon class="card-title-icon" [pTooltip]="typeInfo.tooltip" [name]="typeInfo.icon" />
           }
           {{ 'Group Information' | translate }}
         </h3>
@@ -93,7 +93,7 @@
               <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
-                  <span class="badge" [ngClass]="row.badge" [matTooltip]="row.description ?? ''">{{ row.value }}</span>
+                  <span class="badge" [ngClass]="row.badge" [pTooltip]="row.description ?? ''">{{ row.value }}</span>
                   @if (row.description) {
                     <span class="detail-hint text-muted">{{ row.description }}</span>
                   }
@@ -195,7 +195,7 @@
       </div>
     } @loading (minimum 200ms) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">{{ 'Rendering details…' | translate }}</span>
       </div>
     }

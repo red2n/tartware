@@ -88,6 +88,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 		description: "Guest profiles, preferences, and loyalty history",
 	},
 	{
+		label: "Loyalty",
+		icon: "emoji_events",
+		route: "/loyalty",
+		screenKey: "loyalty",
+		description: "Loyalty tier rules and points transactions",
+	},
+	{
 		label: "Availability",
 		icon: "inventory_2",
 		description: "Room inventory and property configuration",
@@ -192,6 +199,20 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				route: "/ledger",
 				screenKey: "billing",
 				description: "General ledger entries, batches, and posting review",
+			},
+			{
+				label: "GL Batches",
+				icon: "inventory_2",
+				route: "/gl-batches",
+				screenKey: "billing",
+				description: "GL batch review and ERP export",
+			},
+			{
+				label: "Chargebacks",
+				icon: "gavel",
+				route: "/chargebacks",
+				screenKey: "billing",
+				description: "Credit-card disputes and chargeback workflow",
 			},
 			{
 				label: "Tax Config",
@@ -320,6 +341,18 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 				icon: "shield",
 				route: "/screen-permissions",
 				screenKey: "users",
+			},
+			{
+				label: "Modules",
+				icon: "extension",
+				route: "/modules",
+				screenKey: "modules",
+			},
+			{
+				label: "Webhooks",
+				icon: "webhook",
+				route: "/webhooks",
+				screenKey: "webhooks",
 			},
 		],
 	},

@@ -1,7 +1,7 @@
 <div class="page-header">
   <div class="flex items-center gap-3">
     <button class="btn btn-outline btn-sm" (click)="cancel()">
-      <mat-icon>arrow_back</mat-icon>
+      <app-icon name="arrow_back" />
     </button>
     <div>
       <h1 class="page-title">{{ 'New Reservation' | translate }}</h1>
@@ -12,7 +12,7 @@
 
 @if (loadingRef()) {
   <div class="loading-state">
-    <mat-spinner diameter="32"></mat-spinner>
+    <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
     <span class="text-muted">{{ 'Loading reference data…' | translate }}</span>
   </div>
 } @else {
@@ -40,7 +40,7 @@
   @if (currentStep === 0) {
     <div class="card-header">
       <h2 class="card-title flex items-center gap-2">
-        <mat-icon>calendar_month</mat-icon>
+        <app-icon name="calendar_month" />
         {{ 'When is the guest staying?' | translate }}
       </h2>
     </div>
@@ -67,7 +67,7 @@
 
       @if (nights > 0) {
         <div class="nights-pill">
-          <mat-icon>dark_mode</mat-icon>
+          <app-icon name="dark_mode" />
           {{ nights }} {{ nights > 1 ? ('nights' | translate) : ('night' | translate) }}
         </div>
       } @else if (checkInDate && checkOutDate) {
@@ -77,10 +77,10 @@
       <h3 class="section-header mt-6">
         {{ 'Select room type' | translate }}
         @if (loadingRecs()) {
-          <mat-spinner diameter="14" class="rec-inline-spinner"></mat-spinner>
+          <p-progressSpinner class="rec-inline-spinner" [style]="{ width: '14px', height: '14px' }" />
         } @else if (hasRecommendations()) {
           <span class="rec-hint">
-            <mat-icon>auto_awesome</mat-icon>
+            <app-icon name="auto_awesome" />
             {{ 'AI-ranked by recommendation engine' | translate }}
           </span>
         }
@@ -99,8 +99,8 @@
                 </span>
                 <span class="rt-rec-rooms">{{ rec.roomCount }} {{ rec.roomCount > 1 ? ('rooms' | translate) : ('room' | translate) }}</span>
                 @if (rec.hasUpgrade) {
-                  <span class="rt-rec-upgrade" [matTooltip]="'Upgrade opportunity' | translate">
-                    <mat-icon>trending_up</mat-icon>
+                  <span class="rt-rec-upgrade" [pTooltip]="'Upgrade opportunity' | translate">
+                    <app-icon name="trending_up" />
                   </span>
                 }
               </div>
@@ -111,16 +111,16 @@
             </div>
             <div class="rt-details">
               <span class="rt-detail">
-                <mat-icon>king_bed</mat-icon>
+                <app-icon name="king_bed" />
                 {{ rt.number_of_beds }}× {{ rt.bed_type }}
               </span>
               <span class="rt-detail">
-                <mat-icon>group</mat-icon>
+                <app-icon name="group" />
                 {{ 'Max' | translate }} {{ rt.max_occupancy }}
               </span>
               @if (rt.size_sqm) {
                 <span class="rt-detail">
-                  <mat-icon>square_foot</mat-icon>
+                  <app-icon name="square_foot" />
                   {{ rt.size_sqm }} m²
                 </span>
               }
@@ -129,12 +129,12 @@
               from {{ fmtCurrency(rt.base_price, rt.currency) }}<span class="text-muted">/{{ 'night' | translate }}</span>
             </div>
             @if (roomTypeId === rt.room_type_id) {
-              <mat-icon class="rt-check">check_circle</mat-icon>
+              <app-icon class="rt-check" name="check_circle" />
             }
           </button>
         } @empty {
           <div class="empty-hint">
-            <mat-icon>info_outline</mat-icon>
+            <app-icon name="info_outline" />
             {{ 'No room types configured for this property.' | translate }}
           </div>
         }
@@ -143,7 +143,7 @@
       <div class="step-actions">
         <button class="btn btn-outline" (click)="cancel()">{{ 'Cancel' | translate }}</button>
         <button class="btn btn-primary" [disabled]="!datesComplete" (click)="nextStep()">
-          {{ 'See rates' | translate }} <mat-icon>arrow_forward</mat-icon>
+          {{ 'See rates' | translate }} <app-icon name="arrow_forward" />
         </button>
       </div>
     </div>
@@ -155,18 +155,18 @@
     @if (currentStep === 1) {
     <div class="card-header">
       <h2 class="card-title flex items-center gap-2">
-        <mat-icon>payments</mat-icon>
+        <app-icon name="payments" />
         {{ 'Choose a rate plan' | translate }}
       </h2>
       <div class="context-chips">
         <span class="context-chip">
-          <mat-icon>bed</mat-icon> {{ selectedRoomType?.type_name }}
+          <app-icon name="bed" /> {{ selectedRoomType?.type_name }}
         </span>
         <span class="context-chip">
-          <mat-icon>dark_mode</mat-icon> {{ nights }} {{ nights > 1 ? ('nights' | translate) : ('night' | translate) }}
+          <app-icon name="dark_mode" /> {{ nights }} {{ nights > 1 ? ('nights' | translate) : ('night' | translate) }}
         </span>
         <span class="context-chip">
-          <mat-icon>calendar_month</mat-icon> {{ fmtDate(checkInDate) }} → {{ fmtDate(checkOutDate) }}
+          <app-icon name="calendar_month" /> {{ fmtDate(checkInDate) }} → {{ fmtDate(checkOutDate) }}
         </span>
       </div>
     </div>
@@ -183,14 +183,14 @@
               </div>
               <div class="rate-meta">
                 <span class="rate-meta-item">
-                  <mat-icon>restaurant</mat-icon> {{ mealPlanLabel(r.meal_plan) }}
+                  <app-icon name="restaurant" /> {{ mealPlanLabel(r.meal_plan) }}
                 </span>
                 <span class="rate-meta-item">
-                  <mat-icon>event_available</mat-icon> {{ cancellationLabel(r.cancellation_policy) }}
+                  <app-icon name="event_available" /> {{ cancellationLabel(r.cancellation_policy) }}
                 </span>
                 @if (r.min_length_of_stay > 1) {
                   <span class="rate-meta-item">
-                    <mat-icon>hotel</mat-icon> {{ 'Min' | translate }} {{ r.min_length_of_stay }} {{ 'nights' | translate }}
+                    <app-icon name="hotel" /> {{ 'Min' | translate }} {{ r.min_length_of_stay }} {{ 'nights' | translate }}
                   </span>
                 }
               </div>
@@ -215,12 +215,12 @@
               }
             </div>
             @if (selectedRateCode === r.rate_code) {
-              <mat-icon class="rate-check">check_circle</mat-icon>
+              <app-icon class="rate-check" name="check_circle" />
             }
           </button>
         } @empty {
           <div class="empty-hint">
-            <mat-icon>info_outline</mat-icon>
+            <app-icon name="info_outline" />
             {{ 'No active rates available for this room type.' | translate }}
           </div>
         }
@@ -228,10 +228,10 @@
 
       <div class="step-actions">
         <button class="btn btn-outline" (click)="prevStep()">
-          <mat-icon>arrow_back</mat-icon> {{ 'Back' | translate }}
+          <app-icon name="arrow_back" /> {{ 'Back' | translate }}
         </button>
         <button class="btn btn-primary" [disabled]="!rateComplete" (click)="nextStep()">
-          {{ 'Select guest' | translate }} <mat-icon>arrow_forward</mat-icon>
+          {{ 'Select guest' | translate }} <app-icon name="arrow_forward" />
         </button>
       </div>
     </div>
@@ -241,7 +241,7 @@
   @if (currentStep === 2) {
     <div class="card-header">
       <h2 class="card-title flex items-center gap-2">
-        <mat-icon>person_search</mat-icon>
+        <app-icon name="person_search" />
         {{ 'Select guest' | translate }}
       </h2>
     </div>
@@ -249,7 +249,7 @@
 
       <!-- Cancellation & no-show policy info from settings -->
       <div class="booking-policy-warn">
-        <mat-icon>event_busy</mat-icon>
+        <app-icon name="event_busy" />
         <span>
           {{ 'Free cancellation within' | translate }} <strong>{{ freeCancelHours() }}h</strong> {{ 'of arrival.' | translate }}
           {{ 'No-show charge:' | translate }} <strong>{{ noShowChargePercent() }}%</strong> {{ 'of booking total.' | translate }}
@@ -259,7 +259,7 @@
 
       @if (autoEnrollLoyalty()) {
         <div class="booking-policy-note">
-          <mat-icon>loyalty</mat-icon>
+          <app-icon name="loyalty" />
           <span>{{ 'Guest will be auto-enrolled in loyalty program' | translate }}</span>
         </div>
       }
@@ -267,7 +267,7 @@
       <!-- Phone required warning -->
       @if (requirePhone() && guestId && !selectedGuest?.phone) {
         <div class="booking-policy-warn">
-          <mat-icon>phone_missed</mat-icon>
+          <app-icon name="phone_missed" />
           <span>{{ 'This booking requires a guest with a phone number on file.' | translate }}</span>
         </div>
       }
@@ -299,17 +299,17 @@
               <div class="guest-meta-row">
                 @if (g.email) {
                   <span class="guest-meta-item">
-                    <mat-icon class="guest-meta-icon">email</mat-icon>{{ g.email }}
+                    <app-icon class="guest-meta-icon" name="email" />{{ g.email }}
                   </span>
                 }
                 @if (g.phone) {
                   <span class="guest-meta-item">
-                    <mat-icon class="guest-meta-icon">phone</mat-icon>{{ g.phone }}
+                    <app-icon class="guest-meta-icon" name="phone" />{{ g.phone }}
                   </span>
                 }
                 @if (guestDobDisplay(g); as dob) {
-                  <span class="guest-meta-item" [matTooltip]="guestBirthdayHint(g) ?? ''">
-                    <mat-icon class="guest-meta-icon">cake</mat-icon>{{ dob }}
+                  <span class="guest-meta-item" [pTooltip]="guestBirthdayHint(g) ?? ''">
+                    <app-icon class="guest-meta-icon" name="cake" />{{ dob }}
                     @if (guestBirthdayHint(g); as hint) {
                       <span class="guest-birthday-hint">{{ hint }}</span>
                     }
@@ -323,12 +323,12 @@
               }
             </div>
             @if (guestId === g.id) {
-              <mat-icon class="guest-check">check_circle</mat-icon>
+              <app-icon class="guest-check" name="check_circle" />
             }
           </button>
         } @empty {
           <div class="empty-hint">
-            <mat-icon>search_off</mat-icon>
+            <app-icon name="search_off" />
             @if (guestSearch) {
               {{ 'No guests match' | translate }} "{{ guestSearch }}"
             } @else {
@@ -378,10 +378,10 @@
 
       <div class="step-actions">
         <button class="btn btn-outline" (click)="prevStep()">
-          <mat-icon>arrow_back</mat-icon> {{ 'Back' | translate }}
+          <app-icon name="arrow_back" /> {{ 'Back' | translate }}
         </button>
         <button class="btn btn-primary" [disabled]="!guestComplete" (click)="nextStep()">
-          {{ 'Review' | translate }} <mat-icon>arrow_forward</mat-icon>
+          {{ 'Review' | translate }} <app-icon name="arrow_forward" />
         </button>
       </div>
     </div>
@@ -391,7 +391,7 @@
   @if (currentStep === 3) {
     <div class="card-header">
       <h2 class="card-title flex items-center gap-2">
-        <mat-icon>fact_check</mat-icon>
+        <app-icon name="fact_check" />
         {{ 'Review &amp; Confirm' | translate }}
       </h2>
     </div>
@@ -431,14 +431,14 @@
 
       <div class="step-actions">
         <button class="btn btn-outline" [disabled]="saving()" (click)="prevStep()">
-          <mat-icon>arrow_back</mat-icon> {{ 'Back' | translate }}
+          <app-icon name="arrow_back" /> {{ 'Back' | translate }}
         </button>
         <button class="btn btn-primary" [disabled]="saving()" (click)="save()">
           @if (saving()) {
-            <mat-spinner diameter="16" />
+            <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
             {{ 'Creating…' | translate }}
           } @else {
-            <mat-icon>check</mat-icon> {{ 'Confirm booking' | translate }}
+            <app-icon name="check" /> {{ 'Confirm booking' | translate }}
           }
         </button>
       </div>
@@ -452,7 +452,7 @@
     </div>
   } @loading (minimum 200ms) {
     <div class="loading-state">
-      <mat-spinner diameter="24"></mat-spinner>
+      <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
       <span class="text-muted">{{ 'Preparing form…' | translate }}</span>
     </div>
   }

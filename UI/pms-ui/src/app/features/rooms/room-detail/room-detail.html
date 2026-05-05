@@ -1,7 +1,7 @@
 <div class="page-header">
   <div class="breadcrumb">
     <a routerLink="/rooms" class="breadcrumb-link">
-      <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+      <app-icon class="breadcrumb-icon" name="arrow_back" />
       {{ 'Rooms' | translate }}
     </a>
     <span class="breadcrumb-sep">/</span>
@@ -13,11 +13,11 @@
 
 @if (loading()) {
   <div class="loading-center">
-    <mat-spinner diameter="32" />
+    <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
   </div>
 } @else if (error(); as err) {
   <div class="flash flash-error">
-    <mat-icon class="flash-icon">error_outline</mat-icon>
+    <app-icon class="flash-icon" name="error_outline" />
     {{ err }}
     <button class="btn btn-invisible" (click)="goBack()">{{ 'Go back' | translate }}</button>
   </div>
@@ -29,7 +29,7 @@
         <h3 class="card-title">{{ 'Room Information' | translate }}</h3>
         @if (!editingInfo()) {
           <button class="btn btn-invisible btn-sm" (click)="startEditInfo()">
-            <mat-icon>edit</mat-icon>
+            <app-icon name="edit" />
             {{ 'Edit' | translate }}
           </button>
         }
@@ -71,7 +71,7 @@
                 [disabled]="savingInfo() || !hasInfoChanges()"
                 (click)="saveRoomInfo()">
                 @if (savingInfo()) {
-                  <mat-spinner diameter="14"></mat-spinner>
+                  <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
                 }
                 {{ 'Save' | translate }}
               </button>
@@ -136,11 +136,11 @@
               [class.btn-outline]="r.housekeeping_status.toUpperCase() !== opt.value"
               [disabled]="updatingHousekeeping() || r.housekeeping_status.toUpperCase() === opt.value"
               (click)="updateHousekeepingStatus(opt.value)"
-              [matTooltip]="'Mark as ' + opt.label">
+              [pTooltip]="'Mark as ' + opt.label">
               @if (updatingHousekeeping()) {
-                <mat-spinner diameter="14"></mat-spinner>
+                <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
               } @else {
-                <mat-icon>{{ opt.icon }}</mat-icon>
+                <app-icon [name]="opt.icon" />
               }
               {{ opt.label | translate }}
             </button>
@@ -157,7 +157,7 @@
           <h3 class="card-title">{{ 'Amenities' | translate }}</h3>
         @if (!editingAmenities()) {
           <button class="btn btn-invisible btn-sm" (click)="startEditAmenities()">
-            <mat-icon>edit</mat-icon>
+            <app-icon name="edit" />
             {{ 'Edit' | translate }}
           </button>
         }
@@ -173,9 +173,9 @@
                 [class.chip-active]="editAmenities().includes(code)"
                 (click)="toggleAmenity(code)">
                 @if (editAmenities().includes(code)) {
-                  <mat-icon class="chip-icon">check</mat-icon>
+                  <app-icon class="chip-icon" name="check" />
                 } @else {
-                  <mat-icon class="chip-icon">add</mat-icon>
+                  <app-icon class="chip-icon" name="add" />
                 }
                 {{ amenityDisplayMap().get(code) ?? code }}
               </button>
@@ -196,7 +196,7 @@
               class="btn btn-invisible btn-sm"
               [disabled]="!newAmenityInput().trim()"
               (click)="addCustomAmenity()">
-              <mat-icon>add_circle</mat-icon>
+              <app-icon name="add_circle" />
               {{ 'Add' | translate }}
             </button>
           </div>
@@ -208,7 +208,7 @@
               [disabled]="savingAmenities() || !hasAmenityChanges()"
               (click)="saveAmenities()">
               @if (savingAmenities()) {
-                <mat-spinner diameter="14"></mat-spinner>
+                <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
               }
               {{ 'Save amenities' | translate }}
             </button>
@@ -239,7 +239,7 @@
         </div>
         <div class="card-body">
           <p class="notice">
-            <mat-icon class="notice-icon">info</mat-icon>
+            <app-icon class="notice-icon" name="info" />
             {{ 'This room is in' | translate }} <strong>{{ 'Setup' | translate }}</strong> {{ 'mode and is not yet available for booking.' | translate }}
             {{ 'At least one active rate plan must be configured for the room type before activation.' | translate }}
           </p>
@@ -248,10 +248,10 @@
             [disabled]="activating()"
             (click)="activateRoom()">
             @if (activating()) {
-              <mat-spinner diameter="16"></mat-spinner>
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
               {{ 'Activating...' | translate }}
             } @else {
-              <mat-icon>check_circle</mat-icon>
+              <app-icon name="check_circle" />
               {{ 'Activate Room' | translate }}
             }
           </button>
@@ -267,7 +267,7 @@
         </div>
         <div class="card-body">
           <p class="notice notice-muted">
-            <mat-icon class="notice-icon">settings</mat-icon>
+            <app-icon class="notice-icon" name="settings" />
             {{ 'Move this room back to' | translate }} <strong>{{ 'Setup' | translate }}</strong> {{ 'mode to reconfigure rate plans or room type settings.' | translate }}
             {{ 'The room will be removed from booking availability.' | translate }}
           </p>
@@ -276,10 +276,10 @@
             [disabled]="deactivating()"
             (click)="deactivateRoom()">
             @if (deactivating()) {
-              <mat-spinner diameter="16"></mat-spinner>
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
               {{ 'Deactivating...' | translate }}
             } @else {
-              <mat-icon>settings_backup_restore</mat-icon>
+              <app-icon name="settings_backup_restore" />
               {{ 'Move to Setup' | translate }}
             }
           </button>
@@ -295,12 +295,11 @@
       <div class="card-body">
 
         <div class="ooo-toggle-row">
-          <mat-slide-toggle
-            [checked]="editOoo()"
-            (change)="editOoo.set($event.checked)"
-            [disabled]="saving()">
-            {{ 'Mark room as Out of Order' | translate }}
-          </mat-slide-toggle>
+          <label class="toggle-label"><p-toggleSwitch
+            [ngModel]="editOoo()"
+            (onChange)="editOoo.set($event.checked)"
+            [disabled]="saving()" />
+  {{ 'Mark room as Out of Order' | translate }}</label>
         </div>
 
         @if (editOoo()) {
@@ -334,12 +333,76 @@
             [disabled]="saving() || !hasOooChanges()"
             (click)="saveOooStatus()">
             @if (saving()) {
-              <mat-spinner diameter="16" />
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
               {{ 'Saving…' | translate }}
             } @else {
               {{ 'Save' | translate }}
             }
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Operations: Out of Service & Block / Release -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">{{ 'Operations' | translate }}</h3>
+      </div>
+      <div class="card-body">
+        <div class="ooo-fields">
+          <div class="field-group">
+            <label class="field-label">{{ 'Out of Service reason' | translate }}</label>
+            <input type="text" class="field-input" [placeholder]="'e.g. Renovation' | translate"
+              [ngModel]="oosReason()" (ngModelChange)="oosReason.set($event)" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">{{ 'Expected ready date' | translate }}</label>
+            <input type="date" class="field-input" [ngModel]="oosUntil()" (ngModelChange)="oosUntil.set($event)" />
+          </div>
+        </div>
+        <div class="ooo-actions">
+          <button class="btn btn-warning btn-sm" (click)="markOutOfService()" [disabled]="processingOps() === 'oos'">
+            @if (processingOps() === 'oos') {
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+            } @else {
+              <app-icon name="block" />
+            }
+            {{ 'Mark Out of Service' | translate }}
+          </button>
+        </div>
+
+        <hr />
+
+        <div class="ooo-fields">
+          <div class="field-group">
+            <label class="field-label">{{ 'Block reason' | translate }}</label>
+            <input type="text" class="field-input" [placeholder]="'e.g. VIP hold' | translate"
+              [ngModel]="blockReason()" (ngModelChange)="blockReason.set($event)" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">{{ 'Block until' | translate }}</label>
+            <input type="date" class="field-input" [ngModel]="blockUntil()" (ngModelChange)="blockUntil.set($event)" />
+          </div>
+        </div>
+        <div class="ooo-actions">
+          <button class="btn btn-outline btn-sm" (click)="blockRoom()" [disabled]="processingOps() === 'block'">
+            @if (processingOps() === 'block') {
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+            } @else {
+              <app-icon name="lock" />
+            }
+            {{ 'Block Inventory' | translate }}
+          </button>
+          @if (r.is_blocked) {
+            <button class="btn btn-primary btn-sm" (click)="releaseRoom()" [disabled]="processingOps() === 'release'">
+              @if (processingOps() === 'release') {
+                <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+              } @else {
+                <app-icon name="lock_open" />
+              }
+              {{ 'Release Block' | translate }}
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -352,7 +415,7 @@
       </div>
     } @loading (minimum 200ms) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
         <span class="text-muted">Rendering details…</span>
       </div>
     }

@@ -12,8 +12,11 @@ import {
   BillingPaymentListResponseSchema,
   BookingSourceListResponseSchema,
   ChannelMappingListResponseSchema,
+  ChargebackListResponseSchema,
   CheckInBriefSchema,
   CreatePropertyResponseSchema,
+  GlBatchEntriesResponseSchema,
+  GlBatchListResponseSchema,
   GuestGridResponseSchema,
   HousekeepingTaskListResponseSchema,
   InvoiceListResponseSchema,
@@ -73,6 +76,15 @@ export const invoiceListResponse = schemaFromZod(InvoiceListResponseSchema, "Inv
 export const ledgerEntryListResponse = schemaFromZod(
   LedgerEntryListResponseSchema,
   "LedgerEntryListResponse",
+);
+export const glBatchListResponse = schemaFromZod(GlBatchListResponseSchema, "GlBatchListResponse");
+export const glBatchEntriesResponse = schemaFromZod(
+  GlBatchEntriesResponseSchema,
+  "GlBatchEntriesResponse",
+);
+export const chargebackListResponse = schemaFromZod(
+  ChargebackListResponseSchema,
+  "ChargebackListResponse",
 );
 
 // ─── Housekeeping ───────────────────────────────────────────────
