@@ -111,6 +111,19 @@ export class ReservationDetailComponent implements OnInit {
 		check_out_date: "",
 	});
 
+	/* ── Phase C: extra lifecycle ops ── */
+	readonly confirmingAssignRoom = signal(false);
+	readonly confirmingUnassignRoom = signal(false);
+	readonly confirmingExtend = signal(false);
+	readonly confirmingRateOverride = signal(false);
+	readonly confirmingAddDeposit = signal(false);
+	readonly confirmingReleaseDeposit = signal(false);
+	readonly extendForm = signal({ new_check_out_date: "", reason: "" });
+	readonly rateOverrideForm = signal({ new_rate: "", reason: "" });
+	readonly addDepositForm = signal({ amount: "", method: "CARD", reference: "" });
+	readonly releaseDepositForm = signal({ amount: "", reason: "" });
+	readonly assignRoomForm = signal({ room_id: "" });
+
 	/* ── Charge posting ── */
 	readonly chargeCodeOptions = CHARGE_CODE_OPTIONS;
 	readonly showPostChargeForm = signal(false);
@@ -936,6 +949,230 @@ export class ReservationDetailComponent implements OnInit {
 		}
 	}
 
+	/* ── Phase C: extra lifecycle ops ── */
+	readonly canAssignRoom = computed(() => {
+		const r = this.reservation();
+		if (!r) return false;
+		const s = r.status.toUpperCase();
+		return !r.room_number && ["PENDING", "CONFIRMED"].includes(s);
+	});
+	readonly canUnassignRoom = computed(() => {
+		const r = this.reservation();
+		if (!r) return false;
+		const s = r.status.toUpperCase();
+		return !!r.room_number && ["PENDING", "CONFIRMED"].includes(s);
+	});
+	readonly canExtendStay = computed(() => {
+		const r = this.reservation();
+		return r ? r.status.toUpperCase() === "CHECKED_IN" : false;
+	});
+	readonly canRateOverride = computed(() => {
+		const r = this.reservation();
+		if (!r) return false;
+		return ["PENDING", "CONFIRMED", "CHECKED_IN"].includes(r.status.toUpperCase());
+	});
+	readonly canManageDeposit = computed(() => {
+		const r = this.reservation();
+		if (!r) return false;
+		return ["PENDING", "CONFIRMED", "CHECKED_IN"].includes(r.status.toUpperCase());
+	});
+
+	showAssignRoomConfirm(): void {
+		this.clearActionState();
+		this.confirmingAssignRoom.set(true);
+		this.assignRoomForm.set({ room_id: "" });
+		this.loadAvailableRooms();
+	}
+	showUnassignRoomConfirm(): void {
+		this.clearActionState();
+		this.confirmingUnassignRoom.set(true);
+	}
+	showExtendConfirm(): void {
+		this.clearActionState();
+		const r = this.reservation();
+		this.extendForm.set({
+			new_check_out_date: r ? r.check_out_date.substring(0, 10) : "",
+			reason: "",
+		});
+		this.confirmingExtend.set(true);
+	}
+	showRateOverrideConfirm(): void {
+		this.clearActionState();
+		const r = this.reservation();
+		this.rateOverrideForm.set({
+			new_rate: r ? String(r.room_rate) : "",
+			reason: "",
+		});
+		this.confirmingRateOverride.set(true);
+	}
+	showAddDepositConfirm(): void {
+		this.clearActionState();
+		this.addDepositForm.set({ amount: "", method: "CARD", reference: "" });
+		this.confirmingAddDeposit.set(true);
+	}
+	showReleaseDepositConfirm(): void {
+		this.clearActionState();
+		this.releaseDepositForm.set({ amount: "", reason: "" });
+		this.confirmingReleaseDeposit.set(true);
+	}
+
+	async assignRoom(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const roomId = this.assignRoomForm().room_id;
+		if (!roomId) {
+			this.toast.error("Select a room to assign.");
+			return;
+		}
+		this.actionLoading.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/assign-room`, {
+				room_id: roomId,
+			});
+			this.toast.success("Room assigned.");
+			this.confirmingAssignRoom.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to assign room");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async unassignRoom(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		this.actionLoading.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/unassign-room`, {
+				reason: "Unassigned from reservation detail",
+			});
+			this.toast.success("Room unassigned.");
+			this.confirmingUnassignRoom.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to unassign room");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async extendStay(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const f = this.extendForm();
+		if (!f.new_check_out_date) {
+			this.toast.error("New check-out date is required.");
+			return;
+		}
+		if (f.new_check_out_date <= r.check_out_date.substring(0, 10)) {
+			this.toast.error("Extended check-out must be after current check-out.");
+			return;
+		}
+		this.actionLoading.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/extend`, {
+				new_check_out_date: f.new_check_out_date,
+				reason: f.reason || undefined,
+			});
+			this.toast.success("Stay extended.");
+			this.confirmingExtend.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to extend stay");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async overrideRate(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const f = this.rateOverrideForm();
+		const rate = Number(f.new_rate);
+		if (!Number.isFinite(rate) || rate < 0) {
+			this.toast.error("Enter a valid rate.");
+			return;
+		}
+		if (!f.reason.trim()) {
+			this.toast.error("Reason is required for rate override.");
+			return;
+		}
+		this.actionLoading.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/rate-override`, {
+				new_rate: rate,
+				reason: f.reason.trim(),
+			});
+			this.toast.success("Rate overridden.");
+			this.confirmingRateOverride.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to override rate");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async addDeposit(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const f = this.addDepositForm();
+		const amount = Number(f.amount);
+		if (!Number.isFinite(amount) || amount <= 0) {
+			this.toast.error("Enter a positive deposit amount.");
+			return;
+		}
+		this.actionLoading.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/deposit/add`, {
+				amount,
+				payment_method: f.method,
+				reference: f.reference || undefined,
+			});
+			this.toast.success("Deposit added.");
+			this.confirmingAddDeposit.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+			await this.loadFolioCharges();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to add deposit");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
+	async releaseDeposit(): Promise<void> {
+		const r = this.reservation();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const f = this.releaseDepositForm();
+		const amount = Number(f.amount);
+		if (!Number.isFinite(amount) || amount <= 0) {
+			this.toast.error("Enter a positive release amount.");
+			return;
+		}
+		this.actionLoading.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/deposit/release`, {
+				amount,
+				reason: f.reason || undefined,
+			});
+			this.toast.success("Deposit released.");
+			this.confirmingReleaseDeposit.set(false);
+			await this.refreshReservationAfterCommand(r.id);
+			await this.loadFolioCharges();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to release deposit");
+		} finally {
+			this.actionLoading.set(false);
+		}
+	}
+
 	private clearActionState(): void {
 		this.actionSuccess.set(null);
 		this.actionError.set(null);
@@ -947,6 +1184,12 @@ export class ReservationDetailComponent implements OnInit {
 		this.confirmingLateCheckoutCharge.set(false);
 		this.confirmingCancellationPenalty.set(false);
 		this.confirmingModifyDates.set(false);
+		this.confirmingAssignRoom.set(false);
+		this.confirmingUnassignRoom.set(false);
+		this.confirmingExtend.set(false);
+		this.confirmingRateOverride.set(false);
+		this.confirmingAddDeposit.set(false);
+		this.confirmingReleaseDeposit.set(false);
 	}
 
 	/**

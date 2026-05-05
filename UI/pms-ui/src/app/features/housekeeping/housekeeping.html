@@ -348,6 +348,7 @@
                 <th>{{ 'Scheduled' | translate }}</th>
                 <th>{{ 'Assigned' | translate }}</th>
                 <th>{{ 'Notes' | translate }}</th>
+                <th>{{ 'Actions' | translate }}</th>
               </tr>
             </thead>
             <tbody>
@@ -366,7 +367,7 @@
                     <span class="badge" [ngClass]="hkClass(task.status)">{{ task.status_display }}</span>
                   </td>
                   <td>{{ task.scheduled_date | date:'shortDate' }}</td>
-                  <td>{{ task.assigned_to ?? '—' }}</td>
+                  <td>{{ staffName(task.assigned_to) }}</td>
                   <td class="cell-notes">
                     @if (task.special_instructions) {
                       <span [pTooltip]="task.special_instructions">
@@ -378,7 +379,70 @@
                       <span class="text-muted">—</span>
                     }
                   </td>
+                  <td class="cell-actions">
+                    @if (processingTaskId() === task.id) {
+                      <p-progressSpinner styleClass="spinner-sm" />
+                    } @else {
+                      @if (canAssign(task)) {
+                        <button class="btn btn-outline btn-xs" (click)="showAction(task, 'assign')" [pTooltip]="'Assign' | translate">
+                          <app-icon name="person_add" />
+                        </button>
+                      }
+                      @if (canReassign(task)) {
+                        <button class="btn btn-outline btn-xs" (click)="showAction(task, 'reassign')" [pTooltip]="'Reassign' | translate">
+                          <app-icon name="swap_horiz" />
+                        </button>
+                      }
+                      @if (canComplete(task)) {
+                        <button class="btn btn-primary btn-xs" (click)="completeTask(task)" [pTooltip]="'Complete' | translate">
+                          <app-icon name="check" />
+                        </button>
+                      }
+                      @if (canReopen(task)) {
+                        <button class="btn btn-outline btn-xs" (click)="reopenTask(task)" [pTooltip]="'Reopen' | translate">
+                          <app-icon name="undo" />
+                        </button>
+                      }
+                      <button class="btn btn-invisible btn-xs" (click)="showAction(task, 'note')" [pTooltip]="'Add Note' | translate">
+                        <app-icon name="sticky_note_2" />
+                      </button>
+                    }
+                  </td>
                 </tr>
+                @if (actionTaskId() === task.id) {
+                  <tr class="action-row">
+                    <td colspan="8">
+                      <div class="filter-form">
+                        @if (actionMode() === 'assign' || actionMode() === 'reassign') {
+                          <div class="form-group">
+                            <label class="field-label">{{ 'Assignee' | translate }}</label>
+                            <select class="field-input field-sm" [ngModel]="assigneeInput()" (ngModelChange)="assigneeInput.set($event)">
+                              <option value="">{{ 'Select staff…' | translate }}</option>
+                              @for (s of staff(); track s.id) {
+                                <option [value]="s.id">{{ staffName(s.id) }}</option>
+                              }
+                            </select>
+                          </div>
+                          <div class="form-group form-group-grow">
+                            <label class="field-label">{{ 'Notes (optional)' | translate }}</label>
+                            <input type="text" class="field-input field-sm" [ngModel]="noteInput()" (ngModelChange)="noteInput.set($event)" />
+                          </div>
+                        } @else if (actionMode() === 'note') {
+                          <div class="form-group form-group-grow">
+                            <label class="field-label">{{ 'Note' | translate }}</label>
+                            <input type="text" class="field-input field-sm" [ngModel]="noteInput()" (ngModelChange)="noteInput.set($event)" autofocus />
+                          </div>
+                        }
+                        <button class="btn btn-primary btn-sm" (click)="submitAction(task)">
+                          <app-icon name="check" /> {{ 'Apply' | translate }}
+                        </button>
+                        <button class="btn btn-outline btn-sm" (click)="cancelAction()">
+                          {{ 'Cancel' | translate }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>

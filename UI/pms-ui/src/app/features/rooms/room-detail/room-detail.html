@@ -343,6 +343,70 @@
       </div>
     </div>
 
+    <!-- Operations: Out of Service & Block / Release -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h3 class="card-title">{{ 'Operations' | translate }}</h3>
+      </div>
+      <div class="card-body">
+        <div class="ooo-fields">
+          <div class="field-group">
+            <label class="field-label">{{ 'Out of Service reason' | translate }}</label>
+            <input type="text" class="field-input" [placeholder]="'e.g. Renovation' | translate"
+              [ngModel]="oosReason()" (ngModelChange)="oosReason.set($event)" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">{{ 'Expected ready date' | translate }}</label>
+            <input type="date" class="field-input" [ngModel]="oosUntil()" (ngModelChange)="oosUntil.set($event)" />
+          </div>
+        </div>
+        <div class="ooo-actions">
+          <button class="btn btn-warning btn-sm" (click)="markOutOfService()" [disabled]="processingOps() === 'oos'">
+            @if (processingOps() === 'oos') {
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+            } @else {
+              <app-icon name="block" />
+            }
+            {{ 'Mark Out of Service' | translate }}
+          </button>
+        </div>
+
+        <hr />
+
+        <div class="ooo-fields">
+          <div class="field-group">
+            <label class="field-label">{{ 'Block reason' | translate }}</label>
+            <input type="text" class="field-input" [placeholder]="'e.g. VIP hold' | translate"
+              [ngModel]="blockReason()" (ngModelChange)="blockReason.set($event)" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">{{ 'Block until' | translate }}</label>
+            <input type="date" class="field-input" [ngModel]="blockUntil()" (ngModelChange)="blockUntil.set($event)" />
+          </div>
+        </div>
+        <div class="ooo-actions">
+          <button class="btn btn-outline btn-sm" (click)="blockRoom()" [disabled]="processingOps() === 'block'">
+            @if (processingOps() === 'block') {
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+            } @else {
+              <app-icon name="lock" />
+            }
+            {{ 'Block Inventory' | translate }}
+          </button>
+          @if (r.is_blocked) {
+            <button class="btn btn-primary btn-sm" (click)="releaseRoom()" [disabled]="processingOps() === 'release'">
+              @if (processingOps() === 'release') {
+                <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+              } @else {
+                <app-icon name="lock_open" />
+              }
+              {{ 'Release Block' | translate }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
     } @placeholder {
       <div class="placeholder-table">
         <div class="placeholder-row"></div>

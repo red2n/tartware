@@ -79,6 +79,13 @@ export class RoomDetailComponent implements OnInit {
 	readonly editOooReason = signal("");
 	readonly editExpectedReady = signal("");
 
+	/** Out-of-service / block state */
+	readonly oosReason = signal("");
+	readonly oosUntil = signal("");
+	readonly blockReason = signal("");
+	readonly blockUntil = signal("");
+	readonly processingOps = signal<"oos" | "block" | "release" | null>(null);
+
 	/** Whether the OOO toggle has been changed from the loaded state */
 	readonly hasOooChanges = computed(() => {
 		const r = this.room();
@@ -518,6 +525,76 @@ export class RoomDetailComponent implements OnInit {
 			this.toast.error(e instanceof Error ? e.message : "Failed to deactivate room");
 		} finally {
 			this.deactivating.set(false);
+		}
+	}
+
+	async markOutOfService(): Promise<void> {
+		const r = this.room();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const reason = this.oosReason().trim();
+		if (!reason) {
+			this.toast.error("Reason is required for Out of Service");
+			return;
+		}
+		this.processingOps.set("oos");
+		try {
+			await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/out-of-service`, {
+				reason,
+				expected_ready_date: this.oosUntil() || undefined,
+			});
+			this.toast.success("Room marked Out of Service.");
+			this.oosReason.set("");
+			this.oosUntil.set("");
+			await this.pollRoomUntilChanged(r.room_id, true);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to mark out of service");
+		} finally {
+			this.processingOps.set(null);
+		}
+	}
+
+	async blockRoom(): Promise<void> {
+		const r = this.room();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		const reason = this.blockReason().trim();
+		if (!reason) {
+			this.toast.error("Reason is required to block a room");
+			return;
+		}
+		this.processingOps.set("block");
+		try {
+			await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/block`, {
+				reason,
+				expires_at: this.blockUntil() || undefined,
+			});
+			this.toast.success("Room blocked from inventory.");
+			this.blockReason.set("");
+			this.blockUntil.set("");
+			await this.pollRoomUntilChanged(r.room_id, true);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to block room");
+		} finally {
+			this.processingOps.set(null);
+		}
+	}
+
+	async releaseRoom(): Promise<void> {
+		const r = this.room();
+		const tenantId = this.auth.tenantId();
+		if (!r || !tenantId) return;
+		this.processingOps.set("release");
+		try {
+			await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/release`, {
+				reason: "Released from room detail screen",
+			});
+			this.toast.success("Room block released.");
+			await this.pollRoomUntilChanged(r.room_id, true);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to release room");
+		} finally {
+			this.processingOps.set(null);
 		}
 	}
 }

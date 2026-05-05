@@ -7,7 +7,11 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
 
-import type { HousekeepingTaskListItem, RoomItem } from "@tartware/schemas";
+import type {
+	HousekeepingTaskListItem,
+	RoomItem,
+	UserWithTenants,
+} from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -16,6 +20,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
+import { settleCommandReadModel } from "../../shared/command-refresh";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -116,6 +121,14 @@ export class HousekeepingComponent {
 
 	// ── Action state ──
 	readonly updatingRoomId = signal<string | null>(null);
+
+	// ── Task action state ──
+	readonly staff = signal<UserWithTenants[]>([]);
+	readonly actionTaskId = signal<string | null>(null);
+	readonly actionMode = signal<"assign" | "reassign" | "note" | null>(null);
+	readonly assigneeInput = signal<string>("");
+	readonly noteInput = signal<string>("");
+	readonly processingTaskId = signal<string | null>(null);
 
 	// ── Filter definitions ──
 	readonly statusFilters: { key: HkFilter; label: string; icon: string }[] = [
@@ -239,6 +252,7 @@ export class HousekeepingComponent {
 			this.ctx.propertyId();
 			this.loadRooms();
 			this.loadTasks();
+			this.loadStaff();
 		});
 
 		effect(
@@ -442,6 +456,145 @@ export class HousekeepingComponent {
 			this.toastService.error(e instanceof Error ? e.message : "Failed to update occupancy");
 		} finally {
 			this.updatingRoomId.set(null);
+		}
+	}
+
+	// ── Task actions ──
+
+	async loadStaff(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		try {
+			const data = await this.api.get<UserWithTenants[]>(
+				`/users?tenant_id=${tenantId}&limit=200`,
+			);
+			this.staff.set(data ?? []);
+		} catch {
+			this.staff.set([]);
+		}
+	}
+
+	staffName(userId: string | undefined): string {
+		if (!userId) return "—";
+		const u = this.staff().find((s) => s.id === userId);
+		if (!u) return userId.slice(0, 8);
+		const first = (u as { first_name?: string }).first_name ?? "";
+		const last = (u as { last_name?: string }).last_name ?? "";
+		const name = `${first} ${last}`.trim();
+		return name || (u as { email?: string }).email || userId.slice(0, 8);
+	}
+
+	canComplete(task: HousekeepingTaskListItem): boolean {
+		const s = task.status?.toUpperCase();
+		return s !== "COMPLETED" && s !== "INSPECTED" && s !== "CANCELLED";
+	}
+
+	canReopen(task: HousekeepingTaskListItem): boolean {
+		const s = task.status?.toUpperCase();
+		return s === "COMPLETED" || s === "INSPECTED" || s === "CANCELLED";
+	}
+
+	canAssign(task: HousekeepingTaskListItem): boolean {
+		return !task.assigned_to && this.canComplete(task);
+	}
+
+	canReassign(task: HousekeepingTaskListItem): boolean {
+		return !!task.assigned_to && this.canComplete(task);
+	}
+
+	showAction(task: HousekeepingTaskListItem, mode: "assign" | "reassign" | "note"): void {
+		this.actionTaskId.set(task.id);
+		this.actionMode.set(mode);
+		this.assigneeInput.set(task.assigned_to ?? "");
+		this.noteInput.set("");
+	}
+
+	cancelAction(): void {
+		this.actionTaskId.set(null);
+		this.actionMode.set(null);
+		this.assigneeInput.set("");
+		this.noteInput.set("");
+	}
+
+	async submitAction(task: HousekeepingTaskListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		const mode = this.actionMode();
+		if (!mode) return;
+
+		this.processingTaskId.set(task.id);
+		try {
+			if (mode === "assign" || mode === "reassign") {
+				const assignee = this.assigneeInput().trim();
+				if (!assignee) {
+					this.toastService.error("Select an assignee");
+					return;
+				}
+				const path =
+					mode === "assign"
+						? `/tenants/${tenantId}/housekeeping/tasks/${task.id}/assign`
+						: `/tenants/${tenantId}/housekeeping/tasks/${task.id}/reassign`;
+				await this.api.post(path, {
+					assigned_to: assignee,
+					notes: this.noteInput() || undefined,
+				});
+				this.toastService.success(
+					`Task ${task.room_number} ${mode === "assign" ? "assigned" : "reassigned"}.`,
+				);
+			} else {
+				const note = this.noteInput().trim();
+				if (!note) {
+					this.toastService.error("Note cannot be empty");
+					return;
+				}
+				await this.api.post(
+					`/tenants/${tenantId}/housekeeping/tasks/${task.id}/notes`,
+					{ note },
+				);
+				this.toastService.success(`Note added to task ${task.room_number}.`);
+			}
+			this.cancelAction();
+			await settleCommandReadModel(() => this.loadTasks());
+		} catch (e) {
+			this.toastService.error(e instanceof Error ? e.message : "Failed to update task");
+		} finally {
+			this.processingTaskId.set(null);
+		}
+	}
+
+	async completeTask(task: HousekeepingTaskListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.processingTaskId.set(task.id);
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/housekeeping/tasks/${task.id}/complete`,
+				{ inspection_passed: true },
+			);
+			this.toastService.success(`Task ${task.room_number} completed.`);
+			await settleCommandReadModel(() => this.loadTasks());
+		} catch (e) {
+			this.toastService.error(e instanceof Error ? e.message : "Failed to complete task");
+		} finally {
+			this.processingTaskId.set(null);
+		}
+	}
+
+	async reopenTask(task: HousekeepingTaskListItem): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		this.processingTaskId.set(task.id);
+		try {
+			await this.api.post(
+				`/tenants/${tenantId}/housekeeping/tasks/${task.id}/reopen`,
+				{ reason: "Reopened from housekeeping screen" },
+			);
+			this.toastService.success(`Task ${task.room_number} reopened.`);
+			await settleCommandReadModel(() => this.loadTasks());
+		} catch (e) {
+			this.toastService.error(e instanceof Error ? e.message : "Failed to reopen task");
+		} finally {
+			this.processingTaskId.set(null);
 		}
 	}
 }
