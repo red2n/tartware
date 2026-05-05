@@ -315,3 +315,17 @@ export const GuestProfileListItemSchema = z.object({
 });
 
 export type GuestProfileListItem = z.infer<typeof GuestProfileListItemSchema>;
+
+/**
+ * Consent ledger payload for the guest GDPR consent endpoints
+ * (GET/POST /v1/tenants/:tid/guests/:gid/consent).
+ */
+export const GuestConsentLedgerSchema = z.object({
+	marketing_email: z.boolean().optional(),
+	marketing_sms: z.boolean().optional(),
+	analytics: z.boolean().optional(),
+	third_party_sharing: z.boolean().optional(),
+	updated_at: z.coerce.date().optional(),
+});
+
+export type GuestConsentLedger = z.infer<typeof GuestConsentLedgerSchema>;
