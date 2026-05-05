@@ -25,7 +25,7 @@ type NightAuditStep = {
 };
 
 /** Context passed to every step. */
-export type NightAuditStepContext = {
+type NightAuditStepContext = {
   runId: string;
   tenantId: string;
   propertyId: string;
@@ -33,7 +33,7 @@ export type NightAuditStepContext = {
   businessDate: string;
 };
 
-export type NightAuditRunInput = {
+type NightAuditRunInput = {
   tenantId: string;
   propertyId: string;
   /** Hotel-day to audit (YYYY-MM-DD). */
@@ -47,7 +47,7 @@ export type NightAuditRunInput = {
   replay?: boolean;
 };
 
-export type NightAuditRunOutcome = {
+type NightAuditRunOutcome = {
   runId: string;
   status: "COMPLETED" | "FAILED";
   completedSteps: number;
