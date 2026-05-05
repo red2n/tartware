@@ -1,0 +1,138 @@
+<app-page-header
+  title="Loyalty programs"
+  description="Tier rules and points ledger." />
+
+<div class="filter-bar detail-tabs">
+  <nav class="filter-tabs">
+    <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'tiers'" (click)="setTab('tiers')">
+      <app-icon class="tab-icon" name="emoji_events" /> {{ 'Tier rules' | translate }}
+    </button>
+    <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'transactions'" (click)="setTab('transactions')">
+      <app-icon class="tab-icon" name="receipt_long" /> {{ 'Transactions' | translate }}
+    </button>
+  </nav>
+</div>
+
+@if (activeTab() === 'tiers') {
+  @if (loadingTiers()) {
+    <div class="loading-state"><p-progressSpinner [style]="{ width: '24px', height: '24px' }" /></div>
+  } @else if (tiersSorted().length === 0) {
+    <div class="empty-state">
+      <app-icon class="empty-icon" name="emoji_events" />
+      <h3>{{ 'No tier rules configured' | translate }}</h3>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table data-table">
+        <thead>
+          <tr>
+            <th>{{ 'Rank' | translate }}</th>
+            <th>{{ 'Tier' | translate }}</th>
+            <th>{{ 'Min nights' | translate }}</th>
+            <th>{{ 'Min stays' | translate }}</th>
+            <th>{{ 'Min points' | translate }}</th>
+            <th>{{ 'Min spend' | translate }}</th>
+            <th>{{ 'Pts/$' | translate }}</th>
+            <th>{{ 'Bonus ×' | translate }}</th>
+            <th>{{ 'Pts expiry (mo)' | translate }}</th>
+            <th>{{ 'Welcome bonus' | translate }}</th>
+            <th>{{ 'Active' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tiersSorted(); track t.rule_id) {
+            <tr>
+              <td>{{ t.tier_rank }}</td>
+              <td class="cell-primary"><strong>{{ t.display_name || t.tier_name }}</strong></td>
+              <td>{{ t.min_nights ?? '—' }}</td>
+              <td>{{ t.min_stays ?? '—' }}</td>
+              <td>{{ t.min_points ?? '—' }}</td>
+              <td>{{ t.min_spend ?? '—' }}</td>
+              <td>{{ t.points_per_dollar ?? '—' }}</td>
+              <td>{{ t.bonus_multiplier ?? '—' }}</td>
+              <td>{{ t.points_expiry_months ?? '—' }}</td>
+              <td>{{ t.welcome_bonus_points ?? '—' }}</td>
+              <td>
+                @if (t.is_active) { <span class="badge badge-success">Active</span> }
+                @else { <span class="badge">Inactive</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}
+
+@if (activeTab() === 'transactions') {
+  <div class="filter-bar">
+    <div class="filter-form">
+      <div class="form-group form-group-grow">
+        <label class="field-label">{{ 'Program ID' | translate }}</label>
+        <input class="field-input" type="text" placeholder="UUID"
+          [ngModel]="programIdInput()" (ngModelChange)="programIdInput.set($event ?? '')" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">{{ 'Type' | translate }}</label>
+        <select class="field-input"
+          [ngModel]="txnTypeFilter()" (ngModelChange)="txnTypeFilter.set($event ?? '')">
+          <option value="">All</option>
+          <option value="EARN">Earn</option>
+          <option value="REDEEM">Redeem</option>
+          <option value="EXPIRE">Expire</option>
+          <option value="ADJUST">Adjust</option>
+          <option value="BONUS">Bonus</option>
+          <option value="TRANSFER">Transfer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <button class="btn btn-primary btn-sm" (click)="loadTransactions()" [disabled]="loadingTxns()">
+          <app-icon name="search" /> {{ 'Load' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (loadingTxns()) {
+    <div class="loading-state"><p-progressSpinner [style]="{ width: '24px', height: '24px' }" /></div>
+  } @else if (txns().length === 0) {
+    <div class="empty-state">
+      <app-icon class="empty-icon" name="receipt_long" />
+      <h3>{{ 'No transactions' | translate }}</h3>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table data-table">
+        <thead>
+          <tr>
+            <th>{{ 'Date' | translate }}</th>
+            <th>{{ 'Type' | translate }}</th>
+            <th>{{ 'Points' | translate }}</th>
+            <th>{{ 'Balance after' | translate }}</th>
+            <th>{{ 'Reference' | translate }}</th>
+            <th>{{ 'Description' | translate }}</th>
+            <th>{{ 'Expires' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (x of txns(); track x.transaction_id) {
+            <tr>
+              <td>{{ x.created_at | date:'short' }}</td>
+              <td><strong>{{ x.transaction_type }}</strong></td>
+              <td [class.badge-success]="x.points >= 0" [class.badge-error]="x.points < 0">
+                {{ x.points > 0 ? '+' : '' }}{{ x.points }}
+              </td>
+              <td>{{ x.balance_after ?? '—' }}</td>
+              <td class="cell-notes">
+                @if (x.reference_type) { {{ x.reference_type }}{{ x.reference_id ? ' / ' + x.reference_id : '' }} }
+                @else { — }
+              </td>
+              <td class="cell-notes">{{ x.description ?? '' }}</td>
+              <td>{{ x.expires_at ? (x.expires_at | date:'shortDate') : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

@@ -247,6 +247,18 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/users/users").then((m) => m.UsersComponent),
 			},
 			{
+				path: "modules",
+				canActivate: [screenGuard("modules")],
+				loadComponent: () =>
+					import("./features/modules/modules").then((m) => m.ModulesComponent),
+			},
+			{
+				path: "loyalty",
+				canActivate: [screenGuard("loyalty")],
+				loadComponent: () =>
+					import("./features/loyalty/loyalty").then((m) => m.LoyaltyComponent),
+			},
+			{
 				path: "screen-permissions",
 				canActivate: [screenGuard("users")],
 				loadComponent: () =>

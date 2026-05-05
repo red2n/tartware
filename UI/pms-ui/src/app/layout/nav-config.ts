@@ -88,6 +88,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 		description: "Guest profiles, preferences, and loyalty history",
 	},
 	{
+		label: "Loyalty",
+		icon: "emoji_events",
+		route: "/loyalty",
+		screenKey: "loyalty",
+		description: "Loyalty tier rules and points transactions",
+	},
+	{
 		label: "Availability",
 		icon: "inventory_2",
 		description: "Room inventory and property configuration",
@@ -334,6 +341,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 				icon: "shield",
 				route: "/screen-permissions",
 				screenKey: "users",
+			},
+			{
+				label: "Modules",
+				icon: "extension",
+				route: "/modules",
+				screenKey: "modules",
 			},
 		],
 	},

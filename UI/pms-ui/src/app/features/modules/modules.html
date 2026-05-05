@@ -1,0 +1,65 @@
+<app-page-header
+  title="Platform modules"
+  description="Enable or disable optional modules for this tenant.">
+  <button class="btn btn-outline btn-sm" (click)="resetChanges()" [disabled]="!hasChanges() || saving()">
+    <app-icon name="undo" /> {{ 'Reset' | translate }}
+  </button>
+  <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="!hasChanges() || saving()">
+    @if (saving()) {
+      <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
+    } @else {
+      <app-icon name="save" />
+    }
+    {{ 'Save changes' | translate }}
+  </button>
+</app-page-header>
+
+<div class="filter-bar">
+  <div class="filter-form">
+    <div class="form-group form-group-grow">
+      <label class="field-label">{{ 'Search' | translate }}</label>
+      <input class="field-input" type="search" [placeholder]="'Search modules' | translate"
+        [ngModel]="search()" (ngModelChange)="search.set($event ?? '')" />
+    </div>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">
+    <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
+  </div>
+} @else if (filtered().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="extension" />
+    <h3>{{ 'No modules found' | translate }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th style="width: 80px">{{ 'Enabled' | translate }}</th>
+          <th>{{ 'Module' | translate }}</th>
+          <th>{{ 'Category' | translate }}</th>
+          <th>{{ 'Description' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of filtered(); track m.module_key) {
+          <tr>
+            <td>
+              <input type="checkbox" [checked]="isEnabled(m.module_key)"
+                (change)="toggle(m.module_key, $any($event.target).checked)" />
+            </td>
+            <td class="cell-primary">
+              <strong>{{ m.module_name }}</strong>
+              <div class="cell-notes">{{ m.module_key }}</div>
+            </td>
+            <td>{{ m.category ?? '—' }}</td>
+            <td class="cell-notes">{{ m.description ?? '' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
