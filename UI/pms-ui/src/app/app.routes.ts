@@ -212,6 +212,12 @@ export const routes: Routes = [
 					import("./features/accounts/commissions/commissions").then((m) => m.CommissionsComponent),
 			},
 			{
+				path: "reports",
+				canActivate: [propertyGuard, screenGuard("reports")],
+				loadComponent: () =>
+					import("./features/reports/reports").then((m) => m.ReportsComponent),
+			},
+			{
 				path: "settings",
 				pathMatch: "full",
 				redirectTo: "settings/ADMIN_USER_MANAGEMENT",
