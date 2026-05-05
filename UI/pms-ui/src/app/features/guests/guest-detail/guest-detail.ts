@@ -7,7 +7,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
-import type { GuestConsentLedger, GuestWithStats } from "@tartware/schemas";
+import type { GuestWithStats } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -54,6 +54,14 @@ type CommunicationItem = {
 
 type DetailTab = "profile" | "preferences" | "documents" | "communications" | "account";
 
+type ConsentLedger = {
+	marketing_email?: boolean;
+	marketing_sms?: boolean;
+	analytics?: boolean;
+	third_party_sharing?: boolean;
+	updated_at?: string;
+};
+
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-guest-detail",
@@ -97,8 +105,8 @@ export class GuestDetailComponent implements OnInit {
 	readonly mergeForm = signal({ duplicate_guest_id: "" });
 	readonly gdprRectifyForm = signal({ field: "", new_value: "", reason: "" });
 	readonly gdprRestrictForm = signal({ restrict: true, reason: "" });
-	readonly consentLedger = signal<GuestConsentLedger | null>(null);
-	readonly consentForm = signal<GuestConsentLedger>({});
+	readonly consentLedger = signal<ConsentLedger | null>(null);
+	readonly consentForm = signal<ConsentLedger>({});
 	readonly processing = signal<string | null>(null);
 
 	readonly loyaltyTierClass = loyaltyTierClass;
@@ -467,7 +475,7 @@ export class GuestDetailComponent implements OnInit {
 		const url = this.guestUrl("/consent");
 		if (!url) return;
 		try {
-			const ledger = await this.api.get<GuestConsentLedger>(url);
+			const ledger = await this.api.get<ConsentLedger>(url);
 			this.consentLedger.set(ledger);
 			this.consentForm.set({ ...ledger });
 		} catch {
@@ -490,7 +498,7 @@ export class GuestDetailComponent implements OnInit {
 		}
 	}
 
-	toggleConsent(key: keyof GuestConsentLedger, value: boolean): void {
+	toggleConsent(key: keyof ConsentLedger, value: boolean): void {
 		this.consentForm.set({ ...this.consentForm(), [key]: value });
 	}
 

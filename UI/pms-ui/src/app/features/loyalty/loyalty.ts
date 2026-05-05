@@ -11,13 +11,37 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
 
-import type {
-	LoyaltyPointTransactions,
-	LoyaltyTierRules,
-} from "@tartware/schemas";
+type TierRule = {
+	rule_id: string;
+	tier_name: string;
+	tier_rank: number;
+	display_name?: string;
+	min_nights?: number | null;
+	min_stays?: number | null;
+	min_points?: number | null;
+	min_spend?: number | null;
+	qualification_period_months?: number | null;
+	points_per_dollar?: number | null;
+	bonus_multiplier?: number | null;
+	points_expiry_months?: number | null;
+	welcome_bonus_points?: number | null;
+	is_active?: boolean;
+};
 
-type TierRule = LoyaltyTierRules;
-type LoyaltyTxn = LoyaltyPointTransactions;
+type LoyaltyTxn = {
+	transaction_id: string;
+	program_id: string;
+	guest_id?: string;
+	transaction_type: string;
+	points: number;
+	balance_after?: number | null;
+	currency_value?: number | null;
+	reference_type?: string | null;
+	reference_id?: string | null;
+	description?: string | null;
+	expires_at?: string | null;
+	created_at: string;
+};
 
 type Tab = "tiers" | "transactions";
 

@@ -348,12 +348,6 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 				route: "/modules",
 				screenKey: "modules",
 			},
-			{
-				label: "Webhooks",
-				icon: "webhook",
-				route: "/webhooks",
-				screenKey: "webhooks",
-			},
 		],
 	},
 ];

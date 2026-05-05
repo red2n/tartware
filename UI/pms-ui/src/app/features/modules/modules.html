@@ -45,15 +45,15 @@
         </tr>
       </thead>
       <tbody>
-        @for (m of filtered(); track m.id) {
+        @for (m of filtered(); track m.module_key) {
           <tr>
             <td>
-              <input type="checkbox" [checked]="isEnabled(m.id)"
-                (change)="toggle(m.id, $any($event.target).checked)" />
+              <input type="checkbox" [checked]="isEnabled(m.module_key)"
+                (change)="toggle(m.module_key, $any($event.target).checked)" />
             </td>
             <td class="cell-primary">
-              <strong>{{ m.name }}</strong>
-              <div class="cell-notes">{{ m.id }}</div>
+              <strong>{{ m.module_name }}</strong>
+              <div class="cell-notes">{{ m.module_key }}</div>
             </td>
             <td>{{ m.category ?? '—' }}</td>
             <td class="cell-notes">{{ m.description ?? '' }}</td>

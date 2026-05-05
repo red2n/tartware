@@ -3,8 +3,6 @@ import { FormsModule } from "@angular/forms";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 
-import type { ModuleDefinition, ModuleId, TenantModulesResponse } from "@tartware/schemas";
-
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -12,9 +10,21 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
 
+type CatalogModule = {
+	module_key: string;
+	module_name: string;
+	description?: string;
+	category?: string;
+	is_paid?: boolean;
+};
+
 type CatalogResponse =
-	| { items?: ModuleDefinition[]; modules?: ModuleDefinition[] }
-	| ModuleDefinition[];
+	| { items?: CatalogModule[]; modules?: CatalogModule[] }
+	| CatalogModule[];
+
+type TenantModulesResponse =
+	| { enabled_modules?: string[]; modules?: string[] }
+	| string[];
 
 @Component({
 	selector: "app-modules",
@@ -35,9 +45,9 @@ export class ModulesComponent {
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
-	readonly catalog = signal<ModuleDefinition[]>([]);
-	readonly enabled = signal<Set<ModuleId | string>>(new Set());
-	readonly originalEnabled = signal<Set<ModuleId | string>>(new Set());
+	readonly catalog = signal<CatalogModule[]>([]);
+	readonly enabled = signal<Set<string>>(new Set());
+	readonly originalEnabled = signal<Set<string>>(new Set());
 	readonly loading = signal(false);
 	readonly saving = signal(false);
 	readonly search = signal("");
@@ -48,8 +58,8 @@ export class ModulesComponent {
 		if (!q) return list;
 		return list.filter(
 			(m) =>
-				m.id.toLowerCase().includes(q) ||
-				m.name.toLowerCase().includes(q) ||
+				m.module_key.toLowerCase().includes(q) ||
+				m.module_name.toLowerCase().includes(q) ||
 				(m.description ?? "").toLowerCase().includes(q),
 		);
 	});
@@ -82,8 +92,10 @@ export class ModulesComponent {
 				: (catalogRes.items ?? catalogRes.modules ?? []);
 			this.catalog.set(list);
 
-			const enabledList = tenantRes.modules ?? [];
-			const set = new Set<ModuleId | string>(enabledList);
+			const enabledList = Array.isArray(tenantRes)
+				? tenantRes
+				: (tenantRes.enabled_modules ?? tenantRes.modules ?? []);
+			const set = new Set(enabledList);
 			this.enabled.set(set);
 			this.originalEnabled.set(new Set(set));
 		} catch (e) {
@@ -114,7 +126,7 @@ export class ModulesComponent {
 		this.saving.set(true);
 		try {
 			await this.api.put(`/tenants/${tenantId}/modules`, {
-				modules: Array.from(this.enabled()),
+				enabled_modules: Array.from(this.enabled()),
 			});
 			this.toast.success("Tenant modules updated.");
 			this.originalEnabled.set(new Set(this.enabled()));
