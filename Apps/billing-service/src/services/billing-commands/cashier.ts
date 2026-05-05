@@ -1,25 +1,15 @@
-import { openCashierSession as _openCashierSession } from "@tartware/command-consumer-utils/cashier";
-import type { PoolClient, QueryResult, QueryResultRow } from "pg";
+import {
+  closeCashierSession as _closeCashierSession,
+  openCashierSession as _openCashierSession,
+} from "@tartware/command-consumer-utils/cashier";
+import type { PoolClient } from "pg";
 import { query, queryWithClient } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingCashierCloseCommandSchema,
   BillingCashierOpenCommandSchema,
 } from "../../schemas/billing-commands.js";
-import {
-  asUuid,
-  BillingCommandError,
-  type CommandContext,
-  resolveActorId,
-  SYSTEM_ACTOR_ID,
-} from "./common.js";
-
-const runQuery = async <T extends QueryResultRow = QueryResultRow>(
-  client: PoolClient | undefined,
-  text: string,
-  params: unknown[],
-): Promise<QueryResult<T>> =>
-  client ? queryWithClient<T>(client, text, params) : query<T>(text, params);
+import { type CommandContext } from "./common.js";
 
 /**
  * Open a new cashier session (shift start).
@@ -40,9 +30,8 @@ export const openCashierSession = async (
 };
 
 /**
- * Close a cashier session (shift end) with automatic transaction reconciliation.
- * Aggregates all charge_postings + payments for the cashier's business date,
- * computes variance, and marks session as closed/reconciled.
+ * Close a cashier session (shift end) with full payment reconciliation.
+ * Delegates to the shared implementation in @tartware/command-consumer-utils.
  */
 export const closeCashierSession = async (
   payload: unknown,
@@ -50,109 +39,10 @@ export const closeCashierSession = async (
   client?: PoolClient,
 ): Promise<string> => {
   const command = BillingCashierCloseCommandSchema.parse(payload);
-  const tenantId = context.tenantId;
-  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
-
-  // 1. Verify session exists and is open
-  const { rows: sessionRows } = await runQuery<Record<string, unknown>>(
+  return _closeCashierSession(command, context, {
+    query,
+    queryWithClient,
+    logger: appLogger,
     client,
-    `SELECT session_id, session_status, property_id, cashier_id, business_date, opening_float_declared, opened_at
-     FROM cashier_sessions
-     WHERE session_id = $1 AND tenant_id = $2`,
-    [command.session_id, tenantId],
-  );
-  const session = sessionRows[0];
-  if (!session) {
-    throw new BillingCommandError(
-      "SESSION_NOT_FOUND",
-      `Cashier session ${command.session_id} not found`,
-    );
-  }
-  if (session.session_status !== "open") {
-    throw new BillingCommandError(
-      "SESSION_NOT_OPEN",
-      `Cashier session is ${session.session_status}, not open`,
-    );
-  }
-
-  // 2. Aggregate transactions for this session (only payments processed after session opened)
-  const { rows: aggRows } = await runQuery<Record<string, unknown>>(
-    client,
-    `SELECT
-       COUNT(*) AS total_transactions,
-       COUNT(*) FILTER (WHERE payment_method = 'CASH') AS cash_transactions,
-       COUNT(*) FILTER (WHERE payment_method != 'CASH') AS card_transactions,
-       COALESCE(SUM(amount) FILTER (WHERE payment_method = 'CASH' AND transaction_type != 'REFUND'), 0) AS total_cash_received,
-       COALESCE(SUM(amount) FILTER (WHERE payment_method != 'CASH' AND transaction_type != 'REFUND'), 0) AS total_card_received,
-       COALESCE(SUM(amount) FILTER (WHERE transaction_type != 'REFUND'), 0) AS total_revenue,
-       COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'REFUND'), 0) AS total_refunds
-     FROM payments
-     WHERE tenant_id = $1 AND property_id = $2
-       AND processed_at::date = $3::date
-       AND processed_at >= $4::timestamptz`,
-    [tenantId, session.property_id, session.business_date, session.opened_at],
-  );
-  const agg = aggRows[0] ?? {};
-
-  const cashReceived = Number(agg.total_cash_received ?? 0);
-  const openingFloat = Number(session.opening_float_declared ?? 0);
-  // System-expected drawer balance = opening float + cash received during shift
-  const expectedCashBalance = openingFloat + cashReceived;
-  // cash_variance = declared − counted (positive = shortage, negative = overage)
-  const cashVariance = command.closing_cash_declared - command.closing_cash_counted;
-  const hasVariance = Math.abs(cashVariance) > 0.01;
-
-  // 3. Update session with reconciliation data
-  await runQuery(
-    client,
-    `UPDATE cashier_sessions SET
-       session_status = 'closed',
-       closed_at = NOW(),
-       total_transactions = $3,
-       cash_transactions = $4,
-       card_transactions = $5,
-       total_cash_received = $6,
-       total_card_received = $7,
-       total_revenue = $8,
-       total_refunds = $9,
-       closing_cash_declared = $10,
-       closing_cash_counted = $11,
-       expected_cash_balance = $12,
-       cash_variance = $13,
-       has_variance = $14,
-       reconciled = true,
-       reconciled_at = NOW(),
-       reconciled_by = $15,
-       updated_at = NOW(),
-       updated_by = $15
-     WHERE session_id = $1 AND tenant_id = $2`,
-    [
-      command.session_id,
-      tenantId,
-      Number(agg.total_transactions ?? 0),
-      Number(agg.cash_transactions ?? 0),
-      Number(agg.card_transactions ?? 0),
-      cashReceived,
-      Number(agg.total_card_received ?? 0),
-      Number(agg.total_revenue ?? 0),
-      Number(agg.total_refunds ?? 0),
-      command.closing_cash_declared,
-      command.closing_cash_counted,
-      expectedCashBalance,
-      cashVariance,
-      hasVariance,
-      actorId,
-    ],
-  );
-
-  appLogger.info(
-    {
-      sessionId: command.session_id,
-      cashVariance,
-      hasVariance,
-      totalTransactions: Number(agg.total_transactions ?? 0),
-    },
-    "Cashier session closed and reconciled",
-  );
-  return command.session_id;
+  });
 };
