@@ -64,4 +64,8 @@ CREATE INDEX IF NOT EXISTS idx_webhook_events_tenant_status
 CREATE INDEX IF NOT EXISTS idx_webhook_events_tenant_received
     ON payment_gateway_webhooks (tenant_id, received_at DESC);
 
+-- Privileges: billing-service connects as tartware_app and must be able to
+-- insert incoming webhook rows and update them as they are processed.
+GRANT SELECT, INSERT, UPDATE ON payment_gateway_webhooks TO tartware_app;
+
 \echo 'payment_gateway_webhooks table created successfully!'

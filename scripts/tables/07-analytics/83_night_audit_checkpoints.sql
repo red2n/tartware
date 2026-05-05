@@ -89,6 +89,7 @@ GRANT SELECT, INSERT ON night_audit_checkpoints TO tartware_app;
 -- Row-Level Security: enforce tenant isolation
 ALTER TABLE night_audit_checkpoints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE night_audit_checkpoints FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation_night_audit_checkpoints ON night_audit_checkpoints;
 CREATE POLICY tenant_isolation_night_audit_checkpoints
     ON night_audit_checkpoints
     USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);

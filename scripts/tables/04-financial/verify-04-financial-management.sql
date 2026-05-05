@@ -88,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries', 'comp_authorizers', 'comp_transactions', 'comp_property_config', 'fiscal_periods', 'folio_windows', 'payment_gateway_configurations', 'folio_routing_rules', 'payment_gateway_webhooks')
+    WHERE t.table_name IN ('payments', 'invoices', 'invoice_items', 'folios', 'charge_postings', 'refunds', 'tax_configurations', 'financial_closures', 'commission_tracking', 'cashier_sessions', 'accounts_receivable', 'credit_limits', 'payment_tokens', 'general_ledger_batches', 'general_ledger_entries', 'comp_authorizers', 'comp_transactions', 'comp_property_config', 'fiscal_periods', 'folio_windows', 'payment_gateway_configurations', 'folio_routing_rules', 'payment_gateway_webhooks', 'night_audit_runs')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Financial Management';
-    RAISE NOTICE 'Tables Found: % / 23', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 24', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 23 THEN
+    IF v_table_count = 24 THEN
         RAISE NOTICE '✓✓✓ FINANCIAL MANAGEMENT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ FINANCIAL MANAGEMENT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 23 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 24 tables, found %', v_table_count;
     END IF;
 END $$;
 

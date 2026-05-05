@@ -73,4 +73,8 @@ COMMENT ON COLUMN night_audit_runs.current_step IS
 COMMENT ON COLUMN night_audit_runs.replay_of IS
   'If this run is a replay of a prior FAILED audit, points to the original row. Used for audit-trail continuity.';
 
+-- Privileges: night-audit-runner connects as tartware_app and must be able to
+-- insert new audit run rows and update them as each step progresses.
+GRANT SELECT, INSERT, UPDATE ON night_audit_runs TO tartware_app;
+
 \echo 'night_audit_runs table created successfully!'

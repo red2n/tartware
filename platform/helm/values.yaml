@@ -10,7 +10,7 @@ global:
   # Database configuration
   database:
     host: postgres-postgresql.database.svc.cluster.local
-    port: 5433
+    port: 5432
     name: tartware
     user: tartware
     # Use external secrets for password
