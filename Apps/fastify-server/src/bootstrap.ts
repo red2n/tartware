@@ -98,9 +98,10 @@ export async function bootstrapService(
 			await app.listen({
 				port: config.port,
 				host: config.host,
-				// Suppress Fastify's per-interface "Server listening at" lines —
-				// bootstrapService logs a single clean "<service> started" line below.
-				listenTextResolver: () => "",
+				// Fastify fires listenTextResolver once per bound socket address.
+				// Return the address text so each binding produces a meaningful log
+				// line instead of an empty INFO entry.
+				listenTextResolver: (address) => `server listening at ${address}`,
 			});
 			app.log.info(
 				{

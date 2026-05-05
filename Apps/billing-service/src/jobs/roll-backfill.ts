@@ -30,9 +30,12 @@ type LifecycleRowResult = LifecycleRow;
 type LifecycleRowBatch = LifecycleRowResult & { [k: string]: unknown };
 
 const fetchLifecycleBatch = async (
-  after: Date | null,
+  afterDate: Date | null,
+  afterEventId: string | null,
   limit: number,
 ): Promise<LifecycleRowResult[]> => {
+  // Use a composite (created_at, event_id) cursor so that rows sharing the same
+  // created_at timestamp are never skipped when a batch boundary falls mid-tie.
   const result = await query<LifecycleRowBatch>(
     `
       SELECT
@@ -44,11 +47,13 @@ const fetchLifecycleBatch = async (
         metadata,
         created_at
       FROM reservation_command_lifecycle
-      WHERE created_at > COALESCE($1::timestamptz, '1970-01-01'::timestamptz)
-      ORDER BY created_at ASC
-      LIMIT $2
+      WHERE
+        $1::timestamptz IS NULL
+        OR (created_at, event_id::text) > ($1::timestamptz, $2)
+      ORDER BY created_at ASC, event_id ASC
+      LIMIT $3
     `,
-    [after ? after.toISOString() : null, limit],
+    [afterDate ? afterDate.toISOString() : null, afterEventId ?? "", limit],
   );
 
   return result.rows;
@@ -84,6 +89,7 @@ export const buildBackfillJob = (logger: FastifyBaseLogger, options: BackfillJob
 
         const rows = await fetchLifecycleBatch(
           checkpoint?.lastEventCreatedAt ?? null,
+          checkpoint?.lastEventId ?? null,
           options.batchSize,
         );
 

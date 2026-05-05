@@ -57,10 +57,25 @@ export const ensureEncryptionRequirementsMet = (): void => {
     throw new Error("Compliance encryption requirements not satisfied");
   }
 
+  const isDev = (process.env.NODE_ENV ?? "development") === "development";
   if (config.compliance.encryption.guestDataKey === "local-dev-guest-key") {
+    if (!isDev) {
+      appLogger.error(
+        { key: "guest-data", nodeEnv: process.env.NODE_ENV },
+        "compliance encryption key is using a local placeholder — set a secure value before deploying",
+      );
+      throw new Error("Compliance encryption requirements not satisfied");
+    }
     appLogger.warn({ key: "guest-data" }, PLACEHOLDER_WARNING);
   }
   if (config.compliance.encryption.billingDataKey === "local-dev-billing-key") {
+    if (!isDev) {
+      appLogger.error(
+        { key: "billing-data", nodeEnv: process.env.NODE_ENV },
+        "compliance encryption key is using a local placeholder — set a secure value before deploying",
+      );
+      throw new Error("Compliance encryption requirements not satisfied");
+    }
     appLogger.warn({ key: "billing-data" }, PLACEHOLDER_WARNING);
   }
 };
