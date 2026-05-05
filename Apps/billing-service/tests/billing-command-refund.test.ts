@@ -58,6 +58,12 @@ describe("refundBillingPayment validation", () => {
       if (text.includes("INSERT INTO public.payments")) {
         return { rows: [{ id: "refund-1" }], rowCount: 1 };
       }
+      if (text.includes("INSERT INTO public.general_ledger_entries")) {
+        return { rows: [{ debit_entry_id: "de-1", credit_entry_id: "ce-1" }], rowCount: 1 };
+      }
+      if (text.includes("INSERT INTO public.general_ledger_batches")) {
+        return { rows: [{ gl_batch_id: "batch-1" }], rowCount: 1 };
+      }
       return { rows: [], rowCount: 0 };
     });
 
@@ -92,6 +98,12 @@ describe("refundBillingPayment validation", () => {
     queryWithClientMock.mockImplementation(async (_client: unknown, text: string) => {
       if (text.includes("INSERT INTO public.payments")) {
         return { rows: [{ id: "refund-2" }], rowCount: 1 };
+      }
+      if (text.includes("INSERT INTO public.general_ledger_entries")) {
+        return { rows: [{ debit_entry_id: "de-1", credit_entry_id: "ce-1" }], rowCount: 1 };
+      }
+      if (text.includes("INSERT INTO public.general_ledger_batches")) {
+        return { rows: [{ gl_batch_id: "batch-1" }], rowCount: 1 };
       }
       return { rows: [], rowCount: 0 };
     });
