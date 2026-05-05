@@ -1200,6 +1200,9 @@
                     @if (chg.is_voided) {
                       <span class="badge badge-danger" [pTooltip]="chg.void_reason ?? ''">{{ 'Voided' | translate }}</span>
                     } @else if (canVoidCharge(chg)) {
+                      <button class="btn btn-outline btn-xs" (click)="showTransferCharge(chg.id); $event.stopPropagation()" [pTooltip]="'Transfer this charge to another folio' | translate">
+                        <app-icon name="swap_horiz" /> {{ 'Transfer' | translate }}
+                      </button>
                       <button class="btn btn-outline btn-xs" (click)="showVoidCharge(chg.id); $event.stopPropagation()" [pTooltip]="'Void this charge' | translate">
                         <app-icon name="block" /> {{ 'Void' | translate }}
                       </button>
@@ -1225,6 +1228,44 @@
                             {{ 'Void Charge' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelVoidCharge()">{{ 'Cancel' | translate }}</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                <!-- Transfer charge form -->
+                @if (transferringChargeId() === chg.id) {
+                  <tr class="action-row-form">
+                    <td colspan="8">
+                      <div class="inline-action-form">
+                        <span class="form-label">{{ 'Transfer charge' | translate }} {{ chg.charge_code }} — {{ formatCurrency(chg.total_amount, chg.currency) }}</span>
+                        <div class="form-inline-fields">
+                          <div class="form-field">
+                            <label>{{ 'Destination Folio' | translate }}</label>
+                            <select class="field-input field-sm"
+                                    [ngModel]="transferChargeForm().target_folio_id"
+                                    (ngModelChange)="updateTransferChargeForm({ target_folio_id: $event })">
+                              <option value="">{{ 'Select folio…' | translate }}</option>
+                              @for (f of openFolios(); track f.id) {
+                                @if (f.id !== chg.folio_id) {
+                                  <option [value]="f.id">{{ f.folio_number }} — {{ f.folio_type }}</option>
+                                }
+                              }
+                            </select>
+                          </div>
+                          <div class="form-field">
+                            <label>{{ 'Reason' | translate }}</label>
+                            <input type="text" class="field-input field-sm" [placeholder]="'Reason for transfer' | translate"
+                                   [ngModel]="transferChargeForm().reason"
+                                   (ngModelChange)="updateTransferChargeForm({ reason: $event })" />
+                          </div>
+                        </div>
+                        <div class="form-actions">
+                          <button class="btn btn-primary btn-sm" (click)="transferCharge(chg)" [disabled]="processingChargeTransfer() || !transferChargeForm().target_folio_id">
+                            @if (processingChargeTransfer()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
+                            {{ 'Transfer Charge' | translate }}
+                          </button>
+                          <button class="btn btn-outline btn-sm" (click)="cancelTransferCharge()">{{ 'Cancel' | translate }}</button>
                         </div>
                       </div>
                     </td>

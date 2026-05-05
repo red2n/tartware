@@ -194,6 +194,20 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "General ledger entries, batches, and posting review",
 			},
 			{
+				label: "GL Batches",
+				icon: "inventory_2",
+				route: "/gl-batches",
+				screenKey: "billing",
+				description: "GL batch review and ERP export",
+			},
+			{
+				label: "Chargebacks",
+				icon: "gavel",
+				route: "/chargebacks",
+				screenKey: "billing",
+				description: "Credit-card disputes and chargeback workflow",
+			},
+			{
 				label: "Tax Config",
 				icon: "gavel",
 				route: "/tax-config",

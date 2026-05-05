@@ -170,6 +170,22 @@ export const routes: Routes = [
 					import("./features/accounts/ledger/ledger").then((m) => m.LedgerComponent),
 			},
 			{
+				path: "gl-batches",
+				canActivate: [propertyGuard, screenGuard("billing")],
+				loadComponent: () =>
+					import("./features/accounts/gl-batches/gl-batches").then(
+						(m) => m.GlBatchesComponent,
+					),
+			},
+			{
+				path: "chargebacks",
+				canActivate: [propertyGuard, screenGuard("billing")],
+				loadComponent: () =>
+					import("./features/accounts/chargebacks/chargebacks").then(
+						(m) => m.ChargebacksComponent,
+					),
+			},
+			{
 				path: "tax-config",
 				canActivate: [propertyGuard, screenGuard("tax-config")],
 				loadComponent: () =>
