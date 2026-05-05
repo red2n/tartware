@@ -49,6 +49,7 @@ export const GlPostingSourceEnum = z.enum([
 	"spa_appointments",
 	"banquet_event_orders",
 	"manual_adjustment",
+	"accounts_receivable",
 	"other",
 ]);
 export type GlPostingSource = z.infer<typeof GlPostingSourceEnum>;

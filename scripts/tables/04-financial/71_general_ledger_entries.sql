@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS general_ledger_entries (
     base_amount DECIMAL(15,2),
 
     -- Source Traceability
-    source_table VARCHAR(50) CHECK (source_table IN ('charge_postings', 'payments', 'spa_appointments', 'banquet_event_orders', 'manual_adjustment', 'other')),
+    source_table VARCHAR(50) CHECK (source_table IN ('charge_postings', 'payments', 'spa_appointments', 'banquet_event_orders', 'manual_adjustment', 'accounts_receivable', 'other')),
     source_id UUID,
     reference_number VARCHAR(100),
 
@@ -85,6 +85,7 @@ BEGIN
                 'spa_appointments',
                 'banquet_event_orders',
                 'manual_adjustment',
+                'accounts_receivable',
                 'other'
             )
         );

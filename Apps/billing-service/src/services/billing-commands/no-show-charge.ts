@@ -1,4 +1,5 @@
-import { query } from "../../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNoShowChargeCommandSchema } from "../../schemas/billing-commands.js";
 import {
@@ -74,48 +75,82 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     );
   }
 
-  // Insert the charge posting
-  const { rows: postingRows } = await query<{ posting_id: string }>(
-    `INSERT INTO public.charge_postings (
-       tenant_id, property_id, folio_id, reservation_id,
-       transaction_type, posting_type,
-       charge_code, charge_description,
-       unit_price, subtotal, total_amount, currency_code,
-       quantity, business_date, created_by, updated_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-       'CHARGE', 'DEBIT',
-       $5, $6,
-       $7::numeric, $7::numeric, $7::numeric, $8,
-       1, CURRENT_DATE, $9, $9
-     ) RETURNING posting_id`,
-    [
-      context.tenantId,
-      reservation.property_id,
-      folioId,
-      command.reservation_id,
-      command.reason_code ?? "NO_SHOW",
-      `No-show penalty charge — ${command.reason_code ?? "NO_SHOW_POLICY"}`,
-      chargeAmount,
+  // Insert the charge posting + GL pair atomically
+  const chargeCode = command.reason_code ?? "NO_SHOW";
+  const description = `No-show penalty charge — ${chargeCode}`;
+  const businessDate = new Date().toISOString().slice(0, 10);
+
+  const postingId = await withTransaction(async (client) => {
+    const { rows: postingRows } = await queryWithClient<{ posting_id: string }>(
+      client,
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type,
+         charge_code, charge_description,
+         unit_price, subtotal, total_amount, currency_code,
+         quantity, business_date, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'CHARGE', 'DEBIT',
+         $5, $6,
+         $7::numeric, $7::numeric, $7::numeric, $8,
+         1, CURRENT_DATE, $9, $9
+       ) RETURNING posting_id`,
+      [
+        context.tenantId,
+        reservation.property_id,
+        folioId,
+        command.reservation_id,
+        chargeCode,
+        description,
+        chargeAmount,
+        currency,
+        actorId,
+      ],
+    );
+
+    const id = postingRows[0]?.posting_id;
+    if (!id) {
+      throw new BillingCommandError("NO_SHOW_CHARGE_FAILED", "Failed to post no-show charge.");
+    }
+
+    // Update folio balance inside the same transaction
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges + $3,
+           balance = balance + $3,
+           updated_at = NOW(), updated_by = $4::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, folioId, chargeAmount, actorId],
+    );
+
+    // GL posting (USALI double-entry): DR Guest Ledger (1100) / CR revenue per mapping.
+    // Falls back to 4900 (Other Revenue) if charge code mapping is missing.
+    const glMapping = await lookupChargeCodeMapping(client, context.tenantId, chargeCode);
+    const debitAccount = glMapping?.debit ?? "1100";
+    const creditAccount = glMapping?.credit ?? "4900";
+    await postGlPair(client, {
+      tenant_id: context.tenantId,
+      property_id: reservation.property_id,
+      folio_id: folioId,
+      reservation_id: command.reservation_id,
+      debit_account: debitAccount,
+      credit_account: creditAccount,
+      amount: chargeAmount,
       currency,
-      actorId,
-    ],
-  );
+      posting_date: businessDate,
+      usali_category: glMapping?.usali ?? "No-Show Revenue",
+      department_code: glMapping?.department ?? undefined,
+      description,
+      source_table: "charge_postings",
+      source_id: id,
+      reference_number: chargeCode,
+      created_by: actorId,
+    });
 
-  const postingId = postingRows[0]?.posting_id;
-  if (!postingId) {
-    throw new BillingCommandError("NO_SHOW_CHARGE_FAILED", "Failed to post no-show charge.");
-  }
-
-  // Update folio balance
-  await query(
-    `UPDATE public.folios
-     SET total_charges = total_charges + $3,
-         balance = balance + $3,
-         updated_at = NOW(), updated_by = $4::uuid
-     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-    [context.tenantId, folioId, chargeAmount, actorId],
-  );
+    return id;
+  });
 
   // Mark reservation as NO_SHOW if still CONFIRMED
   if (reservation.status === "CONFIRMED") {

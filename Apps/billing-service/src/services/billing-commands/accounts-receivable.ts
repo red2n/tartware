@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingArAgeCommandSchema,
@@ -62,39 +63,70 @@ export const postArEntry = async (payload: unknown, context: CommandContext): Pr
     );
   }
 
-  const { rows } = await query<{ ar_id: string }>(
-    `INSERT INTO accounts_receivable (
-       tenant_id, property_id, ar_number, account_type, account_id, account_name,
-       source_type, reservation_id, folio_id,
-       transaction_date, due_date,
-       original_amount, outstanding_balance, currency,
-       ar_status, aging_bucket, payment_terms, payment_terms_days,
-       notes, created_by, updated_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3, $4, $5::uuid, $6,
-       'reservation', $7::uuid, $8,
-       CURRENT_DATE, CURRENT_DATE + $9::int,
-       $10, $10, 'USD',
-       'open', 'current', $11, $9,
-       $12, $13::uuid, $13::uuid
-     )
-     RETURNING ar_id`,
-    [
-      tenantId,
-      propertyId,
-      arNumber,
-      command.account_type,
-      command.account_id,
-      command.account_name,
-      command.reservation_id,
-      command.folio_id ?? null,
-      days,
-      command.amount,
-      command.payment_terms,
-      command.notes ?? null,
-      actorId,
-    ],
-  );
+  const { rows } = await withTransaction(async (client) => {
+    const inserted = await queryWithClient<{ ar_id: string }>(
+      client,
+      `INSERT INTO accounts_receivable (
+         tenant_id, property_id, ar_number, account_type, account_id, account_name,
+         source_type, reservation_id, folio_id,
+         transaction_date, due_date,
+         original_amount, outstanding_balance, currency,
+         ar_status, aging_bucket, payment_terms, payment_terms_days,
+         notes, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3, $4, $5::uuid, $6,
+         'reservation', $7::uuid, $8,
+         CURRENT_DATE, CURRENT_DATE + $9::int,
+         $10, $10, 'USD',
+         'open', 'current', $11, $9,
+         $12, $13::uuid, $13::uuid
+       )
+       RETURNING ar_id`,
+      [
+        tenantId,
+        propertyId,
+        arNumber,
+        command.account_type,
+        command.account_id,
+        command.account_name,
+        command.reservation_id,
+        command.folio_id ?? null,
+        days,
+        command.amount,
+        command.payment_terms,
+        command.notes ?? null,
+        actorId,
+      ],
+    );
+
+    const newArId = inserted.rows[0]?.ar_id;
+    if (!newArId) {
+      throw new BillingCommandError("AR_POST_FAILED", "Failed to insert AR entry.");
+    }
+
+    // GL posting (USALI double-entry): DR City Ledger (1300) / CR Guest Ledger (1100).
+    // Direct-bill checkout transfers the receivable from guest folio to AR.
+    const businessDate = new Date().toISOString().slice(0, 10);
+    await postGlPair(client, {
+      tenant_id: tenantId,
+      property_id: propertyId,
+      folio_id: command.folio_id ?? undefined,
+      reservation_id: command.reservation_id,
+      debit_account: "1300", // City Ledger / AR
+      credit_account: "1100", // Guest Ledger
+      amount: command.amount,
+      currency: "USD",
+      posting_date: businessDate,
+      usali_category: "Accounts Receivable",
+      description: `AR transfer ${arNumber} — ${command.account_name} (${command.payment_terms})`,
+      source_table: "accounts_receivable",
+      source_id: newArId,
+      reference_number: arNumber,
+      created_by: actorId,
+    });
+
+    return inserted;
+  });
 
   const arId = rows[0]?.ar_id ?? arNumber;
   appLogger.info(
@@ -245,8 +277,14 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const tenantId = context.tenantId;
 
-  const { rows } = await query<{ ar_id: string; outstanding_balance: string; ar_status: string }>(
-    `SELECT ar_id, outstanding_balance, ar_status FROM accounts_receivable
+  const { rows } = await query<{
+    ar_id: string;
+    outstanding_balance: string;
+    ar_status: string;
+    property_id: string;
+    currency: string | null;
+  }>(
+    `SELECT ar_id, outstanding_balance, ar_status, property_id, currency FROM accounts_receivable
      WHERE ar_id = $1::uuid AND tenant_id = $2::uuid
        AND ar_status NOT IN ('paid', 'written_off', 'cancelled')`,
     [command.ar_id, tenantId],
@@ -265,30 +303,51 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
   const newOutstanding = subtractMoney(outstanding, writeOffAmount);
   const newStatus = newOutstanding <= 0.005 ? "written_off" : "partial";
 
-  await query(
-    `UPDATE accounts_receivable
-     SET written_off = TRUE,
-         write_off_amount = COALESCE(write_off_amount, 0) + $3,
-         write_off_reason = $4,
-         write_off_date = CURRENT_DATE,
-         written_off_by = $5::uuid,
-         write_off_approved_by = $6,
-         outstanding_balance = $7,
-         ar_status = $8::varchar,
-         is_bad_debt = CASE WHEN $8::varchar = 'written_off' THEN TRUE ELSE is_bad_debt END,
-         updated_at = NOW(), updated_by = $5::uuid
-     WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
-    [
-      command.ar_id,
-      tenantId,
-      writeOffAmount,
-      command.reason,
-      actorId,
-      command.approved_by ?? null,
-      newOutstanding,
-      newStatus,
-    ],
-  );
+  await withTransaction(async (client) => {
+    await queryWithClient(
+      client,
+      `UPDATE accounts_receivable
+       SET written_off = TRUE,
+           write_off_amount = COALESCE(write_off_amount, 0) + $3,
+           write_off_reason = $4,
+           write_off_date = CURRENT_DATE,
+           written_off_by = $5::uuid,
+           write_off_approved_by = $6,
+           outstanding_balance = $7,
+           ar_status = $8::varchar,
+           is_bad_debt = CASE WHEN $8::varchar = 'written_off' THEN TRUE ELSE is_bad_debt END,
+           updated_at = NOW(), updated_by = $5::uuid
+       WHERE ar_id = $1::uuid AND tenant_id = $2::uuid`,
+      [
+        command.ar_id,
+        tenantId,
+        writeOffAmount,
+        command.reason,
+        actorId,
+        command.approved_by ?? null,
+        newOutstanding,
+        newStatus,
+      ],
+    );
+
+    // GL posting (USALI double-entry): DR Bad Debt Expense (5800) / CR City Ledger (1300).
+    const businessDate = new Date().toISOString().slice(0, 10);
+    await postGlPair(client, {
+      tenant_id: tenantId,
+      property_id: ar.property_id,
+      debit_account: "5800", // Bad Debt Expense
+      credit_account: "1300", // City Ledger / AR
+      amount: writeOffAmount,
+      currency: (ar.currency ?? "USD").toUpperCase(),
+      posting_date: businessDate,
+      usali_category: "Bad Debt",
+      description: `AR write-off: ${command.reason}`,
+      source_table: "accounts_receivable",
+      source_id: command.ar_id,
+      reference_number: command.ar_id,
+      created_by: actorId,
+    });
+  });
 
   appLogger.info(
     { arId: command.ar_id, writeOffAmount, newOutstanding, newStatus },
