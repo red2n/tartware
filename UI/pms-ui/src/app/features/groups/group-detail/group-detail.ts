@@ -1,9 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
 import {
@@ -28,9 +28,9 @@ type DetailRow = { label: string; value: string; badge?: string; description?: s
 		NgClass,
 		FormsModule,
 		RouterLink,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		TranslatePipe,
 	],
 	templateUrl: "./group-detail.html",

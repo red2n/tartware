@@ -1,11 +1,11 @@
 <div class="guests-page">
   <app-page-header title="Guests" description="Guest profiles, preferences, and loyalty history">
     <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-      <mat-icon>person_add</mat-icon>
+      <app-icon name="person_add" />
       {{ 'New guest' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadGuests()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh guests' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadGuests()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh guests' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -28,7 +28,7 @@
     <div class="overview-bar">
       <div class="overview-section clickable" (click)="setFilter('ALL')">
         <div class="overview-label">
-          <mat-icon>people</mat-icon>
+          <app-icon name="people" />
           {{ 'Total Guests' | translate }}
         </div>
         <div class="overview-value">{{ stats.total_guests }}</div>
@@ -37,7 +37,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-new">
         <div class="overview-label">
-          <mat-icon>person_add</mat-icon>
+          <app-icon name="person_add" />
           {{ 'New This Month' | translate }}
         </div>
         <div class="overview-value">{{ stats.new_guests_this_month }}</div>
@@ -46,7 +46,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-vip clickable" (click)="setFilter('VIP')">
         <div class="overview-label">
-          <mat-icon>star</mat-icon>
+          <app-icon name="star" />
           {{ 'VIP' | translate }}
         </div>
         <div class="overview-value">{{ stats.vip_guests }}</div>
@@ -55,7 +55,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-loyalty clickable" (click)="setFilter('LOYALTY')">
         <div class="overview-label">
-          <mat-icon>card_membership</mat-icon>
+          <app-icon name="card_membership" />
           {{ 'Loyalty Members' | translate }}
         </div>
         <div class="overview-value">{{ stats.loyalty_members }}</div>
@@ -64,7 +64,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-stay">
         <div class="overview-label">
-          <mat-icon>hotel</mat-icon>
+          <app-icon name="hotel" />
           {{ 'Avg Stay' | translate }}
         </div>
         <div class="overview-value">{{ stats.average_stay_length | number:'1.1-1' }}d</div>
@@ -75,12 +75,12 @@
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-revenue">
         <div class="overview-label">
-          <mat-icon>payments</mat-icon>
+          <app-icon name="payments" />
           {{ 'Avg Lifetime Value' | translate }}
         </div>
         <div class="overview-value">{{ formatCurrency(stats.average_lifetime_value) }}</div>
         @if (sparkline(); as spark) {
-          <div class="guest-sparkline" [matTooltip]="'Registrations · last 12 weeks' | translate">
+          <div class="guest-sparkline" [pTooltip]="'Registrations · last 12 weeks' | translate">
             <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg" aria-hidden="true">
               <path [attr.d]="spark.area" class="sparkline-area" />
               <path [attr.d]="spark.line" class="sparkline-line" />
@@ -112,13 +112,13 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ err }}</span>
       <button class="btn btn-outline" (click)="loadGuests()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredGuests().length === 0) {
     <div class="empty-state">
-      <mat-icon class="empty-icon">people</mat-icon>
+      <app-icon class="empty-icon" name="people" />
       @if (guests().length === 0) {
         <p>{{ 'No guests found' | translate }}</p>
         <p class="text-muted">{{ 'Guest profiles will appear here once they are created.' | translate }}</p>
@@ -133,21 +133,21 @@
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort('last_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('last_name')">{{ 'Guest' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('last_name')">{{ 'Guest' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('last_name')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('email')">
-                <button type="button" class="th-sort-btn" (click)="onSort('email')">{{ 'Email' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('email')">{{ 'Email' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('email')" /></button>
               </th>
               <th>{{ 'Phone' | translate }}</th>
               <th>{{ 'Status' | translate }}</th>
               <th [attr.aria-sort]="ariaSort('total_bookings')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">{{ 'Bookings' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_bookings') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_bookings')">{{ 'Bookings' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('total_bookings')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('total_revenue')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_revenue')">{{ 'Revenue' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_revenue') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_revenue')">{{ 'Revenue' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('total_revenue')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('last_stay_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('last_stay_date')">{{ 'Last Stay' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('last_stay_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('last_stay_date')">{{ 'Last Stay' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('last_stay_date')" /></button>
               </th>
               <th class="cell-actions"></th>
             </tr>
@@ -195,8 +195,8 @@
                 <td class="cell-numeric">{{ formatCurrency(guest.total_revenue) }}</td>
                 <td>{{ formatDate(guest.last_stay_date) }}</td>
                 <td class="cell-actions">
-                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" [matTooltip]="'View profile' | translate" [attr.aria-label]="'View guest profile' | translate">
-                    <mat-icon>chevron_right</mat-icon>
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/guests', guest.id]" [pTooltip]="'View profile' | translate" [attr.aria-label]="'View guest profile' | translate">
+                    <app-icon name="chevron_right" />
                   </a>
                 </td>
               </tr>

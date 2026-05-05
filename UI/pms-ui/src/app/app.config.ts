@@ -6,6 +6,8 @@ import {
 import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
 import { PreloadAllModules, provideRouter, withPreloading } from "@angular/router";
 import { provideServiceWorker } from "@angular/service-worker";
+import Lara from "@primeng/themes/lara";
+import { providePrimeNG } from "primeng/config";
 
 import { routes } from "./app.routes";
 
@@ -17,6 +19,16 @@ export const appConfig: ApplicationConfig = {
 		provideServiceWorker("ngsw-worker.js", {
 			enabled: !isDevMode(),
 			registrationStrategy: "registerWhenStable:30000",
+		}),
+		providePrimeNG({
+			theme: {
+				preset: Lara,
+				options: {
+					// Matches existing Primer dark-mode selector set by ThemeService
+					darkModeSelector: '[data-theme="dark"]',
+					cssLayer: { name: "primeng", order: "tailwind-base, primeng, app" },
+				},
+			},
 		}),
 	],
 };

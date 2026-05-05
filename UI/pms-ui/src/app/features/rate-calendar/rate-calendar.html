@@ -2,10 +2,10 @@
   @if (hasDirty()) {
     <button class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveChanges()">
       @if (saving()) {
-        <mat-spinner diameter="14"></mat-spinner>
+        <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
         {{ 'Saving…' | translate }}
       } @else {
-        <mat-icon>save</mat-icon> {{ 'Save changes' | translate }}
+        <app-icon name="save" /> {{ 'Save changes' | translate }}
       }
     </button>
   }
@@ -39,7 +39,7 @@
 
   <div class="toolbar-center">
     <button class="btn btn-invisible btn-sm" (click)="prevPeriod()" [attr.aria-label]="'Previous period' | translate">
-      <mat-icon>chevron_left</mat-icon>
+      <app-icon name="chevron_left" />
     </button>
     <div class="date-nav">
       <input type="date" class="field-input field-input-sm date-nav-input"
@@ -47,14 +47,14 @@
              (ngModelChange)="onStartDateChange()" />
     </div>
     <button class="btn btn-invisible btn-sm" (click)="nextPeriod()" [attr.aria-label]="'Next period' | translate">
-      <mat-icon>chevron_right</mat-icon>
+      <app-icon name="chevron_right" />
     </button>
     <button class="btn btn-outline btn-sm" (click)="goToToday()">{{ 'Today' | translate }}</button>
   </div>
 
   <div class="toolbar-right">
     <button class="btn btn-outline btn-sm" (click)="loadCalendarData()" [attr.aria-label]="'Refresh' | translate">
-      <mat-icon>refresh</mat-icon>
+      <app-icon name="refresh" />
     </button>
   </div>
 </div>
@@ -62,7 +62,7 @@
 @defer (when dataReady(); prefetch on idle) {
 @if (filteredRates().length === 0) {
   <div class="empty-state">
-    <mat-icon class="empty-icon">payments</mat-icon>
+    <app-icon class="empty-icon" name="payments" />
     <h3>{{ 'No active rate plans' | translate }}</h3>
     <p class="text-muted">{{ 'Create rate plans first, then configure day-level pricing here.' | translate }}</p>
   </div>
@@ -97,8 +97,8 @@
                     [ngClass]="cellClass(rate.id, date)"
                     [class.td-weekend]="isWeekend(date)"
                     [class.td-today]="isToday(date)"
-                    [matTooltip]="cellTooltip(rate.id, date)"
-                    matTooltipPosition="above">
+                    [pTooltip]="cellTooltip(rate.id, date)"
+                    tooltipPosition="top">
                   @if (editingKey() === rate.id + '|' + date) {
                     <input type="number" class="cell-edit-input"
                            [(ngModel)]="editingAmount"

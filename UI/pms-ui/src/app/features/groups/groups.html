@@ -1,11 +1,11 @@
 <div class="groups-page">
   <app-page-header title="Group Bookings" description="Manage group blocks, room allocations, and rooming lists">
     <button class="btn btn-primary btn-sm" (click)="openCreateGroup()">
-      <mat-icon>add</mat-icon>
+      <app-icon name="add" />
       {{ 'New group booking' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadGroups()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh group bookings' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadGroups()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh group bookings' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -18,7 +18,7 @@
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
         <div class="grp-overview-label">
-          <mat-icon>groups</mat-icon>
+          <app-icon name="groups" />
           {{ 'Total Groups' | translate }}
         </div>
         <div class="grp-overview-value">{{ summary().totalGroups }}</div>
@@ -29,7 +29,7 @@
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
         <div class="grp-overview-label">
-          <mat-icon>check_circle</mat-icon>
+          <app-icon name="check_circle" />
           {{ 'Active' | translate }}
         </div>
         <div class="grp-overview-value">{{ summary().activeGroups }}</div>
@@ -40,7 +40,7 @@
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
         <div class="grp-overview-label">
-          <mat-icon>hotel</mat-icon>
+          <app-icon name="hotel" />
           {{ 'Rooms Blocked' | translate }}
         </div>
         <div class="grp-overview-value">{{ summary().totalRoomsBlocked }}</div>
@@ -51,7 +51,7 @@
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
         <div class="grp-overview-label">
-          <mat-icon>trending_up</mat-icon>
+          <app-icon name="trending_up" />
           {{ 'Avg Pickup' | translate }}
         </div>
         <div class="grp-overview-value">{{ summary().avgPickup }}%</div>
@@ -68,7 +68,7 @@
           class="filter-tab"
           [attr.aria-pressed]="activeFilter() === f.key"
           [class.filter-tab-active]="activeFilter() === f.key"
-          [matTooltip]="f.description"
+          [pTooltip]="f.description"
           (click)="setFilter(f.key)">
           {{ f.label | translate }}
           <span class="counter">{{ filterCounts()[f.key] }}</span>
@@ -82,13 +82,13 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ err }}</span>
       <button class="btn btn-outline" (click)="loadGroups()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredGroups().length === 0) {
     <div class="empty-state">
-      <mat-icon class="empty-icon">groups</mat-icon>
+      <app-icon class="empty-icon" name="groups" />
       @if (groups().length === 0) {
         <p>{{ 'No group bookings found' | translate }}</p>
         <p class="text-muted">{{ 'Create a new group booking to get started.' | translate }}</p>
@@ -104,22 +104,22 @@
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort('group_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('group_name')">{{ 'Group' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('group_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('group_name')">{{ 'Group' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('group_name')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('contact_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('contact_name')">{{ 'Contact' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('contact_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('contact_name')">{{ 'Contact' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('contact_name')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('arrival_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('arrival_date')">{{ 'Arrival' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('arrival_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('arrival_date')">{{ 'Arrival' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('arrival_date')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('departure_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('departure_date')">{{ 'Departure' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('departure_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('departure_date')">{{ 'Departure' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('departure_date')" /></button>
               </th>
               <th>{{ 'Rooms' | translate }}</th>
               <th>{{ 'Pickup' | translate }}</th>
               @if (activeFilter() === 'ALL') {
                 <th [attr.aria-sort]="ariaSort('block_status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('block_status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('block_status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('block_status')">{{ 'Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('block_status')" /></button>
                 </th>
               }
               <th>{{ 'Revenue' | translate }}</th>
@@ -132,7 +132,7 @@
                 <td class="cell-primary">
                   <div class="group-name-cell">
                     @if (groupTypeIcon[grp.group_type.toUpperCase()]; as typeInfo) {
-                      <mat-icon class="grp-type-icon" [matTooltip]="typeInfo.tooltip">{{ typeInfo.icon }}</mat-icon>
+                      <app-icon class="grp-type-icon" [pTooltip]="typeInfo.tooltip" [name]="typeInfo.icon" />
                     }
                     <span class="group-name">{{ grp.group_name }}</span>
                   </div>
@@ -158,7 +158,7 @@
                 </td>
                 @if (activeFilter() === 'ALL') {
                   <td>
-                    <span class="badge" [ngClass]="statusClass(grp.block_status)" [matTooltip]="statusDescription(grp.block_status)">
+                    <span class="badge" [ngClass]="statusClass(grp.block_status)" [pTooltip]="statusDescription(grp.block_status)">
                       {{ grp.block_status_display }}
                     </span>
                   </td>
@@ -171,8 +171,8 @@
                   }
                 </td>
                 <td class="cell-actions">
-                  <button class="btn btn-invisible btn-sm" [matTooltip]="'View details' | translate" [attr.aria-label]="'View group booking details' | translate">
-                    <mat-icon>chevron_right</mat-icon>
+                  <button class="btn btn-invisible btn-sm" [pTooltip]="'View details' | translate" [attr.aria-label]="'View group booking details' | translate">
+                    <app-icon name="chevron_right" />
                   </button>
                 </td>
               </tr>

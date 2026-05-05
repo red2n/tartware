@@ -1,7 +1,7 @@
 <div class="billing-page">
   <app-page-header title="Billing" description="Folios, charges, payments, and invoice management">
-    <button class="btn btn-invisible" (click)="refreshAll()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh billing data' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="refreshAll()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh billing data' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -19,7 +19,7 @@
     <div class="overview-bar">
       <div class="overview-section bill-section-received">
         <div class="overview-label">
-          <mat-icon>account_balance_wallet</mat-icon>
+          <app-icon name="account_balance_wallet" />
           {{ 'Total Received' | translate }}
         </div>
         <div class="overview-value">{{ formatCurrency(summary().totalReceived, summary().currency) }}</div>
@@ -27,7 +27,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section bill-section-outstanding">
         <div class="overview-label">
-          <mat-icon>pending_actions</mat-icon>
+          <app-icon name="pending_actions" />
           {{ 'Outstanding' | translate }}
         </div>
         <div class="overview-value">{{ formatCurrency(summary().outstandingBalance, summary().currency) }}</div>
@@ -35,7 +35,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section" [class.bill-section-alert]="summary().overdueCount > 0">
         <div class="overview-label">
-          <mat-icon>warning</mat-icon>
+          <app-icon name="warning" />
           {{ 'Overdue Invoices' | translate }}
         </div>
         <div class="overview-value">{{ summary().overdueCount }}</div>
@@ -43,7 +43,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section bill-section-folios">
         <div class="overview-label">
-          <mat-icon>folder_open</mat-icon>
+          <app-icon name="folder_open" />
           {{ 'Open Folios' | translate }}
         </div>
         <div class="overview-value">{{ summary().openFolios }}</div>
@@ -56,27 +56,27 @@
   <!-- ═════════════════════════════════════════════ -->
   <div class="view-tabs">
     <button class="view-tab" [class.view-tab-active]="activeView() === 'payments'" (click)="setView('payments')">
-      <mat-icon>credit_card</mat-icon>
+      <app-icon name="credit_card" />
       {{ 'Payments' | translate }}
       <span class="counter">{{ payments().length }}</span>
     </button>
     <button class="view-tab" [class.view-tab-active]="activeView() === 'invoices'" (click)="setView('invoices')">
-      <mat-icon>receipt</mat-icon>
+      <app-icon name="receipt" />
       {{ 'Invoices' | translate }}
       <span class="counter">{{ invoices().length }}</span>
     </button>
     <button class="view-tab" [class.view-tab-active]="activeView() === 'folios'" (click)="setView('folios')">
-      <mat-icon>folder_open</mat-icon>
+      <app-icon name="folder_open" />
       {{ 'Folios' | translate }}
       <span class="counter">{{ folios().length }}</span>
     </button>
     <button class="view-tab" [class.view-tab-active]="activeView() === 'charges'" (click)="setView('charges')">
-      <mat-icon>receipt_long</mat-icon>
+      <app-icon name="receipt_long" />
       {{ 'Charges' | translate }}
       <span class="counter">{{ charges().length }}</span>
     </button>
     <button class="view-tab" [class.view-tab-active]="activeView() === 'routing'" (click)="setView('routing')">
-      <mat-icon>alt_route</mat-icon>
+      <app-icon name="alt_route" />
       {{ 'Routing Rules' | translate }}
       <span class="counter">{{ routingRules().length + routingTemplates().length }}</span>
     </button>
@@ -95,8 +95,8 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCapturePaymentForm()" [matTooltip]="'Capture a payment' | translate">
-        <mat-icon>add</mat-icon> {{ 'Capture Payment' | translate }}
+      <button class="btn btn-primary btn-sm" (click)="toggleCapturePaymentForm()" [pTooltip]="'Capture a payment' | translate">
+        <app-icon name="add" /> {{ 'Capture Payment' | translate }}
       </button>
     </div>
 
@@ -143,7 +143,7 @@
         <div class="form-actions">
           <button class="btn btn-primary btn-sm" (click)="capturePayment()"
                   [disabled]="capturingPayment() || capturePaymentForm().amount <= 0 || !capturePaymentForm().payment_reference">
-            @if (capturingPayment()) { <mat-spinner diameter="16"></mat-spinner> }
+            @if (capturingPayment()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Capture Payment' | translate }}
           </button>
           <button class="btn btn-outline btn-sm" (click)="toggleCapturePaymentForm()">{{ 'Cancel' | translate }}</button>
@@ -153,28 +153,28 @@
 
     @defer (when paymentsReady(); prefetch on idle) {
     @if (paymentsError(); as err) {
-      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadPayments()">{{ 'Retry' | translate }}</button></div>
+      <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadPayments()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredPayments().length === 0) {
-      <div class="empty-state"><mat-icon class="empty-icon">credit_card_off</mat-icon><p>{{ 'No payments found' | translate }}</p></div>
+      <div class="empty-state"><app-icon class="empty-icon" name="credit_card_off" /><p>{{ 'No payments found' | translate }}</p></div>
     } @else {
         <div class="table-container">
           <table class="data-table">
             <thead>
               <tr>
                 <th [attr.aria-sort]="ariaSort(paymentSort, 'payment_reference')">
-                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('payment_reference')">{{ 'Reference' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(paymentSort, 'payment_reference') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('payment_reference')">{{ 'Reference' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(paymentSort, 'payment_reference')" /></button>
                 </th>
                 <th>{{ 'Guest' | translate }}</th>
                 <th>{{ 'Method' | translate }}</th>
                 <th>{{ 'Type' | translate }}</th>
                 <th class="col-right" [attr.aria-sort]="ariaSort(paymentSort, 'amount')">
-                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('amount')">{{ 'Amount' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(paymentSort, 'amount') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('amount')">{{ 'Amount' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(paymentSort, 'amount')" /></button>
                 </th>
                 <th [attr.aria-sort]="ariaSort(paymentSort, 'status')">
-                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(paymentSort, 'status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('status')">{{ 'Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(paymentSort, 'status')" /></button>
                 </th>
                 <th [attr.aria-sort]="ariaSort(paymentSort, 'created_at')">
-                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('created_at')">{{ 'Date' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(paymentSort, 'created_at') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onPaymentSort('created_at')">{{ 'Date' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(paymentSort, 'created_at')" /></button>
                 </th>
                 <th>{{ 'Actions' | translate }}</th>
               </tr>
@@ -196,13 +196,13 @@
                   <td>{{ formatDate(pay.created_at) }}</td>
                   <td class="cell-actions">
                     @if (canVoid(pay)) {
-                      <button class="btn btn-outline btn-xs" (click)="showVoidPayment(pay.id); $event.stopPropagation()" [matTooltip]="'Void this payment' | translate">
-                        <mat-icon>block</mat-icon> {{ 'Void' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showVoidPayment(pay.id); $event.stopPropagation()" [pTooltip]="'Void this payment' | translate">
+                        <app-icon name="block" /> {{ 'Void' | translate }}
                       </button>
                     }
                     @if (canRefund(pay)) {
-                      <button class="btn btn-outline btn-xs" (click)="showRefundPayment(pay); $event.stopPropagation()" [matTooltip]="'Refund this payment' | translate">
-                        <mat-icon>undo</mat-icon> {{ 'Refund' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showRefundPayment(pay); $event.stopPropagation()" [pTooltip]="'Refund this payment' | translate">
+                        <app-icon name="undo" /> {{ 'Refund' | translate }}
                       </button>
                     }
                   </td>
@@ -222,7 +222,7 @@
                         </div>
                         <div class="form-actions">
                           <button class="btn btn-danger btn-sm" (click)="voidPayment(pay)" [disabled]="processingVoid()">
-                            @if (processingVoid()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingVoid()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Void Payment' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelVoidPayment()">{{ 'Cancel' | translate }}</button>
@@ -251,7 +251,7 @@
                         </div>
                         <div class="form-actions">
                           <button class="btn btn-danger btn-sm" (click)="refundPayment(pay)" [disabled]="processingRefund() || refundForm().amount <= 0">
-                            @if (processingRefund()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingRefund()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Submit Refund' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelRefundPayment()">{{ 'Cancel' | translate }}</button>
@@ -322,8 +322,8 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateInvoiceForm()" [matTooltip]="'Create a new invoice' | translate">
-        <mat-icon>add</mat-icon> {{ 'New Invoice' | translate }}
+      <button class="btn btn-primary btn-sm" (click)="toggleCreateInvoiceForm()" [pTooltip]="'Create a new invoice' | translate">
+        <app-icon name="add" /> {{ 'New Invoice' | translate }}
       </button>
     </div>
 
@@ -381,7 +381,7 @@
         <div class="form-actions">
           <button class="btn btn-primary btn-sm" (click)="createInvoice()"
                   [disabled]="creatingInvoice() || !createInvoiceForm().guest_id || createInvoiceForm().total_amount <= 0">
-            @if (creatingInvoice()) { <mat-spinner diameter="16"></mat-spinner> }
+            @if (creatingInvoice()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Invoice' | translate }}
           </button>
           <button class="btn btn-outline btn-sm" (click)="toggleCreateInvoiceForm()">{{ 'Cancel' | translate }}</button>
@@ -391,29 +391,29 @@
 
     @defer (when invoicesReady(); prefetch on idle) {
     @if (invoicesError(); as err) {
-      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
+      <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredInvoices().length === 0) {
-      <div class="empty-state"><mat-icon class="empty-icon">receipt</mat-icon><p>{{ 'No invoices found' | translate }}</p></div>
+      <div class="empty-state"><app-icon class="empty-icon" name="receipt" /><p>{{ 'No invoices found' | translate }}</p></div>
     } @else {
         <div class="table-container">
           <table class="data-table">
             <thead>
               <tr>
                 <th [attr.aria-sort]="ariaSort(invoiceSort, 'invoice_number')">
-                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('invoice_number')">{{ 'Invoice #' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(invoiceSort, 'invoice_number') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('invoice_number')">{{ 'Invoice #' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(invoiceSort, 'invoice_number')" /></button>
                 </th>
                 <th>{{ 'Guest' | translate }}</th>
                 <th>{{ 'Type' | translate }}</th>
                 <th class="col-right" [attr.aria-sort]="ariaSort(invoiceSort, 'total_amount')">
-                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('total_amount')">{{ 'Total' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(invoiceSort, 'total_amount') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('total_amount')">{{ 'Total' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(invoiceSort, 'total_amount')" /></button>
                 </th>
                 <th class="col-right">{{ 'Paid' | translate }}</th>
                 <th class="col-right" [attr.aria-sort]="ariaSort(invoiceSort, 'balance_due')">
-                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('balance_due')">{{ 'Balance' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(invoiceSort, 'balance_due') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('balance_due')">{{ 'Balance' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(invoiceSort, 'balance_due')" /></button>
                 </th>
                 <th>{{ 'Due Date' | translate }}</th>
                 <th [attr.aria-sort]="ariaSort(invoiceSort, 'status')">
-                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(invoiceSort, 'status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onInvoiceSort('status')">{{ 'Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(invoiceSort, 'status')" /></button>
                 </th>
                 <th>{{ 'Actions' | translate }}</th>
               </tr>
@@ -437,24 +437,24 @@
                   <td class="cell-actions">
                     @if (canFinalizeInvoice(inv)) {
                       <button class="btn btn-outline btn-xs" (click)="finalizeInvoice(inv); $event.stopPropagation()"
-                              [disabled]="processingInvoiceAction() === inv.id" [matTooltip]="'Lock invoice from edits' | translate">
-                        @if (processingInvoiceAction() === inv.id) { <mat-spinner diameter="14"></mat-spinner> }
-                        <mat-icon>lock</mat-icon> {{ 'Finalize' | translate }}
+                              [disabled]="processingInvoiceAction() === inv.id" [pTooltip]="'Lock invoice from edits' | translate">
+                        @if (processingInvoiceAction() === inv.id) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
+                        <app-icon name="lock" /> {{ 'Finalize' | translate }}
                       </button>
                     }
                     @if (canVoidInvoice(inv)) {
-                      <button class="btn btn-outline btn-xs" (click)="showVoidInvoice(inv.id); $event.stopPropagation()" [matTooltip]="'Void this draft invoice' | translate">
-                        <mat-icon>block</mat-icon> {{ 'Void' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showVoidInvoice(inv.id); $event.stopPropagation()" [pTooltip]="'Void this draft invoice' | translate">
+                        <app-icon name="block" /> {{ 'Void' | translate }}
                       </button>
                     }
                     @if (canCreditNote(inv)) {
-                      <button class="btn btn-outline btn-xs" (click)="showCreditNote(inv); $event.stopPropagation()" [matTooltip]="'Create credit note' | translate">
-                        <mat-icon>note_add</mat-icon> {{ 'Credit Note' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showCreditNote(inv); $event.stopPropagation()" [pTooltip]="'Create credit note' | translate">
+                        <app-icon name="note_add" /> {{ 'Credit Note' | translate }}
                       </button>
                     }
                     @if (canReopenInvoice(inv)) {
-                      <button class="btn btn-outline btn-xs" (click)="showReopenInvoice(inv.id); $event.stopPropagation()" [matTooltip]="'Reopen invoice for correction' | translate">
-                        <mat-icon>lock_open</mat-icon> {{ 'Reopen' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showReopenInvoice(inv.id); $event.stopPropagation()" [pTooltip]="'Reopen invoice for correction' | translate">
+                        <app-icon name="lock_open" /> {{ 'Reopen' | translate }}
                       </button>
                     }
                   </td>
@@ -474,7 +474,7 @@
                         </div>
                         <div class="form-actions">
                           <button class="btn btn-danger btn-sm" (click)="voidInvoice()" [disabled]="processingInvoiceVoid()">
-                            @if (processingInvoiceVoid()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingInvoiceVoid()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Void Invoice' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelVoidInvoice()">{{ 'Cancel' | translate }}</button>
@@ -504,7 +504,7 @@
                         <div class="form-actions">
                           <button class="btn btn-danger btn-sm" (click)="createCreditNote()"
                                   [disabled]="processingCreditNote() || creditNoteForm().credit_amount <= 0 || creditNoteForm().reason.length < 3">
-                            @if (processingCreditNote()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingCreditNote()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Create Credit Note' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelCreditNote()">{{ 'Cancel' | translate }}</button>
@@ -528,7 +528,7 @@
                         <div class="form-actions">
                           <button class="btn btn-primary btn-sm" (click)="reopenInvoice()"
                                   [disabled]="processingInvoiceReopen() || reopenInvoiceReason().trim().length < 3">
-                            @if (processingInvoiceReopen()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingInvoiceReopen()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Reopen Invoice' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelReopenInvoice()">{{ 'Cancel' | translate }}</button>
@@ -563,8 +563,8 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateFolioForm()" [matTooltip]="'Create standalone folio' | translate">
-        <mat-icon>add</mat-icon> {{ 'New Folio' | translate }}
+      <button class="btn btn-primary btn-sm" (click)="toggleCreateFolioForm()" [pTooltip]="'Create standalone folio' | translate">
+        <app-icon name="add" /> {{ 'New Folio' | translate }}
       </button>
     </div>
 
@@ -594,7 +594,7 @@
         </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm" (click)="createFolio()" [disabled]="creatingFolio()">
-            @if (creatingFolio()) { <mat-spinner diameter="16"></mat-spinner> }
+            @if (creatingFolio()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Folio' | translate }}
           </button>
           <button class="btn btn-outline btn-sm" (click)="toggleCreateFolioForm()">{{ 'Cancel' | translate }}</button>
@@ -604,26 +604,26 @@
 
     @defer (when foliosReady(); prefetch on idle) {
     @if (foliosError(); as err) {
-      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadFolios()">{{ 'Retry' | translate }}</button></div>
+      <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadFolios()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredFolios().length === 0) {
-      <div class="empty-state"><mat-icon class="empty-icon">folder_off</mat-icon><p>{{ 'No folios found' | translate }}</p></div>
+      <div class="empty-state"><app-icon class="empty-icon" name="folder_off" /><p>{{ 'No folios found' | translate }}</p></div>
     } @else {
         <div class="table-container">
           <table class="data-table">
             <thead>
               <tr>
                 <th [attr.aria-sort]="ariaSort(folioSort, 'folio_number')">
-                  <button type="button" class="th-sort-btn" (click)="onFolioSort('folio_number')">{{ 'Folio #' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(folioSort, 'folio_number') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onFolioSort('folio_number')">{{ 'Folio #' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(folioSort, 'folio_number')" /></button>
                 </th>
                 <th>{{ 'Guest / Company' | translate }}</th>
                 <th>{{ 'Type' | translate }}</th>
                 <th class="col-right">{{ 'Charges' | translate }}</th>
                 <th class="col-right">{{ 'Payments' | translate }}</th>
                 <th class="col-right" [attr.aria-sort]="ariaSort(folioSort, 'balance')">
-                  <button type="button" class="th-sort-btn" (click)="onFolioSort('balance')">{{ 'Balance' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(folioSort, 'balance') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onFolioSort('balance')">{{ 'Balance' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(folioSort, 'balance')" /></button>
                 </th>
                 <th [attr.aria-sort]="ariaSort(folioSort, 'folio_status')">
-                  <button type="button" class="th-sort-btn" (click)="onFolioSort('folio_status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(folioSort, 'folio_status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onFolioSort('folio_status')">{{ 'Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(folioSort, 'folio_status')" /></button>
                 </th>
                 <th>{{ 'Opened' | translate }}</th>
                 <th>{{ 'Actions' | translate }}</th>
@@ -655,13 +655,13 @@
                   <td>{{ formatDate(fol.opened_at) }}</td>
                   <td class="cell-actions">
                     @if (canCloseFolio(fol)) {
-                      <button class="btn btn-outline btn-xs" (click)="showCloseFolio(fol.id); $event.stopPropagation()" [matTooltip]="'Close / settle this folio' | translate">
-                        <mat-icon>lock</mat-icon> {{ 'Close' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showCloseFolio(fol.id); $event.stopPropagation()" [pTooltip]="'Close / settle this folio' | translate">
+                        <app-icon name="lock" /> {{ 'Close' | translate }}
                       </button>
                     }
                     @if (canReopenFolio(fol)) {
-                      <button class="btn btn-outline btn-xs" (click)="showReopenFolio(fol.id); $event.stopPropagation()" [matTooltip]="'Reopen folio for additional postings' | translate">
-                        <mat-icon>lock_open</mat-icon> {{ 'Reopen' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showReopenFolio(fol.id); $event.stopPropagation()" [pTooltip]="'Reopen folio for additional postings' | translate">
+                        <app-icon name="lock_open" /> {{ 'Reopen' | translate }}
                       </button>
                     }
                     @if (!canCloseFolio(fol) && !canReopenFolio(fol)) {
@@ -669,7 +669,7 @@
                     }
                   </td>
                   <td class="cell-chevron">
-                    <mat-icon class="chevron-icon" [class.chevron-open]="selectedFolioId() === fol.id">chevron_right</mat-icon>
+                    <app-icon class="chevron-icon" [class.chevron-open]="selectedFolioId() === fol.id" name="chevron_right" />
                   </td>
                 </tr>
                 <!-- Folio detail expansion -->
@@ -681,23 +681,23 @@
                         <div class="form-actions">
                           @if (targetFoliosFor(fol.id).length > 0 && fol.folio_status === 'open') {
                             <button class="btn btn-outline btn-sm" (click)="showMergeFolio(fol.id)">
-                              <mat-icon>merge</mat-icon> {{ 'Merge Folio' | translate }}
+                              <app-icon name="merge" /> {{ 'Merge Folio' | translate }}
                             </button>
                           }
                           @if (fol.reservation_id && fol.folio_status === 'open') {
                             <button class="btn btn-outline btn-sm" (click)="showCreateWindow(fol.id)">
-                              <mat-icon>view_week</mat-icon> {{ 'Create Window' | translate }}
+                              <app-icon name="view_week" /> {{ 'Create Window' | translate }}
                             </button>
                           }
                           @if (fol.folio_status === 'open') {
                             <button class="btn btn-outline btn-sm" (click)="showTaxExemption(fol.id)">
-                              <mat-icon>verified</mat-icon> {{ 'Tax Exemption' | translate }}
+                              <app-icon name="verified" /> {{ 'Tax Exemption' | translate }}
                             </button>
                             <button class="btn btn-outline btn-sm" (click)="showCompPosting(fol.id)">
-                              <mat-icon>local_offer</mat-icon> {{ 'Comp Post' | translate }}
+                              <app-icon name="local_offer" /> {{ 'Comp Post' | translate }}
                             </button>
                             <button class="btn btn-outline btn-sm" (click)="openRoutingCreateForFolio(fol)">
-                              <mat-icon>alt_route</mat-icon> {{ 'Add Routing Rule' | translate }}
+                              <app-icon name="alt_route" /> {{ 'Add Routing Rule' | translate }}
                             </button>
                           }
                         </div>
@@ -710,7 +710,7 @@
                         <div class="folio-routing-summary">
                           <h5>{{ 'Active Routing Rules' | translate }}</h5>
                           @if (selectedFolioRoutingRules().length === 0) {
-                            <div class="empty-state-sm"><mat-icon>alt_route</mat-icon><span>{{ 'No active routing rules for this folio' | translate }}</span></div>
+                            <div class="empty-state-sm"><app-icon name="alt_route" /><span>{{ 'No active routing rules for this folio' | translate }}</span></div>
                           } @else {
                             <div class="rule-chip-list">
                               @for (rule of selectedFolioRoutingRules(); track rule.rule_id) {
@@ -737,7 +737,7 @@
                             }
                           </div>
                         } @else if (folioCharges().length === 0) {
-                          <div class="empty-state-sm"><mat-icon>receipt_long</mat-icon><span>{{ 'No transactions on this folio' | translate }}</span></div>
+                          <div class="empty-state-sm"><app-icon name="receipt_long" /><span>{{ 'No transactions on this folio' | translate }}</span></div>
                         } @else {
                           <table class="data-table data-table-nested">
                             <thead>
@@ -763,7 +763,7 @@
                                       <span class="badge badge-danger">{{ 'Voided' | translate }}</span>
                                     } @else if (chg.transaction_type === 'charge' && targetFoliosFor(fol.id).length > 0 && chg.total_amount > 0) {
                                       <button class="btn btn-outline btn-xs" (click)="showSplitCharge(chg)">
-                                        <mat-icon>call_split</mat-icon> {{ 'Split' | translate }}
+                                        <app-icon name="call_split" /> {{ 'Split' | translate }}
                                       </button>
                                     }
                                   </td>
@@ -800,7 +800,7 @@
                                         <div class="form-actions">
                                           <button class="btn btn-primary btn-sm" (click)="splitCharge(chg)"
                                                   [disabled]="processingChargeSplit() || !splitChargeForm().target_folio_id || splitChargeForm().amount <= 0 || splitChargeForm().amount >= chg.total_amount">
-                                            @if (processingChargeSplit()) { <mat-spinner diameter="16"></mat-spinner> }
+                                            @if (processingChargeSplit()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                                             {{ 'Split Charge' | translate }}
                                           </button>
                                           <button class="btn btn-outline btn-sm" (click)="cancelSplitCharge()">{{ 'Cancel' | translate }}</button>
@@ -843,7 +843,7 @@
                         <div class="form-actions">
                           <button class="btn btn-danger btn-sm" (click)="closeFolio(fol)"
                                   [disabled]="processingFolioClose() || (fol.balance > 0 && !closeFolioForce())">
-                            @if (processingFolioClose()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingFolioClose()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Close Folio' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelCloseFolio()">{{ 'Cancel' | translate }}</button>
@@ -867,7 +867,7 @@
                         <div class="form-actions">
                           <button class="btn btn-primary btn-sm" (click)="reopenFolio(fol)"
                                   [disabled]="processingFolioReopen() || reopenFolioReason().trim().length < 3">
-                            @if (processingFolioReopen()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingFolioReopen()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Reopen Folio' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelReopenFolio()">{{ 'Cancel' | translate }}</button>
@@ -902,7 +902,7 @@
                         <div class="form-actions">
                           <button class="btn btn-primary btn-sm" (click)="mergeFolio(fol)"
                                   [disabled]="processingFolioMerge() || !mergeFolioForm().target_folio_id || mergeFolioForm().reason.trim().length < 3">
-                            @if (processingFolioMerge()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingFolioMerge()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Merge Folios' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelMergeFolio()">{{ 'Cancel' | translate }}</button>
@@ -948,7 +948,7 @@
                         <div class="form-actions">
                           <button class="btn btn-primary btn-sm" (click)="createFolioWindow(fol)"
                                   [disabled]="processingFolioWindow() || !folioWindowForm().window_start || !folioWindowForm().window_end || !folioWindowForm().billed_to.trim()">
-                            @if (processingFolioWindow()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingFolioWindow()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Create Window' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelCreateWindow()">{{ 'Cancel' | translate }}</button>
@@ -988,7 +988,7 @@
                         <div class="form-actions">
                           <button class="btn btn-primary btn-sm" (click)="applyTaxExemption(fol)"
                                   [disabled]="processingTaxExemption() || !taxExemptionForm().exemption_certificate.trim()">
-                            @if (processingTaxExemption()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingTaxExemption()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Apply Exemption' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelTaxExemption()">{{ 'Cancel' | translate }}</button>
@@ -1028,7 +1028,7 @@
                         <div class="form-actions">
                           <button class="btn btn-primary btn-sm" (click)="postCompCharge(fol)"
                                   [disabled]="processingCompPosting() || compPostingForm().amount <= 0">
-                            @if (processingCompPosting()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingCompPosting()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Post Comp' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelCompPosting()">{{ 'Cancel' | translate }}</button>
@@ -1099,8 +1099,8 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()" [matTooltip]="'Post a charge to a folio' | translate">
-        <mat-icon>add</mat-icon> {{ 'Post Charge' | translate }}
+      <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()" [pTooltip]="'Post a charge to a folio' | translate">
+        <app-icon name="add" /> {{ 'Post Charge' | translate }}
       </button>
     </div>
 
@@ -1152,7 +1152,7 @@
         <div class="form-actions">
           <button class="btn btn-primary btn-sm" (click)="postCharge()"
                   [disabled]="postingCharge() || !postChargeForm().folio_id || postChargeForm().amount <= 0">
-            @if (postingCharge()) { <mat-spinner diameter="16"></mat-spinner> }
+            @if (postingCharge()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Post Charge' | translate }}
           </button>
           <button class="btn btn-outline btn-sm" (click)="togglePostChargeForm()">{{ 'Cancel' | translate }}</button>
@@ -1162,26 +1162,26 @@
 
     @defer (when chargesReady(); prefetch on idle) {
     @if (chargesError(); as err) {
-      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadCharges()">{{ 'Retry' | translate }}</button></div>
+      <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadCharges()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredCharges().length === 0) {
-      <div class="empty-state"><mat-icon class="empty-icon">receipt_long</mat-icon><p>{{ 'No charges found' | translate }}</p></div>
+      <div class="empty-state"><app-icon class="empty-icon" name="receipt_long" /><p>{{ 'No charges found' | translate }}</p></div>
     } @else {
         <div class="table-container">
           <table class="data-table">
             <thead>
               <tr>
                 <th [attr.aria-sort]="ariaSort(chargeSort, 'posting_date')">
-                  <button type="button" class="th-sort-btn" (click)="onChargeSort('posting_date')">{{ 'Date' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(chargeSort, 'posting_date') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onChargeSort('posting_date')">{{ 'Date' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(chargeSort, 'posting_date')" /></button>
                 </th>
                 <th>{{ 'Folio' | translate }}</th>
                 <th>{{ 'Guest' | translate }}</th>
                 <th [attr.aria-sort]="ariaSort(chargeSort, 'charge_code')">
-                  <button type="button" class="th-sort-btn" (click)="onChargeSort('charge_code')">{{ 'Code' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(chargeSort, 'charge_code') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onChargeSort('charge_code')">{{ 'Code' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(chargeSort, 'charge_code')" /></button>
                 </th>
                 <th>{{ 'Description' | translate }}</th>
                 <th>{{ 'Type' | translate }}</th>
                 <th class="col-right" [attr.aria-sort]="ariaSort(chargeSort, 'total_amount')">
-                  <button type="button" class="th-sort-btn" (click)="onChargeSort('total_amount')">{{ 'Amount' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(chargeSort, 'total_amount') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onChargeSort('total_amount')">{{ 'Amount' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(chargeSort, 'total_amount')" /></button>
                 </th>
                 <th class="cell-actions"></th>
               </tr>
@@ -1198,10 +1198,10 @@
                   <td class="col-right cell-amount">{{ formatCurrency(chg.total_amount, chg.currency) }}</td>
                   <td class="cell-actions">
                     @if (chg.is_voided) {
-                      <span class="badge badge-danger" [matTooltip]="chg.void_reason ?? ''">{{ 'Voided' | translate }}</span>
+                      <span class="badge badge-danger" [pTooltip]="chg.void_reason ?? ''">{{ 'Voided' | translate }}</span>
                     } @else if (canVoidCharge(chg)) {
-                      <button class="btn btn-outline btn-xs" (click)="showVoidCharge(chg.id); $event.stopPropagation()" [matTooltip]="'Void this charge' | translate">
-                        <mat-icon>block</mat-icon> {{ 'Void' | translate }}
+                      <button class="btn btn-outline btn-xs" (click)="showVoidCharge(chg.id); $event.stopPropagation()" [pTooltip]="'Void this charge' | translate">
+                        <app-icon name="block" /> {{ 'Void' | translate }}
                       </button>
                     }
                   </td>
@@ -1221,7 +1221,7 @@
                         </div>
                         <div class="form-actions">
                           <button class="btn btn-danger btn-sm" (click)="voidCharge(chg)" [disabled]="processingChargeVoid()">
-                            @if (processingChargeVoid()) { <mat-spinner diameter="16"></mat-spinner> }
+                            @if (processingChargeVoid()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Void Charge' | translate }}
                           </button>
                           <button class="btn btn-outline btn-sm" (click)="cancelVoidCharge()">{{ 'Cancel' | translate }}</button>
@@ -1283,7 +1283,7 @@
     <div class="filter-bar filter-bar-with-action">
       <div class="text-subtle">{{ 'Active rules and reusable templates for folio routing.' | translate }}</div>
       <button class="btn btn-primary btn-sm" (click)="toggleCreateRoutingRuleForm()">
-        <mat-icon>add</mat-icon> {{ 'New Routing Rule' | translate }}
+        <app-icon name="add" /> {{ 'New Routing Rule' | translate }}
       </button>
     </div>
 
@@ -1383,7 +1383,7 @@
         <div class="form-actions">
           <button class="btn btn-primary btn-sm" (click)="createRoutingRule()"
                   [disabled]="creatingRoutingRule() || !createRoutingRuleForm().rule_name.trim()">
-            @if (creatingRoutingRule()) { <mat-spinner diameter="16"></mat-spinner> }
+            @if (creatingRoutingRule()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Rule' | translate }}
           </button>
           <button class="btn btn-outline btn-sm" (click)="toggleCreateRoutingRuleForm()">{{ 'Cancel' | translate }}</button>
@@ -1407,23 +1407,23 @@
         }
       </div>
     } @else if (routingError(); as err) {
-      <div class="error-state"><mat-icon class="error-icon">error_outline</mat-icon><span>{{ err }}</span><button class="btn btn-outline" (click)="loadRouting()">{{ 'Retry' | translate }}</button></div>
+      <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadRouting()">{{ 'Retry' | translate }}</button></div>
     } @else if (filteredRoutingRules().length === 0) {
-      <div class="empty-state"><mat-icon class="empty-icon">alt_route</mat-icon><p>{{ 'No routing rules found' | translate }}</p></div>
+      <div class="empty-state"><app-icon class="empty-icon" name="alt_route" /><p>{{ 'No routing rules found' | translate }}</p></div>
     } @else {
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort(routingSort, 'rule_name')">
-                <button type="button" class="th-sort-btn" (click)="onRoutingSort('rule_name')">{{ 'Rule' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(routingSort, 'rule_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onRoutingSort('rule_name')">{{ 'Rule' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(routingSort, 'rule_name')" /></button>
               </th>
               <th>{{ 'Mode' | translate }}</th>
               <th>{{ 'Source' | translate }}</th>
               <th>{{ 'Destination' | translate }}</th>
               <th>{{ 'Pattern' | translate }}</th>
               <th [attr.aria-sort]="ariaSort(routingSort, 'priority')">
-                <button type="button" class="th-sort-btn" (click)="onRoutingSort('priority')">{{ 'Priority' | translate }} <mat-icon class="sort-indicator">{{ sortIcon(routingSort, 'priority') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onRoutingSort('priority')">{{ 'Priority' | translate }} <app-icon class="sort-indicator" [name]="sortIcon(routingSort, 'priority')" /></button>
               </th>
               <th>{{ 'Status' | translate }}</th>
               <th>{{ 'Actions' | translate }}</th>
@@ -1447,16 +1447,16 @@
                 <td class="cell-actions">
                   @if (!rule.is_template) {
                     <button class="btn btn-outline btn-xs" (click)="startEditRoutingRule(rule)">
-                      <mat-icon>edit</mat-icon> {{ 'Edit' | translate }}
+                      <app-icon name="edit" /> {{ 'Edit' | translate }}
                     </button>
                   }
                   @if (rule.is_template) {
                     <button class="btn btn-outline btn-xs" (click)="showCloneTemplate(rule.rule_id)">
-                      <mat-icon>content_copy</mat-icon> {{ 'Clone' | translate }}
+                      <app-icon name="content_copy" /> {{ 'Clone' | translate }}
                     </button>
                   }
                   <button class="btn btn-outline btn-xs" (click)="showDeleteRoutingRule(rule.rule_id)">
-                    <mat-icon>delete</mat-icon> {{ 'Delete' | translate }}
+                    <app-icon name="delete" /> {{ 'Delete' | translate }}
                   </button>
                 </td>
               </tr>
@@ -1494,7 +1494,7 @@
                       </div>
                       <div class="form-actions">
                         <button class="btn btn-primary btn-sm" (click)="saveRoutingRule(rule)" [disabled]="editingRoutingRule()">
-                          @if (editingRoutingRule()) { <mat-spinner diameter="16"></mat-spinner> }
+                          @if (editingRoutingRule()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                           {{ 'Save' | translate }}
                         </button>
                         <button class="btn btn-outline btn-sm" (click)="cancelEditRoutingRule()">{{ 'Cancel' | translate }}</button>
@@ -1510,7 +1510,7 @@
                       <span class="form-label">{{ 'Delete routing rule?' | translate }} {{ rule.rule_name }}</span>
                       <div class="form-actions">
                         <button class="btn btn-danger btn-sm" (click)="deleteRoutingRule(rule)" [disabled]="deletingRoutingRule()">
-                          @if (deletingRoutingRule()) { <mat-spinner diameter="16"></mat-spinner> }
+                          @if (deletingRoutingRule()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                           {{ 'Delete' | translate }}
                         </button>
                         <button class="btn btn-outline btn-sm" (click)="cancelDeleteRoutingRule()">{{ 'Cancel' | translate }}</button>
@@ -1549,7 +1549,7 @@
                       <div class="form-actions">
                         <button class="btn btn-primary btn-sm" (click)="cloneTemplate(rule)"
                                 [disabled]="cloningTemplate() || !cloneTemplateForm().source_folio_id || !cloneTemplateForm().destination_folio_id">
-                          @if (cloningTemplate()) { <mat-spinner diameter="16"></mat-spinner> }
+                          @if (cloningTemplate()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                           {{ 'Clone Template' | translate }}
                         </button>
                         <button class="btn btn-outline btn-sm" (click)="cancelCloneTemplate()">{{ 'Cancel' | translate }}</button>

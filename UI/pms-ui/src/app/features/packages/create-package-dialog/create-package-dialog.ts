@@ -1,8 +1,8 @@
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type { CreatePackageBody } from "@tartware/schemas";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -12,7 +12,7 @@ import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 @Component({
 	selector: "app-create-package-dialog",
 	standalone: true,
-	imports: [FormsModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslatePipe],
+	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./create-package-dialog.html",
 	styleUrl: "./create-package-dialog.scss",
 })
@@ -20,7 +20,7 @@ export class CreatePackageDialogComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialogRef = inject(MatDialogRef<CreatePackageDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);

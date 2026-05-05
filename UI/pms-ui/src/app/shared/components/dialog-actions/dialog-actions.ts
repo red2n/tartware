@@ -1,28 +1,27 @@
 import { Component, input, output } from "@angular/core";
-import { MatDialogActions } from "@angular/material/dialog";
-import { MatProgressSpinner } from "@angular/material/progress-spinner";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 
 @Component({
 	selector: "app-dialog-actions",
 	standalone: true,
-	imports: [MatDialogActions, MatProgressSpinner, TranslatePipe],
+	imports: [ProgressSpinnerModule, TranslatePipe],
 	template: `
-    <mat-dialog-actions align="end">
+    <div class="dialog-actions">
       <button class="btn btn-outline" (click)="cancel.emit()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
       <button
         class="btn btn-primary"
         [disabled]="!valid() || saving()"
         (click)="save.emit()">
         @if (saving()) {
-          <mat-spinner diameter="16" />
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ savingLabel() | translate }}
         } @else {
           {{ saveLabel() | translate }}
         }
       </button>
-    </mat-dialog-actions>
+    </div>
   `,
 })
 export class DialogActionsComponent {

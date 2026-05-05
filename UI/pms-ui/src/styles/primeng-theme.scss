@@ -1,0 +1,211 @@
+/* =====================================================
+ * PrimeNG theme overrides
+ * Maps PrimeNG design tokens → existing Primer/app tokens.
+ * PrimeNG picks these up automatically in light and dark mode
+ * because our dark-mode selector is [data-theme="dark"] —
+ * the same selector we pass to providePrimeNG().
+ * ===================================================== */
+
+/* ── Surface + text ── */
+:root {
+  --p-surface-card:               var(--bgColor-muted);
+  --p-surface-hover:              var(--bgColor-subtle);
+  --p-surface-border:             var(--borderColor-default);
+  --p-text-color:                 var(--fgColor-default);
+  --p-text-muted-color:           var(--fgColor-muted);
+
+  /* ── Primary — OpenSea blue ── */
+  --p-primary-color:              #2081e2;
+  --p-primary-hover-color:        #1a6ecf;
+  --p-primary-active-color:       #1558a8;
+  --p-primary-contrast-color:     #ffffff;
+
+  /* ── Border radius — matches existing tokens.css ── */
+  --p-border-radius-sm:           var(--borderRadius-small,   6px);
+  --p-border-radius-md:           var(--borderRadius-medium, 10px);
+  --p-border-radius-lg:           var(--borderRadius-large,  14px);
+  --p-border-radius-xl:           var(--borderRadius-large,  14px);
+
+  /* ── Focus ring (GitHub-style) ── */
+  --p-focus-ring-color:           var(--borderColor-accent-emphasis);
+  --p-focus-ring-width:           2px;
+  --p-focus-ring-style:           solid;
+  --p-focus-ring-offset:          2px;
+
+  /* ── Input fields ── */
+  --p-inputtext-background:       var(--bgColor-default);
+  --p-inputtext-border-color:     var(--borderColor-default);
+  --p-inputtext-hover-border-color: var(--borderColor-accent-muted);
+  --p-inputtext-focus-border-color: var(--bgColor-accent-emphasis);
+  --p-inputtext-color:            var(--fgColor-default);
+  --p-inputtext-placeholder-color: var(--fgColor-muted);
+  --p-inputtext-border-radius:    var(--borderRadius-medium, 10px);
+
+  /* ── Overlay / panel backgrounds ── */
+  --p-overlay-modal-background:   var(--overlay-bgColor, var(--bgColor-default));
+  --p-overlay-modal-border-color: var(--borderColor-default);
+  --p-overlay-modal-border-radius: 16px;
+  --p-overlay-modal-shadow:       var(--shadow-floating-large);
+  --p-overlay-popover-background: var(--overlay-bgColor, var(--bgColor-default));
+  --p-overlay-popover-border-color: var(--borderColor-default);
+  --p-overlay-popover-shadow:     var(--shadow-floating-medium);
+
+  /* ── Tooltip ── */
+  --p-tooltip-background:         var(--bgColor-muted);
+  --p-tooltip-color:              var(--fgColor-default);
+  --p-tooltip-border-radius:      var(--borderRadius-small, 6px);
+
+  /* ── Progress spinner ── */
+  --p-progressspinner-color-1:    #2081e2;
+  --p-progressspinner-color-2:    #7b3fe4;
+  --p-progressspinner-color-3:    #2081e2;
+  --p-progressspinner-color-4:    #7b3fe4;
+}
+
+/* ── Primary button — OpenSea gradient ── */
+.p-button-primary.p-button,
+.p-button.p-button-primary {
+  background: linear-gradient(135deg, #2081e2 0%, #7b3fe4 100%);
+  border-color: transparent;
+  font-weight: var(--base-text-weight-semibold);
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px #2081e240;
+  transition: opacity 150ms ease, box-shadow 150ms ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    box-shadow: 0 6px 20px #2081e266;
+    background: linear-gradient(135deg, #2081e2 0%, #7b3fe4 100%);
+    border-color: transparent;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+/* ── Dialog ── */
+.p-dialog {
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--borderColor-default) !important;
+
+  .p-dialog-header {
+    background: var(--overlay-bgColor, var(--bgColor-default));
+    border-bottom: 1px solid var(--borderColor-muted);
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .p-dialog-content {
+    background: var(--overlay-bgColor, var(--bgColor-default));
+    color: var(--fgColor-default);
+  }
+
+  .p-dialog-footer {
+    background: var(--overlay-bgColor, var(--bgColor-default));
+    border-top: 1px solid var(--borderColor-muted);
+    border-radius: 0 0 16px 16px;
+    padding: var(--base-size-16) var(--base-size-24) var(--base-size-24);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--base-size-12);
+  }
+}
+
+/* ── Menu / dropdown ── */
+.p-menu,
+.p-tieredmenu {
+  background: var(--overlay-bgColor, var(--bgColor-default)) !important;
+  border: 1px solid var(--borderColor-default);
+  box-shadow: var(--shadow-floating-medium);
+  border-radius: var(--borderRadius-medium, 10px);
+
+  .p-menuitem-link {
+    color: var(--fgColor-default);
+
+    &:hover {
+      background: var(--bgColor-muted) !important;
+    }
+
+    &:focus {
+      outline: none;
+      background: var(--bgColor-muted) !important;
+    }
+  }
+}
+
+/* ── Toggle switch ── */
+.p-toggleswitch {
+  --p-toggleswitch-checked-background: #2081e2;
+}
+
+/* ── Progress spinner size helpers ── */
+.p-progressspinner-sm {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.p-progressspinner-md {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
+/* ── Popover — menu item buttons ── */
+/*
+ * PrimeNG p-popover provides the container (border, shadow, bg) via CSS tokens.
+ * The inner <button> elements are raw HTML — we style them here as menu items.
+ */
+.p-popover {
+  padding: 4px 0;
+  min-width: 180px;
+
+  /* Raw buttons used as menu items */
+  button:not([class]),
+  button.active-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 14px;
+    border: none;
+    background: transparent;
+    color: var(--fgColor-default);
+    font-size: var(--base-text-size-sm);
+    font-family: inherit;
+    line-height: var(--base-text-lineHeight-normal);
+    text-align: left;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 100ms ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--bgColor-neutral-muted);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--fgColor-accent);
+      outline-offset: -2px;
+    }
+  }
+
+  button.active-menu-item {
+    font-weight: var(--base-text-weight-semibold);
+    background: var(--bgColor-accent-muted);
+  }
+
+  /* Non-interactive header row */
+  .user-menu-header {
+    cursor: default;
+    &:hover { background: transparent; }
+  }
+
+  /* Divider inside popover */
+  hr,
+  .menu-divider {
+    margin: 4px 0;
+    border: none;
+    border-top: 1px solid var(--borderColor-muted);
+  }
+}

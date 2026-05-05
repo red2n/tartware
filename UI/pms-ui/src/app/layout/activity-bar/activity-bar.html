@@ -3,10 +3,10 @@
     @for (item of primaryNavItems(); track item.label) {
       <button class="activity-bar-item"
               [class.active]="isActive(item)"
-              [matTooltip]="item.label | translate"
-              matTooltipPosition="right"
+              [pTooltip]="item.label | translate"
+              tooltipPosition="right"
               (click)="onItemClick(item)">
-        <mat-icon>{{ item.icon }}</mat-icon>
+        <app-icon [name]="item.icon" />
       </button>
     }
   </nav>
@@ -15,10 +15,10 @@
     @for (item of secondaryNavItems(); track item.label) {
       <button class="activity-bar-item"
               [class.active]="isActive(item)"
-              [matTooltip]="item.label | translate"
-              matTooltipPosition="right"
+              [pTooltip]="item.label | translate"
+              tooltipPosition="right"
               (click)="onItemClick(item)">
-        <mat-icon>{{ item.icon }}</mat-icon>
+        <app-icon [name]="item.icon" />
       </button>
     }
   </nav>

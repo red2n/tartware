@@ -266,7 +266,7 @@
 }
 
 .step-duration {
-  font-weight: normal;
+  font-weight: var(--base-text-weight-normal);
   color: var(--fgColor-muted);
   font-size: var(--base-text-size-xs);
 }

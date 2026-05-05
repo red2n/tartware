@@ -2,10 +2,10 @@
   <div class="toast-container" role="status" aria-live="polite">
     @for (t of toast.toasts(); track t.id) {
       <div class="toast" [class.toast-success]="t.type === 'success'" [class.toast-error]="t.type === 'error'">
-        <mat-icon class="toast-icon">{{ t.type === 'success' ? 'check_circle' : 'error_outline' }}</mat-icon>
+        <app-icon class="toast-icon" [name]="t.type === 'success' ? 'check_circle' : 'error_outline'" />
         <span class="toast-message">{{ t.message }}</span>
         <button class="toast-dismiss" (click)="toast.dismiss(t.id)" [attr.aria-label]="'Dismiss' | translate">
-          <mat-icon>close</mat-icon>
+          <app-icon name="close" />
         </button>
       </div>
     }

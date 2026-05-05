@@ -1,8 +1,7 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 
 import type { LedgerEntryListItem, LedgerEntryListResponse } from "@tartware/schemas";
 
@@ -30,9 +29,8 @@ type BatchStatusFilter = "ALL" | "open" | "review" | "posted" | "error";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatTooltipModule,
+		IconComponent,
+		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
 	],

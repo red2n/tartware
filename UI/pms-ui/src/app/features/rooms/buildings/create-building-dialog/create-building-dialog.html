@@ -1,9 +1,9 @@
-<h2 mat-dialog-title>
-  <mat-icon class="dialog-title-icon">domain</mat-icon>
+<h2 class="dialog-title">
+  <app-icon class="dialog-title-icon" name="domain" />
   {{ isEditMode ? ('Edit Building' | translate) : ('New Building' | translate) }}
 </h2>
 
-<mat-dialog-content>
+<div class="dialog-content">
   <div class="form-fields">
     <!-- Basic Info -->
     <section class="form-section">
@@ -210,7 +210,7 @@
       }
     </section>
   </div>
-</mat-dialog-content>
+</div>
 
 <app-dialog-actions
   [saving]="saving()"

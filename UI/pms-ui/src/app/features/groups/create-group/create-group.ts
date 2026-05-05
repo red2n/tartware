@@ -1,7 +1,7 @@
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Router, RouterLink } from "@angular/router";
 
 import { GroupBlockStatusDescriptions } from "@tartware/schemas";
@@ -15,7 +15,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 @Component({
 	selector: "app-create-group",
 	standalone: true,
-	imports: [FormsModule, RouterLink, MatIconModule, MatProgressSpinnerModule, TranslatePipe],
+	imports: [FormsModule, RouterLink, IconComponent, ProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./create-group.html",
 	styleUrl: "./create-group.scss",
 })

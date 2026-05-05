@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output } from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -10,7 +10,7 @@ import { filterNavByAllowedScreens, PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS } fro
 @Component({
 	selector: "app-activity-bar",
 	standalone: true,
-	imports: [MatIconModule, MatTooltipModule, TranslatePipe],
+	imports: [IconComponent, TooltipModule, TranslatePipe],
 	templateUrl: "./activity-bar.html",
 	styleUrl: "./activity-bar.scss",
 })

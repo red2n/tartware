@@ -1,6 +1,6 @@
-<h2 mat-dialog-title>{{ 'Select Property' | translate }}</h2>
+<h2 class="dialog-title">{{ 'Select Property' | translate }}</h2>
 
-<mat-dialog-content>
+<div class="dialog-content">
   @if (data.tenantName) {
     <p class="text-subtle mb-4">{{ 'Choose a property for' | translate }} <strong>{{ data.tenantName }}</strong></p>
   }
@@ -9,13 +9,13 @@
     @for (p of data.properties; track p.id) {
       <button class="card flex items-center gap-3 cursor-pointer transition-colors hover:border-[var(--bgColor-accent-emphasis)] hover:bg-[var(--bgColor-accent-muted)]"
         (click)="select(p)">
-        <mat-icon class="text-[var(--fgColor-accent)] shrink-0">apartment</mat-icon>
+        <app-icon class="text-[var(--fgColor-accent)] shrink-0" name="apartment" />
         <div class="flex-1 flex flex-col gap-0.5 text-left">
           <span class="font-semibold text-sm">{{ p.property_name }}</span>
           <span class="text-xs text-[var(--fgColor-muted)] font-mono">{{ p.property_code }}</span>
         </div>
-        <mat-icon class="text-[var(--fgColor-muted)] shrink-0 text-xl">chevron_right</mat-icon>
+        <app-icon class="text-[var(--fgColor-muted)] shrink-0 text-xl" name="chevron_right" />
       </button>
     }
   </div>
-</mat-dialog-content>
+</div>

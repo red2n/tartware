@@ -1,9 +1,9 @@
-<h2 mat-dialog-title class="dialog-title">
-	<mat-icon class="dialog-title-icon">card_giftcard</mat-icon>
+<h2 class="dialog-title">
+	<app-icon class="dialog-title-icon" name="card_giftcard" />
 	{{ 'Create Package' | translate }}
 </h2>
 
-<mat-dialog-content>
+<div class="dialog-content">
 	@if (error()) {
 		<div class="error-banner">{{ error() }}</div>
 	}
@@ -182,15 +182,15 @@
 			</div>
 		</div>
 	</div>
-</mat-dialog-content>
+</div>
 
-<mat-dialog-actions align="end">
+<div class="dialog-actions">
 	<button class="btn btn-text" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
 	<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
 		@if (saving()) {
-			<mat-spinner diameter="18"></mat-spinner>
+			<p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
 		} @else {
 			{{ 'Create Package' | translate }}
 		}
 	</button>
-</mat-dialog-actions>
+</div>

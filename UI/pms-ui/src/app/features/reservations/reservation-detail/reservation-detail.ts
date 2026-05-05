@@ -1,9 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
 import type {
@@ -49,9 +49,9 @@ const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED", "CHE
 		NgClass,
 		FormsModule,
 		RouterLink,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		PaginationComponent,
 		TranslatePipe,
 	],

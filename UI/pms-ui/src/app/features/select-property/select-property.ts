@@ -1,11 +1,9 @@
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatIconModule } from "@angular/material/icon";
-import { MatInputModule } from "@angular/material/input";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
@@ -20,12 +18,11 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatFormFieldModule,
-		MatInputModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		InputTextModule,
+		InputTextModule,
+		ProgressSpinnerModule,
 		TranslatePipe,
 	],
 	templateUrl: "./select-property.html",
@@ -35,7 +32,7 @@ export class SelectPropertyComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 
 	readonly properties = this.ctx.properties;
 	readonly loading = this.ctx.loading;
@@ -80,9 +77,9 @@ export class SelectPropertyComponent {
 			({ CreatePropertyDialogComponent }) => {
 				const ref = this.dialog.open(CreatePropertyDialogComponent, {
 					width: "600px",
-					disableClose: true,
+					closable: false,
 				});
-				ref.afterClosed().subscribe((created: boolean) => {
+				ref!.onClose.subscribe((created: boolean) => {
 					if (created) {
 						this.ctx.fetchProperties();
 					}

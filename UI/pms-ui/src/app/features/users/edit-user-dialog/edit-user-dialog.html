@@ -1,9 +1,9 @@
-<h2 mat-dialog-title>
-  <mat-icon class="dialog-title-icon">manage_accounts</mat-icon>
+<h2 class="dialog-title">
+  <app-icon class="dialog-title-icon" name="manage_accounts" />
   {{ 'Edit User' | translate }}
 </h2>
 
-<mat-dialog-content>
+<div class="dialog-content">
   <div class="form-fields">
     <!-- User info (read-only) -->
     <section class="form-section">
@@ -68,25 +68,25 @@
           (click)="resetPassword()"
           [disabled]="saving()">
           @if (saving()) {
-            <mat-spinner diameter="14"></mat-spinner>
+            <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
           } @else {
-            <mat-icon>lock_reset</mat-icon>
+            <app-icon name="lock_reset" />
           }
           {{ 'Reset Password' | translate }}
         </button>
       </div>
     </section>
   </div>
-</mat-dialog-content>
+</div>
 
-<mat-dialog-actions align="end">
+<div class="dialog-actions">
   <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
   <button class="btn btn-primary" (click)="save()" [disabled]="!hasChanges || saving()">
     @if (saving()) {
-      <mat-spinner diameter="16"></mat-spinner>
+      <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
     } @else {
-      <mat-icon>save</mat-icon>
+      <app-icon name="save" />
     }
     {{ 'Save Changes' | translate }}
   </button>
-</mat-dialog-actions>
+</div>

@@ -8,16 +8,16 @@
     <!-- Header -->
     <div class="dashboard-header">
       <div class="dashboard-title-area">
-        <mat-icon class="dashboard-title-icon">dns</mat-icon>
+        <app-icon class="dashboard-title-icon" name="dns" />
         <h2 class="dashboard-title">{{ 'Service Dashboard' | translate }}</h2>
         <span class="dashboard-counter">{{ summary().total }} {{ 'services' | translate }}</span>
       </div>
       <div class="dashboard-actions">
-        <button class="btn btn-invisible btn-sm" (click)="refresh()" [matTooltip]="'Refresh' | translate">
-          <mat-icon [class.spin]="loading()">refresh</mat-icon>
+        <button class="btn btn-invisible btn-sm" (click)="refresh()" [pTooltip]="'Refresh' | translate" tooltipPosition="bottom">
+          <app-icon [class.spin]="loading()" name="refresh" />
         </button>
-        <button class="btn btn-invisible btn-sm" (click)="close.emit()" [matTooltip]="'Close' | translate" [attr.aria-label]="'Close dashboard' | translate">
-          <mat-icon>close</mat-icon>
+        <button class="btn btn-invisible btn-sm" (click)="close.emit()" [pTooltip]="'Close' | translate" tooltipPosition="bottom" [attr.aria-label]="'Close dashboard' | translate">
+          <app-icon name="close" />
         </button>
       </div>
     </div>
@@ -40,7 +40,7 @@
 
     @if (error()) {
       <div class="dashboard-error">
-        <mat-icon>cloud_off</mat-icon>
+        <app-icon name="cloud_off" />
         <span>{{ error() }}</span>
         <button class="btn btn-outline btn-sm" (click)="refresh()">{{ 'Retry' | translate }}</button>
       </div>
@@ -52,12 +52,12 @@
         @if (downServices().length > 0) {
         <div class="service-group">
           <h3 class="service-group-title service-group-danger">
-            <mat-icon class="group-icon">error</mat-icon>
+            <app-icon class="group-icon" name="error" />
             {{ 'Down' | translate }} ({{ downServices().length }})
           </h3>
           @for (svc of downServices(); track svc.instanceId) {
             <div class="service-row service-row-down">
-              <div class="service-status-dot service-dot-down" [matTooltip]="'DOWN' | translate"></div>
+              <div class="service-status-dot service-dot-down" [pTooltip]="'DOWN' | translate" tooltipPosition="top"></div>
               <div class="service-info">
                 <div class="service-name-row">
                   <span class="service-name">{{ displayName(svc) }}</span>
@@ -72,7 +72,7 @@
                 </span>
               </div>
               <div class="service-heartbeat">
-                <mat-icon class="heartbeat-icon">schedule</mat-icon>
+                <app-icon class="heartbeat-icon" name="schedule" />
                 <span>{{ relativeTime(svc.lastHeartbeat) }}</span>
               </div>
             </div>
@@ -83,12 +83,12 @@
       @if (upServices().length > 0) {
         <div class="service-group">
           <h3 class="service-group-title service-group-success">
-            <mat-icon class="group-icon">check_circle</mat-icon>
+            <app-icon class="group-icon" name="check_circle" />
             {{ 'Healthy' | translate }} ({{ upServices().length }})
           </h3>
           @for (svc of upServices(); track svc.instanceId) {
             <div class="service-row">
-              <div class="service-status-dot service-dot-up" [matTooltip]="'UP' | translate"></div>
+              <div class="service-status-dot service-dot-up" [pTooltip]="'UP' | translate" tooltipPosition="top"></div>
               <div class="service-info">
                 <div class="service-name-row">
                   <span class="service-name">{{ displayName(svc) }}</span>
@@ -103,7 +103,7 @@
                 </span>
               </div>
               <div class="service-heartbeat">
-                <mat-icon class="heartbeat-icon">favorite</mat-icon>
+                <app-icon class="heartbeat-icon" name="favorite" />
                 <span>{{ relativeTime(svc.lastHeartbeat) }}</span>
               </div>
             </div>
@@ -113,7 +113,7 @@
 
       @if (services().length === 0 && !loading() && !error()) {
         <div class="dashboard-empty">
-          <mat-icon class="empty-icon">dns</mat-icon>
+          <app-icon class="empty-icon" name="dns" />
           <p>{{ 'No services registered' | translate }}</p>
         </div>
         }
@@ -126,7 +126,7 @@
       </div>
     } @loading (minimum 200ms) {
       <div class="loading-state">
-        <mat-spinner diameter="24"></mat-spinner>
+        <p-progressSpinner [style]="{'width':'24px','height':'24px'}" />
         <span class="text-muted">{{ 'Loading services…' | translate }}</span>
       </div>
     }

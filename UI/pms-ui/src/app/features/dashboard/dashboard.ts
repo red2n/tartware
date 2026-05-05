@@ -1,8 +1,8 @@
 import { DecimalPipe, NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router } from "@angular/router";
 
 import type {
@@ -28,9 +28,9 @@ import { PageHeaderComponent } from "../../shared/components/page-header/page-he
 	imports: [
 		DecimalPipe,
 		NgClass,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
 	],

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-color-mode="dark" data-light-theme="light" data-dark-theme="dark">
+<html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="dark">
 <head>
   <meta charset="utf-8">
   <title>Tartware PMS</title>
@@ -27,8 +27,8 @@
       var t = isDark ? 'dark' : 'light';
       var el = document.documentElement;
       el.setAttribute('data-color-mode', t);
-      el.setAttribute('data-light-theme', t);
-      el.setAttribute('data-dark-theme', t);
+      el.setAttribute('data-light-theme', 'light');
+      el.setAttribute('data-dark-theme', 'dark');
       el.setAttribute('data-theme', t);
     })();
   </script>

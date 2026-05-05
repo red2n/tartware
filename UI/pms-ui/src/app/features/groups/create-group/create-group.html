@@ -2,7 +2,7 @@
   <div class="page-header">
     <div class="breadcrumb">
       <a routerLink="/groups" class="breadcrumb-link">
-        <mat-icon class="breadcrumb-icon">arrow_back</mat-icon>
+        <app-icon class="breadcrumb-icon" name="arrow_back" />
         {{ 'Group Bookings' | translate }}
       </a>
       <span class="breadcrumb-sep">/</span>
@@ -267,10 +267,10 @@
       <button type="button" class="btn btn-outline" (click)="cancel()">{{ 'Cancel' | translate }}</button>
       <button type="submit" class="btn btn-primary" [disabled]="!isValid || saving()">
         @if (saving()) {
-          <mat-spinner diameter="16"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
           {{ 'Creating...' | translate }}
         } @else {
-          <mat-icon>add</mat-icon>
+          <app-icon name="add" />
           {{ 'Create Group Booking' | translate }}
         }
       </button>

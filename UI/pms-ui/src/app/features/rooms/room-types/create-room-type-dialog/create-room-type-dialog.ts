@@ -1,9 +1,8 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import type { RoomTypeGridItem } from "@tartware/schemas";
 
@@ -41,10 +40,9 @@ import { TranslatePipe } from "../../../../core/i18n/translate.pipe";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
 	],
@@ -55,9 +53,9 @@ export class CreateRoomTypeDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialogRef = inject(MatDialogRef<CreateRoomTypeDialogComponent>);
+	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
-	private readonly data = inject<RoomTypeGridItem | null>(MAT_DIALOG_DATA, { optional: true });
+private readonly data = inject(DynamicDialogConfig, { optional: true })?.data as RoomTypeGridItem | null;
 
 	readonly saving = signal(false);
 	readonly categories = ROOM_CATEGORIES;

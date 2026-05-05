@@ -1,11 +1,9 @@
 import { AfterViewInit, Component, ElementRef, inject, signal, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatCheckboxModule } from "@angular/material/checkbox";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatIconModule } from "@angular/material/icon";
-import { MatInputModule } from "@angular/material/input";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputTextModule } from 'primeng/inputtext';
+import { IconComponent } from '../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Router } from "@angular/router";
 
 import { AuthService } from "../../core/auth/auth.service";
@@ -21,12 +19,11 @@ import { findFirstAllowedRoute } from "../../layout/nav-config";
 	standalone: true,
 	imports: [
 		FormsModule,
-		MatButtonModule,
-		MatCheckboxModule,
-		MatFormFieldModule,
-		MatIconModule,
-		MatInputModule,
-		MatProgressSpinnerModule,
+		CheckboxModule,
+		InputTextModule,
+		IconComponent,
+		InputTextModule,
+		ProgressSpinnerModule,
 		TranslatePipe,
 	],
 	templateUrl: "./login.html",

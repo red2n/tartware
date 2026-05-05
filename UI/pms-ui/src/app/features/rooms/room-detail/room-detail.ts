@@ -1,11 +1,10 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { AmenityCatalogItem, BuildingItem, RoomItem, RoomTypeItem } from "@tartware/schemas";
 import { ApiService } from "../../../core/api/api.service";
@@ -28,11 +27,10 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 		NgClass,
 		FormsModule,
 		RouterLink,
-		MatButtonModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
-		MatSlideToggleModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
+		ToggleSwitchModule,
 		TranslatePipe,
 	],
 	templateUrl: "./room-detail.html",

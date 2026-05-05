@@ -1,10 +1,9 @@
 import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 import { RouterLink } from "@angular/router";
 import type { PackageListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
@@ -35,10 +34,9 @@ type TypeFilter = "ALL" | string;
 		NgClass,
 		NgTemplateOutlet,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatDialogModule,
-		MatTooltipModule,
+		IconComponent,
+		DynamicDialogModule,
+		TooltipModule,
 		RouterLink,
 		PaginationComponent,
 		PageHeaderComponent,
@@ -51,7 +49,7 @@ export class PackagesComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -237,9 +235,9 @@ export class PackagesComponent {
 		);
 		const ref = this.dialog.open(CreatePackageDialogComponent, {
 			width: "640px",
-			disableClose: true,
+			closable: false,
 		});
-		ref.afterClosed().subscribe((created) => {
+		ref!.onClose.subscribe((created) => {
 			if (created) {
 				this.toast.success("Package created successfully");
 				this.loadPackages();

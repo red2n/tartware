@@ -1,11 +1,10 @@
 import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatMenuModule } from "@angular/material/menu";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { PopoverModule } from 'primeng/popover';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
 
 import type { HousekeepingTaskListItem, RoomItem } from "@tartware/schemas";
@@ -34,11 +33,10 @@ type SortDir = "asc" | "desc";
 		NgClass,
 		NgTemplateOutlet,
 		FormsModule,
-		MatIconModule,
-		MatButtonModule,
-		MatMenuModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		PopoverModule,
+		ProgressSpinnerModule,
+		TooltipModule,
 		RouterLink,
 		PaginationComponent,
 		PageHeaderComponent,

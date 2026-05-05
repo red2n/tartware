@@ -3,7 +3,7 @@
     @if (!collapsed()) {
       <span class="sub-sidebar-title">{{ parentLabel() | translate }}</span>
     } @else {
-      <mat-icon class="header-icon" [matTooltip]="parentLabel() | translate" matTooltipPosition="left">{{ parentIcon() }}</mat-icon>
+      <app-icon class="header-icon" [pTooltip]="parentLabel() | translate" tooltipPosition="left" [name]="parentIcon()" />
     }
   </div>
 
@@ -12,9 +12,9 @@
       <a class="nav-item"
          [routerLink]="item.route"
          routerLinkActive="nav-item-active"
-         [matTooltip]="collapsed() ? (item.label | translate) : ''"
-         matTooltipPosition="left">
-        <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+         [pTooltip]="collapsed() ? (item.label | translate) : ''"
+         tooltipPosition="left">
+        <app-icon class="nav-icon" [name]="item.icon" />
         @if (!collapsed()) {
           <span class="nav-label">{{ item.label | translate }}</span>
         }
@@ -24,7 +24,7 @@
 
   <div class="sub-sidebar-footer">
     <button class="collapse-toggle" (click)="toggleCollapse.emit()">
-      <mat-icon>{{ collapsed() ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+      <app-icon [name]="collapsed() ? 'chevron_left' : 'chevron_right'" />
     </button>
   </div>
 </aside>

@@ -45,6 +45,9 @@
 	--color-hero-text-subtle: #c9d1d9;
 	--color-hero-text-faint: #2a3060;
 
+	/* ── Typography extensions (Primer base has no bold token) ── */
+	--base-text-weight-bold: 700;
+
 	/* ── Global border-radius override — OpenSea rounded style ── */
 	--borderRadius-small: 6px;
 	--borderRadius-medium: 10px;

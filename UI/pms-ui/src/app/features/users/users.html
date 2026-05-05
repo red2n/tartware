@@ -2,7 +2,7 @@
   <app-page-header title="User Management" description="Manage team members, roles, and access for your organization">
     @if (canManageUsers()) {
       <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-        <mat-icon>person_add</mat-icon>
+        <app-icon name="person_add" />
         {{ 'Invite User' | translate }}
       </button>
     }
@@ -26,15 +26,15 @@
   <!-- Settings-driven admin policy strip -->
   <div class="hk-policy-flags">
     <span class="hk-policy-flag">
-      <mat-icon>timer</mat-icon>
+      <app-icon name="timer" />
       {{ 'Session timeout' | translate }}: <strong>{{ sessionIdleTimeoutMins() }}min</strong>
     </span>
     <span class="hk-policy-flag">
-      <mat-icon>password</mat-icon>
+      <app-icon name="password" />
       {{ 'Min password length' | translate }}: <strong>{{ passwordMinLength() }}</strong>
     </span>
     <span class="hk-policy-flag">
-      <mat-icon>devices</mat-icon>
+      <app-icon name="devices" />
       {{ 'Max concurrent sessions' | translate }}: <strong>{{ maxConcurrentSessions() }}</strong>
     </span>
   </div>
@@ -43,16 +43,16 @@
   @defer (when dataReady(); prefetch on idle) {
     @if (error(); as err) {
       <div class="error-state">
-        <mat-icon class="error-icon">error_outline</mat-icon>
+        <app-icon class="error-icon" name="error_outline" />
         <span>{{ err }}</span>
         <button class="btn btn-outline btn-sm" (click)="loadUsers()">
-          <mat-icon>refresh</mat-icon>
+          <app-icon name="refresh" />
           {{ 'Retry' | translate }}
         </button>
       </div>
     } @else if (sortedUsers().length === 0) {
       <div class="empty-state">
-        <mat-icon class="empty-icon">group</mat-icon>
+        <app-icon class="empty-icon" name="group" />
         @if (globalSearch.query() || activeFilter() !== 'all') {
           <p>{{ 'No users match your search or filter.' | translate }}</p>
         } @else {
@@ -67,13 +67,13 @@
               <th>
                 <button class="th-sort-btn" (click)="onSort('last_name')" type="button">
                   {{ 'Name' | translate }}
-                  <mat-icon class="sort-indicator">{{ sortIcon('last_name') }}</mat-icon>
+                  <app-icon class="sort-indicator" [name]="sortIcon('last_name')" />
                 </button>
               </th>
               <th>
                 <button class="th-sort-btn" (click)="onSort('email')" type="button">
                   {{ 'Email' | translate }}
-                  <mat-icon class="sort-indicator">{{ sortIcon('email') }}</mat-icon>
+                  <app-icon class="sort-indicator" [name]="sortIcon('email')" />
                 </button>
               </th>
               <th>{{ 'Role' | translate }}</th>
@@ -81,7 +81,7 @@
               <th>
                 <button class="th-sort-btn" (click)="onSort('last_login_at')" type="button">
                   {{ 'Last Login' | translate }}
-                  <mat-icon class="sort-indicator">{{ sortIcon('last_login_at') }}</mat-icon>
+                  <app-icon class="sort-indicator" [name]="sortIcon('last_login_at')" />
                 </button>
               </th>
               @if (canManageUsers()) {
@@ -119,9 +119,9 @@
                   <td class="cell-actions">
                     <button
                       class="btn btn-invisible btn-sm"
-                      [matTooltip]="'Edit user' | translate"
+                      [pTooltip]="'Edit user' | translate"
                       (click)="openEditDialog(user)">
-                      <mat-icon>edit</mat-icon>
+                      <app-icon name="edit" />
                     </button>
                   </td>
                 }

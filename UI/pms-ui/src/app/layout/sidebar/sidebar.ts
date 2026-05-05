@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from "@angular/common";
 import { Component, computed, inject, input, output } from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../shared/components/icon/icon';
+import { TooltipModule } from 'primeng/tooltip';
 import { RouterLink, RouterLinkActive } from "@angular/router";
 
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
@@ -16,8 +16,8 @@ import { filterNavByAllowedScreens, PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS } fro
 		NgTemplateOutlet,
 		RouterLink,
 		RouterLinkActive,
-		MatIconModule,
-		MatTooltipModule,
+		IconComponent,
+		TooltipModule,
 		TranslatePipe,
 	],
 	templateUrl: "./sidebar.html",

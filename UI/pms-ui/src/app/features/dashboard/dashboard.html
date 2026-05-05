@@ -1,14 +1,14 @@
 <div class="dashboard-page">
   <app-page-header title="Dashboard" description="Real-time overview of property operations and key metrics">
-    <button class="btn btn-invisible" (click)="loadDashboard()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh dashboard' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadDashboard()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh dashboard' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
   <!-- Top-level error state — shown above all sections -->
   @if (error(); as err) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ err }}</span>
       <button class="btn btn-outline" (click)="loadDashboard()">{{ 'Retry' | translate }}</button>
     </div>
@@ -22,12 +22,12 @@
         <!-- Occupancy -->
         <div class="overview-section">
           <div class="overview-label">
-            <mat-icon class="kpi-icon">hotel</mat-icon>
+            <app-icon class="kpi-icon" name="hotel" />
             <span>{{ 'Occupancy' | translate }}</span>
           </div>
           <div class="overview-value">{{ s.occupancy.rate }}%</div>
           <div class="kpi-trend" [ngClass]="trendClass(s.occupancy.trend)">
-            <mat-icon class="kpi-trend-icon">{{ trendIcon(s.occupancy.trend) }}</mat-icon>
+            <app-icon class="kpi-trend-icon" [name]="trendIcon(s.occupancy.trend)" />
             <span>{{ s.occupancy.change > 0 ? '+' : '' }}{{ s.occupancy.change }}% {{ 'vs yesterday' | translate }}</span>
           </div>
         </div>
@@ -36,12 +36,12 @@
         <!-- Revenue -->
         <div class="overview-section">
           <div class="overview-label">
-            <mat-icon class="kpi-icon kpi-icon-revenue">payments</mat-icon>
+            <app-icon class="kpi-icon kpi-icon-revenue" name="payments" />
             <span>{{ 'Revenue Today' | translate }}</span>
           </div>
           <div class="overview-value">{{ formatCurrency(s.revenue.today, s.revenue.currency) }}</div>
           <div class="kpi-trend" [ngClass]="trendClass(s.revenue.trend)">
-            <mat-icon class="kpi-trend-icon">{{ trendIcon(s.revenue.trend) }}</mat-icon>
+            <app-icon class="kpi-trend-icon" [name]="trendIcon(s.revenue.trend)" />
             <span>{{ s.revenue.change > 0 ? '+' : '' }}{{ s.revenue.change }}% {{ 'vs yesterday' | translate }}</span>
           </div>
         </div>
@@ -50,7 +50,7 @@
         <!-- Check-ins -->
         <div class="overview-section clickable" (click)="navigateToReservations()">
           <div class="overview-label">
-            <mat-icon class="kpi-icon kpi-icon-checkin">flight_land</mat-icon>
+            <app-icon class="kpi-icon kpi-icon-checkin" name="flight_land" />
             <span>{{ 'Arrivals Today' | translate }}</span>
           </div>
           <div class="overview-value">{{ s.checkIns.total }}</div>
@@ -66,7 +66,7 @@
         <!-- Check-outs -->
         <div class="overview-section clickable" (click)="navigateToReservations()">
           <div class="overview-label">
-            <mat-icon class="kpi-icon kpi-icon-checkout">flight_takeoff</mat-icon>
+            <app-icon class="kpi-icon kpi-icon-checkout" name="flight_takeoff" />
             <span>{{ 'Departures Today' | translate }}</span>
           </div>
           <div class="overview-value">{{ s.checkOuts.total }}</div>
@@ -107,40 +107,40 @@
   <!-- Property times & feature flags strip — driven by settings, always available -->
   <div class="dashboard-meta-strip">
     <span class="dashboard-meta-item">
-      <mat-icon>login</mat-icon>
+      <app-icon name="login" />
       {{ 'Check-in' | translate }}: <strong>{{ checkInTime() }}</strong>
     </span>
     <span class="dashboard-meta-item">
-      <mat-icon>logout</mat-icon>
+      <app-icon name="logout" />
       {{ 'Check-out' | translate }}: <strong>{{ checkOutTime() }}</strong>
     </span>
     @if (timezone()) {
       <span class="dashboard-meta-item">
-        <mat-icon>schedule</mat-icon>
+        <app-icon name="schedule" />
         {{ timezone() }}
       </span>
     }
     @if (starRating()) {
       <span class="dashboard-meta-item">
-        <mat-icon>star</mat-icon>
+        <app-icon name="star" />
         {{ '★'.repeat(starRating()) }}
       </span>
     }
     @if (mobileCheckinEnabled()) {
       <span class="dashboard-meta-item dashboard-meta-active">
-        <mat-icon>smartphone</mat-icon>
+        <app-icon name="smartphone" />
         {{ 'Mobile Check-In' | translate }}
       </span>
     }
     @if (revenueForecastEnabled()) {
       <span class="dashboard-meta-item dashboard-meta-active">
-        <mat-icon>auto_graph</mat-icon>
+        <app-icon name="auto_graph" />
         {{ 'Revenue Forecast' | translate }}
       </span>
     }
     @if (dynamicPricingEnabled()) {
       <span class="dashboard-meta-item dashboard-meta-active">
-        <mat-icon>dynamic_feed</mat-icon>
+        <app-icon name="dynamic_feed" />
         {{ 'Dynamic Pricing' | translate }}
       </span>
     }
@@ -155,18 +155,18 @@
     <div class="detail-card changelog-panel">
       <div class="card-header changelog-header">
         <h2 class="card-title">
-          <mat-icon class="changelog-title-icon">bolt</mat-icon>
+          <app-icon class="changelog-title-icon" name="bolt" />
           {{ 'Recent Activity' | translate }}
         </h2>
         <button class="btn btn-invisible btn-sm changelog-refresh-btn"
           (click)="refreshActivity()"
           [disabled]="refreshingActivity()"
-          [matTooltip]="'Refresh activity' | translate"
+          [pTooltip]="'Refresh activity' | translate"
           [attr.aria-label]="'Refresh activity' | translate">
           @if (refreshingActivity()) {
-            <mat-spinner diameter="14"></mat-spinner>
+            <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
           } @else {
-            <mat-icon>refresh</mat-icon>
+            <app-icon name="refresh" />
           }
         </button>
       </div>
@@ -186,7 +186,7 @@
                   </div>
                   <div class="tl-body">
                     <div class="tl-meta">
-                      <mat-icon class="tl-icon">{{ item.icon }}</mat-icon>
+                      <app-icon class="tl-icon" [name]="item.icon" />
                       <span class="tl-type tl-type--{{ item.type }}">{{ activityTypeLabel(item.type) }}</span>
                       @if (item.urgent) {
                         <span class="badge badge-danger badge-sm">!</span>
@@ -207,7 +207,7 @@
                       </div>
                       <div class="tl-body">
                         <div class="tl-meta">
-                          <mat-icon class="tl-icon">{{ child.icon }}</mat-icon>
+                          <app-icon class="tl-icon" [name]="child.icon" />
                           <span class="tl-type tl-type--{{ child.type }}">{{ activityTypeLabel(child.type) }}</span>
                           @if (child.urgent) {
                             <span class="badge badge-danger badge-sm">!</span>
@@ -254,7 +254,7 @@
 
       <div class="tl-footer">
         <button class="btn btn-invisible btn-sm tl-view-all" (click)="navigateToActivityLog()">
-          <mat-icon>open_in_new</mat-icon>
+          <app-icon name="open_in_new" />
           {{ 'View all activity' | translate }}
         </button>
       </div>
@@ -264,7 +264,7 @@
     <div class="detail-card changelog-panel">
       <div class="card-header changelog-header">
         <h2 class="card-title">
-          <mat-icon class="changelog-title-icon">task_alt</mat-icon>
+          <app-icon class="changelog-title-icon" name="task_alt" />
           {{ 'Upcoming Tasks' | translate }}
         </h2>
       </div>
@@ -329,7 +329,7 @@
         <div class="detail-card clickable" (click)="navigateToRooms()">
           <div class="card-header">
             <h2 class="card-title">
-              <mat-icon>meeting_room</mat-icon>
+              <app-icon name="meeting_room" />
               {{ 'Room Availability' | translate }}
             </h2>
           </div>
@@ -401,7 +401,7 @@
         <div class="detail-card clickable" (click)="navigateToHousekeeping()">
           <div class="card-header">
             <h2 class="card-title">
-              <mat-icon>cleaning_services</mat-icon>
+              <app-icon name="cleaning_services" />
               {{ 'Housekeeping' | translate }}
             </h2>
           </div>
@@ -471,7 +471,7 @@
         <div class="detail-card clickable" (click)="navigateToRates()">
           <div class="card-header">
             <h2 class="card-title">
-              <mat-icon>sell</mat-icon>
+              <app-icon name="sell" />
               {{ 'Rate Plans' | translate }}
             </h2>
           </div>
@@ -496,7 +496,7 @@
               <div class="stat-divider"></div>
               <div class="stat-row">
                 <span class="stat-row-label">
-                  <mat-icon class="stat-inline-icon">restaurant</mat-icon>
+                  <app-icon class="stat-inline-icon" name="restaurant" />
                   {{ 'With Meal Plan' | translate }}
                 </span>
                 <span class="stat-row-value">{{ rt.mealPlanCount }}</span>
@@ -534,7 +534,7 @@
         <div class="detail-card">
           <div class="card-header">
             <h2 class="card-title">
-              <mat-icon>show_chart</mat-icon>
+              <app-icon name="show_chart" />
               {{ 'Booking Activity' | translate }}
             </h2>
           </div>

@@ -1,9 +1,9 @@
-<h2 mat-dialog-title>
-  <mat-icon class="dialog-title-icon">person_add</mat-icon>
+<h2 class="dialog-title">
+  <app-icon class="dialog-title-icon" name="person_add" />
   {{ 'Invite User' | translate }}
 </h2>
 
-<mat-dialog-content>
+<div class="dialog-content">
   <div class="form-fields">
     <section class="form-section">
       <span class="form-section-title">{{ 'Account' | translate }}</span>
@@ -112,16 +112,16 @@
       </div>
     </section>
   </div>
-</mat-dialog-content>
+</div>
 
-<mat-dialog-actions align="end">
+<div class="dialog-actions">
   <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
   <button class="btn btn-primary" (click)="save()" [disabled]="!isValid || saving()">
     @if (saving()) {
-      <mat-spinner diameter="16"></mat-spinner>
+      <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
     } @else {
-      <mat-icon>person_add</mat-icon>
+      <app-icon name="person_add" />
     }
     {{ 'Invite User' | translate }}
   </button>
-</mat-dialog-actions>
+</div>

@@ -1,10 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatDialog } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { DialogService } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 
 import type { GuestWithStats } from "@tartware/schemas";
@@ -61,10 +60,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 	imports: [
 		NgClass,
 		RouterLink,
-		MatIconModule,
-		MatButtonModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		TranslatePipe,
 	],
 	templateUrl: "./guest-detail.html",
@@ -73,7 +71,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 export class GuestDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialog = inject(MatDialog);
+	private readonly dialog = inject(DialogService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
@@ -256,7 +254,7 @@ export class GuestDetailComponent implements OnInit {
 		import("../edit-guest-dialog/edit-guest-dialog").then(({ EditGuestDialogComponent }) => {
 			const ref = this.dialog.open(EditGuestDialogComponent, {
 				width: "600px",
-				disableClose: true,
+				closable: false,
 				data: {
 					id: g.id,
 					first_name: g.first_name,
@@ -272,7 +270,7 @@ export class GuestDetailComponent implements OnInit {
 					loyalty_tier: g.loyalty_tier,
 				},
 			});
-			ref.afterClosed().subscribe((updated: boolean) => {
+			ref!.onClose.subscribe((updated: boolean) => {
 				if (updated) {
 					this.toast.success("Guest profile update submitted. It may take a moment to apply.");
 					setTimeout(() => this.loadGuest(), 1500);

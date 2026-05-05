@@ -1,7 +1,6 @@
 import { Component, inject } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatIconModule } from "@angular/material/icon";
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { IconComponent } from '../../../shared/components/icon/icon';
 
 import type { Property } from "@tartware/schemas";
 
@@ -16,12 +15,12 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-property-picker-dialog",
 	standalone: true,
-	imports: [MatButtonModule, MatDialogModule, MatIconModule, TranslatePipe],
+	imports: [ DynamicDialogModule, IconComponent, TranslatePipe],
 	templateUrl: "./property-picker-dialog.html",
 })
 export class PropertyPickerDialogComponent {
-	private readonly dialogRef = inject(MatDialogRef<PropertyPickerDialogComponent>);
-	readonly data: PropertyPickerData = inject(MAT_DIALOG_DATA);
+	private readonly dialogRef = inject(DynamicDialogRef);
+	readonly data: PropertyPickerData = inject(DynamicDialogConfig).data;
 
 	select(property: PropertyItem): void {
 		this.dialogRef.close(property.id);

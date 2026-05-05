@@ -1,11 +1,11 @@
 <div class="reservations-page">
   <app-page-header title="Reservations" description="Manage bookings, check-ins, check-outs, and guest stays">
     <button class="btn btn-primary btn-sm" (click)="openCreateReservation()">
-      <mat-icon>add</mat-icon>
+      <app-icon name="add" />
       {{ 'New reservation' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadReservations()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh reservations' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadReservations()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh reservations' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -28,7 +28,7 @@
     <div class="overview-bar">
       <div class="overview-section res-section-arrivals">
         <div class="overview-label">
-          <mat-icon>flight_land</mat-icon>
+          <app-icon name="flight_land" />
           {{ 'Arrivals Today' | translate }}
         </div>
         <div class="overview-value">{{ summary().arrivalsToday }}</div>
@@ -37,7 +37,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section res-section-inhouse">
         <div class="overview-label">
-          <mat-icon>hotel</mat-icon>
+          <app-icon name="hotel" />
           {{ 'In-House' | translate }}
         </div>
         <div class="overview-value">{{ summary().inHouse }}</div>
@@ -46,7 +46,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section res-section-departures">
         <div class="overview-label">
-          <mat-icon>flight_takeoff</mat-icon>
+          <app-icon name="flight_takeoff" />
           {{ 'Departures Today' | translate }}
         </div>
         <div class="overview-value">{{ summary().departuresToday }}</div>
@@ -55,7 +55,7 @@
       <div class="overview-divider"></div>
       <div class="overview-section res-section-revenue">
         <div class="overview-label">
-          <mat-icon>payments</mat-icon>
+          <app-icon name="payments" />
           {{ 'Revenue' | translate }}
         </div>
         <div class="overview-value">{{ formatCurrency(summary().totalRevenue, summary().currency) }}</div>
@@ -85,13 +85,13 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ err }}</span>
       <button class="btn btn-outline" (click)="loadReservations()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredReservations().length === 0) {
     <div class="empty-state">
-      <mat-icon class="empty-icon">book_online</mat-icon>
+      <app-icon class="empty-icon" name="book_online" />
       @if (reservations().length === 0) {
         <p>{{ 'No reservations found' | translate }}</p>
         <p class="text-muted">{{ 'Reservations will appear here once they are created.' | translate }}</p>
@@ -107,26 +107,26 @@
           <thead>
             <tr>
               <th [attr.aria-sort]="ariaSort('confirmation_number')">
-                <button type="button" class="th-sort-btn" (click)="onSort('confirmation_number')">{{ 'Confirmation' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('confirmation_number') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('confirmation_number')">{{ 'Confirmation' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('confirmation_number')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('guest_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('guest_name')">{{ 'Guest' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('guest_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('guest_name')">{{ 'Guest' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('guest_name')" /></button>
               </th>
               <th>{{ 'Room Type' | translate }}</th>
               <th [attr.aria-sort]="ariaSort('check_in_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('check_in_date')">{{ 'Check-in' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('check_in_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('check_in_date')">{{ 'Check-in' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('check_in_date')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('check_out_date')">
-                <button type="button" class="th-sort-btn" (click)="onSort('check_out_date')">{{ 'Check-out' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('check_out_date') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('check_out_date')">{{ 'Check-out' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('check_out_date')" /></button>
               </th>
               <th>{{ 'Nights' | translate }}</th>
               @if (activeFilter() === 'ALL') {
                 <th [attr.aria-sort]="ariaSort('status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('status')" /></button>
                 </th>
               }
               <th [attr.aria-sort]="ariaSort('total_amount')">
-                <button type="button" class="th-sort-btn" (click)="onSort('total_amount')">{{ 'Amount' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_amount') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('total_amount')">{{ 'Amount' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('total_amount')" /></button>
               </th>
               <th class="cell-actions"></th>
             </tr>
@@ -137,7 +137,7 @@
                 <td class="cell-primary">
                   <div class="confirmation-cell">
                     @if (res.reservation_type && reservationTypeIcon[res.reservation_type]; as typeInfo) {
-                      <mat-icon class="res-type-icon" [matTooltip]="typeInfo.tooltip">{{ typeInfo.icon }}</mat-icon>
+                      <app-icon class="res-type-icon" [pTooltip]="typeInfo.tooltip" [name]="typeInfo.icon" />
                     }
                     <span class="confirmation-number">{{ res.confirmation_number }}</span>
                   </div>
@@ -164,8 +164,8 @@
                 }
                 <td class="cell-amount">{{ formatCurrency(res.total_amount, res.currency) }}</td>
                 <td class="cell-actions">
-                  <button class="btn btn-invisible btn-sm" [matTooltip]="'View details' | translate" [attr.aria-label]="'View reservation details' | translate">
-                    <mat-icon>chevron_right</mat-icon>
+                  <button class="btn btn-invisible btn-sm" [pTooltip]="'View details' | translate" [attr.aria-label]="'View reservation details' | translate">
+                    <app-icon name="chevron_right" />
                   </button>
                 </td>
               </tr>

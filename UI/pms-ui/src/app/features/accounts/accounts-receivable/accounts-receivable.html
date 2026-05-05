@@ -1,8 +1,8 @@
 <div class="ar-page">
   <app-page-header title="Accounts Receivable" description="City ledger, direct billing, and AR aging management">
-    <button class="btn btn-outline btn-sm" (click)="recalculateAging()" [disabled]="recalculatingAging()" [matTooltip]="'Recalculate aging buckets' | translate">
-      @if (recalculatingAging()) { <mat-spinner diameter="16"></mat-spinner> }
-      <mat-icon>update</mat-icon> {{ 'Recalculate Aging' | translate }}
+    <button class="btn btn-outline btn-sm" (click)="recalculateAging()" [disabled]="recalculatingAging()" [pTooltip]="'Recalculate aging buckets' | translate">
+      @if (recalculatingAging()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
+      <app-icon name="update" /> {{ 'Recalculate Aging' | translate }}
     </button>
   </app-page-header>
 
@@ -54,8 +54,8 @@
 
   <!-- ═══ QUICK STATS ═══ -->
   <div class="quick-stats">
-    <span class="stat"><mat-icon>warning</mat-icon> {{ summary().overdueCount }} {{ 'overdue' | translate }}</span>
-    <span class="stat"><mat-icon>pending</mat-icon> {{ summary().openCount }} {{ 'open / partial' | translate }}</span>
+    <span class="stat"><app-icon name="warning" /> {{ summary().overdueCount }} {{ 'overdue' | translate }}</span>
+    <span class="stat"><app-icon name="pending" /> {{ summary().openCount }} {{ 'open / partial' | translate }}</span>
   </div>
 
   <!-- ═══ FILTERS ═══ -->
@@ -100,13 +100,13 @@
   @defer (when dataReady(); prefetch on idle) {
     @if (error(); as err) {
       <div class="notice notice-error">
-        <mat-icon>error</mat-icon>
+        <app-icon name="error" />
         <span>{{ err }}</span>
-        <button mat-button (click)="loadArData()">{{ 'Retry' | translate }}</button>
+        <button class="btn btn-ghost" (click)="loadArData()">{{ 'Retry' | translate }}</button>
       </div>
     } @else if (filtered().length === 0) {
       <div class="empty-state">
-        <mat-icon>request_quote</mat-icon>
+        <app-icon name="request_quote" />
         <p>{{ 'No accounts receivable entries found' | translate }}</p>
       </div>
     } @else {
@@ -115,24 +115,24 @@
           <thead>
             <tr>
               <th (click)="onSort('ar_number')" [attr.aria-sort]="ariaSort('ar_number')">
-                {{ 'AR #' | translate }} <mat-icon>{{ sortIcon('ar_number') }}</mat-icon>
+                {{ 'AR #' | translate }} <app-icon [name]="sortIcon('ar_number')" />
               </th>
               <th (click)="onSort('account_name')" [attr.aria-sort]="ariaSort('account_name')">
-                {{ 'Account' | translate }} <mat-icon>{{ sortIcon('account_name') }}</mat-icon>
+                {{ 'Account' | translate }} <app-icon [name]="sortIcon('account_name')" />
               </th>
               <th>{{ 'Type' | translate }}</th>
               <th (click)="onSort('original_amount')" [attr.aria-sort]="ariaSort('original_amount')">
-                {{ 'Original' | translate }} <mat-icon>{{ sortIcon('original_amount') }}</mat-icon>
+                {{ 'Original' | translate }} <app-icon [name]="sortIcon('original_amount')" />
               </th>
               <th (click)="onSort('outstanding_balance')" [attr.aria-sort]="ariaSort('outstanding_balance')">
-                {{ 'Outstanding' | translate }} <mat-icon>{{ sortIcon('outstanding_balance') }}</mat-icon>
+                {{ 'Outstanding' | translate }} <app-icon [name]="sortIcon('outstanding_balance')" />
               </th>
               <th (click)="onSort('transaction_date')" [attr.aria-sort]="ariaSort('transaction_date')">
-                {{ 'Date' | translate }} <mat-icon>{{ sortIcon('transaction_date') }}</mat-icon>
+                {{ 'Date' | translate }} <app-icon [name]="sortIcon('transaction_date')" />
               </th>
               <th>{{ 'Aging' | translate }}</th>
               <th (click)="onSort('ar_status')" [attr.aria-sort]="ariaSort('ar_status')">
-                {{ 'Status' | translate }} <mat-icon>{{ sortIcon('ar_status') }}</mat-icon>
+                {{ 'Status' | translate }} <app-icon [name]="sortIcon('ar_status')" />
               </th>
               <th class="cell-actions"></th>
             </tr>
@@ -159,7 +159,7 @@
                   }
                 </td>
                 <td><span class="badge" [ngClass]="statusClass(ar.ar_status)">{{ ar.ar_status_display }}</span></td>
-                <td><mat-icon class="chevron-icon">chevron_right</mat-icon></td>
+                <td><app-icon class="chevron-icon" name="chevron_right" /></td>
               </tr>
             }
           </tbody>
@@ -214,7 +214,7 @@
       <div class="detail-panel" (click)="$event.stopPropagation()">
         <div class="detail-header">
           <h2>{{ detail.ar_number }}</h2>
-          <button mat-icon-button (click)="closeDetail()"><mat-icon>close</mat-icon></button>
+          <button class="btn btn-invisible btn-sm" (click)="closeDetail()"><app-icon name="close" /></button>
         </div>
 
         <div class="detail-grid">
@@ -285,28 +285,28 @@
         <!-- Flags -->
         <div class="detail-flags">
           @if (detail.in_collection) {
-            <span class="flag flag-danger"><mat-icon>gavel</mat-icon> {{ 'In Collection' | translate }}</span>
+            <span class="flag flag-danger"><app-icon name="gavel" /> {{ 'In Collection' | translate }}</span>
           }
           @if (detail.disputed) {
-            <span class="flag flag-warning"><mat-icon>report_problem</mat-icon> {{ 'Disputed' | translate }}
+            <span class="flag flag-warning"><app-icon name="report_problem" /> {{ 'Disputed' | translate }}
               @if (detail.dispute_amount) { — {{ fmtMoney(+detail.dispute_amount) }} }
             </span>
           }
           @if (detail.written_off) {
-            <span class="flag flag-muted"><mat-icon>delete_sweep</mat-icon> {{ 'Written Off' | translate }}
+            <span class="flag flag-muted"><app-icon name="delete_sweep" /> {{ 'Written Off' | translate }}
               @if (detail.write_off_amount) { — {{ fmtMoney(+detail.write_off_amount) }} }
             </span>
           }
           @if (detail.has_payment_plan) {
-            <span class="flag flag-info"><mat-icon>event_repeat</mat-icon> {{ 'Payment Plan' | translate }}
+            <span class="flag flag-info"><app-icon name="event_repeat" /> {{ 'Payment Plan' | translate }}
               @if (detail.installment_count) { ({{ detail.installment_count }} {{ 'installments' | translate }}) }
             </span>
           }
           @if (detail.late_fee_applicable) {
-            <span class="flag flag-warning"><mat-icon>attach_money</mat-icon> {{ 'Late Fee' | translate }}: {{ fmtMoney(+(detail.late_fees_charged ?? '0')) }}</span>
+            <span class="flag flag-warning"><app-icon name="attach_money" /> {{ 'Late Fee' | translate }}: {{ fmtMoney(+(detail.late_fees_charged ?? '0')) }}</span>
           }
           @if (detail.interest_applicable) {
-            <span class="flag flag-warning"><mat-icon>trending_up</mat-icon> {{ 'Interest Accrued' | translate }}: {{ fmtMoney(+(detail.interest_accrued ?? '0')) }}</span>
+            <span class="flag flag-warning"><app-icon name="trending_up" /> {{ 'Interest Accrued' | translate }}: {{ fmtMoney(+(detail.interest_accrued ?? '0')) }}</span>
           }
         </div>
 
@@ -321,10 +321,10 @@
         @if (detail.ar_status !== 'paid' && detail.ar_status !== 'written_off' && detail.ar_status !== 'cancelled') {
           <div class="detail-actions">
             <button class="btn btn-primary btn-sm" (click)="togglePaymentForm()">
-              <mat-icon>payment</mat-icon> {{ 'Apply Payment' | translate }}
+              <app-icon name="payment" /> {{ 'Apply Payment' | translate }}
             </button>
             <button class="btn btn-outline btn-sm" (click)="toggleWriteOffForm()">
-              <mat-icon>delete_sweep</mat-icon> {{ 'Write Off' | translate }}
+              <app-icon name="delete_sweep" /> {{ 'Write Off' | translate }}
             </button>
           </div>
 
@@ -361,7 +361,7 @@
               </div>
               <div class="form-actions">
                 <button class="btn btn-primary btn-sm" (click)="applyPayment()" [disabled]="applyingPayment() || !paymentForm().payment_reference || paymentForm().amount <= 0">
-                  @if (applyingPayment()) { <mat-spinner diameter="16"></mat-spinner> }
+                  @if (applyingPayment()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Apply Payment' | translate }}
                 </button>
                 <button class="btn btn-outline btn-sm" (click)="togglePaymentForm()">{{ 'Cancel' | translate }}</button>
@@ -386,7 +386,7 @@
               </div>
               <div class="form-actions">
                 <button class="btn btn-danger btn-sm" (click)="writeOff()" [disabled]="writingOff() || !writeOffForm().reason">
-                  @if (writingOff()) { <mat-spinner diameter="16"></mat-spinner> }
+                  @if (writingOff()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Write Off' | translate }}
                 </button>
                 <button class="btn btn-outline btn-sm" (click)="toggleWriteOffForm()">{{ 'Cancel' | translate }}</button>

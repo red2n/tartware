@@ -12,7 +12,7 @@
   <!-- Toolbar -->
   <div class="al-toolbar">
     <button class="btn btn-invisible btn-sm al-back-btn" (click)="goBack()">
-      <mat-icon>arrow_back</mat-icon>
+      <app-icon name="arrow_back" />
       {{ 'Dashboard' | translate }}
     </button>
     <div class="al-toolbar-right">
@@ -22,11 +22,11 @@
       <button class="btn btn-default btn-sm al-refresh-btn"
         (click)="load()"
         [disabled]="loading()"
-        [matTooltip]="'Refresh' | translate">
+        [pTooltip]="'Refresh' | translate">
         @if (loading()) {
-          <mat-spinner diameter="14"></mat-spinner>
+          <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
         } @else {
-          <mat-icon>refresh</mat-icon>
+          <app-icon name="refresh" />
         }
         {{ 'Refresh' | translate }}
       </button>
@@ -39,7 +39,7 @@
       <div class="flash flash-error">{{ error() }}</div>
     } @else if (items().length === 0) {
       <div class="empty-state">
-        <mat-icon class="empty-icon">history</mat-icon>
+        <app-icon class="empty-icon" name="history" />
         <p>{{ 'No activity recorded in the last 48 hours' | translate }}</p>
       </div>
     } @else {
@@ -52,7 +52,7 @@
           <!-- Left: type icon block -->
           <div class="al-event-icon-col">
             <div class="al-event-icon-wrap al-event-icon-wrap--{{ item.type }}">
-              <mat-icon>{{ item.icon }}</mat-icon>
+              <app-icon [name]="item.icon" />
             </div>
           </div>
 
@@ -83,7 +83,7 @@
             <div class="al-event al-event--{{ child.type }} al-event--child">
               <div class="al-event-icon-col">
                 <div class="al-event-icon-wrap al-event-icon-wrap--{{ child.type }} al-event-icon-wrap--child">
-                  <mat-icon>{{ child.icon }}</mat-icon>
+                  <app-icon [name]="child.icon" />
                 </div>
               </div>
               <div class="al-event-content">
@@ -113,7 +113,7 @@
       <button class="btn btn-default btn-sm"
         [disabled]="!hasPrev() || loading()"
         (click)="prevPage()">
-        <mat-icon>chevron_left</mat-icon>
+        <app-icon name="chevron_left" />
         {{ 'Previous' | translate }}
       </button>
       <span class="al-page-label">{{ pageLabel() }}</span>
@@ -121,7 +121,7 @@
         [disabled]="!hasNext() || loading()"
         (click)="nextPage()">
         {{ 'Next' | translate }}
-        <mat-icon>chevron_right</mat-icon>
+        <app-icon name="chevron_right" />
       </button>
     </div>
 

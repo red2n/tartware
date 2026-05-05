@@ -1,11 +1,11 @@
 <div class="buildings-page">
   <app-page-header title="Buildings" description="Property structures, wings, and floor plans">
     <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-      <mat-icon>add</mat-icon>
+      <app-icon name="add" />
       {{ 'New building' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadBuildings()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh buildings' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadBuildings()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh buildings' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -18,13 +18,13 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ err }}</span>
       <button class="btn btn-outline" (click)="loadBuildings()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredBuildings().length === 0) {
     <div class="empty-state">
-      <mat-icon class="empty-icon">domain</mat-icon>
+      <app-icon class="empty-icon" name="domain" />
       @if (buildings().length === 0) {
         <p>{{ 'No buildings found' | translate }}</p>
         <p class="text-muted">{{ 'Buildings define the physical structures in your property.' | translate }}</p>
@@ -41,27 +41,27 @@
           <tr>
             <th [attr.aria-sort]="ariaSort('building_code')">
               <button type="button" class="th-sort-btn" (click)="onSort('building_code')">
-                {{ 'Code' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('building_code') }}</mat-icon>
+                {{ 'Code' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('building_code')" />
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('building_name')">
               <button type="button" class="th-sort-btn" (click)="onSort('building_name')">
-                {{ 'Name' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('building_name') }}</mat-icon>
+                {{ 'Name' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('building_name')" />
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('building_type')">
               <button type="button" class="th-sort-btn" (click)="onSort('building_type')">
-                {{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('building_type') }}</mat-icon>
+                {{ 'Type' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('building_type')" />
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('floor_count')">
               <button type="button" class="th-sort-btn" (click)="onSort('floor_count')">
-                {{ 'Floors' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('floor_count') }}</mat-icon>
+                {{ 'Floors' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('floor_count')" />
               </button>
             </th>
             <th [attr.aria-sort]="ariaSort('total_rooms')">
               <button type="button" class="th-sort-btn" (click)="onSort('total_rooms')">
-                {{ 'Rooms' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('total_rooms') }}</mat-icon>
+                {{ 'Rooms' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('total_rooms')" />
               </button>
             </th>
             <th>{{ 'Amenities' | translate }}</th>
@@ -89,7 +89,7 @@
               <td>{{ b.total_rooms ?? 0 }}</td>
               <td class="cell-amenities">
                 @for (icon of amenityIcons(b); track icon) {
-                  <mat-icon class="amenity-icon" [matTooltip]="icon">{{ icon }}</mat-icon>
+                  <app-icon class="amenity-icon" [pTooltip]="icon" [name]="icon" />
                 }
                 @if (amenityIcons(b).length === 0) {
                   <span class="text-muted">—</span>
@@ -101,13 +101,13 @@
                 </span>
               </td>
               <td class="cell-actions">
-                <button class="btn btn-invisible btn-sm" [matTooltip]="'Edit' | translate"
+                <button class="btn btn-invisible btn-sm" [pTooltip]="'Edit' | translate"
                         (click)="openEditDialog(b); $event.stopPropagation()">
-                  <mat-icon>edit</mat-icon>
+                  <app-icon name="edit" />
                 </button>
-                <button class="btn btn-invisible btn-sm" [matTooltip]="'Delete' | translate"
+                <button class="btn btn-invisible btn-sm" [pTooltip]="'Delete' | translate"
                         (click)="deleteBuilding(b, $event)">
-                  <mat-icon>delete</mat-icon>
+                  <app-icon name="delete" />
                 </button>
               </td>
             </tr>

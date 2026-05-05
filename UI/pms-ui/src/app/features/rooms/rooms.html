@@ -1,11 +1,11 @@
 <div class="rooms-page">
   <app-page-header title="Rooms" description="Room inventory, status tracking, and assignments">
     <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
-      <mat-icon>add</mat-icon>
+      <app-icon name="add" />
       {{ 'New room' | translate }}
     </button>
-    <button class="btn btn-invisible" (click)="loadRooms()" [matTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh rooms' | translate">
-      <mat-icon>refresh</mat-icon>
+    <button class="btn btn-invisible" (click)="loadRooms()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh rooms' | translate">
+      <app-icon name="refresh" />
     </button>
   </app-page-header>
 
@@ -16,7 +16,7 @@
     <div class="room-overview">
       <div class="room-overview-header">
         <div class="room-overview-title">
-          <mat-icon>domain</mat-icon>
+          <app-icon name="domain" />
           <span>{{ 'Room Inventory' | translate }}</span>
         </div>
         <div class="room-overview-pct">
@@ -26,19 +26,19 @@
       </div>
       <div class="occ-bar">
         @if (summary().occupied > 0) {
-          <div class="occ-segment occ-occupied" [style.flex]="summary().occupied" [matTooltip]="('Occupied' | translate) + ': ' + summary().occupied"></div>
+          <div class="occ-segment occ-occupied" [style.flex]="summary().occupied" [pTooltip]="('Occupied' | translate) + ': ' + summary().occupied"></div>
         }
         @if (summary().vacant > 0) {
-          <div class="occ-segment occ-vacant" [style.flex]="summary().vacant" [matTooltip]="('Vacant' | translate) + ': ' + summary().vacant"></div>
+          <div class="occ-segment occ-vacant" [style.flex]="summary().vacant" [pTooltip]="('Vacant' | translate) + ': ' + summary().vacant"></div>
         }
         @if (summary().ooo > 0) {
-          <div class="occ-segment occ-ooo" [style.flex]="summary().ooo" [matTooltip]="('Out of order' | translate) + ': ' + summary().ooo"></div>
+          <div class="occ-segment occ-ooo" [style.flex]="summary().ooo" [pTooltip]="('Out of order' | translate) + ': ' + summary().ooo"></div>
         }
         @if (summary().blocked > 0) {
-          <div class="occ-segment occ-blocked" [style.flex]="summary().blocked" [matTooltip]="('Blocked' | translate) + ': ' + summary().blocked"></div>
+          <div class="occ-segment occ-blocked" [style.flex]="summary().blocked" [pTooltip]="('Blocked' | translate) + ': ' + summary().blocked"></div>
         }
         @if (summary().setup > 0) {
-          <div class="occ-segment occ-setup" [style.flex]="summary().setup" [matTooltip]="('Setup' | translate) + ': ' + summary().setup"></div>
+          <div class="occ-segment occ-setup" [style.flex]="summary().setup" [pTooltip]="('Setup' | translate) + ': ' + summary().setup"></div>
         }
       </div>
       <div class="occ-legend">
@@ -77,7 +77,7 @@
   <!-- ROOM RECOMMENDATIONS                         -->
   <!-- ═════════════════════════════════════════════ -->
   <div class="rec-bar">
-    <mat-icon class="rec-icon">auto_awesome</mat-icon>
+    <app-icon class="rec-icon" name="auto_awesome" />
     <span class="rec-label">{{ 'Recommendations' | translate }}</span>
     <label class="rec-field">
       <span class="rec-field-label">{{ 'Check-in' | translate }}</span>
@@ -85,7 +85,7 @@
              [ngModel]="checkInDate()"
              (ngModelChange)="onCheckInDate($event)" />
     </label>
-    <mat-icon class="rec-arrow">arrow_forward</mat-icon>
+    <app-icon class="rec-arrow" name="arrow_forward" />
     <label class="rec-field">
       <span class="rec-field-label">{{ 'Check-out' | translate }}</span>
       <input type="date" class="rec-date-input"
@@ -94,13 +94,13 @@
     </label>
     @if (hasRecommendations()) {
       <span class="rec-active-badge">
-        <mat-icon>check_circle</mat-icon>
+        <app-icon name="check_circle" />
         {{ 'Active' | translate }}
       </span>
     }
     @if (checkInDate() || checkOutDate()) {
-      <button class="btn btn-invisible btn-sm rec-clear-btn" (click)="clearRecommendations()" [matTooltip]="'Clear' | translate">
-        <mat-icon>close</mat-icon>
+      <button class="btn btn-invisible btn-sm rec-clear-btn" (click)="clearRecommendations()" [pTooltip]="'Clear' | translate">
+        <app-icon name="close" />
       </button>
     }
   </div>
@@ -109,13 +109,13 @@
   @defer (when dataReady(); prefetch on idle) {
   @if (error(); as err) {
     <div class="error-state">
-      <mat-icon class="error-icon">error_outline</mat-icon>
+      <app-icon class="error-icon" name="error_outline" />
       <span>{{ err }}</span>
       <button class="btn btn-outline" (click)="loadRooms()">{{ 'Retry' | translate }}</button>
     </div>
   } @else if (filteredRooms().length === 0) {
     <div class="empty-state">
-      <mat-icon class="empty-icon">hotel</mat-icon>
+      <app-icon class="empty-icon" name="hotel" />
       @if (rooms().length === 0) {
         <p>{{ 'No rooms found' | translate }}</p>
         <p class="text-muted">{{ 'Rooms will appear here once they are configured.' | translate }}</p>
@@ -131,31 +131,31 @@
             <tr>
               @if (hasRecommendations()) {
                 <th [attr.aria-sort]="ariaSort('recommendation_rank')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('recommendation_rank')">{{ 'Rank' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('recommendation_rank') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('recommendation_rank')">{{ 'Rank' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('recommendation_rank')" /></button>
                 </th>
               }
               <th [attr.aria-sort]="ariaSort('room_number')">
-                <button type="button" class="th-sort-btn" (click)="onSort('room_number')">{{ 'Room' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('room_number') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('room_number')">{{ 'Room' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('room_number')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('room_type_name')">
-                <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">{{ 'Type' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('room_type_name') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('room_type_name')">{{ 'Type' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('room_type_name')" /></button>
               </th>
               <th [attr.aria-sort]="ariaSort('floor')">
-                <button type="button" class="th-sort-btn" (click)="onSort('floor')">{{ 'Floor' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('floor') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('floor')">{{ 'Floor' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('floor')" /></button>
               </th>
               @if (activeFilter() === 'ALL') {
                 <th [attr.aria-sort]="ariaSort('status')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Status' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('status') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('status')">{{ 'Status' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('status')" /></button>
                 </th>
               }
               @if (hasRecommendations()) {
                 <th [attr.aria-sort]="ariaSort('recommendation_score')">
-                  <button type="button" class="th-sort-btn" (click)="onSort('recommendation_score')">{{ 'Score' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('recommendation_score') }}</mat-icon></button>
+                  <button type="button" class="th-sort-btn" (click)="onSort('recommendation_score')">{{ 'Score' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('recommendation_score')" /></button>
                 </th>
               }
               <th>{{ 'Amenities' | translate }}</th>
               <th [attr.aria-sort]="ariaSort('housekeeping_status')">
-                <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">{{ 'Housekeeping' | translate }} <mat-icon class="sort-indicator">{{ sortIcon('housekeeping_status') }}</mat-icon></button>
+                <button type="button" class="th-sort-btn" (click)="onSort('housekeeping_status')">{{ 'Housekeeping' | translate }} <app-icon class="sort-indicator" [name]="sortIcon('housekeeping_status')" /></button>
               </th>
               <th>{{ 'Maintenance' | translate }}</th>
               <th class="cell-actions"></th>
@@ -167,7 +167,7 @@
                 @if (hasRecommendations()) {
                   <td class="cell-rank">
                     @if (room.recommendation_rank != null) {
-                      <span class="rank-badge" [matTooltip]="(room.recommendation_reasons ?? []).join(', ')">
+                      <span class="rank-badge" [pTooltip]="(room.recommendation_reasons ?? []).join(', ')">
                         #{{ room.recommendation_rank }}
                       </span>
                     } @else {
@@ -186,21 +186,21 @@
                 @if (activeFilter() === 'ALL') {
                   <td>
                     <span class="badge" [ngClass]="statusClass(room.status)"
-                          [matTooltip]="room.is_out_of_order ? (room.out_of_order_reason ?? '') : ''">
+                          [pTooltip]="room.is_out_of_order ? (room.out_of_order_reason ?? '') : ''">
                       {{ room.status_display }}
                     </span>
                     @if (room.is_blocked) {
-                      <span class="badge badge-warning" [matTooltip]="room.block_reason ?? ''">{{ 'Blocked' | translate }}</span>
+                      <span class="badge badge-warning" [pTooltip]="room.block_reason ?? ''">{{ 'Blocked' | translate }}</span>
                     }
                     @if (room.is_out_of_order && room.status !== 'out_of_order') {
-                      <span class="badge badge-danger" [matTooltip]="room.out_of_order_reason ?? ''">{{ 'OOO' | translate }}</span>
+                      <span class="badge badge-danger" [pTooltip]="room.out_of_order_reason ?? ''">{{ 'OOO' | translate }}</span>
                     }
                   </td>
                 }
                 @if (hasRecommendations()) {
                   <td class="cell-score">
                     @if (room.recommendation_score != null) {
-                      <div class="score-bar" [matTooltip]="scorePercent(room.recommendation_score) + '% match'">
+                      <div class="score-bar" [pTooltip]="scorePercent(room.recommendation_score) + '% match'">
                         <div class="score-fill" [ngClass]="scoreClass(room.recommendation_score)"
                              [style.width.%]="scorePercent(room.recommendation_score)"></div>
                       </div>
@@ -217,7 +217,7 @@
                     }
                     @if (roomAmenities(room).length > 3) {
                       <span class="tag tag-compact tag-more"
-                            [matTooltip]="roomAmenities(room).slice(3).map(amenityLabel).join(', ')">
+                            [pTooltip]="roomAmenities(room).slice(3).map(amenityLabel).join(', ')">
                         +{{ roomAmenities(room).length - 3 }}
                       </span>
                     }
@@ -232,8 +232,8 @@
                 </td>
                 <td>{{ room.maintenance_display }}</td>
                 <td class="cell-actions">
-                  <a class="btn btn-invisible btn-sm" [routerLink]="['/rooms', room.room_id]" [matTooltip]="'View details' | translate" [attr.aria-label]="'View room details' | translate">
-                    <mat-icon>chevron_right</mat-icon>
+                  <a class="btn btn-invisible btn-sm" [routerLink]="['/rooms', room.room_id]" [pTooltip]="'View details' | translate" [attr.aria-label]="'View room details' | translate">
+                    <app-icon name="chevron_right" />
                   </a>
                 </td>
               </tr>

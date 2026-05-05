@@ -1,9 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { IconComponent } from '../../../shared/components/icon/icon';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { Router } from "@angular/router";
 
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
@@ -78,9 +78,9 @@ type RoomTypeRecommendation = {
 	imports: [
 		NgClass,
 		FormsModule,
-		MatIconModule,
-		MatProgressSpinnerModule,
-		MatTooltipModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TooltipModule,
 		PaginationComponent,
 		TranslatePipe,
 	],
