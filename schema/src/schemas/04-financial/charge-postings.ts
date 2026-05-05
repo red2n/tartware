@@ -68,6 +68,8 @@ export const ChargePostingsSchema = z.object({
 	transfer_from_folio_id: uuid.optional(),
 	transfer_to_folio_id: uuid.optional(),
 	routing_rule_id: uuid.optional(),
+	/** UUID of the night audit run that created this posting; null for manually-posted charges. */
+	audit_run_id: uuid.optional(),
 	server_name: z.string().optional(),
 	cashier_name: z.string().optional(),
 	notes: z.string().optional(),

@@ -47,10 +47,12 @@ ALTER TABLE system_admin_audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS system_admin_audit_self_only ON system_admin_audit_log;
 DROP POLICY IF EXISTS system_admin_audit_insert ON system_admin_audit_log;
 
--- SELECT: admins may only read their own audit events
+-- SELECT: admins may only read their own audit events.
+-- NULLIF prevents a cast error when app.current_admin_id is unset (returns NULL
+-- instead of throwing, matching the safe pattern used across all other RLS policies).
 CREATE POLICY system_admin_audit_self_only ON system_admin_audit_log FOR
 SELECT USING (
-        admin_id = current_setting('app.current_admin_id', true)::UUID
+        admin_id = NULLIF(current_setting('app.current_admin_id', true), '')::UUID
     );
 
 -- INSERT: application service always allowed — audit events are written by the service,

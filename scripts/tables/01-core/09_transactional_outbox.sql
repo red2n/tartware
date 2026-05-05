@@ -49,4 +49,26 @@ CREATE INDEX IF NOT EXISTS idx_outbox_locked_workers
     ON transactional_outbox (locked_by)
     WHERE status = 'IN_PROGRESS';
 
+-- Ordered fan-out by Kafka partition alignment; needed for multi-consumer workers
+CREATE INDEX IF NOT EXISTS idx_outbox_partition_key
+    ON transactional_outbox (partition_key, available_at)
+    WHERE status IN ('PENDING', 'FAILED');
+
+-- ── Per-table autovacuum tuning ───────────────────────────────────────────────
+-- Default scale_factor=0.2 means 20% dead rows before vacuum fires.
+-- At 20K ops/sec the outbox will accumulate millions of dead rows between sweeps;
+-- lower thresholds ensure near-continuous vacuuming.
+ALTER TABLE transactional_outbox SET (
+    autovacuum_vacuum_scale_factor     = 0.01,
+    autovacuum_vacuum_cost_delay       = 0,
+    autovacuum_analyze_scale_factor    = 0.005
+);
+
+-- Disable synchronous WAL flush for outbox rows — Kafka re-delivery provides
+-- durability; a sub-second outbox loss on crash is acceptable and saves one
+-- fsync per insert at high throughput.
+-- NOTE: synchronous_commit is a session-level GUC; set via connection config
+-- or: ALTER DATABASE tartware SET synchronous_commit = off;
+-- (handled in 96_performance_tuning.sql and docker-compose postgres args)
+
 \echo 'transactional_outbox table created.'

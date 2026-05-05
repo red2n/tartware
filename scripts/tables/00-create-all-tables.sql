@@ -133,6 +133,8 @@
 \ir 04-financial/74_folio_routing_rules.sql
 \ir 04-financial/75_fiscal_periods.sql
 \ir 04-financial/76_folio_windows.sql
+\ir 04-financial/77_payment_gateway_webhooks.sql
+\ir 04-financial/78_night_audit_runs.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
@@ -227,6 +229,7 @@
 \ir 07-analytics/80_forecasting_models.sql
 \ir 07-analytics/81_ab_test_results.sql
 \ir 07-analytics/82_recommendation_interactions.sql
+\ir 07-analytics/83_night_audit_checkpoints.sql
 \ir 07-analytics/98_sustainability_metrics.sql
 
 -- =========================================================================
@@ -253,6 +256,8 @@
 \ir 09-reference-data/08_reason_codes.sql
 \ir 09-reference-data/09_pet_types.sql
 \ir 09-reference-data/10_departments.sql
+\ir 09-reference-data/11_gl_chart_of_accounts.sql
+\ir 09-reference-data/12_charge_code_gl_mapping.sql
 
 -- =========================================================================
 -- CATEGORY 10: COMPLIANCE (Data retention, breach tracking)
@@ -269,6 +274,9 @@
 
 \echo '>>> Enabling Row-Level Security on business tables'
 \ir 98_row_level_security.sql
+
+\echo '>>> Applying performance tuning (indexes, autovacuum, synchronous_commit)'
+\ir 96_performance_tuning.sql
 
 \echo ''
 \echo '========================================='

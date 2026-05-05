@@ -53,6 +53,12 @@ export type FailureCause = z.infer<typeof FailureCauseSchema>;
 /**
  * Reservation Created Event
  */
+const CancellationPolicySnapshotSchema = z.object({
+	type: z.string(),
+	hours: z.number(),
+	penalty: z.number(),
+});
+
 const ReservationCreatePayloadSchema = z.object({
 	id: ReservationsSchema.shape.id.optional(),
 	property_id: ReservationsSchema.shape.property_id,
@@ -68,6 +74,12 @@ const ReservationCreatePayloadSchema = z.object({
 	total_amount: z.coerce.number().nonnegative(),
 	currency: ReservationsSchema.shape.currency.optional(),
 	notes: ReservationsSchema.shape.internal_notes.optional(),
+	/**
+	 * Snapshot of the rate plan's cancellation_policy captured at booking time.
+	 * Frozen so subsequent rate-plan edits don't retroactively change the
+	 * guest's cancellation terms (consumer-protection requirement).
+	 */
+	cancellation_policy_snapshot: CancellationPolicySnapshotSchema.nullable().optional(),
 });
 
 export const ReservationCreatedEventSchema = z.object({

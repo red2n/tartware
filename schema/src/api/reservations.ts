@@ -704,6 +704,8 @@ export type RatePlanResolution = {
 	fallbackApplied: boolean;
 	reason?: string;
 	decidedAt: Date;
+	/** Snapshot of the rate's cancellation_policy JSONB at resolution time (for booking-time freeze). */
+	cancellationPolicySnapshot?: CancellationPolicy | null;
 };
 
 /** Result returned when a reservation command is accepted and enqueued. */

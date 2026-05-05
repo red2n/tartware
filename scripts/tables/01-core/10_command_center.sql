@@ -175,6 +175,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.payment.void', 'Void an authorized payment', 'billing-service', ARRAY['finance-automation']),
         ('billing.night_audit.execute', 'Execute nightly audit: post room charges, mark no-shows, advance business date', 'billing-service', ARRAY['finance-automation']),
         ('billing.ledger.post', 'Rebuild the general ledger batch for a property business date from billing source tables', 'billing-service', ARRAY['finance-automation']),
+        ('billing.gl_batch.export', 'Mark a GL batch as exported and record the export destination for ERP integration', 'billing-service', ARRAY['finance-automation']),
         ('billing.charge.void', 'Void a charge posting and create reversal entry', 'billing-service', ARRAY['finance-automation']),
         ('billing.invoice.finalize', 'Finalize an invoice, locking it from edits', 'accounts-service', ARRAY['finance-automation']),
         ('settings.value.set', 'Set a configuration value', 'settings-service', ARRAY['core']),
@@ -219,6 +220,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.payment.authorize_increment', 'Increment an existing payment authorization hold', 'billing-service', ARRAY['finance-automation']),
         ('billing.pricing.evaluate', 'Evaluate dynamic pricing rules for a room type', 'finance-admin-service', ARRAY['finance-automation']),
         ('billing.pricing.bulk_recommend', 'Bulk generate pricing recommendations', 'finance-admin-service', ARRAY['finance-automation']),
+        ('billing.fiscal_period.create', 'Create a new fiscal period for a property', 'billing-service', ARRAY['finance-automation']),
         ('billing.fiscal_period.close', 'Close a fiscal period to prevent new postings', 'finance-admin-service', ARRAY['finance-automation']),
         ('billing.fiscal_period.lock', 'Lock a closed fiscal period against all changes', 'finance-admin-service', ARRAY['finance-automation']),
         ('billing.fiscal_period.reopen', 'Reopen a closed fiscal period for adjustments', 'finance-admin-service', ARRAY['finance-automation']),
@@ -301,10 +303,9 @@ SELECT
     jsonb_build_object('seeded', true)
 FROM seed_commands sc
 ON CONFLICT (command_name) DO UPDATE SET
-    description = EXCLUDED.description,
+    description           = EXCLUDED.description,
     default_target_service = EXCLUDED.default_target_service,
-    required_modules = EXCLUDED.required_modules
-WHERE command_templates.metadata->>'seeded' = 'true';
+    required_modules      = EXCLUDED.required_modules;
 
 INSERT INTO command_routes (command_name, environment, tenant_id, service_id, topic, metadata)
 SELECT
@@ -337,6 +338,15 @@ WHERE NOT EXISTS (
     WHERE cf.command_name = ct.command_name
       AND cf.environment = 'development'
       AND cf.tenant_id IS NULL
+);
+
+-- ── Per-table autovacuum tuning ─────────────────────────────────────────────
+-- command_dispatches accumulates one row per command at 20K ops/sec;
+-- aggressive autovacuum prevents bloat from completed/failed rows.
+ALTER TABLE command_dispatches SET (
+    autovacuum_vacuum_scale_factor     = 0.01,
+    autovacuum_vacuum_cost_delay       = 0,
+    autovacuum_analyze_scale_factor    = 0.005
 );
 
 \echo 'Command center catalog ready.'

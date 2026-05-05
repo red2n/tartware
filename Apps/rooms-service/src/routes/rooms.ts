@@ -659,11 +659,6 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: AvailabilityQuery }>(
     "/v1/rooms/availability",
     {
-      preHandler: app.withTenantScope({
-        resolveTenantId: (request) => (request.query as AvailabilityQuery).tenant_id,
-        minRole: "STAFF",
-        requiredModules: "core",
-      }),
       schema: buildRouteSchema({
         tag: ROOMS_TAG,
         summary: "Search available rooms for a date range",

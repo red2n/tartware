@@ -181,7 +181,7 @@ export type NotificationSummary = {
 	metadata: Record<string, unknown>;
 };
 
-/** DB row shape for a lock audit record. */
+/** DB row shape for a lock audit record. Mirrors the `inventory_lock_audits` table. */
 export type LockAuditRecord = {
 	id: string;
 	lock_id: string;
@@ -195,7 +195,7 @@ export type LockAuditRecord = {
 	created_at: Date;
 };
 
-/** DB row shape for an inventory lock record. */
+/** DB row shape for an inventory lock record. Mirrors the `inventory_locks_shadow` table. */
 export type InventoryLock = {
 	id: string;
 	tenant_id: string;
@@ -204,8 +204,13 @@ export type InventoryLock = {
 	room_id: string | null;
 	stay_start: Date;
 	stay_end: Date;
+	reason: string;
+	correlation_id: string | null;
 	expires_at: Date | null;
+	ttl_seconds: number | null;
+	metadata: Record<string, unknown> | null;
 	status: "ACTIVE" | "RELEASED";
+	release_reason: string | null;
 	created_at: Date;
 	updated_at: Date;
 };

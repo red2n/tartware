@@ -65,7 +65,10 @@ export const shutdownOutboxDispatcher = async (): Promise<void> => {
 };
 
 const scheduleNextCycle = () => {
-  dispatcherTimer = setTimeout(runCycle, outboxConfig.pollIntervalMs);
+  // Guard: pollIntervalMs must be a positive finite value. A zero or negative
+  // delay coerces to 1ms and spin-loops (TimeoutNegativeWarning / CPU burn).
+  const delayMs = Math.max(1, outboxConfig.pollIntervalMs);
+  dispatcherTimer = setTimeout(runCycle, delayMs);
 };
 
 const runCycle = async () => {

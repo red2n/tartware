@@ -73,7 +73,25 @@ export async function getLostAndFoundItem(params: {
   tenantId: string;
 }): Promise<unknown | null> {
   const result = await query(
-    `SELECT * FROM lost_and_found
+    `SELECT
+       item_id, tenant_id, property_id, item_number,
+       item_name, item_description, item_category, item_subcategory,
+       brand, model, color, size, distinguishing_features, serial_number,
+       estimated_value, currency, is_valuable, is_perishable,
+       found_date::text, found_time::text, found_by, found_by_name,
+       found_location, room_number, room_id, floor_number, area_name, specific_location,
+       guest_id, guest_name, guest_email, guest_phone, reservation_id, checkout_date::text,
+       item_status,
+       storage_location, storage_shelf, storage_bin, storage_date::text, stored_by,
+       requires_secure_storage, secure_storage_location, is_locked, access_log,
+       has_photos, photo_urls, photo_count,
+       has_documents, document_urls,
+       claim_count, claimed, claimed_by_guest_id, claimed_by_name, claim_date::text,
+       hold_until_date::text, days_in_storage,
+       returned, return_date::text, return_method,
+       internal_notes,
+       created_at, updated_at
+     FROM lost_and_found
      WHERE item_id = $1 AND tenant_id = $2 AND is_deleted = false`,
     [params.itemId, params.tenantId],
   );

@@ -28,6 +28,7 @@ import {
 	BillingDateRollManualCommandSchema,
 	BillingExpressCheckoutCommandSchema,
 	BillingFiscalPeriodCloseCommandSchema,
+	BillingFiscalPeriodCreateCommandSchema,
 	BillingFiscalPeriodLockCommandSchema,
 	BillingFiscalPeriodReopenCommandSchema,
 	BillingFolioCloseCommandSchema,
@@ -37,6 +38,7 @@ import {
 	BillingFolioSplitCommandSchema,
 	BillingFolioTransferCommandSchema,
 	BillingFolioWindowCreateCommandSchema,
+	BillingGlBatchExportCommandSchema,
 	BillingInvoiceAdjustCommandSchema,
 	BillingInvoiceCreateCommandSchema,
 	BillingInvoiceFinalizeCommandSchema,
@@ -290,6 +292,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => BillingLedgerPostCommandSchema.parse(payload),
 	],
 	[
+		"billing.gl_batch.export",
+		(payload) => BillingGlBatchExportCommandSchema.parse(payload),
+	],
+	[
 		"billing.folio.close",
 		(payload) => BillingFolioCloseCommandSchema.parse(payload),
 	],
@@ -350,6 +356,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.chargeback.record",
 		(payload) => BillingChargebackRecordCommandSchema.parse(payload),
+	],
+	[
+		"billing.fiscal_period.create",
+		(payload) => BillingFiscalPeriodCreateCommandSchema.parse(payload),
 	],
 	[
 		"billing.fiscal_period.close",

@@ -891,12 +891,41 @@ echo ""
 
 echo -e "${BLUE}[14/15]${NC} Running verification..."
 
-psql -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30
+# Colorize psql output:
+#   ✓  → green    (pass)
+#   ✗  → yellow   (warning/fail)
+#   ═══ / PHASE headers → cyan
+#   █ banner lines → blue
+#   ERROR/EXCEPTION → red
+colorize_verify() {
+    while IFS= read -r line; do
+        # Strip psql NOTICE/WARNING prefixes first
+        clean="${line}"
+        clean="${clean#*NOTICE:  }"
+        clean="${clean#*WARNING:  }"
+        clean="${clean#*ERROR:  }"
+        if [[ "$line" == *"ERROR"* || "$line" == *"EXCEPTION"* ]]; then
+            echo -e "${RED}${clean}${NC}"
+        elif [[ "$line" == *"WARNING"* || "$clean" == *"✗"* ]]; then
+            echo -e "${YELLOW}${clean}${NC}"
+        elif [[ "$clean" == *"✓"* ]]; then
+            echo -e "${GREEN}${clean}${NC}"
+        elif [[ "$clean" == *"═══"* || "$clean" == *"PHASE"* || "$clean" == *"======"* ]]; then
+            echo -e "${CYAN}${clean}${NC}"
+        elif [[ "$clean" == *"█"* || "$clean" == *"TARTWARE"* ]]; then
+            echo -e "${BLUE}${clean}${NC}"
+        else
+            echo "$clean"
+        fi
+    done
+}
+
+psql -v scripts_dir="$SCRIPTS_DIR" -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-all.sql" 2>&1 | tail -30 | colorize_verify
 
 echo ""
 echo -e "${BLUE}[14/15]${NC} Running post-setup verification..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-setup.sql" 2>&1 | grep -E 'NOTICE:|WARNING:' | sed 's/.*NOTICE:  //' | sed 's/.*WARNING:  //'
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCRIPTS_DIR/verify-setup.sql" 2>&1 | grep -E 'NOTICE:|WARNING:|ERROR:' | colorize_verify
 
 echo ""
 
@@ -907,10 +936,78 @@ echo ""
 KAFKA_TOPIC_SCRIPT="$REPO_ROOT/scripts/dev/bootstrap-kafka-topics.mjs"
 if [ -f "$KAFKA_TOPIC_SCRIPT" ]; then
     echo -e "${BLUE}[15/15]${NC} Bootstrapping Kafka topics..."
-    if (cd "$REPO_ROOT" && node "$KAFKA_TOPIC_SCRIPT" 2>/dev/null); then
-        echo -e "${GREEN}✓ Kafka topics bootstrapped${NC}"
+    KAFKA_BROKER="${KAFKA_BROKERS:-localhost:29092}"
+    KAFKA_HOST="${KAFKA_BROKER%%:*}"
+    KAFKA_PORT="${KAFKA_BROKER##*:}"
+    KAFKA_WAIT_SECS=60
+    KAFKA_READY=false
+    echo -e "   Waiting for Kafka on ${KAFKA_BROKER} (up to ${KAFKA_WAIT_SECS}s)..."
+    for i in $(seq 1 $KAFKA_WAIT_SECS); do
+        if nc -z "$KAFKA_HOST" "$KAFKA_PORT" 2>/dev/null; then
+            KAFKA_READY=true
+            break
+        fi
+        sleep 1
+    done
+
+    if [ "$KAFKA_READY" = true ]; then
+        kafka_bootstrapped=false
+
+        # Helper: run the bootstrap script in a given environment
+        _run_kafka_bootstrap() {
+            local label="$1"; shift
+            local run_cmd="$*"
+            if bash -c "$run_cmd" 2>/dev/null; then
+                echo -e "${GREEN}✓ Kafka topics bootstrapped${label:+ (${label})}${NC}"
+                kafka_bootstrapped=true
+                return 0
+            fi
+            return 1
+        }
+
+        # Attempt 1: node in current PATH
+        if command -v node >/dev/null 2>&1; then
+            _run_kafka_bootstrap "" "cd '$REPO_ROOT' && node '$KAFKA_TOPIC_SCRIPT'" || true
+        fi
+
+        # Attempt 2 (sudo fallback): use the original user's NVM node
+        if [ "$kafka_bootstrapped" = false ] && [ -n "${SUDO_USER:-}" ]; then
+            echo -e "${CYAN}Attempting Kafka bootstrap as '${SUDO_USER}' (to use user's Node environment)...${NC}"
+            kafka_nvm_cmd="export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; if command -v node >/dev/null 2>&1; then cd '$REPO_ROOT' && node '$KAFKA_TOPIC_SCRIPT'; else exit 2; fi"
+            if sudo -u "$SUDO_USER" -H bash -lc "$kafka_nvm_cmd" 2>/dev/null; then
+                echo -e "${GREEN}✓ Kafka topics bootstrapped (using ${SUDO_USER}'s node)${NC}"
+                kafka_bootstrapped=true
+            else
+                rc=$?
+                if [ $rc -eq 2 ]; then
+                    echo -e "${YELLOW}⚠  Node.js not found in ${SUDO_USER}'s environment either${NC}"
+                fi
+            fi
+        fi
+
+        # Attempt 3: retry once after a brief pause (broker may need a moment)
+        if [ "$kafka_bootstrapped" = false ]; then
+            echo -e "${YELLOW}⚠  Topic creation failed — retrying in 5s...${NC}"
+            sleep 5
+            if [ -n "${SUDO_USER:-}" ]; then
+                kafka_retry_cmd="export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; command -v node >/dev/null 2>&1 && cd '$REPO_ROOT' && node '$KAFKA_TOPIC_SCRIPT'"
+                if sudo -u "$SUDO_USER" -H bash -lc "$kafka_retry_cmd"; then
+                    echo -e "${GREEN}✓ Kafka topics bootstrapped (retry, using ${SUDO_USER}'s node)${NC}"
+                    kafka_bootstrapped=true
+                fi
+            elif command -v node >/dev/null 2>&1; then
+                if (cd "$REPO_ROOT" && node "$KAFKA_TOPIC_SCRIPT"); then
+                    echo -e "${GREEN}✓ Kafka topics bootstrapped (retry)${NC}"
+                    kafka_bootstrapped=true
+                fi
+            fi
+        fi
+
+        if [ "$kafka_bootstrapped" = false ]; then
+            echo -e "${YELLOW}⚠  Kafka topic bootstrap failed — run manually: pnpm run kafka:topics${NC}"
+        fi
     else
-        echo -e "${YELLOW}⚠  Kafka not reachable — topics will be created when Kafka starts${NC}"
+        echo -e "${YELLOW}⚠  Kafka not reachable after ${KAFKA_WAIT_SECS}s — topics will be created when Kafka starts${NC}"
         echo -e "${YELLOW}   Run: pnpm run kafka:topics${NC}"
     fi
 else

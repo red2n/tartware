@@ -1,5 +1,6 @@
 import {
   databaseSchema,
+  ensureAuthDefaults,
   loadServiceConfig,
   parseBooleanEnv,
   parseNumberEnv,
@@ -13,14 +14,7 @@ loadEnv();
 process.env.SERVICE_NAME = process.env.SERVICE_NAME ?? "@tartware/api-gateway";
 process.env.SERVICE_VERSION = process.env.SERVICE_VERSION ?? "0.1.0";
 
-if (!process.env.AUTH_JWT_SECRET) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("AUTH_JWT_SECRET must be set in production and cannot use a default value.");
-  }
-  process.env.AUTH_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
-}
-process.env.AUTH_JWT_ISSUER = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
-process.env.AUTH_JWT_AUDIENCE = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+ensureAuthDefaults({ issuer: "tartware-core-service", audience: "tartware-core" });
 
 const env = process.env;
 
@@ -147,7 +141,8 @@ export const dbConfig = {
 
 export const authConfig = {
   jwt: {
-    secret: process.env.AUTH_JWT_SECRET ?? "dev-secret-minimum-32-chars-change-me!",
+    // AUTH_JWT_SECRET is guaranteed set by ensureAuthDefaults() above (throws in production).
+    secret: process.env.AUTH_JWT_SECRET as string,
     issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core-service",
     audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware-core",
   },

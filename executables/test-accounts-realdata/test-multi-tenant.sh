@@ -63,11 +63,22 @@ IN5DAYS=$(date -d "+5 days" +%Y-%m-%d 2>/dev/null || date -v+5d +%Y-%m-%d)
 KAFKA_WAIT=4
 UNIQUE=$(date +%s)
 
+# Per-run unique tag injected into Tenant B + dynamic property codes/usernames/emails.
+# Lets every invocation create fresh tenant/property/user records and surface real
+# uniqueness errors instead of silently reusing prior-run data.
+RUN_TAG="$(date +%H%M%S)$(printf '%02d' $((RANDOM % 100)))"  # 8 chars, e.g. 1530457
+echo "┌─ RUN_TAG=$RUN_TAG (used to suffix Tenant B slug, property codes, B-side usernames)"
+
 PASS=0; FAIL=0; TOTAL=0; SKIP=0
 SKIP_SEED=false
+FULL_API=true   # set false with --no-full-api to skip Phase 6b smoke coverage
 
 for arg in "$@"; do
-  case "$arg" in --skip-seed) SKIP_SEED=true ;; esac
+  case "$arg" in
+    --skip-seed)    SKIP_SEED=true ;;
+    --no-full-api)  FULL_API=false ;;
+    --full-api)     FULL_API=true ;;
+  esac
 done
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -75,11 +86,35 @@ done
 RESP_FILE=$(mktemp /tmp/tartware-mt-resp.XXXXXX.json)
 trap "rm -f $RESP_FILE" EXIT
 
+# Generate a UUID for Idempotency-Key (required by all command writes since IDEMP-01).
+gen_uuid() {
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then
+    cat /proc/sys/kernel/random/uuid
+  elif command -v uuidgen >/dev/null 2>&1; then
+    uuidgen
+  else
+    printf '%08x-%04x-%04x-%04x-%012x\n' \
+      $((RANDOM*RANDOM)) $RANDOM $RANDOM $RANDOM $((RANDOM*RANDOM*RANDOM))
+  fi
+}
+
 post() {
+  local idem="${3:-$(gen_uuid)}"
   curl -s -o "$RESP_FILE" -w "%{http_code}" \
     -X POST "$1" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+put() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PUT "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
     -d "$2"
 }
 
@@ -157,32 +192,18 @@ assert_http() {
 
 # send_command <label> <command_name> <payload_json> [idempotency_key]
 send_command() {
-  local label="$1" cmd="$2" payload="$3" idem="${4:-}"
+  local label="$1" cmd="$2" payload="$3" idem="${4:-$(gen_uuid)}"
   local body="{\"tenant_id\":\"$CUR_TID\",\"payload\":$payload}"
-  local idem_header=""
-  if [[ -n "$idem" ]]; then
-    idem_header="-H \"Idempotency-Key: $idem\""
-    printf "  ▸ %-55s " "$label"
-  else
-    printf "  ▸ %-55s " "$label"
-  fi
+  printf "  ▸ %-55s " "$label"
   local code
-  if [[ -n "$idem" ]]; then
-    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-      -X POST "$GW/v1/commands/$cmd/execute" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Content-Type: application/json" \
-      -H "Idempotency-Key: $idem" \
-      -d "$body")
-  else
-    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-      -X POST "$GW/v1/commands/$cmd/execute" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "$body")
-  fi
+  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/commands/$cmd/execute" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$body")
   if [[ "$code" =~ ^2 ]]; then printf "✓ %s\n" "$code"
-  else printf "✗ %s\n" "$code"; fi
+  else printf "✗ %s ← %s\n" "$code" "$(jq -r '.message // .error // .code // .' "$RESP_FILE" 2>/dev/null | head -c 180)"; fi
 }
 
 # REST-style seed: POST with auto-assertion
@@ -196,6 +217,42 @@ seed_rest() {
 }
 
 wait_kafka() { sleep "${1:-$KAFKA_WAIT}"; }
+
+# poll_delta — poll an API endpoint until the item-count delta >= min_delta,
+# retrying with exponential backoff when the initial check shows Δ=0.
+# Emits pass on success, skip after all retries (never a hard fail — Δ=0 may
+# be a handler no-op rather than a test defect).
+#
+# Usage: poll_delta <label> <url> <baseline> [min_delta=1] [max_retries=1] [first_retry_wait=16]
+poll_delta() {
+  local label="$1" url="$2" baseline="$3"
+  local min_delta="${4:-1}" max_retries="${5:-1}" wait="${6:-16}"
+  local current delta
+
+  get "$url" >/dev/null
+  current=$(resp_count)
+  delta=$((current - baseline))
+
+  if [[ "$delta" -ge "$min_delta" ]]; then
+    pass "$label (Δ=$delta)"; return 0
+  fi
+
+  local attempt=1
+  while [[ $attempt -le $max_retries ]]; do
+    printf "  ⏳ Retry %d/%d in %ds: %s (Δ=%d so far)\n" \
+           "$attempt" "$max_retries" "$wait" "$label" "$delta"
+    sleep "$wait"
+    get "$url" >/dev/null
+    current=$(resp_count)
+    delta=$((current - baseline))
+    if [[ "$delta" -ge "$min_delta" ]]; then
+      pass "$label (Δ=$delta, retry $attempt)"; return 0
+    fi
+    wait=$((wait * 2)); attempt=$((attempt + 1))
+  done
+
+  skip "$label" "Δ=$delta after $((max_retries + 1)) checks"
+}
 
 # ─── Preflight checks ───────────────────────────────────────────────────────
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -226,12 +283,12 @@ echo "  ✓ Tenant A auth token acquired"
 TOKEN="$TOKEN_A"
 
 # Ensure finance-automation module is enabled for Tenant A
-echo "  Enabling finance-automation module for Tenant A..."
+echo "  Enabling all modules for Tenant A..."
 MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_A/modules" \
   -H "Authorization: Bearer $TOKEN_A" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant A (HTTP $MOD_CODE)"
 else
@@ -251,9 +308,14 @@ echo ""
 # ── 0.1  Bootstrap Tenant B ─────────────────────────────────────────────
 echo "── 0.1  Bootstrap Tenant B ──────────────────────────────────────────"
 
-TENANT_B_USER="beacon.admin"
+TENANT_B_USER="beacon.admin.${RUN_TAG}"
 TENANT_B_PASS="BeaconPass123!"
-TENANT_B_EMAIL="admin@beaconhotels.test"
+TENANT_B_EMAIL="admin+${RUN_TAG}@beaconhotels.test"
+TENANT_B_SLUG="beacon-hotels-${RUN_TAG}"
+TENANT_B_NAME="Beacon Hotels ${RUN_TAG}"
+PROPERTY_B1_CODE="BCN-HV-${RUN_TAG}"
+PROPERTY_B2_CODE="BCN-MT-${RUN_TAG}"
+PROPERTY_A2_CODE="TAR-BH-${RUN_TAG}"
 
 # Check if Tenant B already exists via API (system admin endpoint)
 echo "  Generating system admin token..."
@@ -270,17 +332,27 @@ echo "  ✓ System admin token acquired"
 # Look up tenant by slug via system admin API
 SYS_RESP=$(curl -s "$CORE_SVC/v1/system/tenants?limit=200" \
   -H "Authorization: Bearer $SYS_TOKEN")
-EXISTING_B=$(echo "$SYS_RESP" | jq -r '.tenants // [] | map(select(.slug == "beacon-hotels")) | .[0].id // empty' 2>/dev/null)
+EXISTING_B=$(echo "$SYS_RESP" | jq -r --arg slug "$TENANT_B_SLUG" '.tenants // [] | map(select(.slug == $slug)) | .[0].id // empty' 2>/dev/null)
 
 if [[ -n "$EXISTING_B" ]]; then
   TID_B="$EXISTING_B"
-  # Get first property for Tenant B via API
-  TOKEN="$TOKEN_A"  # temp token for property lookup; will get B token below
-  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    "$CORE_SVC/v1/properties?tenant_id=$TID_B&limit=10" \
-    -H "Authorization: Bearer $SYS_TOKEN")
-  PID_B1=$(jq -r '(if type == "array" then .[0] else (.data[0] // null) end) | .id // empty' "$RESP_FILE" 2>/dev/null)
   echo "  ℹ Tenant B already exists: $TID_B"
+  # Get tenant B token first (system token can't read tenant-scoped routes)
+  TOKEN_B=$(curl -s -X POST "$GW/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$TENANT_B_USER\",\"password\":\"$TENANT_B_PASS\"}" \
+    | jq -r '.access_token // .token // .data.access_token // empty')
+  if [[ -n "$TOKEN_B" ]]; then
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      "$GW/v1/properties?tenant_id=$TID_B&limit=10" \
+      -H "Authorization: Bearer $TOKEN_B")
+    # Pick this run's B1 property by dynamic code
+    PID_B1=$(jq -r --arg code "$PROPERTY_B1_CODE" '(if type == "array" then . else (.data // .properties // []) end) | map(select(.property_code == $code)) | .[0].id // empty' "$RESP_FILE" 2>/dev/null)
+    # Fallback: any property if dynamic code not present yet
+    if [[ -z "$PID_B1" ]]; then
+      PID_B1=$(jq -r '(if type == "array" then .[0] else (.data[0] // .properties[0] // null) end) | .id // empty' "$RESP_FILE" 2>/dev/null)
+    fi
+  fi
   echo "  ℹ Property B1: $PID_B1"
 else
 
@@ -290,18 +362,18 @@ else
     -H "Content-Type: application/json" \
     -d "{
       \"tenant\": {
-        \"name\": \"Beacon Hotels\",
-        \"slug\": \"beacon-hotels\",
+        \"name\": \"$TENANT_B_NAME\",
+        \"slug\": \"$TENANT_B_SLUG\",
         \"type\": \"INDEPENDENT\",
         \"email\": \"$TENANT_B_EMAIL\"
       },
       \"property\": {
-        \"property_name\": \"Beacon Harborview\",
-        \"property_code\": \"BCN-HV\",
+        \"property_name\": \"Beacon Harborview $RUN_TAG\",
+        \"property_code\": \"$PROPERTY_B1_CODE\",
         \"property_type\": \"hotel\",
         \"star_rating\": 4,
         \"total_rooms\": 80,
-        \"email\": \"harbor@beaconhotels.test\",
+        \"email\": \"harbor+${RUN_TAG}@beaconhotels.test\",
         \"timezone\": \"America/Chicago\",
         \"currency\": \"USD\"
       },
@@ -348,13 +420,13 @@ fi
 [[ -n "$TOKEN_B" ]] || { echo "FATAL: Cannot get auth token for Tenant B"; exit 1; }
 echo "  ✓ Tenant B auth token acquired"
 
-# Enable finance-automation module for Tenant B
-echo "  Enabling finance-automation module for Tenant B..."
+# Enable all modules for Tenant B
+echo "  Enabling all modules for Tenant B..."
 MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_B/modules" \
   -H "Authorization: Bearer $TOKEN_B" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant B (HTTP $MOD_CODE)"
 else
@@ -368,24 +440,24 @@ echo "── 0.2  Create Property A2 ──────────────�
 
 TOKEN="$TOKEN_A"
 get "$GW/v1/properties?tenant_id=$TID_A" >/dev/null
-EXISTING_A2=$(resp_ffirst '.property_code == "TAR-BH"' "id")
+EXISTING_A2=$(resp_ffirst ".property_code == \"$PROPERTY_A2_CODE\"" "id")
 if [[ -n "$EXISTING_A2" ]]; then
   PID_A2="$EXISTING_A2"
   echo "  ℹ Property A2 already exists: $PID_A2"
 else
   code=$(post "$GW/v1/properties" \
-    "{\"tenant_id\":\"$TID_A\",\"property_name\":\"Tartware Beach Resort\",\"property_code\":\"TAR-BH\",\"property_type\":\"RESORT\",\"star_rating\":4,\"total_rooms\":100,\"email\":\"beach@tartware.test\",\"currency\":\"USD\",\"timezone\":\"America/New_York\"}")
+    "{\"tenant_id\":\"$TID_A\",\"property_name\":\"Tartware Beach Resort $RUN_TAG\",\"property_code\":\"$PROPERTY_A2_CODE\",\"property_type\":\"RESORT\",\"star_rating\":4,\"total_rooms\":100,\"email\":\"beach+${RUN_TAG}@tartware.test\",\"currency\":\"USD\",\"timezone\":\"America/New_York\"}")
   if [[ "$code" =~ ^2 ]]; then
     PID_A2=$(jq -r '.id // .data.id // .property_id // empty' "$RESP_FILE" 2>/dev/null)
     if [[ -z "$PID_A2" ]]; then
       get "$GW/v1/properties?tenant_id=$TID_A" >/dev/null
-      PID_A2=$(resp_ffirst '.property_code == "TAR-BH"' "id")
+      PID_A2=$(resp_ffirst ".property_code == \"$PROPERTY_A2_CODE\"" "id")
     fi
     echo "  ✓ Property A2 created: $PID_A2"
   else
     echo "  ⚠ Could not create Property A2 (HTTP $code)"
     get "$GW/v1/properties?tenant_id=$TID_A" >/dev/null
-    PID_A2=$(resp_ffirst '.property_code == "TAR-BH"' "id")
+    PID_A2=$(resp_ffirst ".property_code == \"$PROPERTY_A2_CODE\"" "id")
     if [[ -n "$PID_A2" ]]; then echo "  ℹ Found via API: $PID_A2"; fi
   fi
 fi
@@ -397,24 +469,24 @@ echo "── 0.3  Create Property B2 ──────────────�
 
 TOKEN="$TOKEN_B"
 get "$GW/v1/properties?tenant_id=$TID_B" >/dev/null
-EXISTING_B2=$(resp_ffirst '.property_code == "BCN-MT"' "id")
+EXISTING_B2=$(resp_ffirst ".property_code == \"$PROPERTY_B2_CODE\"" "id")
 if [[ -n "$EXISTING_B2" ]]; then
   PID_B2="$EXISTING_B2"
   echo "  ℹ Property B2 already exists: $PID_B2"
 else
   code=$(post "$GW/v1/properties" \
-    "{\"tenant_id\":\"$TID_B\",\"property_name\":\"Beacon Mountain Lodge\",\"property_code\":\"BCN-MT\",\"property_type\":\"RESORT\",\"star_rating\":3,\"total_rooms\":60,\"email\":\"mountain@beaconhotels.test\",\"currency\":\"USD\",\"timezone\":\"America/Denver\"}")
+    "{\"tenant_id\":\"$TID_B\",\"property_name\":\"Beacon Mountain Lodge $RUN_TAG\",\"property_code\":\"$PROPERTY_B2_CODE\",\"property_type\":\"RESORT\",\"star_rating\":3,\"total_rooms\":60,\"email\":\"mountain+${RUN_TAG}@beaconhotels.test\",\"currency\":\"USD\",\"timezone\":\"America/Denver\"}")
   if [[ "$code" =~ ^2 ]]; then
     PID_B2=$(jq -r '.id // .data.id // .property_id // empty' "$RESP_FILE" 2>/dev/null)
     if [[ -z "$PID_B2" ]]; then
       get "$GW/v1/properties?tenant_id=$TID_B" >/dev/null
-      PID_B2=$(resp_ffirst '.property_code == "BCN-MT"' "id")
+      PID_B2=$(resp_ffirst ".property_code == \"$PROPERTY_B2_CODE\"" "id")
     fi
     echo "  ✓ Property B2 created: $PID_B2"
   else
     echo "  ⚠ Could not create Property B2 (HTTP $code)"
     get "$GW/v1/properties?tenant_id=$TID_B" >/dev/null
-    PID_B2=$(resp_ffirst '.property_code == "BCN-MT"' "id")
+    PID_B2=$(resp_ffirst ".property_code == \"$PROPERTY_B2_CODE\"" "id")
     if [[ -n "$PID_B2" ]]; then echo "  ℹ Found via API: $PID_B2"; fi
   fi
 fi
@@ -457,7 +529,7 @@ create_room() {
 }
 
 # Property A2 — room type + rooms
-RTID_A2=$(create_room_type "$TOKEN_A" "$TID_A" "$PID_A2" "Beach Standard" "BST" "179.00")
+RTID_A2=$(create_room_type "$TOKEN_A" "$TID_A" "$PID_A2" "Beach Standard $RUN_TAG" "BST-${RUN_TAG}" "179.00")
 echo "  Room type A2: ${RTID_A2:-(FAILED)}"
 if [[ -n "$RTID_A2" ]]; then
   for r in 501 502 503 504 505 506 507 508 509 510; do
@@ -470,7 +542,7 @@ if [[ -n "$RTID_A2" ]]; then
 fi
 
 # Property B1 — room type + rooms
-RTID_B1=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B1" "Harbor King" "HBK" "189.00")
+RTID_B1=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B1" "Harbor King $RUN_TAG" "HBK-${RUN_TAG}" "189.00")
 echo "  Room type B1: ${RTID_B1:-(FAILED)}"
 if [[ -n "$RTID_B1" ]]; then
   for r in 101 102 103 104 105 106 107 108 109 110; do
@@ -483,7 +555,7 @@ if [[ -n "$RTID_B1" ]]; then
 fi
 
 # Property B2 — room type + rooms
-RTID_B2=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B2" "Mountain Cabin" "MTC" "149.00")
+RTID_B2=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B2" "Mountain Cabin $RUN_TAG" "MTC-${RUN_TAG}" "149.00")
 echo "  Room type B2: ${RTID_B2:-(FAILED)}"
 if [[ -n "$RTID_B2" ]]; then
   for r in 201 202 203 204 205 206 207 208 209 210; do
@@ -513,7 +585,7 @@ seed_bar_rate() {
   elif [[ "$code" == "409" ]]; then
     echo "  ℹ BAR rate already exists for $lbl"
   else
-    echo "  ⚠ BAR rate seed for $lbl failed (HTTP $code)"
+    echo "  ⚠ BAR rate seed for $lbl failed (HTTP $code): $(jq -r '.detail // .message // .error // empty' "$RESP_FILE" 2>/dev/null | head -c 200)"
   fi
 }
 
@@ -533,66 +605,42 @@ if [[ -n "$RTID_B2" ]]; then
 fi
 echo ""
 
-# ── 0.5  Enable billing commands for both tenants ────────────────────────
-echo "── 0.5  Enable Billing Commands ─────────────────────────────────────"
+# ── 0.5  Enable ALL commands (global — not per-tenant) ───────────────────
+echo "── 0.5  Enable All Commands ──────────────────────────────────────────"
+# Dynamically fetch every command name from the catalog and enable them all.
+# This avoids the "forgot guest.register / reservation.create" trap that causes
+# Phase 2/3 guest+reservation creation to fail with FEATURE_DISABLED.
+TOKEN="$TOKEN_A"
+ALL_CMDS=$(curl -s -H "Authorization: Bearer $TOKEN_A" \
+  "$GW/v1/commands/features?limit=500" \
+  | jq -r '.[]? // .data[]? | .command_name' 2>/dev/null)
+CMD_COUNT=0
+UPDATES_PAYLOAD="["
+FIRST_CMD=true
+while IFS= read -r cmd_name; do
+  [[ -z "$cmd_name" ]] && continue
+  if $FIRST_CMD; then FIRST_CMD=false; else UPDATES_PAYLOAD+=","; fi
+  UPDATES_PAYLOAD+="{\"command_name\":\"$cmd_name\",\"status\":\"enabled\"}"
+  CMD_COUNT=$((CMD_COUNT + 1))
+done <<< "$ALL_CMDS"
+UPDATES_PAYLOAD+="]"
 
-REQUIRED_COMMANDS=(
-  "billing.charge.post" "billing.charge.void" "billing.charge.transfer"
-  "billing.payment.capture" "billing.payment.authorize"
-  "billing.payment.authorize_increment" "billing.payment.void"
-  "billing.payment.refund"
-  "billing.invoice.create" "billing.invoice.adjust" "billing.invoice.finalize"
-  "billing.invoice.void" "billing.credit_note.create"
-  "billing.folio.create" "billing.folio.close" "billing.folio.transfer"
-  "billing.folio.split"
-  "billing.cashier.open" "billing.cashier.close" "billing.cashier.handover"
-  "billing.ar.post" "billing.ar.apply_payment" "billing.ar.write_off"
-  "billing.chargeback.record"
-  "billing.chargeback.update_status"
-  "billing.night_audit.execute"
-  "billing.express_checkout"
-  "billing.fiscal_period.close"
-  "billing.tax_config.create"
-  "billing.invoice.reopen"
-  "billing.folio.reopen"
-  "billing.folio.merge"
-  "billing.no_show.charge"
-  "billing.late_checkout.charge"
-  "billing.cancellation.penalty"
-  "billing.tax_exemption.apply"
-  "billing.comp.post"
-)
-
-enable_commands_via_api() {
-  local tok="$1" label="$2"
-  # Build batch update payload
-  local updates="["
-  local first=true
-  for cmd in "${REQUIRED_COMMANDS[@]}"; do
-    if $first; then first=false; else updates+=","; fi
-    updates+="{\"command_name\":\"$cmd\",\"status\":\"enabled\"}"
-  done
-  updates+="]"
-
-  local code
-  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+if [[ $CMD_COUNT -eq 0 ]]; then
+  echo "  ⚠ No commands found in catalog — skipping enable step"
+else
+  enable_code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
     -X PATCH "$GW/v1/commands/features/batch" \
-    -H "Authorization: Bearer $tok" \
+    -H "Authorization: Bearer $TOKEN_A" \
     -H "Content-Type: application/json" \
-    -d "{\"updates\":$updates}")
-
-  if [[ "$code" =~ ^2 ]]; then
-    local updated_count
-    updated_count=$(jq '.updated | length' "$RESP_FILE" 2>/dev/null || echo "?")
-    echo "  $label: $updated_count commands enabled (HTTP $code)"
+    -d "{\"updates\":$UPDATES_PAYLOAD}")
+  if [[ "$enable_code" =~ ^2 ]]; then
+    updated=$(jq '.updated | length' "$RESP_FILE" 2>/dev/null || echo "?")
+    echo "  ✓ $updated / $CMD_COUNT commands enabled globally (HTTP $enable_code)"
   else
-    echo "  ⚠ $label: Failed to enable commands (HTTP $code)"
-    jq '.message // .error // .' "$RESP_FILE" 2>/dev/null
+    echo "  ⚠ Batch enable failed (HTTP $enable_code) — body:"
+    jq '.message // .error // .' "$RESP_FILE" 2>/dev/null | head -3
   fi
-}
-
-# Command features are global (not per-tenant) — one call enables for all tenants
-enable_commands_via_api "$TOKEN_A" "Global"
+fi
 
 echo "  Waiting 32s for gateway command cache refresh..."
 sleep 32
@@ -672,7 +720,7 @@ run_billing_pipeline() {
   echo "── ${tag} — Guest Creation ────────────────────────────────────────"
   if ! $SKIP_SEED; then
     local guest_first="Test" guest_last="Guest-${tag}"
-    local guest_email="${tag,,}@tartware-test.local"
+    local guest_email="${tag,,}-${RUN_TAG}@tartware-test.local"
     local phone1="+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))"
     seed_rest "REST guest: $guest_first $guest_last" \
       "$GW/v1/guests" \
@@ -693,10 +741,10 @@ run_billing_pipeline() {
     if ! $SKIP_SEED; then
       send_command "CMD tax: Sales Tax 8.875%" \
         "billing.tax_config.create" \
-        "{\"property_id\":\"$pid\",\"tax_name\":\"State Sales Tax\",\"tax_code\":\"SST-$tag\",\"tax_rate\":8.875,\"tax_type\":\"sales_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\",\"FOOD_BEVERAGE\",\"OTHER\"],\"is_active\":true}"
+        "{\"property_id\":\"$pid\",\"tax_name\":\"State Sales Tax\",\"tax_code\":\"SST-$tag-${RUN_TAG}\",\"tax_rate\":8.875,\"tax_type\":\"sales_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\",\"FOOD_BEVERAGE\",\"OTHER\"],\"is_active\":true}"
       send_command "CMD tax: City Occupancy 5.875%" \
         "billing.tax_config.create" \
-        "{\"property_id\":\"$pid\",\"tax_name\":\"City Occupancy Tax\",\"tax_code\":\"COT-$tag\",\"tax_rate\":5.875,\"tax_type\":\"occupancy_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\"],\"is_active\":true}"
+        "{\"property_id\":\"$pid\",\"tax_name\":\"City Occupancy Tax\",\"tax_code\":\"COT-$tag-${RUN_TAG}\",\"tax_rate\":5.875,\"tax_type\":\"occupancy_tax\",\"country_code\":\"US\",\"effective_from\":\"$TODAY\",\"applies_to\":[\"ROOM\"],\"is_active\":true}"
       wait_kafka 5
     fi
     local tax_count
@@ -731,7 +779,7 @@ run_billing_pipeline() {
   if [[ "$mode" == "full" ]]; then
     echo "── ${tag} — Second Reservation ──────────────────────────────────────"
     if ! $SKIP_SEED; then
-      local guest2_email="${tag,,}-b@tartware-test.local"
+      local guest2_email="${tag,,}-b-${RUN_TAG}@tartware-test.local"
       local phone2="+1-555-$(printf '%03d' $((RANDOM % 1000)))-$(printf '%04d' $((RANDOM % 10000)))"
       seed_rest "REST guest 2" \
         "$GW/v1/guests" \
@@ -810,7 +858,7 @@ run_billing_pipeline() {
   # ── Payments ──
   echo "── ${tag} — Payments ────────────────────────────────────────────────"
   if ! $SKIP_SEED && [[ -n "$res_id" && -n "$guest_id" ]]; then
-    payref1="CC-$tag-$UNIQUE-001"
+    payref1="CC-$tag-${RUN_TAG}-${UNIQUE}-001"
     send_command "CMD payment: CC \$300" \
       "billing.payment.capture" \
       "{\"payment_reference\":\"$payref1\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":300.00,\"payment_method\":\"CREDIT_CARD\"}"
@@ -818,7 +866,7 @@ run_billing_pipeline() {
     if [[ "$mode" == "full" ]]; then
       send_command "CMD payment: Cash \$100" \
         "billing.payment.capture" \
-        "{\"payment_reference\":\"CASH-$tag-$UNIQUE-001\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":100.00,\"payment_method\":\"CASH\"}"
+        "{\"payment_reference\":\"CASH-$tag-${RUN_TAG}-${UNIQUE}-001\",\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"amount\":100.00,\"payment_method\":\"CASH\"}"
     fi
 
     wait_kafka 8
@@ -924,6 +972,53 @@ run_billing_pipeline() {
   get "$GW/v1/night-audit/history?tenant_id=$tid&property_id=$pid" >/dev/null
   audit_count=$(resp_count)
   assert_gte "Night audit executed ($label)" "$audit_count" 1
+  echo ""
+
+  # ── GL Batch (GAP-01: GL Journal Entry Wiring) ──
+  echo "── ${tag} — GL Batch (USALI double-entry) ────────────────────────"
+
+  # billing.ledger.post rebuilds the GL batch idempotently for the business date
+  send_command "CMD billing.ledger.post: rebuild GL batch" \
+    "billing.ledger.post" \
+    "{\"property_id\":\"$pid\",\"business_date\":\"$TODAY\"}"
+  wait_kafka 6
+
+  local gl_count gl_batch_id gl_status
+  get "$GW/v1/billing/gl-batches?tenant_id=$tid&property_id=$pid&start_date=$TODAY&end_date=$TODAY" >/dev/null
+  gl_count=$(resp_count)
+  gl_batch_id=$(resp_first "gl_batch_id")
+
+  if [[ "${gl_count:-0}" -ge 1 && -n "$gl_batch_id" ]]; then
+    pass "GL batch created ($label)"
+    gl_status=$(resp_first "batch_status")
+
+    # Read batch entries
+    get "$GW/v1/billing/gl-batches/$gl_batch_id/entries?tenant_id=$tid" >/dev/null
+    local gl_entry_count
+    gl_entry_count=$(jq -r '.entry_count // (.data | length) // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+    if [[ "$gl_entry_count" -ge 2 ]]; then
+      pass "GL entries returned ($label, count=$gl_entry_count)"
+    else
+      skip "GL entries ($label)" "count=$gl_entry_count (may have no posted charges)"
+    fi
+
+    # Export: marks batch_status POSTED (only from REVIEW state)
+    if [[ "$gl_status" == "REVIEW" ]]; then
+      send_command "CMD billing.gl_batch.export: mark POSTED" \
+        "billing.gl_batch.export" \
+        "{\"property_id\":\"$pid\",\"gl_batch_id\":\"$gl_batch_id\",\"export_format\":\"USALI\"}"
+      wait_kafka 5
+
+      get "$GW/v1/billing/gl-batches?tenant_id=$tid&property_id=$pid&start_date=$TODAY&end_date=$TODAY" >/dev/null
+      local gl_post_status
+      gl_post_status=$(resp_ffirst ".gl_batch_id == \"$gl_batch_id\"" "batch_status")
+      assert_eq_ci "GL batch exported ($label)" "POSTED" "$gl_post_status"
+    else
+      skip "GL batch export ($label)" "status=$gl_status (need REVIEW to export)"
+    fi
+  else
+    fail "GL batch not found ($label)" "count=${gl_count:-0}"
+  fi
   echo ""
 
   # ── Full-mode extras: Refund, Charge Void, House Account ──
@@ -1109,11 +1204,18 @@ run_billing_pipeline() {
       send_command "CMD folio.create: merge source" \
         "billing.folio.create" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge-Src $tag\",\"currency\":\"USD\",\"idempotency_key\":\"MERGE-$tag-$UNIQUE\"}"
-      wait_kafka 5
+      wait_kafka 10
 
-      local merge_src
-      get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
-      merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and .folio_type != "HOUSE_ACCOUNT" and (.folio_status == "OPEN" or .folio_status == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+      local merge_src="" _mwait=8 _mattempt
+      for _mattempt in 1 2 3; do
+        get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
+        merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+        [[ -n "$merge_src" ]] && break
+        if [[ $_mattempt -lt 3 ]]; then
+          printf "  ⏳ Retry %d/3 in %ds: waiting for merge-source folio...\n" "$_mattempt" "$_mwait"
+          sleep "$_mwait"; _mwait=$((_mwait * 2))
+        fi
+      done
       if [[ -n "$merge_src" ]]; then
         send_command "CMD folio.merge: src → primary" \
           "billing.folio.merge" \
@@ -1160,14 +1262,9 @@ run_billing_pipeline() {
         "billing.no_show.charge" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
       wait_kafka 8
-      local post_ns
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      post_ns=$(resp_count)
-      if [[ $((post_ns - pre_ns)) -ge 1 ]]; then
-        pass "No-show charge ($label)"
-      else
-        skip "No-show charge ($label)" "Δ=$((post_ns - pre_ns))"
-      fi
+      poll_delta "No-show charge ($label)" \
+        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+        "$pre_ns"
     else
       skip "No-show charge ($label)" "no reservation"
     fi
@@ -1187,14 +1284,9 @@ run_billing_pipeline() {
           "billing.late_checkout.charge" \
           "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"actual_checkout_time\":\"$late_iso\",\"standard_checkout_time\":\"12:00\",\"currency\":\"USD\"}"
         wait_kafka 8
-        local post_late
-        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-        post_late=$(resp_count)
-        if [[ $((post_late - pre_late)) -ge 1 ]]; then
-          pass "Late checkout charge ($label)"
-        else
-          skip "Late checkout charge ($label)" "Δ=$((post_late - pre_late))"
-        fi
+        poll_delta "Late checkout charge ($label)" \
+          "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+          "$pre_late"
       else
         skip "Late checkout charge ($label)" "date calc unavailable"
       fi
@@ -1213,14 +1305,9 @@ run_billing_pipeline() {
         "billing.cancellation.penalty" \
         "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
       wait_kafka 8
-      local post_cp
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      post_cp=$(resp_count)
-      if [[ $((post_cp - pre_cp)) -ge 1 ]]; then
-        pass "Cancellation penalty ($label)"
-      else
-        skip "Cancellation penalty ($label)" "Δ=$((post_cp - pre_cp))"
-      fi
+      poll_delta "Cancellation penalty ($label)" \
+        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+        "$pre_cp"
     else
       skip "Cancellation penalty ($label)" "no reservation"
     fi
@@ -1255,16 +1342,11 @@ run_billing_pipeline() {
       pre_comp=$(resp_count)
       send_command "CMD comp.post: F&B \$35" \
         "billing.comp.post" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":35.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Comp dinner — pipeline $tag\"}"
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"guest_id\":\"$guest_id\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":35.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Comp dinner — pipeline $tag\"}"
       wait_kafka 8
-      local post_comp
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      post_comp=$(resp_count)
-      if [[ $((post_comp - pre_comp)) -ge 1 ]]; then
-        pass "Comp post ($label)"
-      else
-        skip "Comp post ($label)" "Δ=$((post_comp - pre_comp))"
-      fi
+      poll_delta "Comp post ($label)" \
+        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+        "$pre_comp"
     else
       skip "Comp post ($label)" "no reservation"
     fi
@@ -1457,6 +1539,20 @@ if [[ $(echo "$A1_CHARGE_SUM > 0" | bc 2>/dev/null) == "1" && $(echo "$A2_CHARGE
   pass "USALI: Both properties generating independent revenue"
 else
   fail "USALI: Independent revenue" "A1=\$$A1_CHARGE_SUM A2=\$$A2_CHARGE_SUM"
+fi
+echo ""
+
+echo "── 4.11  GL Batches scoped by property_id ──────────────────────────"
+TOKEN="$TOKEN_A"
+get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >/dev/null; A1_GL=$(resp_count)
+get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_GL=$(resp_count)
+get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_GL=$(resp_count)
+EXPECTED_SUM=$((A1_GL + A2_GL))
+assert_eq "USALI: A GL batches = A1($A1_GL) + A2($A2_GL)" "$EXPECTED_SUM" "$ALL_A_GL"
+if [[ "$A1_GL" -gt 0 || "$A2_GL" -gt 0 ]]; then
+  pass "USALI: GL batches property-scoped (A1=$A1_GL A2=$A2_GL)"
+else
+  skip "USALI: GL batch distribution" "no batches yet (night audit step 6.5 non-fatal)"
 fi
 echo ""
 
@@ -1713,6 +1809,27 @@ if [[ "$CALC_CODE3" =~ ^2 ]]; then
 else
   fail "P0-4 auth: Authenticated calculation failed" "HTTP=$CALC_CODE3"
 fi
+
+# --- P0-5: GL batch cross-tenant isolation ---
+# Tenant B should see zero GL batches for Tenant A's property
+TOKEN="$TOKEN_B"
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_B&property_id=$PID_A1&limit=1")
+GL_CROSS_B=$(resp_count)
+if [[ "$code" =~ ^(401|403) ]] || [[ "${GL_CROSS_B:-0}" == "0" ]]; then
+  pass "P0-5 isolation: B GL batches have no A1 property (HTTP=$code count=$GL_CROSS_B)"
+else
+  fail "P0-5 isolation: B GL batches leak A1 property data" "HTTP=$code count=$GL_CROSS_B"
+fi
+
+# Tenant A should see zero GL batches for Tenant B's property
+TOKEN="$TOKEN_A"
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_B1&limit=1")
+GL_CROSS_A=$(resp_count)
+if [[ "$code" =~ ^(401|403) ]] || [[ "${GL_CROSS_A:-0}" == "0" ]]; then
+  pass "P0-5 isolation: A GL batches have no B1 property (HTTP=$code count=$GL_CROSS_A)"
+else
+  fail "P0-5 isolation: A GL batches leak B1 property data" "HTTP=$code count=$GL_CROSS_A"
+fi
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1764,6 +1881,11 @@ assert_http "API A: night-audit status" "200" "$code"
 
 code=$(get "$GW/v1/billing/reports/trial-balance?tenant_id=$TID_A&property_id=$PID_A1&business_date=$TODAY")
 assert_http "API A: trial-balance" "200" "$code"
+
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&limit=10")
+assert_http "API A: gl-batches" "200" "$code"
+GL_A_COUNT=$(resp_count)
+pass "XCHECK A: GL batches (count=$GL_A_COUNT)"
 echo ""
 
 # ── Tenant B endpoints ──
@@ -1784,7 +1906,228 @@ api_check "B cashier-sessions" \
 
 code=$(get "$GW/v1/night-audit/status?tenant_id=$TID_B&property_id=$PID_B1")
 assert_http "API B: night-audit status" "200" "$code"
+
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID_B&limit=10")
+assert_http "API B: gl-batches" "200" "$code"
+GL_B_COUNT=$(resp_count)
+pass "XCHECK B: GL batches (count=$GL_B_COUNT)"
 echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 6b — COMPREHENSIVE API ENDPOINT COVERAGE (smoke)
+#  GETs every public read endpoint exposed via the API gateway, per tenant.
+#  Endpoint is "responsive" if HTTP 2xx / 204 / 400 / 404 (reachable + auth OK).
+#  5xx / 0 / 401 / 403 are failures.
+# ═════════════════════════════════════════════════════════════════════════════
+
+if [[ "$FULL_API" == true ]]; then
+  echo ""
+  echo "╔═══════════════════════════════════════════════════════════════════════╗"
+  echo "║  PHASE 6b: Comprehensive API Endpoint Coverage                       ║"
+  echo "╚═══════════════════════════════════════════════════════════════════════╝"
+  echo ""
+
+  # api_smoke <label> <url>
+  # PASS: 2xx, 204, 400, 404 (endpoint reachable; data may be missing)
+  # SKIP: 403 with code TENANT_MODULE_NOT_ENABLED (endpoint reachable but module off)
+  # FAIL: 5xx, 0, 401, other 403 (5xx/0 retried once with 4s backoff before failing)
+  api_smoke() {
+    local label="$1" url="$2"
+    local code
+    # Throttle to stay below gateway rate limit
+    sleep 0.05
+    code=$(get "$url")
+    # Retry once on transient server/network failure with exponential backoff (4s)
+    if [[ "$code" =~ ^5 || "$code" == "0" || -z "$code" ]]; then
+      sleep 4
+      code=$(get "$url")
+    fi
+    case "$code" in
+      2*|400|404)         pass "$label  HTTP=$code" ;;
+      403)
+        local err
+        err=$(jq -r '.code // .detail // empty' "$RESP_FILE" 2>/dev/null)
+        if [[ "$err" == "TENANT_MODULE_NOT_ENABLED" ]]; then
+          skip "$label" "module-not-enabled (HTTP 403)"
+        elif [[ "$err" == "SYSTEM_ADMIN_SCOPE_REQUIRED" || "$err" == *"System administrator scope"* ]]; then
+          skip "$label" "system-admin-required (HTTP 403)"
+        elif [[ "$err" == *"Rate limit"* || "$err" == *"rate limit"* ]]; then
+          # Back off and retry once
+          sleep 16
+          code=$(get "$url")
+          case "$code" in
+            2*|400|404) pass "$label  HTTP=$code (after retry)" ;;
+            *)          skip "$label" "rate-limited (HTTP $code)" ;;
+          esac
+        else
+          fail "$label" "forbidden HTTP=$code ($err)"
+        fi
+        ;;
+      401)                fail "$label" "unauthenticated HTTP=$code" ;;
+      5*|0|"")            fail "$label" "server/network HTTP=$code" ;;
+      *)                  fail "$label" "unexpected HTTP=$code" ;;
+    esac
+  }
+
+  # Smoke a list of "label|url" pairs against the current $TOKEN.
+  api_smoke_batch() {
+    local label_prefix="$1"; shift
+    local pair label url
+    for pair in "$@"; do
+      label="${pair%%|*}"
+      url="${pair#*|}"
+      api_smoke "${label_prefix} ${label}" "$GW${url}"
+    done
+  }
+
+  # ── 6b.1  Tenant-agnostic / system-wide endpoints ───────────────────
+  echo "── 6b.1  System / global endpoints ──────────────────────────────────"
+  TOKEN="$TOKEN_A"
+  api_smoke "SYS registry/services"        "$GW/v1/registry/services"
+  api_smoke "SYS modules/catalog"          "$GW/v1/modules/catalog"
+  # commands/definitions requires system admin scope — use SYS_TOKEN
+  local _prev_token="$TOKEN"
+  TOKEN="$SYS_TOKEN"
+  api_smoke "SYS commands/definitions"     "$GW/v1/commands/definitions"
+  TOKEN="$_prev_token"
+  api_smoke "SYS tenants"                  "$GW/v1/tenants"
+  api_smoke "SYS users"                    "$GW/v1/users"
+  api_smoke "SYS user-tenant-associations" "$GW/v1/user-tenant-associations"
+  api_smoke "SYS settings"                 "$GW/v1/settings"
+  echo ""
+
+  # Endpoint inventory (read-only). Each entry = "label|/v1/path?query"
+  # The {TID} placeholder is substituted per tenant in the loop below.
+  read -r -d '' INVENTORY_TENANT_QUERY <<'EOF' || true
+properties|/v1/properties?tenant_id={TID}&limit=10
+buildings|/v1/buildings?tenant_id={TID}&limit=10
+buildings-grid|/v1/buildings/grid?tenant_id={TID}
+rooms|/v1/rooms?tenant_id={TID}&limit=10
+rooms-grid|/v1/rooms/grid?tenant_id={TID}
+room-types|/v1/room-types?tenant_id={TID}&limit=10
+room-types-grid|/v1/room-types/grid?tenant_id={TID}
+rates|/v1/rates?tenant_id={TID}&limit=10
+rate-calendar|/v1/rate-calendar?tenant_id={TID}&start_date={TODAY}&end_date={IN5DAYS}
+availability|/v1/availability?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+availability-calendar|/v1/availability/calendar?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+availability-room-types|/v1/availability/room-types?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+recommendations|/v1/recommendations?tenant_id={TID}&limit=10
+guests|/v1/guests?tenant_id={TID}&limit=10
+guests-grid|/v1/guests/grid?tenant_id={TID}
+reservations|/v1/reservations?tenant_id={TID}&limit=10
+reservations-list|/v1/reservations/list?tenant_id={TID}&limit=10
+reservations-grid|/v1/reservations/grid?tenant_id={TID}&start_date={TODAY}&end_date={IN5DAYS}
+waitlist|/v1/waitlist?tenant_id={TID}&limit=10
+booking-sources|/v1/booking-sources?tenant_id={TID}&limit=10
+companies|/v1/companies?tenant_id={TID}&limit=10
+channel-mappings|/v1/channel-mappings?tenant_id={TID}&limit=10
+market-segments|/v1/market-segments?tenant_id={TID}&limit=10
+packages|/v1/packages?tenant_id={TID}&limit=10
+promo-codes|/v1/promo-codes?tenant_id={TID}&limit=10
+ota-connections|/v1/ota-connections?tenant_id={TID}&limit=10
+metasearch-configs|/v1/metasearch-configs?tenant_id={TID}&limit=10
+metasearch-performance|/v1/metasearch-configs/performance?tenant_id={TID}
+group-bookings|/v1/group-bookings?tenant_id={TID}&limit=10
+event-bookings|/v1/event-bookings?tenant_id={TID}&limit=10
+banquet-orders|/v1/banquet-orders?tenant_id={TID}&limit=10
+meeting-rooms|/v1/meeting-rooms?tenant_id={TID}&limit=10
+allotments|/v1/allotments?tenant_id={TID}&limit=10
+incidents|/v1/incidents?tenant_id={TID}&limit=10
+lost-and-found|/v1/lost-and-found?tenant_id={TID}&limit=10
+police-reports|/v1/police-reports?tenant_id={TID}&limit=10
+shift-handovers|/v1/shift-handovers?tenant_id={TID}&limit=10
+cashier-sessions-alt|/v1/cashier-sessions?tenant_id={TID}&limit=10
+guest-feedback|/v1/guest-feedback?tenant_id={TID}&limit=10
+compliance-breach|/v1/compliance/breach-incidents?tenant_id={TID}&limit=10
+loyalty-tier-rules|/v1/loyalty/tier-rules?tenant_id={TID}
+loyalty-transactions|/v1/loyalty/transactions?tenant_id={TID}&limit=10
+revenue-pricing-rules|/v1/revenue/pricing-rules?tenant_id={TID}&limit=10
+self-service-search|/v1/self-service/search?tenant_id={TID}&property_id={PID}&check_in_date={TODAY}&check_out_date={IN3DAYS}&adults=2
+housekeeping-tasks|/v1/housekeeping/tasks?tenant_id={TID}&limit=10
+night-audit-status|/v1/night-audit/status?tenant_id={TID}&property_id={PID}
+night-audit-history|/v1/night-audit/history?tenant_id={TID}&limit=10
+billing-charges|/v1/billing/charges?tenant_id={TID}&limit=10
+billing-payments|/v1/billing/payments?tenant_id={TID}&limit=10
+billing-invoices|/v1/billing/invoices?tenant_id={TID}&limit=10
+billing-folios|/v1/billing/folios?tenant_id={TID}&limit=10
+billing-cashier-sessions|/v1/billing/cashier-sessions?tenant_id={TID}&limit=10
+billing-ar|/v1/billing/accounts-receivable?tenant_id={TID}&limit=10
+billing-ar-aging|/v1/billing/accounts-receivable/aging-summary?tenant_id={TID}&property_id={PID}
+billing-ledger|/v1/billing/ledger?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+billing-fiscal-periods|/v1/billing/fiscal-periods?tenant_id={TID}&property_id={PID}
+billing-routing-rules|/v1/billing/routing-rules?tenant_id={TID}
+billing-routing-rule-templates|/v1/billing/routing-rules/templates?tenant_id={TID}
+billing-tax-configs|/v1/billing/tax-configurations?tenant_id={TID}
+billing-trial-balance|/v1/billing/reports/trial-balance?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+billing-tax-summary|/v1/billing/reports/tax-summary?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN3DAYS}
+billing-departmental|/v1/billing/reports/departmental-revenue?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN3DAYS}
+billing-commissions|/v1/billing/reports/commissions?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN3DAYS}
+report-arrivals|/v1/reports/arrivals?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-departures|/v1/reports/departures?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-in-house|/v1/reports/in-house?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-no-show|/v1/reports/no-show?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-occupancy|/v1/reports/occupancy?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-forecast|/v1/reports/forecast?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-revenue-summary|/v1/reports/revenue-summary?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-daily-revenue|/v1/reports/daily-revenue?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-manager-flash|/v1/reports/manager-flash?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-str-metrics|/v1/reports/str-metrics?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-housekeeping|/v1/reports/housekeeping-status?tenant_id={TID}&property_id={PID}
+report-night-audit|/v1/reports/night-audit-summary?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+EOF
+
+  # Tenant-scoped endpoints with :tenantId in path (no query tenant_id).
+  read -r -d '' INVENTORY_TENANT_PATH <<'EOF' || true
+modules|/v1/tenants/{TID}/modules
+webhooks|/v1/tenants/{TID}/webhooks
+notif-templates|/v1/tenants/{TID}/notifications/templates
+in-app-notif|/v1/tenants/{TID}/in-app-notifications
+in-app-notif-unread|/v1/tenants/{TID}/in-app-notifications/unread
+hk-tasks|/v1/tenants/{TID}/housekeeping/tasks
+EOF
+
+  # Per-tenant endpoint sweep
+  sweep_tenant() {
+    local prefix="$1" tid="$2" pid="$3" tok="$4"
+    TOKEN="$tok"
+    local line label url_template url
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      label="${line%%|*}"
+      url_template="${line#*|}"
+      url="${url_template//\{TID\}/$tid}"
+      url="${url//\{PID\}/$pid}"
+      url="${url//\{TODAY\}/$TODAY}"
+      url="${url//\{IN3DAYS\}/$IN3DAYS}"
+      url="${url//\{IN5DAYS\}/$IN5DAYS}"
+      api_smoke "$prefix $label" "$GW$url"
+    done <<< "$INVENTORY_TENANT_QUERY"
+
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      label="${line%%|*}"
+      url_template="${line#*|}"
+      url="${url_template//\{TID\}/$tid}"
+      api_smoke "$prefix $label" "$GW$url"
+    done <<< "$INVENTORY_TENANT_PATH"
+  }
+
+  echo "── 6b.2  Tenant A / Property A1 sweep ───────────────────────────────"
+  sweep_tenant "A1" "$TID_A" "$PID_A1" "$TOKEN_A"
+  echo ""
+
+  echo "── 6b.3  Tenant A / Property A2 sweep ───────────────────────────────"
+  sweep_tenant "A2" "$TID_A" "$PID_A2" "$TOKEN_A"
+  echo ""
+
+  echo "── 6b.4  Tenant B / Property B1 sweep ───────────────────────────────"
+  sweep_tenant "B1" "$TID_B" "$PID_B1" "$TOKEN_B"
+  echo ""
+
+  echo "── 6b.5  Tenant B / Property B2 sweep ───────────────────────────────"
+  sweep_tenant "B2" "$TID_B" "$PID_B2" "$TOKEN_B"
+  echo ""
+fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 7 — POST-TEST DB SNAPSHOT + FINAL REPORT

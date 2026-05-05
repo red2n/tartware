@@ -2,7 +2,8 @@
  * Service-registry auto-registration plugin for Fastify.
  *
  * When `REGISTRY_URL` is set in the environment, this plugin:
- *  1. Registers the service with the registry on server ready
+ *  1. Registers the service with the registry on server ready, with
+ *     exponential-backoff retries if core-service is still starting up
  *  2. Sends periodic heartbeats
  *  3. Deregisters on server close
  *
@@ -11,6 +12,10 @@
  */
 
 const HEARTBEAT_INTERVAL_MS = 120_000;
+/** Max registration attempts (initial + retries). */
+const REGISTER_MAX_ATTEMPTS = 5;
+/** Base delay in ms between registration attempts; doubles each time. */
+const REGISTER_BASE_DELAY_MS = 2_000;
 
 export interface RegistryConfig {
 	registryUrl: string;
@@ -72,24 +77,37 @@ export function startServiceRegistration(
 	};
 	if (Object.keys(metadata).length > 0) registerPayload.metadata = metadata;
 
-	// Register immediately
-	registryFetch(
-		`${registryUrl}/v1/registry/register`,
-		"POST",
-		registerPayload,
-	).then((ok) => {
-		if (ok) {
-			logger.info(
-				{ registryUrl, instanceId: `${serviceName}:${port}` },
-				"registered with service registry",
+	// Register with exponential-backoff retry so services that start in parallel
+	// with core-service (the registry) succeed even when the registry isn't ready yet.
+	(async () => {
+		for (let attempt = 1; attempt <= REGISTER_MAX_ATTEMPTS; attempt++) {
+			const ok = await registryFetch(
+				`${registryUrl}/v1/registry/register`,
+				"POST",
+				registerPayload,
 			);
-		} else {
-			logger.warn(
-				{ registryUrl },
-				"service registry unavailable — skipping registration",
-			);
+			if (ok) {
+				logger.info(
+					{ registryUrl, instanceId: `${serviceName}:${port}` },
+					"registered with service registry",
+				);
+				return;
+			}
+			if (attempt < REGISTER_MAX_ATTEMPTS) {
+				const delay = REGISTER_BASE_DELAY_MS * 2 ** (attempt - 1);
+				logger.warn(
+					{ registryUrl, attempt, nextRetryMs: delay },
+					"service registry unavailable — retrying registration",
+				);
+				await new Promise<void>((resolve) => setTimeout(resolve, delay));
+			} else {
+				logger.warn(
+					{ registryUrl },
+					"service registry unavailable — skipping registration after all retries",
+				);
+			}
 		}
-	});
+	})();
 
 	// Send periodic heartbeats via the dedicated heartbeat endpoint
 	heartbeatTimer = setInterval(() => {

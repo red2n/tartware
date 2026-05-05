@@ -1,4 +1,6 @@
-import { query } from "../../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingLateCheckoutChargeCommandSchema } from "../../schemas/billing-commands.js";
 import {
@@ -102,48 +104,108 @@ export const chargeLateCheckout = async (
     );
   }
 
-  const { rows: postingRows } = await query<{ posting_id: string }>(
-    `INSERT INTO public.charge_postings (
-       tenant_id, property_id, folio_id, reservation_id,
-       transaction_type, posting_type, charge_code, charge_description,
-       unit_price, subtotal, total_amount, currency_code,
-       quantity, business_date, posting_time,
-       created_by, updated_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-       'CHARGE', 'DEBIT', 'LATE_CHECKOUT', $5,
-       $6::numeric, $6::numeric, $6::numeric, $7,
-       1, CURRENT_DATE, NOW(),
-       $8::uuid, $8::uuid
-     ) RETURNING posting_id`,
-    [
-      context.tenantId,
-      reservation.property_id,
-      folioId,
-      command.reservation_id,
-      `Late checkout fee — checked out at ${command.actual_checkout_time}`,
-      chargeAmount,
-      currency,
-      actorId,
-    ],
-  );
+  // Concurrency-safe posting: acquire advisory lock + SELECT FOR UPDATE inside
+  // a transaction so concurrent payments/charges cannot lose updates on
+  // folios.balance. Without this, an interleaved payment that reads `balance`
+  // before our UPDATE commits would overwrite our increment.
+  const postingId = await withTransaction(async (client) => {
+    await acquireFolioLock(client, folioId);
 
-  const postingId = postingRows[0]?.posting_id;
-  if (!postingId) {
-    throw new BillingCommandError(
-      "LATE_CHECKOUT_CHARGE_FAILED",
-      "Failed to post late checkout charge.",
+    // Take an exclusive row lock on the folio row so any concurrent payment/charge
+    // command waits for this transaction to commit before reading `balance`.
+    const { rowCount: lockedCount } = await queryWithClient(
+      client,
+      `SELECT 1 FROM public.folios
+         WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
+           AND COALESCE(is_deleted, false) = false
+         FOR UPDATE`,
+      [context.tenantId, folioId],
     );
-  }
+    if (!lockedCount) {
+      throw new BillingCommandError(
+        "FOLIO_NOT_FOUND",
+        `Folio ${folioId} not found or has been deleted.`,
+      );
+    }
 
-  await query(
-    `UPDATE public.folios
-     SET total_charges = total_charges + $3,
-         balance = balance + $3,
-         updated_at = NOW(), updated_by = $4::uuid
-     WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-    [context.tenantId, folioId, chargeAmount, actorId],
-  );
+    const { rows: postingRows } = await queryWithClient<{ posting_id: string }>(
+      client,
+      `INSERT INTO public.charge_postings (
+         tenant_id, property_id, folio_id, reservation_id,
+         transaction_type, posting_type, charge_code, charge_description,
+         unit_price, subtotal, total_amount, currency_code,
+         quantity, business_date, posting_time,
+         created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'CHARGE', 'DEBIT', 'LATE_CHECKOUT', $5,
+         $6::numeric, $6::numeric, $6::numeric, $7,
+         1, CURRENT_DATE, NOW(),
+         $8::uuid, $8::uuid
+       ) RETURNING posting_id`,
+      [
+        context.tenantId,
+        reservation.property_id,
+        folioId,
+        command.reservation_id,
+        `Late checkout fee — checked out at ${command.actual_checkout_time}`,
+        chargeAmount,
+        currency,
+        actorId,
+      ],
+    );
+
+    const newPostingId = postingRows[0]?.posting_id;
+    if (!newPostingId) {
+      // Unexpected: INSERT succeeded without error but returned no posting_id.
+      // Mark retryable — may succeed on a subsequent attempt.
+      throw new BillingCommandError(
+        "LATE_CHECKOUT_CHARGE_FAILED",
+        "Failed to post late checkout charge.",
+        true,
+      );
+    }
+
+    await queryWithClient(
+      client,
+      `UPDATE public.folios
+       SET total_charges = total_charges + $3,
+           balance = balance + $3,
+           updated_at = NOW(), updated_by = $4::uuid
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, folioId, chargeAmount, actorId],
+    );
+
+    // GL: paired DR/CR for the late checkout fee. Missing mapping logs a
+    // warning but never blocks the charge post.
+    const glMapping = await lookupChargeCodeMapping(client, context.tenantId, "LATE_CHECKOUT");
+    if (glMapping) {
+      await postGlPair(client, {
+        tenant_id: context.tenantId,
+        property_id: reservation.property_id,
+        folio_id: folioId,
+        reservation_id: command.reservation_id,
+        debit_account: glMapping.debit,
+        credit_account: glMapping.credit,
+        amount: chargeAmount,
+        currency,
+        posting_date: new Date().toISOString().slice(0, 10),
+        department_code: glMapping.department ?? undefined,
+        usali_category: glMapping.usali ?? undefined,
+        description: `Late checkout fee — ${command.actual_checkout_time}`,
+        source_table: "charge_postings",
+        source_id: newPostingId,
+        created_by: actorId,
+      });
+    } else {
+      appLogger.warn(
+        { tenantId: context.tenantId, chargeCode: "LATE_CHECKOUT" },
+        "Missing charge_code_gl_mapping — GL pair skipped on late checkout",
+      );
+    }
+
+    return newPostingId;
+  });
 
   appLogger.info(
     {

@@ -1,19 +1,17 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
+import { pool } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   observeCommandDuration,
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import {
-  checkCommandIdempotency,
-  recordCommandIdempotency,
-} from "../repositories/idempotency-repository.js";
 import {
   adjustInvoice,
   ageArEntries,
@@ -30,6 +28,7 @@ import {
   evaluatePricingRules,
   executeNightAudit,
   finalizeInvoice,
+  handleOverpayment,
   incrementAuthorization,
   manualDateRoll,
   markCommissionPaid,
@@ -55,12 +54,14 @@ import {
   cloneRoutingRuleTemplate,
   closeFiscalPeriod,
   createCreditNote,
+  createFiscalPeriod,
   createFolio,
   createFolioWindow,
   createRoutingRule,
   createTaxConfig,
   deleteRoutingRule,
   deleteTaxConfig,
+  exportGlBatch,
   expressCheckout,
   lockFiscalPeriod,
   mergeFolios,
@@ -154,6 +155,12 @@ const routeBillingCommand = async (
         initiatedBy: metadata.initiatedBy ?? null,
       });
       return;
+    case "billing.gl_batch.export":
+      await exportGlBatch(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
     case "billing.folio.close":
       await closeFolio(envelope.payload, {
         tenantId: metadata.tenantId,
@@ -162,6 +169,12 @@ const routeBillingCommand = async (
       return;
     case "billing.payment.void":
       await voidPayment(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.payment.overpayment.handle":
+      await handleOverpayment(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });
@@ -258,6 +271,12 @@ const routeBillingCommand = async (
       return;
     case "billing.chargeback.record":
       await recordChargeback(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.fiscal_period.create":
+      await createFiscalPeriod(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });
@@ -428,10 +447,9 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeBillingCommand,
   publishDlqEvent,
-  checkIdempotency: checkCommandIdempotency,
-  recordIdempotency: recordCommandIdempotency,
+  ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
-  isRetryable: (error) => !(error instanceof BillingCommandError),
+  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,

@@ -3,6 +3,7 @@ import {
   type DeepCleanDueItem,
   DeepCleanDueItemSchema,
   type DeepCleanDueRow,
+  formatDisplayLabel,
   type HousekeepingTaskListItem,
   HousekeepingTaskListItemSchema,
   type HousekeepingTaskRow,
@@ -238,17 +239,6 @@ export const listDeepCleanDueRooms = async (options: {
 // =====================================================
 
 // MaintenanceRequestRow imported from @tartware/schemas
-
-const formatDisplayLabel = (value: string | null): string => {
-  if (!value || typeof value !== "string") {
-    return "Unknown";
-  }
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-};
 
 const mapMaintenanceRequestRow = (row: MaintenanceRequestRow): MaintenanceRequestListItem => {
   return MaintenanceRequestListItemSchema.parse({

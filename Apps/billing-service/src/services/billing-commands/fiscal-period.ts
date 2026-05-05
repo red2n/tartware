@@ -2,10 +2,75 @@ import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingFiscalPeriodCloseCommandSchema,
+  BillingFiscalPeriodCreateCommandSchema,
   BillingFiscalPeriodLockCommandSchema,
   BillingFiscalPeriodReopenCommandSchema,
 } from "../../schemas/billing-commands.js";
 import { BillingCommandError, type CommandContext, resolveActorId } from "./common.js";
+
+/**
+ * Create a new fiscal period for a property.
+ * Idempotent: if a period with the same (property_id, fiscal_year, period_number)
+ * already exists for this tenant, the command is a no-op.
+ */
+export const createFiscalPeriod = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = BillingFiscalPeriodCreateCommandSchema.parse(payload);
+  const actor = resolveActorId(context.initiatedBy);
+
+  const { rows } = await query<{ fiscal_period_id: string }>(
+    `INSERT INTO public.fiscal_periods (
+       tenant_id, property_id,
+       fiscal_year, period_number, period_name,
+       period_start, period_end,
+       fiscal_year_start, fiscal_year_end,
+       period_status,
+       created_by, updated_by
+     ) VALUES (
+       $1::uuid, $2::uuid,
+       $3, $4, $5,
+       $6::date, $7::date,
+       $8::date, $9::date,
+       $10,
+       $11, $11
+     )
+     ON CONFLICT ON CONSTRAINT uk_fiscal_periods_tenant_property_year_period
+     DO UPDATE SET updated_at = NOW()
+     RETURNING fiscal_period_id`,
+    [
+      context.tenantId,
+      command.property_id,
+      command.fiscal_year,
+      command.period_number,
+      command.period_name,
+      command.period_start,
+      command.period_end,
+      command.fiscal_year_start,
+      command.fiscal_year_end,
+      command.period_status ?? "OPEN",
+      actor,
+    ],
+  );
+
+  const periodId = rows[0]?.fiscal_period_id;
+  if (!periodId) {
+    throw new BillingCommandError("FISCAL_PERIOD_CREATE_FAILED", "Failed to create fiscal period.");
+  }
+
+  appLogger.info(
+    {
+      periodId,
+      propertyId: command.property_id,
+      fiscalYear: command.fiscal_year,
+      periodNumber: command.period_number,
+    },
+    "Fiscal period created",
+  );
+
+  return periodId;
+};
 
 /**
  * Close a fiscal period (OPEN → SOFT_CLOSE).

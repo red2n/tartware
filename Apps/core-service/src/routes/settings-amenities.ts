@@ -16,6 +16,7 @@ import {
   updateAmenity,
 } from "../repositories/amenity-catalog-repository.js";
 import type { AuthUser } from "../types/auth.js";
+import { hasScope } from "../utils/scope.js";
 
 const AMENITIES_TAG = "Amenity Catalog";
 
@@ -40,17 +41,6 @@ const updateAmenityBody: JsonSchema = schemaFromZod(UpdateAmenityBodySchema, "Up
 
 const ParamsSchema: JsonSchema = schemaFromZod(PropertyParamsSchema, "PropertyParams");
 const AmenityParamsJson: JsonSchema = schemaFromZod(AmenityParamsSchema, "AmenityParams");
-
-const hasScope = (user: AuthUser | undefined, requiredScope: string) => {
-  if (!user) {
-    return false;
-  }
-  if (!user.scope) {
-    return false;
-  }
-  const normalizedScopes = Array.isArray(user.scope) ? user.scope : user.scope.split(" ");
-  return normalizedScopes.includes(requiredScope);
-};
 
 const enforceScope = (
   request: FastifyRequest,

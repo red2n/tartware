@@ -1,10 +1,29 @@
-import type { RatePlanResolution, ResolveRatePlanInput } from "@tartware/schemas";
+import type {
+  CancellationPolicy,
+  RatePlanResolution,
+  ResolveRatePlanInput,
+} from "@tartware/schemas";
 
 import { findActiveRateByCode } from "../repositories/rate-repository.js";
 
 const FALLBACK_RATE_CODES = ["BAR", "RACK"] as const;
 
 export type { RatePlanResolution };
+
+/**
+ * Coerce the JSONB cancellation_policy column into the shared CancellationPolicy
+ * shape. Returns null when the column is empty or malformed so downstream code
+ * can detect "no policy snapshot" without throwing.
+ */
+const coerceCancellationPolicy = (value: unknown): CancellationPolicy | null => {
+  if (!value || typeof value !== "object") return null;
+  const obj = value as Record<string, unknown>;
+  const type = typeof obj.type === "string" ? obj.type : null;
+  const hours = typeof obj.hours === "number" ? obj.hours : null;
+  const penalty = typeof obj.penalty === "number" ? obj.penalty : null;
+  if (type === null || hours === null || penalty === null) return null;
+  return { type, hours, penalty };
+};
 
 const normalizeRateCode = (value: string | undefined): string | undefined => {
   if (!value) {
@@ -44,6 +63,7 @@ export const resolveRatePlan = async (input: ResolveRatePlanInput): Promise<Rate
         requestedRateCode: normalizedRequested,
         fallbackApplied: false,
         decidedAt,
+        cancellationPolicySnapshot: coerceCancellationPolicy(requestedRate.cancellation_policy),
       };
     }
   }
@@ -65,6 +85,7 @@ export const resolveRatePlan = async (input: ResolveRatePlanInput): Promise<Rate
         fallbackApplied: isTrueFallback,
         reason: isTrueFallback ? fallbackReason : undefined,
         decidedAt,
+        cancellationPolicySnapshot: coerceCancellationPolicy(fallbackRate.cancellation_policy),
       };
     }
   }

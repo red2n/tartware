@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -86,6 +87,23 @@ export const createRoutingRule = async (
   );
 
   logger.info({ tenantId, ruleName: command.rule_name }, "routing rule created");
+  auditAsync({
+    tenantId,
+    propertyId: command.property_id,
+    userId: actorId,
+    action: "ROUTING_RULE_CREATE",
+    entityType: "folio_routing_rule",
+    severity: "INFO",
+    description: `Routing rule '${command.rule_name}' created (template=${command.is_template})`,
+    newValues: {
+      rule_name: command.rule_name,
+      rule_code: command.rule_code,
+      is_template: command.is_template,
+      property_id: command.property_id,
+      routing_type: command.routing_type,
+      priority: command.priority,
+    },
+  });
 };
 
 /**
@@ -163,6 +181,16 @@ export const updateRoutingRule = async (
     { tenantId, ruleId: command.rule_id, fieldsUpdated: setClauses.length - 2 },
     "routing rule updated",
   );
+  auditAsync({
+    tenantId,
+    userId: actorId,
+    action: "ROUTING_RULE_UPDATE",
+    entityType: "folio_routing_rule",
+    entityId: command.rule_id,
+    severity: "INFO",
+    description: `Routing rule ${command.rule_id} updated (${setClauses.length - 2} fields)`,
+    newValues: { fields_updated: setClauses.length - 2 },
+  });
 };
 
 /**
@@ -200,6 +228,17 @@ export const deleteRoutingRule = async (
   }
 
   logger.info({ tenantId, ruleId: command.rule_id }, "routing rule deleted");
+  auditAsync({
+    tenantId,
+    userId: actorId,
+    action: "ROUTING_RULE_DELETE",
+    entityType: "folio_routing_rule",
+    entityId: command.rule_id,
+    severity: "WARNING",
+    description: `Routing rule ${command.rule_id} soft-deleted`,
+    oldValues: { is_active: true, is_deleted: false },
+    newValues: { is_active: false, is_deleted: true },
+  });
 };
 
 /**
@@ -274,4 +313,19 @@ export const cloneRoutingRuleTemplate = async (
     { tenantId, templateId: command.template_id, newRuleId: newRule.rule_id },
     "routing rule cloned from template",
   );
+  auditAsync({
+    tenantId,
+    userId: actorId,
+    action: "ROUTING_RULE_CLONE",
+    entityType: "folio_routing_rule",
+    entityId: newRule.rule_id,
+    severity: "INFO",
+    description: `Cloned routing rule template ${command.template_id} \u2192 ${newRule.rule_id}`,
+    newValues: {
+      template_id: command.template_id,
+      new_rule_id: newRule.rule_id,
+      source_folio_id: command.source_folio_id,
+      destination_folio_id: command.destination_folio_id,
+    },
+  });
 };

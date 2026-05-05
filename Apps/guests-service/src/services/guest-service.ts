@@ -1,5 +1,6 @@
 import { toNonNegativeInt, toNumberOrFallback } from "@tartware/config";
 import {
+  formatEnumDisplay,
   type GuestCommunicationListItem,
   GuestCommunicationListItemSchema,
   type GuestCommunicationRow,
@@ -20,6 +21,7 @@ import {
   type GuestSummaryStatsRow,
   type GuestWithStats,
   GuestWithStatsSchema,
+  toIsoString,
 } from "@tartware/schemas";
 import { applyGuestRetentionPolicy } from "../lib/compliance.js";
 import { query } from "../lib/db.js";
@@ -424,32 +426,6 @@ export const getGuestSummaryStats = async (options: {
 // ============================================================================
 // GUEST PREFERENCES
 // ============================================================================
-
-const formatEnumDisplay = (
-  value: string | null,
-  fallback: string,
-): { value: string; display: string } => {
-  if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
-  }
-  const normalized = value.toLowerCase();
-  const display = normalized
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  return { value: normalized, display };
-};
-
-const toIsoString = (value: string | Date | null): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  return value;
-};
 
 // GuestPreferenceRow imported from @tartware/schemas
 

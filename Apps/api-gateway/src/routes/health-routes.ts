@@ -66,7 +66,7 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
       .header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
       .header(
         "Access-Control-Allow-Headers",
-        "Accept, Authorization, Content-Type, Idempotency-Key, X-Correlation-Id, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
+        "Accept, Authorization, Content-Type, Idempotency-Key, X-Idempotency-Key, X-Correlation-Id, X-Requested-With, DNT, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform",
       )
       .header("Access-Control-Max-Age", "600");
 

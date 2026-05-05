@@ -389,10 +389,28 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
         }
       }
     } catch (error) {
-      const attempts = error instanceof input.RetryExhaustedError ? error.attempts : 1;
+      const retryExhausted = error instanceof input.RetryExhaustedError;
+      const attempts = retryExhausted ? error.attempts : 1;
+      // Pino's built-in `err` serializer captures message+stack but NOT custom
+      // properties (e.g. BillingCommandError.code). Emit them explicitly so
+      // every DLQ entry is self-contained and diagnosable without source lookup.
+      const errCode =
+        error != null && typeof error === "object" && "code" in error
+          ? (error as { code: unknown }).code
+          : undefined;
       input.logger.error(
-        { err: error, metadata, attempts },
-        `${input.commandLabel} command failed after retries; routing to DLQ`,
+        {
+          err: error,
+          errMessage: error instanceof Error ? error.message : String(error),
+          errCode,
+          errStack: error instanceof Error ? error.stack : undefined,
+          metadata,
+          attempts,
+          retried: retryExhausted,
+        },
+        retryExhausted
+          ? `${input.commandLabel} command failed after ${attempts} attempts; routing to DLQ`
+          : `${input.commandLabel} command failed (non-retryable); routing to DLQ`,
       );
       input.metrics?.recordOutcome?.(metadata.commandName, "handler_error");
       input.metrics?.observeDuration?.(

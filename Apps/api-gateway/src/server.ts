@@ -37,6 +37,7 @@ export const buildServer = () => {
     corsAllowedHeaders: [
       "Accept",
       "Idempotency-Key",
+      "X-Idempotency-Key",
       "X-Correlation-Id",
       "X-Requested-With",
       "DNT",

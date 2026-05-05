@@ -195,6 +195,26 @@ export const completeMobileCheckin = async (
       };
     }
 
+    // Industry-standard preconditions for completing a check-in (PCI + identity).
+    // Both must be explicitly true; default-false coercion below is intentional.
+    if (!input.idDocumentVerified) {
+      recordCheckinOutcome("complete", "invalid");
+      throw Object.assign(
+        new Error("Identity document verification is required to complete check-in"),
+        {
+          statusCode: 422,
+          code: "IDENTITY_VERIFICATION_REQUIRED",
+        },
+      );
+    }
+    if (!input.paymentMethodVerified) {
+      recordCheckinOutcome("complete", "invalid");
+      throw Object.assign(
+        new Error("A verified payment method (guarantee) is required to complete check-in"),
+        { statusCode: 422, code: "PAYMENT_GUARANTEE_REQUIRED" },
+      );
+    }
+
     const { rows } = await query<MobileCheckinRow>(COMPLETE_CHECKIN_SQL, [
       input.mobileCheckinId,
       input.identityVerificationMethod ?? "existing_profile",

@@ -6,6 +6,7 @@ import {
   buildServiceInfo,
   databaseSchema,
   ensureAuthDefaults,
+  ensureServiceAuthPassword,
   initServiceIdentity,
   loadServiceConfig,
   parseBooleanEnv,
@@ -16,6 +17,7 @@ import {
 
 initServiceIdentity("@tartware/guests-service");
 ensureAuthDefaults();
+ensureServiceAuthPassword();
 
 const configValues = loadServiceConfig(databaseSchema);
 validateProductionSecrets({
@@ -23,6 +25,7 @@ validateProductionSecrets({
   NODE_ENV: process.env.NODE_ENV,
   AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
   AUTH_DEFAULT_PASSWORD: process.env.AUTH_DEFAULT_PASSWORD,
+  SERVICE_AUTH_PASSWORD: process.env.SERVICE_AUTH_PASSWORD,
 });
 
 const kafka = resolveKafkaConfig({
@@ -50,7 +53,8 @@ const internalServices = {
 
 const serviceAuth = {
   username: process.env.SERVICE_AUTH_USERNAME ?? "setup.admin",
-  password: process.env.SERVICE_AUTH_PASSWORD ?? "TempPass123",
+  // SERVICE_AUTH_PASSWORD is guaranteed set by ensureServiceAuthPassword() above.
+  password: process.env.SERVICE_AUTH_PASSWORD as string,
 };
 
 export const config = {

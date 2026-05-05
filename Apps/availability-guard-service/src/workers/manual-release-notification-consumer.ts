@@ -1,3 +1,4 @@
+import { createCircuitBreaker } from "@tartware/fastify-server/circuit-breaker";
 import { ManualReleaseNotificationSchema } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 import type { Consumer, KafkaMessage } from "kafkajs";
@@ -18,6 +19,28 @@ import {
 } from "../lib/metrics.js";
 
 type ManualReleaseNotificationChannel = "email" | "sms" | "slack" | "log";
+
+/** Per-webhook-host circuit breaker so one failing tenant webhook can't drag the consumer down. */
+const webhookBreakers = new Map<string, ReturnType<typeof createCircuitBreaker>>();
+const breakerForWebhook = (url: string, logger: FastifyBaseLogger) => {
+  let host: string;
+  try {
+    host = new URL(url).host;
+  } catch {
+    host = url;
+  }
+  let b = webhookBreakers.get(host);
+  if (!b) {
+    b = createCircuitBreaker({
+      name: `webhook:${host}`,
+      failureThreshold: 5,
+      resetTimeoutMs: 30_000,
+      logger,
+    });
+    webhookBreakers.set(host, b);
+  }
+  return b;
+};
 
 let consumer: Consumer | null = null;
 let runLoop: Promise<void> | null = null;
@@ -357,7 +380,7 @@ const dispatchViaWebhook = async (
         );
         return;
       }
-      await sendWebhookRequest(channelConfig, payload);
+      await sendWebhookRequest(channelConfig, payload, logger);
       return;
     } catch (error) {
       const retriesLeft = totalAttempts - attempt;
@@ -381,20 +404,23 @@ const dispatchViaWebhook = async (
 const sendWebhookRequest = async (
   channelConfig: ChannelConfig,
   payload: Record<string, unknown>,
+  logger: FastifyBaseLogger,
 ): Promise<void> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), channelConfig.timeoutMs);
 
   try {
-    const response = await fetch(channelConfig.webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(channelConfig.apiKey ? { Authorization: `Bearer ${channelConfig.apiKey}` } : {}),
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+    const response = await breakerForWebhook(channelConfig.webhookUrl, logger).exec(() =>
+      fetch(channelConfig.webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(channelConfig.apiKey ? { Authorization: `Bearer ${channelConfig.apiKey}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      }),
+    );
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");

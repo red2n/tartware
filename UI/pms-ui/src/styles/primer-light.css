@@ -3,49 +3,67 @@
  * @rule Never use raw values (hex/px). Use semantic tokens ONLY.
  */
 [data-color-mode="light"][data-light-theme="light"] {
-  --bgColor-success-emphasis: #1f883d; /** Strong success background for prominent positive actions */
-  --button-primary-bgColor-hover: #1c8139;
-  --fgColor-danger: #d1242f; /** Danger text for errors and destructive actions */
-  --bgColor-accent-emphasis: #0969da; /** Strong accent background for active states and focused states */
-  --bgColor-accent-muted: #ddf4ff; /** Subtle accent background for informational or selected elements */
-  --bgColor-attention-emphasis: #9a6700; /** Strong attention background for prominent warnings */
-  --bgColor-attention-muted: #fff8c5; /** Subtle attention background for warnings and caution states */
-  --bgColor-danger-emphasis: #cf222e; /** Emphasized danger background for critical errors and delete confirmations */
-  --bgColor-danger-muted: #ffebe9; /** Muted danger background for error states and destructive action contexts */
-  --bgColor-done-emphasis: #8250df; /** Strong background for completed/done state badges and labels */
-  --bgColor-done-muted: #fbefff; /** Subtle background for completed/done state indicators */
-  --bgColor-emphasis: #25292e; /** High-emphasis dark background for strong visual contrast */
-  --bgColor-muted: #f6f8fa; /** Muted background for secondary content areas and subtle grouping */
-  --bgColor-neutral-muted: #818b981f; /** Subtle neutral background for tags, labels, and secondary UI elements */
-  --bgColor-success-muted: #dafbe1; /** Subtle success background for positive feedback and completed states */
-  --borderColor-accent-emphasis: #0969da; /** Strong accent border for selected or focused elements */
-  --borderColor-accent-muted: #54aeff66; /** Subtle accent border for selected or focused elements */
-  --borderColor-attention-muted: #d4a72c66; /** Subtle attention border for warnings and caution states */
-  --borderColor-danger-emphasis: #cf222e; /** Strong danger border for destructive actions and errors */
-  --borderColor-danger-muted: #ff818266; /** Subtle danger border for errors and destructive contexts */
-  --borderColor-default: #d1d9e0; /** Default border color for most UI elements */
-  --borderColor-done-muted: #c297ff66; /** Subtle border for completed/done state indicators */
-  --borderColor-success-muted: #4ac26b66; /** Subtle success border for positive feedback elements */
-  --button-primary-bgColor-rest: var(--bgColor-success-emphasis);
-  --control-transparent-bgColor-hover: #818b981a;
-  --fgColor-accent: #0969da; /** Accent text for links and interactive elements */
-  --fgColor-attention: #9a6700; /** Attention text for warnings and caution states */
-  --fgColor-done: #8250df; /** Text color for completed/done state indicators */
-  --fgColor-muted: #59636e; /** Muted text for secondary content and less important information */
-  --fgColor-success: #1a7f37; /** Success text for positive feedback and completed states */
-  --overlay-backdrop-bgColor: #c8d1da66;
-  --shadow-resting-medium: 0 1px 1px 0 #25292e1a, 0 3px 6px 0 #25292e1f; /** Medium resting shadow for cards and elevated surfaces */
-  --bgColor-default: #ffffff; /** Default background color for pages and main content areas */
-  --bgColor-inset: var(--bgColor-muted); /** Inset background for recessed content areas like wells or sunken panels */
-  --bgColor-open-muted: var(--bgColor-success-muted); /** Subtle background for open state indicators (issues, PRs) */
-  --borderColor-muted: #d1d9e0b3; /** Subtle border for secondary elements and light separators */
-  --borderColor-translucent: #1f232826; /** Semi-transparent border for overlays and layered elements. Border-specific token — no bgColor-translucent counterpart exists by design. */
-  --fgColor-default: #1f2328; /** Default text color for primary content and headings */
-  --fgColor-onEmphasis: #ffffff; /** Text color for use on emphasis backgrounds */
-  --fgColor-open: var(--fgColor-success); /** Text color for open state indicators (issues, PRs) */
-  --overlay-bgColor: #ffffff;
-  --shadow-resting-small: 0 1px 1px 0 #1f23280a, 0 1px 2px 0 #1f232808; /** Small resting shadow for buttons and interactive elements */
+  /* ── OpenSea-inspired light palette — cool whites with blue accent ── */
+  --bgColor-default: #ffffff;
+  --bgColor-muted: #f4f5f9;             /** Cool-tinted muted surface */
+  --bgColor-inset: var(--bgColor-muted);
+  --bgColor-emphasis: #1e2442;
+
+  /* ── Accent — OpenSea electric blue ── */
+  --fgColor-accent: #2081e2;
+  --bgColor-accent-emphasis: #2081e2;
+  --bgColor-accent-muted: #e8f2fd;
+  --borderColor-accent-emphasis: #2081e2;
+  --borderColor-accent-muted: #2081e266;
+
+  /* ── Borders ── */
+  --borderColor-default: #dde1ed;       /** Cool-tinted border */
+  --borderColor-muted: #dde1edb3;
+  --borderColor-translucent: #1f23280f;
+
+  /* ── Foreground ── */
+  --fgColor-default: #1e2442;           /** Deep navy text — matches OpenSea */
+  --fgColor-muted: #6b7280;
+  --fgColor-onEmphasis: #ffffff;
+
+  /* ── Semantic ── */
+  --bgColor-success-emphasis: #1f883d;
+  --bgColor-success-muted: #dafbe1;
+  --bgColor-danger-emphasis: #cf222e;
+  --bgColor-danger-muted: #ffebe9;
+  --bgColor-attention-emphasis: #9a6700;
+  --bgColor-attention-muted: #fff8c5;
+  --bgColor-done-emphasis: #7b3fe4;
+  --bgColor-done-muted: #f3ebff;
+  --bgColor-neutral-muted: #818b981f;
+  --bgColor-open-muted: var(--bgColor-success-muted);
+
+  --fgColor-success: #1a7f37;
+  --fgColor-danger: #d1242f;
+  --fgColor-attention: #9a6700;
+  --fgColor-done: #7b3fe4;
+  --fgColor-open: var(--fgColor-success);
+
+  --borderColor-success-muted: #4ac26b66;
+  --borderColor-danger-emphasis: #cf222e;
+  --borderColor-danger-muted: #ff818266;
+  --borderColor-attention-muted: #d4a72c66;
+  --borderColor-done-muted: #c297ff66;
+
+  /* ── Primary button → OpenSea blue ── */
+  --button-primary-bgColor-rest: #2081e2;
+  --button-primary-bgColor-hover: #1a6fc7;
   --button-primary-borderColor-rest: var(--borderColor-translucent);
-  --shadow-floating-large: 0 0 0 1px #d1d9e000, 0 40px 80px 0 #25292e3d; /** Large floating shadow for modals and dialogs */
-  --shadow-floating-medium: 0 0 0 1px #d1d9e000, 0 8px 16px -4px #25292e14, 0 4px 32px -4px #25292e14, 0 24px 48px -12px #25292e14, 0 48px 96px -24px #25292e14; /** Medium floating shadow for popovers and action menus */
+
+  --control-transparent-bgColor-hover: #2081e214;
+
+  /* ── Overlays ── */
+  --overlay-bgColor: #ffffff;
+  --overlay-backdrop-bgColor: #1e244260;
+
+  /* ── Shadows ── */
+  --shadow-resting-small: 0 1px 2px 0 #1e244214, 0 1px 4px 0 #1e24420a;
+  --shadow-resting-medium: 0 2px 4px 0 #1e24421a, 0 4px 12px 0 #1e24420f;
+  --shadow-floating-medium: 0 0 0 1px #dde1ed, 0 8px 24px -4px #1e244214, 0 16px 48px -8px #1e24420f;
+  --shadow-floating-large: 0 0 0 1px #dde1ed00, 0 24px 64px 0 #1e24422e;
 }

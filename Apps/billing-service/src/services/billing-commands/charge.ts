@@ -1,4 +1,7 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
+import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   type BillingChargePostCommand,
@@ -409,10 +412,40 @@ const applyChargePost = async (
   });
 
   const postingId = await withTransaction(async (client) => {
+    // Acquire advisory lock on the source folio before any balance mutations to
+    // prevent concurrent checkout from reading a stale balance mid-transaction
+    await acquireFolioLock(client, folioId);
+
+    // Resolve GL accounts once per transaction; cached in-process across calls.
+    // A missing mapping is logged but does NOT fail the charge — operations
+    // must land even when the chart of accounts is incomplete; missing GL pairs
+    // are recovered offline via accounts-gaps/01-gl-journal-entries.md backfill.
+    const glMapping = await lookupChargeCodeMapping(client, context.tenantId, command.charge_code);
+    if (!glMapping) {
+      appLogger.warn(
+        {
+          tenantId: context.tenantId,
+          chargeCode: command.charge_code,
+        },
+        "Missing charge_code_gl_mapping — GL pair will be skipped for this posting",
+      );
+    }
+
+    // For posting_type === 'CREDIT' (a refund/comp/allowance), DR and CR swap
+    // so the books reverse the original revenue recognition.
+    const isCredit = command.posting_type === "CREDIT";
+    const debitAccount = isCredit ? glMapping?.credit : glMapping?.debit;
+    const creditAccount = isCredit ? glMapping?.debit : glMapping?.credit;
+    const businessDate = (
+      command.posted_at instanceof Date
+        ? command.posted_at.toISOString()
+        : (command.posted_at ?? new Date().toISOString())
+    ).slice(0, 10);
+
     // Post routed portions to destination folios
     for (const decision of routing.decisions) {
       const routedSubtotal = decision.routedAmount;
-      await queryWithClient(
+      const { rows: routedRows } = await queryWithClient<{ posting_id: string }>(
         client,
         `
           INSERT INTO public.charge_postings (
@@ -428,6 +461,7 @@ const applyChargePost = async (
             UPPER($10), COALESCE($11::timestamptz, NOW()), CURRENT_DATE, $12,
             $13::uuid, $14::uuid, $14::uuid
           )
+          RETURNING posting_id
         `,
         [
           context.tenantId,
@@ -459,6 +493,29 @@ const applyChargePost = async (
         `,
         [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId],
       );
+
+      // GL: paired DR/CR for the routed portion. Skipped if mapping is absent.
+      const routedPostingId = routedRows[0]?.posting_id;
+      if (glMapping && debitAccount && creditAccount && routedPostingId) {
+        await postGlPair(client, {
+          tenant_id: context.tenantId,
+          property_id: command.property_id,
+          folio_id: decision.destinationFolioId,
+          reservation_id: command.reservation_id ?? undefined,
+          debit_account: debitAccount,
+          credit_account: creditAccount,
+          amount: routedSubtotal,
+          currency,
+          posting_date: businessDate,
+          department_code: command.department_code ?? glMapping.department ?? undefined,
+          usali_category: glMapping.usali ?? undefined,
+          description: `Routed: ${command.description ?? command.charge_code}`,
+          source_table: "charge_postings",
+          source_id: routedPostingId,
+          reference_number: decision.ruleId,
+          created_by: actorId,
+        });
+      }
     }
 
     // Post remainder (or full amount if no routing) on the source folio
@@ -525,10 +582,49 @@ const applyChargePost = async (
         `,
         [context.tenantId, subtotal, actorId, folioId],
       );
+
+      // GL: paired DR/CR for the remainder on the source folio.
+      if (glMapping && debitAccount && creditAccount) {
+        await postGlPair(client, {
+          tenant_id: context.tenantId,
+          property_id: command.property_id,
+          folio_id: folioId,
+          reservation_id: command.reservation_id ?? undefined,
+          debit_account: debitAccount,
+          credit_account: creditAccount,
+          amount: subtotal,
+          currency,
+          posting_date: businessDate,
+          department_code: command.department_code ?? glMapping.department ?? undefined,
+          usali_category: glMapping.usali ?? undefined,
+          description: command.description ?? command.charge_code,
+          source_table: "charge_postings",
+          source_id: sourcePostingId,
+          created_by: actorId,
+        });
+      }
     }
 
     // Return the source folio posting ID (or the first routed posting for audit)
     return sourcePostingId ?? routing.decisions[0]?.ruleId ?? "";
+  });
+
+  // Async audit — fire-and-forget; must not block or fail the charge post.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "CHARGE_POST",
+    entityType: "charge_posting",
+    entityId: postingId,
+    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${command.amount} on folio ${folioId}`,
+    newValues: {
+      posting_id: postingId,
+      folio_id: folioId,
+      charge_code: command.charge_code,
+      amount: command.amount * command.quantity,
+      posting_type: command.posting_type,
+      reservation_id: command.reservation_id,
+    },
   });
 
   return postingId;
@@ -549,7 +645,7 @@ const applyChargeVoid = async (
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
 
-  return withTransaction(async (client) => {
+  const voidPostingId = await withTransaction(async (client) => {
     const { rows: postingRows } = await queryWithClient<{
       posting_id: string;
       tenant_id: string;
@@ -689,6 +785,36 @@ const applyChargeVoid = async (
       [context.tenantId, totalAmount, actorId, original.folio_id],
     );
 
+    // GL: paired DR/CR for the void. Sides are swapped relative to the
+    // original posting — the original DR'd the guest ledger and CR'd revenue;
+    // the void DR's revenue and CR's the guest ledger so the books reverse.
+    const glMapping = await lookupChargeCodeMapping(client, context.tenantId, original.charge_code);
+    if (glMapping && totalAmount > 0) {
+      await postGlPair(client, {
+        tenant_id: context.tenantId,
+        property_id: original.property_id,
+        folio_id: original.folio_id,
+        reservation_id: original.reservation_id ?? undefined,
+        debit_account: glMapping.credit, // swapped
+        credit_account: glMapping.debit, // swapped
+        amount: totalAmount,
+        currency: original.currency_code,
+        posting_date: new Date().toISOString().slice(0, 10),
+        department_code: original.department_code ?? glMapping.department ?? undefined,
+        usali_category: glMapping.usali ?? undefined,
+        description: `VOID: ${original.charge_description}`,
+        source_table: "charge_postings",
+        source_id: voidPostingId,
+        reference_number: command.posting_id,
+        created_by: actorId,
+      });
+    } else if (!glMapping) {
+      appLogger.warn(
+        { tenantId: context.tenantId, chargeCode: original.charge_code },
+        "Missing charge_code_gl_mapping — GL pair skipped on void",
+      );
+    }
+
     appLogger.info(
       { voidPostingId, originalPostingId: command.posting_id, totalAmount },
       "Charge posting voided",
@@ -696,4 +822,19 @@ const applyChargeVoid = async (
 
     return voidPostingId;
   });
+
+  // Async audit — fires after the transaction commits; never blocks the response.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "CHARGE_VOID",
+    entityType: "charge_posting",
+    entityId: command.posting_id,
+    severity: "WARNING",
+    description: `Charge voided: posting ${command.posting_id} reason=${command.void_reason ?? "not provided"}`,
+    oldValues: { posting_id: command.posting_id },
+    newValues: { void_posting_id: voidPostingId, void_reason: command.void_reason },
+  });
+
+  return voidPostingId;
 };

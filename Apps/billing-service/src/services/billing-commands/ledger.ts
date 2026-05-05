@@ -9,6 +9,8 @@ import type {
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
+  type BillingGlBatchExportCommand,
+  BillingGlBatchExportCommandSchema,
   type BillingLedgerPostCommand,
   BillingLedgerPostCommandSchema,
 } from "../../schemas/billing-commands.js";
@@ -30,6 +32,21 @@ const TAX_LIABILITY_ACCOUNT = "2100";
 export const postLedger = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingLedgerPostCommandSchema.parse(payload);
   return rebuildLedgerBatch(command, context);
+};
+
+/**
+ * Called by the night audit (step 6.5) to rebuild the GL batch for the audit date.
+ * Wraps rebuildLedgerBatch so night-audit.ts does not need to import command schemas.
+ */
+export const buildGlBatchForDate = async (
+  propertyId: string,
+  businessDate: string,
+  context: CommandContext,
+): Promise<string> => {
+  return rebuildLedgerBatch(
+    { property_id: propertyId, business_date: new Date(businessDate) },
+    context,
+  );
 };
 
 const rebuildLedgerBatch = async (
@@ -587,8 +604,8 @@ const insertLedgerEntry = async (
         1.0,
         $14,
         CASE
-          WHEN $12 > 0 THEN $12
-          ELSE $13
+          WHEN $12::numeric > 0 THEN $12::numeric
+          ELSE $13::numeric
         END,
         $15,
         $16::uuid,
@@ -712,4 +729,73 @@ const toDateOnly = (value: string | Date): string => {
     return value.toISOString().split("T")[0] ?? "";
   }
   return value.split("T")[0] ?? value;
+};
+
+/**
+ * Mark a GL batch as exported (sets batch_status → 'POSTED', stamps exported_at).
+ * If gl_batch_id is not supplied, resolves the most recent REVIEW batch for the
+ * given property/business_date.
+ */
+export const exportGlBatch = async (payload: unknown, context: CommandContext): Promise<string> => {
+  const command: BillingGlBatchExportCommand = BillingGlBatchExportCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+
+  if (!command.gl_batch_id && !command.business_date) {
+    throw new BillingCommandError(
+      "MISSING_BATCH_REFERENCE",
+      "Either gl_batch_id or business_date must be provided to export a GL batch.",
+    );
+  }
+
+  let batchId: string;
+
+  if (command.gl_batch_id) {
+    batchId = command.gl_batch_id;
+  } else {
+    const businessDate = toDateOnly(command.business_date as Date);
+    const resolveResult = await query<Pick<GeneralLedgerBatches, "gl_batch_id">>(
+      `
+        SELECT gl_batch_id
+        FROM public.general_ledger_batches
+        WHERE tenant_id = $1::uuid
+          AND property_id = $2::uuid
+          AND batch_date = $3::date
+          AND batch_status = 'REVIEW'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+      [context.tenantId, command.property_id, businessDate],
+    );
+    if (!resolveResult.rows[0]) {
+      throw new BillingCommandError(
+        "BATCH_NOT_FOUND",
+        `No REVIEW-status GL batch found for property ${command.property_id} on ${businessDate}.`,
+      );
+    }
+    batchId = resolveResult.rows[0].gl_batch_id;
+  }
+
+  await query(
+    `
+      UPDATE public.general_ledger_batches
+      SET
+        batch_status  = 'POSTED',
+        export_format = $2,
+        exported_at   = NOW(),
+        exported_by   = $3::uuid,
+        updated_at    = NOW(),
+        updated_by    = $3::uuid
+      WHERE gl_batch_id = $1::uuid
+        AND tenant_id   = $4::uuid
+        AND batch_status NOT IN ('POSTED', 'VOID')
+    `,
+    [batchId, command.export_format, actorId, context.tenantId],
+  );
+
+  appLogger.info(
+    { batchId, exportFormat: command.export_format, tenantId: context.tenantId },
+    "GL batch marked as exported",
+  );
+
+  return batchId;
 };

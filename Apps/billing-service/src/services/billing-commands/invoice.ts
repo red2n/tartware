@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -175,7 +175,7 @@ const applyInvoiceFinalize = async (
 ): Promise<string> => {
   const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
-  return withTransaction(async (client) => {
+  const finalizedId = await withTransaction(async (client) => {
     const { rows } = await queryWithClient<{
       id: string;
       status: string;
@@ -233,6 +233,19 @@ const applyInvoiceFinalize = async (
 
     return command.invoice_id;
   });
+
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actor,
+    action: "INVOICE_FINALIZE",
+    entityType: "invoice",
+    entityId: finalizedId,
+    severity: "INFO",
+    description: `Invoice finalized and locked: ${finalizedId}`,
+    newValues: { invoice_id: finalizedId },
+  });
+
+  return finalizedId;
 };
 
 // ─── Void Invoice ─────────────────────────────────────────────────────
@@ -280,6 +293,19 @@ export const voidInvoice = async (payload: unknown, context: CommandContext): Pr
   );
 
   appLogger.info({ invoiceId: command.invoice_id }, "Invoice voided");
+
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actor,
+    action: "INVOICE_VOID",
+    entityType: "invoice",
+    entityId: command.invoice_id,
+    severity: "WARNING",
+    description: `Invoice voided: ${command.invoice_id} reason=${command.reason ?? "not provided"}`,
+    oldValues: { status: "DRAFT" },
+    newValues: { status: "VOIDED", reason: command.reason },
+  });
+
   return command.invoice_id;
 };
 

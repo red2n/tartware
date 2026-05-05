@@ -212,7 +212,8 @@ Every entry in `pnpm.overrides` (root `package.json`) must have a documented rea
 - **@fastify/swagger ^9.6.1** — Align version across all Fastify services.
 - **@fastify/swagger-ui ^5.2.3** — Align version across all Fastify services.
 - **esbuild 0.27.2** — Pin for tsx; prevents unexpected binary re-downloads.
-- **fastify ^5.8.3** — Security fix: CVE-2026-3419 (incorrect regex, CVSS 6.9) + CVE-2026-3635 (less trusted source, CVSS 6.0).
+- **fastify ^5.8.5** — Security fix: CVE-2026-3419 (incorrect regex, CVSS 6.9) + CVE-2026-3635 (less trusted source, CVSS 6.0) + Dependabot #62 (body schema validation bypass via leading space in Content-Type header, patched in 5.8.5).
+- **protobufjs ^7.5.5** — Security fix: arbitrary code execution via malicious type field in protobuf definitions (Dependabot #67); patched in 7.5.5.
 
 ## Service Port Map
 Canonical dev port assignments (set via `PORT=` env var in root `package.json` dev scripts). Ports increment by 5.
@@ -247,6 +248,21 @@ Canonical dev port assignments (set via `PORT=` env var in root `package.json` d
 - Use `http_test/*.http` files or `curl` commands against `localhost:8080` for manual testing.
 - The gateway provides unified authentication, rate limiting, and routing to backend services.
 - Direct database access is only permitted for read-only diagnostics (e.g., verifying record counts) or one-time migration scripts—never for routine data manipulation during testing.
+
+## Task Completion Gate — MANDATORY
+
+> **A task is NOT complete until `pnpm run build` passes with 0 errors.**
+
+After finishing every task or phase (code change, refactor, schema addition, etc.):
+1. Run `pnpm run build` from the monorepo root.
+2. If it fails, fix all errors before marking the task complete or moving to the next one.
+3. Only mark a todo item as `completed` **after** a clean build is confirmed.
+
+```bash
+pnpm run build   # must exit 0 — lint + biome + knip + compile all projects
+```
+
+This rule supersedes any other completion signal (typecheck passing, no TS errors in one service, etc.). A task is done when the full monorepo build is green.
 
 ## Pre-Push Quality Gates
 - **Before every `git push`**, run these three checks on all affected services and fix any failures:

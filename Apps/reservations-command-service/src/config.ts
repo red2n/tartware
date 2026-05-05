@@ -23,7 +23,7 @@ const defaultRetryScheduleMs = parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_
 export const serviceConfig = {
   port: configValues.PORT,
   host: configValues.HOST,
-  serviceId: process.env.RESERVATION_COMMAND_ID ?? "reservations-command-service",
+  serviceId: process.env.RESERVATION_COMMAND_ID ?? "@tartware/reservations-command-service",
   requestLogging: parseBooleanEnv(process.env.RESERVATION_COMMAND_LOG_REQUESTS, false),
 };
 
@@ -40,7 +40,8 @@ export const kafkaConfig = {
 
 export const outboxConfig = {
   workerId: process.env.OUTBOX_WORKER_ID ?? `${serviceConfig.serviceId}-outbox`,
-  pollIntervalMs: parseNumberEnv(process.env.OUTBOX_POLL_INTERVAL_MS, 2000),
+  // Enforce a 100ms floor so a mis-set OUTBOX_POLL_INTERVAL_MS=0 never spin-loops.
+  pollIntervalMs: Math.max(100, parseNumberEnv(process.env.OUTBOX_POLL_INTERVAL_MS, 2000)),
   batchSize: parseNumberEnv(process.env.OUTBOX_BATCH_SIZE, 25),
   lockTimeoutMs: parseNumberEnv(process.env.OUTBOX_LOCK_TIMEOUT_MS, 30000),
   maxRetries: parseNumberEnv(process.env.OUTBOX_MAX_RETRIES, 5),
@@ -64,8 +65,8 @@ export const databaseConfig = buildDbConfig(configValues);
 export const commandCenterConfig = {
   topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
   consumerGroupId:
-    process.env.COMMAND_CENTER_CONSUMER_GROUP ?? `${serviceConfig.serviceId}-command-consumer`,
-  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? serviceConfig.serviceId,
+    process.env.COMMAND_CENTER_CONSUMER_GROUP ?? "reservations-command-center-consumer",
+  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "reservations-command-service",
   maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
   dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
   maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),

@@ -40,6 +40,16 @@ const buildHeaders = (request: FastifyRequest): Headers => {
       headers.set(key, String(value));
     }
   }
+
+  // Inject the JWT-validated tenant identity as a trusted internal header.
+  // `authorizedTenantIds` is populated exclusively by `withTenantScope` after
+  // successful JWT membership verification, so downstream services can rely on
+  // this header rather than trusting the client-supplied query param.
+  const authorizedTenantIds = request.auth?.authorizedTenantIds;
+  if (authorizedTenantIds?.size === 1) {
+    headers.set("x-tartware-tenant-id", [...authorizedTenantIds][0]);
+  }
+
   return headers;
 };
 

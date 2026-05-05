@@ -53,6 +53,7 @@ describe("refundBillingPayment validation", () => {
 
   it("allows refund equal to original payment", async () => {
     queryMock.mockResolvedValueOnce({ rows: [buildPaymentRow()], rowCount: 1 });
+    queryMock.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // resolveFolioId — no folio found
     queryWithClientMock.mockImplementation(async (_client: unknown, text: string) => {
       if (text.includes("INSERT INTO public.payments")) {
         return { rows: [{ id: "refund-1" }], rowCount: 1 };
@@ -87,6 +88,7 @@ describe("refundBillingPayment validation", () => {
       rows: [buildPaymentRow({ amount: 100, refund_amount: 50 })],
       rowCount: 1,
     });
+    queryMock.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // resolveFolioId — no folio found
     queryWithClientMock.mockImplementation(async (_client: unknown, text: string) => {
       if (text.includes("INSERT INTO public.payments")) {
         return { rows: [{ id: "refund-2" }], rowCount: 1 };

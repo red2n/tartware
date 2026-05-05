@@ -1,6 +1,9 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   FiscalPeriodListResponseSchema,
+  GlBatchEntriesResponseSchema,
+  GlBatchListQuerySchema,
+  GlBatchListResponseSchema,
   type LedgerEntryListQuery,
   LedgerEntryListQuerySchema,
   LedgerEntryListResponseSchema,
@@ -15,10 +18,12 @@ import { z } from "zod";
 import {
   getCommissionReport,
   getDepartmentalRevenue,
+  getGlBatchEntries,
   getTaxConfigurationById,
   getTaxSummary,
   getTrialBalance,
   listFiscalPeriods,
+  listGlBatches,
   listLedgerEntries,
   listTaxConfigurations,
 } from "../services/finance-admin-service.js";
@@ -411,6 +416,87 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
         startDate: start_date,
         endDate: end_date,
       });
+    },
+  );
+
+  // ============================================================================
+  // GL BATCHES (GAP-01: GL Journal Entry Wiring)
+  // ============================================================================
+
+  type GlBatchListQueryType = z.infer<typeof GlBatchListQuerySchema>;
+
+  const GlBatchListQueryJsonSchema = schemaFromZod(GlBatchListQuerySchema, "GlBatchListQuery");
+  const GlBatchListResponseJsonSchema = schemaFromZod(
+    GlBatchListResponseSchema,
+    "GlBatchListResponse",
+  );
+
+  app.get<{ Querystring: GlBatchListQueryType }>(
+    "/v1/billing/gl-batches",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as GlBatchListQueryType).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "List general ledger batches with optional date/status filters",
+        querystring: GlBatchListQueryJsonSchema,
+        response: {
+          200: GlBatchListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, start_date, end_date, batch_status, limit, offset } =
+        GlBatchListQuerySchema.parse(request.query);
+      const data = await listGlBatches({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        startDate: start_date,
+        endDate: end_date,
+        batchStatus: batch_status,
+        limit,
+        offset,
+      });
+      return GlBatchListResponseSchema.parse({ data, meta: { count: data.length } });
+    },
+  );
+
+  const GlBatchEntriesQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    limit: z.coerce.number().int().positive().max(5000).default(1000),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  type GlBatchEntriesQueryType = z.infer<typeof GlBatchEntriesQuerySchema>;
+
+  const GlBatchEntriesResponseJsonSchema = schemaFromZod(
+    GlBatchEntriesResponseSchema,
+    "GlBatchEntriesResponse",
+  );
+
+  app.get<{ Params: { batchId: string }; Querystring: GlBatchEntriesQueryType }>(
+    "/v1/billing/gl-batches/:batchId/entries",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as GlBatchEntriesQueryType).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "Get all entries for a specific GL batch",
+        response: {
+          200: GlBatchEntriesResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, limit, offset } = GlBatchEntriesQuerySchema.parse(request.query);
+      const { batchId } = request.params;
+      return getGlBatchEntries({ tenantId: tenant_id, batchId, limit, offset });
     },
   );
 };

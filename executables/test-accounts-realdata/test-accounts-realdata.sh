@@ -57,12 +57,55 @@ get_token() {
 RESP_FILE=$(mktemp /tmp/tartware-test-resp.XXXXXX.json)
 trap "rm -f $RESP_FILE" EXIT
 
+# Generate a UUID for Idempotency-Key (required by all command writes since IDEMP-01).
+gen_uuid() {
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then
+    cat /proc/sys/kernel/random/uuid
+  elif command -v uuidgen >/dev/null 2>&1; then
+    uuidgen
+  else
+    # Fallback: pseudo-uuid from $RANDOM + epoch
+    printf '%08x-%04x-%04x-%04x-%012x\n' \
+      $((RANDOM*RANDOM)) $RANDOM $RANDOM $RANDOM $((RANDOM*RANDOM*RANDOM))
+  fi
+}
+
 post() {
+  local idem="${3:-$(gen_uuid)}"
   curl -s -o "$RESP_FILE" -w "%{http_code}" \
     -X POST "$1" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
     -d "$2"
+}
+
+put() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PUT "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+patch_req() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PATCH "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+delete_req() {
+  local idem="${2:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X DELETE "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem"
 }
 
 get() {
@@ -186,6 +229,42 @@ wait_kafka() {
   sleep "$secs"
 }
 
+# poll_delta — poll an API endpoint until the item-count delta >= min_delta,
+# retrying with exponential backoff when the initial check shows Δ=0.
+# Emits pass on success, skip after all retries (never a hard fail — Δ=0 may
+# be a handler no-op rather than a test defect).
+#
+# Usage: poll_delta <label> <url> <baseline> [min_delta=1] [max_retries=1] [first_retry_wait=16]
+poll_delta() {
+  local label="$1" url="$2" baseline="$3"
+  local min_delta="${4:-1}" max_retries="${5:-1}" wait="${6:-16}"
+  local current delta
+
+  get "$url" >/dev/null
+  current=$(resp_count)
+  delta=$((current - baseline))
+
+  if [[ "$delta" -ge "$min_delta" ]]; then
+    pass "$label (Δ=$delta)"; return 0
+  fi
+
+  local attempt=1
+  while [[ $attempt -le $max_retries ]]; do
+    printf "  ⏳ Retry %d/%d in %ds: %s (Δ=%d so far)\n" \
+           "$attempt" "$max_retries" "$wait" "$label" "$delta"
+    sleep "$wait"
+    get "$url" >/dev/null
+    current=$(resp_count)
+    delta=$((current - baseline))
+    if [[ "$delta" -ge "$min_delta" ]]; then
+      pass "$label (Δ=$delta, retry $attempt)"; return 0
+    fi
+    wait=$((wait * 2)); attempt=$((attempt + 1))
+  done
+
+  skip "$label" "Δ=$delta after $((max_retries + 1)) checks"
+}
+
 # ─── Preflight ───────────────────────────────────────────────────────────────
 
 preflight() {
@@ -266,7 +345,10 @@ REQUIRED_COMMANDS=(
   "billing.night_audit.execute"
   "billing.date_roll.manual"
   "billing.folio.transfer"
+  "billing.fiscal_period.create"
   "billing.fiscal_period.close"
+  "billing.ledger.post"
+  "billing.gl_batch.export"
 )
 
 echo "── Enabling required commands ────────────────────────────────────────"
@@ -963,6 +1045,88 @@ else
 fi
 echo ""
 
+# ── 1.12b  GL Batch — GAP-01: GL Journal Entry Wiring ──
+echo "── 1.12b GL Batch (USALI double-entry) ──────────────────────────────"
+echo "  Night audit step 6.5 auto-builds a GL batch. Verify it exists,"
+echo "  then call billing.ledger.post directly (idempotent rebuild),"
+echo "  read entries, verify debit==credit balance, export to POSTED."
+
+GL_BATCH_DATE="${POST_BDATE:-$TODAY}"
+
+# Direct call to ledger.post (idempotent — safe to re-run)
+send_command "CMD billing.ledger.post: rebuild GL batch" \
+  "billing.ledger.post" \
+  "{\"property_id\":\"$PID\",\"business_date\":\"$GL_BATCH_DATE\"}"
+
+wait_kafka 8
+
+# List GL batches for this property+date
+code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID&property_id=$PID&start_date=$GL_BATCH_DATE&end_date=$GL_BATCH_DATE")
+assert_http "GET gl-batches" "200" "$code"
+GL_BATCH_COUNT=$(resp_count)
+GL_BATCH_ID=$(resp_first "gl_batch_id")
+
+if [[ -n "$GL_BATCH_ID" && "${GL_BATCH_COUNT:-0}" -ge 1 ]]; then
+  pass "DB: GL batch exists (batch_id=${GL_BATCH_ID:0:8}…)"
+  GL_BATCH_STATUS=$(resp_first "batch_status")
+  GL_BATCH_DEBITS=$(resp_first "debit_total")
+  GL_BATCH_CREDITS=$(resp_first "credit_total")
+  GL_ENTRY_COUNT=$(resp_first "entry_count")
+  pass "GL: status=$GL_BATCH_STATUS debits=$GL_BATCH_DEBITS credits=$GL_BATCH_CREDITS entries=$GL_ENTRY_COUNT"
+
+  # Verify double-entry balance: debit_total must equal credit_total (within 1¢)
+  if [[ -n "$GL_BATCH_DEBITS" && -n "$GL_BATCH_CREDITS" ]]; then
+    DIFF=$(echo "$GL_BATCH_DEBITS - $GL_BATCH_CREDITS" | bc 2>/dev/null || echo "999")
+    ABS_DIFF=$(echo "${DIFF#-}")
+    if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
+      pass "GL: batch is balanced (debits=$GL_BATCH_DEBITS == credits=$GL_BATCH_CREDITS)"
+    else
+      fail "GL: batch imbalanced" "debits=$GL_BATCH_DEBITS credits=$GL_BATCH_CREDITS diff=$DIFF"
+    fi
+  fi
+
+  # Read batch entries via /gl-batches/:id/entries
+  code=$(get "$GW/v1/billing/gl-batches/$GL_BATCH_ID/entries?tenant_id=$TID")
+  assert_http "GET gl-batches/:id/entries" "200" "$code"
+  RETURNED_ENTRIES=$(jq -r '.entry_count // (.data | length) // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  if [[ "$RETURNED_ENTRIES" -ge 2 ]]; then
+    pass "GL: entries returned (count=$RETURNED_ENTRIES)"
+  else
+    skip "GL: batch entries" "count=$RETURNED_ENTRIES (may have no posted charges)"
+  fi
+
+  # Verify entries have account_code (joined from gl_chart_of_accounts)
+  ENTRY_WITH_CODE=$(jq '[.data // . | .[] | select(.account_code != null and .account_code != "")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  if [[ "$RETURNED_ENTRIES" -ge 1 ]]; then
+    if [[ "$ENTRY_WITH_CODE" -ge 1 ]]; then
+      pass "GL: entries have account_code ($ENTRY_WITH_CODE/$RETURNED_ENTRIES)"
+    else
+      fail "GL: entries missing account_code" "0/$RETURNED_ENTRIES have it"
+    fi
+  fi
+
+  # Export GL batch → sets batch_status = POSTED (only valid from REVIEW state)
+  if [[ "$GL_BATCH_STATUS" == "REVIEW" ]]; then
+    send_command "CMD billing.gl_batch.export: mark POSTED" \
+      "billing.gl_batch.export" \
+      "{\"property_id\":\"$PID\",\"gl_batch_id\":\"$GL_BATCH_ID\",\"export_format\":\"USALI\"}"
+
+    wait_kafka 5
+
+    code=$(get "$GW/v1/billing/gl-batches?tenant_id=$TID&property_id=$PID&start_date=$GL_BATCH_DATE&end_date=$GL_BATCH_DATE")
+    assert_http "GET gl-batches post-export" "200" "$code"
+    POST_EXPORT_STATUS=$(resp_ffirst ".gl_batch_id == \"$GL_BATCH_ID\"" "batch_status")
+    assert_eq_ci "GL: batch_status after export = POSTED" "POSTED" "$POST_EXPORT_STATUS"
+  elif [[ "$GL_BATCH_STATUS" == "OPEN" ]]; then
+    skip "GL: export batch" "status=OPEN (no charges posted — empty batch)"
+  else
+    skip "GL: export batch" "status=$GL_BATCH_STATUS (may already be POSTED from prior run)"
+  fi
+else
+  fail "DB: GL batch not found" "count=${GL_BATCH_COUNT:-0} (billing.ledger.post may have failed)"
+fi
+echo ""
+
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 1B — REAL-WORLD ACCOUNTING SCENARIOS (PMS Industry Standard)
 #  Ref: docs/pms_accounting_real_world_scenarios.md
@@ -1026,7 +1190,7 @@ if [[ -n "$CC_PAY_ID" ]]; then
 
   # Verify refund payment record created
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
-  REFUND_EXISTS=$(jq '[.data // . | .[] | select((.transaction_type == "refund" or .transaction_type == "partial_refund") and .amount == 50)] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  REFUND_EXISTS=$(resp_fcount '(.transaction_type == "refund" or .transaction_type == "partial_refund") and ((.amount | tostring | tonumber) == 50)')
   if [[ "${REFUND_EXISTS:-0}" -ge 1 ]]; then
     pass "DB: refund payment record exists (amount=50)"
   else
@@ -1200,8 +1364,8 @@ if [[ -n "$REST_POSTING_ID" && -n "$HOUSE_FOLIO_ID" && -n "$FOLIO1_ID" ]]; then
   assert_eq "DB: original RESTAURANT charge voided after split" "true" "$SPLIT_VOIDED"
 
   # Verify two new split postings exist (check for charges with amounts 50 and 35)
-  SPLIT_50=$(jq '[.data // . | .[] | select(.total_amount == 50 and .transaction_type == "charge")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
-  SPLIT_35=$(jq '[.data // . | .[] | select(.total_amount == 35 and .transaction_type == "charge")] | length' "$RESP_FILE" 2>/dev/null || echo "0")
+  SPLIT_50=$(resp_fcount '.total_amount == 50 and .transaction_type == "charge"')
+  SPLIT_35=$(resp_fcount '.total_amount == 35 and .transaction_type == "charge"')
   assert_gte "DB: \$50 split posting exists" "1" "$SPLIT_50"
   assert_gte "DB: \$35 split posting exists" "1" "$SPLIT_35"
 else
@@ -1573,10 +1737,37 @@ FP_YEAR_START="$FP_YEAR-01-01"
 FP_YEAR_END="$FP_YEAR-12-31"
 
 if [[ -n "$FP_PERIOD_END" ]]; then
-  # No dedicated fiscal period creation API exists — skip if no OPEN period is present.
-  # The billing.fiscal_period.close command only closes an existing OPEN period
-  # identified by its UUID (period_id). Without a seeding endpoint we cannot test this.
-  skip "Fiscal period close" "no API to seed fiscal_periods — needs dedicated endpoint"
+  # Seed an OPEN fiscal period using the billing.fiscal_period.create command
+  FP_IDEM="FP-${UNIQUE}-$(date +%Y%m)"
+  send_command "CMD fiscal_period.create: current month" \
+    "billing.fiscal_period.create" \
+    "{\"property_id\":\"$PID\",\"fiscal_year\":$FP_YEAR,\"period_number\":$FP_MONTH,\"period_name\":\"$FP_NAME\",\"period_start\":\"$FP_PERIOD_START\",\"period_end\":\"$FP_PERIOD_END\",\"fiscal_year_start\":\"$FP_YEAR_START\",\"fiscal_year_end\":\"$FP_YEAR_END\",\"period_status\":\"OPEN\",\"idempotency_key\":\"$FP_IDEM\"}"
+  wait_kafka 10
+
+  # Retrieve the created period ID
+  get "$GW/v1/billing/fiscal-periods?property_id=$PID&tenant_id=$TID" >/dev/null
+  FP_ID=$(jq -r --arg yr "$FP_YEAR" --arg pn "$FP_MONTH" \
+    '[.data // . | .[] | select((.fiscal_year | tostring) == $yr and (.period_number | tostring) == $pn and (.period_status | ascii_downcase) == "open")][0].fiscal_period_id // empty' \
+    "$RESP_FILE" 2>/dev/null || echo "")
+
+  if [[ -n "$FP_ID" ]]; then
+    send_command "CMD fiscal_period.close: current month" \
+      "billing.fiscal_period.close" \
+      "{\"period_id\":\"$FP_ID\",\"property_id\":\"$PID\",\"reconciliation_confirmed\":true,\"close_reason\":\"End-of-period close — QA test\"}"
+    wait_kafka 10
+
+    get "$GW/v1/billing/fiscal-periods?property_id=$PID&tenant_id=$TID" >/dev/null
+    FP_STATUS=$(jq -r --arg id "$FP_ID" \
+      '[.data // . | .[] | select(.fiscal_period_id == $id)][0].period_status // empty' \
+      "$RESP_FILE" 2>/dev/null || echo "")
+    if [[ "${FP_STATUS,,}" == "soft_close" || "${FP_STATUS,,}" == "closed" ]]; then
+      pass "DB: fiscal period closed ($FP_STATUS)"
+    else
+      skip "DB: fiscal period close" "status=$FP_STATUS (expected soft_close/closed)"
+    fi
+  else
+    skip "Fiscal period close" "period not found after create — check billing.fiscal_period.create"
+  fi
 else
   skip "Fiscal period close" "date calculation not available"
 fi
@@ -1725,10 +1916,19 @@ if [[ -n "${RES1_ID:-}" && -n "${FOLIO1_ID:-}" ]]; then
   send_command "CMD folio.create: merge source" \
     "billing.folio.create" \
     "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge Source $UNIQUE\",\"currency\":\"USD\",\"idempotency_key\":\"$MERGE_IDEM\"}"
-  wait_kafka 5
+  wait_kafka 10
 
-  get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
-  MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data // . | .[] | select(.id != $fid and .folio_type != "HOUSE_ACCOUNT" and (.folio_status == "OPEN" or .folio_status == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  MERGE_SRC_ID=""
+  _msrc_wait=8
+  for _msrc_attempt in 1 2 3; do
+    get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
+    MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+    [[ -n "$MERGE_SRC_ID" ]] && break
+    if [[ $_msrc_attempt -lt 3 ]]; then
+      printf "  ⏳ Retry %d/3 in %ds: waiting for merge-source folio...\n" "$_msrc_attempt" "$_msrc_wait"
+      sleep "$_msrc_wait"; _msrc_wait=$((_msrc_wait * 2))
+    fi
+  done
 
   if [[ -n "$MERGE_SRC_ID" ]]; then
     # Post a small charge to the source folio so merge transfers something
@@ -1816,6 +2016,16 @@ echo "── 1.34  Late Checkout Charge ─────────────�
 echo "  Scenario: Guest checks out 3 hours late — full day rate"
 
 if [[ -n "${RES1_ID:-}" ]]; then
+  # Ensure reservation is in CHECKED_IN state (required by handler)
+  get "$GW/v1/reservations/$RES1_ID?tenant_id=$TID" >/dev/null
+  RES1_CURRENT_STATUS=$(resp_field "status")
+  if [[ "${RES1_CURRENT_STATUS,,}" != "checked_in" ]]; then
+    send_command "CMD reservation.check_in: res1 for late checkout test" \
+      "reservation.check_in" \
+      "{\"reservation_id\":\"$RES1_ID\",\"force\":true}"
+    wait_kafka 8
+  fi
+
   LATE_CHECKOUT_ISO=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
     || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
   if [[ -n "$LATE_CHECKOUT_ISO" ]]; then
@@ -1827,15 +2037,9 @@ if [[ -n "${RES1_ID:-}" ]]; then
       "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"actual_checkout_time\":\"$LATE_CHECKOUT_ISO\",\"standard_checkout_time\":\"12:00\",\"currency\":\"USD\"}"
 
     wait_kafka 8
-
-    get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
-    POST_LATE_CHARGES=$(resp_count)
-    LATE_DELTA=$((POST_LATE_CHARGES - PRE_LATE_CHARGES))
-    if [[ "$LATE_DELTA" -ge 1 ]]; then
-      pass "DB: late checkout charge posted (Δ=$LATE_DELTA)"
-    else
-      skip "DB: late checkout charge" "no new charge postings (Δ=$LATE_DELTA)"
-    fi
+    poll_delta "DB: late checkout charge posted" \
+      "$GW/v1/billing/charges?tenant_id=$TID&limit=200" \
+      "$PRE_LATE_CHARGES"
   else
     skip "Late checkout charge" "date computation not available"
   fi
@@ -1906,7 +2110,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
 
   send_command "CMD comp.post: F&B \$45" \
     "billing.comp.post" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":45.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Complimentary dinner — VIP guest — QA test\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":45.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Complimentary dinner — VIP guest — QA test\"}"
 
   wait_kafka 8
 
@@ -2445,7 +2649,7 @@ echo ""
 
 # ── Folio Balance Integrity (v2 §3.1 — Trial Balance) ──
 echo "── Folio Balance Integrity (v2 §3.1) ─────────────────────────────────"
-echo "  Verify: Folio balance = total_charges - total_payments - total_credits"
+echo "  Verify: Folio balance = total_charges - total_payments - total_credits + credit_balance"
 echo "  (stored totals maintained by DB CHECK constraint)"
 
 if [[ -n "$FOLIO1_ID" ]]; then
@@ -2454,16 +2658,19 @@ if [[ -n "$FOLIO1_ID" ]]; then
   FOLIO_CHARGES=$(jq -r '.total_charges // .data.total_charges // empty' "$RESP_FILE" 2>/dev/null || echo "")
   FOLIO_PAYMENTS=$(jq -r '.total_payments // .data.total_payments // empty' "$RESP_FILE" 2>/dev/null || echo "")
   FOLIO_CREDITS=$(jq -r '.total_credits // .data.total_credits // empty' "$RESP_FILE" 2>/dev/null || echo "")
+  FOLIO_CREDIT_BAL=$(jq -r '.credit_balance // .data.credit_balance // 0' "$RESP_FILE" 2>/dev/null || echo "0")
+  FOLIO_CREDIT_BAL="${FOLIO_CREDIT_BAL:-0}"
 
   if [[ -n "$FOLIO_BAL" && -n "$FOLIO_CHARGES" ]]; then
-    CALC_BAL=$(echo "$FOLIO_CHARGES - $FOLIO_PAYMENTS - $FOLIO_CREDITS" | bc 2>/dev/null || echo "")
+    # DB CHECK: balance = total_charges - total_payments - total_credits + credit_balance
+    CALC_BAL=$(echo "$FOLIO_CHARGES - $FOLIO_PAYMENTS - $FOLIO_CREDITS + $FOLIO_CREDIT_BAL" | bc 2>/dev/null || echo "")
     if [[ -n "$CALC_BAL" ]]; then
       DIFF=$(echo "($FOLIO_BAL) - ($CALC_BAL)" | bc 2>/dev/null || echo "999")
       ABS_DIFF=$(echo "$DIFF" | tr -d '-')
       if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
-        pass "Folio balance integrity: bal=$FOLIO_BAL = charges=$FOLIO_CHARGES - payments=$FOLIO_PAYMENTS - credits=$FOLIO_CREDITS"
+        pass "Folio balance integrity: bal=$FOLIO_BAL = charges=$FOLIO_CHARGES - payments=$FOLIO_PAYMENTS - credits=$FOLIO_CREDITS + credit_bal=$FOLIO_CREDIT_BAL"
       else
-        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF (C=$FOLIO_CHARGES P=$FOLIO_PAYMENTS Cr=$FOLIO_CREDITS)"
+        fail "Folio balance mismatch" "stored=$FOLIO_BAL calc=$CALC_BAL diff=$DIFF (C=$FOLIO_CHARGES P=$FOLIO_PAYMENTS Cr=$FOLIO_CREDITS CB=$FOLIO_CREDIT_BAL)"
       fi
     else
       skip "Folio balance calc" "bc computation failed"

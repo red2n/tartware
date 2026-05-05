@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingCompPostCommandSchema } from "../../schemas/billing-commands.js";
@@ -46,7 +47,7 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
   const currency = (command.currency ?? "USD").toUpperCase();
   const chargeCode = command.charge_code ?? `COMP_${command.comp_type}`;
 
-  return withTransaction(async (client) => {
+  const resultFolioId = await withTransaction(async (client) => {
     // Verify folio is OPEN
     const { rows: folioRows } = await queryWithClient<{
       folio_status: string;
@@ -66,12 +67,6 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
       throw new BillingCommandError(
         "INVALID_FOLIO_STATUS",
         `Comp posting requires OPEN folio. Current: ${folio.folio_status}.`,
-      );
-    }
-    if (!folio.guest_id) {
-      throw new BillingCommandError(
-        "COMP_GUEST_REQUIRED",
-        "Comp posting requires a guest folio (guest_id must be set on the folio).",
       );
     }
 
@@ -116,7 +111,10 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
 
     const postingId = postingRows[0]?.posting_id;
     if (!postingId) {
-      throw new BillingCommandError("COMP_POST_FAILED", "Failed to post comp charge.");
+      // Unexpected: INSERT succeeded without error but returned no posting_id.
+      // Mark retryable — may succeed on a subsequent attempt (e.g. transient
+      // trigger or constraint timing issue).
+      throw new BillingCommandError("COMP_POST_FAILED", "Failed to post comp charge.", true);
     }
 
     // Reduce folio balance (credit reduces amount owed)
@@ -129,6 +127,24 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
       [context.tenantId, folioId, command.amount, actorId],
     );
+
+    // Resolve guest_id: prefer folio.guest_id, fall back to reservation
+    let guestId = folio.guest_id;
+    if (!guestId && command.reservation_id) {
+      const { rows: resRows } = await queryWithClient<{ guest_id: string | null }>(
+        client,
+        `SELECT guest_id FROM public.reservations
+         WHERE tenant_id = $1::uuid AND id = $2::uuid LIMIT 1`,
+        [context.tenantId, command.reservation_id],
+      );
+      guestId = resRows[0]?.guest_id ?? null;
+    }
+    if (!guestId) {
+      throw new BillingCommandError(
+        "GUEST_NOT_FOUND",
+        "guest_id could not be resolved for comp transaction. Provide a folio or reservation with a linked guest.",
+      );
+    }
 
     // Generate comp number: COMP-YYYY-XXXXX
     const compNumber = `COMP-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -159,7 +175,7 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
         folio.property_id,
         command.reservation_id ?? null,
         folioId,
-        folio.guest_id,
+        guestId,
         postingId,
         compNumber,
         compCategory,
@@ -184,4 +200,25 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
 
     return folioId as string;
   });
+
+  // Async audit — WARNING severity, comp postings are high-value actions.
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId,
+    action: "COMP_POST",
+    entityType: "comp_transaction",
+    entityId: resultFolioId,
+    severity: "WARNING",
+    description: `Comp posted: ${command.comp_type} ${command.amount} ${currency} authorized_by=${command.authorized_by ?? "self"}`,
+    newValues: {
+      folio_id: resultFolioId,
+      comp_type: command.comp_type,
+      amount: command.amount,
+      currency,
+      authorized_by: command.authorized_by,
+      reservation_id: command.reservation_id,
+    },
+  });
+
+  return resultFolioId;
 };

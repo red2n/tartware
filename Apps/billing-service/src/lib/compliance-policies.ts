@@ -1,25 +1,12 @@
+import { applyBillingRetentionPolicy as _applyBillingRetentionPolicy } from "@tartware/schemas";
+
 import { config } from "../config.js";
 import type { BillingPayment } from "../services/billing-service.js";
 
 import { appLogger } from "./logger.js";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const REDACTED_VALUE = "[REDACTED]" as const;
 const PLACEHOLDER_WARNING =
   "compliance encryption key is using a local placeholder. Override with a secure value in production.";
-
-const isOlderThanRetention = (input: Date | string | undefined, retentionDays: number): boolean => {
-  if (!input || retentionDays <= 0) {
-    return false;
-  }
-  const timestamp =
-    typeof input === "string" ? Date.parse(input) : input instanceof Date ? input.getTime() : NaN;
-  if (Number.isNaN(timestamp)) {
-    return false;
-  }
-  const ageMs = Date.now() - timestamp;
-  return ageMs > retentionDays * MS_PER_DAY;
-};
 
 export const ensureBillingEncryptionRequirementsMet = (): void => {
   if (
@@ -36,24 +23,37 @@ export const ensureBillingEncryptionRequirementsMet = (): void => {
     throw new Error("Billing encryption requirements not satisfied");
   }
 
+  const isDev = (process.env.NODE_ENV ?? "development") !== "production";
+
   if (config.compliance.encryption.billingDataKey === "local-dev-billing-key") {
-    appLogger.warn({ key: "billing-data" }, PLACEHOLDER_WARNING);
+    if (isDev) {
+      appLogger.warn({ key: "billing-data" }, PLACEHOLDER_WARNING);
+    } else {
+      appLogger.error(
+        { key: "billing-data", nodeEnv: process.env.NODE_ENV },
+        `SECURITY: ${PLACEHOLDER_WARNING} Refusing to start in production with a placeholder key.`,
+      );
+      throw new Error("Placeholder billing encryption key must not be used outside development");
+    }
+  }
+
+  // Shadow mode disables authoritative billing writes — must not run in production.
+  if (config.roll.shadowMode && !isDev) {
+    appLogger.error(
+      { shadowMode: true, nodeEnv: process.env.NODE_ENV },
+      "SHADOW_MODE=true is not allowed outside NODE_ENV=development. " +
+        "Billing writes will be non-authoritative. Set SHADOW_MODE=false before deploying.",
+    );
+    throw new Error("Shadow mode must not be enabled in production");
+  }
+
+  if (config.roll.shadowMode && isDev) {
+    appLogger.warn(
+      { shadowMode: true },
+      "⚠️  SHADOW_MODE=true — billing shadow ledger writes are non-authoritative (dev only)",
+    );
   }
 };
 
-export const applyBillingRetentionPolicy = (payment: BillingPayment): BillingPayment => {
-  const retentionDays = config.compliance.retention.billingDataDays;
-  const referenceDate = payment.processed_at ?? payment.created_at;
-  if (!isOlderThanRetention(referenceDate ? new Date(referenceDate) : undefined, retentionDays)) {
-    return payment;
-  }
-
-  return {
-    ...payment,
-    payment_reference: REDACTED_VALUE,
-    external_transaction_id: undefined,
-    gateway_name: undefined,
-    gateway_reference: undefined,
-    guest_name: "REDACTED",
-  };
-};
+export const applyBillingRetentionPolicy = (payment: BillingPayment): BillingPayment =>
+  _applyBillingRetentionPolicy(payment, config.compliance.retention.billingDataDays);

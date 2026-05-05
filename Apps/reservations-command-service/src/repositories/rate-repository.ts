@@ -20,7 +20,7 @@ export const findActiveRateByCode = async (
 ): Promise<ActiveRateRow | null> => {
   const result = await runQuery<ActiveRateRow>(
     `
-      SELECT id, rate_code
+      SELECT id, rate_code, cancellation_policy
       FROM rates
       WHERE tenant_id = $1
         AND property_id = $2

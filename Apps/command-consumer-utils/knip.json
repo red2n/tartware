@@ -6,13 +6,14 @@
   "ignoreFiles": [
     ".eslintrc.cjs"
   ],
-  "ignoreDependencies": ["@tartware/config"],
+  "ignoreDependencies": ["@tartware/config", "@tartware/schemas"],
   "ignoreBinaries": [
     "biome",
     "eslint",
     "knip",
     "tsc",
-    "swc"
+    "swc",
+    "tsx"
   ],
   "ignoreExportsUsedInFile": {
     "type": true,

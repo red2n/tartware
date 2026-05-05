@@ -63,8 +63,13 @@ export const fetchReservationStaySnapshot = async (
 };
 
 /**
- * Fetch reservation data needed for cancellation fee calculation,
- * including the associated rate's cancellation_policy.
+ * Fetch reservation data needed for cancellation fee calculation.
+ *
+ * Prefers the frozen `reservations.cancellation_policy_snapshot` captured at
+ * booking time; falls back to the live `rates.cancellation_policy` only when
+ * the snapshot is missing (e.g. legacy reservations created before the
+ * snapshot column existed). This guarantees that subsequent rate-plan edits
+ * never retroactively change the guest's cancellation terms.
  */
 export const fetchReservationCancellationInfo = async (
   tenantId: string,
@@ -84,6 +89,7 @@ export const fetchReservationCancellationInfo = async (
     check_out_date: Date;
     status: string;
     cancellation_policy: CancellationPolicy | null;
+    snapshot_source: "snapshot" | "live";
   }>(
     `
       SELECT
@@ -97,7 +103,11 @@ export const fetchReservationCancellationInfo = async (
         r.check_in_date,
         r.check_out_date,
         r.status,
-        rt.cancellation_policy
+        COALESCE(r.cancellation_policy_snapshot, rt.cancellation_policy) AS cancellation_policy,
+        CASE
+          WHEN r.cancellation_policy_snapshot IS NOT NULL THEN 'snapshot'
+          ELSE 'live'
+        END AS snapshot_source
       FROM reservations r
       LEFT JOIN rates rt ON rt.id = r.rate_id AND rt.tenant_id = r.tenant_id
       WHERE r.tenant_id = $1

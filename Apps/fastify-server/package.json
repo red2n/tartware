@@ -15,6 +15,14 @@
     "./registry-client": {
       "types": "./dist/registry-client.d.ts",
       "import": "./dist/registry-client.js"
+    },
+    "./reference-cache": {
+      "types": "./dist/reference-cache.d.ts",
+      "import": "./dist/reference-cache.js"
+    },
+    "./circuit-breaker": {
+      "types": "./dist/circuit-breaker.d.ts",
+      "import": "./dist/circuit-breaker.js"
     }
   },
   "scripts": {

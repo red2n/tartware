@@ -110,7 +110,13 @@ BEGIN
     ) INTO v_has_composite_fk;
 
     IF v_has_composite_fk THEN
-      RAISE NOTICE 'SKIP: %.% already has composite FK to %', r.child_table, v_child_col, v_parent_table;
+      -- Composite FK already exists — still drop the old single-column FK if it lingers
+      EXECUTE format(
+        'ALTER TABLE %I.%I DROP CONSTRAINT IF EXISTS %I',
+        r.child_schema, r.child_table, v_constraint_name
+      );
+      RAISE NOTICE 'SKIP (composite exists): dropped stale single-col FK %.% (constraint: %)',
+        r.child_table, v_child_col, v_constraint_name;
       CONTINUE;
     END IF;
 

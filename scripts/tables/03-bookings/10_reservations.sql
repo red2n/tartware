@@ -82,6 +82,10 @@ CREATE TABLE IF NOT EXISTS reservations (
     cancellation_date TIMESTAMP,
     cancellation_reason TEXT,
     cancellation_fee DECIMAL(15,2) DEFAULT 0.00,
+    -- Snapshot of the rate's cancellation_policy at booking time. Frozen so that
+    -- later edits to the rate plan do not retroactively change the guest's
+    -- cancellation terms (industry standard / consumer-protection requirement).
+    cancellation_policy_snapshot JSONB,
 
     -- No-Show
     is_no_show BOOLEAN DEFAULT false,
@@ -168,5 +172,9 @@ COMMENT ON COLUMN reservations.quote_expires_at IS 'When the quote validity expi
 COMMENT ON COLUMN reservations.expired_at IS 'When the reservation was transitioned to EXPIRED';
 COMMENT ON COLUMN reservations.group_booking_id IS 'FK to group_bookings for reservations picked up from a group block';
 COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = active)';
+
+-- Idempotent backfill for already-deployed databases (canonical CREATE above is the source of truth).
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS cancellation_policy_snapshot JSONB;
+COMMENT ON COLUMN reservations.cancellation_policy_snapshot IS 'Frozen snapshot of the rate''s cancellation_policy at booking time. Prevents later rate-plan edits from retroactively changing the guest''s cancellation terms.';
 
 \echo 'Reservations table created successfully!'

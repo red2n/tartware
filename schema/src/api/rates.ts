@@ -184,6 +184,8 @@ export type UpdateRateInput = z.infer<typeof UpdateRateInputSchema>;
 export type ActiveRateRow = {
 	id: string;
 	rate_code: string;
+	/** JSONB cancellation_policy column — frozen into reservations.cancellation_policy_snapshot at booking time. */
+	cancellation_policy: unknown;
 };
 
 /** Query input for looking up an active rate by room type and stay window. */

@@ -1366,3 +1366,202 @@ export const BucketCheckQuerySchema = z.object({
 });
 
 export type BucketCheckQuery = z.infer<typeof BucketCheckQuerySchema>;
+
+// =====================================================
+// HTNG POS Integration schemas (ACCT-05)
+// =====================================================
+
+/**
+ * A single itemized line on a POS check.
+ * Follows HTNG §14.1 charge_items structure.
+ */
+export const PosChargeItemSchema = z.object({
+	/** POS item identifier (SKU or menu item code). */
+	item_code: z.string().max(50),
+	/** Human-readable description of the item. */
+	description: z.string().max(500),
+	/** Number of units ordered. */
+	quantity: z.coerce.number().positive().default(1),
+	/** Unit price before tax and service charge. */
+	unit_price: z.coerce.number().nonnegative(),
+	/** Pre-tax, pre-service-charge subtotal (quantity × unit_price). */
+	subtotal: z.coerce.number().nonnegative(),
+	/** USALI department/charge code for this line (e.g. FB, SPA, MINI). */
+	charge_code: z.string().max(50).optional(),
+	/** USALI department code (e.g. F&B-RESTAURANT, SPA-SERVICE). */
+	department_code: z.string().max(20).optional(),
+	/** GL account code for this line item. */
+	gl_account: z.string().max(50).optional(),
+});
+
+export type PosChargeItem = z.infer<typeof PosChargeItemSchema>;
+
+/**
+ * HTNG-compatible POS charge request body.
+ * Posted to POST /v1/billing/charges/pos.
+ * §2.2 — POS charge posting standard.
+ */
+export const PosChargeInputSchema = z
+	.object({
+		/** Multi-tenant scoping. */
+		tenant_id: uuid,
+		/** Property receiving the charge. */
+		property_id: uuid,
+		/**
+		 * HTNG POS transaction ID — must be unique per tenant.
+		 * Used as the idempotency key; POS systems may retry on timeout.
+		 */
+		pos_transaction_id: z.string().trim().min(1).max(100),
+		/**
+		 * Room number for in-room charge lookup.
+		 * Either room_number or reservation_id must be provided.
+		 */
+		room_number: z.string().max(50).optional(),
+		/**
+		 * Reservation UUID — alternative to room_number.
+		 * Preferred when the POS system has access to the PMS reservation ID.
+		 */
+		reservation_id: uuid.optional(),
+		/**
+		 * POS outlet code identifying the revenue centre (HTNG §14.1).
+		 * Common values: FB (food & beverage), SPA, MINI (minibar), GOLF, RETAIL, PARK.
+		 */
+		outlet_code: z.string().trim().max(50),
+		/** Human-readable outlet name (e.g. "The Garden Restaurant"). */
+		outlet_name: z.string().max(200).optional(),
+		/** POS check/receipt number for cross-reference. */
+		check_number: z.string().trim().max(50),
+		/** Number of covers/guests on the check (F&B revenue analytics). */
+		covers: z.coerce.number().int().nonnegative().default(1),
+		/** Server/waiter name as reported by the POS system. */
+		server_name: z.string().max(100).optional(),
+		/**
+		 * Guest name as captured by the POS (used for verification).
+		 * The service performs a fuzzy match against the reservation guest name.
+		 */
+		guest_name_provided: z.string().max(200).optional(),
+		/** Itemized charge lines. At least one item is required. */
+		charge_items: z.array(PosChargeItemSchema).min(1),
+		/**
+		 * Aggregate service charge across all items.
+		 * Must equal the sum of per-item service charges when items carry them.
+		 */
+		service_charge: z.coerce.number().nonnegative().default(0),
+		/** Aggregate tax amount across all items. */
+		tax_amount: z.coerce.number().nonnegative().default(0),
+		/** Discount applied at the check level. */
+		discount_amount: z.coerce.number().nonnegative().default(0),
+		/** ISO-4217 currency code. Defaults to USD. */
+		currency: z.string().length(3).default("USD"),
+		/** Timestamp when the POS check was closed. Defaults to now. */
+		posted_at: z.coerce.date().optional(),
+	})
+	.refine(
+		(v) => Boolean(v.room_number || v.reservation_id),
+		"room_number or reservation_id is required",
+	);
+
+export type PosChargeInput = z.infer<typeof PosChargeInputSchema>;
+
+/**
+ * Response returned after a successful POS charge post.
+ */
+export const PosChargeResponseSchema = z.object({
+	/** UUID of the primary charge_postings row (first/aggregated line). */
+	posting_id: uuid,
+	/** IDs for each itemized line posting created (one per charge_items entry). */
+	line_posting_ids: z.array(uuid),
+	/** Resolved folio ID where the charges were posted. */
+	folio_id: uuid,
+	/** Whether the charge was routed to a suspense folio (room not found / guest mismatch). */
+	posted_to_suspense: z.boolean(),
+	/** Idempotent — true when this pos_transaction_id was already processed. */
+	duplicate: z.boolean(),
+	/** Total amount posted (subtotal + service_charge + tax_amount - discount_amount). */
+	total_posted: z.number(),
+});
+
+export type PosChargeResponse = z.infer<typeof PosChargeResponseSchema>;
+
+// ============================================================================
+// GL BATCH LIST (GAP-01: GL Journal Entry Wiring)
+// ============================================================================
+
+/**
+ * Summary item returned from GET /v1/billing/gl-batches.
+ */
+export const GlBatchListItemSchema = z.object({
+	gl_batch_id: uuid,
+	property_id: uuid,
+	batch_number: z.string(),
+	batch_date: z.string(),            // ISO date string (YYYY-MM-DD)
+	accounting_period: z.string(),
+	source_module: z.string(),
+	currency: z.string().default("USD"),
+	debit_total: z.number(),
+	credit_total: z.number(),
+	variance: z.number().optional(),
+	entry_count: z.number().int(),
+	batch_status: z.string(),
+	export_format: z.string().optional(),
+	exported_at: z.string().optional(), // ISO datetime string
+});
+
+export type GlBatchListItem = z.infer<typeof GlBatchListItemSchema>;
+
+export const GlBatchListResponseSchema = z.object({
+	data: z.array(GlBatchListItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type GlBatchListResponse = z.infer<typeof GlBatchListResponseSchema>;
+
+export const GlBatchListQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	start_date: z.string().optional(),
+	end_date: z.string().optional(),
+	batch_status: z.string().optional(),
+	limit: z.coerce.number().int().positive().max(500).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type GlBatchListQuery = z.infer<typeof GlBatchListQuerySchema>;
+
+/**
+ * Summary item for GL batch entries (returned from GET /v1/billing/gl-batches/:batchId/entries).
+ */
+export const GlBatchEntryItemSchema = z.object({
+	entry_id: uuid,
+	gl_batch_id: uuid,
+	entry_number: z.number().int(),
+	transaction_date: z.string(),
+	account_code: z.string(),
+	account_name: z.string().optional(),
+	folio_id: uuid.optional(),
+	reservation_id: uuid.optional(),
+	confirmation_number: z.string().optional(),
+	department_code: z.string().optional(),
+	description: z.string(),
+	debit_amount: z.number(),
+	credit_amount: z.number(),
+	currency_code: z.string().default("USD"),
+	source_reference: z.string().optional(),
+	entry_status: z.string(),
+});
+
+export type GlBatchEntryItem = z.infer<typeof GlBatchEntryItemSchema>;
+
+export const GlBatchEntriesResponseSchema = z.object({
+	gl_batch_id: uuid,
+	batch_number: z.string(),
+	batch_date: z.string(),
+	batch_status: z.string(),
+	debit_total: z.number(),
+	credit_total: z.number(),
+	entry_count: z.number().int(),
+	data: z.array(GlBatchEntryItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type GlBatchEntriesResponse = z.infer<typeof GlBatchEntriesResponseSchema>;

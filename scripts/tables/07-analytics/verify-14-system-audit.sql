@@ -1,7 +1,7 @@
 -- =====================================================
 -- verify-14-system-audit.sql
 -- Verification Script for System & Audit Tables
--- Category: 14-system-audit (4 tables)
+-- Category: 14-system-audit (5 tables)
 -- Date: 2025-10-19
 -- Updated: 2026-02-12
 -- =====================================================
@@ -18,11 +18,11 @@
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 4 tables exist...'
+\echo '1. Checking if all 5 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit'];
+    v_expected_tables TEXT[] := ARRAY['audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit', 'night_audit_checkpoints'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -47,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'System & Audit verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 4 System & Audit tables exist!';
+        RAISE NOTICE '✓✓✓ All 5 System & Audit tables exist!';
     END IF;
 END $$;
 
@@ -68,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
+WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit', 'night_audit_checkpoints')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -88,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit')
+    WHERE t.table_name IN ('audit_logs', 'business_dates', 'night_audit_log', 'tenant_access_audit', 'night_audit_checkpoints')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: System & Audit';
-    RAISE NOTICE 'Tables Found: % / 4', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 5', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 4 THEN
+    IF v_table_count = 5 THEN
         RAISE NOTICE '✓✓✓ SYSTEM & AUDIT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ SYSTEM & AUDIT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 4 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 5 tables, found %', v_table_count;
     END IF;
 END $$;
 

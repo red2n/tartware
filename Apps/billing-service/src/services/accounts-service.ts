@@ -6,9 +6,12 @@ import {
   AccountsReceivableListItemSchema,
   type ArAgingSummary,
   ArAgingSummarySchema,
+  formatDisplayLabel,
+  formatEnumDisplay,
   type InvoiceListItem,
   InvoiceListItemSchema,
   type InvoiceRow,
+  toIsoString,
 } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
@@ -19,41 +22,8 @@ import {
   INVOICE_LIST_SQL,
 } from "../sql/accounts-queries.js";
 
-const formatEnumDisplay = (
-  value: string | null,
-  fallback: string,
-): { value: string; display: string } => {
-  if (!value || typeof value !== "string") {
-    const formatted = fallback.toLowerCase();
-    return { value: formatted, display: fallback };
-  }
-  const normalized = value.toLowerCase();
-  const display = normalized
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  return { value: normalized, display };
-};
-
-const toIsoString = (value: string | Date | null): string | undefined => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  return value;
-};
-
-const formatDisplayLabel = (value: string | null | undefined): string => {
-  if (!value || typeof value !== "string") return "Unknown";
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-};
-
-const toIso = (val: string | Date | null | undefined): string | undefined => {
-  if (!val) return undefined;
-  return val instanceof Date ? val.toISOString() : val;
-};
+const toIso = (val: string | Date | null | undefined): string | undefined =>
+  toIsoString(val ?? null);
 
 // ============================================================================
 // INVOICES
