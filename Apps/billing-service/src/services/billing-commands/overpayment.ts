@@ -1,6 +1,7 @@
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { debitAccountForPaymentMethod, postGlPair } from "../../lib/gl-posting.js";
 import {
   type BillingOverpaymentHandleCommand,
   BillingOverpaymentHandleCommandSchema,
@@ -85,7 +86,7 @@ export const handleOverpayment = async (
         [context.tenantId, actAmount, actor, command.folio_id],
       );
 
-      await queryWithClient(
+      const refundInsert = await queryWithClient<{ id: string }>(
         client,
         `INSERT INTO public.payments (
            tenant_id, property_id,
@@ -97,7 +98,8 @@ export const handleOverpayment = async (
            $3, 'REFUND', 'CREDIT_CARD',
            $4, 'USD', 'COMPLETED', NOW(), $5::uuid,
            $6, $5::uuid, $5::uuid
-         )`,
+         )
+         RETURNING id`,
         [
           context.tenantId,
           command.property_id,
@@ -107,6 +109,29 @@ export const handleOverpayment = async (
           command.notes ?? "Overpayment refund",
         ],
       );
+
+      const refundPaymentId = refundInsert.rows[0]?.id;
+      if (refundPaymentId) {
+        // GL posting (USALI double-entry, refund of overpayment):
+        // DR 1100 Guest Ledger / CR cash account (mirrors payment-refund)
+        const businessDate = new Date().toISOString().slice(0, 10);
+        await postGlPair(client, {
+          tenant_id: context.tenantId,
+          property_id: command.property_id,
+          folio_id: command.folio_id,
+          debit_account: "1100",
+          credit_account: debitAccountForPaymentMethod("CREDIT_CARD"),
+          amount: actAmount,
+          currency: "USD",
+          posting_date: businessDate,
+          usali_category: "Guest Credit Refund",
+          description: command.notes ?? `Overpayment refund from folio ${command.folio_id}`,
+          source_table: "payments",
+          source_id: refundPaymentId,
+          reference_number: `OVERPAY-${command.folio_id.slice(0, 8)}`,
+          created_by: asUuid(actor) ?? SYSTEM_ACTOR_ID,
+        });
+      }
 
       await auditWithClient(client, {
         tenantId: context.tenantId,
