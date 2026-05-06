@@ -1,6 +1,7 @@
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
 import { debitAccountForPaymentMethod, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -119,6 +120,21 @@ const capturePayment = async (
       await acquireFolioLock(client, resolvedFolioId);
     }
 
+    // ACCT-13: Lock FX rate at payment capture time.
+    const paymentCurrency = currency.toUpperCase();
+    const baseCurrency = await getPropertyBaseCurrency(
+      client,
+      context.tenantId,
+      command.property_id,
+    );
+    const fxLock = await lockFxRate(
+      client,
+      context.tenantId,
+      paymentCurrency,
+      baseCurrency,
+      command.amount,
+    );
+
     const result = await queryWithClient<{ id: string }>(
       client,
       `
@@ -132,6 +148,9 @@ const capturePayment = async (
         payment_method,
         amount,
         currency,
+        exchange_rate,
+        base_amount,
+        base_currency,
         status,
         gateway_name,
         gateway_reference,
@@ -151,6 +170,9 @@ const capturePayment = async (
         UPPER($6)::payment_method,
         $7,
         UPPER($8),
+        $14,
+        $15,
+        UPPER($16),
         'COMPLETED',
         $9,
         $10,
@@ -165,6 +187,9 @@ const capturePayment = async (
       SET
         amount = EXCLUDED.amount,
         currency = EXCLUDED.currency,
+        exchange_rate = EXCLUDED.exchange_rate,
+        base_amount = EXCLUDED.base_amount,
+        base_currency = EXCLUDED.base_currency,
         payment_method = EXCLUDED.payment_method,
         status = 'COMPLETED',
         gateway_name = COALESCE(EXCLUDED.gateway_name, payments.gateway_name),
@@ -186,12 +211,15 @@ const capturePayment = async (
         command.payment_reference,
         command.payment_method,
         command.amount,
-        currency,
+        paymentCurrency,
         command.gateway?.name ?? null,
         command.gateway?.reference ?? null,
         JSON.stringify(gatewayResponse),
         actor,
         JSON.stringify(command.metadata ?? {}),
+        fxLock.rate, // $14
+        fxLock.baseAmount, // $15
+        baseCurrency, // $16
       ],
     );
 

@@ -1,6 +1,7 @@
 import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -416,6 +417,22 @@ const applyChargePost = async (
     // prevent concurrent checkout from reading a stale balance mid-transaction
     await acquireFolioLock(client, folioId);
 
+    // ACCT-13: Lock FX rate at posting time. Looks up the daily rate from
+    // fx_rates for (tenantCurrency → propertyCurrency). Falls back to 1.0
+    // when same currency or when no rate is configured.
+    const baseCurrency = await getPropertyBaseCurrency(
+      client,
+      context.tenantId,
+      command.property_id,
+    );
+    const fxLock = await lockFxRate(
+      client,
+      context.tenantId,
+      currency,
+      baseCurrency,
+      command.amount * command.quantity,
+    );
+
     // Resolve GL accounts once per transaction; cached in-process across calls.
     // A missing mapping is logged but does NOT fail the charge — operations
     // must land even when the chart of accounts is incomplete; missing GL pairs
@@ -452,13 +469,15 @@ const applyChargePost = async (
             tenant_id, property_id, folio_id, reservation_id,
             transaction_type, posting_type, charge_code, department_code,
             charge_description, quantity, unit_price, subtotal, total_amount,
-            currency_code, posting_time, business_date, notes,
+            currency_code, exchange_rate, base_amount, base_currency,
+            posting_time, business_date, notes,
             routing_rule_id, created_by, updated_by
           ) VALUES (
             $1::uuid, $2::uuid, $3::uuid, $4::uuid,
             'CHARGE', $5, $6, $7,
             $8, 1, $9, $9, $9,
-            UPPER($10), COALESCE($11::timestamptz, NOW()), CURRENT_DATE, $12,
+            UPPER($10), $15, $16, UPPER($17),
+            COALESCE($11::timestamptz, NOW()), CURRENT_DATE, $12,
             $13::uuid, $14::uuid, $14::uuid
           )
           RETURNING posting_id
@@ -478,6 +497,9 @@ const applyChargePost = async (
           `Routed from folio ${folioId}: ${command.description ?? "Charge"}`,
           decision.ruleId,
           actorId,
+          fxLock.rate, // $15
+          Math.round(routedSubtotal * fxLock.rate * 100) / 100, // $16 — routed portion in base currency
+          baseCurrency, // $17
         ],
       );
 
@@ -535,13 +557,15 @@ const applyChargePost = async (
             tenant_id, property_id, folio_id, reservation_id,
             transaction_type, posting_type, charge_code, department_code,
             charge_description, quantity, unit_price, subtotal, total_amount,
-            currency_code, posting_time, business_date, notes,
+            currency_code, exchange_rate, base_amount, base_currency,
+            posting_time, business_date, notes,
             created_by, updated_by
           ) VALUES (
             $1::uuid, $2::uuid, $3::uuid, $4::uuid,
             'CHARGE', $5, $6, $7,
             $8, $9, $10, $11, $11,
-            UPPER($12), COALESCE($13::timestamptz, NOW()), CURRENT_DATE, $14,
+            UPPER($12), $16, $17, UPPER($18),
+            COALESCE($13::timestamptz, NOW()), CURRENT_DATE, $14,
             $15::uuid, $15::uuid
           )
           RETURNING posting_id
@@ -562,6 +586,9 @@ const applyChargePost = async (
           command.posted_at ?? null,
           command.description ?? null,
           actorId,
+          fxLock.rate, // $16
+          fxLock.baseAmount, // $17
+          baseCurrency, // $18
         ],
       );
 
