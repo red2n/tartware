@@ -7,6 +7,7 @@ export {
   ArDisputeEscalateCommandSchema,
   ArDisputeRaiseCommandSchema,
   ArDisputeResolveCommandSchema,
+  ArDunningEscalateCommandSchema,
   ArDunningSuppressCommandSchema,
   ArDunningTriggerCommandSchema,
   ArPaymentApplyCommandSchema,

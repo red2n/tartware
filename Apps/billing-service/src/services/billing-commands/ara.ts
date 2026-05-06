@@ -13,6 +13,7 @@ import {
   ArDisputeEscalateCommandSchema,
   ArDisputeRaiseCommandSchema,
   ArDisputeResolveCommandSchema,
+  ArDunningEscalateCommandSchema,
   ArDunningSuppressCommandSchema,
   ArDunningTriggerCommandSchema,
   ArPaymentApplyCommandSchema,
@@ -538,6 +539,77 @@ export const triggerDunning = async (
     { eventId, eventType, arAccountId: command.ar_account_id },
     "Dunning event triggered",
   );
+  return eventId;
+};
+
+/**
+ * Manually escalate dunning for an AR account to the next level (or directly
+ * to COLLECTIONS if force_collections is true).
+ */
+export const escalateDunning = async (
+  payload: unknown,
+  context: CommandContext,
+): Promise<string> => {
+  const command = ArDunningEscalateCommandSchema.parse(payload);
+  const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
+  const { tenantId } = context;
+
+  const { rows: accountRows } = await query<{ dunning_level: number; account_status: string }>(
+    `SELECT dunning_level, account_status FROM ar_accounts
+      WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid AND is_deleted = FALSE`,
+    [command.ar_account_id, tenantId],
+  );
+  const account = accountRows[0];
+  if (!account) {
+    throw new BillingCommandError(
+      "AR_ACCOUNT_NOT_FOUND",
+      `AR account ${command.ar_account_id} not found.`,
+    );
+  }
+
+  const newLevel = command.force_collections ? 3 : Math.min((account.dunning_level ?? 0) + 1, 3);
+  const eventType =
+    newLevel === 1 ? "FIRST_REMINDER" : newLevel === 2 ? "SECOND_WARNING" : "COLLECTIONS_REFERRAL";
+  const newStatus = newLevel >= 3 ? "COLLECTIONS" : account.account_status;
+
+  const { rows } = await withTransaction(async (client) => {
+    const inserted = await queryWithClient<{ dunning_event_id: string }>(
+      client,
+      `INSERT INTO ar_dunning_events (
+          tenant_id, property_id, ar_account_id, event_type, currency,
+          suppress_reason, created_by
+        ) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'USD', $5, $6::uuid)
+        RETURNING dunning_event_id`,
+      [tenantId, command.property_id, command.ar_account_id, eventType, command.reason, actorId],
+    );
+
+    await queryWithClient(
+      client,
+      `UPDATE ar_accounts
+          SET dunning_level = $1, account_status = $2, updated_at = NOW(), updated_by = $3::uuid
+        WHERE ar_account_id = $4::uuid AND tenant_id = $5::uuid`,
+      [newLevel, newStatus, actorId, command.ar_account_id, tenantId],
+    );
+
+    return inserted;
+  });
+
+  const eventId = rows[0]?.dunning_event_id ?? command.ar_account_id;
+  appLogger.info(
+    { eventId, eventType, arAccountId: command.ar_account_id, newLevel },
+    "Dunning manually escalated",
+  );
+  auditAsync({
+    tenantId,
+    propertyId: command.property_id,
+    userId: actorId,
+    action: "AR_DUNNING_ESCALATE",
+    entityType: "ar_account",
+    entityId: command.ar_account_id,
+    severity: "WARNING",
+    description: `Dunning manually escalated to level ${newLevel} (${eventType})`,
+    newValues: { level: newLevel, event_type: eventType, reason: command.reason },
+  });
   return eventId;
 };
 

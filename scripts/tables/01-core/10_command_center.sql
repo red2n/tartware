@@ -316,6 +316,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         -- ── ARA Sprint 1: Dunning ────────────────────────────────────────────
         ('ar.dunning.trigger',   'Trigger a dunning action (reminder, warning, collections) for an AR account','billing-service', ARRAY['finance-automation']),
         ('ar.dunning.suppress',  'Suppress dunning for an AR account for a specified number of days',          'billing-service', ARRAY['finance-automation']),
+        ('ar.dunning.escalate',  'Manually escalate dunning level for an AR account (bypass time threshold)', 'billing-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: Cash Application ───────────────────────────────────
         ('ar.payment.apply',    'Apply an incoming payment to city ledger entries (FIFO or manual)',           'billing-service', ARRAY['finance-automation']),
         ('ar.payment.unapply',  'Reverse a misapplied cash application',                                     'billing-service', ARRAY['finance-automation']),

@@ -24,6 +24,7 @@ import {
 	ArDisputeEscalateCommandSchema,
 	ArDunningTriggerCommandSchema,
 	ArDunningSuppressCommandSchema,
+	ArDunningEscalateCommandSchema,
 	ArPaymentApplyCommandSchema,
 	ArPaymentUnapplyCommandSchema,
 	BillingCancellationPenaltyCommandSchema,
@@ -546,6 +547,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"ar.dunning.suppress",
 		(payload) => ArDunningSuppressCommandSchema.parse(payload),
+	],
+	[
+		"ar.dunning.escalate",
+		(payload) => ArDunningEscalateCommandSchema.parse(payload),
 	],
 	[
 		"ar.payment.apply",

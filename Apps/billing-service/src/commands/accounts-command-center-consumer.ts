@@ -31,6 +31,7 @@ import {
   computeAging,
   createArAccount,
   escalateArDispute,
+  escalateDunning,
   raiseArDispute,
   resolveArDispute,
   suppressDunning,
@@ -133,6 +134,9 @@ const routeAccountsCommand = async (
       return;
     case "ar.dunning.suppress":
       await suppressDunning(envelope.payload, ctx);
+      return;
+    case "ar.dunning.escalate":
+      await escalateDunning(envelope.payload, ctx);
       return;
     case "ar.payment.apply":
       await applyArCashPayment(envelope.payload, ctx);

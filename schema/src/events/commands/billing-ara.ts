@@ -261,3 +261,26 @@ export const ArDisputeEscalateCommandSchema = z.object({
 export type ArDisputeEscalateCommand = z.infer<
 	typeof ArDisputeEscalateCommandSchema
 >;
+
+// ─── Dunning Escalation ───────────────────────────────────────────────────────
+
+/**
+ * Manually escalate an AR account to the next dunning level,
+ * bypassing the normal time-threshold requirement.
+ *
+ * Use when negotiation has broken down or an account needs immediate escalation.
+ * Updates `dunning_level` on the AR account and logs a dunning event.
+ */
+export const ArDunningEscalateCommandSchema = z.object({
+	property_id: z.string().uuid(),
+	ar_account_id: z.string().uuid(),
+	/** Reason for manual escalation (required for audit trail). */
+	reason: z.string().min(10).max(2000),
+	/** Force escalation directly to COLLECTIONS level regardless of current level. */
+	force_collections: z.boolean().default(false),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ArDunningEscalateCommand = z.infer<
+	typeof ArDunningEscalateCommandSchema
+>;
