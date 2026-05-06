@@ -374,3 +374,30 @@ export type AuditTrailRow = {
 	metadata: Record<string, unknown> | null;
 	status: string;
 };
+// =====================================================
+// APPROVAL REQUEST ROW
+// =====================================================
+
+/** Raw row shape returned by approval_requests queries. */
+export type ApprovalRequestRow = {
+	approval_id: string;
+	tenant_id: string;
+	property_id: string | null;
+	operation_type: string;
+	entity_type: string;
+	entity_id: string;
+	operation_payload: Record<string, unknown>;
+	description: string | null;
+	requested_by: string;
+	requested_by_name: string | null;
+	requested_at: string | Date;
+	status: string;
+	required_role: string;
+	expires_at: string | Date;
+	actioned_by: string | null;
+	actioned_by_name: string | null;
+	actioned_at: string | Date | null;
+	action_reason: string | null;
+	created_at: string | Date;
+	updated_at: string | Date | null;
+};

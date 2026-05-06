@@ -5,6 +5,7 @@
  * @category commands
  */
 
+export * from "./billing-approvals.js";
 export * from "./billing-ar.js";
 export * from "./billing-cashier.js";
 export * from "./billing-charge.js";
