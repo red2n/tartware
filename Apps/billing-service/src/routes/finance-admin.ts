@@ -33,6 +33,7 @@ import {
   listGlBatches,
   listLedgerEntries,
   listTaxConfigurations,
+  queryAuditTrail,
 } from "../services/finance-admin-service.js";
 
 const FINANCE_TAG = "Finance Admin";
@@ -598,6 +599,65 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
         offset,
       });
       return ChargebackListResponseSchema.parse({ data, meta: { count: data.length } });
+    },
+  );
+
+  // ============================================================================
+  // AUDIT TRAIL
+  // ============================================================================
+
+  const AuditTrailQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    entity_type: z.string().optional(),
+    entity_id: z.string().uuid().optional(),
+    severity: z.enum(["INFO", "WARNING", "CRITICAL", "SECURITY"]).optional(),
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+    is_pci_relevant: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().positive().max(500).default(100),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  type AuditTrailQueryType = z.infer<typeof AuditTrailQuerySchema>;
+
+  const AuditTrailQueryJsonSchema = schemaFromZod(AuditTrailQuerySchema, "AuditTrailQuery");
+
+  app.get<{ Querystring: AuditTrailQueryType }>(
+    "/v1/billing/audit-trail",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as AuditTrailQueryType).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "Query billing financial audit trail (FINANCIAL action_category from audit_logs)",
+        querystring: AuditTrailQueryJsonSchema,
+        response: {
+          200: {
+            type: "object",
+            properties: { data: { type: "array" }, meta: { type: "object" } },
+          },
+        },
+      }),
+    },
+    async (request) => {
+      const q = AuditTrailQuerySchema.parse(request.query);
+      const data = await queryAuditTrail({
+        tenantId: q.tenant_id,
+        propertyId: q.property_id,
+        entityType: q.entity_type,
+        entityId: q.entity_id,
+        severity: q.severity,
+        startDate: q.start_date,
+        endDate: q.end_date,
+        isPciRelevant: q.is_pci_relevant,
+        limit: q.limit,
+        offset: q.offset,
+      });
+      return { data, meta: { count: data.length, limit: q.limit, offset: q.offset } };
     },
   );
 };

@@ -346,3 +346,31 @@ export type FiscalPeriodRow = {
 	net_income: number | string | null;
 	notes: string | null;
 };
+// =====================================================
+// AUDIT TRAIL ROW
+// =====================================================
+
+/** Raw row shape returned by GET /v1/billing/audit-trail queries against audit_logs. */
+export type AuditTrailRow = {
+	audit_id: string;
+	tenant_id: string;
+	property_id: string | null;
+	audit_timestamp: string | Date;
+	event_type: string;
+	entity_type: string;
+	entity_id: string | null;
+	user_id: string;
+	user_email: string | null;
+	user_name: string | null;
+	action: string;
+	action_category: string | null;
+	severity: string;
+	old_values: Record<string, unknown> | null;
+	new_values: Record<string, unknown> | null;
+	changed_fields: string[] | null;
+	is_pci_relevant: boolean;
+	is_gdpr_relevant: boolean;
+	description: string | null;
+	metadata: Record<string, unknown> | null;
+	status: string;
+};

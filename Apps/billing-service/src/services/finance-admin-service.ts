@@ -1,5 +1,6 @@
 import { toNumberOrFallback } from "@tartware/config";
 import {
+  type AuditTrailRow,
   type ChargebackListItem,
   type CommissionReportItem,
   type DepartmentalRevenueItem,
@@ -940,3 +941,92 @@ export const getGlTrialBalance = async (options: {
     is_balanced: variance < 0.005,
   });
 };
+
+// ---------------------------------------------------------------------------
+// AUDIT TRAIL
+// ---------------------------------------------------------------------------
+
+interface AuditTrailInput {
+  tenantId: string;
+  propertyId?: string;
+  entityType?: string;
+  entityId?: string;
+  severity?: string;
+  startDate?: string;
+  endDate?: string;
+  isPciRelevant?: boolean;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Query the billing audit trail from audit_logs, filtered to FINANCIAL action_category
+ * plus optional per-caller filters. Results are returned newest-first.
+ */
+export async function queryAuditTrail(input: AuditTrailInput): Promise<AuditTrailRow[]> {
+  const params: unknown[] = [input.tenantId, input.limit, input.offset];
+  const conditions: string[] = ["al.tenant_id = $1::uuid", "al.action_category = 'FINANCIAL'"];
+
+  if (input.propertyId) {
+    params.push(input.propertyId);
+    conditions.push(`al.property_id = $${params.length}::uuid`);
+  }
+  if (input.entityType) {
+    params.push(input.entityType);
+    conditions.push(`al.entity_type = $${params.length}`);
+  }
+  if (input.entityId) {
+    params.push(input.entityId);
+    conditions.push(`al.entity_id = $${params.length}::uuid`);
+  }
+  if (input.severity) {
+    params.push(input.severity.toUpperCase());
+    conditions.push(`al.severity = $${params.length}`);
+  }
+  if (input.startDate) {
+    params.push(input.startDate);
+    conditions.push(`al.audit_timestamp >= $${params.length}::timestamptz`);
+  }
+  if (input.endDate) {
+    params.push(input.endDate);
+    conditions.push(
+      `al.audit_timestamp < ($${params.length}::date + INTERVAL '1 day')::timestamptz`,
+    );
+  }
+  if (input.isPciRelevant === true) {
+    conditions.push("al.is_pci_relevant = true");
+  }
+
+  const where = conditions.join(" AND ");
+  const { rows } = await query<AuditTrailRow>(
+    `SELECT
+       al.audit_id,
+       al.tenant_id,
+       al.property_id,
+       al.audit_timestamp,
+       al.event_type,
+       al.entity_type,
+       al.entity_id,
+       al.user_id,
+       al.user_email,
+       al.user_name,
+       al.action,
+       al.action_category,
+       al.severity,
+       al.old_values,
+       al.new_values,
+       al.changed_fields,
+       al.is_pci_relevant,
+       al.is_gdpr_relevant,
+       al.description,
+       al.metadata,
+       al.status
+     FROM public.audit_logs al
+     WHERE ${where}
+     ORDER BY al.audit_timestamp DESC
+     LIMIT $2 OFFSET $3`,
+    params,
+  );
+
+  return rows;
+}

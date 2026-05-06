@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
@@ -172,6 +173,18 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     },
     "No-show charge posted",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId ?? "00000000-0000-0000-0000-000000000000",
+    action: "NO_SHOW_CHARGE_POSTED",
+    entityType: "charge_posting",
+    entityId: postingId,
+    severity: "WARNING",
+    description: `No-show charge posted to folio ${folioId}: ${chargeAmount} ${currency}`,
+    newValues: { folioId, chargeAmount, currency, reservationId: command.reservation_id },
+    metadata: { chargeCode: "NO_SHOW" },
+  });
 
   return folioId;
 };

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -189,6 +189,24 @@ export const calculateCommission = async (
     "Commission calculated and recorded",
   );
 
+  auditAsync({
+    tenantId,
+    propertyId: command.property_id,
+    userId: actorId ?? "00000000-0000-0000-0000-000000000000",
+    action: "COMMISSION_CALCULATED",
+    entityType: "travel_agent_commission",
+    entityId: commissionId,
+    severity: "INFO",
+    description: `Commission calculated: ${grossCommission} ${command.currency} for reservation ${command.reservation_id}`,
+    newValues: {
+      commissionId,
+      grossCommission,
+      commissionRate,
+      commissionType,
+      currency: command.currency,
+    },
+  });
+
   return commissionId;
 };
 
@@ -232,6 +250,18 @@ export const approveCommission = async (
   );
 
   appLogger.info({ commissionId: command.commission_id }, "Commission approved");
+
+  auditAsync({
+    tenantId,
+    userId: command.approved_by,
+    action: "COMMISSION_APPROVED",
+    entityType: "travel_agent_commission",
+    entityId: command.commission_id,
+    severity: "INFO",
+    description: `Commission approved${command.notes ? `: ${command.notes}` : ""}`,
+    newValues: { status: "APPROVED", approvedBy: command.approved_by },
+  });
+
   return command.commission_id;
 };
 
@@ -283,6 +313,22 @@ export const markCommissionPaid = async (
     { commissionId: command.commission_id, paymentRef: command.payment_reference },
     "Commission marked as paid",
   );
+
+  auditAsync({
+    tenantId,
+    userId: resolveActorId(context.initiatedBy) ?? "00000000-0000-0000-0000-000000000000",
+    action: "COMMISSION_PAID",
+    entityType: "travel_agent_commission",
+    entityId: command.commission_id,
+    severity: "INFO",
+    description: `Commission paid: ref ${command.payment_reference}`,
+    newValues: {
+      status: "PAID",
+      paymentReference: command.payment_reference,
+      paymentMethod: command.payment_method,
+    },
+  });
+
   return command.commission_id;
 };
 

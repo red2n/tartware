@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
@@ -196,6 +197,24 @@ export const chargeCancellationPenalty = async (
     },
     "Cancellation penalty posted",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId ?? "00000000-0000-0000-0000-000000000000",
+    action: "CANCELLATION_PENALTY_POSTED",
+    entityType: "charge_posting",
+    entityId: postingId,
+    severity: "WARNING",
+    description: `Cancellation penalty posted to folio ${folioId}: ${penaltyAmount} ${currency}`,
+    newValues: {
+      folioId,
+      penaltyAmount,
+      currency,
+      reservationId: command.reservation_id,
+      chargeCode,
+    },
+    metadata: { chargeCode },
+  });
 
   return folioId;
 };
