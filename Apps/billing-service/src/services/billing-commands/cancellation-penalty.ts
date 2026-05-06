@@ -103,10 +103,17 @@ export const chargeCancellationPenalty = async (
   }
 
   const description = command.reason ?? "Cancellation penalty per rate plan policy";
-  const chargeCode = "CANCEL_PENALTY";
-  const businessDate = new Date().toISOString().slice(0, 10);
+  // CANCEL_FEE matches the seeded charge_code_gl_mapping entry for cancellation revenue.
+  const chargeCode = "CANCEL_FEE";
 
   const postingId = await withTransaction(async (client) => {
+    // Derive business date from DB CURRENT_DATE to stay in sync with the transaction.
+    const { rows: dateRows } = await queryWithClient<{ today: string }>(
+      client,
+      "SELECT CURRENT_DATE::text AS today",
+      [],
+    );
+    const businessDate = dateRows[0]?.today ?? new Date().toISOString().slice(0, 10);
     const { rows: postingRows } = await queryWithClient<{ posting_id: string }>(
       client,
       `INSERT INTO public.charge_postings (

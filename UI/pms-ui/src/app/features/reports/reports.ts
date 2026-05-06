@@ -156,9 +156,7 @@ export class ReportsComponent {
 
 	readonly reports = REPORTS;
 	readonly activeKey = signal<string>(REPORTS[0].key);
-	readonly active = computed(
-		() => REPORTS.find((r) => r.key === this.activeKey()) ?? REPORTS[0],
-	);
+	readonly active = computed(() => REPORTS.find((r) => r.key === this.activeKey()) ?? REPORTS[0]);
 
 	readonly businessDate = signal(this.todayString());
 	readonly startDate = signal(this.monthStart());
@@ -220,9 +218,7 @@ export class ReportsComponent {
 			this.rows.set([]);
 			this.raw.set(null);
 			this.error.set(
-				e instanceof Error
-					? e.message
-					: `Report endpoint ${def.path} is not currently available.`,
+				e instanceof Error ? e.message : `Report endpoint ${def.path} is not currently available.`,
 			);
 		} finally {
 			this.loading.set(false);
@@ -238,11 +234,7 @@ export class ReportsComponent {
 		}
 		const cols = this.columns();
 		const header = cols.join(",");
-		const lines = rows.map((row) =>
-			cols
-				.map((c) => this.csvCell(row[c]))
-				.join(","),
-		);
+		const lines = rows.map((row) => cols.map((c) => this.csvCell(row[c])).join(","));
 		const csv = [header, ...lines].join("\n");
 		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 		const url = URL.createObjectURL(blob);
@@ -267,9 +259,7 @@ export class ReportsComponent {
 	}
 
 	formatHeader(key: string): string {
-		return key
-			.replace(/_/g, " ")
-			.replace(/\b\w/g, (c) => c.toUpperCase());
+		return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 
 	private extractRows(payload: unknown): ReportRow[] {

@@ -1637,3 +1637,11 @@ export const ChargebackListQuerySchema = z.object({
 });
 
 export type ChargebackListQuery = z.infer<typeof ChargebackListQuerySchema>;
+
+export const GlTrialBalanceQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;

@@ -236,9 +236,7 @@ export class BillingFoliosService {
 		this.transferringChargeId.set(null);
 	}
 
-	updateTransferChargeForm(
-		partial: Partial<{ target_folio_id: string; reason: string }>,
-	): void {
+	updateTransferChargeForm(partial: Partial<{ target_folio_id: string; reason: string }>): void {
 		this.transferChargeForm.set({ ...this.transferChargeForm(), ...partial });
 	}
 
@@ -256,14 +254,11 @@ export class BillingFoliosService {
 		}
 		this.processingChargeTransfer.set(true);
 		try {
-			await this.api.post(
-				`/tenants/${tenantId}/billing/charges/${charge.id}/transfer`,
-				{
-					posting_id: charge.id,
-					to_folio_id: form.target_folio_id,
-					reason: form.reason || undefined,
-				},
-			);
+			await this.api.post(`/tenants/${tenantId}/billing/charges/${charge.id}/transfer`, {
+				posting_id: charge.id,
+				to_folio_id: form.target_folio_id,
+				reason: form.reason || undefined,
+			});
 			this.toast.success("Charge transfer submitted. Refreshing folios...");
 			this.transferringChargeId.set(null);
 			await settleCommandReadModel(() =>

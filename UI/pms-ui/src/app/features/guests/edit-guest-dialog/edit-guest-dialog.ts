@@ -1,10 +1,10 @@
 import { Component, inject, signal } from "@angular/core";
-import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { GuestFormFieldsComponent } from "../guest-form-fields/guest-form-fields";
 import {
@@ -49,7 +49,7 @@ export class EditGuestDialogComponent {
 	private readonly auth = inject(AuthService);
 	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
-private readonly data = inject(DynamicDialogConfig).data as EditGuestDialogData;
+	private readonly data = inject(DynamicDialogConfig).data as EditGuestDialogData;
 
 	readonly saving = signal(false);
 	readonly fieldErrors = signal<Record<string, string>>({});

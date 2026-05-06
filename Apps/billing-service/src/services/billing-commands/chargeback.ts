@@ -122,7 +122,7 @@ export const recordChargeback = async (
        END)::payment_status,
        refund_amount = COALESCE(refund_amount, 0) + $3,
        version = version + 1,
-       updated_at = NOW(), updated_by = $4::uuid
+       updated_at = NOW(), updated_by = $4
        WHERE tenant_id = $1::uuid AND id = $2::uuid`,
       [context.tenantId, payment.id, command.chargeback_amount, actor],
     );

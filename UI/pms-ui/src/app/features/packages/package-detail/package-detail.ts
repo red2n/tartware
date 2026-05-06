@@ -1,16 +1,14 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
-import { DialogService } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-
 import type { PackageComponentListItem, PackageListItem } from "@tartware/schemas";
-
+import { DialogService } from "primeng/dynamicdialog";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { SettingsService } from "../../../core/settings/settings.service";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string; badgeClass?: string };

@@ -6,6 +6,8 @@ import {
   GlBatchEntriesResponseSchema,
   GlBatchListQuerySchema,
   GlBatchListResponseSchema,
+  type GlTrialBalanceQuery,
+  GlTrialBalanceQuerySchema,
   GlTrialBalanceResponseSchema,
   type LedgerEntryListQuery,
   LedgerEntryListQuerySchema,
@@ -326,12 +328,7 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
   // ============================================================================
 
   {
-    const GlTrialBalanceQuerySchema = z.object({
-      tenant_id: z.string().uuid(),
-      property_id: z.string().uuid().optional(),
-      business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    });
-    type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;
+    // GlTrialBalanceQuerySchema is defined in @tartware/schemas (schema-first rule).
     const GlTrialBalanceQueryJsonSchema = schemaFromZod(
       GlTrialBalanceQuerySchema,
       "GlTrialBalanceQuery",

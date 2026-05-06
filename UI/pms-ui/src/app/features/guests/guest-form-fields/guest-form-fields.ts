@@ -10,7 +10,7 @@ import {
 @Component({
 	selector: "app-guest-form-fields",
 	standalone: true,
-  imports: [FormsModule, TranslatePipe],
+	imports: [FormsModule, TranslatePipe],
 	templateUrl: "./guest-form-fields.html",
 })
 export class GuestFormFieldsComponent {

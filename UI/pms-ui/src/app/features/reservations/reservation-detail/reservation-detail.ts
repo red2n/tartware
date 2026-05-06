@@ -1,11 +1,7 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-
 import type {
 	AvailabilityResponse,
 	AvailableRoom,
@@ -13,7 +9,8 @@ import type {
 	GuestWithStats,
 	ReservationDetail,
 } from "@tartware/schemas";
-
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
@@ -21,6 +18,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { CHARGE_CODE_OPTIONS } from "../../billing/billing-constants";

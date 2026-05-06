@@ -1,20 +1,15 @@
 import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import type { LoyaltyPointTransactions, LoyaltyTierRules } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
-
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
-
-import type {
-	LoyaltyPointTransactions,
-	LoyaltyTierRules,
-} from "@tartware/schemas";
 
 type TierRule = LoyaltyTierRules;
 type LoyaltyTxn = LoyaltyPointTransactions;

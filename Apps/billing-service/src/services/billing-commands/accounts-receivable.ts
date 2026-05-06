@@ -106,7 +106,13 @@ export const postArEntry = async (payload: unknown, context: CommandContext): Pr
 
     // GL posting (USALI double-entry): DR City Ledger (1300) / CR Guest Ledger (1100).
     // Direct-bill checkout transfers the receivable from guest folio to AR.
-    const businessDate = new Date().toISOString().slice(0, 10);
+    // Use DB CURRENT_DATE to stay in sync with the AR insert in the same transaction.
+    const { rows: dateRows } = await queryWithClient<{ today: string }>(
+      client,
+      "SELECT CURRENT_DATE::text AS today",
+      [],
+    );
+    const businessDate = dateRows[0]?.today ?? new Date().toISOString().slice(0, 10);
     await postGlPair(client, {
       tenant_id: tenantId,
       property_id: propertyId,

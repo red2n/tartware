@@ -878,7 +878,9 @@ export const getGlTrialBalance = async (options: {
     batchParams,
   );
 
-  const batch = batchRes.rows[0] ?? null;
+  // When no propertyId is given the aggregation spans all properties, so a
+  // single-property batch would give misleading batch metadata. Omit it.
+  const batch = propertyId ? (batchRes.rows[0] ?? null) : null;
 
   // Aggregate GL entries by account code.
   const lineParams: unknown[] = [tenantId, businessDate];
@@ -905,6 +907,7 @@ export const getGlTrialBalance = async (options: {
      WHERE e.tenant_id    = $1::uuid
        AND e.posting_date = $2::date
        AND e.status NOT IN ('VOIDED')
+       AND COALESCE(e.is_deleted, false) = false
        ${linePropFilter}
      GROUP BY e.gl_account_code, e.usali_category
      ORDER BY e.gl_account_code`,

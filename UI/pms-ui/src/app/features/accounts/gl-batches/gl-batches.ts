@@ -1,9 +1,8 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import type { GlBatchEntryItem, GlBatchListItem } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
-
-import type { GlBatchEntryItem, GlBatchListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -54,7 +53,7 @@ export class GlBatchesComponent {
 	/** Debit/credit totals + variance for the currently-expanded batch entries. */
 	readonly entryTotals = computed(() => {
 		const rows = this.entries();
-		const totalDebit  = rows.reduce((s, r) => s + Number(r.debit_amount  ?? 0), 0);
+		const totalDebit = rows.reduce((s, r) => s + Number(r.debit_amount ?? 0), 0);
 		const totalCredit = rows.reduce((s, r) => s + Number(r.credit_amount ?? 0), 0);
 		return { totalDebit, totalCredit, variance: Math.abs(totalDebit - totalCredit) };
 	});
@@ -70,12 +69,8 @@ export class GlBatchesComponent {
 		const items = this.batches();
 		const debits = items.reduce((sum, b) => sum + (b.debit_total ?? 0), 0);
 		const credits = items.reduce((sum, b) => sum + (b.credit_total ?? 0), 0);
-		const reviewable = items.filter(
-			(b) => b.batch_status?.toUpperCase() === "REVIEW",
-		).length;
-		const posted = items.filter(
-			(b) => b.batch_status?.toUpperCase() === "POSTED",
-		).length;
+		const reviewable = items.filter((b) => b.batch_status?.toUpperCase() === "REVIEW").length;
+		const posted = items.filter((b) => b.batch_status?.toUpperCase() === "POSTED").length;
 		return {
 			debits,
 			credits,
@@ -112,17 +107,12 @@ export class GlBatchesComponent {
 			if (this.statusFilter() !== "ALL") {
 				params["batch_status"] = this.statusFilter();
 			}
-			const res = await this.api.get<{ data: GlBatchListItem[] }>(
-				"/billing/gl-batches",
-				params,
-			);
+			const res = await this.api.get<{ data: GlBatchListItem[] }>("/billing/gl-batches", params);
 			this.batches.set(res.data ?? []);
 		} catch (e) {
 			this.batches.set([]);
 			this.error.set(
-				e instanceof Error
-					? e.message
-					: "GL batch list endpoint is not currently available.",
+				e instanceof Error ? e.message : "GL batch list endpoint is not currently available.",
 			);
 		} finally {
 			this.dataReady.set(true);
@@ -160,9 +150,7 @@ export class GlBatchesComponent {
 			);
 			this.entries.set(res.data ?? []);
 		} catch (e) {
-			this.entriesError.set(
-				e instanceof Error ? e.message : "Failed to load batch entries.",
-			);
+			this.entriesError.set(e instanceof Error ? e.message : "Failed to load batch entries.");
 		} finally {
 			this.entriesLoading.set(false);
 		}
@@ -222,8 +210,10 @@ export class GlBatchesComponent {
 			"source_reference",
 			"entry_status",
 		];
-		const escape = (v: unknown): string => {
-			const s = v == null ? "" : String(v);
+		const escapeCsvCell = (v: unknown): string => {
+			let s = v == null ? "" : String(v);
+			// Prevent spreadsheet formula injection (OWASP CSV injection).
+			if (/^[=+\-@]/.test(s)) s = `\t${s}`;
 			return s.includes(",") || s.includes('"') || s.includes("\n")
 				? `"${s.replace(/"/g, '""')}"`
 				: s;
@@ -248,7 +238,7 @@ export class GlBatchesComponent {
 					r.source_reference ?? "",
 					r.entry_status,
 				]
-					.map(escape)
+					.map(escapeCsvCell)
 					.join(","),
 			),
 		].join("\r\n");
@@ -258,8 +248,12 @@ export class GlBatchesComponent {
 		const a = document.createElement("a");
 		a.href = url;
 		a.download = `gl-batch-${batch.batch_number}-${batch.batch_date}.csv`;
+		document.body.appendChild(a);
 		a.click();
-		URL.revokeObjectURL(url);
+		queueMicrotask(() => {
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		});
 	}
 
 	statusBadge(status: string | undefined): string {

@@ -1,12 +1,11 @@
 import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { TooltipModule } from 'primeng/tooltip';
-
+import { TooltipModule } from "primeng/tooltip";
 import { BUILD_VERSION } from "../../../environments/build-version";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { RegistryService } from "../../core/registry/registry.service";
+import { IconComponent } from "../../shared/components/icon/icon";
 import { ServiceDashboardComponent } from "./service-dashboard";
 
 @Component({

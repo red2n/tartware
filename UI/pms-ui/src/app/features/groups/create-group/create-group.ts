@@ -1,15 +1,13 @@
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Router, RouterLink } from "@angular/router";
-
 import { GroupBlockStatusDescriptions } from "@tartware/schemas";
-
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({

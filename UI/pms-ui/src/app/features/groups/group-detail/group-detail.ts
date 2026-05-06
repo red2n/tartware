@@ -1,22 +1,20 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-
 import {
 	type GroupBlockStatus,
 	GroupBlockStatusDescriptions,
 	type GroupBookingListItem,
 } from "@tartware/schemas";
-
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { groupBlockStatusClass } from "../../../shared/badge-utils";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string; description?: string };

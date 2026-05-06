@@ -299,7 +299,8 @@ export const defaultNightAuditSteps: NightAuditStep[] = [
            COUNT(*)::text                           AS entry_count
          FROM public.general_ledger_entries
          WHERE gl_batch_id = $1::uuid
-           AND status NOT IN ('VOIDED')`,
+           AND status NOT IN ('VOIDED')
+           AND COALESCE(is_deleted, false) = false`,
         [batch.gl_batch_id],
       );
 

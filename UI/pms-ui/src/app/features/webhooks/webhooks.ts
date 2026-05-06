@@ -1,10 +1,9 @@
 import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import type { WebhookDeliveryRow, WebhookSubscriptions } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
-
-import type { WebhookDeliveryRow, WebhookSubscriptions } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";

@@ -86,26 +86,47 @@ export const handleOverpayment = async (
         [context.tenantId, actAmount, actor, command.folio_id],
       );
 
+      // Look up reservation_id and guest_id from the folio — both are NOT NULL on payments.
+      const { rows: folioLinkRows } = await queryWithClient<{
+        reservation_id: string | null;
+        guest_id: string | null;
+      }>(
+        client,
+        `SELECT reservation_id, guest_id FROM public.folios
+         WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+        [context.tenantId, command.folio_id],
+      );
+      const folioLink = folioLinkRows[0];
+      if (!folioLink?.reservation_id || !folioLink?.guest_id) {
+        throw new BillingCommandError(
+          "FOLIO_MISSING_LINKS",
+          `Folio ${command.folio_id} is missing reservation_id or guest_id required for payment record.`,
+        );
+      }
+
+      const actorStr = actor; // processed_by/created_by/updated_by are VARCHAR, not UUID
       const refundInsert = await queryWithClient<{ id: string }>(
         client,
         `INSERT INTO public.payments (
-           tenant_id, property_id,
+           tenant_id, property_id, reservation_id, guest_id,
            payment_reference, transaction_type, payment_method,
            amount, currency, status, processed_at, processed_by,
            notes, created_by, updated_by
          ) VALUES (
-           $1::uuid, $2::uuid,
-           $3, 'REFUND', 'CREDIT_CARD',
-           $4, 'USD', 'COMPLETED', NOW(), $5::uuid,
-           $6, $5::uuid, $5::uuid
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+           $5, 'REFUND', 'CREDIT_CARD',
+           $6, 'USD', 'COMPLETED', NOW(), $7,
+           $8, $7, $7
          )
          RETURNING id`,
         [
           context.tenantId,
           command.property_id,
+          folioLink.reservation_id,
+          folioLink.guest_id,
           `OVERPAY-REFUND-${command.folio_id.slice(0, 8)}-${Date.now().toString(36)}`,
           actAmount,
-          asUuid(actor) ?? SYSTEM_ACTOR_ID,
+          actorStr,
           command.notes ?? "Overpayment refund",
         ],
       );
@@ -114,7 +135,13 @@ export const handleOverpayment = async (
       if (refundPaymentId) {
         // GL posting (USALI double-entry, refund of overpayment):
         // DR 1100 Guest Ledger / CR cash account (mirrors payment-refund)
-        const businessDate = new Date().toISOString().slice(0, 10);
+        // Use DB CURRENT_DATE to stay in sync with the folio update in the same transaction.
+        const { rows: dateRows } = await queryWithClient<{ today: string }>(
+          client,
+          "SELECT CURRENT_DATE::text AS today",
+          [],
+        );
+        const businessDate = dateRows[0]?.today ?? new Date().toISOString().slice(0, 10);
         await postGlPair(client, {
           tenant_id: context.tenantId,
           property_id: command.property_id,

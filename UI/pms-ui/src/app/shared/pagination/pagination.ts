@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from "@angular/core";
-import { IconComponent } from '../components/icon/icon';
+import { IconComponent } from "../components/icon/icon";
 
 @Component({
 	selector: "app-pagination",

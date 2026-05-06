@@ -1,12 +1,10 @@
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-
 import type { TenantRole } from "@tartware/schemas";
-
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { TENANT_ROLES } from "../../../shared/user-roles";
 
@@ -18,13 +16,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-create-user-dialog",
 	standalone: true,
-	imports: [
-		FormsModule,
-		DynamicDialogModule,
-		IconComponent,
-		ProgressSpinnerModule,
-		TranslatePipe,
-	],
+	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./create-user-dialog.html",
 	styleUrl: "./create-user-dialog.scss",
 })

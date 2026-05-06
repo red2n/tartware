@@ -189,11 +189,11 @@
                         <tfoot>
                           <tr class="font-semibold">
                             <td colspan="6" class="text-right">{{ 'Totals' | translate }}</td>
-                            <td class="text-right">{{ formatCurrency(entryTotals().totalDebit) }}</td>
-                            <td class="text-right">{{ formatCurrency(entryTotals().totalCredit) }}</td>
+                            <td class="text-right">{{ formatCurrency(entryTotals().totalDebit, entries()[0]?.currency_code ?? 'USD') }}</td>
+                            <td class="text-right">{{ formatCurrency(entryTotals().totalCredit, entries()[0]?.currency_code ?? 'USD') }}</td>
                             <td>
                               @if (entryTotals().variance > 0.005) {
-                                <span class="badge badge-danger" [pTooltip]="'Out of balance: variance ' + formatCurrency(entryTotals().variance) | translate">
+                                <span class="badge badge-danger" [pTooltip]="'Out of balance: variance ' + formatCurrency(entryTotals().variance, entries()[0]?.currency_code ?? 'USD') | translate">
                                   <app-icon name="warning" /> {{ 'Imbalanced' | translate }}
                                 </span>
                               } @else {

@@ -1,9 +1,9 @@
 import { Component, computed, inject, output } from "@angular/core";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { TooltipModule } from "primeng/tooltip";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
+import { IconComponent } from "../../shared/components/icon/icon";
 
 /** Hardcoded descriptions for known services — presentation data owned by the UI. */
 const SERVICE_DESCRIPTIONS: Record<string, string> = {
@@ -22,12 +22,7 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
 @Component({
 	selector: "app-service-dashboard",
 	standalone: true,
-	imports: [
-		IconComponent,
-		ProgressSpinnerModule,
-		TooltipModule,
-		TranslatePipe,
-	],
+	imports: [IconComponent, ProgressSpinnerModule, TooltipModule, TranslatePipe],
 	templateUrl: "./service-dashboard.html",
 	styleUrl: "./service-dashboard.scss",
 })

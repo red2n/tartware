@@ -1,13 +1,13 @@
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type { CreatePackageBody } from "@tartware/schemas";
+import { DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 @Component({
 	selector: "app-create-package-dialog",

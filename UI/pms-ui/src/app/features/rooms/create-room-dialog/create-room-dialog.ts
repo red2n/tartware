@@ -1,14 +1,13 @@
 import { Component, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import type { BuildingItem, RoomTypeItem } from "@tartware/schemas";
-
+import { DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomType = Pick<RoomTypeItem, "room_type_id" | "type_name">;
