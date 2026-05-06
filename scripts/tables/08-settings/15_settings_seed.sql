@@ -68,6 +68,7 @@ JOIN (VALUES
   ('RATE_PRICING_FINANCIAL', 'rate_defaults',       'Rate Defaults',         'Default rate plan, rounding, and currency settings.',     'sell',             10),
   ('RATE_PRICING_FINANCIAL', 'deposit_policy',      'Deposit Policy',        'Deposit percentages, deadlines, and non-refund rules.',   'savings',          20),
   ('RATE_PRICING_FINANCIAL', 'tax_configuration',   'Tax Configuration',     'Tax codes, rates, and inclusive/exclusive rules.',        'receipt_long',     30),
+  ('RATE_PRICING_FINANCIAL', 'payment_handling',    'Payment Handling',      'Overpayment, credit balance, and refund behaviour.',      'payments',         40),
   ('APPROVAL_WORKFLOWS',     'rate_approval',       'Rate Approval',         'Override and discount approval thresholds.',              'percent',          10),
   ('APPROVAL_WORKFLOWS',     'financial_approval',  'Financial Approval',    'Refund, write-off, and complimentary approval chains.',   'payments',         20),
   ('APPROVAL_WORKFLOWS',     'operational_approval','Operational Approvals', 'Early check-in, late check-out, and upgrade approvals.', 'schedule',         30),
@@ -191,7 +192,9 @@ JOIN (VALUES
   ('RATE_PRICING_FINANCIAL','deposit_policy',  'rates.deposit_percent',            'Deposit Percentage',         'Percentage of total booking cost required as deposit.',           'DECIMAL','SLIDER',     '25',             ARRAY['TENANT','PROPERTY'],'TENANT',FALSE,'INTERNAL',20),
   ('RATE_PRICING_FINANCIAL','deposit_policy',  'rates.non_refundable_cutoff_days', 'Non-Refund Cutoff (days)',   'Deposits become non-refundable within this many days of arrival.','INTEGER','NUMBER_INPUT','3',             ARRAY['TENANT','PROPERTY'],'TENANT',FALSE,'INTERNAL',30),
   ('RATE_PRICING_FINANCIAL','tax_configuration','rates.tax_inclusive',             'Tax-Inclusive Rates',        'Whether published rates already include applicable taxes.',       'BOOLEAN','TOGGLE',     'false',          ARRAY['TENANT'],           'TENANT',FALSE,'INTERNAL',10),
-  ('RATE_PRICING_FINANCIAL','tax_configuration','rates.city_tax_per_night',        'City Tax per Night',         'Fixed per-night city/tourist tax amount in base currency.',       'DECIMAL','NUMBER_INPUT','0',             ARRAY['PROPERTY'],         'PROPERTY',FALSE,'INTERNAL',20)
+  ('RATE_PRICING_FINANCIAL','tax_configuration','rates.city_tax_per_night',        'City Tax per Night',         'Fixed per-night city/tourist tax amount in base currency.',       'DECIMAL','NUMBER_INPUT','0',             ARRAY['PROPERTY'],         'PROPERTY',FALSE,'INTERNAL',20),
+  ('RATE_PRICING_FINANCIAL','payment_handling', 'billing.overpayment_action',      'Overpayment Action',         'What to do when a payment exceeds the outstanding folio balance.',  'ENUM',  'SELECT',     '"credit"',       ARRAY['TENANT','PROPERTY'],'PROPERTY',TRUE, 'INTERNAL',10),
+  ('RATE_PRICING_FINANCIAL','payment_handling', 'billing.credit_balance_expiry_days','Credit Balance Expiry (days)','Days before an unused folio credit balance expires (0=never).',   'INTEGER','NUMBER_INPUT','0',            ARRAY['PROPERTY'],         'PROPERTY',FALSE,'INTERNAL',20)
 ) AS d(cat,sec,code,name,description,data_type,control_type,default_value,allowed_scopes,default_scope,is_required,sensitivity,sort_order)
   ON c.code = d.cat AND sec.code = d.sec
 ON CONFLICT (tenant_id, code) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,default_value=EXCLUDED.default_value,updated_at=NOW();
@@ -398,6 +401,9 @@ JOIN (VALUES
   ('admin.default_role',          'readonly',     'Read-Only',          'View-only access across all screens.',       50,FALSE),
   ('approvals.complimentary_requires','manager',  'Manager',            'Shift manager approval required.',           10,TRUE),
   ('approvals.complimentary_requires','gm',       'General Manager',    'GM approval required.',                      20,FALSE),
+  ('billing.overpayment_action',      'credit',   'Hold as Credit',     'Keep excess as folio credit balance for future charges.',     10,TRUE),
+  ('billing.overpayment_action',      'refund',   'Auto Refund',        'Automatically refund the overpayment amount to the guest.',   20,FALSE),
+  ('billing.overpayment_action',      'hold',     'Hold for Review',    'Flag folio for front-desk review — no automatic action.',     30,FALSE),
   ('approvals.writeoff_requires', 'gm',           'General Manager',    'GM approval required.',                      10,TRUE),
   ('approvals.writeoff_requires', 'manager',      'Manager',            'Manager approval required.',                 20,FALSE),
   ('integrations.keycard_system', 'none',         'None',               'No integrated keycard system.',              10,TRUE),
