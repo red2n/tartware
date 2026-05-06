@@ -1,9 +1,9 @@
 -- =====================================================
 -- verify-09-reference-data.sql
 -- Verification Script for Reference Data Lookup Tables
--- Category: 09-reference-data (10 tables)
+-- Category: 09-reference-data (13 tables)
 -- Date: 2026-02-05
--- Updated: 2026-02-18
+-- Updated: 2026-05-06
 -- =====================================================
 
 \c tartware
@@ -11,14 +11,14 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: REFERENCE DATA VERIFICATION'
-\echo '  Tables: 10 | Description: dynamic enum lookup tables + charge codes + reason codes + pet management'
+\echo '  Tables: 13 | Description: dynamic enum lookup tables + charge codes + reason codes + pet management + GL mapping + departments'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 10 tables exist...'
+\echo '1. Checking if all 13 tables exist...'
 
 DO $$
 DECLARE
@@ -32,7 +32,10 @@ DECLARE
         'charge_codes',
         'reason_codes',
         'pet_types',
-        'pet_registrations'
+        'pet_registrations',
+        'charge_code_gl_mapping',
+        'departments',
+        'gl_chart_of_accounts'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -58,7 +61,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Reference data verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 10 Reference data tables exist!';
+        RAISE NOTICE '✓✓✓ All 13 Reference data tables exist!';
     END IF;
 END $$;
 
@@ -90,7 +93,10 @@ WHERE t.table_name IN (
     'charge_codes',
     'reason_codes',
     'pet_types',
-    'pet_registrations'
+    'pet_registrations',
+    'charge_code_gl_mapping',
+    'departments',
+    'gl_chart_of_accounts'
 )
 AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
@@ -207,7 +213,10 @@ BEGIN
         'charge_codes',
         'reason_codes',
         'pet_types',
-        'pet_registrations'
+        'pet_registrations',
+        'charge_code_gl_mapping',
+        'departments',
+        'gl_chart_of_accounts'
     )
     AND t.table_schema = 'public';
 
@@ -222,15 +231,15 @@ BEGIN
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reference Data (Dynamic Enums)';
-    RAISE NOTICE 'Tables Found: % / 10', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 13', v_table_count;
     RAISE NOTICE 'Total Rows: %', v_total_rows;
     RAISE NOTICE '';
 
-    IF v_table_count = 10 THEN
+    IF v_table_count = 13 THEN
         RAISE NOTICE '✓✓✓ REFERENCE DATA VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ REFERENCE DATA VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 10 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 13 tables, found %', v_table_count;
     END IF;
 END $$;
 

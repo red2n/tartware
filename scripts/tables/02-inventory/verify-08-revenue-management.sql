@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-08-revenue-management.sql
 -- Verification Script for Revenue Management Tables
--- Category: 08-revenue-management (10 tables)
+-- Category: 08-revenue-management (12 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-05-06
 -- =====================================================
 
 \c tartware
@@ -10,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: REVENUE MANAGEMENT VERIFICATION'
-\echo '  Tables: 10 | Description: Pricing, forecasting, competitor analysis, rate calendar, restrictions, hurdle rates'
+\echo '  Tables: 12 | Description: Pricing, forecasting, competitor analysis, rate calendar, restrictions, hurdle rates'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 10 tables exist...'
+\echo '1. Checking if all 12 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar', 'rate_restrictions', 'hurdle_rates'];
+    v_expected_tables TEXT[] := ARRAY['rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar', 'rate_restrictions', 'hurdle_rates', 'competitor_properties', 'rate_seasons'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Revenue Management verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 10 Revenue Management tables exist!';
+        RAISE NOTICE '✓✓✓ All 12 Revenue Management tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar', 'rate_restrictions', 'hurdle_rates')
+WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar', 'rate_restrictions', 'hurdle_rates', 'competitor_properties', 'rate_seasons')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar', 'rate_restrictions', 'hurdle_rates')
+    WHERE t.table_name IN ('rate_overrides', 'revenue_forecasts', 'competitor_rates', 'demand_calendar', 'pricing_rules', 'rate_recommendations', 'revenue_goals', 'rate_calendar', 'rate_restrictions', 'hurdle_rates', 'competitor_properties', 'rate_seasons')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Revenue Management';
-    RAISE NOTICE 'Tables Found: % / 10', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 12', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 10 THEN
+    IF v_table_count = 12 THEN
         RAISE NOTICE '✓✓✓ REVENUE MANAGEMENT VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ REVENUE MANAGEMENT VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 10 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 12 tables, found %', v_table_count;
     END IF;
 END $$;
 
