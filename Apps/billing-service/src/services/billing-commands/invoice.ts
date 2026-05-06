@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
+import { nextDocumentNumber } from "../../lib/sequence-generator.js";
 import {
   BillingCreditNoteCreateCommandSchema,
   type BillingInvoiceAdjustCommand,
@@ -180,9 +180,10 @@ const applyInvoiceFinalize = async (
       id: string;
       status: string;
       invoice_number: string | null;
+      property_id: string;
     }>(
       client,
-      `SELECT id, status, invoice_number FROM public.invoices
+      `SELECT id, status, invoice_number, property_id FROM public.invoices
        WHERE tenant_id = $1::uuid AND id = $2::uuid
        FOR UPDATE`,
       [context.tenantId, command.invoice_id],
@@ -200,17 +201,16 @@ const applyInvoiceFinalize = async (
       );
     }
 
-    // Assign invoice number from the global sequence at finalization time.
+    // Assign invoice number from the gap-free per-property sequence at finalization time.
     // If the invoice already has a number (e.g. migrated drafts), preserve it.
     let invoiceNumber = invoice.invoice_number;
     if (!invoiceNumber) {
-      const seqResult = await queryWithClient<{ seq: string }>(
+      invoiceNumber = await nextDocumentNumber(
         client,
-        `SELECT nextval('invoice_number_seq') AS seq`,
-        [],
+        context.tenantId,
+        invoice.property_id,
+        "INVOICE",
       );
-      const seq = seqResult.rows[0]?.seq ?? randomUUID().slice(0, 8);
-      invoiceNumber = `INV-${seq}`;
     }
 
     await queryWithClient(
@@ -323,80 +323,92 @@ export const createCreditNote = async (
   const command = BillingCreditNoteCreateCommandSchema.parse(payload);
   const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
-  // Fetch original invoice
-  const { rows } = await query<{
-    id: string;
-    status: string;
-    total_amount: string;
-    property_id: string;
-    reservation_id: string | null;
-    guest_id: string | null;
-    currency: string;
-  }>(
-    `SELECT id, status, total_amount, property_id, reservation_id, guest_id, currency
-     FROM public.invoices
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
-     LIMIT 1`,
-    [context.tenantId, command.original_invoice_id],
-  );
-
-  const original = rows[0];
-  if (!original) {
-    throw new BillingCommandError("INVOICE_NOT_FOUND", "Original invoice not found.");
-  }
-
-  const allowedStatuses = ["FINALIZED", "SENT", "VIEWED", "PAID", "PARTIALLY_PAID", "OVERDUE"];
-  if (!allowedStatuses.includes(original.status)) {
-    throw new BillingCommandError(
-      "INVALID_INVOICE_STATUS",
-      `Cannot issue credit note against ${original.status} invoice. Invoice must be issued first.`,
+  const creditNoteId = await withTransaction(async (client) => {
+    // Fetch original invoice inside transaction (lock for consistent read)
+    const { rows } = await queryWithClient<{
+      id: string;
+      status: string;
+      total_amount: string;
+      property_id: string;
+      reservation_id: string | null;
+      guest_id: string | null;
+      currency: string;
+    }>(
+      client,
+      `SELECT id, status, total_amount, property_id, reservation_id, guest_id, currency
+       FROM public.invoices
+       WHERE tenant_id = $1::uuid AND id = $2::uuid
+       LIMIT 1`,
+      [context.tenantId, command.original_invoice_id],
     );
-  }
 
-  const originalAmount = Number.parseFloat(original.total_amount);
-  if (command.credit_amount > originalAmount) {
-    throw new BillingCommandError(
-      "CREDIT_EXCEEDS_ORIGINAL",
-      `Credit amount (${command.credit_amount}) exceeds original invoice total (${originalAmount}).`,
-    );
-  }
+    const original = rows[0];
+    if (!original) {
+      throw new BillingCommandError("INVOICE_NOT_FOUND", "Original invoice not found.");
+    }
 
-  const creditNoteNumber = `CN-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
-  const currency = command.currency ?? original.currency ?? "USD";
+    const allowedStatuses = ["FINALIZED", "SENT", "VIEWED", "PAID", "PARTIALLY_PAID", "OVERDUE"];
+    if (!allowedStatuses.includes(original.status)) {
+      throw new BillingCommandError(
+        "INVALID_INVOICE_STATUS",
+        `Cannot issue credit note against ${original.status} invoice. Invoice must be issued first.`,
+      );
+    }
 
-  const result = await query<{ id: string }>(
-    `INSERT INTO public.invoices (
-       tenant_id, property_id, reservation_id, guest_id,
-       invoice_number, invoice_date, subtotal, total_amount,
-       currency, notes, status, invoice_type,
-       original_invoice_id, correction_type,
-       metadata, created_by, updated_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3, $4,
-       $5, CURRENT_DATE, -($6::numeric), -($6::numeric),
-       UPPER($7), $8, 'FINALIZED', 'CREDIT_NOTE',
-       $9::uuid, 'FULL_REVERSAL',
-       $10::jsonb, $11, $11
-     ) RETURNING id`,
-    [
+    const originalAmount = Number.parseFloat(original.total_amount);
+    if (command.credit_amount > originalAmount) {
+      throw new BillingCommandError(
+        "CREDIT_EXCEEDS_ORIGINAL",
+        `Credit amount (${command.credit_amount}) exceeds original invoice total (${originalAmount}).`,
+      );
+    }
+
+    // Assign gap-free credit note number from per-property sequence (BA §5.3)
+    const creditNoteNumber = await nextDocumentNumber(
+      client,
       context.tenantId,
       command.property_id,
-      original.reservation_id,
-      original.guest_id,
-      creditNoteNumber,
-      command.credit_amount,
-      currency,
-      command.reason ?? null,
-      command.original_invoice_id,
-      JSON.stringify(command.metadata ?? {}),
-      actor,
-    ],
-  );
+      "CREDIT_NOTE",
+    );
+    const currency = command.currency ?? original.currency ?? "USD";
 
-  const creditNoteId = result.rows[0]?.id;
-  if (!creditNoteId) {
-    throw new BillingCommandError("CREDIT_NOTE_FAILED", "Failed to create credit note.");
-  }
+    const result = await queryWithClient<{ id: string }>(
+      client,
+      `INSERT INTO public.invoices (
+         tenant_id, property_id, reservation_id, guest_id,
+         invoice_number, invoice_date, subtotal, total_amount,
+         currency, notes, status, invoice_type,
+         original_invoice_id, correction_type,
+         metadata, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3, $4,
+         $5, CURRENT_DATE, -($6::numeric), -($6::numeric),
+         UPPER($7), $8, 'FINALIZED', 'CREDIT_NOTE',
+         $9::uuid, 'FULL_REVERSAL',
+         $10::jsonb, $11, $11
+       ) RETURNING id`,
+      [
+        context.tenantId,
+        command.property_id,
+        original.reservation_id,
+        original.guest_id,
+        creditNoteNumber,
+        command.credit_amount,
+        currency,
+        command.reason ?? null,
+        command.original_invoice_id,
+        JSON.stringify(command.metadata ?? {}),
+        actor,
+      ],
+    );
+
+    const id = result.rows[0]?.id;
+    if (!id) {
+      throw new BillingCommandError("CREDIT_NOTE_FAILED", "Failed to create credit note.");
+    }
+
+    return id;
+  });
 
   appLogger.info(
     {
