@@ -1030,3 +1030,91 @@ export async function queryAuditTrail(input: AuditTrailInput): Promise<AuditTrai
 
   return rows;
 }
+
+// ============================================================================
+// GL BATCH EXPORT (ACCT-06)
+// ============================================================================
+
+import type { GlExportEntry } from "../lib/gl-export-generator.js";
+
+/**
+ * Fetch raw GL entries for a batch, shaped for CSV/XML export.
+ * Returns all entries (up to 10,000) in posting_date order.
+ */
+export const getGlEntriesForExport = async (
+  batchId: string,
+  tenantId: string,
+): Promise<GlExportEntry[]> => {
+  const { rows } = await query<GlExportEntry>(
+    `SELECT
+       gle.gl_entry_id,
+       glb.batch_number,
+       glb.batch_date,
+       glb.accounting_period,
+       gle.posting_date,
+       gle.gl_account_code,
+       gle.cost_center,
+       gle.usali_category,
+       gle.department_code,
+       gle.description,
+       gle.debit_amount,
+       gle.credit_amount,
+       COALESCE(gle.currency, 'USD') AS currency,
+       f.folio_number,
+       r.confirmation_number,
+       gle.reference_number,
+       gle.source_table,
+       gle.source_id
+     FROM public.general_ledger_entries gle
+     LEFT JOIN public.general_ledger_batches glb
+       ON glb.gl_batch_id = gle.gl_batch_id
+      AND COALESCE(glb.is_deleted, false) = false
+     LEFT JOIN public.folios f
+       ON f.folio_id = gle.folio_id
+      AND COALESCE(f.is_deleted, false) = false
+     LEFT JOIN public.reservations r
+       ON r.id = gle.reservation_id
+      AND COALESCE(r.is_deleted, false) = false
+     WHERE gle.gl_batch_id = $1::uuid
+       AND gle.tenant_id   = $2::uuid
+       AND COALESCE(gle.is_deleted, false) = false
+     ORDER BY gle.posting_date ASC, gle.created_at ASC
+     LIMIT 10000`,
+    [batchId, tenantId],
+  );
+  return rows;
+};
+
+/**
+ * Fetch minimal batch header info for export metadata.
+ */
+export const getGlBatchHeader = async (
+  batchId: string,
+  tenantId: string,
+): Promise<{
+  gl_batch_id: string;
+  batch_number: string;
+  batch_date: string;
+  batch_status: string;
+  property_id: string;
+  debit_total: string;
+  credit_total: string;
+} | null> => {
+  const { rows } = await query<{
+    gl_batch_id: string;
+    batch_number: string;
+    batch_date: string;
+    batch_status: string;
+    property_id: string;
+    debit_total: string;
+    credit_total: string;
+  }>(
+    `SELECT gl_batch_id, batch_number, batch_date::text, batch_status,
+            property_id::text, debit_total::text, credit_total::text
+     FROM public.general_ledger_batches
+     WHERE gl_batch_id = $1::uuid AND tenant_id = $2::uuid
+       AND COALESCE(is_deleted, false) = false LIMIT 1`,
+    [batchId, tenantId],
+  );
+  return rows[0] ?? null;
+};
