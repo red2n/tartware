@@ -1,17 +1,16 @@
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { IconComponent } from '../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Router } from "@angular/router";
-
+import { DialogService, DynamicDialogModule } from "primeng/dynamicdialog";
+import { InputTextModule } from "primeng/inputtext";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { AuthService } from "../../core/auth/auth.service";
 import {
 	type PropertyOption,
 	TenantContextService,
 } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { IconComponent } from "../../shared/components/icon/icon";
 
 @Component({
 	selector: "app-select-property",

@@ -1,8 +1,7 @@
 import { Component, inject } from "@angular/core";
-import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-
 import type { Property } from "@tartware/schemas";
+import { DynamicDialogConfig, DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
+import { IconComponent } from "../../../shared/components/icon/icon";
 
 type PropertyItem = Pick<Property, "id" | "property_name" | "property_code">;
 
@@ -15,7 +14,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-property-picker-dialog",
 	standalone: true,
-	imports: [ DynamicDialogModule, IconComponent, TranslatePipe],
+	imports: [DynamicDialogModule, IconComponent, TranslatePipe],
 	templateUrl: "./property-picker-dialog.html",
 })
 export class PropertyPickerDialogComponent {

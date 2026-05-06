@@ -1,11 +1,9 @@
 import { AfterViewInit, Component, ElementRef, inject, signal, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { CheckboxModule } from 'primeng/checkbox';
-import { InputTextModule } from 'primeng/inputtext';
-import { IconComponent } from '../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Router } from "@angular/router";
-
+import { CheckboxModule } from "primeng/checkbox";
+import { InputTextModule } from "primeng/inputtext";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { AuthService } from "../../core/auth/auth.service";
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -13,6 +11,7 @@ import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { ThemeService } from "../../core/theme/theme.service";
 import { findFirstAllowedRoute } from "../../layout/nav-config";
+import { IconComponent } from "../../shared/components/icon/icon";
 
 @Component({
 	selector: "app-login",

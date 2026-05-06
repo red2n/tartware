@@ -1,18 +1,11 @@
 import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { PopoverModule } from 'primeng/popover';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
-
-import type {
-	HousekeepingTaskListItem,
-	RoomItem,
-	UserWithTenants,
-} from "@tartware/schemas";
-
+import type { HousekeepingTaskListItem, RoomItem, UserWithTenants } from "@tartware/schemas";
+import { PopoverModule } from "primeng/popover";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -21,6 +14,7 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { settleCommandReadModel } from "../../shared/command-refresh";
+import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -465,9 +459,7 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const data = await this.api.get<UserWithTenants[]>(
-				`/users?tenant_id=${tenantId}&limit=200`,
-			);
+			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=200`);
 			this.staff.set(data ?? []);
 		} catch {
 			this.staff.set([]);
@@ -547,10 +539,7 @@ export class HousekeepingComponent {
 					this.toastService.error("Note cannot be empty");
 					return;
 				}
-				await this.api.post(
-					`/tenants/${tenantId}/housekeeping/tasks/${task.id}/notes`,
-					{ note },
-				);
+				await this.api.post(`/tenants/${tenantId}/housekeeping/tasks/${task.id}/notes`, { note });
 				this.toastService.success(`Note added to task ${task.room_number}.`);
 			}
 			this.cancelAction();
@@ -567,10 +556,9 @@ export class HousekeepingComponent {
 		if (!tenantId) return;
 		this.processingTaskId.set(task.id);
 		try {
-			await this.api.post(
-				`/tenants/${tenantId}/housekeeping/tasks/${task.id}/complete`,
-				{ inspection_passed: true },
-			);
+			await this.api.post(`/tenants/${tenantId}/housekeeping/tasks/${task.id}/complete`, {
+				inspection_passed: true,
+			});
 			this.toastService.success(`Task ${task.room_number} completed.`);
 			await settleCommandReadModel(() => this.loadTasks());
 		} catch (e) {
@@ -585,10 +573,9 @@ export class HousekeepingComponent {
 		if (!tenantId) return;
 		this.processingTaskId.set(task.id);
 		try {
-			await this.api.post(
-				`/tenants/${tenantId}/housekeeping/tasks/${task.id}/reopen`,
-				{ reason: "Reopened from housekeeping screen" },
-			);
+			await this.api.post(`/tenants/${tenantId}/housekeeping/tasks/${task.id}/reopen`, {
+				reason: "Reopened from housekeeping screen",
+			});
 			this.toastService.success(`Task ${task.room_number} reopened.`);
 			await settleCommandReadModel(() => this.loadTasks());
 		} catch (e) {

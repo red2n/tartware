@@ -1,9 +1,8 @@
 import { Component, input, output } from "@angular/core";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { TooltipModule } from 'primeng/tooltip';
 import { RouterLink, RouterLinkActive } from "@angular/router";
-
+import { TooltipModule } from "primeng/tooltip";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { IconComponent } from "../../shared/components/icon/icon";
 import type { NavItem } from "../nav-config";
 
 @Component({

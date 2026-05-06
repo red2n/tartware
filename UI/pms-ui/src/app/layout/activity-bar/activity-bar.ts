@@ -1,9 +1,8 @@
 import { Component, computed, inject, input, output } from "@angular/core";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { TooltipModule } from 'primeng/tooltip';
-
+import { TooltipModule } from "primeng/tooltip";
 import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { IconComponent } from "../../shared/components/icon/icon";
 import type { NavItem } from "../nav-config";
 import { filterNavByAllowedScreens, PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS } from "../nav-config";
 

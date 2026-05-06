@@ -1,15 +1,15 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { AmenityCatalogItem, BuildingItem, RoomItem, RoomTypeItem } from "@tartware/schemas";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { ToggleSwitchModule } from "primeng/toggleswitch";
+import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../../shared/badge-utils";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomTypeRef = Pick<RoomTypeItem, "room_type_id" | "type_name">;

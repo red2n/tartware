@@ -1,11 +1,11 @@
 import { Component, inject, signal } from "@angular/core";
-import { DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { IconComponent } from '../../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
+import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { GuestFormFieldsComponent } from "../guest-form-fields/guest-form-fields";
 import {

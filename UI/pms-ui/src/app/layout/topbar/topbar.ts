@@ -1,10 +1,8 @@
 import { Component, type ElementRef, HostListener, inject, output, viewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { PopoverModule } from 'primeng/popover';
-import { TooltipModule } from 'primeng/tooltip';
 import { Router, RouterLink } from "@angular/router";
-
+import { PopoverModule } from "primeng/popover";
+import { TooltipModule } from "primeng/tooltip";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { I18nService, type LangCode, SUPPORTED_LANGUAGES } from "../../core/i18n/i18n.service";
@@ -16,6 +14,7 @@ import {
 import { RegistryService } from "../../core/registry/registry.service";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { ThemeService } from "../../core/theme/theme.service";
+import { IconComponent } from "../../shared/components/icon/icon";
 import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 
 @Component({

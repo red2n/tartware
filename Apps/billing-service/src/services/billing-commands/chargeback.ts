@@ -1,5 +1,6 @@
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { debitAccountForPaymentMethod, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingChargebackRecordCommandSchema,
@@ -32,8 +33,10 @@ export const recordChargeback = async (
     reservation_id: string | null;
     guest_id: string | null;
     status: string;
+    payment_method: string | null;
+    currency: string | null;
   }>(
-    `SELECT id, amount, reservation_id, guest_id, status
+    `SELECT id, amount, reservation_id, guest_id, status, payment_method, currency
      FROM public.payments
      WHERE tenant_id = $1::uuid AND payment_reference = $2
      ORDER BY created_at DESC LIMIT 1`,
@@ -69,73 +72,108 @@ export const recordChargeback = async (
     );
   }
 
-  // Insert a refund row with chargeback fields set
-  const { rows: refundRows } = await query<{ refund_id: string }>(
-    `INSERT INTO public.refunds (
-       tenant_id, property_id, original_payment_id, guest_id,
-       refund_amount, currency_code, refund_type, refund_method,
-       reason_category, reason_description, request_source, refund_status,
-       is_chargeback, chargeback_date, chargeback_reason, chargeback_reference,
-       approved_at, approved_by,
-       completed_at, processed_by, requested_by, created_by, updated_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, $9::uuid,
-       $4, 'USD', 'DISPUTE', 'ORIGINAL_PAYMENT_METHOD',
-       'DISPUTE', $5::text, 'CHARGEBACK', 'COMPLETED',
-       true, COALESCE($6::date, CURRENT_DATE), $5::varchar, $7::varchar,
-       NOW(), $8::uuid,
-       NOW(), $8::uuid, $8::uuid, $8::uuid, $8::uuid
-     ) RETURNING refund_id`,
-    [
-      context.tenantId,
-      command.property_id,
-      payment.id,
-      command.chargeback_amount,
-      command.chargeback_reason,
-      command.chargeback_date ?? null,
-      command.chargeback_reference ?? null,
-      actor,
-      payment.guest_id,
-    ],
-  );
-
-  const refundId = refundRows[0]?.refund_id;
-
-  // Update the original payment status
-  await query(
-    `UPDATE public.payments
-     SET status = (CASE
-       WHEN $3 >= amount THEN 'REFUNDED'
-       ELSE 'PARTIALLY_REFUNDED'
-     END)::payment_status,
-     refund_amount = COALESCE(refund_amount, 0) + $3,
-     version = version + 1,
-     updated_at = NOW(), updated_by = $4::uuid
-     WHERE tenant_id = $1::uuid AND id = $2::uuid`,
-    [context.tenantId, payment.id, command.chargeback_amount, actor],
-  );
-
-  // Adjust the folio balance if a reservation is linked
-  if (payment.reservation_id) {
-    await query(
-      `WITH target_folio AS (
-         SELECT folio_id
-         FROM public.folios
-         WHERE tenant_id = $1::uuid
-           AND reservation_id = $2::uuid
-           AND folio_status != 'CLOSED'
-         ORDER BY created_at DESC
-         LIMIT 1
-       )
-       UPDATE public.folios AS f
-       SET balance = f.balance + $3,
-           total_payments = f.total_payments - $3,
-           updated_at = NOW()
-       FROM target_folio tf
-       WHERE f.folio_id = tf.folio_id`,
-      [context.tenantId, payment.reservation_id, command.chargeback_amount],
+  // Insert refund row, update payment, adjust folio, and post GL pair atomically
+  const refundId = await withTransaction(async (client) => {
+    const { rows: refundRows } = await queryWithClient<{ refund_id: string }>(
+      client,
+      `INSERT INTO public.refunds (
+         tenant_id, property_id, original_payment_id, guest_id,
+         refund_amount, currency_code, refund_type, refund_method,
+         reason_category, reason_description, request_source, refund_status,
+         is_chargeback, chargeback_date, chargeback_reason, chargeback_reference,
+         approved_at, approved_by,
+         completed_at, processed_by, requested_by, created_by, updated_by
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $9::uuid,
+         $4, 'USD', 'DISPUTE', 'ORIGINAL_PAYMENT_METHOD',
+         'DISPUTE', $5::text, 'CHARGEBACK', 'COMPLETED',
+         true, COALESCE($6::date, CURRENT_DATE), $5::varchar, $7::varchar,
+         NOW(), $8::uuid,
+         NOW(), $8::uuid, $8::uuid, $8::uuid, $8::uuid
+       ) RETURNING refund_id`,
+      [
+        context.tenantId,
+        command.property_id,
+        payment.id,
+        command.chargeback_amount,
+        command.chargeback_reason,
+        command.chargeback_date ?? null,
+        command.chargeback_reference ?? null,
+        actor,
+        payment.guest_id,
+      ],
     );
-  }
+
+    const newRefundId = refundRows[0]?.refund_id;
+    if (!newRefundId) {
+      throw new BillingCommandError(
+        "CHARGEBACK_INSERT_FAILED",
+        "Failed to insert chargeback record.",
+      );
+    }
+
+    // Update the original payment status
+    await queryWithClient(
+      client,
+      `UPDATE public.payments
+       SET status = (CASE
+         WHEN $3 >= amount THEN 'REFUNDED'
+         ELSE 'PARTIALLY_REFUNDED'
+       END)::payment_status,
+       refund_amount = COALESCE(refund_amount, 0) + $3,
+       version = version + 1,
+       updated_at = NOW(), updated_by = $4
+       WHERE tenant_id = $1::uuid AND id = $2::uuid`,
+      [context.tenantId, payment.id, command.chargeback_amount, actor],
+    );
+
+    // Adjust the folio balance if a reservation is linked
+    if (payment.reservation_id) {
+      await queryWithClient(
+        client,
+        `WITH target_folio AS (
+           SELECT folio_id
+           FROM public.folios
+           WHERE tenant_id = $1::uuid
+             AND reservation_id = $2::uuid
+             AND folio_status != 'CLOSED'
+           ORDER BY created_at DESC
+           LIMIT 1
+         )
+         UPDATE public.folios AS f
+         SET balance = f.balance + $3,
+             total_payments = f.total_payments - $3,
+             updated_at = NOW()
+         FROM target_folio tf
+         WHERE f.folio_id = tf.folio_id`,
+        [context.tenantId, payment.reservation_id, command.chargeback_amount],
+      );
+    }
+
+    // GL posting (USALI double-entry, chargeback): DR Guest Ledger (1100) / CR cash account.
+    // Mirrors a refund: receivable re-opens, cash leaves the bank account.
+    const cbCurrency = (payment.currency ?? "USD").toUpperCase();
+    const cbMethod = (payment.payment_method ?? "CREDIT_CARD").toString();
+    const businessDate = new Date().toISOString().slice(0, 10);
+    await postGlPair(client, {
+      tenant_id: context.tenantId,
+      property_id: command.property_id,
+      reservation_id: payment.reservation_id ?? undefined,
+      debit_account: "1100", // Guest Ledger — receivable re-opened
+      credit_account: debitAccountForPaymentMethod(cbMethod), // cash side reversed
+      amount: command.chargeback_amount,
+      currency: cbCurrency,
+      posting_date: businessDate,
+      usali_category: "Chargebacks",
+      description: `Chargeback recorded — ${command.chargeback_reason}${command.chargeback_reference ? ` (${command.chargeback_reference})` : ""}`,
+      source_table: "payments",
+      source_id: payment.id,
+      reference_number: command.chargeback_reference ?? command.payment_reference,
+      created_by: asUuid(actor) ?? SYSTEM_ACTOR_ID,
+    });
+
+    return newRefundId;
+  });
 
   appLogger.info(
     {

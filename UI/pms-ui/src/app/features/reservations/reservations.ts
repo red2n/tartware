@@ -1,12 +1,9 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { TooltipModule } from 'primeng/tooltip';
 import { Router } from "@angular/router";
-
 import type { ReservationGridItem, ReservationGridResponse } from "@tartware/schemas";
-
+import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -14,6 +11,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { reservationStatusClass } from "../../shared/badge-utils";
+import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import {

@@ -1,9 +1,8 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import type { ChargebackListItem } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
-
-import type { ChargebackListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -15,12 +14,7 @@ import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { ToastService } from "../../../shared/toast/toast.service";
 
-type StatusFilter =
-	| "ALL"
-	| "RECEIVED"
-	| "EVIDENCE_SUBMITTED"
-	| "WON"
-	| "LOST";
+type StatusFilter = "ALL" | "RECEIVED" | "EVIDENCE_SUBMITTED" | "WON" | "LOST";
 
 type AdvanceTarget = "EVIDENCE_SUBMITTED" | "WON" | "LOST";
 
@@ -67,9 +61,7 @@ export class ChargebacksComponent {
 	readonly totals = computed(() => {
 		const items = this.chargebacks();
 		const open = items.filter(
-			(c) =>
-				c.chargeback_status === "RECEIVED" ||
-				c.chargeback_status === "EVIDENCE_SUBMITTED",
+			(c) => c.chargeback_status === "RECEIVED" || c.chargeback_status === "EVIDENCE_SUBMITTED",
 		);
 		const openAmount = open.reduce((sum, c) => sum + (c.chargeback_amount ?? 0), 0);
 		const lostAmount = items
@@ -119,9 +111,7 @@ export class ChargebacksComponent {
 		} catch (e) {
 			this.chargebacks.set([]);
 			this.error.set(
-				e instanceof Error
-					? e.message
-					: "Chargeback list endpoint is not currently available.",
+				e instanceof Error ? e.message : "Chargeback list endpoint is not currently available.",
 			);
 		} finally {
 			this.dataReady.set(true);
@@ -188,9 +178,7 @@ export class ChargebacksComponent {
 			this.cancelAdvance();
 			await settleCommandReadModel(() => this.loadChargebacks());
 		} catch (e) {
-			this.toast.error(
-				e instanceof Error ? e.message : "Failed to update chargeback status",
-			);
+			this.toast.error(e instanceof Error ? e.message : "Failed to update chargeback status");
 		} finally {
 			this.processingAdvance.set(false);
 		}

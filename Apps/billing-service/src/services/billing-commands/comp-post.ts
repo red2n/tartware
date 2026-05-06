@@ -1,5 +1,6 @@
 import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
+import { postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingCompPostCommandSchema } from "../../schemas/billing-commands.js";
 import {
@@ -197,6 +198,29 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
       },
       "Comp posted to folio",
     );
+
+    // GL posting (USALI double-entry): DR Comp Expense (5100) / CR Guest Ledger (1100).
+    // The comp reduces the guest receivable and records the comp as an expense.
+    // Inside the same transaction so a failed GL pair rolls back the comp.
+    const businessDate = new Date().toISOString().slice(0, 10);
+    await postGlPair(client, {
+      tenant_id: context.tenantId,
+      property_id: folio.property_id,
+      folio_id: folioId as string,
+      reservation_id: command.reservation_id ?? undefined,
+      debit_account: "5100", // Comp Expense
+      credit_account: "1100", // Guest Ledger
+      amount: command.amount,
+      currency,
+      posting_date: businessDate,
+      usali_category: `Complimentary ${command.comp_type}`,
+      description:
+        command.description ?? `Complimentary ${command.comp_type.toLowerCase()} posting`,
+      source_table: "charge_postings",
+      source_id: postingId,
+      reference_number: compNumber,
+      created_by: actorId,
+    });
 
     return folioId as string;
   });

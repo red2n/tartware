@@ -1,7 +1,6 @@
 import { Component, inject } from "@angular/core";
-import { IconComponent } from '../components/icon/icon';
-
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { IconComponent } from "../components/icon/icon";
 import { ToastService } from "./toast.service";
 
 @Component({

@@ -1,10 +1,6 @@
 import { NgClass } from "@angular/common";
 import { Component, computed, inject, type OnDestroy, type OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { IconComponent } from '../../shared/components/icon/icon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { TooltipModule } from 'primeng/tooltip';
 import { ActivatedRoute, Router } from "@angular/router";
 import type {
 	SettingsCategory,
@@ -13,13 +9,16 @@ import type {
 	SettingsSection,
 	SettingsValue,
 } from "@tartware/schemas";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
+import { ToggleSwitchModule } from "primeng/toggleswitch";
+import { TooltipModule } from "primeng/tooltip";
 import { type Subscription } from "rxjs";
-
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
+import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 
 /** Shape returned by GET /v1/settings/catalog/:code */

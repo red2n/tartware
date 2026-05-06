@@ -451,9 +451,29 @@ export const TrialBalanceResponseSchema = z.object({
 
 export type TrialBalanceResponse = z.infer<typeof TrialBalanceResponseSchema>;
 
-// =====================================================
-// ACCOUNTS RECEIVABLE RESPONSE SCHEMAS
-// =====================================================
+/** Individual GL account line in a GL-sourced trial balance. */
+export const GlTrialBalanceLineSchema = z.object({
+	gl_account_code: z.string(),
+	usali_category: z.string().nullable(),
+	debit_total: z.number(),
+	credit_total: z.number(),
+	net: z.number(),
+});
+export type GlTrialBalanceLine = z.infer<typeof GlTrialBalanceLineSchema>;
+
+/** GL-sourced trial balance — reads from general_ledger_entries (USALI GAAP). */
+export const GlTrialBalanceResponseSchema = z.object({
+	business_date: z.string(),
+	property_id: z.string().nullable(),
+	gl_batch_id: uuid.nullable(),
+	batch_status: z.string().nullable(),
+	line_items: z.array(GlTrialBalanceLineSchema),
+	total_debits: z.number(),
+	total_credits: z.number(),
+	variance: z.number(),
+	is_balanced: z.boolean(),
+});
+export type GlTrialBalanceResponse = z.infer<typeof GlTrialBalanceResponseSchema>;
 
 /** AR list item — summary view for list endpoints. */
 export const AccountsReceivableListItemSchema = z.object({
@@ -1617,3 +1637,11 @@ export const ChargebackListQuerySchema = z.object({
 });
 
 export type ChargebackListQuery = z.infer<typeof ChargebackListQuerySchema>;
+
+export const GlTrialBalanceQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;

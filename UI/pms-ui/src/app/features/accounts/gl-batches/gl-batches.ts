@@ -1,9 +1,8 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import type { GlBatchEntryItem, GlBatchListItem } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
-
-import type { GlBatchEntryItem, GlBatchListItem } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -51,6 +50,14 @@ export class GlBatchesComponent {
 	readonly entriesLoading = signal(false);
 	readonly entriesError = signal<string | null>(null);
 
+	/** Debit/credit totals + variance for the currently-expanded batch entries. */
+	readonly entryTotals = computed(() => {
+		const rows = this.entries();
+		const totalDebit = rows.reduce((s, r) => s + Number(r.debit_amount ?? 0), 0);
+		const totalCredit = rows.reduce((s, r) => s + Number(r.credit_amount ?? 0), 0);
+		return { totalDebit, totalCredit, variance: Math.abs(totalDebit - totalCredit) };
+	});
+
 	readonly filtered = computed(() => {
 		const status = this.statusFilter();
 		const items = this.batches();
@@ -62,12 +69,8 @@ export class GlBatchesComponent {
 		const items = this.batches();
 		const debits = items.reduce((sum, b) => sum + (b.debit_total ?? 0), 0);
 		const credits = items.reduce((sum, b) => sum + (b.credit_total ?? 0), 0);
-		const reviewable = items.filter(
-			(b) => b.batch_status?.toUpperCase() === "REVIEW",
-		).length;
-		const posted = items.filter(
-			(b) => b.batch_status?.toUpperCase() === "POSTED",
-		).length;
+		const reviewable = items.filter((b) => b.batch_status?.toUpperCase() === "REVIEW").length;
+		const posted = items.filter((b) => b.batch_status?.toUpperCase() === "POSTED").length;
 		return {
 			debits,
 			credits,
@@ -104,17 +107,12 @@ export class GlBatchesComponent {
 			if (this.statusFilter() !== "ALL") {
 				params["batch_status"] = this.statusFilter();
 			}
-			const res = await this.api.get<{ data: GlBatchListItem[] }>(
-				"/billing/gl-batches",
-				params,
-			);
+			const res = await this.api.get<{ data: GlBatchListItem[] }>("/billing/gl-batches", params);
 			this.batches.set(res.data ?? []);
 		} catch (e) {
 			this.batches.set([]);
 			this.error.set(
-				e instanceof Error
-					? e.message
-					: "GL batch list endpoint is not currently available.",
+				e instanceof Error ? e.message : "GL batch list endpoint is not currently available.",
 			);
 		} finally {
 			this.dataReady.set(true);
@@ -152,9 +150,7 @@ export class GlBatchesComponent {
 			);
 			this.entries.set(res.data ?? []);
 		} catch (e) {
-			this.entriesError.set(
-				e instanceof Error ? e.message : "Failed to load batch entries.",
-			);
+			this.entriesError.set(e instanceof Error ? e.message : "Failed to load batch entries.");
 		} finally {
 			this.entriesLoading.set(false);
 		}
@@ -185,6 +181,79 @@ export class GlBatchesComponent {
 	canExport(batch: GlBatchListItem): boolean {
 		const status = batch.batch_status?.toUpperCase();
 		return status === "REVIEW" || status === "OPEN";
+	}
+
+	/**
+	 * Download GL entries for the selected batch as a CSV file.
+	 * Only available once entries have been loaded (drill-down opened).
+	 */
+	downloadCsv(batch: GlBatchListItem): void {
+		const rows = this.entries();
+		if (!rows.length) {
+			this.toast.error("No entries loaded — open the batch first.");
+			return;
+		}
+		const headers = [
+			"entry_id",
+			"entry_number",
+			"transaction_date",
+			"account_code",
+			"account_name",
+			"folio_id",
+			"reservation_id",
+			"confirmation_number",
+			"department_code",
+			"description",
+			"debit_amount",
+			"credit_amount",
+			"currency_code",
+			"source_reference",
+			"entry_status",
+		];
+		const escapeCsvCell = (v: unknown): string => {
+			let s = v == null ? "" : String(v);
+			// Prevent spreadsheet formula injection (OWASP CSV injection).
+			if (/^[=+\-@]/.test(s)) s = `\t${s}`;
+			return s.includes(",") || s.includes('"') || s.includes("\n")
+				? `"${s.replace(/"/g, '""')}"`
+				: s;
+		};
+		const csv = [
+			headers.join(","),
+			...rows.map((r) =>
+				[
+					r.entry_id,
+					r.entry_number,
+					r.transaction_date,
+					r.account_code,
+					r.account_name ?? "",
+					r.folio_id ?? "",
+					r.reservation_id ?? "",
+					r.confirmation_number ?? "",
+					r.department_code ?? "",
+					r.description,
+					r.debit_amount,
+					r.credit_amount,
+					r.currency_code,
+					r.source_reference ?? "",
+					r.entry_status,
+				]
+					.map(escapeCsvCell)
+					.join(","),
+			),
+		].join("\r\n");
+
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `gl-batch-${batch.batch_number}-${batch.batch_date}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		queueMicrotask(() => {
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		});
 	}
 
 	statusBadge(status: string | undefined): string {

@@ -3,6 +3,7 @@ import type { PaymentRow } from "@tartware/schemas";
 import { auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+import { debitAccountForPaymentMethod, postGlPair } from "../../lib/gl-posting.js";
 import {
   type BillingPaymentRefundCommand,
   BillingPaymentRefundCommandSchema,
@@ -16,10 +17,12 @@ import {
   subtractMoney,
 } from "../../utils/money.js";
 import {
+  asUuid,
   BillingCommandError,
   type CommandContext,
   resolveActorId,
   resolveFolioId,
+  SYSTEM_ACTOR_ID,
 } from "./common.js";
 
 /**
@@ -189,6 +192,33 @@ const refundPayment = async (
         new_payment_status: refundStatus,
         reservation_id: command.reservation_id,
       },
+    });
+
+    // GL posting (USALI double-entry, refund): DR Guest Ledger (1100) / CR cash account.
+    // Reverses the original payment direction so books re-recognise the receivable.
+    const refundCurrency = (command.currency ?? original.currency ?? "USD").toUpperCase();
+    const refundMethod = (
+      command.payment_method ??
+      original.payment_method ??
+      "CREDIT_CARD"
+    ).toString();
+    const businessDate = new Date().toISOString().slice(0, 10);
+    await postGlPair(client, {
+      tenant_id: context.tenantId,
+      property_id: command.property_id,
+      folio_id: refundFolioId ?? undefined,
+      reservation_id: command.reservation_id ?? undefined,
+      debit_account: "1100", // Guest Ledger — receivable re-opened
+      credit_account: debitAccountForPaymentMethod(refundMethod), // cash side reversed
+      amount: command.amount,
+      currency: refundCurrency,
+      posting_date: businessDate,
+      usali_category: "Cash & Equivalents",
+      description: `Payment refund via ${refundMethod}: ${refundReference}${command.reason ? ` — ${command.reason}` : ""}`,
+      source_table: "payments",
+      source_id: refundId,
+      reference_number: refundReference,
+      created_by: asUuid(actor) ?? SYSTEM_ACTOR_ID,
     });
 
     return refundId;
