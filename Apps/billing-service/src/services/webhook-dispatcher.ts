@@ -238,12 +238,18 @@ export async function dispatchWebhookEvent(
   };
 
   try {
-    if (/^(payment\.(captured|succeeded)|charge\.captured)$/.test(eventType)) {
+    if (
+      /^(payment\.(captured|succeeded)|charge\.captured|payment_intent\.succeeded|charge\.succeeded)$/.test(
+        eventType,
+      )
+    ) {
       const gatewayRef = extractGatewayRef(payload);
       if (gatewayRef) {
         await query(UPDATE_PAYMENT_STATUS_SQL, [tenantId, "COMPLETED", gatewayRef]);
       }
-    } else if (/^(payment\.failed|charge\.failed)$/.test(eventType)) {
+    } else if (
+      /^(payment\.failed|charge\.failed|payment_intent\.payment_failed)$/.test(eventType)
+    ) {
       const gatewayRef = extractGatewayRef(payload);
       if (gatewayRef) {
         await query(UPDATE_PAYMENT_STATUS_SQL, [tenantId, "FAILED", gatewayRef]);
@@ -304,6 +310,24 @@ export async function dispatchWebhookEvent(
             });
           }
         }
+      }
+    } else if (
+      /^(refund\.(completed|succeeded)|payment\.refunded|charge\.refunded)$/.test(eventType)
+    ) {
+      // refund.completed / charge.refunded → mark the associated payment as REFUNDED
+      const gatewayRef = extractGatewayRef(payload);
+      if (gatewayRef) {
+        await query(UPDATE_PAYMENT_STATUS_SQL, [tenantId, "REFUNDED", gatewayRef]);
+      }
+    } else if (
+      /^(authorization\.expired|payment\.authorization_expired|payment_intent\.canceled)$/.test(
+        eventType,
+      )
+    ) {
+      // authorization.expired / payment_intent.canceled → release the AUTHORIZED hold
+      const gatewayRef = extractGatewayRef(payload);
+      if (gatewayRef) {
+        await query(UPDATE_PAYMENT_STATUS_SQL, [tenantId, "CANCELLED", gatewayRef]);
       }
     } else {
       // Unknown or already-handled event — mark as SKIPPED

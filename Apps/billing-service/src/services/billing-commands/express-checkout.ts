@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { appLogger } from "../../lib/logger.js";
@@ -142,5 +143,17 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
       },
       "express checkout completed",
     );
+  });
+
+  auditAsync({
+    tenantId,
+    propertyId: command.property_id,
+    userId: actorId,
+    action: "EXPRESS_CHECKOUT_COMPLETED",
+    entityType: "reservation",
+    entityId: command.reservation_id,
+    severity: "INFO",
+    description: `Express checkout completed for reservation ${command.reservation_id}`,
+    newValues: { reservationId: command.reservation_id, folioId, status: "CHECKED_OUT" },
   });
 };

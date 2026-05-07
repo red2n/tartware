@@ -47,6 +47,12 @@ export const ChargePostingsSchema = z.object({
 	discount_amount: money.optional(),
 	total_amount: money,
 	currency_code: z.string().optional(),
+	/** FX rate locked at posting time (transaction_currency/base_currency). 1.0 when same currency. */
+	exchange_rate: money.optional(),
+	/** total_amount converted to property base currency at the locked exchange_rate. */
+	base_amount: money.optional(),
+	/** Property base currency (ISO 4217, e.g. USD) for FX conversion. */
+	base_currency: z.string().max(3).optional(),
 	tax_rate: money.optional(),
 	tax_code: z.string().optional(),
 	tax_inclusive: z.boolean().optional(),

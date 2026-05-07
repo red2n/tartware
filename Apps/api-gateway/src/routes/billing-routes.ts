@@ -1146,6 +1146,36 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   // ============================================================================
+  // PAYMENT GATEWAY INBOUND WEBHOOKS (no JWT — HMAC-verified in billing-service)
+  // Payment gateways (Stripe, Adyen, etc.) POST async events directly here.
+  // The billing-service performs HMAC-SHA256 verification and idempotency checks.
+  // ============================================================================
+
+  app.post(
+    "/v1/billing/webhooks/payment-gateway",
+    {
+      schema: {
+        description:
+          "Inbound payment-gateway webhook. HMAC signature verified downstream by billing-service. No JWT required.",
+        tags: ["Webhooks"],
+        querystring: {
+          type: "object",
+          required: ["tenant_id", "provider"],
+          properties: {
+            tenant_id: { type: "string", format: "uuid" },
+            provider: { type: "string" },
+            property_id: { type: "string", format: "uuid" },
+          },
+        },
+        response: {
+          200: { type: "object", properties: { received: { type: "boolean" } } },
+        },
+      },
+    },
+    proxyBilling,
+  );
+
+  // ============================================================================
   // BILLING SERVICE CATCH-ALL (remaining routes → billing-service :3025)
   // ============================================================================
 

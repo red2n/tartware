@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
@@ -217,6 +218,18 @@ export const chargeLateCheckout = async (
     },
     "Late checkout charge posted",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId ?? "00000000-0000-0000-0000-000000000000",
+    action: "LATE_CHECKOUT_CHARGE_POSTED",
+    entityType: "charge_posting",
+    entityId: postingId,
+    severity: "INFO",
+    description: `Late checkout charge posted to folio ${folioId}: ${chargeAmount} ${currency}`,
+    newValues: { folioId, chargeAmount, currency, reservationId: command.reservation_id },
+    metadata: { chargeCode: "LATE_CHECKOUT" },
+  });
 
   return folioId;
 };

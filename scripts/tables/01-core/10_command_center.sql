@@ -292,7 +292,38 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.recommendation.approve', 'Approve a rate recommendation', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.recommendation.reject', 'Reject a rate recommendation with reason', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.recommendation.apply', 'Apply an accepted recommendation to live rates', 'revenue-service', ARRAY['revenue-management']),
-        ('revenue.recommendation.bulk_approve', 'Bulk-approve multiple rate recommendations', 'revenue-service', ARRAY['revenue-management'])
+        ('revenue.recommendation.bulk_approve', 'Bulk-approve multiple rate recommendations', 'revenue-service', ARRAY['revenue-management']),
+        -- ── ACCT-02: Advance Deposit Lifecycle ──────────────────────────────
+        ('billing.deposit.record',  'Record receipt of an advance deposit against a schedule entry',           'billing-service', ARRAY['finance-automation']),
+        ('billing.deposit.transfer','Transfer advance deposit liability to folio credit at check-in',          'billing-service', ARRAY['finance-automation']),
+        ('billing.deposit.refund',  'Refund an advance deposit (partial or full)',                             'billing-service', ARRAY['finance-automation']),
+        ('billing.deposit.waive',   'Waive a pending deposit schedule entry (no GL movement)',                 'billing-service', ARRAY['finance-automation']),
+        -- ── ACCT-03: Suspense Account ────────────────────────────────────────
+        ('billing.suspense.resolve',    'Move a suspense charge to the correct guest folio',                  'billing-service', ARRAY['finance-automation']),
+        ('billing.suspense.write_off',  'Write off an unresolvable suspense item as bad debt',                'billing-service', ARRAY['finance-automation']),
+        -- ── ACCT-17: Group Master Billing ────────────────────────────────────
+        ('billing.group.setup',             'Create master folio and routing rules for a group booking',      'billing-service', ARRAY['finance-automation']),
+        ('billing.group.checkout',          'Close all group folios and finalize group billing',              'billing-service', ARRAY['finance-automation']),
+        ('billing.group.add_reservation',   'Add a reservation to an existing group master folio',           'billing-service', ARRAY['finance-automation']),
+        -- ── ARA Sprint 1: AR Account Management ─────────────────────────────
+        ('ar.account.create',        'Create a new AR account for a company or travel agent',                 'billing-service', ARRAY['finance-automation']),
+        ('ar.account.update_terms',  'Update credit limit, payment terms, or status on an AR account',        'billing-service', ARRAY['finance-automation']),
+        -- ── ARA Sprint 1: City Ledger ────────────────────────────────────────
+        ('ar.city_ledger.transfer',  'Transfer a folio outstanding balance to city ledger',                   'billing-service', ARRAY['finance-automation']),
+        ('ar.city_ledger.write_off', 'Write off a bad-debt city ledger entry',                               'billing-service', ARRAY['finance-automation']),
+        -- ── ARA Sprint 1: Aging ──────────────────────────────────────────────
+        ('ar.aging.compute',  'Compute nightly aging snapshot for all open city ledger entries',              'billing-service', ARRAY['finance-automation']),
+        -- ── ARA Sprint 1: Dunning ────────────────────────────────────────────
+        ('ar.dunning.trigger',   'Trigger a dunning action (reminder, warning, collections) for an AR account','billing-service', ARRAY['finance-automation']),
+        ('ar.dunning.suppress',  'Suppress dunning for an AR account for a specified number of days',          'billing-service', ARRAY['finance-automation']),
+        ('ar.dunning.escalate',  'Manually escalate dunning level for an AR account (bypass time threshold)', 'billing-service', ARRAY['finance-automation']),
+        -- ── ARA Sprint 1: Cash Application ───────────────────────────────────
+        ('ar.payment.apply',    'Apply an incoming payment to city ledger entries (FIFO or manual)',           'billing-service', ARRAY['finance-automation']),
+        ('ar.payment.unapply',  'Reverse a misapplied cash application',                                     'billing-service', ARRAY['finance-automation']),
+        -- ── ARA Sprint 1: Disputes ───────────────────────────────────────────
+        ('ar.dispute.raise',     'Raise a dispute on a city ledger entry',                                    'billing-service', ARRAY['finance-automation']),
+        ('ar.dispute.resolve',   'Resolve a dispute and re-open the entry for collection',                    'billing-service', ARRAY['finance-automation']),
+        ('ar.dispute.escalate',  'Escalate a dispute to management or collections',                           'billing-service', ARRAY['finance-automation'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT
@@ -302,10 +333,7 @@ SELECT
     sc.required_modules,
     jsonb_build_object('seeded', true)
 FROM seed_commands sc
-ON CONFLICT (command_name) DO UPDATE SET
-    description           = EXCLUDED.description,
-    default_target_service = EXCLUDED.default_target_service,
-    required_modules      = EXCLUDED.required_modules;
+ON CONFLICT (command_name) DO NOTHING;
 
 INSERT INTO command_routes (command_name, environment, tenant_id, service_id, topic, metadata)
 SELECT

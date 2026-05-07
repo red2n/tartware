@@ -1,9 +1,9 @@
 -- =====================================================
 -- verify-03-reservations-booking.sql
 -- Verification Script for Reservations & Booking Tables
--- Category: 03-reservations-booking (15 tables)
+-- Category: 03-reservations-booking (16 tables)
 -- Date: 2025-10-19
--- Updated: 2026-02-18
+-- Updated: 2026-05-06
 -- =====================================================
 
 \c tartware
@@ -11,14 +11,14 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: RESERVATIONS & BOOKING VERIFICATION'
-\echo '  Tables: 15 | Description: Reservation lifecycle, deposits, allotments, waitlists, overbooking, lost business'
+\echo '  Tables: 16 | Description: Reservation lifecycle, deposits, allotments, waitlists, overbooking, lost business'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 15 tables exist...'
+\echo '1. Checking if all 16 tables exist...'
 
 DO $$
 DECLARE
@@ -37,7 +37,8 @@ DECLARE
         'reservation_rate_fallbacks',
         'overbooking_config',
         'walk_history',
-        'lost_business'
+        'lost_business',
+        'reservations_partitioned'
     ];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
@@ -63,7 +64,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Reservations & Booking verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 15 Reservations & Booking tables exist!';
+        RAISE NOTICE '✓✓✓ All 16 Reservations & Booking tables exist!';
     END IF;
 END $$;
 
@@ -99,7 +100,8 @@ WHERE t.table_name IN (
         'reservation_rate_fallbacks',
         'overbooking_config',
         'walk_history',
-        'lost_business'
+        'lost_business',
+        'reservations_partitioned'
     )
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
@@ -135,20 +137,21 @@ BEGIN
         'reservation_rate_fallbacks',
         'overbooking_config',
         'walk_history',
-        'lost_business'
+        'lost_business',
+        'reservations_partitioned'
     )
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Reservations & Booking';
-    RAISE NOTICE 'Tables Found: % / 15', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 16', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 15 THEN
+    IF v_table_count = 16 THEN
         RAISE NOTICE '✓✓✓ RESERVATIONS & BOOKING VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ RESERVATIONS & BOOKING VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 15 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 16 tables, found %', v_table_count;
     END IF;
 END $$;
 

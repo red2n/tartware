@@ -1,8 +1,9 @@
 -- =====================================================
 -- verify-06-channel-ota.sql
 -- Verification Script for Channel Management & OTA Tables
--- Category: 06-channel-ota (10 tables)
+-- Category: 06-channel-ota (12 tables)
 -- Date: 2025-10-19
+-- Updated: 2026-05-06
 -- =====================================================
 
 \c tartware
@@ -10,18 +11,18 @@
 \echo ''
 \echo '=============================================='
 \echo '  CATEGORY: CHANNEL MANAGEMENT & DISTRIBUTION VERIFICATION'
-\echo '  Tables: 10 | Description: OTA, GDS, and distribution channel integrations'
+\echo '  Tables: 12 | Description: OTA, GDS, metasearch, and distribution channel integrations'
 \echo '=============================================='
 \echo ''
 
 -- =====================================================
 -- 1. CHECK IF ALL TABLES EXIST
 -- =====================================================
-\echo '1. Checking if all 10 tables exist...'
+\echo '1. Checking if all 12 tables exist...'
 
 DO $$
 DECLARE
-    v_expected_tables TEXT[] := ARRAY['channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue'];
+    v_expected_tables TEXT[] := ARRAY['channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue', 'metasearch_click_log', 'metasearch_configurations'];
     v_table TEXT;
     v_missing_tables TEXT[] := '{}'::TEXT[];
     v_found_count INTEGER := 0;
@@ -46,7 +47,7 @@ BEGIN
         RAISE WARNING 'Missing tables: %', array_to_string(v_missing_tables, ', ');
         RAISE EXCEPTION 'Channel Management & OTA verification FAILED - missing tables!';
     ELSE
-        RAISE NOTICE '✓✓✓ All 10 Channel Management & Distribution tables exist!';
+        RAISE NOTICE '✓✓✓ All 12 Channel Management & Distribution tables exist!';
     END IF;
 END $$;
 
@@ -67,7 +68,7 @@ FROM information_schema.tables t
 LEFT JOIN information_schema.columns c
     ON t.table_schema = c.table_schema
     AND t.table_name = c.table_name
-WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue')
+WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue', 'metasearch_click_log', 'metasearch_configurations')
     AND t.table_schema = 'public'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
@@ -87,19 +88,19 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO v_table_count
     FROM information_schema.tables t
-    WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue')
+    WHERE t.table_name IN ('channel_mappings', 'ota_configurations', 'ota_rate_plans', 'ota_reservations_queue', 'ota_inventory_sync', 'channel_rate_parity', 'channel_commission_rules', 'gds_connections', 'gds_message_log', 'gds_reservation_queue', 'metasearch_click_log', 'metasearch_configurations')
         AND t.table_schema = 'public';
 
     RAISE NOTICE '';
     RAISE NOTICE 'Category: Channel Management & Distribution';
-    RAISE NOTICE 'Tables Found: % / 10', v_table_count;
+    RAISE NOTICE 'Tables Found: % / 12', v_table_count;
     RAISE NOTICE '';
 
-    IF v_table_count = 10 THEN
+    IF v_table_count = 12 THEN
         RAISE NOTICE '✓✓✓ CHANNEL MANAGEMENT & DISTRIBUTION VERIFICATION PASSED ✓✓✓';
     ELSE
         RAISE WARNING '⚠⚠⚠ CHANNEL MANAGEMENT & DISTRIBUTION VERIFICATION FAILED ⚠⚠⚠';
-        RAISE WARNING 'Expected 10 tables, found %', v_table_count;
+        RAISE WARNING 'Expected 12 tables, found %', v_table_count;
     END IF;
 END $$;
 

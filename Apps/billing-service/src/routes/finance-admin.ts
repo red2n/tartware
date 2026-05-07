@@ -19,11 +19,13 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { glEntriesToCsv, glEntriesToXml } from "../lib/gl-export-generator.js";
 import {
   getCommissionReport,
   getDepartmentalRevenue,
   getGlBatchEntries,
+  getGlBatchHeader,
+  getGlEntriesForExport,
   getGlTrialBalance,
   getTaxConfigurationById,
   getTaxSummary,
@@ -33,6 +35,7 @@ import {
   listGlBatches,
   listLedgerEntries,
   listTaxConfigurations,
+  queryAuditTrail,
 } from "../services/finance-admin-service.js";
 
 const FINANCE_TAG = "Finance Admin";
@@ -598,6 +601,160 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
         offset,
       });
       return ChargebackListResponseSchema.parse({ data, meta: { count: data.length } });
+    },
+  );
+
+  // ============================================================================
+  // AUDIT TRAIL
+  // ============================================================================
+
+  const AuditTrailQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    entity_type: z.string().optional(),
+    entity_id: z.string().uuid().optional(),
+    severity: z.enum(["INFO", "WARNING", "CRITICAL", "SECURITY"]).optional(),
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+    is_pci_relevant: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().positive().max(500).default(100),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  type AuditTrailQueryType = z.infer<typeof AuditTrailQuerySchema>;
+
+  const AuditTrailQueryJsonSchema = schemaFromZod(AuditTrailQuerySchema, "AuditTrailQuery");
+
+  app.get<{ Querystring: AuditTrailQueryType }>(
+    "/v1/billing/audit-trail",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as AuditTrailQueryType).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "Query billing financial audit trail (FINANCIAL action_category from audit_logs)",
+        querystring: AuditTrailQueryJsonSchema,
+        response: {
+          200: {
+            type: "object",
+            properties: { data: { type: "array" }, meta: { type: "object" } },
+          },
+        },
+      }),
+    },
+    async (request) => {
+      const q = AuditTrailQuerySchema.parse(request.query);
+      const data = await queryAuditTrail({
+        tenantId: q.tenant_id,
+        propertyId: q.property_id,
+        entityType: q.entity_type,
+        entityId: q.entity_id,
+        severity: q.severity,
+        startDate: q.start_date,
+        endDate: q.end_date,
+        isPciRelevant: q.is_pci_relevant,
+        limit: q.limit,
+        offset: q.offset,
+      });
+      return { data, meta: { count: data.length, limit: q.limit, offset: q.offset } };
+    },
+  );
+
+  // ============================================================================
+  // GL BATCH EXPORT — CSV/XML DOWNLOAD (ACCT-06)
+  // ============================================================================
+
+  const GlExportQuerySchema = z.object({ tenant_id: z.string().uuid() });
+  type GlExportQuery = z.infer<typeof GlExportQuerySchema>;
+
+  /**
+   * GET /v1/billing/gl-batches/:batchId/export.csv
+   * Download a GL batch as USALI-compliant CSV for ERP import.
+   */
+  app.get<{ Params: { batchId: string }; Querystring: GlExportQuery }>(
+    "/v1/billing/gl-batches/:batchId/export.csv",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as GlExportQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "Download GL batch as USALI CSV (ACCT-06)",
+        description:
+          "Returns the GL entries for a batch as a CSV file in USALI 12th Edition format for ERP import.",
+        querystring: schemaFromZod(GlExportQuerySchema, "GlExportCsvQuery"),
+        response: {
+          200: { type: "string" },
+          404: { type: "object", properties: { error: { type: "string" } } },
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { tenant_id } = GlExportQuerySchema.parse(request.query);
+      const { batchId } = request.params;
+      const header = await getGlBatchHeader(batchId, tenant_id);
+      if (!header) {
+        return reply.code(404).send({ error: "GL batch not found." });
+      }
+      const entries = await getGlEntriesForExport(batchId, tenant_id);
+      const csv = glEntriesToCsv(entries);
+      reply.header("Content-Type", "text/csv; charset=utf-8");
+      reply.header(
+        "Content-Disposition",
+        `attachment; filename="gl-batch-${header.batch_number}-${header.batch_date}.csv"`,
+      );
+      return reply.send(csv);
+    },
+  );
+
+  /**
+   * GET /v1/billing/gl-batches/:batchId/export.xml
+   * Download a GL batch as USALI-compliant XML for ERP import.
+   */
+  app.get<{ Params: { batchId: string }; Querystring: GlExportQuery }>(
+    "/v1/billing/gl-batches/:batchId/export.xml",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as GlExportQuery).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: FINANCE_TAG,
+        summary: "Download GL batch as USALI XML (ACCT-06)",
+        description:
+          "Returns the GL entries for a batch as an XML file in USALI 12th Edition format for ERP import.",
+        querystring: schemaFromZod(GlExportQuerySchema, "GlExportXmlQuery"),
+        response: {
+          200: { type: "string" },
+          404: { type: "object", properties: { error: { type: "string" } } },
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { tenant_id } = GlExportQuerySchema.parse(request.query);
+      const { batchId } = request.params;
+      const header = await getGlBatchHeader(batchId, tenant_id);
+      if (!header) {
+        return reply.code(404).send({ error: "GL batch not found." });
+      }
+      const entries = await getGlEntriesForExport(batchId, tenant_id);
+      const xml = glEntriesToXml(entries, {
+        batchId: header.gl_batch_id,
+        exportedAt: new Date().toISOString(),
+        propertyId: header.property_id,
+      });
+      reply.header("Content-Type", "application/xml; charset=utf-8");
+      reply.header(
+        "Content-Disposition",
+        `attachment; filename="gl-batch-${header.batch_number}-${header.batch_date}.xml"`,
+      );
+      return reply.send(xml);
     },
   );
 };

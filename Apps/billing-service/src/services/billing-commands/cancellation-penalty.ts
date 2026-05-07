@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
@@ -35,8 +36,12 @@ export const chargeCancellationPenalty = async (
     room_rate: string | null;
     currency_code: string | null;
     rate_id: string | null;
+    cancellation_policy_snapshot: { type: string; hours: number; penalty: number } | null;
+    check_in_date: string | null;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code, rate_id
+    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code, rate_id,
+            cancellation_policy_snapshot,
+            check_in_date::text AS check_in_date
      FROM public.reservations
      WHERE tenant_id = $1::uuid AND id = $2::uuid
      LIMIT 1`,
@@ -62,33 +67,83 @@ export const chargeCancellationPenalty = async (
   if (command.penalty_amount_override) {
     penaltyAmount = command.penalty_amount_override;
   } else {
-    // Derive from rate cancellation policy (first-night charge is the standard)
-    let ratePenalty: number | null = null;
-    if (reservation.rate_id) {
-      const { rows: rateRows } = await query<{ penalty_amount: string | null }>(
-        `SELECT (cancellation_policy->>'penalty')::text AS penalty_amount
-         FROM public.rates
-         WHERE id = $1::uuid AND tenant_id = $2::uuid
-         LIMIT 1`,
-        [reservation.rate_id, context.tenantId],
-      );
-      const rate = rateRows[0];
-      if (rate?.penalty_amount) {
-        const parsed = Number(rate.penalty_amount);
-        if (Number.isFinite(parsed)) {
-          ratePenalty = parsed;
+    // ACCT-12: Prefer the cancellation policy snapshot frozen at booking time.
+    // This prevents retroactive changes to the rate plan from affecting existing
+    // reservations. Only fall back to the live rates table for legacy records.
+    const snapshot = reservation.cancellation_policy_snapshot;
+    let snapshotPenalty: number | null = null;
+
+    if (snapshot && typeof snapshot.penalty === "number" && Number.isFinite(snapshot.penalty)) {
+      // Honour the grace period: if cancellation happens inside the deadline window,
+      // and the policy type is not non_refundable, suppress the penalty.
+      if (snapshot.type === "non_refundable") {
+        snapshotPenalty = snapshot.penalty;
+      } else if (reservation.check_in_date && snapshot.hours > 0) {
+        const checkIn = new Date(reservation.check_in_date).getTime();
+        const now = Date.now();
+        const hoursUntilCheckIn = (checkIn - now) / (1000 * 60 * 60);
+        if (hoursUntilCheckIn >= snapshot.hours) {
+          // Cancelled inside cancellation window — within terms, no penalty.
+          appLogger.info(
+            {
+              reservation_id: command.reservation_id,
+              hours_until_checkin: hoursUntilCheckIn,
+              deadline_hours: snapshot.hours,
+            },
+            "Cancellation within free-cancel window; penalty suppressed by snapshot policy",
+          );
+          snapshotPenalty = 0;
+        } else {
+          snapshotPenalty = snapshot.penalty;
         }
+      } else {
+        snapshotPenalty = snapshot.penalty;
       }
     }
 
-    // Fall back to first-night room rate
-    penaltyAmount = ratePenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
+    if (snapshotPenalty !== null) {
+      if (snapshotPenalty === 0) {
+        // Policy allows free cancellation — charge nothing.
+        appLogger.info(
+          { reservation_id: command.reservation_id },
+          "No penalty due per snapshot policy",
+        );
+        return command.reservation_id;
+      }
+      penaltyAmount = snapshotPenalty;
+    } else {
+      // Legacy path: no snapshot — query live rates table.
+      let ratePenalty: number | null = null;
+      if (reservation.rate_id) {
+        const { rows: rateRows } = await query<{ penalty_amount: string | null }>(
+          `SELECT (cancellation_policy->>'penalty')::text AS penalty_amount
+           FROM public.rates
+           WHERE id = $1::uuid AND tenant_id = $2::uuid
+           LIMIT 1`,
+          [reservation.rate_id, context.tenantId],
+        );
+        const rate = rateRows[0];
+        if (rate?.penalty_amount) {
+          const parsed = Number(rate.penalty_amount);
+          if (Number.isFinite(parsed)) {
+            ratePenalty = parsed;
+          }
+        }
+        appLogger.warn(
+          { reservation_id: command.reservation_id },
+          "No cancellation_policy_snapshot on reservation — reading live rate plan (ACCT-12 legacy fallback)",
+        );
+      }
 
-    if (penaltyAmount <= 0) {
-      throw new BillingCommandError(
-        "CANCELLATION_PENALTY_UNKNOWN",
-        "Cannot determine cancellation penalty. Provide penalty_amount_override or configure the rate plan.",
-      );
+      // Fall back to first-night room rate
+      penaltyAmount = ratePenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
+
+      if (penaltyAmount <= 0) {
+        throw new BillingCommandError(
+          "CANCELLATION_PENALTY_UNKNOWN",
+          "Cannot determine cancellation penalty. Provide penalty_amount_override or configure the rate plan.",
+        );
+      }
     }
   }
 
@@ -196,6 +251,24 @@ export const chargeCancellationPenalty = async (
     },
     "Cancellation penalty posted",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    userId: actorId ?? "00000000-0000-0000-0000-000000000000",
+    action: "CANCELLATION_PENALTY_POSTED",
+    entityType: "charge_posting",
+    entityId: postingId,
+    severity: "WARNING",
+    description: `Cancellation penalty posted to folio ${folioId}: ${penaltyAmount} ${currency}`,
+    newValues: {
+      folioId,
+      penaltyAmount,
+      currency,
+      reservationId: command.reservation_id,
+      chargeCode,
+    },
+    metadata: { chargeCode },
+  });
 
   return folioId;
 };

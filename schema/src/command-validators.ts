@@ -14,7 +14,29 @@ import {
 	BillingArApplyPaymentCommandSchema,
 	BillingArPostCommandSchema,
 	BillingArWriteOffCommandSchema,
+	ArAccountCreateCommandSchema,
+	ArAccountUpdateTermsCommandSchema,
+	ArAgingComputeCommandSchema,
+	ArCityLedgerTransferCommandSchema,
+	ArCityLedgerWriteOffCommandSchema,
+	ArDisputeRaiseCommandSchema,
+	ArDisputeResolveCommandSchema,
+	ArDisputeEscalateCommandSchema,
+	ArDunningTriggerCommandSchema,
+	ArDunningSuppressCommandSchema,
+	ArDunningEscalateCommandSchema,
+	ArPaymentApplyCommandSchema,
+	ArPaymentUnapplyCommandSchema,
 	BillingCancellationPenaltyCommandSchema,
+	BillingDepositRecordCommandSchema,
+	BillingDepositRefundCommandSchema,
+	BillingDepositTransferCommandSchema,
+	BillingDepositWaiveCommandSchema,
+	BillingGroupAddReservationCommandSchema,
+	BillingGroupCheckoutCommandSchema,
+	BillingGroupSetupCommandSchema,
+	BillingSuspenseResolveCommandSchema,
+	BillingSuspenseWriteOffCommandSchema,
 	BillingCashierCloseCommandSchema,
 	BillingCashierHandoverCommandSchema,
 	BillingCashierOpenCommandSchema,
@@ -338,6 +360,42 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => BillingArWriteOffCommandSchema.parse(payload),
 	],
 	[
+		"billing.deposit.record",
+		(payload) => BillingDepositRecordCommandSchema.parse(payload),
+	],
+	[
+		"billing.deposit.transfer",
+		(payload) => BillingDepositTransferCommandSchema.parse(payload),
+	],
+	[
+		"billing.deposit.refund",
+		(payload) => BillingDepositRefundCommandSchema.parse(payload),
+	],
+	[
+		"billing.deposit.waive",
+		(payload) => BillingDepositWaiveCommandSchema.parse(payload),
+	],
+	[
+		"billing.suspense.resolve",
+		(payload) => BillingSuspenseResolveCommandSchema.parse(payload),
+	],
+	[
+		"billing.suspense.write_off",
+		(payload) => BillingSuspenseWriteOffCommandSchema.parse(payload),
+	],
+	[
+		"billing.group.setup",
+		(payload) => BillingGroupSetupCommandSchema.parse(payload),
+	],
+	[
+		"billing.group.checkout",
+		(payload) => BillingGroupCheckoutCommandSchema.parse(payload),
+	],
+	[
+		"billing.group.add_reservation",
+		(payload) => BillingGroupAddReservationCommandSchema.parse(payload),
+	],
+	[
 		"billing.cashier.open",
 		(payload) => BillingCashierOpenCommandSchema.parse(payload),
 	],
@@ -460,6 +518,59 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.routing_rule.clone_template",
 		(payload) => BillingRoutingRuleCloneTemplateCommandSchema.parse(payload),
+	],
+	// ─── ARA: AR Accounts ────────────────────────────────────────────────────
+	[
+		"ar.account.create",
+		(payload) => ArAccountCreateCommandSchema.parse(payload),
+	],
+	[
+		"ar.account.update_terms",
+		(payload) => ArAccountUpdateTermsCommandSchema.parse(payload),
+	],
+	[
+		"ar.city_ledger.transfer",
+		(payload) => ArCityLedgerTransferCommandSchema.parse(payload),
+	],
+	[
+		"ar.city_ledger.write_off",
+		(payload) => ArCityLedgerWriteOffCommandSchema.parse(payload),
+	],
+	[
+		"ar.aging.compute",
+		(payload) => ArAgingComputeCommandSchema.parse(payload),
+	],
+	[
+		"ar.dunning.trigger",
+		(payload) => ArDunningTriggerCommandSchema.parse(payload),
+	],
+	[
+		"ar.dunning.suppress",
+		(payload) => ArDunningSuppressCommandSchema.parse(payload),
+	],
+	[
+		"ar.dunning.escalate",
+		(payload) => ArDunningEscalateCommandSchema.parse(payload),
+	],
+	[
+		"ar.payment.apply",
+		(payload) => ArPaymentApplyCommandSchema.parse(payload),
+	],
+	[
+		"ar.payment.unapply",
+		(payload) => ArPaymentUnapplyCommandSchema.parse(payload),
+	],
+	[
+		"ar.dispute.raise",
+		(payload) => ArDisputeRaiseCommandSchema.parse(payload),
+	],
+	[
+		"ar.dispute.resolve",
+		(payload) => ArDisputeResolveCommandSchema.parse(payload),
+	],
+	[
+		"ar.dispute.escalate",
+		(payload) => ArDisputeEscalateCommandSchema.parse(payload),
 	],
 	["guest.register", (payload) => GuestRegisterCommandSchema.parse(payload)],
 	["guest.merge", (payload) => GuestMergeCommandSchema.parse(payload)],

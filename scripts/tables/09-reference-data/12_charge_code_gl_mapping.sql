@@ -87,10 +87,10 @@ VALUES
     ('11111111-1111-1111-1111-111111111111', 'ROOM',             '1100', '4000', 'Rooms Revenue',               'ROOMS'),
     ('11111111-1111-1111-1111-111111111111', 'ROOM_TAX',         '1100', '2100', 'Taxes',                       'ROOMS'),
     ('11111111-1111-1111-1111-111111111111', 'ROOM_UPGRADE',     '1100', '4000', 'Rooms Revenue',               'ROOMS'),
-    ('11111111-1111-1111-1111-111111111111', 'LATE_CHECKOUT',    '1100', '4000', 'Rooms Revenue',               'ROOMS'),
-    ('11111111-1111-1111-1111-111111111111', 'EARLY_CHECKIN',    '1100', '4000', 'Rooms Revenue',               'ROOMS'),
-    ('11111111-1111-1111-1111-111111111111', 'NO_SHOW',          '1100', '4000', 'Rooms Revenue',               'ROOMS'),
-    ('11111111-1111-1111-1111-111111111111', 'CANCEL_FEE',       '1100', '4000', 'Rooms Revenue',               'ROOMS'),
+    ('11111111-1111-1111-1111-111111111111', 'LATE_CHECKOUT',    '1100', '4700', 'Miscellaneous Revenue',       'ROOMS'),
+    ('11111111-1111-1111-1111-111111111111', 'EARLY_CHECKIN',    '1100', '4700', 'Miscellaneous Revenue',       'ROOMS'),
+    ('11111111-1111-1111-1111-111111111111', 'NO_SHOW',          '1100', '4700', 'Miscellaneous Revenue',       'ROOMS'),
+    ('11111111-1111-1111-1111-111111111111', 'CANCEL_FEE',       '1100', '4700', 'Miscellaneous Revenue',       'ROOMS'),
     -- ── Packages ───────────────────────────────────────────────────────────
     ('11111111-1111-1111-1111-111111111111', 'PACKAGE',          '1100', '4800', 'Rooms Revenue',               'ROOMS'),
     ('11111111-1111-1111-1111-111111111111', 'PACKAGE_FB',       '1100', '4100', 'Food & Beverage Revenue',     'FB'),
@@ -122,8 +122,18 @@ VALUES
     ('11111111-1111-1111-1111-111111111111', 'TAX',              '1100', '2100', 'Taxes',                       'OTHER'),
     ('11111111-1111-1111-1111-111111111111', 'OCCUPANCY_TAX',    '1100', '2110', 'Taxes',                       'ROOMS'),
     ('11111111-1111-1111-1111-111111111111', 'TOURISM_LEVY',     '1100', '2120', 'Taxes',                       'OTHER'),
-    -- ── Payments (for reference — payment GL is handled separately) ─────────
-    ('11111111-1111-1111-1111-111111111111', 'DEPOSIT',          '1100', '2200', 'Advance Deposits',            'ROOMS')
+    -- ── Advance Deposits (ACCT-02) ──────────────────────────────────────────
+    -- DEPOSIT receipt:  DR Cash/Bank (1100) / CR Advance Deposit Liability (2200)
+    -- DEPOSIT_APPLIED:  DR Advance Deposit Liability (2200) / CR Guest Ledger (1100) at check-in
+    -- DEPOSIT_REFUND:   DR Advance Deposit Liability (2200) / CR Cash/Bank (1100) on cancellation
+    ('11111111-1111-1111-1111-111111111111', 'DEPOSIT',          '1100', '2200', 'Advance Deposits',            'ROOMS'),
+    ('11111111-1111-1111-1111-111111111111', 'DEPOSIT_APPLIED',  '2200', '1100', 'Advance Deposits Applied',    'ROOMS'),
+    ('11111111-1111-1111-1111-111111111111', 'DEPOSIT_REFUND',   '2200', '1100', 'Advance Deposit Refunds',     'ROOMS'),
+    -- ── Suspense (ACCT-03) ──────────────────────────────────────────────────
+    -- SUSPENSE: DR Suspense Asset (1900) / CR original credit account when posting to suspense folio
+    -- SUSPENSE_WRITE_OFF: DR Bad Debt (5400) / CR Suspense (1900) when writing off
+    ('11111111-1111-1111-1111-111111111111', 'SUSPENSE',         '1900', '4900', 'Suspense Clearing',           'OTHER'),
+    ('11111111-1111-1111-1111-111111111111', 'SUSPENSE_WRITE_OFF','5400','1900', 'Suspense Write-Off',          'OTHER')
 
 ON CONFLICT (tenant_id, charge_code) DO NOTHING;
 

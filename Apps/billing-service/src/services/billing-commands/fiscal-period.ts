@@ -1,3 +1,4 @@
+import { auditAsync } from "../../lib/audit-logger.js";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -69,6 +70,22 @@ export const createFiscalPeriod = async (
     "Fiscal period created",
   );
 
+  auditAsync({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    userId: actor,
+    action: "FISCAL_PERIOD_CREATED",
+    entityType: "fiscal_period",
+    entityId: periodId,
+    severity: "INFO",
+    description: `Fiscal period created: ${command.fiscal_year} P${command.period_number}`,
+    newValues: {
+      fiscalYear: command.fiscal_year,
+      periodNumber: command.period_number,
+      status: command.period_status ?? "OPEN",
+    },
+  });
+
   return periodId;
 };
 
@@ -115,6 +132,18 @@ export const closeFiscalPeriod = async (
     { periodId: command.period_id, propertyId: command.property_id },
     "Fiscal period soft-closed",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    userId: actor,
+    action: "FISCAL_PERIOD_CLOSED",
+    entityType: "fiscal_period",
+    entityId: command.period_id,
+    severity: "INFO",
+    description: `Fiscal period soft-closed${command.close_reason ? `: ${command.close_reason}` : ""}`,
+    newValues: { status: "SOFT_CLOSE", reason: command.close_reason },
+  });
 };
 
 /**
@@ -152,6 +181,18 @@ export const lockFiscalPeriod = async (
     { periodId: command.period_id, propertyId: command.property_id },
     "Fiscal period locked",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    userId: actor,
+    action: "FISCAL_PERIOD_LOCKED",
+    entityType: "fiscal_period",
+    entityId: command.period_id,
+    severity: "WARNING",
+    description: "Fiscal period fully locked — no further postings allowed",
+    newValues: { status: "LOCKED", approvedBy: command.approved_by },
+  });
 };
 
 /**
@@ -190,4 +231,16 @@ export const reopenFiscalPeriod = async (
     { periodId: command.period_id, propertyId: command.property_id, reason: command.reason },
     "Fiscal period reopened",
   );
+
+  auditAsync({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    userId: actor,
+    action: "FISCAL_PERIOD_REOPENED",
+    entityType: "fiscal_period",
+    entityId: command.period_id,
+    severity: "WARNING",
+    description: `Fiscal period reopened: ${command.reason}`,
+    newValues: { status: "OPEN", reason: command.reason },
+  });
 };

@@ -1,0 +1,132 @@
+### Payment Gateway Webhook — ACCT-04
+### Tests the inbound async notification endpoint for payment gateways.
+### HMAC signatures below are for local dev only (secret = "test-secret").
+### Usage: VS Code REST Client extension.
+
+@host = http://localhost:8080
+@tenant_id = 00000000-0000-0000-0000-000000000001
+@provider = STRIPE
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 1. Stripe payment.captured event (no HMAC — dev mode only)
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/billing/webhooks/payment-gateway?tenant_id={{tenant_id}}&provider={{provider}}
+Content-Type: application/json
+Stripe-Signature: t=1700000000,v1=abc123
+
+{
+  "id": "evt_test_capture_001",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_test_001",
+      "amount": 15000,
+      "currency": "usd",
+      "status": "succeeded"
+    }
+  }
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 2. Stripe payment.failed event
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/billing/webhooks/payment-gateway?tenant_id={{tenant_id}}&provider={{provider}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_fail_001",
+  "type": "payment_intent.payment_failed",
+  "data": {
+    "object": {
+      "id": "pi_test_002",
+      "amount": 5000,
+      "currency": "usd",
+      "status": "requires_payment_method"
+    }
+  }
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 3. Stripe refund.completed event
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/billing/webhooks/payment-gateway?tenant_id={{tenant_id}}&provider={{provider}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_refund_001",
+  "type": "charge.refunded",
+  "data": {
+    "object": {
+      "id": "ch_test_001",
+      "amount": 15000,
+      "refunded": true
+    }
+  }
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 4. Stripe chargeback/dispute event
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/billing/webhooks/payment-gateway?tenant_id={{tenant_id}}&provider={{provider}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_dispute_001",
+  "type": "charge.dispute.created",
+  "data": {
+    "object": {
+      "id": "dp_test_001",
+      "charge": "ch_test_001",
+      "amount": 15000,
+      "currency": "usd",
+      "reason": "fraudulent"
+    }
+  }
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 5. Stripe authorization.expired event
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/billing/webhooks/payment-gateway?tenant_id={{tenant_id}}&provider={{provider}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_auth_exp_001",
+  "type": "payment_intent.canceled",
+  "data": {
+    "object": {
+      "id": "pi_test_auth_001",
+      "status": "canceled",
+      "cancellation_reason": "expired"
+    }
+  }
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 6. Duplicate event (idempotency check — should return 200 with received:true but SKIPPED)
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/billing/webhooks/payment-gateway?tenant_id={{tenant_id}}&provider={{provider}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_capture_001",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_test_001",
+      "amount": 15000,
+      "currency": "usd",
+      "status": "succeeded"
+    }
+  }
+}

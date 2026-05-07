@@ -122,7 +122,7 @@
               <td [class.badge-success]="x.points >= 0" [class.badge-error]="x.points < 0">
                 {{ x.points > 0 ? '+' : '' }}{{ x.points }}
               </td>
-              <td>{{ x.balance_after ?? '—' }}</td>
+              <td>{{ x.balance_after }}</td>
               <td class="cell-notes">
                 @if (x.reference_type) { {{ x.reference_type }}{{ x.reference_id ? ' / ' + x.reference_id : '' }} }
                 @else { — }

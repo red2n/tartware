@@ -10,6 +10,8 @@ import rollDateRollSchedulerPlugin from "./plugins/roll-date-roll-scheduler.js";
 import rollLifecycleConsumerPlugin from "./plugins/roll-lifecycle-consumer.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerAccountsRoutes } from "./routes/accounts.js";
+import { registerApprovalRoutes } from "./routes/approvals.js";
+import { registerArRoutes } from "./routes/ar.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerAllowanceRoutes } from "./routes/calculations/allowance.js";
 import { registerAuthorizationRoutes } from "./routes/calculations/authorization.js";
@@ -51,8 +53,12 @@ export const buildServer = (): FastifyInstance => {
       registerBillingRoutes(app);
       // Absorbed from accounts-service (Phase 6)
       registerAccountsRoutes(app);
+      // AR / city ledger / suspense / group billing read endpoints (ACCT-02/03/17 + ARA Sprint 1)
+      registerArRoutes(app);
       // Absorbed from finance-admin-service (Phase 6)
       registerFinanceAdminRoutes(app);
+      // Four-eyes approval workflow endpoints (ACCT-08)
+      registerApprovalRoutes(app);
       // Night audit read endpoints
       registerNightAuditRoutes(app);
       // HTNG POS charge endpoint (ACCT-05)

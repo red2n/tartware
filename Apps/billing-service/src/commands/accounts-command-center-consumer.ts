@@ -26,12 +26,42 @@ import {
   postArEntry,
   writeOffAr,
 } from "../services/billing-commands/accounts-receivable.js";
+import {
+  applyArCashPayment,
+  computeAging,
+  createArAccount,
+  escalateArDispute,
+  escalateDunning,
+  raiseArDispute,
+  resolveArDispute,
+  suppressDunning,
+  transferToCityLedger,
+  triggerDunning,
+  unapplyArCashPayment,
+  updateArAccountTerms,
+  writeOffCityLedger,
+} from "../services/billing-commands/ara.js";
 import { BillingCommandError } from "../services/billing-commands/common.js";
+import {
+  recordDeposit,
+  refundDeposit,
+  transferDeposit,
+  waiveDeposit,
+} from "../services/billing-commands/deposit.js";
+import {
+  addReservationToGroup,
+  checkoutGroup,
+  setupGroupBilling,
+} from "../services/billing-commands/group-billing.js";
 import {
   adjustInvoice,
   createInvoice,
   finalizeInvoice,
 } from "../services/billing-commands/invoice.js";
+import {
+  resolveSuspenseItem,
+  writeOffSuspenseItem,
+} from "../services/billing-commands/suspense.js";
 
 const logger = appLogger.child({ module: "accounts-command-consumer" });
 
@@ -53,6 +83,77 @@ const routeAccountsCommand = async (
     case "billing.ar.write_off":
       await writeOffAr(envelope.payload, ctx);
       return;
+    // ── Deposit lifecycle (ACCT-02) ──────────────────────────────────────
+    case "billing.deposit.record":
+      await recordDeposit(envelope.payload, ctx);
+      return;
+    case "billing.deposit.transfer":
+      await transferDeposit(envelope.payload, ctx);
+      return;
+    case "billing.deposit.refund":
+      await refundDeposit(envelope.payload, ctx);
+      return;
+    case "billing.deposit.waive":
+      await waiveDeposit(envelope.payload, ctx);
+      return;
+    // ── Suspense account (ACCT-03) ───────────────────────────────────────
+    case "billing.suspense.resolve":
+      await resolveSuspenseItem(envelope.payload, ctx);
+      return;
+    case "billing.suspense.write_off":
+      await writeOffSuspenseItem(envelope.payload, ctx);
+      return;
+    // ── Group master billing (ACCT-17) ───────────────────────────────────
+    case "billing.group.setup":
+      await setupGroupBilling(envelope.payload, ctx);
+      return;
+    case "billing.group.checkout":
+      await checkoutGroup(envelope.payload, ctx);
+      return;
+    case "billing.group.add_reservation":
+      await addReservationToGroup(envelope.payload, ctx);
+      return;
+    // ── AR Account management (ARA Sprint 1) ────────────────────────────
+    case "ar.account.create":
+      await createArAccount(envelope.payload, ctx);
+      return;
+    case "ar.account.update_terms":
+      await updateArAccountTerms(envelope.payload, ctx);
+      return;
+    case "ar.city_ledger.transfer":
+      await transferToCityLedger(envelope.payload, ctx);
+      return;
+    case "ar.city_ledger.write_off":
+      await writeOffCityLedger(envelope.payload, ctx);
+      return;
+    case "ar.aging.compute":
+      await computeAging(envelope.payload, ctx);
+      return;
+    case "ar.dunning.trigger":
+      await triggerDunning(envelope.payload, ctx);
+      return;
+    case "ar.dunning.suppress":
+      await suppressDunning(envelope.payload, ctx);
+      return;
+    case "ar.dunning.escalate":
+      await escalateDunning(envelope.payload, ctx);
+      return;
+    case "ar.payment.apply":
+      await applyArCashPayment(envelope.payload, ctx);
+      return;
+    case "ar.payment.unapply":
+      await unapplyArCashPayment(envelope.payload, ctx);
+      return;
+    case "ar.dispute.raise":
+      await raiseArDispute(envelope.payload, ctx);
+      return;
+    case "ar.dispute.resolve":
+      await resolveArDispute(envelope.payload, ctx);
+      return;
+    case "ar.dispute.escalate":
+      await escalateArDispute(envelope.payload, ctx);
+      return;
+    // ── Invoice ──────────────────────────────────────────────────────────
     case "billing.invoice.create":
       await createInvoice(envelope.payload, ctx);
       return;

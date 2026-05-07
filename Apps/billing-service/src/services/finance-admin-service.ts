@@ -1,5 +1,6 @@
 import { toNumberOrFallback } from "@tartware/config";
 import {
+  type AuditTrailRow,
   type ChargebackListItem,
   type CommissionReportItem,
   type DepartmentalRevenueItem,
@@ -939,4 +940,181 @@ export const getGlTrialBalance = async (options: {
     variance,
     is_balanced: variance < 0.005,
   });
+};
+
+// ---------------------------------------------------------------------------
+// AUDIT TRAIL
+// ---------------------------------------------------------------------------
+
+interface AuditTrailInput {
+  tenantId: string;
+  propertyId?: string;
+  entityType?: string;
+  entityId?: string;
+  severity?: string;
+  startDate?: string;
+  endDate?: string;
+  isPciRelevant?: boolean;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Query the billing audit trail from audit_logs, filtered to FINANCIAL action_category
+ * plus optional per-caller filters. Results are returned newest-first.
+ */
+export async function queryAuditTrail(input: AuditTrailInput): Promise<AuditTrailRow[]> {
+  const params: unknown[] = [input.tenantId, input.limit, input.offset];
+  const conditions: string[] = ["al.tenant_id = $1::uuid", "al.action_category = 'FINANCIAL'"];
+
+  if (input.propertyId) {
+    params.push(input.propertyId);
+    conditions.push(`al.property_id = $${params.length}::uuid`);
+  }
+  if (input.entityType) {
+    params.push(input.entityType);
+    conditions.push(`al.entity_type = $${params.length}`);
+  }
+  if (input.entityId) {
+    params.push(input.entityId);
+    conditions.push(`al.entity_id = $${params.length}::uuid`);
+  }
+  if (input.severity) {
+    params.push(input.severity.toUpperCase());
+    conditions.push(`al.severity = $${params.length}`);
+  }
+  if (input.startDate) {
+    params.push(input.startDate);
+    conditions.push(`al.audit_timestamp >= $${params.length}::timestamptz`);
+  }
+  if (input.endDate) {
+    params.push(input.endDate);
+    conditions.push(
+      `al.audit_timestamp < ($${params.length}::date + INTERVAL '1 day')::timestamptz`,
+    );
+  }
+  if (input.isPciRelevant === true) {
+    conditions.push("al.is_pci_relevant = true");
+  }
+
+  const where = conditions.join(" AND ");
+  const { rows } = await query<AuditTrailRow>(
+    `SELECT
+       al.audit_id,
+       al.tenant_id,
+       al.property_id,
+       al.audit_timestamp,
+       al.event_type,
+       al.entity_type,
+       al.entity_id,
+       al.user_id,
+       al.user_email,
+       al.user_name,
+       al.action,
+       al.action_category,
+       al.severity,
+       al.old_values,
+       al.new_values,
+       al.changed_fields,
+       al.is_pci_relevant,
+       al.is_gdpr_relevant,
+       al.description,
+       al.metadata,
+       al.status
+     FROM public.audit_logs al
+     WHERE ${where}
+     ORDER BY al.audit_timestamp DESC
+     LIMIT $2 OFFSET $3`,
+    params,
+  );
+
+  return rows;
+}
+
+// ============================================================================
+// GL BATCH EXPORT (ACCT-06)
+// ============================================================================
+
+import type { GlExportEntry } from "../lib/gl-export-generator.js";
+
+/**
+ * Fetch raw GL entries for a batch, shaped for CSV/XML export.
+ * Returns all entries (up to 10,000) in posting_date order.
+ */
+export const getGlEntriesForExport = async (
+  batchId: string,
+  tenantId: string,
+): Promise<GlExportEntry[]> => {
+  const { rows } = await query<GlExportEntry>(
+    `SELECT
+       gle.gl_entry_id,
+       glb.batch_number,
+       glb.batch_date,
+       glb.accounting_period,
+       gle.posting_date,
+       gle.gl_account_code,
+       gle.cost_center,
+       gle.usali_category,
+       gle.department_code,
+       gle.description,
+       gle.debit_amount,
+       gle.credit_amount,
+       COALESCE(gle.currency, 'USD') AS currency,
+       f.folio_number,
+       r.confirmation_number,
+       gle.reference_number,
+       gle.source_table,
+       gle.source_id
+     FROM public.general_ledger_entries gle
+     LEFT JOIN public.general_ledger_batches glb
+       ON glb.gl_batch_id = gle.gl_batch_id
+      AND COALESCE(glb.is_deleted, false) = false
+     LEFT JOIN public.folios f
+       ON f.folio_id = gle.folio_id
+      AND COALESCE(f.is_deleted, false) = false
+     LEFT JOIN public.reservations r
+       ON r.id = gle.reservation_id
+      AND COALESCE(r.is_deleted, false) = false
+     WHERE gle.gl_batch_id = $1::uuid
+       AND gle.tenant_id   = $2::uuid
+       AND COALESCE(gle.is_deleted, false) = false
+     ORDER BY gle.posting_date ASC, gle.created_at ASC
+     LIMIT 10000`,
+    [batchId, tenantId],
+  );
+  return rows;
+};
+
+/**
+ * Fetch minimal batch header info for export metadata.
+ */
+export const getGlBatchHeader = async (
+  batchId: string,
+  tenantId: string,
+): Promise<{
+  gl_batch_id: string;
+  batch_number: string;
+  batch_date: string;
+  batch_status: string;
+  property_id: string;
+  debit_total: string;
+  credit_total: string;
+} | null> => {
+  const { rows } = await query<{
+    gl_batch_id: string;
+    batch_number: string;
+    batch_date: string;
+    batch_status: string;
+    property_id: string;
+    debit_total: string;
+    credit_total: string;
+  }>(
+    `SELECT gl_batch_id, batch_number, batch_date::text, batch_status,
+            property_id::text, debit_total::text, credit_total::text
+     FROM public.general_ledger_batches
+     WHERE gl_batch_id = $1::uuid AND tenant_id = $2::uuid
+       AND COALESCE(is_deleted, false) = false LIMIT 1`,
+    [batchId, tenantId],
+  );
+  return rows[0] ?? null;
 };

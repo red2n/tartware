@@ -40,6 +40,14 @@ export class ApiService {
 		return headers;
 	}
 
+	/** Write headers — same as getHeaders() plus a fresh UUID idempotency key. */
+	private getWriteHeaders(): HeadersInit {
+		return {
+			...(this.getHeaders() as Record<string, string>),
+			"Idempotency-Key": crypto.randomUUID(),
+		};
+	}
+
 	async get<T>(path: string, params?: Record<string, string>): Promise<T> {
 		const response = await fetch(this.buildUrl(path, params), {
 			method: "GET",
@@ -54,7 +62,7 @@ export class ApiService {
 	async post<T>(path: string, body?: unknown): Promise<T> {
 		const response = await fetch(this.buildUrl(path), {
 			method: "POST",
-			headers: this.getHeaders(),
+			headers: this.getWriteHeaders(),
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		if (!response.ok) {
@@ -66,7 +74,7 @@ export class ApiService {
 	async put<T>(path: string, body: unknown, params?: Record<string, string>): Promise<T> {
 		const response = await fetch(this.buildUrl(path, params), {
 			method: "PUT",
-			headers: this.getHeaders(),
+			headers: this.getWriteHeaders(),
 			body: JSON.stringify(body),
 		});
 		if (!response.ok) {
@@ -78,7 +86,7 @@ export class ApiService {
 	async patch<T>(path: string, body: unknown, params?: Record<string, string>): Promise<T> {
 		const response = await fetch(this.buildUrl(path, params), {
 			method: "PATCH",
-			headers: this.getHeaders(),
+			headers: this.getWriteHeaders(),
 			body: JSON.stringify(body),
 		});
 		if (!response.ok) {
@@ -90,7 +98,7 @@ export class ApiService {
 	async delete(path: string, body?: unknown): Promise<void> {
 		const response = await fetch(this.buildUrl(path), {
 			method: "DELETE",
-			headers: this.getHeaders(),
+			headers: this.getWriteHeaders(),
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		if (!response.ok) {

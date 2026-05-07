@@ -173,6 +173,20 @@ CREATE INDEX IF NOT EXISTS idx_charge_postings_audit_run_id
     ON charge_postings (audit_run_id)
     WHERE audit_run_id IS NOT NULL;
 
+-- ACCT-13: Multi-Currency FX Rate Locking — add exchange_rate, base_amount, base_currency
+-- exchange_rate: the locked rate at posting time (transaction_currency / base_currency)
+-- base_amount:   total_amount converted to the property base currency at the locked rate
+-- base_currency: the property base currency (e.g., USD) for this posting
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS exchange_rate DECIMAL(12,6) DEFAULT 1.000000;
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_amount DECIMAL(15,2);
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_currency CHAR(3) DEFAULT 'USD';
+ALTER TABLE charge_postings ADD CONSTRAINT IF NOT EXISTS chk_postings_exchange_rate
+    CHECK (exchange_rate > 0);
+
+COMMENT ON COLUMN charge_postings.exchange_rate IS 'FX rate locked at posting time (transaction_currency/base_currency). 1.0 when same currency.';
+COMMENT ON COLUMN charge_postings.base_amount IS 'total_amount converted to property base currency at the locked exchange_rate.';
+COMMENT ON COLUMN charge_postings.base_currency IS 'Property base currency for FX conversion (ISO 4217, e.g. USD).';
+
 -- Partial index for fast idempotency check: "does a non-voided room charge already
 -- exist for this reservation on this business date from any night audit?"
 CREATE INDEX IF NOT EXISTS idx_charge_postings_nightly_dedup

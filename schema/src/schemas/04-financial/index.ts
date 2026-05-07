@@ -36,3 +36,4 @@ export * from "./payment-tokens.js";
 export * from "./payments.js";
 export * from "./refunds.js";
 export * from "./tax-configurations.js";
+export * from "./fx-rates.js";

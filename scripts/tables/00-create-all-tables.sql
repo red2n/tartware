@@ -135,6 +135,15 @@
 \ir 04-financial/76_folio_windows.sql
 \ir 04-financial/77_payment_gateway_webhooks.sql
 \ir 04-financial/78_night_audit_runs.sql
+\ir 04-financial/79_invoice_sequences.sql
+\ir 04-financial/80_approval_requests.sql
+\ir 04-financial/81_fx_rates.sql
+\ir 04-financial/82_ar_accounts.sql
+\ir 04-financial/83_ar_city_ledger.sql
+\ir 04-financial/84_ar_aging_snapshots.sql
+\ir 04-financial/85_ar_dunning_events.sql
+\ir 04-financial/86_ar_cash_applications.sql
+\ir 04-financial/87_ar_disputes.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)
