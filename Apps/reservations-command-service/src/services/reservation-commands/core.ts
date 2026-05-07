@@ -69,6 +69,26 @@ export const createReservation = async (
     throw new Error("INVALID_DATES: check_out_date must be after check_in_date");
   }
 
+  // ── Gate: Guest blacklist check (Flow 3 → Flow 4 cross-flow gate) ──────
+  // A blacklisted guest cannot create a reservation without explicit GM override.
+  // This is the FIRST validation step per the master flow plan §3D/§4A.
+  if (command.guest_id) {
+    const { rows: blacklistRows } = await query<{ is_blacklisted: boolean }>(
+      `SELECT COALESCE(is_blacklisted, false) AS is_blacklisted
+       FROM guests
+       WHERE id = $1::uuid AND tenant_id = $2::uuid
+       LIMIT 1`,
+      [command.guest_id, tenantId],
+    );
+    if (blacklistRows[0]?.is_blacklisted) {
+      throw new ReservationCommandError(
+        "GUEST_BLACKLISTED",
+        `Guest ${command.guest_id} is blacklisted. Reservation creation blocked. ` +
+          "A GM override with documented reason is required to proceed.",
+      );
+    }
+  }
+
   const rateResolution: RatePlanResolution = await resolveRatePlan({
     tenantId,
     propertyId: command.property_id,

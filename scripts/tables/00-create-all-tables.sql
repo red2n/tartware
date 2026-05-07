@@ -40,6 +40,7 @@
 \ir 01-core/20_import_export_jobs.sql
 \ir 01-core/21_role_screen_permissions.sql
 \ir 01-core/22_role_screen_permissions_seed.sql
+\ir 01-core/23_flow_approvals.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -144,6 +145,7 @@
 \ir 04-financial/85_ar_dunning_events.sql
 \ir 04-financial/86_ar_cash_applications.sql
 \ir 04-financial/87_ar_disputes.sql
+\ir 04-financial/88_ar_dunning_rules.sql
 
 -- ============================================================================
 -- CATEGORY 5: OPERATIONS (Services, housekeeping, staff, mobile, assets)

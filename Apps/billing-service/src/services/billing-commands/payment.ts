@@ -337,5 +337,21 @@ const capturePayment = async (
     );
   }
 
+  // ─── Post-capture: Auto-apply to AR if reservation has city ledger entries ──
+  // Fire-and-forget: if this reservation has open AR city ledger entries,
+  // dispatch ar.payment.apply so the outstanding balance is reduced automatically.
+  try {
+    const { dispatchArPaymentApply } = await import("./ara-payment-hook.js");
+    await dispatchArPaymentApply(
+      context.tenantId,
+      command.property_id,
+      paymentId.paymentId,
+      command.amount,
+      command.reservation_id ?? null,
+    );
+  } catch {
+    // Non-fatal — AR cash application can be done manually.
+  }
+
   return paymentId.paymentId;
 };

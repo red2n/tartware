@@ -36,6 +36,10 @@
     "./cashier": {
       "types": "./dist/cashier.d.ts",
       "import": "./dist/cashier.js"
+    },
+    "./flow-compliance": {
+      "types": "./dist/flow-compliance.d.ts",
+      "import": "./dist/flow-compliance.js"
     }
   },
   "main": "dist/index.js",

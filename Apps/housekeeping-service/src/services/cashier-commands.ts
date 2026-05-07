@@ -12,7 +12,7 @@ import {
   BillingCashierOpenCommandSchema,
 } from "../schemas/billing-commands.js";
 
-import { type CommandContext } from "./cashier-common.js";
+import type { CommandContext } from "./cashier-common.js";
 
 /**
  * Open a new cashier session (shift start).

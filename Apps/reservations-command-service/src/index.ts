@@ -6,12 +6,16 @@ import {
   startCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { databaseConfig, kafkaConfig, serviceConfig } from "./config.js";
+import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownAutoCheckoutSweep, startAutoCheckoutSweep } from "./jobs/auto-checkout.js";
 import { shutdownWaitlistSweep, startWaitlistSweep } from "./jobs/waitlist-sweep.js";
 import { shutdownReservationConsumer, startReservationConsumer } from "./kafka/consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { shutdownOutboxDispatcher, startOutboxDispatcher } from "./outbox/dispatcher.js";
 import { buildServer } from "./server.js";
+
+/** Flow manifest — available for boot-time validation when bootstrapService is adopted. */
+export { FLOW_MANIFEST };
 
 const app = buildServer();
 const kafkaEnabled = process.env.DISABLE_KAFKA !== "true";

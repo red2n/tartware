@@ -12,8 +12,12 @@ import {
   shutdownReservationEventConsumer,
   startReservationEventConsumer,
 } from "./consumers/reservation-event-consumer.js";
+import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
+
+/** Flow manifest — available for boot-time validation when bootstrapService is adopted. */
+export { FLOW_MANIFEST };
 
 const telemetry = await initTelemetry({
   serviceName: config.service.name,

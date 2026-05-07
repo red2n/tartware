@@ -89,6 +89,12 @@ export const config = {
   finance: {
     commandCenter: buildCommandCenterConfig("finance-admin-service"),
   },
+  arEvents: {
+    topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
+    consumerGroupId: process.env.AR_EVENTS_CONSUMER_GROUP ?? "billing-ar-events-consumer",
+    consumerEnabled: parseBooleanEnv(process.env.AR_EVENTS_CONSUMER_ENABLED, true),
+    commandTopic: process.env.COMMAND_TOPIC ?? "commands.primary",
+  },
   roll: {
     shadowMode: parseBooleanEnv(process.env.SHADOW_MODE, true),
     kafka: rollKafkaFull,

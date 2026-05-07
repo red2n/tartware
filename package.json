@@ -48,6 +48,7 @@
     "graph": "npx nx graph",
     "validate": "pnpm run check && pnpm run test && pnpm run validate:env",
     "validate:env": "node ./scripts/validate-env.mjs",
+    "flow:integrity": "npx tsx scripts/flow-integrity-test.ts",
     "postinstall": "echo 'Monorepo dependencies installed successfully'",
     "bootstrap:modules": "pnpm --filter @tartware/core-service run bootstrap:modules",
     "duplo:templates": "bash ./executables/run-duplo/run-duplo.sh",
