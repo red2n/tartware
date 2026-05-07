@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.fx_rates (
     rate_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Tenant scoping (null = global/shared rate applies to all tenants)
-    tenant_id       UUID REFERENCES public.tenants(tenant_id), -- NULL = system-wide default
+    tenant_id       UUID REFERENCES public.tenants(id), -- NULL = system-wide default
 
     -- Currency pair
     from_currency   CHAR(3)          NOT NULL,              -- ISO 4217 source currency (e.g. EUR)
