@@ -35,8 +35,9 @@ export const recordChargeback = async (
     status: string;
     payment_method: string | null;
     currency: string | null;
+    version: number;
   }>(
-    `SELECT id, amount, reservation_id, guest_id, status, payment_method, currency
+    `SELECT id, amount, reservation_id, guest_id, status, payment_method, currency, version
      FROM public.payments
      WHERE tenant_id = $1::uuid AND payment_reference = $2
      ORDER BY created_at DESC LIMIT 1`,
@@ -113,7 +114,7 @@ export const recordChargeback = async (
     }
 
     // Update the original payment status
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.payments
        SET status = (CASE
@@ -123,9 +124,17 @@ export const recordChargeback = async (
        refund_amount = COALESCE(refund_amount, 0) + $3,
        version = version + 1,
        updated_at = NOW(), updated_by = $4
-       WHERE tenant_id = $1::uuid AND id = $2::uuid`,
-      [context.tenantId, payment.id, command.chargeback_amount, actor],
+       WHERE tenant_id = $1::uuid AND id = $2::uuid AND version = $5`,
+      [context.tenantId, payment.id, command.chargeback_amount, actor, payment.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Payment modified by another transaction",
+        true,
+      );
+    }
 
     // Adjust the folio balance if a reservation is linked
     if (payment.reservation_id) {

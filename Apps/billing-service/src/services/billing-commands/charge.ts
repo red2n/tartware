@@ -80,11 +80,12 @@ export const transferCharge = async (
       currency_code: string;
       department_code: string | null;
       is_voided: boolean;
+      version: number;
     }>(
       client,
       `SELECT posting_id, folio_id, property_id, reservation_id,
               charge_code, charge_description, quantity, unit_price,
-              subtotal, total_amount, currency_code, department_code, is_voided
+              subtotal, total_amount, currency_code, department_code, is_voided, version
        FROM charge_postings
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid
        FOR UPDATE`,
@@ -108,16 +109,24 @@ export const transferCharge = async (
     const amount = parseDbMoneyOrZero(original.total_amount);
 
     // 2. Mark original as transferred
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE charge_postings
        SET transfer_to_folio_id = $3::uuid,
            version = version + 1,
            updated_by = $4::uuid,
            updated_at = NOW()
-       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
-      [command.posting_id, tenantId, targetFolioId, actorId],
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid AND version = $5`,
+      [command.posting_id, tenantId, targetFolioId, actorId, original.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Posting modified by another transaction",
+        true,
+      );
+    }
 
     // 3. Create TRANSFER CREDIT on source folio (reduces balance)
     await queryWithClient(
@@ -255,11 +264,12 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       currency_code: string;
       department_code: string | null;
       is_voided: boolean;
+      version: number;
     }>(
       client,
       `SELECT posting_id, folio_id, property_id, reservation_id,
               charge_code, charge_description, total_amount, currency_code,
-              department_code, is_voided
+              department_code, is_voided, version
        FROM charge_postings
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid
        FOR UPDATE`,
@@ -287,14 +297,22 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
     }
 
     // 2. Void the original posting
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE charge_postings
        SET is_voided = TRUE, voided_at = NOW(), voided_by = $3::uuid,
            void_reason = 'Split into multiple folios', version = version + 1
-       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
-      [command.posting_id, tenantId, actorId],
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid AND version = $4`,
+      [command.posting_id, tenantId, actorId, original.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Posting modified by another transaction",
+        true,
+      );
+    }
 
     // 3. Decrease source folio balance for the voided original
     await queryWithClient(
@@ -695,13 +713,14 @@ const applyChargeVoid = async (
       revenue_center: string | null;
       gl_account: string | null;
       is_voided: boolean;
+      version: number;
     }>(
       client,
       `SELECT posting_id, tenant_id, property_id, folio_id, reservation_id,
               guest_id, charge_code, charge_description, charge_category,
               quantity, unit_price, subtotal, tax_amount, service_charge,
               discount_amount, total_amount, currency_code, department_code,
-              revenue_center, gl_account, is_voided
+              revenue_center, gl_account, is_voided, version
        FROM public.charge_postings
        WHERE posting_id = $1::uuid
          AND tenant_id = $2::uuid
@@ -722,20 +741,6 @@ const applyChargeVoid = async (
         `Charge posting ${command.posting_id} has already been voided.`,
       );
     }
-
-    await queryWithClient(
-      client,
-      `UPDATE public.charge_postings
-       SET is_voided = TRUE,
-           voided_at = NOW(),
-           voided_by = $3::uuid,
-           void_reason = $4,
-           version = version + 1,
-           updated_by = $3::uuid
-       WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid`,
-      [command.posting_id, context.tenantId, actorId, command.void_reason ?? null],
-    );
 
     const voidResult = await queryWithClient<{ posting_id: string }>(
       client,
@@ -788,16 +793,35 @@ const applyChargeVoid = async (
       throw new BillingCommandError("CHARGE_VOID_FAILED", "Failed to create void posting.");
     }
 
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.charge_postings
-       SET void_posting_id = $3::uuid,
+       SET is_voided = TRUE,
+           voided_at = NOW(),
+           voided_by = $4::uuid,
+           void_reason = $5,
+           void_posting_id = $3::uuid,
            version = version + 1,
            updated_by = $4::uuid
        WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid`,
-      [command.posting_id, context.tenantId, voidPostingId, actorId],
+         AND tenant_id = $2::uuid AND version = $6`,
+      [
+        command.posting_id,
+        context.tenantId,
+        voidPostingId,
+        actorId,
+        command.void_reason ?? null,
+        original.version,
+      ],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Posting modified by another transaction",
+        true,
+      );
+    }
 
     const totalAmount = parseDbMoneyOrZero(original.total_amount);
     await queryWithClient(

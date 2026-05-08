@@ -133,8 +133,13 @@ export const voidPayment = async (payload: unknown, context: CommandContext): Pr
   const currency = "USD";
 
   // Find the authorized payment by reference
-  const { rows: authRows } = await query<{ id: string; amount: string; status: string }>(
-    `SELECT id, amount, status FROM public.payments
+  const { rows: authRows } = await query<{
+    id: string;
+    amount: string;
+    status: string;
+    version: number;
+  }>(
+    `SELECT id, amount, status, version FROM public.payments
      WHERE tenant_id = $1::uuid AND payment_reference = $2
      ORDER BY created_at DESC LIMIT 1`,
     [context.tenantId, command.payment_reference],
@@ -155,12 +160,20 @@ export const voidPayment = async (payload: unknown, context: CommandContext): Pr
 
   const voidId = await withTransaction(async (client) => {
     // Mark original payment as CANCELLED
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.payments SET status = 'CANCELLED', version = version + 1, updated_at = NOW()
-       WHERE id = $1::uuid AND tenant_id = $2::uuid`,
-      [authPayment.id, context.tenantId],
+       WHERE id = $1::uuid AND tenant_id = $2::uuid AND version = $3`,
+      [authPayment.id, context.tenantId, authPayment.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Payment modified by another transaction",
+        true,
+      );
+    }
 
     // Create a VOID transaction record
     const result = await queryWithClient<{ id: string }>(
@@ -235,8 +248,8 @@ export const incrementAuthorization = async (
   const command = BillingPaymentIncrementAuthCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
 
-  const { rows } = await query<{ id: string; amount: string; status: string }>(
-    `SELECT id, amount, status FROM public.payments
+  const { rows } = await query<{ id: string; amount: string; status: string; version: number }>(
+    `SELECT id, amount, status, version FROM public.payments
      WHERE tenant_id = $1::uuid AND payment_reference = $2
      ORDER BY created_at DESC LIMIT 1`,
     [context.tenantId, command.payment_reference],
@@ -258,7 +271,7 @@ export const incrementAuthorization = async (
 
   const newAmount = Number(existing.amount) + command.additional_amount;
 
-  await query(
+  const { rowCount } = await query(
     `UPDATE public.payments
      SET amount = $3::numeric,
          metadata = jsonb_set(
@@ -276,7 +289,7 @@ export const incrementAuthorization = async (
          version = version + 1,
          updated_at = NOW(),
          updated_by = $6::uuid
-     WHERE tenant_id = $1::uuid AND id = $2::uuid`,
+     WHERE tenant_id = $1::uuid AND id = $2::uuid AND version = $7`,
     [
       context.tenantId,
       existing.id,
@@ -284,8 +297,17 @@ export const incrementAuthorization = async (
       command.additional_amount,
       command.reason ?? null,
       actor,
+      existing.version,
     ],
   );
+
+  if (rowCount === 0) {
+    throw new BillingCommandError(
+      "CONCURRENT_MODIFICATION",
+      "Payment modified by another transaction",
+      true,
+    );
+  }
 
   appLogger.info(
     {

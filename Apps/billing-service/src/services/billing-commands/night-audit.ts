@@ -250,19 +250,30 @@ export const executeNightAudit = async (
           );
           // Fall through to no-shows below
           if (shouldMarkNoShows) {
-            const { rowCount } = await queryWithClient(
+            const { rows: noShows } = await queryWithClient<{ id: string; version: number }>(
               client,
-              `UPDATE reservations
-               SET status = 'NO_SHOW', is_no_show = true,
-                   no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
-                   version = version + 1, updated_at = NOW()
+              `SELECT id, version FROM reservations
                WHERE tenant_id = $1 AND property_id = $2
                  AND status IN ('PENDING', 'CONFIRMED')
                  AND check_in_date <= $3::date
-                 AND is_deleted = false`,
+                 AND is_deleted = false
+               FOR UPDATE`,
               [context.tenantId, command.property_id, auditDate],
             );
-            noShowsMarked = rowCount ?? 0;
+            let rowCount = 0;
+            for (const ns of noShows) {
+              const res = await queryWithClient(
+                client,
+                `UPDATE reservations
+                 SET status = 'NO_SHOW', is_no_show = true,
+                     no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                     version = version + 1, updated_at = NOW()
+                 WHERE id = $1 AND version = $2`,
+                [ns.id, ns.version],
+              );
+              rowCount += res.rowCount ?? 0;
+            }
+            noShowsMarked = rowCount;
             await insertCheckpoint(
               client,
               context.tenantId,
@@ -355,19 +366,30 @@ export const executeNightAudit = async (
 
       // Step 5: Mark no-shows
       if (shouldMarkNoShows) {
-        const { rowCount } = await queryWithClient(
+        const { rows: noShows } = await queryWithClient<{ id: string; version: number }>(
           client,
-          `UPDATE reservations
-           SET status = 'NO_SHOW', is_no_show = true,
-               no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
-               version = version + 1, updated_at = NOW()
+          `SELECT id, version FROM reservations
            WHERE tenant_id = $1 AND property_id = $2
              AND status IN ('PENDING', 'CONFIRMED')
              AND check_in_date <= $3::date
-             AND is_deleted = false`,
+             AND is_deleted = false
+           FOR UPDATE`,
           [context.tenantId, command.property_id, auditDate],
         );
-        noShowsMarked = rowCount ?? 0;
+        let rowCount = 0;
+        for (const ns of noShows) {
+          const res = await queryWithClient(
+            client,
+            `UPDATE reservations
+             SET status = 'NO_SHOW', is_no_show = true,
+                 no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                 version = version + 1, updated_at = NOW()
+             WHERE id = $1 AND version = $2`,
+            [ns.id, ns.version],
+          );
+          rowCount += res.rowCount ?? 0;
+        }
+        noShowsMarked = rowCount;
       }
       await insertCheckpoint(
         client,
@@ -595,8 +617,8 @@ export const executeNightAudit = async (
   // This runs outside the main transaction — it dispatches individual cancel events.
   if (shouldAutoCancelTentatives) {
     try {
-      const { rows: staleTentatives } = await query<{ id: string }>(
-        `SELECT id FROM reservations
+      const { rows: staleTentatives } = await query<{ id: string; version: number }>(
+        `SELECT id, version FROM reservations
          WHERE tenant_id = $1::uuid AND property_id = $2::uuid
            AND status = 'TENTATIVE'
            AND deposit_due_date IS NOT NULL
@@ -611,8 +633,8 @@ export const executeNightAudit = async (
                cancellation_reason = 'AUTO_DEPOSIT_DEADLINE',
                cancelled_at = NOW(),
                version = version + 1, updated_at = NOW()
-           WHERE id = $1::uuid AND tenant_id = $2::uuid AND status = 'TENTATIVE'`,
-          [row.id, context.tenantId],
+           WHERE id = $1::uuid AND tenant_id = $2::uuid AND status = 'TENTATIVE' AND version = $3`,
+          [row.id, context.tenantId, row.version],
         );
       }
       tentativesCancelled = staleTentatives.length;

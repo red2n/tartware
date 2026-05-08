@@ -33,8 +33,9 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     status: string;
     room_rate: string | null;
     currency: string | null;
+    version: number;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency
+    `SELECT id AS reservation_id, property_id, status, room_rate, currency, version
      FROM public.reservations
      WHERE tenant_id = $1::uuid AND id = $2::uuid
      LIMIT 1`,
@@ -150,18 +151,27 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
       created_by: actorId,
     });
 
+    // Mark reservation as NO_SHOW if still CONFIRMED
+    if (reservation.status === "CONFIRMED") {
+      const { rowCount } = await queryWithClient(
+        client,
+        `UPDATE public.reservations
+         SET status = 'NO_SHOW', updated_at = NOW(), updated_by = $3::uuid, version = version + 1
+         WHERE tenant_id = $1::uuid AND id = $2::uuid AND version = $4`,
+        [context.tenantId, command.reservation_id, actorId, reservation.version],
+      );
+
+      if (rowCount === 0) {
+        throw new BillingCommandError(
+          "CONCURRENT_MODIFICATION",
+          `Reservation ${command.reservation_id} was modified by another transaction.`,
+          true,
+        );
+      }
+    }
+
     return id;
   });
-
-  // Mark reservation as NO_SHOW if still CONFIRMED
-  if (reservation.status === "CONFIRMED") {
-    await query(
-      `UPDATE public.reservations
-       SET status = 'NO_SHOW', updated_at = NOW(), updated_by = $3::uuid, version = version + 1
-       WHERE tenant_id = $1::uuid AND id = $2::uuid`,
-      [context.tenantId, command.reservation_id, actorId],
-    );
-  }
 
   appLogger.info(
     {

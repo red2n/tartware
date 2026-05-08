@@ -41,9 +41,10 @@ const applyPaymentToInvoice = async (
     throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
   }
 
-  // ── Dedup guard: atomically mark this payment as applied to this invoice ──
-  // The WHERE clause ensures this UPDATE only succeeds once per (payment, invoice) pair.
-  // If the payment has already been applied to this invoice, rowCount = 0 → return idempotently.
+  // ── Dedup guard: check if already applied ──
+  if (payment.metadata?.applied_to_invoice_id === targetInvoiceId) {
+    return targetInvoiceId;
+  }
   const { rowCount: markedApplied } = await query(
     `
       UPDATE public.payments
@@ -59,13 +60,26 @@ const applyPaymentToInvoice = async (
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid
         AND (metadata->>'applied_to_invoice_id' IS DISTINCT FROM $3::text)
+        AND version = $5
     `,
-    [context.tenantId, command.payment_id, targetInvoiceId, actor],
+    [context.tenantId, command.payment_id, targetInvoiceId, actor, payment.version],
   );
 
   if (!markedApplied || markedApplied === 0) {
-    // Already applied — return idempotently without modifying invoice balance.
-    return targetInvoiceId;
+    throw new BillingCommandError(
+      "CONCURRENT_MODIFICATION",
+      "Payment modified by another transaction",
+      true,
+    );
+  }
+
+  const { rows: invoiceRows } = await query<{ id: string; version: number }>(
+    `SELECT id, version FROM public.invoices WHERE tenant_id = $1::uuid AND id = $2::uuid LIMIT 1`,
+    [context.tenantId, targetInvoiceId],
+  );
+  const invoice = invoiceRows[0];
+  if (!invoice) {
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
   }
 
   const applyAmount = command.amount ?? payment.amount;
@@ -86,15 +100,19 @@ const applyPaymentToInvoice = async (
         updated_at = NOW(),
         updated_by = $4
       WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
+        AND id = $2::uuid AND version = $5
       RETURNING id, total_amount, paid_amount
     `,
-    [context.tenantId, targetInvoiceId, applyAmount, actor],
+    [context.tenantId, targetInvoiceId, applyAmount, actor, invoice.version],
   );
 
   const invoiceId = rows[0]?.id;
   if (!invoiceId) {
-    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for apply.");
+    throw new BillingCommandError(
+      "CONCURRENT_MODIFICATION",
+      "Invoice modified by another transaction",
+      true,
+    );
   }
   auditAsync({
     tenantId: context.tenantId,
@@ -119,13 +137,20 @@ const applyPaymentToInvoice = async (
 const loadPaymentById = async (
   tenantId: string,
   paymentId: string,
-): Promise<{ amount: number; reservation_id: string | null } | null> => {
+): Promise<{
+  amount: number;
+  reservation_id: string | null;
+  metadata: Record<string, unknown> | null;
+  version: number;
+} | null> => {
   const { rows } = await query<{
     amount: number;
     reservation_id: string | null;
+    metadata: Record<string, unknown> | null;
+    version: number;
   }>(
     `
-      SELECT amount, reservation_id
+      SELECT amount, reservation_id, metadata, version
       FROM public.payments
       WHERE tenant_id = $1::uuid
         AND id = $2::uuid

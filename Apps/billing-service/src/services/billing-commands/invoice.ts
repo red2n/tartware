@@ -130,7 +130,17 @@ const applyInvoiceAdjust = async (
   context: CommandContext,
 ): Promise<string> => {
   const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
-  const { rows } = await query<{ id: string }>(
+
+  const { rows: selectRows } = await query<{ id: string; version: number }>(
+    `SELECT id, version FROM public.invoices WHERE tenant_id = $1::uuid AND id = $2::uuid LIMIT 1`,
+    [context.tenantId, command.invoice_id],
+  );
+  const invoice = selectRows[0];
+  if (!invoice) {
+    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for adjustment.");
+  }
+
+  const { rowCount } = await query(
     `
       UPDATE public.invoices
       SET
@@ -144,8 +154,7 @@ const applyInvoiceAdjust = async (
         updated_at = NOW(),
         updated_by = $5::uuid
       WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-      RETURNING id
+        AND id = $2::uuid AND version = $6
     `,
     [
       context.tenantId,
@@ -153,14 +162,19 @@ const applyInvoiceAdjust = async (
       command.adjustment_amount,
       command.reason ?? null,
       actor,
+      invoice.version,
     ],
   );
 
-  const invoiceId = rows[0]?.id;
-  if (!invoiceId) {
-    throw new BillingCommandError("INVOICE_NOT_FOUND", "Invoice not found for adjustment.");
+  if (rowCount === 0) {
+    throw new BillingCommandError(
+      "CONCURRENT_MODIFICATION",
+      "Invoice modified by another transaction",
+      true,
+    );
   }
-  return invoiceId;
+
+  return command.invoice_id;
 };
 
 /**
@@ -181,9 +195,10 @@ const applyInvoiceFinalize = async (
       status: string;
       invoice_number: string | null;
       property_id: string;
+      version: number;
     }>(
       client,
-      `SELECT id, status, invoice_number, property_id FROM public.invoices
+      `SELECT id, status, invoice_number, property_id, version FROM public.invoices
        WHERE tenant_id = $1::uuid AND id = $2::uuid
        FOR UPDATE`,
       [context.tenantId, command.invoice_id],
@@ -213,7 +228,7 @@ const applyInvoiceFinalize = async (
       );
     }
 
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.invoices
        SET status = 'FINALIZED',
@@ -222,9 +237,17 @@ const applyInvoiceFinalize = async (
            updated_at = NOW(),
            updated_by = $4
        WHERE tenant_id = $1::uuid
-         AND id = $2::uuid`,
-      [context.tenantId, command.invoice_id, invoiceNumber, actor],
+         AND id = $2::uuid AND version = $5`,
+      [context.tenantId, command.invoice_id, invoiceNumber, actor, invoice.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Invoice modified by another transaction",
+        true,
+      );
+    }
 
     appLogger.info(
       { invoiceId: command.invoice_id, invoiceNumber, previousStatus: invoice.status },
@@ -258,8 +281,8 @@ export const voidInvoice = async (payload: unknown, context: CommandContext): Pr
   const command = BillingInvoiceVoidCommandSchema.parse(payload);
   const actor = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
 
-  const { rows } = await query<{ id: string; status: string }>(
-    `SELECT id, status FROM public.invoices
+  const { rows } = await query<{ id: string; status: string; version: number }>(
+    `SELECT id, status, version FROM public.invoices
      WHERE tenant_id = $1::uuid AND id = $2::uuid
      LIMIT 1`,
     [context.tenantId, command.invoice_id],
@@ -276,7 +299,7 @@ export const voidInvoice = async (payload: unknown, context: CommandContext): Pr
     );
   }
 
-  await query(
+  const { rowCount } = await query(
     `UPDATE public.invoices
      SET status = 'VOIDED',
          notes = CASE
@@ -288,9 +311,17 @@ export const voidInvoice = async (payload: unknown, context: CommandContext): Pr
          updated_at = NOW(),
          updated_by = $4::uuid
      WHERE tenant_id = $1::uuid
-       AND id = $2::uuid`,
-    [context.tenantId, command.invoice_id, command.reason ?? null, actor],
+       AND id = $2::uuid AND version = $5`,
+    [context.tenantId, command.invoice_id, command.reason ?? null, actor, invoice.version],
   );
+
+  if (rowCount === 0) {
+    throw new BillingCommandError(
+      "CONCURRENT_MODIFICATION",
+      "Invoice modified by another transaction",
+      true,
+    );
+  }
 
   appLogger.info({ invoiceId: command.invoice_id }, "Invoice voided");
 
@@ -450,10 +481,11 @@ export const reopenInvoice = async (payload: unknown, context: CommandContext): 
       currency: string;
       due_date: string | null;
       notes: string | null;
+      version: number;
     }>(
       client,
       `SELECT id, status, revision_number, property_id, reservation_id, guest_id,
-              total_amount, currency, due_date, notes
+              total_amount, currency, due_date, notes, version
        FROM public.invoices
        WHERE tenant_id = $1::uuid AND id = $2::uuid
        FOR UPDATE`,
@@ -472,16 +504,24 @@ export const reopenInvoice = async (payload: unknown, context: CommandContext): 
     }
 
     // Mark original as SUPERSEDED
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.invoices
        SET status = 'SUPERSEDED',
            notes = CONCAT_WS(E'\\n', notes, $3::text),
            version = version + 1,
            updated_at = NOW(), updated_by = $4
-       WHERE tenant_id = $1::uuid AND id = $2::uuid`,
-      [context.tenantId, invoice.id, `REOPENED: ${command.reason}`, actor],
+       WHERE tenant_id = $1::uuid AND id = $2::uuid AND version = $5`,
+      [context.tenantId, invoice.id, `REOPENED: ${command.reason}`, actor, invoice.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Invoice modified by another transaction",
+        true,
+      );
+    }
 
     const nextRevision = (invoice.revision_number ?? 0) + 1;
 
