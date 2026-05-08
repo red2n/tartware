@@ -231,7 +231,10 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     -- Soft Delete
     is_deleted BOOLEAN DEFAULT FALSE,
     deleted_at TIMESTAMP WITH TIME ZONE,
-    deleted_by UUID
+    deleted_by UUID,
+
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0
 );
 
 

@@ -38,10 +38,11 @@ export async function enforceCreditLimit(
     block_threshold_percent: string;
     temporary_increase_active: boolean;
     temporary_increase_amount: string | null;
+    version: number;
   }>(
     `SELECT credit_limit_id, credit_limit_amount, current_balance,
             warning_threshold_percent, block_threshold_percent,
-            temporary_increase_active, temporary_increase_amount
+            temporary_increase_active, temporary_increase_amount, version
      FROM credit_limits
      WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
        AND is_active = true AND credit_status = 'active'
@@ -234,7 +235,19 @@ const capturePayment = async (
     // RETURNING both values so we can detect and audit overpayments without a 2nd query.
     let creditBalance = 0;
     if (resolvedFolioId) {
-      const { rows: folioRows } = await queryWithClient<{
+      // Fetch current version for OCC
+      const { rows: currentFolio } = await queryWithClient<{ version: number }>(
+        client,
+        `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid FOR UPDATE`,
+        [context.tenantId, resolvedFolioId],
+      );
+      const folio = currentFolio[0];
+      if (!folio) {
+        throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio record missing during update.");
+      }
+      const expectedVersion = folio.version;
+
+      const { rows: folioRows, rowCount } = await queryWithClient<{
         balance: string;
         credit_balance: string;
       }>(
@@ -245,14 +258,24 @@ const capturePayment = async (
           total_payments  = total_payments + $2,
           balance         = GREATEST(0, balance - $2),
           credit_balance  = credit_balance + GREATEST(0, $2 - balance),
+          version         = version + 1,
           updated_at      = NOW(),
           updated_by      = $3
         WHERE tenant_id = $1::uuid
           AND folio_id  = $4::uuid
+          AND version   = $5
         RETURNING balance, credit_balance
         `,
-        [context.tenantId, command.amount, actor, resolvedFolioId],
+        [context.tenantId, command.amount, actor, resolvedFolioId, expectedVersion],
       );
+
+      if (rowCount === 0) {
+        throw new BillingCommandError(
+          "CONCURRENT_MODIFICATION",
+          "Folio was modified by another process. Please retry.",
+          true,
+        );
+      }
       creditBalance = Number(folioRows[0]?.credit_balance ?? 0);
     }
 

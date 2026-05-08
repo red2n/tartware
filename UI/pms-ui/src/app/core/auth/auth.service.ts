@@ -1,4 +1,12 @@
-import { computed, Injectable, NgZone, OnDestroy, signal } from "@angular/core";
+import {
+	Injectable,
+	NgZone,
+	OnDestroy,
+	computed,
+	inject,
+	signal,
+} from "@angular/core";
+import { generateUUID } from "../../shared/uuid-utils";
 
 import type { AuthMembership, LoginResponse, TokenRefreshResponse } from "@tartware/schemas";
 
@@ -291,6 +299,7 @@ export class AuthService implements OnDestroy {
 						method: "POST",
 						headers: {
 							Authorization: `Bearer ${localStorage.getItem("access_token") ?? token}`,
+							"Idempotency-Key": generateUUID(),
 						},
 					});
 

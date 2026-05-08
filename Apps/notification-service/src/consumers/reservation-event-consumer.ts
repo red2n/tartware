@@ -1,4 +1,6 @@
 import { enterTenantScope } from "@tartware/config/db";
+import { processWithRetry } from "@tartware/config/retry";
+import type { ReservationEventEnvelope } from "@tartware/schemas";
 import type { Consumer, EachMessagePayload } from "kafkajs";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -175,7 +177,6 @@ type ReservationEvent = {
 };
 
 /** Kafka envelope: { metadata: {...}, payload: {...} } */
-import type { ReservationEventEnvelope } from "@tartware/schemas";
 
 // ---------------------------------------------------------------------------
 // Event classification helpers
@@ -540,9 +541,22 @@ export const startReservationEventConsumer = async (): Promise<void> => {
         }
         const event = toReservationEvent(envelope);
         enterTenantScope(event.tenantId);
-        await processReservationEvent(event);
+
+        await processWithRetry(() => processReservationEvent(event), {
+          maxRetries: 5,
+          baseDelayMs: 500,
+          onRetry: ({ attempt, delayMs, error }) => {
+            logger.warn(
+              { attempt, delayMs, error, reservationId: event.reservationId },
+              "Retrying notification dispatch after failure",
+            );
+          },
+        });
       } catch (err) {
-        logger.error({ err, offset: message.offset }, "Failed to parse reservation event message");
+        logger.error(
+          { err, offset: message.offset },
+          "Failed to process reservation event message",
+        );
       }
     },
   });

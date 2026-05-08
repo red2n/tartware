@@ -228,7 +228,10 @@ export class GuestsComponent {
 
 	async loadGuests(): Promise<void> {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
+		if (!tenantId) {
+			this.dataReady.set(true);
+			return;
+		}
 
 		this.dataReady.set(false);
 		this.error.set(null);

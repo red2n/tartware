@@ -157,6 +157,7 @@ export const CreditLimitsSchema = z.object({
 	is_deleted: z.boolean().optional(),
 	deleted_at: z.coerce.date().optional(),
 	deleted_by: uuid.optional(),
+	version: z.number().int().default(0),
 });
 
 export type CreditLimits = z.infer<typeof CreditLimitsSchema>;

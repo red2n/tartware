@@ -1,3 +1,4 @@
+import { provideHttpClient } from "@angular/common/http";
 import {
 	type ApplicationConfig,
 	isDevMode,
@@ -8,11 +9,13 @@ import { PreloadAllModules, provideRouter, withPreloading } from "@angular/route
 import { provideServiceWorker } from "@angular/service-worker";
 import Lara from "@primeng/themes/lara";
 import { providePrimeNG } from "primeng/config";
+import { DialogService } from "primeng/dynamicdialog";
 
 import { routes } from "./app.routes";
 
 export const appConfig: ApplicationConfig = {
 	providers: [
+		provideHttpClient(),
 		provideBrowserGlobalErrorListeners(),
 		provideAnimationsAsync(),
 		provideRouter(routes, withPreloading(PreloadAllModules)),
@@ -30,5 +33,6 @@ export const appConfig: ApplicationConfig = {
 				},
 			},
 		}),
+		DialogService,
 	],
 };

@@ -1,4 +1,5 @@
 import { Injectable } from "@angular/core";
+import { generateUUID } from "../../shared/uuid-utils";
 
 const API_BASE = "/v1";
 
@@ -44,7 +45,7 @@ export class ApiService {
 	private getWriteHeaders(): HeadersInit {
 		return {
 			...(this.getHeaders() as Record<string, string>),
-			"Idempotency-Key": crypto.randomUUID(),
+			"Idempotency-Key": generateUUID(),
 		};
 	}
 

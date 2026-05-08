@@ -30,7 +30,7 @@ class SseConnectionManager {
     if (!this.clients.has(k)) {
       this.clients.set(k, new Set());
     }
-    this.clients.get(k)!.add(client);
+    this.clients.get(k)?.add(client);
 
     if (!this.heartbeatInterval) {
       this.startHeartbeat();

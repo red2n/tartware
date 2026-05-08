@@ -76,15 +76,16 @@ export const executeNightAudit = async (
   if (!skipPreconditions) {
     const preconditionFailures: string[] = [];
 
-    // Check 1: Open arrivals — all CONFIRMED for today must be CHECKED_IN or NO_SHOW
+    // Check 1: Open arrivals — CONFIRMED reservations with arrival today not yet checked in
+    // Only block if we are NOT automatically marking no-shows.
     const { rows: openArrivals } = await query<{ cnt: string }>(
       `SELECT COUNT(*) AS cnt FROM reservations
        WHERE tenant_id = $1::uuid AND property_id = $2::uuid
          AND status = 'CONFIRMED' AND check_in_date = $3::date
-         AND is_deleted = false`,
+         AND COALESCE(is_deleted, false) = false`,
       [context.tenantId, command.property_id, auditDate],
     );
-    if (Number(openArrivals[0]?.cnt ?? 0) > 0) {
+    if (Number(openArrivals[0]?.cnt ?? 0) > 0 && !shouldMarkNoShows) {
       preconditionFailures.push(
         `OPEN_ARRIVALS: ${openArrivals[0]?.cnt} CONFIRMED reservations with arrival today not yet checked in`,
       );
@@ -702,13 +703,14 @@ async function postRoomChargesAndTaxes(
     total_amount: string;
     guest_id: string;
     folio_id: string | null;
+    version: number | null;
   }>(
     client,
     `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id,
             f.folio_id
      FROM reservations r
      LEFT JOIN LATERAL (
-       SELECT folio_id FROM public.folios
+       SELECT folio_id, version FROM public.folios
        WHERE tenant_id = $1 AND reservation_id = r.id
          AND COALESCE(is_deleted, false) = false
        ORDER BY created_at DESC LIMIT 1
@@ -833,15 +835,29 @@ async function postRoomChargesAndTaxes(
 
     // Update folio balance (room charge + all taxes)
     const chargeTotal = roomRate + totalTaxAmount;
-    await queryWithClient(
+    const folioVersion = res.version;
+    if (folioVersion === null || folioVersion === undefined) {
+      throw new Error(`Night audit: version missing for folio ${folioId} on reservation ${res.id}`);
+    }
+
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET total_charges = total_charges + $2,
            balance = balance + $2,
+           version = version + 1,
            updated_at = NOW(), updated_by = $3::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-      [tenantId, chargeTotal, actorId, folioId],
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
+      [tenantId, chargeTotal, actorId, folioId, folioVersion],
     );
+
+    if (rowCount === 0) {
+      // In night audit, we log the error but we might want to fail the whole audit or just this guest.
+      // Given the transaction rollback policy, we should probably throw to rollback.
+      throw new Error(
+        `Night audit: concurrent modification on folio ${folioId} for reservation ${res.id}`,
+      );
+    }
     chargesPosted++;
   }
 
