@@ -9,14 +9,11 @@ import { FlowId, type ServiceFlowManifest } from "@tartware/schemas";
 
 export const FLOW_MANIFEST: ServiceFlowManifest = {
   serviceId: "billing-service",
+  version: "1.0.0",
   flows: {
     [FlowId.RATE_PRICING]: {
       commands: [
         { commandName: "billing.pricing.evaluate", description: "Evaluate rate for a stay" },
-        {
-          commandName: "billing.pricing.bulk_recommend",
-          description: "Bulk pricing recommendations",
-        },
       ],
     },
 
@@ -65,6 +62,13 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         { commandName: "billing.folio.close", description: "Close folio on checkout" },
         { commandName: "billing.express_checkout", description: "Express checkout flow" },
         { commandName: "billing.invoice.create", description: "Generate invoice post-checkout" },
+      ],
+      events: [
+        {
+          topic: "reservations.events",
+          eventType: "reservation.checked_out",
+          description: "Trigger AR city-ledger transfer on checkout if direct-bill routing exists",
+        },
       ],
     },
 

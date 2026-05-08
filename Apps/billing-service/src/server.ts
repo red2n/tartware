@@ -5,6 +5,7 @@ import { ensureBillingEncryptionRequirementsMet } from "./lib/compliance-policie
 import { appLogger } from "./lib/logger.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import authContextPlugin from "./plugins/auth-context.js";
+import businessCalendarSettingsPlugin from "./plugins/business-calendar-settings.js";
 import rollBackfillJobPlugin from "./plugins/roll-backfill-job.js";
 import rollDateRollSchedulerPlugin from "./plugins/roll-date-roll-scheduler.js";
 import rollLifecycleConsumerPlugin from "./plugins/roll-lifecycle-consumer.js";
@@ -29,7 +30,9 @@ import { registerRevenueForecastRoutes } from "./routes/calculations/revenue-for
 import { registerSplitRoutes } from "./routes/calculations/split.js";
 import { registerTaxRoutes } from "./routes/calculations/tax.js";
 import { registerYieldRoutes } from "./routes/calculations/yield.js";
+import { registerDunningRuleRoutes } from "./routes/dunning-rules.js";
 import { registerFinanceAdminRoutes } from "./routes/finance-admin.js";
+import { registerFlowApprovalRoutes } from "./routes/flow-approvals.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerNightAuditRoutes } from "./routes/night-audit.js";
 import { registerPosChargeRoutes } from "./routes/pos.js";
@@ -61,6 +64,10 @@ export const buildServer = (): FastifyInstance => {
       registerApprovalRoutes(app);
       // Night audit read endpoints
       registerNightAuditRoutes(app);
+      // Flow gate bypass audit records
+      registerFlowApprovalRoutes(app);
+      // AR dunning escalation rules
+      registerDunningRuleRoutes(app);
       // HTNG POS charge endpoint (ACCT-05)
       registerPosChargeRoutes(app);
       // Payment gateway webhook endpoint (P0-2, PCI-DSS v4.0 Req 10)
@@ -86,6 +93,7 @@ export const buildServer = (): FastifyInstance => {
   });
 
   // Absorbed from roll-service (Phase 6) — Kafka consumer + backfill + date-roll scheduler
+  void app.register(businessCalendarSettingsPlugin);
   void app.register(rollLifecycleConsumerPlugin);
   void app.register(rollBackfillJobPlugin);
   void app.register(rollDateRollSchedulerPlugin);

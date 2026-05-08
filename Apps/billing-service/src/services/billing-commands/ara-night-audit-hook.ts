@@ -68,12 +68,28 @@ export const dispatchArAgingCompute = async (
  * Dispatch ar.dunning.trigger to the commands.primary topic.
  * Called after night audit aging compute to evaluate dunning rules
  * for accounts crossing aging bucket thresholds.
+ *
+ * Looks up active dunning rules for the property before dispatching.
+ * If no rules are configured, the dispatch is skipped.
  */
 export const dispatchArDunningTrigger = async (
   tenantId: string,
   propertyId: string,
   businessDate: string,
 ): Promise<void> => {
+  // Check if any active dunning rules exist for this property
+  const { listDunningRules } = await import("../../repositories/ar-dunning-rule-repository.js");
+  const rules = await listDunningRules(tenantId, propertyId);
+  const activeRules = rules.filter((r) => r.is_active);
+
+  if (activeRules.length === 0) {
+    logger.info(
+      { tenantId, propertyId },
+      "No active dunning rules configured — skipping ar.dunning.trigger dispatch",
+    );
+    return;
+  }
+
   const commandId = randomUUID();
   const idempotencyKey = `ar-dunning:${tenantId}:${propertyId}:${businessDate}`;
 
@@ -83,6 +99,8 @@ export const dispatchArDunningTrigger = async (
     payload: {
       property_id: propertyId,
       trigger_date: businessDate,
+      active_rule_count: activeRules.length,
+      buckets_with_rules: [...new Set(activeRules.map((r) => r.bucket_name))],
       idempotency_key: idempotencyKey,
     },
     metadata: {
@@ -108,7 +126,7 @@ export const dispatchArDunningTrigger = async (
   });
 
   logger.info(
-    { commandId, tenantId, propertyId, businessDate },
+    { commandId, tenantId, propertyId, businessDate, activeRuleCount: activeRules.length },
     "Dispatched ar.dunning.trigger after night audit",
   );
 };

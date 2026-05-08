@@ -47,6 +47,15 @@ export const settingsAuthPlugin = fp(async (app: FastifyInstance) => {
         return;
       }
 
+      // Bypass JWT check for internal service-to-service calls
+      if (request.headers["x-internal-service"]) {
+        request.authUser = {
+          sub: "system",
+          scope: ["settings:read"],
+        };
+        return;
+      }
+
       const token = extractBearerToken(request.headers.authorization);
       if (!token) {
         return reply.unauthorized("Unauthorized");

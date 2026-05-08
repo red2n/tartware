@@ -27,37 +27,59 @@ const SETTINGS_VALUE_COLUMNS = `
 export type { ValueFilters, CreateSettingsValueInput, UpdateSettingsValueInput };
 
 export const listValues = async (filters: ValueFilters) => {
-  const conditions: string[] = ["tenant_id = $1"];
+  const conditions: string[] = ["sv.tenant_id = $1"];
   const params: unknown[] = [filters.tenantId];
+  let joinDefinitions = false;
 
   if (filters.scopeLevel) {
     params.push(filters.scopeLevel);
-    conditions.push(`scope_level = $${params.length}`);
+    conditions.push(`sv.scope_level = $${params.length}`);
   }
   if (filters.settingId) {
     params.push(filters.settingId);
-    conditions.push(`setting_id = $${params.length}`);
+    conditions.push(`sv.setting_id = $${params.length}`);
+  }
+  if (filters.settingCode) {
+    joinDefinitions = true;
+    params.push(filters.settingCode);
+    conditions.push(`sd.code = $${params.length}`);
+  }
+  if (filters.settingCodes && filters.settingCodes.length > 0) {
+    joinDefinitions = true;
+    params.push(filters.settingCodes);
+    conditions.push(`sd.code = ANY($${params.length})`);
   }
   if (filters.propertyId) {
     params.push(filters.propertyId);
-    conditions.push(`property_id = $${params.length}`);
+    conditions.push(`sv.property_id = $${params.length}`);
   }
   if (filters.unitId) {
     params.push(filters.unitId);
-    conditions.push(`unit_id = $${params.length}`);
+    conditions.push(`sv.unit_id = $${params.length}`);
   }
   if (filters.userId) {
     params.push(filters.userId);
-    conditions.push(`user_id = $${params.length}`);
+    conditions.push(`sv.user_id = $${params.length}`);
   }
   if (filters.activeOnly) {
     params.push("ACTIVE");
-    conditions.push(`status = $${params.length}`);
+    conditions.push(`sv.status = $${params.length}`);
   }
 
+  const codeColumn = joinDefinitions ? ", sd.code AS setting_code" : "";
+  const joinClause = joinDefinitions ? "JOIN settings_definitions sd ON sd.id = sv.setting_id" : "";
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT ${SETTINGS_VALUE_COLUMNS} FROM settings_values ${where} ORDER BY created_at DESC`,
+    `SELECT sv.id, sv.setting_id, sv.scope_level, sv.tenant_id, sv.property_id, sv.unit_id, sv.user_id,
+            sv.value, sv.is_overridden, sv.is_inherited, sv.inheritance_path, sv.inherited_from_value_id,
+            sv.locked_until, sv.effective_from, sv.effective_to, sv.source, sv.status, sv.notes,
+            sv.context, sv.metadata,
+            sv.created_at, sv.updated_at, sv.created_by, sv.updated_by
+            ${codeColumn}
+     FROM settings_values sv
+     ${joinClause}
+     ${where}
+     ORDER BY sv.created_at DESC`,
     params,
   );
   return SettingsValueArraySchema.parse(rows);
@@ -87,7 +109,12 @@ export const createValue = async (input: CreateSettingsValueInput) => {
       input.createdBy ?? null,
     ],
   );
-  return SettingsValueSchema.parse(rows[0]);
+  const created = SettingsValueSchema.parse(rows[0]);
+
+  // Emit hot-reload event
+  await enqueueSettingsEvent(created);
+
+  return created;
 };
 
 export const updateValue = async (input: UpdateSettingsValueInput) => {
@@ -123,5 +150,43 @@ export const updateValue = async (input: UpdateSettingsValueInput) => {
   if (!rows[0]) {
     return null;
   }
-  return SettingsValueSchema.parse(rows[0]);
+  const updated = SettingsValueSchema.parse(rows[0]);
+
+  // Emit hot-reload event
+  await enqueueSettingsEvent(updated);
+
+  return updated;
 };
+
+/**
+ * Enqueue a settings.value.set event in the transactional outbox.
+ */
+async function enqueueSettingsEvent(value: z.infer<typeof SettingsValueSchema>) {
+  // Fetch setting code to include in event for easier consumption
+  const { rows } = await query("SELECT code FROM settings_definitions WHERE id = $1", [
+    value.setting_id,
+  ]);
+  const code = rows[0]?.code;
+
+  await query(
+    `INSERT INTO transactional_outbox (
+      tenant_id, aggregate_id, aggregate_type, event_type, payload, partition_key
+    ) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      value.tenant_id,
+      value.setting_id,
+      "setting",
+      "settings.value.set",
+      JSON.stringify({
+        type: "settings.value.set",
+        payload: {
+          tenant_id: value.tenant_id,
+          property_id: value.property_id ?? null,
+          code,
+          value: value.value,
+        },
+      }),
+      value.tenant_id, // Partition by tenant for consistency
+    ],
+  );
+}

@@ -401,8 +401,16 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         };
       }
 
-      const { scope_level, setting_id, property_id, unit_id, user_id, active_only } =
-        ValuesQuerySchema.parse(request.query ?? {});
+      const {
+        scope_level,
+        setting_id,
+        setting_code,
+        setting_codes,
+        property_id,
+        unit_id,
+        user_id,
+        active_only,
+      } = ValuesQuerySchema.parse(request.query ?? {});
       const tenantId = request.authUser?.tenantId;
       if (!tenantId) {
         return {
@@ -417,6 +425,12 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         tenantId,
         scopeLevel: scope_level,
         settingId: setting_id,
+        settingCode: setting_code,
+        settingCodes: Array.isArray(setting_codes)
+          ? setting_codes
+          : setting_codes
+            ? [setting_codes]
+            : undefined,
         propertyId: property_id,
         unitId: unit_id,
         userId: user_id,

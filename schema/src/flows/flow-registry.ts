@@ -69,6 +69,9 @@ export const FLOW_REGISTRY: FlowRegistry = {
     requiredGates: [
       { gateName: "blacklist_check", guardsCommand: "reservation.create" },
     ],
+    requiredEvents: [
+      { topic: "reservations.events", eventType: "reservation.created" },
+    ],
     dependsOn: [FlowId.PROPERTY_SETUP, FlowId.RATE_PRICING, FlowId.GUEST_PROFILE],
   },
 
@@ -89,6 +92,9 @@ export const FLOW_REGISTRY: FlowRegistry = {
       "reservation.walkin_checkin",
       "billing.folio.create",
       "billing.payment.authorize",
+    ],
+    requiredEvents: [
+      { topic: "reservations.events", eventType: "reservation.checked_in" },
     ],
     dependsOn: [FlowId.RESERVATION],
   },

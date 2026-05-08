@@ -9,6 +9,7 @@ import { FlowId, type ServiceFlowManifest } from "@tartware/schemas";
 
 export const FLOW_MANIFEST: ServiceFlowManifest = {
   serviceId: "guests-service",
+  version: "1.0.0",
   flows: {
     [FlowId.GUEST_PROFILE]: {
       commands: [

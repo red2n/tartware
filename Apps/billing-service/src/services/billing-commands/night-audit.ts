@@ -109,7 +109,7 @@ export const executeNightAudit = async (
       `SELECT COUNT(*) AS cnt FROM folios f
        JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = f.tenant_id
        WHERE f.tenant_id = $1::uuid AND f.property_id = $2::uuid
-         AND f.status = 'OPEN' AND r.status = 'CHECKED_IN'
+         AND f.folio_status = 'OPEN' AND r.status = 'CHECKED_IN'
          AND COALESCE(f.is_deleted, false) = false
          AND ABS(COALESCE(f.balance, 0)) > 0.01
          AND NOT EXISTS (
@@ -135,6 +135,37 @@ export const executeNightAudit = async (
         "Night audit pre-conditions NOT met — audit blocked",
       );
       throw new Error(`NIGHT_AUDIT_PRECONDITIONS_FAILED: ${preconditionFailures.join("; ")}`);
+    }
+  } else {
+    // Gate bypass: record approval in flow_approvals audit log
+    // skip_preconditions=true is a GM override — must be logged.
+    try {
+      const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
+      const gatesToLog = [
+        "open_arrivals_check",
+        "open_departures_check",
+        "unbalanced_folios_check",
+      ];
+      for (const gateName of gatesToLog) {
+        await recordFlowApproval({
+          tenant_id: context.tenantId,
+          property_id: command.property_id,
+          flow_name: "night_audit",
+          gate_name: gateName,
+          entity_type: "property",
+          entity_id: command.property_id,
+          approved_by: actorId,
+          role_at_approval: "GM_OVERRIDE",
+          reason_code: "SKIP_PRECONDITIONS",
+          reason_notes: `Night audit precondition gates bypassed via skip_preconditions=true for ${auditDate}`,
+          correlation_id: context.correlationId ?? null,
+        });
+      }
+    } catch (approvalErr) {
+      appLogger.warn(
+        { approvalErr, auditRunId },
+        "Night audit: failed to record gate bypass approval (non-fatal)",
+      );
     }
   }
 

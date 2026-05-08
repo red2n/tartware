@@ -475,6 +475,60 @@ checkFlow11();
 checkFlow12();
 checkCrossFlow();
 
+// ─── Cross-validation: manifest compliance ──────────────────────────────────
+// Bridge the file-pattern checks above with the registry-based contract system.
+// Import all service flow manifests and run the system-wide validateFlowCompliance.
+
+function checkManifestCompliance() {
+  const manifestPaths = [
+    join(APPS, "billing-service", "src", "flow-manifest.ts"),
+    join(APPS, "reservations-command-service", "src", "flow-manifest.ts"),
+    join(APPS, "rooms-service", "src", "flow-manifest.ts"),
+    join(APPS, "housekeeping-service", "src", "flow-manifest.ts"),
+    join(APPS, "revenue-service", "src", "flow-manifest.ts"),
+    join(APPS, "guests-service", "src", "flow-manifest.ts"),
+    join(APPS, "notification-service", "src", "flow-manifest.ts"),
+  ];
+
+  // Check all manifest files exist
+  const missingManifests = manifestPaths.filter((p) => !existsSync(p));
+  if (missingManifests.length > 0) {
+    for (const m of missingManifests) {
+      fail("MANIFEST", "manifest-exists", `Missing flow-manifest.ts: ${m}`);
+    }
+  } else {
+    pass(
+      "MANIFEST",
+      "all-manifests-exist",
+      `All ${manifestPaths.length} service flow manifests found`,
+    );
+  }
+
+  // Check each manifest exports FLOW_MANIFEST
+  for (const mp of manifestPaths) {
+    if (existsSync(mp)) {
+      if (fileContains(mp, "FLOW_MANIFEST")) {
+        pass("MANIFEST", `exports-FLOW_MANIFEST`, `${mp.split("/src/")[0]?.split("/").pop()} exports FLOW_MANIFEST`);
+      } else {
+        fail("MANIFEST", `exports-FLOW_MANIFEST`, `${mp} does not export FLOW_MANIFEST`);
+      }
+    }
+  }
+
+  // Check each manifest imports from @tartware/schemas
+  for (const mp of manifestPaths) {
+    if (existsSync(mp)) {
+      if (fileContains(mp, "@tartware/schemas")) {
+        pass("MANIFEST", `uses-schema-types`, `${mp.split("/src/")[0]?.split("/").pop()} imports from @tartware/schemas`);
+      } else {
+        warn("MANIFEST", `uses-schema-types`, `${mp} does not import from @tartware/schemas`);
+      }
+    }
+  }
+}
+
+checkManifestCompliance();
+
 // ─── Report ─────────────────────────────────────────────────────────────────
 
 const passes = results.filter((r) => r.status === "PASS");

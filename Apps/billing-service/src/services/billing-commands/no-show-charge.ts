@@ -157,7 +157,7 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
   if (reservation.status === "CONFIRMED") {
     await query(
       `UPDATE public.reservations
-       SET status = 'NO_SHOW', updated_at = NOW(), updated_by = $3::uuid
+       SET status = 'NO_SHOW', updated_at = NOW(), updated_by = $3::uuid, version = version + 1
        WHERE tenant_id = $1::uuid AND id = $2::uuid`,
       [context.tenantId, command.reservation_id, actorId],
     );

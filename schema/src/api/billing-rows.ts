@@ -401,3 +401,27 @@ export type ApprovalRequestRow = {
 	created_at: string | Date;
 	updated_at: string | Date | null;
 };
+// =====================================================
+// AR DUNNING RULE ROW
+// =====================================================
+
+/** Raw row shape from ar_dunning_rules table (automation escalation config). */
+export type ArDunningRuleRow = {
+  rule_id: string;
+  tenant_id: string;
+  property_id: string | null;
+  bucket_name: string;
+  min_days_overdue: number;
+  max_days_overdue: number | null;
+  action_type: string;
+  template_code: string;
+  delay_days: number;
+  max_attempts: number;
+  min_amount: number | string;
+  escalation_order: number;
+  is_active: boolean;
+  created_at: string | Date;
+  updated_at: string | Date;
+  created_by: string | null;
+  updated_by: string | null;
+};

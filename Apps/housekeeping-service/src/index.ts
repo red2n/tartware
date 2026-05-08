@@ -21,5 +21,5 @@ await bootstrapService({
   consumerStarters: [startHousekeepingCommandCenterConsumer, startReservationEventConsumer],
   consumerShutdowns: [shutdownHousekeepingCommandCenterConsumer, shutdownReservationEventConsumer],
   shutdownProducer,
-  flowManifests: { manifests: [FLOW_MANIFEST], mode: "warn" },
+  flowManifests: { manifests: [FLOW_MANIFEST], mode: "throw" },
 });

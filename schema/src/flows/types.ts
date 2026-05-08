@@ -89,6 +89,8 @@ export type FlowParticipation = {
 export type ServiceFlowManifest = {
   /** Unique service identifier (e.g. "billing-service") */
   readonly serviceId: string;
+  /** Optional version of the manifest for tracking changes */
+  readonly version?: string;
   /** Map of FlowId → what this service contributes */
   readonly flows: Partial<Record<FlowId, FlowParticipation>>;
 };

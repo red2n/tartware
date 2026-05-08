@@ -9,6 +9,7 @@ import { FlowId, type ServiceFlowManifest } from "@tartware/schemas";
 
 export const FLOW_MANIFEST: ServiceFlowManifest = {
   serviceId: "rooms-service",
+  version: "1.0.0",
   flows: {
     [FlowId.PROPERTY_SETUP]: {
       commands: [

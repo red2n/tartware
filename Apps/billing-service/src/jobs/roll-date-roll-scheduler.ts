@@ -11,6 +11,12 @@ import { pool } from "../lib/db.js";
 // Types
 // =====================================================
 
+import type { BusinessCalendarSettingsService } from "../services/business-calendar-settings-service.js";
+
+// =====================================================
+// Types
+// =====================================================
+
 type PropertySchedule = {
   tenantId: string;
   propertyId: string;
@@ -30,42 +36,25 @@ type DispatchResult = {
 };
 
 // =====================================================
-// SQL: fetch properties with auto-roll enabled
+// SQL: fetch all active properties and their business dates
 // =====================================================
 
-const ELIGIBLE_PROPERTIES_SQL = `
+const ACTIVE_PROPERTIES_SQL = `
 SELECT
     p.id as property_id,
     p.tenant_id,
     p.property_name,
     p.timezone,
-    COALESCE(
-      (SELECT sv.value->>'value'
-       FROM settings_values sv
-       JOIN settings_definitions sd ON sd.id = sv.setting_id
-       WHERE sd.code = 'FINANCE.BUSINESS_CALENDAR.AUTO_ROLL_TIME'
-         AND sv.property_id = p.id
-         AND sv.scope_level = 'PROPERTY'
-         AND COALESCE(sv.status, 'active') = 'active'
-       LIMIT 1),
-      '03:00'
-    ) as auto_roll_time,
     bd.business_date as current_business_date,
     bd.date_status,
     bd.night_audit_status
 FROM properties p
-JOIN settings_values sv_enabled ON sv_enabled.property_id = p.id
-JOIN settings_definitions sd_enabled ON sd_enabled.id = sv_enabled.setting_id
-    AND sd_enabled.code = 'FINANCE.BUSINESS_CALENDAR.AUTO_ROLL_ENABLED'
 LEFT JOIN business_dates bd ON bd.property_id = p.id
     AND bd.tenant_id = p.tenant_id
     AND bd.date_status = 'OPEN'
     AND COALESCE(bd.is_deleted, false) = false
 WHERE COALESCE(p.is_deleted, false) = false
   AND p.is_active = true
-  AND sv_enabled.scope_level = 'PROPERTY'
-  AND COALESCE(sv_enabled.status, 'active') = 'active'
-  AND (sv_enabled.value->>'value')::boolean = true
 ORDER BY p.id
 `;
 
@@ -80,6 +69,7 @@ type DateRollSchedulerOptions = {
 
 export const buildDateRollScheduler = (
   logger: FastifyBaseLogger,
+  settingsService: BusinessCalendarSettingsService,
   options: DateRollSchedulerOptions,
 ) => {
   let timer: NodeJS.Timeout | null = null;
@@ -229,56 +219,64 @@ export const buildDateRollScheduler = (
     }
   };
 
+  type ActivePropertyRow = {
+    property_id: string;
+    tenant_id: string;
+    property_name: string;
+    timezone: string | null;
+    current_business_date: string | null;
+    date_status: string | null;
+    night_audit_status: string | null;
+  };
+
   const checkAndDispatch = async () => {
     status.lastCheckAt = new Date().toISOString();
 
-    // Cross-tenant scan: acquire a dedicated client and run the query directly
-    // without setting any tenant GUC — RLS is bypassed for this service role
-    // when no tenant context is active (returns NULL → no rows filtered in by
-    // the NULLIF-guarded policy), which is correct for a scheduler that needs
-    // to see all properties. The pool connection is NOT poisoned because we
-    // never call RESET (which leaves the GUC as '' and breaks other queries).
     const client = await pool.connect();
-    let rows: Array<
-      PropertySchedule & { timezone: string | null; night_audit_status: string | null }
-    >;
+    let rows: ActivePropertyRow[];
     try {
-      const result = await client.query<
-        PropertySchedule & { timezone: string | null; night_audit_status: string | null }
-      >(ELIGIBLE_PROPERTIES_SQL, []);
+      const result = await client.query<ActivePropertyRow>(ACTIVE_PROPERTIES_SQL, []);
       rows = result.rows;
     } finally {
       client.release();
     }
 
-    status.scheduledProperties = rows.map((r) => ({
-      tenantId: r.tenantId ?? ((r as Record<string, unknown>).tenant_id as string),
-      propertyId: r.propertyId ?? ((r as Record<string, unknown>).property_id as string),
-      propertyName: r.propertyName ?? ((r as Record<string, unknown>).property_name as string),
-      autoRollTime: r.autoRollTime ?? ((r as Record<string, unknown>).auto_roll_time as string),
-      lastAuditDate: null,
-      currentBusinessDate:
-        r.currentBusinessDate ??
-        ((r as Record<string, unknown>).current_business_date as string | null),
-      dateStatus: r.dateStatus ?? ((r as Record<string, unknown>).date_status as string | null),
-    }));
-
+    const scheduled: PropertySchedule[] = [];
     const results: DispatchResult[] = [];
 
     for (const row of rows) {
-      const prop = {
-        tenantId: (row as Record<string, unknown>).tenant_id as string,
-        propertyId: (row as Record<string, unknown>).property_id as string,
-        propertyName: (row as Record<string, unknown>).property_name as string,
-        autoRollTime: (row as Record<string, unknown>).auto_roll_time as string,
-        currentBusinessDate: (row as Record<string, unknown>).current_business_date as
-          | string
-          | null,
-        dateStatus: (row as Record<string, unknown>).date_status as string | null,
+      const tenantId = row.tenant_id;
+      const propertyId = row.property_id;
+
+      // Resolve settings from the service
+      const settings = settingsService.getSettings(tenantId, propertyId);
+
+      if (!settings.autoRollEnabled) continue;
+
+      const prop: PropertySchedule & {
+        timezone: string | null;
+        night_audit_status: string | null;
+      } = {
+        tenantId,
+        propertyId,
+        propertyName: row.property_name,
+        autoRollTime: settings.autoRollTime,
+        currentBusinessDate: row.current_business_date,
+        dateStatus: row.date_status,
         lastAuditDate: null,
-        timezone: (row as Record<string, unknown>).timezone as string | null,
-        night_audit_status: (row as Record<string, unknown>).night_audit_status as string | null,
+        timezone: row.timezone,
+        night_audit_status: row.night_audit_status,
       };
+
+      scheduled.push({
+        tenantId: prop.tenantId,
+        propertyId: prop.propertyId,
+        propertyName: prop.propertyName,
+        autoRollTime: prop.autoRollTime,
+        lastAuditDate: null,
+        currentBusinessDate: prop.currentBusinessDate,
+        dateStatus: prop.dateStatus,
+      });
 
       // Skip if date is not OPEN or audit is already running/completed
       if (prop.dateStatus !== "OPEN") continue;
@@ -292,6 +290,7 @@ export const buildDateRollScheduler = (
       results.push(result);
     }
 
+    status.scheduledProperties = scheduled;
     if (results.length > 0) {
       status.lastDispatchResults = results;
     }

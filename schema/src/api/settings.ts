@@ -404,6 +404,8 @@ export type OptionsQuery = z.infer<typeof OptionsQuerySchema>;
 export const ValuesQuerySchema = ActiveOnlyQuerySchema.extend({
 	scope_level: SettingsScopeEnum.optional(),
 	setting_id: z.string().uuid().optional(),
+	setting_code: z.string().optional(),
+	setting_codes: z.array(z.string()).or(z.string()).optional(),
 	property_id: z.string().uuid().optional(),
 	unit_id: z.string().uuid().optional(),
 	user_id: z.string().uuid().optional(),
@@ -446,6 +448,8 @@ export type SettingsValueFilters = {
 	tenantId: string;
 	scopeLevel?: string;
 	settingId?: string;
+	settingCode?: string;
+	settingCodes?: string[];
 	propertyId?: string;
 	unitId?: string;
 	userId?: string;

@@ -35,5 +35,5 @@ await bootstrapService({
     shutdownArEventConsumer,
   ],
   shutdownProducer,
-  flowManifests: { manifests: [FLOW_MANIFEST], mode: "warn" },
+  flowManifests: { manifests: [FLOW_MANIFEST], mode: "throw" },
 });

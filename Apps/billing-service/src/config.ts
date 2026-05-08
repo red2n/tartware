@@ -101,4 +101,5 @@ export const config = {
     backfill: rollBackfill,
     dateRollScheduler: rollDateRollScheduler,
   },
+  coreServiceUrl: process.env.CORE_SERVICE_URL ?? "http://localhost:3000",
 };

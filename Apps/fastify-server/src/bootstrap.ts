@@ -108,16 +108,18 @@ export async function bootstrapService(
 
 			// Flow compliance validation (when manifests are provided)
 			if (input.flowManifests) {
-				const { validateFlowCompliance } = await import(
+				const { validateServiceManifest } = await import(
 					"@tartware/command-consumer-utils/flow-compliance"
 				);
-				validateFlowCompliance(input.flowManifests.manifests, {
-					mode: input.flowManifests.mode ?? "warn",
-					logger: {
-						info: (msg: string) => app.log.info(msg),
-						warn: (msg: string) => app.log.warn(msg),
-					},
-				});
+				for (const manifest of input.flowManifests.manifests) {
+					validateServiceManifest(manifest, {
+						mode: input.flowManifests.mode ?? "warn",
+						logger: {
+							info: (msg: string) => app.log.info(msg),
+							warn: (msg: string) => app.log.warn(msg),
+						},
+					});
+				}
 			}
 
 			await app.listen({

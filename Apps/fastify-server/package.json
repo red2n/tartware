@@ -23,6 +23,10 @@
     "./circuit-breaker": {
       "types": "./dist/circuit-breaker.d.ts",
       "import": "./dist/circuit-breaker.js"
+    },
+    "./bootstrap": {
+      "types": "./dist/bootstrap.d.ts",
+      "import": "./dist/bootstrap.js"
     }
   },
   "scripts": {

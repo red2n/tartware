@@ -73,6 +73,7 @@ export const SettingsValuesSchema = z.object({
 	updated_at: z.coerce.date().optional(),
 	created_by: z.string().optional(),
 	updated_by: z.string().optional(),
+	setting_code: z.string().optional(),
 });
 
 export type SettingsValue = z.infer<typeof SettingsValuesSchema>;

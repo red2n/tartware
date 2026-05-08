@@ -47,11 +47,12 @@ const GET_TEMPLATE_BY_CODE_SQL = `
          usage_count, last_used_at, created_by, updated_by,
          created_at, updated_at
   FROM communication_templates
-  WHERE tenant_id = $1::uuid
+  WHERE tenant_id IN ($1::uuid, '00000000-0000-0000-0000-000000000001'::uuid)
     AND template_code = $2
     AND COALESCE(is_deleted, false) = false
     AND is_active = true
   ORDER BY
+    CASE WHEN tenant_id = $1::uuid THEN 0 ELSE 1 END,
     CASE WHEN property_id = NULLIF($3, '')::uuid THEN 0 ELSE 1 END,
     send_priority DESC
   LIMIT 1
