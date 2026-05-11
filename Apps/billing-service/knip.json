@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
+    "src/index.ts",
     "src/services/billing-commands/payment.ts",
     "src/services/night-audit-runner.ts",
     "src/repositories/flow-approval-repository.ts",

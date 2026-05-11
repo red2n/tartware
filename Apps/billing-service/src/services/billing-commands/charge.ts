@@ -908,6 +908,18 @@ const applyChargeVoid = async (
     }
 
     const totalAmount = parseDbMoneyOrZero(original.total_amount);
+
+    // NEW: Fetch folio version for optimistic locking
+    const { rows: folioRows } = await queryWithClient<{ version: number }>(
+      client,
+      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, original.folio_id],
+    );
+    const folioVersion = folioRows[0]?.version;
+    if (folioVersion === undefined) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio missing during void.");
+    }
+
     const { rowCount: folioCount } = await queryWithClient(
       client,
       `UPDATE public.folios
@@ -918,7 +930,7 @@ const applyChargeVoid = async (
            updated_by = $3::uuid
        WHERE tenant_id = $1::uuid
          AND folio_id = $4::uuid AND version = $5`,
-      [context.tenantId, totalAmount, actorId, original.folio_id, original.version],
+      [context.tenantId, totalAmount, actorId, original.folio_id, folioVersion],
     );
 
     if (folioCount === 0) {
