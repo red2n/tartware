@@ -120,6 +120,7 @@ const buildLockRoomHandler =
     try {
       const parsedInput = lockRoomSchema.parse({
         tenantId: call.request.tenantId,
+        propertyId: call.request.propertyId,
         reservationId: call.request.reservationId,
         roomTypeId: call.request.roomTypeId,
         roomId: call.request.roomId ?? null,

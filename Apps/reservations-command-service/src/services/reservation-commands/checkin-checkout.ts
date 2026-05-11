@@ -945,6 +945,7 @@ export const walkInCheckIn = async (
   // 5. Lock availability
   const walkInGuardMetadata = await lockReservationHold({
     tenantId,
+    propertyId: command.property_id,
     reservationId,
     roomTypeId: command.room_type_id,
     roomId,

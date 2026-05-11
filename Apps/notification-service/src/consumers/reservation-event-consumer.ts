@@ -669,7 +669,7 @@ export const startReservationEventConsumer = async (): Promise<void> => {
               key: event.tenantId,
               value: JSON.stringify(dlqPayload),
             });
-            recordDlqEvent(String(err.message || "handler_error"));
+            recordDlqEvent(err instanceof Error ? err.message : String(err));
           } catch (dlqErr) {
             logger.error({ err: dlqErr }, "Failed to publish to Notification DLQ");
           }

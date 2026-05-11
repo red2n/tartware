@@ -13,6 +13,7 @@
     "@fastify/sensible",
     "@tartware/fastify-server",
     "@tartware/tenant-auth",
+    "@tartware/command-consumer-utils",
     "pg"
   ],
   "ignoreExportsUsedInFile": true,

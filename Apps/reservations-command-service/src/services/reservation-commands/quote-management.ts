@@ -158,11 +158,12 @@ export const convertQuote = async (
   let lockResult: AvailabilityGuardMetadata | null = null;
   try {
     lockResult = await lockReservationHold({
+      tenantId,
+      propertyId: reservation.property_id,
       reservationId: command.reservation_id,
       roomTypeId: reservation.room_type_id,
       stayStart: new Date(reservation.check_in_date),
       stayEnd: new Date(reservation.check_out_date),
-      tenantId,
       reason: "quote_conversion",
     });
   } catch (lockError) {

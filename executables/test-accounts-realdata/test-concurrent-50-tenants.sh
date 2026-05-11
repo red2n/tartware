@@ -100,17 +100,13 @@ echo "  ✓ Guests service reachable"
 
 # ─── Verify DB procedures exist (required for Kafka command processing) ──────
 echo "  Checking DB procedures..."
-PROC_CHECK=$(docker exec tartware-postgres psql -U postgres -d tartware -tAc \
+PROC_CHECK=$(PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -tAc \
   "SELECT COUNT(*) FROM pg_proc WHERE proname = 'upsert_guest';" 2>/dev/null || echo "0")
 if [[ "$PROC_CHECK" -lt 1 ]]; then
   echo "  ⚠ Missing DB procedures — auto-installing..."
-  docker cp "$REPO_ROOT/scripts/" tartware-postgres:/tmp/scripts/ 2>/dev/null
-  docker exec -w /tmp/scripts/tables tartware-postgres \
-    psql -U postgres -d tartware -f 00-create-all-tables.sql >/dev/null 2>&1
-  docker exec -w /tmp/scripts/procedures tartware-postgres \
-    psql -U postgres -d tartware -f 00-create-all-procedures.sql >/dev/null 2>&1
-  docker exec -w /tmp/scripts/indexes tartware-postgres \
-    psql -U postgres -d tartware -f 00-create-all-indexes.sql >/dev/null 2>&1
+  PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -f scripts/tables/00-create-all-tables.sql >/dev/null 2>&1
+  PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -f scripts/procedures/00-create-all-procedures.sql >/dev/null 2>&1
+  PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -f scripts/indexes/00-create-all-indexes.sql >/dev/null 2>&1
   echo "  ✓ DB procedures and indexes installed"
 else
   echo "  ✓ DB procedures present"

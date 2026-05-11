@@ -314,8 +314,8 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           try {
             const dlqPayload = buildDlqPayload({
               rawValue,
-              topic,
-              partition,
+              topic: batch.topic,
+              partition: batch.partition,
               offset: message.offset,
               attempts: 6,
               failureReason: "HANDLER_FAILURE",
@@ -327,7 +327,7 @@ export const startReservationEventConsumer = async (): Promise<void> => {
               key: envelope?.metadata.tenantId || "unknown",
               value: JSON.stringify(dlqPayload),
             });
-            recordDlqEvent(err.message || "handler_error");
+            recordDlqEvent(err instanceof Error ? err.message : String(err));
           } catch (dlqErr) {
             logger.error({ err: dlqErr }, "failed to publish to Revenue DLQ");
           } finally {

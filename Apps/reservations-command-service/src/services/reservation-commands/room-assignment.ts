@@ -57,6 +57,7 @@ export const assignRoom = async (
   // Verify room is available for the reservation's date range
   const guardMetadata = await lockReservationHold({
     tenantId,
+    propertyId: snapshot.propertyId,
     reservationId: command.reservation_id,
     roomTypeId: snapshot.roomTypeId,
     roomId: command.room_id, // Check specific room availability
@@ -172,6 +173,7 @@ export const extendStay = async (
   if (newCheckOut > currentCheckOut) {
     guardMetadata = await lockReservationHold({
       tenantId,
+      propertyId: snapshot.propertyId,
       reservationId: command.reservation_id,
       roomTypeId: snapshot.roomTypeId,
       roomId: null, // Room assignment handled separately

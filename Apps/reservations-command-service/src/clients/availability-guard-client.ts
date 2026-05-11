@@ -50,6 +50,7 @@ type GrpcMethodMap = {
 
 type LockReservationInput = {
   tenantId: string;
+  propertyId: string;
   reservationId: string;
   roomTypeId: string;
   roomId?: string | null;
@@ -280,6 +281,7 @@ export const lockReservationHold = async (
       () =>
         callGrpc("lockRoom", {
           tenantId: input.tenantId,
+          propertyId: input.propertyId,
           reservationId: input.reservationId,
           roomTypeId: input.roomTypeId,
           roomId: input.roomId ?? "",

@@ -155,6 +155,7 @@ export const createReservation = async (
 
   const availabilityGuard: AvailabilityGuardMetadata | undefined = await lockReservationHold({
     tenantId,
+    propertyId: command.property_id,
     reservationId: aggregateId,
     roomTypeId: command.room_type_id,
     roomId: null,
@@ -370,6 +371,7 @@ export const modifyReservation = async (
   const guardMetadata: AvailabilityGuardMetadata = stayChanged
     ? await lockReservationHold({
         tenantId,
+        propertyId: targetPropertyId,
         reservationId: command.reservation_id,
         roomTypeId: command.room_type_id ?? snapshot.roomTypeId,
         roomId: null,

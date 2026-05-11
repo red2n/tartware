@@ -68,9 +68,9 @@ export interface AuditLogParams {
  */
 export const INSERT_AUDIT_LOG_SQL = `
   INSERT INTO public.audit_logs (
-    tenant_id, property_id, actor_id, action,
+    tenant_id, property_id, user_id, action,
     entity_type, entity_id, metadata,
-    created_at
+    audit_timestamp
   ) VALUES (
     $1::uuid, $2::uuid, $3::uuid, $4,
     $5, $6, $7::jsonb,

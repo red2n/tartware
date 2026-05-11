@@ -274,6 +274,7 @@ export const startArEventConsumer = async (): Promise<void> => {
           const durationSeconds = (Date.now() - startTime) / 1000;
           observeCommandDuration(eventType, durationSeconds);
           recordCommandOutcome(eventType, "handler_error");
+          recordDlqEvent(err instanceof Error ? err.message : String(err));
 
           logger.error(
             { err, offset: message.offset, reservationId: (event?.payload as any)?.reservation_id },
@@ -296,7 +297,7 @@ export const startArEventConsumer = async (): Promise<void> => {
               key: event?.metadata.tenantId || "unknown",
               value: JSON.stringify(dlqPayload),
             });
-            recordDlqEvent(err.message || "handler_error");
+            recordDlqEvent(err instanceof Error ? err.message : String(err));
           } catch (dlqErr) {
             logger.error({ err: dlqErr }, "Failed to publish to AR DLQ");
           }
@@ -311,7 +312,7 @@ export const startArEventConsumer = async (): Promise<void> => {
         const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
         try {
           const high = BigInt(batch.highWatermark);
-          const current = BigInt(lastOffset);
+          const current = BigInt(lastOffset ?? "0");
           const rawLag = high - current - 1n;
           const lag = rawLag > 0n ? Number(rawLag) : 0;
           setCommandConsumerLag(config.arEvents.topic, batch.partition, lag);

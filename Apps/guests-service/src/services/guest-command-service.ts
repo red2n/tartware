@@ -135,7 +135,7 @@ export const registerGuestProfile = async ({
     actorId: createdBy,
     action: "guest.register",
     entityType: "guest",
-    entityId: guestId,
+    entityId: guestId ?? null,
     metadata: {
       guest_id: hashIdentifier(guestId || ""),
       correlationId,

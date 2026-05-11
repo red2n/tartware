@@ -90,7 +90,7 @@ export const startAvailabilityGuardCommandCenterConsumer = async (
         const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
         try {
           const high = BigInt(batch.highWatermark);
-          const current = BigInt(lastOffset);
+          const current = BigInt(lastOffset ?? "0");
           const rawLag = high - current - 1n;
           const lag = rawLag > 0n ? Number(rawLag) : 0;
           setCommandConsumerLag(batch.topic, batch.partition, lag);
