@@ -42,7 +42,7 @@ const LIST_DUNNING_RULES_SQL = `
     created_at, updated_at, created_by, updated_by
   FROM public.ar_dunning_rules
   WHERE tenant_id = $1::uuid
-    AND (property_id IS NULL OR property_id = $2::uuid)
+    AND ($2::uuid IS NULL OR property_id = $2::uuid OR property_id IS NULL)
   ORDER BY bucket_name, escalation_order
 `;
 

@@ -216,6 +216,10 @@ const processReservationEvent = async (
 
 export const startReservationEventConsumer = async (): Promise<void> => {
   if (consumer) return;
+  if (!config.reservationEvents.consumerEnabled) {
+    logger.info("Reservation event consumer disabled via config");
+    return;
+  }
 
   // Initialize DLQ producer
   dlqProducer = createKafkaProducer(kafka, {
@@ -296,6 +300,7 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           const durationSeconds = (Date.now() - startTime) / 1000;
           observeCommandDuration(eventType, durationSeconds);
           recordCommandOutcome(eventType, "success");
+          resolveOffset(message.offset);
         } catch (err: any) {
           const durationSeconds = (Date.now() - startTime) / 1000;
           observeCommandDuration(eventType, durationSeconds);
