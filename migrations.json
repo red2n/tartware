@@ -39,6 +39,23 @@
       "subject": "feat: add toggle for reservation event consumer and update dunning rule repository property filter logic"
     },
     "targetVersion": "latest",
-    "confirmedPackageUpdates": true
+    "confirmedPackageUpdates": true,
+    "runningMigrations": [
+      "22-6-1-add-claude-worktrees-to-git-ignore"
+    ],
+    "completedMigrations": {
+      "22-6-1-add-claude-worktrees-to-git-ignore": {
+        "type": "successful",
+        "name": "22-6-1-add-claude-worktrees-to-git-ignore",
+        "changedFiles": [
+          {
+            "path": ".gitignore",
+            "type": "UPDATE"
+          }
+        ],
+        "ref": "2e432107ea506e1b0cddcb009b33cf725068f791",
+        "nextSteps": []
+      }
+    }
   }
 }
