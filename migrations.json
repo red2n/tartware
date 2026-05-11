@@ -41,7 +41,7 @@
     "targetVersion": "latest",
     "confirmedPackageUpdates": true,
     "runningMigrations": [
-      "22-6-1-add-claude-worktrees-to-git-ignore"
+      "22-7-0-add-polygraph-to-git-ignore"
     ],
     "completedMigrations": {
       "22-6-1-add-claude-worktrees-to-git-ignore": {
@@ -53,7 +53,19 @@
             "type": "UPDATE"
           }
         ],
-        "ref": "2e432107ea506e1b0cddcb009b33cf725068f791",
+        "ref": "f11ac420dec3135265778c58428e0ce51fcb031f",
+        "nextSteps": []
+      },
+      "22-7-0-add-polygraph-to-git-ignore": {
+        "type": "successful",
+        "name": "22-7-0-add-polygraph-to-git-ignore",
+        "changedFiles": [
+          {
+            "path": ".gitignore",
+            "type": "UPDATE"
+          }
+        ],
+        "ref": "d2e9ec5b8a221628b4a22062b5717936ad98ceac",
         "nextSteps": []
       }
     }
