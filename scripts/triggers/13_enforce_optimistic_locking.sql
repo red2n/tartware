@@ -32,10 +32,10 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    -- Auto-increment when caller omits a value
-    IF NEW.version IS NULL THEN
+    -- Auto-increment when caller omits a value or sends the current value
+    IF NEW.version IS NULL OR NEW.version = OLD.version THEN
         NEW.version := OLD.version + 1;
-    ELSIF NEW.version <= OLD.version THEN
+    ELSIF NEW.version < OLD.version THEN
         RAISE EXCEPTION 'Optimistic lock conflict on %.% (current %, attempted %)',
             TG_TABLE_SCHEMA,
             TG_TABLE_NAME,
@@ -97,7 +97,3 @@ BEGIN
     END LOOP;
 END;
 $$;
-
-\echo ''
-\echo 'Optimistic locking enforcement installed successfully.'
-\echo ''

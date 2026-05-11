@@ -92,6 +92,7 @@ export const config = {
   arEvents: {
     topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
     consumerGroupId: process.env.AR_EVENTS_CONSUMER_GROUP ?? "billing-ar-events-consumer",
+    dlqTopic: process.env.RESERVATION_EVENTS_DLQ_TOPIC ?? "reservations.events.dlq",
     consumerEnabled: parseBooleanEnv(process.env.AR_EVENTS_CONSUMER_ENABLED, true),
     commandTopic: process.env.COMMAND_TOPIC ?? "commands.primary",
   },

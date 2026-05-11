@@ -37,4 +37,10 @@ export const config = {
   auth: buildAuthConfig(),
   kafka,
   commandCenter: buildCommandCenterConfig("housekeeping-service"),
+  reservationEvents: {
+    topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
+    consumerGroupId:
+      process.env.RESERVATION_EVENTS_CONSUMER_GROUP ?? "housekeeping-reservation-events-consumer",
+    dlqTopic: process.env.RESERVATION_EVENTS_DLQ_TOPIC ?? "reservations.events.dlq",
+  },
 };

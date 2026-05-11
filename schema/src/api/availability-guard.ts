@@ -18,6 +18,7 @@ import { uuid } from "../shared/base-schemas.js";
  */
 export const LockRoomSchema = z.object({
 	tenantId: uuid,
+	propertyId: uuid,
 	reservationId: uuid,
 	roomTypeId: uuid,
 	roomId: z.preprocess(
@@ -43,6 +44,7 @@ export type LockRoomInput = z.infer<typeof LockRoomSchema>;
  */
 export const ReleaseLockSchema = z.object({
 	tenantId: uuid,
+	propertyId: uuid.optional(),
 	lockId: uuid,
 	reservationId: uuid.optional(),
 	reason: z.string().default("RELEASE_REQUEST"),
@@ -91,6 +93,8 @@ export const LockResponseSchema = z.union([
 		status: z.literal("LOCKED"),
 		lock: z.object({
 			id: uuid,
+			tenant_id: uuid,
+			property_id: uuid.nullable(),
 			reservation_id: uuid.nullable(),
 			room_type_id: uuid,
 			room_id: uuid.nullable(),
@@ -197,11 +201,12 @@ export type LockAuditRecord = {
 
 /** DB row shape for an inventory lock record. Mirrors the `inventory_locks_shadow` table. */
 export type InventoryLock = {
-	id: string;
-	tenant_id: string;
-	reservation_id: string | null;
-	room_type_id: string;
-	room_id: string | null;
+	id: string,
+	tenant_id: string,
+	property_id: string | null,
+	reservation_id: string | null,
+	room_type_id: string,
+	room_id: string | null,
 	stay_start: Date;
 	stay_end: Date;
 	reason: string;

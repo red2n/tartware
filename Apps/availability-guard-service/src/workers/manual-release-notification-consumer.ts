@@ -16,6 +16,7 @@ import {
   observeNotificationDeliveryLag,
   recordNotificationChannelDelivery,
   recordNotificationMessage,
+  setCommandConsumerLag,
 } from "../lib/metrics.js";
 
 type ManualReleaseNotificationChannel = "email" | "sms" | "slack" | "log";
@@ -73,29 +74,55 @@ export const startManualReleaseNotificationConsumer = async (
   await consumer.subscribe({ topic, fromBeginning: false });
 
   runLoop = consumer.run({
-    eachMessage: async ({ topic: eventTopic, partition, message }) => {
-      const messageLogger = workerLogger.child({
-        topic: eventTopic,
-        partition,
-        offset: message.offset,
-      });
+    eachBatchAutoResolve: false,
+    eachBatch: async (payload) => {
+      const { batch } = payload;
+      for (const message of batch.messages) {
+        if (!payload.isRunning() || payload.isStale()) break;
 
-      const payload = parseNotificationMessage(message, messageLogger);
-      if (!payload) {
-        recordNotificationMessage("skipped");
-        return;
+        const messageLogger = workerLogger.child({
+          topic: batch.topic,
+          partition: batch.partition,
+          offset: message.offset,
+        });
+
+        const payload_notif = parseNotificationMessage(message, messageLogger);
+        if (!payload_notif) {
+          recordNotificationMessage("skipped");
+          payload.resolveOffset(message.offset);
+          await payload.heartbeat();
+          continue;
+        }
+
+        try {
+          await processNotification(payload_notif, message, messageLogger);
+          recordNotificationMessage("processed");
+        } catch (error) {
+          recordNotificationMessage("failed");
+          messageLogger.error(
+            { err: error, lockId: payload_notif.lockId },
+            "Manual release notification processing failed",
+          );
+          // Re-throw if it's a transient failure, Kafkajs will retry based on config
+          throw error;
+        } finally {
+          payload.resolveOffset(message.offset);
+          await payload.heartbeat();
+        }
       }
 
-      try {
-        await processNotification(payload, message, messageLogger);
-        recordNotificationMessage("processed");
-      } catch (error) {
-        recordNotificationMessage("failed");
-        messageLogger.error(
-          { err: error, lockId: payload.lockId },
-          "Manual release notification processing failed",
-        );
-        throw error;
+      // Update consumer lag for the entire batch
+      if (batch.messages.length > 0) {
+        const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
+        try {
+          const high = BigInt(batch.highWatermark);
+          const current = BigInt(lastOffset);
+          const rawLag = high - current - 1n;
+          const lag = rawLag > 0n ? Number(rawLag) : 0;
+          setCommandConsumerLag(batch.topic, batch.partition, lag);
+        } catch (_err) {
+          // Ignore lag calculation errors
+        }
       }
     },
   });

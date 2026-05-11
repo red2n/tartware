@@ -106,6 +106,12 @@ export const transferCharge = async (
       throw new BillingCommandError("SAME_FOLIO", "Source and target folio are the same.");
     }
 
+    // NEW: Acquire advisory locks on both folios in sorted order to prevent deadlocks
+    const foliosToLock = [original.folio_id, targetFolioId].sort();
+    for (const fId of foliosToLock) {
+      await acquireFolioLock(client, fId);
+    }
+
     const amount = parseDbMoneyOrZero(original.total_amount);
 
     // 2. Mark original as transferred
@@ -208,7 +214,7 @@ export const transferCharge = async (
     // 5. Adjust source folio balance (decrease)
     const { rows: fromRows } = await queryWithClient<{ version: number }>(
       client,
-      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid FOR UPDATE`,
+      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
       [tenantId, original.folio_id],
     );
     if (fromRows.length === 0 || !fromRows[0]) {
@@ -230,7 +236,7 @@ export const transferCharge = async (
     // 6. Adjust target folio balance (increase)
     const { rows: toRows } = await queryWithClient<{ version: number }>(
       client,
-      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid FOR UPDATE`,
+      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
       [tenantId, targetFolioId],
     );
     if (toRows.length === 0 || !toRows[0]) {
@@ -315,6 +321,13 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
     }
     if (original.is_voided) {
       throw new BillingCommandError("POSTING_VOIDED", "Cannot split a voided posting.");
+    }
+
+    // NEW: Resolve all target folios and lock them along with source folio
+    const targetFolioIds = command.splits.map((s) => s.folio_id).filter((id): id is string => !!id);
+    const foliosToLock = Array.from(new Set([original.folio_id, ...targetFolioIds])).sort();
+    for (const fId of foliosToLock) {
+      await acquireFolioLock(client, fId);
     }
 
     const originalAmount = parseDbMoneyOrZero(original.total_amount);
@@ -408,7 +421,7 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       // Update target folio balance
       const { rows: targetFolioRows } = await queryWithClient<{ version: number }>(
         client,
-        `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid FOR UPDATE`,
+        `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
         [tenantId, targetFolioId],
       );
       const targetFolio = targetFolioRows[0];
@@ -810,6 +823,9 @@ const applyChargeVoid = async (
       );
     }
 
+    // NEW: Acquire advisory lock on the folio to serialize balance update
+    await acquireFolioLock(client, original.folio_id);
+
     const voidResult = await queryWithClient<{ posting_id: string }>(
       client,
       `INSERT INTO public.charge_postings (
@@ -892,17 +908,26 @@ const applyChargeVoid = async (
     }
 
     const totalAmount = parseDbMoneyOrZero(original.total_amount);
-    await queryWithClient(
+    const { rowCount: folioCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET total_charges = total_charges - $2,
            balance = balance - $2,
+           version = version + 1,
            updated_at = NOW(),
            updated_by = $3::uuid
        WHERE tenant_id = $1::uuid
-         AND folio_id = $4::uuid`,
-      [context.tenantId, totalAmount, actorId, original.folio_id],
+         AND folio_id = $4::uuid AND version = $5`,
+      [context.tenantId, totalAmount, actorId, original.folio_id, original.version],
     );
+
+    if (folioCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Folio balance was modified during void operation. Please retry.",
+        true,
+      );
+    }
 
     // GL: paired DR/CR for the void. Sides are swapped relative to the
     // original posting — the original DR'd the guest ledger and CR'd revenue;

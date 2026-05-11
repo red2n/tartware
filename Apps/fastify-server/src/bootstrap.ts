@@ -16,8 +16,8 @@ import {
 	parseHostPort,
 	resolveOtelDependency,
 } from "@tartware/config";
-import { initTelemetry } from "@tartware/telemetry";
 import type { ServiceFlowManifest } from "@tartware/schemas";
+import { initTelemetry } from "@tartware/telemetry";
 import type { FastifyInstance } from "fastify";
 
 export type BootstrapServiceInput = {

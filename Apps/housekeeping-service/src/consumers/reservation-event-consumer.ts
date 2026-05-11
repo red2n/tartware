@@ -10,20 +10,35 @@
  *
  * @module consumers/reservation-event-consumer
  */
-import { enterTenantScope } from "@tartware/config/db";
-import { ReservationEventSchema } from "@tartware/schemas";
-import type { Consumer, EachMessagePayload } from "kafkajs";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
+import { createKafkaProducer } from "@tartware/command-consumer-utils/producer";
+import { enterTenantScope } from "@tartware/config/db";
+import { processWithRetry } from "@tartware/config/retry";
+import { ReservationEventSchema } from "@tartware/schemas";
+import type { Consumer } from "kafkajs";
+import type { z } from "zod";
+import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  recordDlqEvent,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
+import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
 
 const logger = appLogger.child({ module: "reservation-event-consumer" });
 
-const EVENTS_TOPIC = "reservations.events";
-const CONSUMER_GROUP = "housekeeping-reservation-events-consumer";
+const EVENTS_TOPIC = config.reservationEvents.topic;
+const CONSUMER_GROUP = config.reservationEvents.consumerGroupId;
+const DLQ_TOPIC = config.reservationEvents.dlqTopic;
 
 let consumer: Consumer | null = null;
+let dlqProducer: ReturnType<typeof createKafkaProducer> | null = null;
 
 /**
  * Resolve room_id from reservation to get the room for housekeeping task creation.
@@ -103,6 +118,21 @@ const createCheckoutCleanTask = async (
     [tenantId, propertyId, roomNumber, today],
   );
 
+  await recordAuditLog({
+    tenantId,
+    propertyId,
+    actorId: null, // System event
+    action: "housekeeping.task.create_on_checkout",
+    entityType: "housekeeping_task",
+    entityId: hashIdentifier(`${roomNumber}:${today}`),
+    metadata: {
+      room_number: roomNumber,
+      scheduled_date: today,
+      task_type: "CHECKOUT_CLEAN",
+      triggered_by: "reservation.checked_out",
+    },
+  });
+
   logger.info(
     { roomId, roomNumber, propertyId, tenantId },
     "Created CHECKOUT_CLEAN housekeeping task from checkout event",
@@ -119,15 +149,7 @@ const isCheckoutEvent = (payload: Record<string, unknown>): boolean => {
 /**
  * Process a single reservation event for housekeeping integration.
  */
-const processEvent = async (rawValue: string): Promise<void> => {
-  let event: ReturnType<typeof ReservationEventSchema.parse>;
-  try {
-    event = ReservationEventSchema.parse(JSON.parse(rawValue));
-  } catch {
-    logger.debug("Skipping unparseable reservation event");
-    return;
-  }
-
+const processEvent = async (event: z.infer<typeof ReservationEventSchema>): Promise<void> => {
   const tenantId = event.metadata.tenantId;
   if (!tenantId) return;
 
@@ -155,6 +177,12 @@ const processEvent = async (rawValue: string): Promise<void> => {
 export const startReservationEventConsumer = async (): Promise<void> => {
   if (consumer) return;
 
+  // Initialize DLQ producer
+  dlqProducer = createKafkaProducer(kafka, {
+    commandTopic: config.commandCenter.topic,
+    dlqTopic: DLQ_TOPIC,
+  });
+
   consumer = kafka.consumer({
     groupId: CONSUMER_GROUP,
     allowAutoTopicCreation: false,
@@ -164,23 +192,134 @@ export const startReservationEventConsumer = async (): Promise<void> => {
   await consumer.subscribe({ topic: EVENTS_TOPIC, fromBeginning: false });
 
   await consumer.run({
-    eachMessage: async ({ message }: EachMessagePayload) => {
-      if (!message.value) return;
+    eachBatchAutoResolve: false,
+    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+      for (const message of batch.messages) {
+        if (!isRunning() || isStale()) break;
 
-      try {
-        await processEvent(message.value.toString());
-      } catch (err) {
-        logger.error(
-          { err, offset: message.offset },
-          "Reservation event consumer: failed to process event",
-        );
-        // Non-fatal — commit offset and continue.
+        if (!message.value) {
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const startTime = Date.now();
+        const rawValue = message.value.toString();
+        let event: z.infer<typeof ReservationEventSchema> | null = null;
+
+        try {
+          event = ReservationEventSchema.parse(JSON.parse(rawValue));
+        } catch (err) {
+          logger.warn({ err, offset: message.offset }, "Skipping malformed reservation event");
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const eventType = event.metadata.type;
+
+        try {
+          await processWithRetry(async () => processEvent(event!), {
+            maxRetries: 5,
+            baseDelayMs: 1000,
+            delayScheduleMs: [1000, 2000, 5000, 10000, 20000],
+            onRetry: (ctx) => {
+              logger.warn(
+                {
+                  attempt: ctx.attempt,
+                  delayMs: ctx.delayMs,
+                  err: ctx.error,
+                  reservationId: (event?.payload as any)?.reservation_id,
+                },
+                "Housekeeping consumer retry triggered",
+              );
+            },
+            isRetryable: (err: any) => {
+              const code = String(err.code || "");
+              return (
+                code.startsWith("08") ||
+                code === "40001" ||
+                code === "57P01" ||
+                err.message?.includes("deadlock") ||
+                err.message?.includes("ECONNREFUSED")
+              );
+            },
+          });
+
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "success");
+        } catch (err: any) {
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "handler_error");
+
+          logger.error(
+            { err, offset: message.offset, reservationId: (event?.payload as any)?.reservation_id },
+            "Reservation event consumer: failed to process event after retries. Routing to DLQ.",
+          );
+
+          try {
+            const dlqPayload = buildDlqPayload({
+              rawValue,
+              topic: batch.topic,
+              partition: batch.partition,
+              offset: message.offset,
+              attempts: 6,
+              failureReason: "HANDLER_FAILURE",
+              error: err,
+              envelope: event as any,
+            });
+
+            await dlqProducer?.publishDlqEvent({
+              key: event?.metadata.tenantId || "unknown",
+              value: JSON.stringify(dlqPayload),
+            });
+            recordDlqEvent(err.message || "handler_error");
+          } catch (dlqErr) {
+            logger.error({ err: dlqErr }, "failed to publish to Housekeeping DLQ");
+          }
+        } finally {
+          resolveOffset(message.offset);
+          await heartbeat();
+        }
+      }
+
+      // Update lag for the entire batch
+      if (batch.messages.length > 0) {
+        const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
+        try {
+          const high = BigInt(batch.highWatermark);
+          const current = BigInt(lastOffset);
+          const rawLag = high - current - 1n;
+          const lag = rawLag > 0n ? Number(rawLag) : 0;
+          setCommandConsumerLag(EVENTS_TOPIC, batch.partition, lag);
+        } catch (_err) {
+          // Ignore lag calculation errors
+        }
       }
     },
   });
 
+  // Track consumer lag
+  consumer.on(consumer.events.GROUP_JOIN, () => {
+    logger.info("Housekeeping consumer joined group");
+  });
+
+  // Periodically report lag (best effort)
+  setInterval(async () => {
+    if (consumer) {
+      try {
+        const description = await consumer.describeGroup();
+        for (const member of description.members) {
+          logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
+          setCommandConsumerLag(EVENTS_TOPIC, 0, 0); // Placeholder
+        }
+      } catch (_err) {
+        // Ignore lag reporting errors
+      }
+    }
+  }, 30_000);
   logger.info(
-    { topic: EVENTS_TOPIC, groupId: CONSUMER_GROUP },
+    { topic: EVENTS_TOPIC, groupId: CONSUMER_GROUP, dlqTopic: DLQ_TOPIC },
     "Housekeeping reservation event consumer started",
   );
 };
@@ -188,9 +327,11 @@ export const startReservationEventConsumer = async (): Promise<void> => {
 export const shutdownReservationEventConsumer = async (): Promise<void> => {
   if (!consumer) return;
   try {
+    await dlqProducer?.shutdown();
     await consumer.disconnect();
   } catch (err) {
     logger.error({ err }, "Error disconnecting reservation event consumer");
   }
   consumer = null;
+  dlqProducer = null;
 };

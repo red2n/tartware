@@ -59,8 +59,36 @@ export const sendNotification = async (
     return null;
   }
 
+  // 1b. Check for existing record if idempotencyKey is provided
+  if (params.idempotencyKey) {
+    const { rows: existingRows } = await query<{ id: string; status: string }>(
+      `
+        SELECT id, status
+        FROM guest_communications
+        WHERE tenant_id = $1::uuid
+          AND metadata @> jsonb_build_object('idempotencyKey', $2::text)
+        LIMIT 1
+      `,
+      [params.tenantId, params.idempotencyKey],
+    );
+
+    if (existingRows.length > 0 && existingRows[0]) {
+      const existing = existingRows[0];
+      logger.info(
+        {
+          communicationId: existing.id,
+          idempotencyKey: params.idempotencyKey,
+          status: existing.status,
+        },
+        "Found existing communication record for idempotency key",
+      );
+      return { communicationId: existing.id, dispatched: existing.status === "SENT" };
+    }
+  }
+
   // 2. Insert the communication record with QUEUED status
-  const { rows } = await query<{ id: string }>(INSERT_COMMUNICATION_SQL, [
+  let communicationId: string | undefined;
+  const insertParams = [
     params.tenantId,
     params.propertyId,
     params.guestId,
@@ -79,9 +107,36 @@ export const sendNotification = async (
     null, // sent_at set after dispatch
     params.idempotencyKey ? JSON.stringify({ idempotencyKey: params.idempotencyKey }) : null,
     params.initiatedBy,
-  ]);
+  ];
 
-  const communicationId = rows[0]?.id;
+  try {
+    const { rows } = await query<{ id: string }>(INSERT_COMMUNICATION_SQL, insertParams);
+    communicationId = rows[0]?.id;
+  } catch (err: unknown) {
+    const dbError = err as { code?: string; constraint?: string };
+    // Handle race condition: if reservation doesn't exist yet, insert without the link
+    if (
+      params.reservationId &&
+      dbError.code === "23503" &&
+      dbError.constraint === "fk_guest_communications_tenant_reservation_id"
+    ) {
+      logger.warn(
+        {
+          tenantId: params.tenantId,
+          reservationId: params.reservationId,
+          templateCode: params.templateCode,
+        },
+        "Reservation record not found for FK link; falling back to unlinked communication record to ensure dispatch.",
+      );
+      const fallbackParams = [...insertParams];
+      fallbackParams[3] = null; // Set reservation_id ($4) to NULL
+      const { rows } = await query<{ id: string }>(INSERT_COMMUNICATION_SQL, fallbackParams);
+      communicationId = rows[0]?.id;
+    } else {
+      throw err;
+    }
+  }
+
   if (!communicationId) {
     throw new Error("Failed to insert communication record");
   }

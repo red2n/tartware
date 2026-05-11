@@ -14,6 +14,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { hashIdentifier, redactPayload } from "@tartware/config";
 import type { BillingAuditEventInput } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
@@ -78,12 +79,17 @@ function buildParams(e: BillingAuditEventInput): unknown[] {
     e.action, // $8  action
     e.category ?? "FINANCIAL", // $9  action_category
     e.severity ?? "INFO", // $10 severity
-    e.oldValues != null ? JSON.stringify(e.oldValues) : null, // $11 old_values
-    e.newValues != null ? JSON.stringify(e.newValues) : null, // $12 new_values
+    e.oldValues != null ? JSON.stringify(redactPayload(e.oldValues)) : null, // $11 old_values
+    e.newValues != null ? JSON.stringify(redactPayload(e.newValues)) : null, // $12 new_values
     e.isPciRelevant ?? false, // $13 is_pci_relevant
     e.isGdprRelevant ?? false, // $14 is_gdpr_relevant
     e.description ?? null, // $15 description
-    e.metadata != null ? JSON.stringify(e.metadata) : null, // $16 metadata
+    e.metadata != null
+      ? JSON.stringify({
+          ...(redactPayload(e.metadata) as Record<string, unknown>),
+          entity_id_hash: e.entityId ? hashIdentifier(e.entityId) : null,
+        })
+      : null, // $16 metadata
   ];
 }
 

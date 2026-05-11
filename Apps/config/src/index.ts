@@ -349,6 +349,7 @@ export const resolveOtelDependency = (optional = true): DependencyTarget | null 
   };
 };
 
+export * from "./audit.js";
 export {
   parseBooleanEnv,
   parseBrokerList,
@@ -356,9 +357,9 @@ export {
   parseNumberList,
   resolveKafkaConfig,
 } from "./kafka.js";
-
 export { toNonNegativeInt, toNumberOrFallback, toOptionalNumber } from "./numbers.js";
 
+export * from "./retry.js";
 export {
   buildAuthConfig,
   buildCommandCenterConfig,

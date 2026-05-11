@@ -61,3 +61,14 @@ export const recordDispatch = (channel: string, status: "sent" | "failed"): void
 export const observeDispatchDuration = (channel: string, durationSeconds: number): void => {
   notificationDispatchDuration.observe({ channel }, durationSeconds);
 };
+
+const dlqCounter = new Counter({
+  name: "notification_reservation_event_dlq_total",
+  help: "Count of notification reservation events routed to the dead-letter topic",
+  labelNames: ["reason"] as const,
+  registers: [metricsRegistry],
+});
+
+export const recordDlqEvent = (reason: string): void => {
+  dlqCounter.labels(reason).inc();
+};

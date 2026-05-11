@@ -19,6 +19,7 @@ import {
   GuestUpdateContactCommandSchema,
   GuestUpdateProfileCommandSchema,
 } from "../schemas/guest-commands.js";
+import { hashIdentifier, recordAuditLog, redactPayload } from "../utils/audit.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
 
 const guestCommandLogger = appLogger.child({
@@ -127,6 +128,21 @@ export const registerGuestProfile = async ({
     },
     "guest.register command applied",
   );
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: createdBy,
+    action: "guest.register",
+    entityType: "guest",
+    entityId: guestId,
+    metadata: {
+      guest_id: hashIdentifier(guestId || ""),
+      correlationId,
+      redacted_payload: redactPayload(payload),
+    },
+  });
+
   return guestId;
 };
 
@@ -256,6 +272,22 @@ export const mergeGuestProfiles = async ({
     "guest.merge command applied",
   );
 
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.merge",
+    entityType: "guest",
+    entityId: primary.id,
+    metadata: {
+      primary_guest_id: hashIdentifier(primary.id),
+      duplicate_guest_id: hashIdentifier(duplicate.id),
+      correlationId,
+      redacted_primary: redactPayload(primary),
+      redacted_duplicate: redactPayload(duplicate),
+    },
+  });
+
   return { primaryGuestId: primary.id };
 };
 
@@ -329,10 +361,21 @@ export const updateGuestProfile = async ({
     throw new Error("GUEST_NOT_FOUND");
   }
 
-  guestCommandLogger.info(
-    { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.update_profile command applied",
-  );
+  guestCommandLogger.info("guest.update_profile command applied");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.update_profile",
+    entityType: "guest",
+    entityId: command.guest_id,
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      correlationId,
+      redacted_payload: redactPayload(command),
+    },
+  });
 };
 
 /**
@@ -380,10 +423,21 @@ export const updateGuestContact = async ({
     throw new Error("GUEST_NOT_FOUND");
   }
 
-  guestCommandLogger.info(
-    { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.update_contact command applied",
-  );
+  guestCommandLogger.info("guest.update_contact command applied");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.update_contact",
+    entityType: "guest",
+    entityId: command.guest_id,
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      correlationId,
+      redacted_payload: redactPayload(command),
+    },
+  });
 };
 
 /**
@@ -451,10 +505,23 @@ export const setGuestLoyalty = async ({
     throw new Error("GUEST_NOT_FOUND");
   }
 
-  guestCommandLogger.info(
-    { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.set_loyalty command applied",
-  );
+  guestCommandLogger.info("guest.set_loyalty command applied");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.set_loyalty",
+    entityType: "guest",
+    entityId: command.guest_id,
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      loyalty_tier: command.loyalty_tier,
+      points_delta: delta,
+      reason: command.reason,
+      correlationId,
+    },
+  });
 };
 
 /**
@@ -493,10 +560,22 @@ export const setGuestVip = async ({
     throw new Error("GUEST_NOT_FOUND");
   }
 
-  guestCommandLogger.info(
-    { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.set_vip command applied",
-  );
+  guestCommandLogger.info("guest.set_vip command applied");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.set_vip",
+    entityType: "guest",
+    entityId: command.guest_id,
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      vip_level: command.vip_level,
+      reason: command.reason,
+      correlationId,
+    },
+  });
 };
 
 /**
@@ -531,10 +610,22 @@ export const setGuestBlacklist = async ({
     throw new Error("GUEST_NOT_FOUND");
   }
 
-  guestCommandLogger.info(
-    { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.set_blacklist command applied",
-  );
+  guestCommandLogger.info("guest.set_blacklist command applied");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.set_blacklist",
+    entityType: "guest",
+    entityId: command.guest_id,
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      is_blacklisted: command.is_blacklisted,
+      reason: command.reason,
+      correlationId,
+    },
+  });
 };
 
 /**
@@ -789,10 +880,21 @@ export const eraseGuestForGdpr = async ({
     );
   });
 
-  guestCommandLogger.info(
-    { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
-    "guest.gdpr.erase command applied with cascade to related tables",
-  );
+  guestCommandLogger.info("guest.gdpr.erase command applied with cascade to related tables");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.gdpr.erase",
+    entityType: "guest",
+    entityId: command.guest_id,
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      reason: command.reason,
+      gdpr_compliant: true,
+    },
+  });
 };
 
 /**

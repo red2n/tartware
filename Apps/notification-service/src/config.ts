@@ -32,6 +32,7 @@ const reservationEvents = {
   topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
   consumerGroupId:
     process.env.RESERVATION_EVENTS_CONSUMER_GROUP ?? "notification-reservation-events-consumer",
+  dlqTopic: process.env.RESERVATION_EVENTS_DLQ_TOPIC ?? "reservations.events.dlq",
 };
 
 const notificationEvents = {

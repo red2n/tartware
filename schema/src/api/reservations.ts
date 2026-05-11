@@ -669,6 +669,8 @@ export type ReservationStaySnapshot = {
 	roomTypeId: string;
 	checkInDate: Date;
 	checkOutDate: Date;
+	guestId: string;
+	status: string;
 };
 
 /** Cancellation policy JSONB shape stored on the rates table. */
@@ -747,6 +749,8 @@ export type ReservationStayRow = {
 	room_type_id: string;
 	check_in_date: Date;
 	check_out_date: Date;
+	guest_id: string;
+	status: string;
 };
 
 /** Result shape returned by reservation event handler functions. */

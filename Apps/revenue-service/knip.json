@@ -8,14 +8,12 @@
     "@tartware/config",
     "@tartware/openapi",
     "@tartware/telemetry",
-    "@tartware/command-consumer-utils",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",
     "@tartware/fastify-server",
     "@tartware/tenant-auth",
-    "pg",
-    "zod"
+    "pg"
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreBinaries": [

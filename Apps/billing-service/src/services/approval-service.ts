@@ -129,7 +129,13 @@ const _resolveRequest = async (
     // Lock the row to prevent concurrent approvals
     const { rows } = await queryWithClient<PendingApprovalRow>(
       client,
-      `SELECT * FROM public.approval_requests
+      `SELECT
+         approval_id, tenant_id, property_id, operation_type, entity_type, entity_id,
+         operation_payload, description, required_role,
+         requested_by, requested_by_name, status,
+         actioned_by, actioned_by_name, actioned_at, action_reason,
+         expires_at, created_at, updated_at, updated_by
+       FROM public.approval_requests
        WHERE approval_id = $1::uuid AND tenant_id = $2::uuid
        FOR UPDATE`,
       [command.approval_id, tenantId],
@@ -267,7 +273,12 @@ export const listPendingApprovals = async (input: {
   offset: number;
 }): Promise<PendingApprovalRow[]> => {
   const { rows } = await query<PendingApprovalRow>(
-    `SELECT *
+    `SELECT
+       approval_id, tenant_id, property_id, operation_type, entity_type, entity_id,
+       operation_payload, description, required_role,
+       requested_by, requested_by_name, status,
+       actioned_by, actioned_by_name, actioned_at, action_reason,
+       expires_at, created_at, updated_at, updated_by
      FROM public.approval_requests
      WHERE tenant_id = $1::uuid
        AND status = 'PENDING'
@@ -296,7 +307,13 @@ export const getApprovalRequest = async (
   tenantId: string,
 ): Promise<PendingApprovalRow | null> => {
   const { rows } = await query<PendingApprovalRow>(
-    `SELECT * FROM public.approval_requests
+    `SELECT
+       approval_id, tenant_id, property_id, operation_type, entity_type, entity_id,
+       operation_payload, description, required_role,
+       requested_by, requested_by_name, status,
+       actioned_by, actioned_by_name, actioned_at, action_reason,
+       expires_at, created_at, updated_at, updated_by
+     FROM public.approval_requests
      WHERE approval_id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
     [approvalId, tenantId],
   );

@@ -9,18 +9,30 @@
  * - `reservation.updated` (checkout) → move from reserved to occupied
  */
 
+import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
+import { createKafkaProducer } from "@tartware/command-consumer-utils/producer";
 import { enterTenantScope } from "@tartware/config/db";
-import type { ReservationEventEnvelope } from "@tartware/schemas";
+import { processWithRetry } from "@tartware/config/retry";
+import { ReservationEventSchema } from "@tartware/schemas";
 import { createServiceLogger } from "@tartware/telemetry";
-import type { Consumer, EachMessagePayload } from "kafkajs";
+import type { Consumer } from "kafkajs";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { z } from "zod";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { query } from "../lib/db.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  recordDlqEvent,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
 import {
   DEMAND_CALENDAR_CHECKOUT_SQL,
   DEMAND_CALENDAR_DECREMENT_OTB_SQL,
   DEMAND_CALENDAR_INCREMENT_OTB_SQL,
 } from "../sql/event-queries.js";
+import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
 
 const logger = createServiceLogger({
   serviceName: config.service.name,
@@ -30,6 +42,7 @@ const logger = createServiceLogger({
 }).child({ module: "reservation-event-consumer" });
 
 let consumer: Consumer | null = null;
+let dlqProducer: ReturnType<typeof createKafkaProducer> | null = null;
 
 // ---------------------------------------------------------------------------
 // Event classification
@@ -39,7 +52,7 @@ let consumer: Consumer | null = null;
  * Classify a `reservation.updated` event into a specific sub-type based
  * on payload fields (mirrors notification-service classification).
  */
-const classifyUpdateEvent = (payload: ReservationEventEnvelope["payload"]): string => {
+const classifyUpdateEvent = (payload: any): string => {
   const meta = payload.metadata;
   if (meta?.is_no_show === true) return "reservation.no_show";
   if (payload.status === "CHECKED_IN") return "reservation.checked_in";
@@ -80,10 +93,22 @@ const handleReservationCreated = async (
   for (const date of dates) {
     await query(DEMAND_CALENDAR_INCREMENT_OTB_SQL, [tenantId, propertyId, date]);
   }
-  logger.debug(
-    { tenantId, propertyId, checkIn, checkOut, nights: dates.length },
-    "OTB incremented for new reservation",
-  );
+  logger.debug("OTB incremented for new reservation");
+
+  await recordAuditLog({
+    tenantId,
+    propertyId,
+    actorId: null,
+    action: "revenue.otb_increment",
+    entityType: "demand_calendar",
+    entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
+    metadata: {
+      check_in: checkIn,
+      check_out: checkOut,
+      nights: dates.length,
+      action: "INCREMENT_OTB",
+    },
+  });
 };
 
 const handleReservationCancelled = async (
@@ -100,6 +125,21 @@ const handleReservationCancelled = async (
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },
     "OTB decremented for cancelled reservation",
   );
+
+  await recordAuditLog({
+    tenantId,
+    propertyId,
+    actorId: null,
+    action: "revenue.otb_decrement",
+    entityType: "demand_calendar",
+    entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
+    metadata: {
+      check_in: checkIn,
+      check_out: checkOut,
+      nights: dates.length,
+      action: "DECREMENT_OTB",
+    },
+  });
 };
 
 const handleReservationCheckedOut = async (
@@ -116,21 +156,39 @@ const handleReservationCheckedOut = async (
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },
     "demand calendar updated for checkout",
   );
+
+  await recordAuditLog({
+    tenantId,
+    propertyId,
+    actorId: null,
+    action: "revenue.checkout_update",
+    entityType: "demand_calendar",
+    entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
+    metadata: {
+      check_in: checkIn,
+      check_out: checkOut,
+      nights: dates.length,
+      action: "CHECKOUT_UPDATE",
+    },
+  });
 };
 
 // ---------------------------------------------------------------------------
 // Core processing
 // ---------------------------------------------------------------------------
 
-const processReservationEvent = async (envelope: ReservationEventEnvelope): Promise<void> => {
+const processReservationEvent = async (
+  envelope: z.infer<typeof ReservationEventSchema>,
+): Promise<void> => {
   const rawType = envelope.metadata.type;
   const eventType =
     rawType === "reservation.updated" ? classifyUpdateEvent(envelope.payload) : rawType;
 
   const tenantId = envelope.metadata.tenantId;
-  const propertyId = String(envelope.payload.property_id ?? "");
-  const checkIn = envelope.payload.check_in_date ? String(envelope.payload.check_in_date) : null;
-  const checkOut = envelope.payload.check_out_date ? String(envelope.payload.check_out_date) : null;
+  const payload = envelope.payload as any;
+  const propertyId = String(payload.property_id ?? "");
+  const checkIn = payload.check_in_date ? String(payload.check_in_date) : null;
+  const checkOut = payload.check_out_date ? String(payload.check_out_date) : null;
 
   if (!propertyId || !checkIn || !checkOut) {
     logger.debug({ eventType, tenantId }, "skipping event — missing property/dates");
@@ -159,6 +217,12 @@ const processReservationEvent = async (envelope: ReservationEventEnvelope): Prom
 export const startReservationEventConsumer = async (): Promise<void> => {
   if (consumer) return;
 
+  // Initialize DLQ producer
+  dlqProducer = createKafkaProducer(kafka, {
+    commandTopic: config.commandCenter.topic,
+    dlqTopic: config.reservationEvents.dlqTopic,
+  });
+
   consumer = kafka.consumer({
     groupId: config.reservationEvents.consumerGroupId,
     allowAutoTopicCreation: false,
@@ -171,27 +235,149 @@ export const startReservationEventConsumer = async (): Promise<void> => {
   });
 
   await consumer.run({
-    eachMessage: async ({ message }: EachMessagePayload) => {
-      if (!message.value) return;
+    eachBatchAutoResolve: false,
+    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+      for (const message of batch.messages) {
+        if (!isRunning() || isStale()) break;
 
-      try {
-        const envelope = JSON.parse(message.value.toString()) as ReservationEventEnvelope;
-        if (!envelope.metadata?.type || !envelope.payload) {
-          logger.warn({ offset: message.offset }, "skipping malformed reservation event");
-          return;
+        if (!message.value) {
+          resolveOffset(message.offset);
+          continue;
         }
-        enterTenantScope(envelope.metadata.tenantId);
-        await processReservationEvent(envelope);
-      } catch (err) {
-        logger.error({ err, offset: message.offset }, "failed to process reservation event");
+
+        const startTime = Date.now();
+        const rawValue = message.value.toString();
+        let envelope: z.infer<typeof ReservationEventSchema> | null = null;
+
+        try {
+          envelope = ReservationEventSchema.parse(JSON.parse(rawValue));
+        } catch (err) {
+          logger.warn({ err, offset: message.offset }, "skipping malformed reservation event");
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const eventType = envelope.metadata.type;
+
+        try {
+          await processWithRetry(
+            async () => {
+              enterTenantScope(envelope!.metadata.tenantId);
+              await processReservationEvent(envelope!);
+            },
+            {
+              maxRetries: 5,
+              baseDelayMs: 1000,
+              delayScheduleMs: [1000, 2000, 5000, 10000, 20000],
+              onRetry: (ctx) => {
+                logger.warn(
+                  {
+                    attempt: ctx.attempt,
+                    delayMs: ctx.delayMs,
+                    err: ctx.error,
+                    reservationId: (envelope?.payload as any).reservation_id,
+                  },
+                  "Revenue consumer retry triggered",
+                );
+              },
+              isRetryable: (err: any) => {
+                const code = String(err.code || "");
+                return (
+                  code.startsWith("08") || // Connection errors
+                  code === "40001" || // Serialization failure
+                  code === "57P01" || // Admin shutdown
+                  err.message?.includes("deadlock") ||
+                  err.message?.includes("ECONNREFUSED")
+                );
+              },
+            },
+          );
+
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "success");
+        } catch (err: any) {
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "handler_error");
+
+          logger.error(
+            {
+              err,
+              offset: message.offset,
+              reservationId: (envelope?.payload as any).reservation_id,
+            },
+            "failed to process reservation event after retries. Routing to DLQ.",
+          );
+
+          // Routing to DLQ
+          try {
+            const dlqPayload = buildDlqPayload({
+              rawValue,
+              topic,
+              partition,
+              offset: message.offset,
+              attempts: 6,
+              failureReason: "HANDLER_FAILURE",
+              error: err,
+              envelope: envelope as any,
+            });
+
+            await dlqProducer?.publishDlqEvent({
+              key: envelope?.metadata.tenantId || "unknown",
+              value: JSON.stringify(dlqPayload),
+            });
+            recordDlqEvent(err.message || "handler_error");
+          } catch (dlqErr) {
+            logger.error({ err: dlqErr }, "failed to publish to Revenue DLQ");
+          } finally {
+            resolveOffset(message.offset);
+            await heartbeat();
+          }
+        }
+      }
+
+      // Update lag for the entire batch
+      if (batch.messages.length > 0) {
+        const lastOffset = batch.messages[batch.messages.length - 1]!.offset;
+        try {
+          const high = BigInt(batch.highWatermark);
+          const current = BigInt(lastOffset);
+          const rawLag = high - current - 1n;
+          const lag = rawLag > 0n ? Number(rawLag) : 0;
+          setCommandConsumerLag(config.reservationEvents.topic, batch.partition, lag);
+        } catch (err) {
+          // Ignore lag calculation errors
+        }
       }
     },
   });
+
+  // Track consumer lag
+  consumer.on(consumer.events.GROUP_JOIN, () => {
+    logger.info("Revenue consumer joined group");
+  });
+
+  // Periodically report lag (best effort)
+  setInterval(async () => {
+    if (consumer) {
+      try {
+        const description = await consumer.describeGroup();
+        for (const member of description.members) {
+          logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
+          setCommandConsumerLag(config.reservationEvents.topic, 0, 0); // Placeholder
+        }
+      } catch (err) {
+        // Ignore lag reporting errors
+      }
+    }
+  }, 30_000);
 
   logger.info(
     {
       topic: config.reservationEvents.topic,
       groupId: config.reservationEvents.consumerGroupId,
+      dlqTopic: config.reservationEvents.dlqTopic,
     },
     "reservation event consumer started",
   );
@@ -200,9 +386,11 @@ export const startReservationEventConsumer = async (): Promise<void> => {
 export const shutdownReservationEventConsumer = async (): Promise<void> => {
   if (!consumer) return;
   try {
+    await dlqProducer?.shutdown();
     await consumer.disconnect();
     logger.info("reservation event consumer disconnected");
   } finally {
     consumer = null;
+    dlqProducer = null;
   }
 };

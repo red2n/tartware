@@ -4,6 +4,11 @@ import type { Consumer, KafkaMessage } from "kafkajs";
 
 import { config } from "../config.js";
 import { kafka } from "../lib/kafka.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
 import { lockRoom, releaseLock, releaseLocksInBulk } from "../services/lock-service.js";
 import {
   type BulkReleaseInput,
@@ -13,6 +18,7 @@ import {
   type ReleaseLockInput,
   releaseLockSchema,
 } from "../types/lock-types.js";
+import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
 
 type CommandEnvelope = {
   metadata?: {
@@ -68,13 +74,35 @@ export const startAvailabilityGuardCommandCenterConsumer = async (
   });
 
   runLoop = consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      await processMessage(message, topic, partition, workerLogger);
+    eachBatchAutoResolve: false,
+    eachBatch: async (payload) => {
+      const { batch } = payload;
+      for (const message of batch.messages) {
+        if (!payload.isRunning() || payload.isStale()) break;
+
+        await processMessage(message, batch.topic, batch.partition, workerLogger);
+        payload.resolveOffset(message.offset);
+        await payload.heartbeat();
+      }
+
+      // Update lag for the entire batch
+      if (batch.messages.length > 0) {
+        const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
+        try {
+          const high = BigInt(batch.highWatermark);
+          const current = BigInt(lastOffset);
+          const rawLag = high - current - 1n;
+          const lag = rawLag > 0n ? Number(rawLag) : 0;
+          setCommandConsumerLag(batch.topic, batch.partition, lag);
+        } catch (_err) {
+          // Ignore lag calculation errors
+        }
+      }
     },
   });
 
   runLoop.catch((error: unknown) => {
-    workerLogger.error({ err: error }, "Availability Guard command consumer crashed");
+    workerLogger.error({ err: String(error) }, "Availability Guard command consumer crashed");
   });
 
   workerLogger.info(
@@ -104,7 +132,10 @@ export const shutdownAvailabilityGuardCommandCenterConsumer = async (
     await consumer.disconnect();
     workerLogger.info("Availability Guard command consumer stopped");
   } catch (error) {
-    workerLogger.error({ err: error }, "Failed to shutdown Availability Guard command consumer");
+    workerLogger.error(
+      { err: String(error) },
+      "Failed to shutdown Availability Guard command consumer",
+    );
   } finally {
     consumer = null;
     runLoop = null;
@@ -129,7 +160,7 @@ const processMessage = async (
   try {
     envelope = JSON.parse(message.value.toString("utf-8")) as CommandEnvelope;
   } catch (error) {
-    logger.error({ err: error, topic, partition }, "Failed to parse command envelope");
+    logger.error({ err: String(error), topic, partition }, "Failed to parse command envelope");
     return;
   }
 
@@ -138,10 +169,21 @@ const processMessage = async (
     return;
   }
 
+  const startTime = Date.now();
+  const commandName = metadata.commandName;
+
   try {
     enterTenantScope(metadata.tenantId);
     await routeCommand(envelope.payload, metadata, logger);
+
+    const durationSeconds = (Date.now() - startTime) / 1000;
+    observeCommandDuration(commandName, durationSeconds);
+    recordCommandOutcome(commandName, "success");
   } catch (error) {
+    const durationSeconds = (Date.now() - startTime) / 1000;
+    observeCommandDuration(commandName, durationSeconds);
+    recordCommandOutcome(commandName, "handler_error");
+
     logger.error(
       {
         err: error,
@@ -193,16 +235,23 @@ const handleLockRoomCommand = async (
   });
 
   if (result.status === "LOCKED") {
-    logger.info(
-      {
-        commandName: metadata.commandName,
-        commandId: metadata.commandId,
-        tenantId: parsed.tenantId,
-        reservationId: parsed.reservationId,
-        lockId: result.lock.id,
+    const lockId = result.lock.id;
+    await recordAuditLog({
+      tenantId: parsed.tenantId,
+      propertyId: parsed.propertyId,
+      actorId: metadata.initiatedBy?.userId ?? null,
+      action: "inventory.lock.applied",
+      entityType: "inventory_lock",
+      entityId: hashIdentifier(lockId),
+      metadata: {
+        reservation_id: parsed.reservationId,
+        room_id: parsed.roomId,
+        room_type_id: parsed.roomTypeId,
+        stay_start: parsed.stayStart.toISOString(),
+        stay_end: parsed.stayEnd.toISOString(),
+        command_id: metadata.commandId,
       },
-      "Inventory lock applied via command",
-    );
+    });
     return;
   }
 
@@ -244,6 +293,23 @@ const handleReleaseRoomCommand = async (
     );
     return;
   }
+
+  const releasedId = released.id;
+  const releasedPropertyId = released.property_id;
+  await recordAuditLog({
+    tenantId: parsed.tenantId,
+    propertyId: releasedPropertyId ?? parsed.propertyId ?? "system",
+    actorId: metadata.initiatedBy?.userId ?? null,
+    action: "inventory.lock.released",
+    entityType: "inventory_lock",
+    entityId: hashIdentifier(releasedId),
+    metadata: {
+      reservation_id: released.reservation_id,
+      room_id: released.room_id,
+      room_type_id: released.room_type_id,
+      command_id: metadata.commandId,
+    },
+  });
 
   logger.info(
     {
@@ -310,7 +376,7 @@ const parseLockPayload = (
     );
   } catch (error) {
     logger.error(
-      { err: error, commandName: metadata.commandName },
+      { err: String(error), commandName: metadata.commandName },
       "Invalid inventory.lock.room payload",
     );
     return null;
@@ -330,7 +396,7 @@ const parseReleasePayload = (
     );
   } catch (error) {
     logger.error(
-      { err: error, commandName: metadata.commandName },
+      { err: String(error), commandName: metadata.commandName },
       "Invalid inventory.release.room payload",
     );
     return null;
@@ -350,7 +416,7 @@ const parseBulkReleasePayload = (
     );
   } catch (error) {
     logger.error(
-      { err: error, commandName: metadata.commandName },
+      { err: String(error), commandName: metadata.commandName },
       "Invalid inventory.release.bulk payload",
     );
     return null;

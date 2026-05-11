@@ -38,6 +38,7 @@ import type {
   ReservationWalkGuestCommand,
 } from "../../schemas/reservation-command.js";
 import { type RatePlanResolution, resolveRatePlan } from "../../services/rate-plan-service.js";
+import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 import { calculateCancellationFee } from "../cancellation-fee-service.js";
 
 import {
@@ -199,6 +200,23 @@ export const createReservation = async (
           eventType: validatedEvent.metadata.type,
           availabilityGuard: guardMetadata,
           ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
+
+      await recordAuditLog({
+        tenantId,
+        propertyId: command.property_id,
+        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        action: "reservation.create",
+        entityType: "reservation",
+        entityId: aggregateId,
+        metadata: {
+          event_id: hashIdentifier(eventId),
+          reservation_id: hashIdentifier(aggregateId),
+          guest_id: command.guest_id ? hashIdentifier(command.guest_id) : null,
+          status: command.status || "PENDING",
+          redacted_payload: redactPayload(command),
+          availabilityGuard: guardMetadata,
         },
       });
 
@@ -399,6 +417,25 @@ export const modifyReservation = async (
           eventType: validatedEvent.metadata.type,
           availabilityGuard: guardMetadata,
           ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
+
+      await recordAuditLog({
+        tenantId,
+        propertyId: targetPropertyId,
+        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        action: "reservation.modify",
+        entityType: "reservation",
+        entityId: command.reservation_id,
+        metadata: {
+          event_id: hashIdentifier(eventId),
+          reservation_id: hashIdentifier(command.reservation_id),
+          guest_id: command.guest_id
+            ? hashIdentifier(command.guest_id)
+            : hashIdentifier(snapshot.guestId),
+          status: command.status || snapshot.status,
+          redacted_payload: redactPayload(command),
+          availabilityGuard: guardMetadata,
         },
       });
 
@@ -682,11 +719,18 @@ export const cancelReservation = async (
   const now = new Date();
 
   // G5-cancel: Validate reservation status allows cancellation
-  const statusResult = await query(
-    `SELECT status FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+  const resResult = await query(
+    `SELECT id, status, property_id, guest_id FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
     [command.reservation_id, tenantId],
   );
-  const reservation = statusResult.rows?.[0] as { status: string } | undefined;
+  const reservation = resResult.rows?.[0] as
+    | {
+        id: string;
+        status: string;
+        property_id: string;
+        guest_id: string;
+      }
+    | undefined;
   if (!reservation) {
     throw new ReservationCommandError(
       "RESERVATION_NOT_FOUND",
@@ -779,6 +823,24 @@ export const cancelReservation = async (
           status: "RELEASE_REQUESTED",
           lockId: releaseLockId,
         },
+      },
+    });
+
+    await recordAuditLog({
+      tenantId,
+      propertyId: reservation.property_id,
+      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      action: "reservation.cancel",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      metadata: {
+        event_id: hashIdentifier(eventId),
+        reservation_id: hashIdentifier(command.reservation_id),
+        guest_id: hashIdentifier(reservation.guest_id),
+        reason: command.reason,
+        cancelled_by: command.cancelled_by,
+        cancellation_fee: cancellationFee,
+        redacted_payload: redactPayload(command),
       },
     });
 
@@ -983,6 +1045,23 @@ export const walkGuest = async (
         command.notes ?? null,
       ],
     );
+
+    await recordAuditLog({
+      tenantId,
+      propertyId: reservation.property_id,
+      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      action: "reservation.walk_guest",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      metadata: {
+        event_id: hashIdentifier(eventId),
+        reservation_id: hashIdentifier(command.reservation_id),
+        guest_id: hashIdentifier(reservation.guest_id),
+        walk_reason: command.walk_reason,
+        alternate_hotel: command.alternate_hotel_name,
+        redacted_payload: redactPayload(command),
+      },
+    });
 
     // 3. Cancel the reservation with walk metadata
     await client.query(

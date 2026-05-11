@@ -35,7 +35,11 @@ const INSERT_DUNNING_RULE_SQL = `
 `;
 
 const LIST_DUNNING_RULES_SQL = `
-  SELECT *
+  SELECT
+    rule_id, tenant_id, property_id, bucket_name, min_days_overdue,
+    max_days_overdue, action_type, template_code, delay_days,
+    max_attempts, min_amount, escalation_order, is_active,
+    created_at, updated_at, created_by, updated_by
   FROM public.ar_dunning_rules
   WHERE tenant_id = $1::uuid
     AND (property_id IS NULL OR property_id = $2::uuid)
@@ -43,7 +47,11 @@ const LIST_DUNNING_RULES_SQL = `
 `;
 
 const GET_ACTIVE_RULES_FOR_BUCKET_SQL = `
-  SELECT *
+  SELECT
+    rule_id, tenant_id, property_id, bucket_name, min_days_overdue,
+    max_days_overdue, action_type, template_code, delay_days,
+    max_attempts, min_amount, escalation_order, is_active,
+    created_at, updated_at, created_by, updated_by
   FROM public.ar_dunning_rules
   WHERE tenant_id = $1::uuid
     AND (property_id = $2::uuid OR property_id IS NULL)

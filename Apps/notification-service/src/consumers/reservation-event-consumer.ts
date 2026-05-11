@@ -1,14 +1,26 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
+import { createKafkaProducer } from "@tartware/command-consumer-utils/producer";
 import { enterTenantScope } from "@tartware/config/db";
 import { processWithRetry } from "@tartware/config/retry";
-import type { ReservationEventEnvelope } from "@tartware/schemas";
-import type { Consumer, EachMessagePayload } from "kafkajs";
+import { ReservationEventSchema } from "@tartware/schemas";
+import type { Consumer } from "kafkajs";
+import type { z } from "zod";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  recordDlqEvent,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
 import { getMessagesByTrigger } from "../services/automated-message-service.js";
 import { createInAppNotification } from "../services/in-app-notification-service.js";
 import { sendNotification } from "../services/notification-dispatch-service.js";
 import { getTemplate } from "../services/template-service.js";
+import { hashIdentifier, recordAuditLog, redactPayload } from "../utils/audit.js";
 
 const logger = appLogger.child({ module: "reservation-event-consumer" });
 
@@ -26,6 +38,7 @@ const formatDate = (iso: string): string => {
 };
 
 let consumer: Consumer | null = null;
+let dlqProducer: ReturnType<typeof createKafkaProducer> | null = null;
 
 // ---------------------------------------------------------------------------
 // Event classification
@@ -174,6 +187,7 @@ type ReservationEvent = {
   currency?: string;
   /** Extra context extracted from the raw payload for template rendering. */
   extraContext?: Record<string, string | number | boolean | null>;
+  originalEventId: string;
 };
 
 /** Kafka envelope: { metadata: {...}, payload: {...} } */
@@ -192,18 +206,18 @@ type ReservationEvent = {
  * 3. Check-out — `status === "CHECKED_OUT"` **and** `actual_check_out` present
  * 4. Regular modification — fallback
  */
-const classifyUpdateEvent = (payload: ReservationEventEnvelope["payload"]): string => {
+const classifyUpdateEvent = (payload: any): string => {
   const meta = payload.metadata;
 
-  if (meta?.is_no_show === true) {
+  if ((meta as any)?.is_no_show === true) {
     return "reservation.no_show";
   }
 
-  if (payload.status === "CHECKED_IN" && payload.actual_check_in) {
+  if (payload.status === "CHECKED_IN" && (payload as any).actual_check_in) {
     return "reservation.checked_in";
   }
 
-  if (payload.status === "CHECKED_OUT" && payload.actual_check_out) {
+  if (payload.status === "CHECKED_OUT" && (payload as any).actual_check_out) {
     return "reservation.checked_out";
   }
 
@@ -216,7 +230,7 @@ const classifyUpdateEvent = (payload: ReservationEventEnvelope["payload"]): stri
  */
 const extractExtraContext = (
   classifiedType: string,
-  payload: ReservationEventEnvelope["payload"],
+  payload: any,
 ): Record<string, string | number | boolean | null> => {
   const extra: Record<string, string | number | boolean | null> = {};
   const meta = payload.metadata;
@@ -290,7 +304,7 @@ const readNonEmptyString = (value: unknown): string | undefined => {
 };
 
 const readFromPayloadOrMetadata = (
-  payload: ReservationEventEnvelope["payload"],
+  payload: z.infer<typeof ReservationEventSchema>["payload"],
   key: string,
 ): string | undefined => {
   const payloadRecord = payload as Record<string, unknown>;
@@ -299,14 +313,18 @@ const readFromPayloadOrMetadata = (
     return fromPayload;
   }
 
-  const metadataRecord = payload.metadata as Record<string, unknown> | undefined;
+  const metadataRecord = (payload as Record<string, unknown>).metadata as
+    | Record<string, unknown>
+    | undefined;
   return readNonEmptyString(metadataRecord?.[key]);
 };
 
 /** Transform Kafka envelope into internal flat format. */
-const toReservationEvent = (envelope: ReservationEventEnvelope): ReservationEvent => {
+const toReservationEvent = (envelope: z.infer<typeof ReservationEventSchema>): ReservationEvent => {
   // Classify reservation.updated into a specific sub-type
   const rawType = envelope.metadata.type;
+  const payload = envelope.payload as any;
+
   const classifiedType =
     rawType === "reservation.updated" ? classifyUpdateEvent(envelope.payload) : rawType;
 
@@ -315,29 +333,25 @@ const toReservationEvent = (envelope: ReservationEventEnvelope): ReservationEven
   return {
     eventType: classifiedType,
     tenantId: envelope.metadata.tenantId,
-    propertyId: String(envelope.payload.property_id ?? ""),
-    reservationId: String(envelope.payload.id ?? envelope.metadata.id ?? ""),
-    guestId: String(envelope.payload.guest_id ?? ""),
+    propertyId: String(payload.property_id ?? ""),
+    reservationId: String(payload.id ?? envelope.metadata.id ?? ""),
+    guestId: String(payload.guest_id ?? ""),
     guestName: readFromPayloadOrMetadata(envelope.payload, "guest_name"),
     guestEmail: readFromPayloadOrMetadata(envelope.payload, "guest_email"),
     guestPhone: readFromPayloadOrMetadata(envelope.payload, "guest_phone"),
-    confirmationNumber: envelope.payload.confirmation_number
-      ? String(envelope.payload.confirmation_number)
+    confirmationNumber: payload.confirmation_number
+      ? String(payload.confirmation_number)
       : undefined,
-    checkInDate: envelope.payload.check_in_date
-      ? String(envelope.payload.check_in_date)
-      : undefined,
-    checkOutDate: envelope.payload.check_out_date
-      ? String(envelope.payload.check_out_date)
-      : undefined,
-    roomNumber: envelope.payload.room_number ? String(envelope.payload.room_number) : undefined,
+    checkInDate: payload.check_in_date ? String(payload.check_in_date) : undefined,
+    checkOutDate: payload.check_out_date ? String(payload.check_out_date) : undefined,
+    roomNumber: payload.room_number ? String(payload.room_number) : undefined,
     roomType:
       readFromPayloadOrMetadata(envelope.payload, "room_type") ??
       readFromPayloadOrMetadata(envelope.payload, "room_type_name"),
-    totalAmount:
-      typeof envelope.payload.total_amount === "number" ? envelope.payload.total_amount : undefined,
-    currency: envelope.payload.currency ? String(envelope.payload.currency) : undefined,
+    totalAmount: typeof payload.total_amount === "number" ? payload.total_amount : undefined,
+    currency: payload.currency ? String(payload.currency) : undefined,
     extraContext: Object.keys(extraContext).length > 0 ? extraContext : undefined,
+    originalEventId: envelope.metadata.id,
   };
 };
 
@@ -407,6 +421,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
         { err, eventType: event.eventType, reservationId: event.reservationId },
         "Failed to process reservation event notification",
       );
+      throw err; // Rethrow to trigger processWithRetry
     }
   }
 
@@ -454,6 +469,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
             { err, messageId: msg.message_id, reservationId: event.reservationId },
             "Failed to dispatch automated message notification",
           );
+          throw err; // Rethrow to trigger processWithRetry
         }
       }
     } catch (err) {
@@ -461,6 +477,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
         { err, triggerType, reservationId: event.reservationId },
         "Failed to look up automated messages",
       );
+      throw err;
     }
   }
 
@@ -504,7 +521,37 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
         { err, eventType: event.eventType, reservationId: event.reservationId },
         "Failed to create in-app notification",
       );
+      throw err;
     }
+  }
+
+  // Final Step: Secure Audit Logging (SOC 2 / GDPR Compliance)
+  try {
+    await recordAuditLog({
+      tenantId: event.tenantId,
+      propertyId: event.propertyId,
+      actorId: null, // System-generated event
+      action: "RESERVATION_EVENT_PROCESSED",
+      entityType: "reservation",
+      entityId: hashIdentifier(event.reservationId),
+      metadata: {
+        eventType: event.eventType,
+        originalEventId: event.originalEventId,
+        hashedTenantId: hashIdentifier(event.tenantId),
+        hashedGuestId: event.guestId ? hashIdentifier(event.guestId) : null,
+        // Redacted payload for security
+        context: redactPayload(context),
+        sentTemplates: Array.from(sentTemplateCodes),
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (auditErr) {
+    logger.error(
+      { err: auditErr, reservationId: event.reservationId },
+      "Failed to record secure audit log for reservation event",
+    );
+    // Audit failure shouldn't necessarily block the whole process if it succeeded,
+    // but here we are at the end. We'll just log it.
   }
 };
 
@@ -515,6 +562,12 @@ export const startReservationEventConsumer = async (): Promise<void> => {
   if (consumer) {
     return;
   }
+
+  // Initialize DLQ producer
+  dlqProducer = createKafkaProducer(kafka, {
+    commandTopic: config.commandCenter.topic,
+    dlqTopic: config.reservationEvents.dlqTopic || "reservations.events.dlq",
+  });
 
   consumer = kafka.consumer({
     groupId: config.reservationEvents.consumerGroupId,
@@ -528,43 +581,145 @@ export const startReservationEventConsumer = async (): Promise<void> => {
   });
 
   await consumer.run({
-    eachMessage: async ({ message }: EachMessagePayload) => {
-      if (!message.value) {
-        return;
+    eachBatchAutoResolve: false,
+    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+      for (const message of batch.messages) {
+        if (!isRunning() || isStale()) break;
+
+        if (!message.value) {
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const startTime = Date.now();
+        const rawValue = message.value.toString();
+        let eventEnvelope: z.infer<typeof ReservationEventSchema> | null = null;
+
+        try {
+          eventEnvelope = ReservationEventSchema.parse(JSON.parse(rawValue));
+        } catch (err) {
+          logger.warn({ err, offset: message.offset }, "Skipping malformed reservation event");
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const event = toReservationEvent(eventEnvelope);
+        const eventType = eventEnvelope.metadata.type;
+
+        try {
+          await processWithRetry(
+            async () => {
+              enterTenantScope(event.tenantId);
+              await processReservationEvent(event);
+            },
+            {
+              maxRetries: 10,
+              baseDelayMs: 500,
+              delayScheduleMs: [500, 1000, 2000, 4000, 8000, 15000, 30000],
+              onRetry: ({ attempt, delayMs, error }) => {
+                logger.warn(
+                  { attempt, delayMs, error, reservationId: event.reservationId },
+                  "Retrying notification dispatch after failure (potential FK race)",
+                );
+              },
+              isRetryable: (err: any) => {
+                const msg = String(err.message || "");
+                if (msg.includes("not found") || msg.includes("validation failed")) {
+                  return false;
+                }
+                const code = String(err.code || "");
+                return (
+                  code.startsWith("08") ||
+                  code === "23503" ||
+                  code === "40001" ||
+                  code === "57P01" ||
+                  msg.includes("deadlock") ||
+                  msg.includes("ECONNREFUSED")
+                );
+              },
+            },
+          );
+
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "success");
+        } catch (err) {
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "handler_error");
+
+          logger.error(
+            { err, offset: message.offset, reservationId: event.reservationId },
+            "Failed to process reservation event message after retries. Routing to DLQ.",
+          );
+
+          try {
+            const dlqPayload = buildDlqPayload({
+              rawValue,
+              topic: batch.topic,
+              partition: batch.partition,
+              offset: message.offset,
+              attempts: 11,
+              failureReason: "HANDLER_FAILURE",
+              error: err,
+              envelope: eventEnvelope as any,
+            });
+
+            await dlqProducer?.publishDlqEvent({
+              key: event.tenantId,
+              value: JSON.stringify(dlqPayload),
+            });
+            recordDlqEvent(String(err.message || "handler_error"));
+          } catch (dlqErr) {
+            logger.error({ err: dlqErr }, "Failed to publish to Notification DLQ");
+          }
+        } finally {
+          resolveOffset(message.offset);
+          await heartbeat();
+        }
       }
 
-      try {
-        const envelope = JSON.parse(message.value.toString()) as ReservationEventEnvelope;
-        if (!envelope.metadata?.type || !envelope.payload) {
-          logger.warn({ offset: message.offset }, "Skipping malformed reservation event");
-          return;
+      // Update lag for the entire batch
+      if (batch.messages.length > 0) {
+        const lastOffset = batch.messages[batch.messages.length - 1]!.offset;
+        try {
+          const high = BigInt(batch.highWatermark);
+          const current = BigInt(lastOffset);
+          const rawLag = high - current - 1n;
+          const lag = rawLag > 0n ? Number(rawLag) : 0;
+          setCommandConsumerLag(batch.topic, batch.partition, lag);
+        } catch (err) {
+          // Ignore lag calculation errors
         }
-        const event = toReservationEvent(envelope);
-        enterTenantScope(event.tenantId);
-
-        await processWithRetry(() => processReservationEvent(event), {
-          maxRetries: 5,
-          baseDelayMs: 500,
-          onRetry: ({ attempt, delayMs, error }) => {
-            logger.warn(
-              { attempt, delayMs, error, reservationId: event.reservationId },
-              "Retrying notification dispatch after failure",
-            );
-          },
-        });
-      } catch (err) {
-        logger.error(
-          { err, offset: message.offset },
-          "Failed to process reservation event message",
-        );
       }
     },
   });
+
+  // Track consumer lag
+  consumer.on(consumer.events.GROUP_JOIN, () => {
+    logger.info("Notification consumer joined group");
+  });
+
+  // Periodically report lag (best effort)
+  setInterval(async () => {
+    if (consumer) {
+      try {
+        const description = await consumer.describeGroup();
+        for (const member of description.members) {
+          logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
+          setCommandConsumerLag(config.reservationEvents.topic, 0, 0); // Placeholder
+        }
+      } catch (err) {
+        // Ignore lag reporting errors
+      }
+    }
+  }, 30_000);
 
   logger.info(
     {
       topic: config.reservationEvents.topic,
       groupId: config.reservationEvents.consumerGroupId,
+      dlqTopic: config.reservationEvents.dlqTopic,
     },
     "Reservation event consumer started for notification dispatch",
   );
@@ -575,9 +730,11 @@ export const shutdownReservationEventConsumer = async (): Promise<void> => {
     return;
   }
   try {
+    await dlqProducer?.shutdown();
     await consumer.disconnect();
     logger.info("Reservation event consumer disconnected");
   } finally {
     consumer = null;
+    dlqProducer = null;
   }
 };

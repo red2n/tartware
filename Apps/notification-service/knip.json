@@ -15,7 +15,6 @@
     "@tartware/openapi",
     "@tartware/config",
     "@tartware/tenant-auth",
-    "@tartware/command-consumer-utils",
     "@fastify/cors",
     "@fastify/helmet",
     "@fastify/sensible",

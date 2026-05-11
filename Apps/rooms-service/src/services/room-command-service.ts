@@ -18,6 +18,7 @@ import {
   RoomOutOfServiceCommandSchema,
   RoomStatusUpdateCommandSchema,
 } from "../schemas/room-commands.js";
+import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
 import { findArrivingReservation, publishNotificationCommand } from "./room-notification-helper.js";
 
 const logger = appLogger.child({ module: "room-command-service" });
@@ -118,6 +119,20 @@ export const handleRoomStatusUpdate = async (
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room status.");
   }
 
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: null, // Room level
+    actorId: actor,
+    action: "room.status_update",
+    entityType: "room",
+    entityId: command.room_id,
+    metadata: {
+      status: command.status,
+      maintenance_status: command.maintenance_status,
+      reason: command.reason || command.notes,
+    },
+  });
+
   // Room back-in-service notification: when status transitions to AVAILABLE
   // the room is returned to inventory, check for awaiting guests.
   if (command.status === "AVAILABLE") {
@@ -190,6 +205,19 @@ export const handleRoomHousekeepingStatusUpdate = async (
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update housekeeping status.");
   }
+
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "room.housekeeping_status_update",
+    entityType: "room",
+    entityId: command.room_id,
+    metadata: {
+      housekeeping_status: command.housekeeping_status,
+      notes: command.notes,
+    },
+  });
 
   // Room-ready notification: when housekeeping marks a room as CLEAN or
   // INSPECTED, check if a guest is arriving today for this room.
@@ -269,6 +297,20 @@ export const handleRoomOutOfOrder = async (
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to mark room out of order.");
   }
+
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "room.mark_out_of_order",
+    entityType: "room",
+    entityId: command.room_id,
+    metadata: {
+      reason: command.reason,
+      out_of_order_since: command.out_of_order_since,
+      expected_ready_date: command.expected_ready_date,
+    },
+  });
 };
 
 /**
@@ -309,6 +351,20 @@ export const handleRoomOutOfService = async (
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to mark room out of service.");
   }
+
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "room.mark_out_of_service",
+    entityType: "room",
+    entityId: command.room_id,
+    metadata: {
+      reason: command.reason,
+      out_of_service_from: command.out_of_service_from,
+      out_of_service_until: command.out_of_service_until,
+    },
+  });
 };
 
 /**
@@ -532,12 +588,30 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
           to_room_id: command.to_room_id,
           from_room_number: fromRoom.room_number,
           to_room_number: toRoom.room_number,
-          room_type_changed: roomTypeChanged,
+          room_type_changed: fromRoom.room_type_id !== toRoom.room_type_id,
           charges_transferred: command.transfer_charges,
-          rate_recalculated: roomTypeChanged && command.recalculate_rate,
+          rate_recalculated:
+            fromRoom.room_type_id !== toRoom.room_type_id && command.recalculate_rate,
         }),
       ],
     );
+
+    await recordAuditLog({
+      tenantId: context.tenantId,
+      propertyId: null,
+      actorId: actor,
+      action: "room.move",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      metadata: {
+        reservation_id: hashIdentifier(command.reservation_id),
+        from_room_id: command.from_room_id,
+        to_room_id: command.to_room_id,
+        room_type_changed: fromRoom.room_type_id !== toRoom.room_type_id,
+        charges_transferred: command.transfer_charges,
+        reason: command.reason,
+      },
+    });
 
     // Room move notification to the guest
     try {
@@ -633,6 +707,20 @@ export const handleRoomFeaturesUpdate = async (
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("ROOM_NOT_FOUND", "Unable to update room features.");
   }
+
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "room.features_update",
+    entityType: "room",
+    entityId: command.room_id,
+    metadata: {
+      features: command.features,
+      amenities: command.amenities,
+      notes: command.notes,
+    },
+  });
 };
 
 /**
@@ -692,6 +780,22 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
       actor,
     ],
   );
+
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: command.property_id,
+    actorId: actor,
+    action: "room.mobile_key_issue",
+    entityType: "mobile_key",
+    entityId: hashIdentifier(keyCode),
+    metadata: {
+      guest_id: hashIdentifier(command.guest_id),
+      reservation_id: hashIdentifier(command.reservation_id || ""),
+      room_id: command.room_id,
+      key_type: command.key_type,
+      device_type: command.device_type,
+    },
+  });
 
   // Mobile key issued notification to the guest
   try {
@@ -768,6 +872,20 @@ export const handleKeyRevoke = async (payload: unknown, context: CommandContext)
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError("KEY_NOT_FOUND", `Active key ${command.key_id} not found.`);
   }
+
+  await recordAuditLog({
+    tenantId: context.tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "room.mobile_key_revoke",
+    entityType: "mobile_key",
+    entityId: command.key_id ? hashIdentifier(command.key_id) : "bulk_revoke",
+    metadata: {
+      reservation_id: command.reservation_id ? hashIdentifier(command.reservation_id) : null,
+      reason: command.reason,
+      revoke_all: command.revoke_all_for_reservation,
+    },
+  });
 };
 
 const blockRoom = async (

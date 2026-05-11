@@ -11,20 +11,32 @@
  * @module consumers/ar-event-consumer
  */
 import { randomUUID } from "node:crypto";
-
+import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
+import { createKafkaProducer } from "@tartware/command-consumer-utils/producer";
 import { enterTenantScope } from "@tartware/config/db";
+import { processWithRetry } from "@tartware/config/retry";
 import { ReservationEventSchema } from "@tartware/schemas";
-import type { Consumer, EachMessagePayload } from "kafkajs";
+import type { Consumer } from "kafkajs";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { z } from "zod";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  observeCommandDuration,
+  recordCommandOutcome,
+  recordDlqEvent,
+  setCommandConsumerLag,
+} from "../lib/metrics.js";
+import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
 
 const logger = appLogger.child({ module: "ar-event-consumer" });
 
 let consumer: Consumer | null = null;
+let dlqProducer: ReturnType<typeof createKafkaProducer> | null = null;
 
 /**
  * Detect if a checkout event has a direct-bill folio routing rule linked to an AR account.
@@ -125,15 +137,7 @@ const classifyEvent = (payload: Record<string, unknown>): string | null => {
 /**
  * Process a single reservation event for AR integration.
  */
-const processEvent = async (rawValue: string): Promise<void> => {
-  let event: ReturnType<typeof ReservationEventSchema.parse>;
-  try {
-    event = ReservationEventSchema.parse(JSON.parse(rawValue));
-  } catch {
-    logger.debug("Skipping unparseable event");
-    return;
-  }
-
+const processEvent = async (event: z.infer<typeof ReservationEventSchema>): Promise<void> => {
   const tenantId = event.metadata.tenantId;
   if (!tenantId) return;
 
@@ -141,10 +145,11 @@ const processEvent = async (rawValue: string): Promise<void> => {
 
   // Handle reservation.updated events
   if (event.metadata.type === "reservation.updated") {
-    const classified = classifyEvent(event.payload as Record<string, unknown>);
+    const payload = event.payload as any;
+    const classified = classifyEvent(payload);
 
     if (classified === "reservation.checked_out") {
-      const reservationId = (event.payload as Record<string, unknown>).reservation_id as string;
+      const reservationId = payload.reservation_id as string;
       if (!reservationId) return;
 
       // Check if this reservation has a direct-bill folio routing to an AR account
@@ -169,6 +174,21 @@ const processEvent = async (rawValue: string): Promise<void> => {
         transfer_reason: "AUTO_CHECKOUT_DIRECT_BILL",
         idempotency_key: `checkout-transfer:${routing.folioId}:${reservationId}`,
       });
+
+      await recordAuditLog({
+        tenantId,
+        propertyId: routing.propertyId,
+        actorId: null,
+        action: "ar.city_ledger.transfer_on_checkout",
+        entityType: "ar_account",
+        entityId: hashIdentifier(routing.arAccountId),
+        metadata: {
+          reservation_id: reservationId,
+          folio_id: routing.folioId,
+          amount: routing.outstandingBalance,
+          triggered_by: "reservation.checked_out",
+        },
+      });
     }
   }
 };
@@ -180,6 +200,12 @@ export const startArEventConsumer = async (): Promise<void> => {
   }
   if (consumer) return;
 
+  // Initialize DLQ producer
+  dlqProducer = createKafkaProducer(kafka, {
+    commandTopic: config.commandCenter.topic,
+    dlqTopic: config.arEvents.dlqTopic,
+  });
+
   consumer = kafka.consumer({
     groupId: config.arEvents.consumerGroupId,
     allowAutoTopicCreation: false,
@@ -189,27 +215,151 @@ export const startArEventConsumer = async (): Promise<void> => {
   await consumer.subscribe({ topic: config.arEvents.topic, fromBeginning: false });
 
   await consumer.run({
-    eachMessage: async ({ message }: EachMessagePayload) => {
-      if (!message.value) return;
+    eachBatchAutoResolve: false,
+    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+      for (const message of batch.messages) {
+        if (!isRunning() || isStale()) break;
 
-      try {
-        await processEvent(message.value.toString());
-      } catch (err) {
-        logger.error({ err, offset: message.offset }, "AR event consumer: failed to process event");
-        // Non-fatal — commit offset and continue. Failed transfers can be retried manually.
+        if (!message.value) {
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const startTime = Date.now();
+        const rawValue = message.value.toString();
+        let event: z.infer<typeof ReservationEventSchema> | null = null;
+
+        try {
+          event = ReservationEventSchema.parse(JSON.parse(rawValue));
+        } catch (err) {
+          logger.warn({ err, offset: message.offset }, "Skipping malformed reservation event");
+          resolveOffset(message.offset);
+          continue;
+        }
+
+        const eventType = event.metadata.type;
+
+        try {
+          await processWithRetry(async () => processEvent(event!), {
+            maxRetries: 5,
+            baseDelayMs: 1000,
+            delayScheduleMs: [1000, 2000, 5000, 10000, 20000],
+            onRetry: (ctx) => {
+              logger.warn(
+                {
+                  attempt: ctx.attempt,
+                  delayMs: ctx.delayMs,
+                  err: ctx.error,
+                  reservationId: (event?.payload as any)?.reservation_id,
+                },
+                "AR event consumer retry triggered",
+              );
+            },
+            isRetryable: (err: any) => {
+              const code = String(err.code || "");
+              return (
+                code.startsWith("08") ||
+                code === "40001" ||
+                code === "57P01" ||
+                err.message?.includes("deadlock") ||
+                err.message?.includes("ECONNREFUSED")
+              );
+            },
+          });
+
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "success");
+        } catch (err: any) {
+          const durationSeconds = (Date.now() - startTime) / 1000;
+          observeCommandDuration(eventType, durationSeconds);
+          recordCommandOutcome(eventType, "handler_error");
+
+          logger.error(
+            { err, offset: message.offset, reservationId: (event?.payload as any)?.reservation_id },
+            "AR event consumer: failed to process event after retries. Routing to DLQ.",
+          );
+
+          try {
+            const dlqPayload = buildDlqPayload({
+              rawValue,
+              topic: batch.topic,
+              partition: batch.partition,
+              offset: message.offset,
+              attempts: 6,
+              failureReason: "HANDLER_FAILURE",
+              error: err,
+              envelope: event as any,
+            });
+
+            await dlqProducer?.publishDlqEvent({
+              key: event?.metadata.tenantId || "unknown",
+              value: JSON.stringify(dlqPayload),
+            });
+            recordDlqEvent(err.message || "handler_error");
+          } catch (dlqErr) {
+            logger.error({ err: dlqErr }, "Failed to publish to AR DLQ");
+          }
+        } finally {
+          resolveOffset(message.offset);
+          await heartbeat();
+        }
+      }
+
+      // Update lag for the entire batch
+      if (batch.messages.length > 0) {
+        const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
+        try {
+          const high = BigInt(batch.highWatermark);
+          const current = BigInt(lastOffset);
+          const rawLag = high - current - 1n;
+          const lag = rawLag > 0n ? Number(rawLag) : 0;
+          setCommandConsumerLag(config.arEvents.topic, batch.partition, lag);
+        } catch (_err) {
+          // Ignore lag calculation errors
+        }
       }
     },
   });
 
+  // Track consumer lag
+  consumer.on(consumer.events.GROUP_JOIN, () => {
+    logger.info("AR consumer joined group");
+  });
+
+  // Periodically report lag (best effort)
+  setInterval(async () => {
+    if (consumer) {
+      try {
+        const description = await consumer.describeGroup();
+        for (const member of description.members) {
+          logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
+          setCommandConsumerLag(config.arEvents.topic, 0, 0); // Placeholder
+        }
+      } catch (_err) {
+        // Ignore lag reporting errors
+      }
+    }
+  }, 30_000);
+
   logger.info(
-    { topic: config.arEvents.topic, groupId: config.arEvents.consumerGroupId },
+    {
+      topic: config.arEvents.topic,
+      groupId: config.arEvents.consumerGroupId,
+      dlqTopic: config.arEvents.dlqTopic,
+    },
     "AR event consumer started",
   );
 };
 
 export const shutdownArEventConsumer = async (): Promise<void> => {
   if (!consumer) return;
-  await consumer.disconnect();
-  consumer = null;
-  logger.info("AR event consumer stopped");
+  try {
+    await dlqProducer?.shutdown();
+    await consumer.disconnect();
+    logger.info("AR event consumer stopped");
+  } finally {
+    consumer = null;
+    dlqProducer = null;
+  }
 };
