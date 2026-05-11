@@ -40,9 +40,7 @@
     },
     "targetVersion": "latest",
     "confirmedPackageUpdates": true,
-    "runningMigrations": [
-      "22-7-0-add-self-healing-to-gitignore"
-    ],
+    "runningMigrations": [],
     "completedMigrations": {
       "22-6-1-add-claude-worktrees-to-git-ignore": {
         "type": "successful",
@@ -84,7 +82,7 @@
             "type": "UPDATE"
           }
         ],
-        "ref": "bc664753cc9a2a1bd71658e5ce81279ed8612973",
+        "ref": "c4c3fafe142644cf8a825eaf80c2098f42212207",
         "nextSteps": []
       }
     }
