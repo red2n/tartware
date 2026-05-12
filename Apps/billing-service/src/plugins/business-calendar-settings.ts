@@ -43,20 +43,20 @@ export default fp(async (app: FastifyInstance) => {
         });
 
         await consumer.run({
-        eachMessage: async ({ message }) => {
-          if (!message.value) return;
-          try {
-            const event = JSON.parse(message.value.toString());
-            // Map event to hot-reload call
-            // Expected event: { type: 'settings.value.set', payload: { tenant_id, property_id, code, value } }
-            if (event.type === "settings.value.set") {
-              const { tenant_id, property_id, code, value } = event.payload;
-              await service.handleHotReload(tenant_id, property_id, code, value);
+          eachMessage: async ({ message }) => {
+            if (!message.value) return;
+            try {
+              const event = JSON.parse(message.value.toString());
+              // Map event to hot-reload call
+              // Expected event: { type: 'settings.value.set', payload: { tenant_id, property_id, code, value } }
+              if (event.type === "settings.value.set") {
+                const { tenant_id, property_id, code, value } = event.payload;
+                await service.handleHotReload(tenant_id, property_id, code, value);
+              }
+            } catch (err) {
+              app.log.error(err, "Failed to process settings hot-reload event");
             }
-          } catch (err) {
-            app.log.error(err, "Failed to process settings hot-reload event");
-          }
-        },
+          },
         });
 
         app.addHook("onClose", async () => {

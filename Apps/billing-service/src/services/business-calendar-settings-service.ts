@@ -1,3 +1,4 @@
+import type { SettingValueRow } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 
 import { config } from "../config.js";
@@ -6,14 +7,6 @@ type BusinessCalendarSettings = {
   autoRollEnabled: boolean;
   autoRollTime: string; // HH:MM
   dayStartTime: string; // HH:MM
-};
-
-type SettingValueRow = {
-  tenant_id: string;
-  property_id: string | null;
-  setting_code: string;
-  value: unknown;
-  status: string;
 };
 
 export class BusinessCalendarSettingsService {

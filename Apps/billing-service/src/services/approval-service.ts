@@ -12,11 +12,6 @@ import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { BillingCommandError } from "./billing-commands/common.js";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/** Subset of columns returned from listPendingApprovals. */
-type PendingApprovalRow = ApprovalRequestRow;
-
 // ─── Create Approval Request ─────────────────────────────────────────────────
 
 /**
@@ -99,7 +94,7 @@ export const createApprovalRequest = async (
 export const approveRequest = async (
   payload: unknown,
   tenantId: string,
-): Promise<PendingApprovalRow> => {
+): Promise<ApprovalRequestRow> => {
   const command = BillingApprovalApproveCommandSchema.parse(payload);
   return _resolveRequest(command, tenantId, "APPROVED");
 };
@@ -113,7 +108,7 @@ export const approveRequest = async (
 export const rejectRequest = async (
   payload: unknown,
   tenantId: string,
-): Promise<PendingApprovalRow> => {
+): Promise<ApprovalRequestRow> => {
   const command = BillingApprovalRejectCommandSchema.parse(payload);
   return _resolveRequest(command, tenantId, "REJECTED");
 };
@@ -124,10 +119,10 @@ const _resolveRequest = async (
   command: BillingApprovalApproveCommand | BillingApprovalRejectCommand,
   tenantId: string,
   newStatus: "APPROVED" | "REJECTED",
-): Promise<PendingApprovalRow> => {
+): Promise<ApprovalRequestRow> => {
   return withTransaction(async (client) => {
     // Lock the row to prevent concurrent approvals
-    const { rows } = await queryWithClient<PendingApprovalRow>(
+    const { rows } = await queryWithClient<ApprovalRequestRow>(
       client,
       `SELECT
          approval_id, tenant_id, property_id, operation_type, entity_type, entity_id,
@@ -271,8 +266,8 @@ export const listPendingApprovals = async (input: {
   operationType?: string;
   limit: number;
   offset: number;
-}): Promise<PendingApprovalRow[]> => {
-  const { rows } = await query<PendingApprovalRow>(
+}): Promise<ApprovalRequestRow[]> => {
+  const { rows } = await query<ApprovalRequestRow>(
     `SELECT
        approval_id, tenant_id, property_id, operation_type, entity_type, entity_id,
        operation_payload, description, required_role,
@@ -305,8 +300,8 @@ export const listPendingApprovals = async (input: {
 export const getApprovalRequest = async (
   approvalId: string,
   tenantId: string,
-): Promise<PendingApprovalRow | null> => {
-  const { rows } = await query<PendingApprovalRow>(
+): Promise<ApprovalRequestRow | null> => {
+  const { rows } = await query<ApprovalRequestRow>(
     `SELECT
        approval_id, tenant_id, property_id, operation_type, entity_type, entity_id,
        operation_payload, description, required_role,

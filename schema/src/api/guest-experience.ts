@@ -232,7 +232,7 @@ export const MobileCheckinRowSchema = z.object({
 export type MobileCheckinRow = z.infer<typeof MobileCheckinRowSchema>;
 
 /** Row shape from reservations table queries (checkin context). */
-export const ReservationRowSchema = z.object({
+export const ReservationBriefRowSchema = z.object({
 	id: z.string(),
 	tenant_id: z.string(),
 	property_id: z.string(),
@@ -246,7 +246,7 @@ export const ReservationRowSchema = z.object({
 	guest_last_name: z.string().nullable().optional(),
 });
 
-export type ReservationRow = z.infer<typeof ReservationRowSchema>;
+export type ReservationBriefRow = z.infer<typeof ReservationBriefRowSchema>;
 
 /** Row shape from mobile_keys table queries. */
 export const KeyRowSchema = z.object({
@@ -301,7 +301,7 @@ export const ReservationDetailRowSchema = z.object({
 export type ReservationDetailRow = z.infer<typeof ReservationDetailRowSchema>;
 
 /** Row shape for property data in registration card context. */
-export const PropertyRowSchema = z.object({
+export const PropertyBriefRowSchema = z.object({
 	id: z.string(),
 	property_name: z.string(),
 	address_line_1: z.string().nullable(),
@@ -312,7 +312,7 @@ export const PropertyRowSchema = z.object({
 	phone: z.string().nullable(),
 });
 
-export type PropertyRow = z.infer<typeof PropertyRowSchema>;
+export type PropertyBriefRow = z.infer<typeof PropertyBriefRowSchema>;
 
 /** Row shape from digital_registration_cards upsert. */
 export const RegistrationCardRowSchema = z.object({

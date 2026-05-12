@@ -1,5 +1,5 @@
 import { toNonNegativeInt, toOptionalNumber } from "@tartware/config";
-import { PropertyWithStatsSchema } from "@tartware/schemas";
+import { type PropertyRow, PropertyWithStatsSchema } from "@tartware/schemas";
 import { z } from "zod";
 import { query } from "../lib/db.js";
 import { PROPERTY_LIST_SQL, PROPERTY_OPERATIONAL_STATS_SQL } from "../sql/property-queries.js";
@@ -11,35 +11,6 @@ const PropertyWithStatsApiSchema = PropertyWithStatsSchema.omit({ version: true 
 });
 
 type PropertyWithStatsApi = z.infer<typeof PropertyWithStatsApiSchema>;
-
-type PropertyRow = {
-  id: string;
-  tenant_id: string;
-  property_name: string;
-  property_code: string;
-  address: Record<string, unknown>;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  property_type: string | null;
-  star_rating: number | string | null;
-  total_rooms: number | string | null;
-  tax_id: string | null;
-  license_number: string | null;
-  currency: string | null;
-  timezone: string | null;
-  default_language: string | null;
-  config: Record<string, unknown>;
-  integrations: Record<string, unknown>;
-  is_active: boolean | null;
-  metadata: Record<string, unknown> | null;
-  created_at: Date;
-  updated_at: Date | null;
-  created_by: string | null;
-  updated_by: string | null;
-  deleted_at: Date | null;
-  version: bigint | null;
-};
 
 type PropertyOperationalStats = {
   roomCount: number;

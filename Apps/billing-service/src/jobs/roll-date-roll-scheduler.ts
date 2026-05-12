@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { SchedulerStatus } from "@tartware/schemas";
+import type { ActivePropertyRow, SchedulerStatus } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
 import { Kafka, type Producer } from "kafkajs";
 
@@ -217,16 +217,6 @@ export const buildDateRollScheduler = (
         error: errorMessage,
       };
     }
-  };
-
-  type ActivePropertyRow = {
-    property_id: string;
-    tenant_id: string;
-    property_name: string;
-    timezone: string | null;
-    current_business_date: string | null;
-    date_status: string | null;
-    night_audit_status: string | null;
   };
 
   const checkAndDispatch = async () => {

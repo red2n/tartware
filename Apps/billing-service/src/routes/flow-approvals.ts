@@ -117,8 +117,9 @@ export const registerFlowApprovalRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const body = CreateFlowApprovalSchema.parse(request.body);
       // Override approver fields with authenticated user context
-      const approvedBy = request.auth.user.sub as string;
-      const roleAtApproval = request.auth.user.role || "SYSTEM";
+      const approvedBy = request.auth.userId as string;
+      const membership = request.auth.getMembership(body.tenant_id);
+      const roleAtApproval = membership?.role || "SYSTEM";
       const id = await recordFlowApproval({
         ...body,
         approved_by: approvedBy,

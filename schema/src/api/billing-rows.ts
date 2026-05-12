@@ -425,3 +425,64 @@ export type ArDunningRuleRow = {
   created_by: string | null;
   updated_by: string | null;
 };
+
+// =====================================================
+// ROLL SCHEDULER ROW
+// =====================================================
+
+/** Row shape for active properties in night audit roll scheduler. */
+export type ActivePropertyRow = {
+  property_id: string;
+  tenant_id: string;
+  property_name: string;
+  timezone: string | null;
+  current_business_date: string | null;
+  date_status: string | null;
+  night_audit_status: string | null;
+};
+
+// =====================================================
+// BUSINESS CALENDAR SETTINGS ROW
+// =====================================================
+
+/** Row shape from business_calendar_settings queries. */
+export type SettingValueRow = {
+  tenant_id: string;
+  property_id: string | null;
+  setting_code: string;
+  value: unknown;
+  status: string;
+};
+
+// =====================================================
+// POS CHARGE LOOKUP ROW
+// =====================================================
+
+/** Row shape for reservation and folio lookup in POS charge service. */
+export type ReservationFolioRow = {
+  reservation_id: string;
+  folio_id: string;
+  guest_name: string | null;
+  guest_id: string | null;
+};
+
+// =====================================================
+// FOLIO ROUTING RULE ROW
+// =====================================================
+
+/** Row shape from folio_routing_rules queries. */
+export type FolioRoutingRuleRow = {
+  rule_id: string;
+  destination_folio_id: string;
+  charge_code_pattern: string | null;
+  transaction_type: string | null;
+  charge_category: string | null;
+  min_amount: string | null;
+  max_amount: string | null;
+  routing_type: string;
+  routing_percentage: string | null;
+  routing_fixed_amount: string | null;
+  stop_on_match: boolean;
+  effective_from: string | null;
+  effective_until: string | null;
+};

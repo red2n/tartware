@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import {
+  type BreakGlassCodeRow,
   type ImpersonationResult,
   PublicSystemAdministratorSchema,
   type SystemAdminAuditEvent,
@@ -9,6 +10,7 @@ import {
   type SystemAdminBreakGlassAuthResult,
   type SystemAdminBreakGlassFailureReason,
   type SystemAdminBreakGlassLoginInput,
+  type SystemAdministratorRow,
   SystemAdministratorSchema,
   type SystemAdminLoginInput,
   type SystemAdminRole,
@@ -45,34 +47,6 @@ export type {
   SystemAdminBreakGlassFailureReason,
   SystemAdminBreakGlassLoginInput,
   SystemAdminLoginInput,
-};
-
-type SystemAdministratorRow = {
-  id: string;
-  username: string;
-  email: string;
-  password_hash: string;
-  role: SystemAdminRole;
-  mfa_secret: string | null;
-  mfa_enabled: boolean;
-  ip_whitelist: string[] | null;
-  allowed_hours: string | null;
-  last_login_at: Date | null;
-  failed_login_attempts: number;
-  account_locked_until: Date | null;
-  is_active: boolean;
-  created_at: Date;
-  updated_at: Date | null;
-  created_by: string | null;
-  updated_by: string | null;
-  metadata: Record<string, unknown> | null;
-};
-
-type BreakGlassCodeRow = {
-  id: string;
-  code_hash: string;
-  expires_at: Date | null;
-  used_at: Date | null;
 };
 
 const AUDIT_REDACTED_VALUE = "[REDACTED]";
@@ -117,11 +91,15 @@ const AUDIT_SENSITIVE_FIELD_SET = new Set(
 const mapRowToAdministrator = (row: SystemAdministratorRow) => {
   return SystemAdministratorSchema.parse({
     ...row,
+    role: row.role as SystemAdminRole,
+    last_login_at: (row.last_login_at as Date) ?? undefined,
+    account_locked_until: (row.account_locked_until as Date) ?? undefined,
+    created_at: row.created_at as Date,
+    updated_at: (row.updated_at as Date) ?? undefined,
     ip_whitelist: row.ip_whitelist ?? [],
     allowed_hours: row.allowed_hours ?? undefined,
     mfa_secret: row.mfa_secret ?? undefined,
     metadata: row.metadata ?? undefined,
-    updated_at: row.updated_at ?? undefined,
     created_by: row.created_by ?? undefined,
     updated_by: row.updated_by ?? undefined,
   });
