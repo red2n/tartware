@@ -80,11 +80,12 @@ export const transferCharge = async (
       currency_code: string;
       department_code: string | null;
       is_voided: boolean;
+      version: number;
     }>(
       client,
       `SELECT posting_id, folio_id, property_id, reservation_id,
               charge_code, charge_description, quantity, unit_price,
-              subtotal, total_amount, currency_code, department_code, is_voided
+              subtotal, total_amount, currency_code, department_code, is_voided, version
        FROM charge_postings
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid
        FOR UPDATE`,
@@ -105,19 +106,33 @@ export const transferCharge = async (
       throw new BillingCommandError("SAME_FOLIO", "Source and target folio are the same.");
     }
 
+    // NEW: Acquire advisory locks on both folios in sorted order to prevent deadlocks
+    const foliosToLock = [original.folio_id, targetFolioId].sort();
+    for (const fId of foliosToLock) {
+      await acquireFolioLock(client, fId);
+    }
+
     const amount = parseDbMoneyOrZero(original.total_amount);
 
     // 2. Mark original as transferred
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE charge_postings
        SET transfer_to_folio_id = $3::uuid,
            version = version + 1,
            updated_by = $4::uuid,
            updated_at = NOW()
-       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
-      [command.posting_id, tenantId, targetFolioId, actorId],
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid AND version = $5`,
+      [command.posting_id, tenantId, targetFolioId, actorId, original.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Posting modified by another transaction",
+        true,
+      );
+    }
 
     // 3. Create TRANSFER CREDIT on source folio (reduces balance)
     await queryWithClient(
@@ -197,26 +212,56 @@ export const transferCharge = async (
     );
 
     // 5. Adjust source folio balance (decrease)
-    await queryWithClient(
+    const { rows: fromRows } = await queryWithClient<{ version: number }>(
+      client,
+      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [tenantId, original.folio_id],
+    );
+    if (fromRows.length === 0 || !fromRows[0]) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "Source folio missing.");
+    }
+    const fromFolioVersion = fromRows[0].version;
+
+    const { rowCount: fromCount } = await queryWithClient(
       client,
       `UPDATE folios
        SET total_charges = total_charges - $2,
            balance = balance - $2,
+           version = version + 1,
            updated_at = NOW(), updated_by = $3::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-      [tenantId, amount, actorId, original.folio_id],
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
+      [tenantId, amount, actorId, original.folio_id, fromFolioVersion],
     );
 
     // 6. Adjust target folio balance (increase)
-    await queryWithClient(
+    const { rows: toRows } = await queryWithClient<{ version: number }>(
+      client,
+      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [tenantId, targetFolioId],
+    );
+    if (toRows.length === 0 || !toRows[0]) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "Target folio missing.");
+    }
+    const toFolioVersion = toRows[0].version;
+
+    const { rowCount: toCount } = await queryWithClient(
       client,
       `UPDATE folios
        SET total_charges = total_charges + $2,
            balance = balance + $2,
+           version = version + 1,
            updated_at = NOW(), updated_by = $3::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-      [tenantId, amount, actorId, targetFolioId],
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
+      [tenantId, amount, actorId, targetFolioId, toFolioVersion],
     );
+
+    if (fromCount === 0 || toCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Folio was modified during transfer. Please retry.",
+        true,
+      );
+    }
 
     const newPostingId = newRows[0]?.posting_id ?? command.posting_id;
     appLogger.info(
@@ -255,11 +300,12 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       currency_code: string;
       department_code: string | null;
       is_voided: boolean;
+      version: number;
     }>(
       client,
       `SELECT posting_id, folio_id, property_id, reservation_id,
               charge_code, charge_description, total_amount, currency_code,
-              department_code, is_voided
+              department_code, is_voided, version
        FROM charge_postings
        WHERE posting_id = $1::uuid AND tenant_id = $2::uuid
        FOR UPDATE`,
@@ -277,6 +323,13 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       throw new BillingCommandError("POSTING_VOIDED", "Cannot split a voided posting.");
     }
 
+    // NEW: Resolve all target folios and lock them along with source folio
+    const targetFolioIds = command.splits.map((s) => s.folio_id).filter((id): id is string => !!id);
+    const foliosToLock = Array.from(new Set([original.folio_id, ...targetFolioIds])).sort();
+    for (const fId of foliosToLock) {
+      await acquireFolioLock(client, fId);
+    }
+
     const originalAmount = parseDbMoneyOrZero(original.total_amount);
     const splitTotal = command.splits.reduce((sum, s) => addMoney(sum, s.amount), 0);
     if (Math.abs(splitTotal - originalAmount) > 0.01) {
@@ -287,14 +340,22 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
     }
 
     // 2. Void the original posting
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE charge_postings
        SET is_voided = TRUE, voided_at = NOW(), voided_by = $3::uuid,
            void_reason = 'Split into multiple folios', version = version + 1
-       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid`,
-      [command.posting_id, tenantId, actorId],
+       WHERE posting_id = $1::uuid AND tenant_id = $2::uuid AND version = $4`,
+      [command.posting_id, tenantId, actorId, original.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Posting modified by another transaction",
+        true,
+      );
+    }
 
     // 3. Decrease source folio balance for the voided original
     await queryWithClient(
@@ -358,15 +419,34 @@ export const splitCharge = async (payload: unknown, context: CommandContext): Pr
       );
 
       // Update target folio balance
-      await queryWithClient(
+      const { rows: targetFolioRows } = await queryWithClient<{ version: number }>(
+        client,
+        `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+        [tenantId, targetFolioId],
+      );
+      const targetFolio = targetFolioRows[0];
+      if (!targetFolio) {
+        throw new BillingCommandError("FOLIO_NOT_FOUND", "Target folio missing.");
+      }
+
+      const { rowCount: targetCount } = await queryWithClient(
         client,
         `UPDATE folios
          SET total_charges = total_charges + $2,
              balance = balance + $2,
+             version = version + 1,
              updated_at = NOW(), updated_by = $3::uuid
-         WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-        [tenantId, unitPrice, actorId, targetFolioId],
+         WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
+        [tenantId, unitPrice, actorId, targetFolioId, targetFolio.version],
       );
+
+      if (targetCount === 0) {
+        throw new BillingCommandError(
+          "CONCURRENT_MODIFICATION",
+          "Folio was modified during split. Please retry.",
+          true,
+        );
+      }
 
       if (newRows[0]?.posting_id) {
         splitIds.push(newRows[0].posting_id);
@@ -504,17 +584,36 @@ const applyChargePost = async (
       );
 
       // Update destination folio totals
-      await queryWithClient(
+      const { rows: destFolioRows } = await queryWithClient<{ version: number }>(
+        client,
+        `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid FOR UPDATE`,
+        [context.tenantId, decision.destinationFolioId],
+      );
+      const destFolio = destFolioRows[0];
+      if (!destFolio) {
+        throw new BillingCommandError("FOLIO_NOT_FOUND", "Destination folio missing.");
+      }
+
+      const { rowCount: destCount } = await queryWithClient(
         client,
         `
           UPDATE public.folios
           SET total_charges = total_charges + $2,
               balance = balance + $2,
+              version = version + 1,
               updated_at = NOW(), updated_by = $3::uuid
-          WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
+          WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5
         `,
-        [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId],
+        [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId, destFolio.version],
       );
+
+      if (destCount === 0) {
+        throw new BillingCommandError(
+          "CONCURRENT_MODIFICATION",
+          "Destination folio was modified. Please retry.",
+          true,
+        );
+      }
 
       // GL: paired DR/CR for the routed portion. Skipped if mapping is absent.
       const routedPostingId = routedRows[0]?.posting_id;
@@ -695,13 +794,14 @@ const applyChargeVoid = async (
       revenue_center: string | null;
       gl_account: string | null;
       is_voided: boolean;
+      version: number;
     }>(
       client,
       `SELECT posting_id, tenant_id, property_id, folio_id, reservation_id,
               guest_id, charge_code, charge_description, charge_category,
               quantity, unit_price, subtotal, tax_amount, service_charge,
               discount_amount, total_amount, currency_code, department_code,
-              revenue_center, gl_account, is_voided
+              revenue_center, gl_account, is_voided, version
        FROM public.charge_postings
        WHERE posting_id = $1::uuid
          AND tenant_id = $2::uuid
@@ -723,19 +823,8 @@ const applyChargeVoid = async (
       );
     }
 
-    await queryWithClient(
-      client,
-      `UPDATE public.charge_postings
-       SET is_voided = TRUE,
-           voided_at = NOW(),
-           voided_by = $3::uuid,
-           void_reason = $4,
-           version = version + 1,
-           updated_by = $3::uuid
-       WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid`,
-      [command.posting_id, context.tenantId, actorId, command.void_reason ?? null],
-    );
+    // NEW: Acquire advisory lock on the folio to serialize balance update
+    await acquireFolioLock(client, original.folio_id);
 
     const voidResult = await queryWithClient<{ posting_id: string }>(
       client,
@@ -788,29 +877,69 @@ const applyChargeVoid = async (
       throw new BillingCommandError("CHARGE_VOID_FAILED", "Failed to create void posting.");
     }
 
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.charge_postings
-       SET void_posting_id = $3::uuid,
+       SET is_voided = TRUE,
+           voided_at = NOW(),
+           voided_by = $4::uuid,
+           void_reason = $5,
+           void_posting_id = $3::uuid,
            version = version + 1,
            updated_by = $4::uuid
        WHERE posting_id = $1::uuid
-         AND tenant_id = $2::uuid`,
-      [command.posting_id, context.tenantId, voidPostingId, actorId],
+         AND tenant_id = $2::uuid AND version = $6`,
+      [
+        command.posting_id,
+        context.tenantId,
+        voidPostingId,
+        actorId,
+        command.void_reason ?? null,
+        original.version,
+      ],
     );
 
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Posting modified by another transaction",
+        true,
+      );
+    }
+
     const totalAmount = parseDbMoneyOrZero(original.total_amount);
-    await queryWithClient(
+
+    // NEW: Fetch folio version for optimistic locking
+    const { rows: folioRows } = await queryWithClient<{ version: number }>(
+      client,
+      `SELECT version FROM public.folios WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+      [context.tenantId, original.folio_id],
+    );
+    const folioVersion = folioRows[0]?.version;
+    if (folioVersion === undefined) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "Folio missing during void.");
+    }
+
+    const { rowCount: folioCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET total_charges = total_charges - $2,
            balance = balance - $2,
+           version = version + 1,
            updated_at = NOW(),
            updated_by = $3::uuid
        WHERE tenant_id = $1::uuid
-         AND folio_id = $4::uuid`,
-      [context.tenantId, totalAmount, actorId, original.folio_id],
+         AND folio_id = $4::uuid AND version = $5`,
+      [context.tenantId, totalAmount, actorId, original.folio_id, folioVersion],
     );
+
+    if (folioCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Folio balance was modified during void operation. Please retry.",
+        true,
+      );
+    }
 
     // GL: paired DR/CR for the void. Sides are swapped relative to the
     // original posting — the original DR'd the guest ledger and CR'd revenue;

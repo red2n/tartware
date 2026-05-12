@@ -37,7 +37,9 @@ export const fetchReservationStaySnapshot = async (
         property_id,
         room_type_id,
         check_in_date,
-        check_out_date
+        check_out_date,
+        guest_id,
+        status
       FROM reservations
       WHERE tenant_id = $1
         AND id = $2
@@ -59,6 +61,8 @@ export const fetchReservationStaySnapshot = async (
     roomTypeId: row.room_type_id,
     checkInDate: new Date(row.check_in_date),
     checkOutDate: new Date(row.check_out_date),
+    guestId: row.guest_id,
+    status: row.status,
   };
 };
 

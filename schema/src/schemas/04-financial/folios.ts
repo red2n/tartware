@@ -77,6 +77,7 @@ export const FoliosSchema = z.object({
 	created_by: uuid,
 	updated_at: z.coerce.date().optional(),
 	updated_by: uuid.optional(),
+	version: z.number().int().default(0),
 });
 
 export type Folios = z.infer<typeof FoliosSchema>;

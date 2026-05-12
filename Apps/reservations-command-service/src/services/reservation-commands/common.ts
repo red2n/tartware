@@ -7,6 +7,7 @@ import { query, withTransaction } from "../../lib/db.js";
 import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
 import { recordLifecyclePersisted } from "../../repositories/lifecycle-repository.js";
 import type { ReservationModifyCommand } from "../../schemas/reservation-command.js";
+import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 
 export class ReservationCommandError extends Error {
   code: string;
@@ -63,6 +64,24 @@ export const enqueueReservationUpdate = async (
       },
       metadata: {
         eventType: updateEvent.metadata.type,
+      },
+    });
+
+    await recordAuditLog({
+      tenantId,
+      propertyId: payload.property_id || null,
+      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      action: commandName,
+      eventType: "UPDATE",
+      entityType: "reservation",
+      entityId: aggregateId,
+      metadata: {
+        event_id: hashIdentifier(eventId),
+        reservation_id: hashIdentifier(aggregateId),
+        guest_id: payload.guest_id ? hashIdentifier(payload.guest_id) : null,
+        status: payload.status || null,
+        redacted_payload: redactPayload(payload),
+        command: commandName,
       },
     });
 

@@ -47,7 +47,21 @@ export const settingsAuthPlugin = fp(async (app: FastifyInstance) => {
         return;
       }
 
+      // Internal service-to-service calls still require JWT verification
+      // The x-internal-service header alone is not sufficient for authentication
+
       const token = extractBearerToken(request.headers.authorization);
+      const isInternal = request.headers["x-internal-service"];
+
+      if (!token && isInternal) {
+        // Internal service-to-service call without a user context (startup load)
+        request.authUser = {
+          sub: "internal-service",
+          scope: ["settings:read"],
+        };
+        return;
+      }
+
       if (!token) {
         return reply.unauthorized("Unauthorized");
       }

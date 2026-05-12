@@ -40,8 +40,8 @@ export const databaseSchema = z.object({
       "DB_PASSWORD is required in non-test environments",
     ),
   DB_SSL: booleanString,
-  DB_POOL_MAX: z.coerce.number().int().default(8),
-  DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(30000),
+  DB_POOL_MAX: z.coerce.number().int().default(15),
+  DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(20000),
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().default(15000),
   DB_QUERY_TIMEOUT_MS: z.coerce.number().int().default(20000),
   DB_IDLE_IN_TX_TIMEOUT_MS: z.coerce.number().int().default(10000),
@@ -349,6 +349,7 @@ export const resolveOtelDependency = (optional = true): DependencyTarget | null 
   };
 };
 
+export * from "./audit.js";
 export {
   parseBooleanEnv,
   parseBrokerList,
@@ -356,9 +357,9 @@ export {
   parseNumberList,
   resolveKafkaConfig,
 } from "./kafka.js";
-
 export { toNonNegativeInt, toNumberOrFallback, toOptionalNumber } from "./numbers.js";
 
+export * from "./retry.js";
 export {
   buildAuthConfig,
   buildCommandCenterConfig,

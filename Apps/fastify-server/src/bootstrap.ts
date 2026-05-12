@@ -16,6 +16,7 @@ import {
 	parseHostPort,
 	resolveOtelDependency,
 } from "@tartware/config";
+import type { ServiceFlowManifest } from "@tartware/schemas";
 import { initTelemetry } from "@tartware/telemetry";
 import type { FastifyInstance } from "fastify";
 
@@ -36,6 +37,16 @@ export type BootstrapServiceInput = {
 	consumerShutdowns?: Array<() => Promise<void>>;
 	/** Kafka producer shutdown. Called after consumers during shutdown. */
 	shutdownProducer?: () => Promise<void>;
+	/**
+	 * Flow manifests for boot-time compliance validation.
+	 * When provided, the validator checks that all manifests collectively
+	 * cover the requirements in the flow registry.
+	 * Mode: "warn" logs violations without blocking boot; "throw" blocks boot (default: "warn").
+	 */
+	flowManifests?: {
+		manifests: readonly ServiceFlowManifest[];
+		mode?: "throw" | "warn";
+	};
 };
 
 /**
@@ -93,6 +104,22 @@ export async function bootstrapService(
 				app.log.warn(
 					"Kafka disabled via DISABLE_KAFKA; skipping consumer start",
 				);
+			}
+
+			// Flow compliance validation (when manifests are provided)
+			if (input.flowManifests) {
+				const { validateServiceManifest } = await import(
+					"@tartware/command-consumer-utils/flow-compliance"
+				);
+				for (const manifest of input.flowManifests.manifests) {
+					validateServiceManifest(manifest, {
+						mode: input.flowManifests.mode ?? "warn",
+						logger: {
+							info: (msg: string) => app.log.info(msg),
+							warn: (msg: string) => app.log.warn(msg),
+						},
+					});
+				}
 			}
 
 			await app.listen({

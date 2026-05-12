@@ -21,6 +21,7 @@ DECLARE
         'reservations',
         'groups',
         'guests',
+        'loyalty',
         'rooms',
         'room-types',
         'buildings',
@@ -33,10 +34,15 @@ DECLARE
         'cashiering',
         'night-audit',
         'tax-config',
+        'invoices',
+        'fiscal-periods',
+        'commissions',
         'reports',
         'settings',
         'command-management',
-        'users'
+        'users',
+        'modules',
+        'webhooks'
     ];
     v_screen TEXT;
     v_role tenant_role;
@@ -55,7 +61,7 @@ BEGIN
                     -- MANAGER sees most screens except admin-only
                     WHEN v_role = 'MANAGER' THEN v_screen NOT IN ('settings', 'command-management', 'users', 'tax-config')
                     -- STAFF sees operational screens
-                    WHEN v_role = 'STAFF' THEN v_screen IN ('dashboard', 'reservations', 'guests', 'rooms', 'housekeeping')
+                    WHEN v_role = 'STAFF' THEN v_screen IN ('dashboard', 'reservations', 'guests', 'rooms', 'housekeeping', 'rates')
                     -- VIEWER sees read-only screens
                     WHEN v_role = 'VIEWER' THEN v_screen IN ('dashboard', 'guests')
                     ELSE false
@@ -63,7 +69,8 @@ BEGIN
 
                 INSERT INTO role_screen_permissions (tenant_id, role, screen_key, is_visible)
                 VALUES (v_tenant.id, v_role, v_screen, v_visible)
-                ON CONFLICT (tenant_id, role, screen_key) DO NOTHING;
+                ON CONFLICT (tenant_id, role, screen_key) 
+                DO UPDATE SET is_visible = EXCLUDED.is_visible;
             END LOOP;
         END LOOP;
     END LOOP;

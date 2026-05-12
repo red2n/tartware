@@ -50,6 +50,10 @@
     "./events/*": {
       "import": "./dist/events/*.js",
       "types": "./dist/events/*.d.ts"
+    },
+    "./flows": {
+      "import": "./dist/flows/index.js",
+      "types": "./dist/flows/index.d.ts"
     }
   },
   "files": [

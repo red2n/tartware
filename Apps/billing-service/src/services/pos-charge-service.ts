@@ -15,7 +15,7 @@
  * Ref: BA §2.2, §14.1 | Issue: ACCT-05 | HTNG 2009B POS integration spec.
  */
 
-import type { PosChargeInput, PosChargeResponse } from "@tartware/schemas";
+import type { PosChargeInput, PosChargeResponse, ReservationFolioRow } from "@tartware/schemas";
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { acquireFolioLock } from "../lib/folio-lock.js";
 import { appLogger } from "../lib/logger.js";
@@ -52,13 +52,6 @@ const resolveGlMapping = (outletCode: string): { department_code: string; gl_acc
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-type ReservationFolioRow = {
-  reservation_id: string;
-  folio_id: string;
-  guest_name: string | null;
-  guest_id: string | null;
-};
 
 /**
  * Look up the active reservation and its primary open folio by room number.

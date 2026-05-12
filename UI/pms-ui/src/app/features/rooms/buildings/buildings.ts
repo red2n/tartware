@@ -113,7 +113,10 @@ export class BuildingsComponent {
 
 	async loadBuildings(): Promise<void> {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
+		if (!tenantId) {
+			this.dataReady.set(true);
+			return;
+		}
 
 		this.dataReady.set(false);
 		this.error.set(null);

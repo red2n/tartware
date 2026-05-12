@@ -52,7 +52,8 @@ export class RecommendationTrackingSideEffect extends BaseSideEffect<
     let paramIndex = 1;
 
     for (let i = 0; i < selectedCandidates.length; i++) {
-      const candidate = selectedCandidates[i]!;
+      const candidate = selectedCandidates[i];
+      if (!candidate) continue;
       const position = i + 1; // 1-based rank
 
       placeholders.push(

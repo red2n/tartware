@@ -1,38 +1,9 @@
-import type { UserUiPreferences } from "@tartware/schemas";
-
+import type { UiPreferencesRow, UserUiPreferences } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
   GET_UI_PREFERENCES_SQL,
   UPSERT_UI_PREFERENCES_SQL,
 } from "../sql/ui-preferences-queries.js";
-
-type UiPreferencesRow = {
-  preference_id: string;
-  tenant_id: string;
-  user_id: string;
-  theme: string | null;
-  language: string | null;
-  timezone: string | null;
-  date_format: string | null;
-  time_format: string | null;
-  currency_display: string | null;
-  home_page: string | null;
-  home_page_dashboard_layout: Record<string, unknown>[] | null;
-  default_page_size: number | null;
-  default_sort_field: string | null;
-  default_sort_direction: string | null;
-  notification_sound_enabled: boolean | null;
-  notification_desktop_enabled: boolean | null;
-  notification_email_digest: string | null;
-  pinned_reports: Record<string, unknown>[] | null;
-  recent_searches: Record<string, unknown>[] | null;
-  favorite_properties: string[] | null;
-  profile_display_fields: string[] | null;
-  profile_history_display: string | null;
-  default_profile_tab: string | null;
-  created_at: Date;
-  updated_at: Date;
-};
 
 const mapRow = (row: UiPreferencesRow): UserUiPreferences => ({
   preference_id: row.preference_id,
@@ -46,7 +17,7 @@ const mapRow = (row: UiPreferencesRow): UserUiPreferences => ({
   currency_display: (row.currency_display as UserUiPreferences["currency_display"]) ?? "SYMBOL",
   home_page: row.home_page ?? "/dashboard",
   home_page_dashboard_layout: row.home_page_dashboard_layout ?? [],
-  default_page_size: row.default_page_size ?? 25,
+  default_page_size: Number(row.default_page_size ?? 25),
   default_sort_field: row.default_sort_field ?? undefined,
   default_sort_direction:
     (row.default_sort_direction as UserUiPreferences["default_sort_direction"]) ?? "ASC",
@@ -62,8 +33,8 @@ const mapRow = (row: UiPreferencesRow): UserUiPreferences => ({
   profile_history_display:
     (row.profile_history_display as UserUiPreferences["profile_history_display"]) ?? "COMPACT",
   default_profile_tab: row.default_profile_tab ?? "OVERVIEW",
-  created_at: row.created_at,
-  updated_at: row.updated_at,
+  created_at: row.created_at as Date,
+  updated_at: (row.updated_at as Date) ?? undefined,
 });
 
 /**

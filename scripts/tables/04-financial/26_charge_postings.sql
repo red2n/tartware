@@ -180,8 +180,13 @@ CREATE INDEX IF NOT EXISTS idx_charge_postings_audit_run_id
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS exchange_rate DECIMAL(12,6) DEFAULT 1.000000;
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_amount DECIMAL(15,2);
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_currency CHAR(3) DEFAULT 'USD';
-ALTER TABLE charge_postings ADD CONSTRAINT IF NOT EXISTS chk_postings_exchange_rate
-    CHECK (exchange_rate > 0);
+
+-- Add constraint with idempotent error handling (IF NOT EXISTS not supported on ADD CONSTRAINT)
+DO $$ BEGIN
+  ALTER TABLE charge_postings ADD CONSTRAINT chk_postings_exchange_rate CHECK (exchange_rate > 0);
+EXCEPTION WHEN duplicate_object THEN
+  NULL; -- Constraint already exists
+END $$;
 
 COMMENT ON COLUMN charge_postings.exchange_rate IS 'FX rate locked at posting time (transaction_currency/base_currency). 1.0 when same currency.';
 COMMENT ON COLUMN charge_postings.base_amount IS 'total_amount converted to property base currency at the locked exchange_rate.';

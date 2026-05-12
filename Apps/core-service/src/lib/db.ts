@@ -5,4 +5,4 @@ import { appLogger } from "../lib/logger.js";
 
 const db = createDbPool(config.db, appLogger);
 
-export const { pool, query } = db;
+export const { pool, query, withTransaction, queryWithClient } = db;

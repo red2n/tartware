@@ -35,7 +35,7 @@ export class PreferenceScorer extends BaseScorer<RoomRecommendationQuery, RoomCa
       // Boost for preferred amenities
       if (history?.preferredAmenities && candidate.amenities) {
         const matchingAmenities = history.preferredAmenities.filter((a) =>
-          candidate.amenities!.includes(a),
+          candidate.amenities?.includes(a),
         );
         score += matchingAmenities.length * 0.05;
       }

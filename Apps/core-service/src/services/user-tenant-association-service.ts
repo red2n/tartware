@@ -1,4 +1,5 @@
 import {
+  type UserTenantAssociationRow,
   type UserTenantAssociationWithDetails,
   UserTenantAssociationWithDetailsSchema,
 } from "@tartware/schemas";
@@ -6,32 +7,7 @@ import {
 import { query } from "../lib/db.js";
 import { ASSOCIATION_LIST_SQL } from "../sql/user-tenant-association-queries.js";
 
-type AssociationRow = {
-  id: string;
-  user_id: string;
-  tenant_id: string;
-  role: string;
-  is_active: boolean;
-  permissions: Record<string, unknown> | null;
-  valid_from: Date | null;
-  valid_until: Date | null;
-  metadata: Record<string, unknown> | null;
-  created_at: Date;
-  updated_at: Date | null;
-  created_by: string | null;
-  updated_by: string | null;
-  deleted_at: Date | null;
-  version: bigint | null;
-  user_username: string | null;
-  user_email: string | null;
-  user_first_name: string | null;
-  user_last_name: string | null;
-  tenant_name: string | null;
-  tenant_slug: string | null;
-  tenant_status: string | null;
-};
-
-const mapRowToAssociation = (row: AssociationRow): UserTenantAssociationWithDetails => {
+const mapRowToAssociation = (row: UserTenantAssociationRow): UserTenantAssociationWithDetails => {
   const parsed = UserTenantAssociationWithDetailsSchema.parse({
     id: row.id,
     user_id: row.user_id,
@@ -39,15 +15,15 @@ const mapRowToAssociation = (row: AssociationRow): UserTenantAssociationWithDeta
     role: row.role,
     is_active: row.is_active,
     permissions: row.permissions ?? {},
-    valid_from: row.valid_from ?? undefined,
-    valid_until: row.valid_until ?? undefined,
+    valid_from: (row.valid_from as Date) ?? undefined,
+    valid_until: (row.valid_until as Date) ?? undefined,
     metadata: row.metadata ?? undefined,
-    created_at: row.created_at,
-    updated_at: row.updated_at ?? undefined,
+    created_at: row.created_at as Date,
+    updated_at: (row.updated_at as Date) ?? undefined,
     created_by: row.created_by ?? undefined,
     updated_by: row.updated_by ?? undefined,
-    deleted_at: row.deleted_at ?? null,
-    version: row.version ?? BigInt(0),
+    deleted_at: (row.deleted_at as Date) ?? null,
+    version: BigInt(row.version ?? 0),
     user:
       row.user_username && row.user_email
         ? {
@@ -90,7 +66,7 @@ export const listUserTenantAssociations = async (
   const role = options.role ?? null;
   const isActive = options.isActive ?? null;
 
-  const { rows } = await query<AssociationRow>(ASSOCIATION_LIST_SQL, [
+  const { rows } = await query<UserTenantAssociationRow>(ASSOCIATION_LIST_SQL, [
     tenantId,
     userId,
     role,

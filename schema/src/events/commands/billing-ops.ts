@@ -22,6 +22,8 @@ export const BillingNightAuditCommandSchema = z.object({
 	advance_date: z.boolean().optional(),
 	lock_postings: z.boolean().optional(),
 	generate_trial_balance: z.boolean().optional(),
+	auto_cancel_tentatives: z.boolean().optional(),
+	skip_preconditions: z.boolean().optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
 });

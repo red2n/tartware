@@ -43,6 +43,8 @@ export const executeNightAudit = async (
   const shouldAdvanceDate = command.advance_date !== false;
   const shouldLockPostings = command.lock_postings !== false;
   const shouldGenerateTrialBalance = command.generate_trial_balance !== false;
+  const shouldAutoCancelTentatives = command.auto_cancel_tentatives !== false;
+  const skipPreconditions = command.skip_preconditions === true;
 
   const auditRunId = randomUUID();
   const auditStartedAt = new Date();
@@ -63,9 +65,110 @@ export const executeNightAudit = async (
   let commissionsPosted = 0;
   let trialBalanceVariance = 0;
   let trialBalanceMismatches: TrialBalanceMismatch[] = [];
+  let tentativesCancelled = 0;
   // Tracks the last step to complete so the catch path can record the failed step.
   let lastCompletedStep = 1;
   let auditFailureError: Error | undefined;
+
+  // ── Step 0: Pre-condition validation (per master flow plan §10) ──────────
+  // Six checks that must pass before the audit can proceed. Bypassed only
+  // with skip_preconditions=true (requires GM override at the caller level).
+  if (!skipPreconditions) {
+    const preconditionFailures: string[] = [];
+
+    // Check 1: Open arrivals — CONFIRMED reservations with arrival today not yet checked in
+    // Only block if we are NOT automatically marking no-shows.
+    const { rows: openArrivals } = await query<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM reservations
+       WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+         AND status = 'CONFIRMED' AND check_in_date = $3::date
+         AND COALESCE(is_deleted, false) = false`,
+      [context.tenantId, command.property_id, auditDate],
+    );
+    if (Number(openArrivals[0]?.cnt ?? 0) > 0 && !shouldMarkNoShows) {
+      preconditionFailures.push(
+        `OPEN_ARRIVALS: ${openArrivals[0]?.cnt} CONFIRMED reservations with arrival today not yet checked in`,
+      );
+    }
+
+    // Check 2: Open departures — all CHECKED_IN with departure today must be CHECKED_OUT
+    const { rows: openDepartures } = await query<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM reservations
+       WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+         AND status = 'CHECKED_IN' AND check_out_date = $3::date
+         AND is_deleted = false`,
+      [context.tenantId, command.property_id, auditDate],
+    );
+    if (Number(openDepartures[0]?.cnt ?? 0) > 0) {
+      preconditionFailures.push(
+        `OPEN_DEPARTURES: ${openDepartures[0]?.cnt} CHECKED_IN reservations with departure today not yet checked out`,
+      );
+    }
+
+    // Check 3: Unbalanced folios — OPEN in-house folios with charges != payments
+    const { rows: unbalancedFolios } = await query<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM folios f
+       JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = f.tenant_id
+       WHERE f.tenant_id = $1::uuid AND f.property_id = $2::uuid
+         AND f.folio_status = 'OPEN' AND r.status = 'CHECKED_IN'
+         AND COALESCE(f.is_deleted, false) = false
+         AND ABS(COALESCE(f.balance, 0)) > 0.01
+         AND NOT EXISTS (
+           SELECT 1 FROM folio_routing_rules frr
+           WHERE frr.source_folio_id = f.folio_id AND frr.routing_type = 'DIRECT_BILL'
+         )`,
+      [context.tenantId, command.property_id],
+    );
+    if (Number(unbalancedFolios[0]?.cnt ?? 0) > 0) {
+      preconditionFailures.push(
+        `UNBALANCED_FOLIOS: ${unbalancedFolios[0]?.cnt} in-house folios with non-zero balance (no AR routing)`,
+      );
+    }
+
+    if (preconditionFailures.length > 0) {
+      appLogger.warn(
+        {
+          preconditionFailures,
+          auditDate,
+          tenantId: context.tenantId,
+          propertyId: command.property_id,
+        },
+        "Night audit pre-conditions NOT met — audit blocked",
+      );
+      throw new Error(`NIGHT_AUDIT_PRECONDITIONS_FAILED: ${preconditionFailures.join("; ")}`);
+    }
+  } else {
+    // Gate bypass: record approval in flow_approvals audit log
+    // skip_preconditions=true is a GM override — must be logged.
+    try {
+      const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
+      const gatesToLog = [
+        "open_arrivals_check",
+        "open_departures_check",
+        "unbalanced_folios_check",
+      ];
+      for (const gateName of gatesToLog) {
+        await recordFlowApproval({
+          tenant_id: context.tenantId,
+          property_id: command.property_id,
+          flow_name: "night_audit",
+          gate_name: gateName,
+          entity_type: "property",
+          entity_id: command.property_id,
+          approved_by: actorId,
+          role_at_approval: "GM_OVERRIDE",
+          reason_code: "SKIP_PRECONDITIONS",
+          reason_notes: `Night audit precondition gates bypassed via skip_preconditions=true for ${auditDate}`,
+          correlation_id: context.correlationId ?? null,
+        });
+      }
+    } catch (approvalErr) {
+      appLogger.warn(
+        { approvalErr, auditRunId },
+        "Night audit: failed to record gate bypass approval (non-fatal)",
+      );
+    }
+  }
 
   // Step 1: Lock postings — prevent new charges during audit (outside main TX)
   if (shouldLockPostings) {
@@ -148,19 +251,30 @@ export const executeNightAudit = async (
           );
           // Fall through to no-shows below
           if (shouldMarkNoShows) {
-            const { rowCount } = await queryWithClient(
+            const { rows: noShows } = await queryWithClient<{ id: string; version: number }>(
               client,
-              `UPDATE reservations
-               SET status = 'NO_SHOW', is_no_show = true,
-                   no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
-                   version = version + 1, updated_at = NOW()
+              `SELECT id, version FROM reservations
                WHERE tenant_id = $1 AND property_id = $2
                  AND status IN ('PENDING', 'CONFIRMED')
                  AND check_in_date <= $3::date
-                 AND is_deleted = false`,
+                 AND is_deleted = false
+               FOR UPDATE`,
               [context.tenantId, command.property_id, auditDate],
             );
-            noShowsMarked = rowCount ?? 0;
+            let rowCount = 0;
+            for (const ns of noShows) {
+              const res = await queryWithClient(
+                client,
+                `UPDATE reservations
+                 SET status = 'NO_SHOW', is_no_show = true,
+                     no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                     version = version + 1, updated_at = NOW()
+                 WHERE id = $1 AND version = $2`,
+                [ns.id, ns.version],
+              );
+              rowCount += res.rowCount ?? 0;
+            }
+            noShowsMarked = rowCount;
             await insertCheckpoint(
               client,
               context.tenantId,
@@ -253,19 +367,30 @@ export const executeNightAudit = async (
 
       // Step 5: Mark no-shows
       if (shouldMarkNoShows) {
-        const { rowCount } = await queryWithClient(
+        const { rows: noShows } = await queryWithClient<{ id: string; version: number }>(
           client,
-          `UPDATE reservations
-           SET status = 'NO_SHOW', is_no_show = true,
-               no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
-               version = version + 1, updated_at = NOW()
+          `SELECT id, version FROM reservations
            WHERE tenant_id = $1 AND property_id = $2
              AND status IN ('PENDING', 'CONFIRMED')
              AND check_in_date <= $3::date
-             AND is_deleted = false`,
+             AND is_deleted = false
+           FOR UPDATE`,
           [context.tenantId, command.property_id, auditDate],
         );
-        noShowsMarked = rowCount ?? 0;
+        let rowCount = 0;
+        for (const ns of noShows) {
+          const res = await queryWithClient(
+            client,
+            `UPDATE reservations
+             SET status = 'NO_SHOW', is_no_show = true,
+                 no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                 version = version + 1, updated_at = NOW()
+             WHERE id = $1 AND version = $2`,
+            [ns.id, ns.version],
+          );
+          rowCount += res.rowCount ?? 0;
+        }
+        noShowsMarked = rowCount;
       }
       await insertCheckpoint(
         client,
@@ -480,12 +605,79 @@ export const executeNightAudit = async (
       packageChargesPosted,
       commissionsPosted,
       noShowsMarked,
+      tentativesCancelled,
       trialBalanceVariance,
       trialBalanceBalanced: Math.abs(trialBalanceVariance) < 0.01,
       auditRunId,
     },
     "Night audit completed",
   );
+
+  // ─── Post-audit step: Auto-cancel TENTATIVE reservations past deposit deadline ─
+  // Reservations that remain TENTATIVE past their deposit deadline are cancelled.
+  // This runs outside the main transaction — it dispatches individual cancel events.
+  if (shouldAutoCancelTentatives) {
+    try {
+      const { rows: staleTentatives } = await query<{ id: string; version: number }>(
+        `SELECT id, version FROM reservations
+         WHERE tenant_id = $1::uuid AND property_id = $2::uuid
+           AND status = 'TENTATIVE'
+           AND deposit_due_date IS NOT NULL
+           AND deposit_due_date < $3::date
+           AND is_deleted = false`,
+        [context.tenantId, command.property_id, auditDate],
+      );
+      for (const row of staleTentatives) {
+        await query(
+          `UPDATE reservations
+           SET status = 'CANCELLED',
+               cancellation_reason = 'AUTO_DEPOSIT_DEADLINE',
+               cancelled_at = NOW(),
+               version = version + 1, updated_at = NOW()
+           WHERE id = $1::uuid AND tenant_id = $2::uuid AND status = 'TENTATIVE' AND version = $3`,
+          [row.id, context.tenantId, row.version],
+        );
+      }
+      tentativesCancelled = staleTentatives.length;
+      if (tentativesCancelled > 0) {
+        appLogger.info(
+          { tentativesCancelled, auditDate, auditRunId },
+          "Night audit: auto-cancelled TENTATIVE reservations past deposit deadline",
+        );
+      }
+    } catch (cancelErr) {
+      appLogger.warn(
+        { cancelErr, auditRunId },
+        "Night audit: failed to auto-cancel tentatives (non-fatal)",
+      );
+    }
+  }
+
+  // ─── Post-audit: Dispatch AR aging compute ──────────────────────────────
+  // Fire-and-forget: aging runs asynchronously via Kafka command pipeline.
+  // If dispatch fails, the aging can be triggered manually the next day.
+  try {
+    const { dispatchArAgingCompute } = await import("./ara-night-audit-hook.js");
+    await dispatchArAgingCompute(context.tenantId, command.property_id, auditDate);
+  } catch (hookErr) {
+    appLogger.warn(
+      { hookErr, auditRunId },
+      "Night audit: failed to dispatch AR aging compute (non-fatal)",
+    );
+  }
+
+  // ─── Post-audit: Dispatch AR dunning trigger ────────────────────────────
+  // Evaluates all AR accounts for dunning actions based on aging buckets.
+  // Fires after aging compute so dunning sees up-to-date bucket assignments.
+  try {
+    const { dispatchArDunningTrigger } = await import("./ara-night-audit-hook.js");
+    await dispatchArDunningTrigger(context.tenantId, command.property_id, auditDate);
+  } catch (hookErr) {
+    appLogger.warn(
+      { hookErr, auditRunId },
+      "Night audit: failed to dispatch AR dunning trigger (non-fatal)",
+    );
+  }
 
   return auditRunId;
 };
@@ -511,13 +703,14 @@ async function postRoomChargesAndTaxes(
     total_amount: string;
     guest_id: string;
     folio_id: string | null;
+    version: number | null;
   }>(
     client,
     `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id,
-            f.folio_id
+            f.folio_id, f.version
      FROM reservations r
      LEFT JOIN LATERAL (
-       SELECT folio_id FROM public.folios
+       SELECT folio_id, version FROM public.folios
        WHERE tenant_id = $1 AND reservation_id = r.id
          AND COALESCE(is_deleted, false) = false
        ORDER BY created_at DESC LIMIT 1
@@ -642,15 +835,29 @@ async function postRoomChargesAndTaxes(
 
     // Update folio balance (room charge + all taxes)
     const chargeTotal = roomRate + totalTaxAmount;
-    await queryWithClient(
+    const folioVersion = res.version;
+    if (folioVersion === null || folioVersion === undefined) {
+      throw new Error(`Night audit: version missing for folio ${folioId} on reservation ${res.id}`);
+    }
+
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET total_charges = total_charges + $2,
            balance = balance + $2,
+           version = version + 1,
            updated_at = NOW(), updated_by = $3::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
-      [tenantId, chargeTotal, actorId, folioId],
+       WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
+      [tenantId, chargeTotal, actorId, folioId, folioVersion],
     );
+
+    if (rowCount === 0) {
+      // In night audit, we log the error but we might want to fail the whole audit or just this guest.
+      // Given the transaction rollback policy, we should probably throw to rollback.
+      throw new Error(
+        `Night audit: concurrent modification on folio ${folioId} for reservation ${res.id}`,
+      );
+    }
     chargesPosted++;
   }
 

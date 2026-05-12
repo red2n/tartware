@@ -15,7 +15,7 @@ export default fp(async (app: FastifyInstance) => {
     return;
   }
 
-  const scheduler = buildDateRollScheduler(app.log, {
+  const scheduler = buildDateRollScheduler(app.log, app.businessCalendarSettings, {
     checkIntervalMs: config.roll.dateRollScheduler.checkIntervalMs,
     commandTopic: config.roll.dateRollScheduler.commandTopic,
   });

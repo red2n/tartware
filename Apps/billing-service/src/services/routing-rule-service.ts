@@ -15,6 +15,7 @@
 
 import type {
   EvaluateRoutingInput,
+  FolioRoutingRuleRow,
   RoutingDecision,
   RoutingEvaluationResult,
 } from "@tartware/schemas";
@@ -22,23 +23,6 @@ import type {
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { roundMoney, toCents } from "../utils/money.js";
-
-/* ── DB row shape (internal, single-file only) ── */
-type RuleRow = {
-  rule_id: string;
-  destination_folio_id: string;
-  charge_code_pattern: string | null;
-  transaction_type: string | null;
-  charge_category: string | null;
-  min_amount: string | null;
-  max_amount: string | null;
-  routing_type: string;
-  routing_percentage: string | null;
-  routing_fixed_amount: string | null;
-  stop_on_match: boolean;
-  effective_from: string | null;
-  effective_until: string | null;
-};
 
 const FETCH_ACTIVE_RULES_SQL = `
   SELECT
@@ -71,7 +55,10 @@ const FETCH_ACTIVE_RULES_SQL = `
 export async function evaluateRoutingRules(
   input: EvaluateRoutingInput,
 ): Promise<RoutingEvaluationResult> {
-  const { rows } = await query<RuleRow>(FETCH_ACTIVE_RULES_SQL, [input.tenantId, input.folioId]);
+  const { rows } = await query<FolioRoutingRuleRow>(FETCH_ACTIVE_RULES_SQL, [
+    input.tenantId,
+    input.folioId,
+  ]);
 
   if (rows.length === 0) {
     return { decisions: [], remainderAmount: input.amount };
@@ -123,7 +110,11 @@ export async function evaluateRoutingRules(
 
 /* ── Criteria matching ── */
 
-function matchesCriteria(rule: RuleRow, input: EvaluateRoutingInput, today: Date): boolean {
+function matchesCriteria(
+  rule: FolioRoutingRuleRow,
+  input: EvaluateRoutingInput,
+  today: Date,
+): boolean {
   // Effective date window
   if (rule.effective_from) {
     const from = new Date(rule.effective_from);
@@ -204,7 +195,7 @@ function matchesChargeCodePattern(pattern: string, chargeCode: string): boolean 
 /* ── Amount calculation ── */
 
 function calculateRoutedCents(
-  rule: RuleRow,
+  rule: FolioRoutingRuleRow,
   remainingCents: number,
   originalAmount: number,
 ): number {

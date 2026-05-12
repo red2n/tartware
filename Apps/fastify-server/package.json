@@ -23,6 +23,10 @@
     "./circuit-breaker": {
       "types": "./dist/circuit-breaker.d.ts",
       "import": "./dist/circuit-breaker.js"
+    },
+    "./bootstrap": {
+      "types": "./dist/bootstrap.d.ts",
+      "import": "./dist/bootstrap.js"
     }
   },
   "scripts": {
@@ -40,7 +44,9 @@
     "@fastify/sensible": "^6.0.1",
     "@fastify/swagger": "^9.6.1",
     "@fastify/swagger-ui": "^5.2.3",
+    "@tartware/command-consumer-utils": "workspace:*",
     "@tartware/config": "workspace:*",
+    "@tartware/schemas": "workspace:*",
     "@tartware/telemetry": "workspace:*",
     "fastify": "^5.2.0",
     "fastify-plugin": "^4.5.1"

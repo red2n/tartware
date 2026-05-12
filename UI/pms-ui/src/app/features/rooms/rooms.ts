@@ -36,7 +36,6 @@ type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "
 		RouterLink,
 		IconComponent,
 		InputTextModule,
-		InputTextModule,
 		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
@@ -200,7 +199,10 @@ export class RoomsComponent {
 
 	async loadRooms(): Promise<void> {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
+		if (!tenantId) {
+			this.dataReady.set(true);
+			return;
+		}
 
 		this.dataReady.set(false);
 		this.error.set(null);

@@ -69,6 +69,18 @@ const normalizeNumericBounds = (schema: JsonSchema): JsonSchema => {
       delete record.maximum;
     }
 
+    // Fix Fastify/AJV "nullable cannot be used without type" error
+    if (record.nullable === true && !record.type) {
+      if (Array.isArray(record.anyOf)) {
+        const types = new Set(record.anyOf.map((s: { type?: string }) => s.type).filter(Boolean));
+        if (types.size === 1) {
+          record.type = [...types][0];
+        } else if (types.size === 0) {
+          record.type = "string"; // fallback
+        }
+      }
+    }
+
     for (const value of Object.values(record)) {
       normalizeNode(value);
     }

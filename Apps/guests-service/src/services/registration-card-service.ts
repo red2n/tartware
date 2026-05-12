@@ -4,11 +4,22 @@ import type {
   CardTemplateData,
   GenerateCardInput,
   GuestRow,
-  PropertyRow,
   RegistrationCardData,
   RegistrationCardRow,
   ReservationDetailRow,
 } from "@tartware/schemas";
+
+/** Internal row shape for property lookup with flattened address. */
+type LocalPropertyRow = {
+  id: string;
+  property_name: string;
+  address_line_1: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postal_code: string | null;
+  phone: string | null;
+};
 
 import { config } from "../config.js";
 import { query } from "../lib/db.js";
@@ -164,7 +175,7 @@ export const generateRegistrationCard = async (
   }
 
   // Fetch property
-  const { rows: properties } = await query<PropertyRow>(PROPERTY_LOOKUP_SQL, [
+  const { rows: properties } = await query<LocalPropertyRow>(PROPERTY_LOOKUP_SQL, [
     reservation.property_id,
   ]);
   const property = properties[0];

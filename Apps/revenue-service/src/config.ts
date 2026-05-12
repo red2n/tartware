@@ -8,6 +8,7 @@ import {
   ensureAuthDefaults,
   initServiceIdentity,
   loadServiceConfig,
+  parseBooleanEnv,
   resolveKafkaConfig,
   validateProductionSecrets,
 } from "@tartware/config";
@@ -41,5 +42,7 @@ export const config = {
     topic: process.env.RESERVATION_EVENTS_TOPIC ?? "reservations.events",
     consumerGroupId:
       process.env.RESERVATION_EVENTS_CONSUMER_GROUP ?? "revenue-reservation-events-consumer",
+    dlqTopic: process.env.RESERVATION_EVENTS_DLQ_TOPIC ?? "reservations.events.dlq",
+    consumerEnabled: parseBooleanEnv(process.env.RESERVATION_EVENTS_CONSUMER_ENABLED, true),
   },
 };

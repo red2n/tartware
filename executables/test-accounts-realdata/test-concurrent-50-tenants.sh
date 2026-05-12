@@ -75,6 +75,8 @@ echo "  CONCURRENT MULTI-TENANT LOAD TEST"
 echo "  $NUM_TENANTS tenants × $NUM_PROPS properties = $((NUM_TENANTS * NUM_PROPS)) property pipelines"
 echo "  Max parallel workers: $MAX_PARALLEL_WORKERS"
 echo "  Work dir: $WORK_DIR"
+echo "  Observability: enabled (Availability Guard + Hardening)"
+echo "  Isolation: enabled (Cross-tenant + Property-level)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -98,17 +100,13 @@ echo "  ✓ Guests service reachable"
 
 # ─── Verify DB procedures exist (required for Kafka command processing) ──────
 echo "  Checking DB procedures..."
-PROC_CHECK=$(docker exec tartware-postgres psql -U postgres -d tartware -tAc \
+PROC_CHECK=$(PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -tAc \
   "SELECT COUNT(*) FROM pg_proc WHERE proname = 'upsert_guest';" 2>/dev/null || echo "0")
 if [[ "$PROC_CHECK" -lt 1 ]]; then
   echo "  ⚠ Missing DB procedures — auto-installing..."
-  docker cp "$REPO_ROOT/scripts/" tartware-postgres:/tmp/scripts/ 2>/dev/null
-  docker exec -w /tmp/scripts/tables tartware-postgres \
-    psql -U postgres -d tartware -f 00-create-all-tables.sql >/dev/null 2>&1
-  docker exec -w /tmp/scripts/procedures tartware-postgres \
-    psql -U postgres -d tartware -f 00-create-all-procedures.sql >/dev/null 2>&1
-  docker exec -w /tmp/scripts/indexes tartware-postgres \
-    psql -U postgres -d tartware -f 00-create-all-indexes.sql >/dev/null 2>&1
+  PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -f scripts/tables/00-create-all-tables.sql >/dev/null 2>&1
+  PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -f scripts/procedures/00-create-all-procedures.sql >/dev/null 2>&1
+  PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -f scripts/indexes/00-create-all-indexes.sql >/dev/null 2>&1
   echo "  ✓ DB procedures and indexes installed"
 else
   echo "  ✓ DB procedures present"
@@ -1015,6 +1013,100 @@ TOTAL_ELAPSED=$((SECONDS - START_TIME))
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
+# PHASE 1.5 — ISOLATION & OBSERVABILITY ASSERTIONS
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 1.5: ISOLATION & OBSERVABILITY ASSERTIONS                      ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+ISOLATION_PASS=0; ISOLATION_FAIL=0
+OBS_PASS=0; OBS_FAIL=0
+
+# Helper: assert 4xx on cross-tenant access
+assert_isolation() {
+  local label="$1" url="$2" tok="$3"
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" "$url" -H "Authorization: Bearer $tok")
+  if [[ "$code" == "403" || "$code" == "404" ]]; then
+    echo "  [ISO] ✓ $label (HTTP $code)"
+    ISOLATION_PASS=$((ISOLATION_PASS + 1))
+  else
+    echo "  [ISO] ✗ $label FAILED (HTTP $code — expected 403/404)"
+    ISOLATION_FAIL=$((ISOLATION_FAIL + 1))
+  fi
+}
+
+# ── 1.5.1  Cross-Tenant Isolation ──────────────────────────────────────
+echo "── 1.5.1  Cross-Tenant Isolation ────────────────────────────────────"
+# Pick T1 and T2 for cross-check
+T1_LINE=$(head -1 "$MANIFEST")
+T2_LINE=$(head -2 "$MANIFEST" | tail -1)
+T1_TID=$(echo "$T1_LINE" | cut -d'|' -f2); T1_TOK=$(echo "$T1_LINE" | cut -d'|' -f3)
+T2_TID=$(echo "$T2_LINE" | cut -d'|' -f2); T2_TOK=$(echo "$T2_LINE" | cut -d'|' -f3)
+
+if [[ -n "$T1_TID" && -n "$T2_TID" ]]; then
+  assert_isolation "T2 accessing T1 guests" "$GW/v1/guests?tenant_id=$T1_TID" "$T2_TOK"
+  assert_isolation "T1 accessing T2 reservations" "$GW/v1/reservations?tenant_id=$T2_TID" "$T1_TOK"
+else
+  echo "  ⚠ Not enough tenants for cross-check"
+fi
+
+# ── 1.5.2  Property-Level Isolation ────────────────────────────────────
+echo ""
+echo "── 1.5.2  Property-Level Isolation ──────────────────────────────────"
+# T1 P1 vs T1 P2
+T1_P1_ID=$(echo "$T1_LINE" | cut -d'|' -f4 | cut -d'|' -f1 | cut -d':' -f1)
+T1_P2_ID=$(echo "$T1_LINE" | cut -d'|' -f4 | cut -d'|' -f2 | cut -d':' -f1)
+
+if [[ -n "$T1_P1_ID" && -n "$T1_P2_ID" ]]; then
+  # Verify Property 2 cannot see Property 1's cashier sessions
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    "$GW/v1/billing/cashier-sessions?tenant_id=$T1_TID&property_id=$T1_P1_ID" \
+    -H "Authorization: Bearer $T1_TOK")
+  # This should be allowed with correct token, but we check filters
+  RESP=$(curl -s "$GW/v1/billing/cashier-sessions?tenant_id=$T1_TID&property_id=$T1_P2_ID" \
+    -H "Authorization: Bearer $T1_TOK")
+  LEAK=$(echo "$RESP" | jq -r --arg pid "$T1_P1_ID" \
+    'if type == "array" then . elif .data then .data else [] end | map(select(.property_id == $pid)) | length' 2>/dev/null || echo "0")
+  
+  if [[ "$LEAK" -eq 0 ]]; then
+    echo "  [ISO] ✓ Property isolation (T1P2 cannot see T1P1 data)"
+    ISOLATION_PASS=$((ISOLATION_PASS + 1))
+  else
+    echo "  [ISO] ✗ Property isolation FAILED ($LEAK records leaked)"
+    ISOLATION_FAIL=$((ISOLATION_FAIL + 1))
+  fi
+fi
+
+# ── 1.5.3  Observability: Availability Guard Hardening ─────────────────
+echo ""
+echo "── 1.5.3  Hardening Verification (gRPC Caching & Pooling) ───────────"
+METRICS=$(curl -s "http://localhost:3020/metrics")
+
+# Check for L1 cache hits (proves efficiency hardening)
+CACHE_HITS=$(echo "$METRICS" | grep 'availability_guard_requests_total{method="lockRoom",status="L1_CACHE_HIT"}' | awk '{print $2}' | cut -d'.' -f1 || echo "0")
+if [[ -n "$CACHE_HITS" && "$CACHE_HITS" != "0" ]]; then
+  echo "  [OBS] ✓ Availability Guard L1 Cache working ($CACHE_HITS hits)"
+  OBS_PASS=$((OBS_PASS + 1))
+else
+  # If 0 hits, it might be because no retries happened, but we expect some in 50-tenant load
+  echo "  [OBS] ⚠ Availability Guard L1 Cache: 0 hits (might be low load or lack of retries)"
+fi
+
+# Check for request duration (proves pooling/latency)
+AVG_LATENCY=$(echo "$METRICS" | grep 'availability_guard_request_duration_seconds_sum' | awk '{print $2}' 2>/dev/null || echo "0")
+TOTAL_REQS=$(echo "$METRICS" | grep 'availability_guard_request_duration_seconds_count' | awk '{print $2}' 2>/dev/null || echo "1")
+if [[ "$TOTAL_REQS" -gt 0 ]]; then
+  AVG=$(echo "scale=4; $AVG_LATENCY / $TOTAL_REQS" | bc 2>/dev/null || echo "0")
+  echo "  [OBS] ✓ Avg Guard Latency: ${AVG}s (Goal: <0.1s)"
+  OBS_PASS=$((OBS_PASS + 1))
+fi
+
+echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
 # PHASE 2 — AGGREGATE RESULTS
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -1068,6 +1160,8 @@ echo ""
 printf "  Tenants:      %d (%d OK, %d failed)\n" \
   "$((tenants_ok + tenants_failed))" "$tenants_ok" "$tenants_failed"
 printf "  Properties:   %d per tenant\n" "$NUM_PROPS"
+printf "  Isolation:    %d Pass, %d Fail\n" "$ISOLATION_PASS" "$ISOLATION_FAIL"
+printf "  Observability: %d Verified\n" "$OBS_PASS"
 printf "  Total tests:  %d  pass=%d  fail=%d  skip=%d\n" \
   "$total_tests" "$total_pass" "$total_fail" "$total_skip"
 printf "  Duration:     %ds (%dm %ds)\n" \

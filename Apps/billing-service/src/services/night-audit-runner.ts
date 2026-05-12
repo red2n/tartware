@@ -21,7 +21,7 @@ type NightAuditStep = {
   /** Stable machine-readable name (e.g. "post_room_charges"). */
   name: string;
   /** Implementation. Receives the per-step transaction client. */
-  run: (ctx: NightAuditStepContext, client: PoolClient) => Promise<StepResult | void>;
+  run: (ctx: NightAuditStepContext, client: PoolClient) => Promise<StepResult | undefined>;
 };
 
 /** Context passed to every step. */

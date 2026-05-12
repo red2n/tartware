@@ -209,7 +209,14 @@ export class DashboardComponent {
 
 	async loadDashboard(): Promise<void> {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) return;
+		if (!tenantId) {
+			this.statsReady.set(true);
+			this.roomsReady.set(true);
+			this.ratesReady.set(true);
+			this.activityReady.set(true);
+			this.tasksReady.set(true);
+			return;
+		}
 
 		this.error.set(null);
 		const params: Record<string, string> = { tenant_id: tenantId };

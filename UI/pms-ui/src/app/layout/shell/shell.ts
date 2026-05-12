@@ -100,10 +100,20 @@ export class ShellComponent implements OnInit, OnDestroy {
 			this.activeParent.set(null);
 		} else {
 			this.activeParent.set(item);
-			// Navigate to first child
-			const firstChild = item.children?.[0];
-			if (firstChild?.route) {
-				this.router.navigate([firstChild.route]);
+
+			// Navigate to first ALLOWED child
+			const allowed = this.screenPerms.allowedScreens();
+			const permissionsLoaded = this.screenPerms.loaded();
+
+			const firstAllowedChild = item.children?.find((child) => {
+				// If no permissions loaded or empty (fail-open), allow first child
+				if (!permissionsLoaded || allowed.size === 0) return true;
+				// Otherwise, check if child screen key is allowed
+				return child.screenKey ? allowed.has(child.screenKey) : true;
+			});
+
+			if (firstAllowedChild?.route) {
+				this.router.navigate([firstAllowedChild.route]);
 			}
 		}
 	}

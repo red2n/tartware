@@ -91,6 +91,9 @@ CREATE TABLE folios (
     deleted_at TIMESTAMP,
     deleted_by UUID,
 
+    -- Optimistic Locking
+    version BIGINT DEFAULT 0,
+
     -- Audit Trail
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by UUID NOT NULL,

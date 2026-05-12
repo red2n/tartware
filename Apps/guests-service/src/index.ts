@@ -7,6 +7,7 @@ import {
   startGuestsCommandCenterConsumer,
 } from "./commands/command-center-consumer.js";
 import { config } from "./config.js";
+import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
@@ -18,4 +19,5 @@ await bootstrapService({
   consumerStarters: [startGuestsCommandCenterConsumer, startGuestExperienceCommandConsumer],
   consumerShutdowns: [shutdownGuestsCommandCenterConsumer, shutdownGuestExperienceCommandConsumer],
   shutdownProducer,
+  flowManifests: { manifests: [FLOW_MANIFEST], mode: "throw" },
 });

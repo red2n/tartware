@@ -180,7 +180,9 @@ export async function createLostAndFoundItem(params: {
     ],
   );
 
-  return result.rows[0]!;
+  const row = result.rows[0];
+  if (!row) throw new Error("Failed to create lost and found item");
+  return row;
 }
 
 /**

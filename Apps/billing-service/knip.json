@@ -3,7 +3,9 @@
   "entry": [
     "src/index.ts",
     "src/services/billing-commands/payment.ts",
-    "src/services/night-audit-runner.ts"
+    "src/services/night-audit-runner.ts",
+    "src/repositories/flow-approval-repository.ts",
+    "src/repositories/ar-dunning-rule-repository.ts"
   ],
   "project": [
     "src/**/*.ts"

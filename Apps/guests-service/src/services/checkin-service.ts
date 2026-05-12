@@ -4,7 +4,7 @@ import type {
   CompleteCheckinInput,
   CompleteCheckinResult,
   MobileCheckinRow,
-  ReservationRow,
+  ReservationBriefRow,
   StartCheckinInput,
   StartCheckinResult,
 } from "@tartware/schemas";
@@ -84,9 +84,9 @@ export const startMobileCheckin = async (input: StartCheckinInput): Promise<Star
   const startTime = performance.now();
   try {
     // Look up reservation via core-service
-    let reservation: ReservationRow;
+    let reservation: ReservationBriefRow;
     try {
-      reservation = await internalGet<ReservationRow>(
+      reservation = await internalGet<ReservationBriefRow>(
         config.internalServices.coreServiceUrl,
         `/v1/reservations/${input.reservationId}`,
         { tenant_id: input.tenantId },
@@ -268,8 +268,10 @@ export const completeMobileCheckin = async (
  */
 export const lookupReservationByConfirmation = async (
   confirmationCode: string,
-): Promise<ReservationRow | null> => {
-  const { rows } = await query<ReservationRow>(RESERVATION_BY_CONFIRMATION_SQL, [confirmationCode]);
+): Promise<ReservationBriefRow | null> => {
+  const { rows } = await query<ReservationBriefRow>(RESERVATION_BY_CONFIRMATION_SQL, [
+    confirmationCode,
+  ]);
   return rows[0] ?? null;
 };
 

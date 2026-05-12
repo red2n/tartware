@@ -38,6 +38,7 @@ import type {
   ReservationWalkGuestCommand,
 } from "../../schemas/reservation-command.js";
 import { type RatePlanResolution, resolveRatePlan } from "../../services/rate-plan-service.js";
+import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 import { calculateCancellationFee } from "../cancellation-fee-service.js";
 
 import {
@@ -67,6 +68,26 @@ export const createReservation = async (
   // Validate check_out_date is after check_in_date
   if (stayEnd <= stayStart) {
     throw new Error("INVALID_DATES: check_out_date must be after check_in_date");
+  }
+
+  // ── Gate: Guest blacklist check (Flow 3 → Flow 4 cross-flow gate) ──────
+  // A blacklisted guest cannot create a reservation without explicit GM override.
+  // This is the FIRST validation step per the master flow plan §3D/§4A.
+  if (command.guest_id) {
+    const { rows: blacklistRows } = await query<{ is_blacklisted: boolean }>(
+      `SELECT COALESCE(is_blacklisted, false) AS is_blacklisted
+       FROM guests
+       WHERE id = $1::uuid AND tenant_id = $2::uuid
+       LIMIT 1`,
+      [command.guest_id, tenantId],
+    );
+    if (blacklistRows[0]?.is_blacklisted) {
+      throw new ReservationCommandError(
+        "GUEST_BLACKLISTED",
+        `Guest ${command.guest_id} is blacklisted. Reservation creation blocked. ` +
+          "A GM override with documented reason is required to proceed.",
+      );
+    }
   }
 
   const rateResolution: RatePlanResolution = await resolveRatePlan({
@@ -134,6 +155,7 @@ export const createReservation = async (
 
   const availabilityGuard: AvailabilityGuardMetadata | undefined = await lockReservationHold({
     tenantId,
+    propertyId: command.property_id,
     reservationId: aggregateId,
     roomTypeId: command.room_type_id,
     roomId: null,
@@ -179,6 +201,24 @@ export const createReservation = async (
           eventType: validatedEvent.metadata.type,
           availabilityGuard: guardMetadata,
           ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
+
+      await recordAuditLog({
+        tenantId,
+        propertyId: command.property_id,
+        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        action: "reservation.create",
+        eventType: "CREATE",
+        entityType: "reservation",
+        entityId: aggregateId,
+        metadata: {
+          event_id: hashIdentifier(eventId),
+          reservation_id: hashIdentifier(aggregateId),
+          guest_id: command.guest_id ? hashIdentifier(command.guest_id) : null,
+          status: command.status || "PENDING",
+          redacted_payload: redactPayload(command),
+          availabilityGuard: guardMetadata,
         },
       });
 
@@ -332,6 +372,7 @@ export const modifyReservation = async (
   const guardMetadata: AvailabilityGuardMetadata = stayChanged
     ? await lockReservationHold({
         tenantId,
+        propertyId: targetPropertyId,
         reservationId: command.reservation_id,
         roomTypeId: command.room_type_id ?? snapshot.roomTypeId,
         roomId: null,
@@ -379,6 +420,26 @@ export const modifyReservation = async (
           eventType: validatedEvent.metadata.type,
           availabilityGuard: guardMetadata,
           ...(rateFallbackMetadata ? { rateFallback: rateFallbackMetadata } : {}),
+        },
+      });
+
+      await recordAuditLog({
+        tenantId,
+        propertyId: targetPropertyId,
+        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        action: "reservation.modify",
+        eventType: "UPDATE",
+        entityType: "reservation",
+        entityId: command.reservation_id,
+        metadata: {
+          event_id: hashIdentifier(eventId),
+          reservation_id: hashIdentifier(command.reservation_id),
+          guest_id: command.guest_id
+            ? hashIdentifier(command.guest_id)
+            : hashIdentifier(snapshot.guestId),
+          status: command.status || snapshot.status,
+          redacted_payload: redactPayload(command),
+          availabilityGuard: guardMetadata,
         },
       });
 
@@ -662,11 +723,18 @@ export const cancelReservation = async (
   const now = new Date();
 
   // G5-cancel: Validate reservation status allows cancellation
-  const statusResult = await query(
-    `SELECT status FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+  const resResult = await query(
+    `SELECT id, status, property_id, guest_id FROM reservations WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
     [command.reservation_id, tenantId],
   );
-  const reservation = statusResult.rows?.[0] as { status: string } | undefined;
+  const reservation = resResult.rows?.[0] as
+    | {
+        id: string;
+        status: string;
+        property_id: string;
+        guest_id: string;
+      }
+    | undefined;
   if (!reservation) {
     throw new ReservationCommandError(
       "RESERVATION_NOT_FOUND",
@@ -759,6 +827,25 @@ export const cancelReservation = async (
           status: "RELEASE_REQUESTED",
           lockId: releaseLockId,
         },
+      },
+    });
+
+    await recordAuditLog({
+      tenantId,
+      propertyId: reservation.property_id,
+      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      action: "reservation.cancel",
+      eventType: "UPDATE",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      metadata: {
+        event_id: hashIdentifier(eventId),
+        reservation_id: hashIdentifier(command.reservation_id),
+        guest_id: hashIdentifier(reservation.guest_id),
+        reason: command.reason,
+        cancelled_by: command.cancelled_by,
+        cancellation_fee: cancellationFee,
+        redacted_payload: redactPayload(command),
       },
     });
 
@@ -963,6 +1050,24 @@ export const walkGuest = async (
         command.notes ?? null,
       ],
     );
+
+    await recordAuditLog({
+      tenantId,
+      propertyId: reservation.property_id,
+      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      action: "reservation.walk_guest",
+      eventType: "UPDATE",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      metadata: {
+        event_id: hashIdentifier(eventId),
+        reservation_id: hashIdentifier(command.reservation_id),
+        guest_id: hashIdentifier(reservation.guest_id),
+        walk_reason: command.walk_reason,
+        alternate_hotel: command.alternate_hotel_name,
+        redacted_payload: redactPayload(command),
+      },
+    });
 
     // 3. Cancel the reservation with walk metadata
     await client.query(

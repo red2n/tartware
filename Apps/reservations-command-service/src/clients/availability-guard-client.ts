@@ -9,6 +9,7 @@ import {
   type ServiceError,
 } from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
+import { createReferenceCache } from "@tartware/fastify-server/reference-cache";
 import type {
   BulkReleaseRequest,
   BulkReleaseResponse,
@@ -49,6 +50,7 @@ type GrpcMethodMap = {
 
 type LockReservationInput = {
   tenantId: string;
+  propertyId: string;
   reservationId: string;
   roomTypeId: string;
   roomId?: string | null;
@@ -109,17 +111,62 @@ const descriptor = loadPackageDefinition(packageDefinition) as unknown as {
   };
 };
 
-let client: AvailabilityGuardGrpcClient | null = null;
+/**
+ * Connection pool configuration to maximize gRPC/HTTP2 throughput.
+ * Single connections can hit window limits or I/O thread bottlenecks at 20K ops/sec.
+ */
+const POOL_SIZE = 4;
+const clientPool: AvailabilityGuardGrpcClient[] = [];
+let nextPoolIndex = 0;
+
+/**
+ * Short-term L1 cache for successful locks to prevent redundant gRPC calls
+ * during rapid retries or duplicate UI submissions.
+ */
+const LOCK_CACHE = createReferenceCache<string, AvailabilityGuardMetadata>({
+  name: "availability-lock-l1",
+  maxSize: 10000,
+  ttlMs: 5000, // 5 second "hot" cache
+  loader: async () => null,
+});
+
+/**
+ * Simple circuit breaker state to prevent "retry storms" when the guard is down.
+ */
+const BREAKER = {
+  tripped: false,
+  trippedAt: 0,
+  failureCount: 0,
+  THRESHOLD: 5,
+  RESET_TIMEOUT_MS: 30000,
+};
 
 const getClient = (): AvailabilityGuardGrpcClient | null => {
   if (!availabilityGuardConfig.enabled) {
     return null;
   }
-  if (!client) {
-    const ctor = descriptor.availabilityguard.v1.AvailabilityGuard;
-    client = new ctor(availabilityGuardConfig.address, credentials.createInsecure());
+
+  // Check if breaker should reset
+  if (BREAKER.tripped && Date.now() - BREAKER.trippedAt > BREAKER.RESET_TIMEOUT_MS) {
+    reservationsLogger.info("Availability Guard circuit breaker resetting to closed");
+    BREAKER.tripped = false;
+    BREAKER.failureCount = 0;
   }
-  return client;
+
+  if (BREAKER.tripped) {
+    return null; // Fast-fail (fail-open) while breaker is open
+  }
+
+  if (clientPool.length < POOL_SIZE) {
+    const ctor = descriptor.availabilityguard.v1.AvailabilityGuard;
+    for (let i = clientPool.length; i < POOL_SIZE; i++) {
+      clientPool.push(new ctor(availabilityGuardConfig.address, credentials.createInsecure()));
+    }
+  }
+
+  const selected = clientPool[nextPoolIndex];
+  nextPoolIndex = (nextPoolIndex + 1) % POOL_SIZE;
+  return selected;
 };
 
 const callGrpc = <TMethod extends keyof GrpcMethodMap>(
@@ -128,7 +175,13 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
 ): Promise<GrpcMethodMap[TMethod][1]> => {
   const grpcClient = getClient();
   if (!grpcClient) {
-    return Promise.reject(new Error("Availability Guard client disabled"));
+    return Promise.reject(
+      new Error(
+        BREAKER.tripped
+          ? "Availability Guard circuit breaker is OPEN"
+          : "Availability Guard client disabled",
+      ),
+    );
   }
 
   const meta = new Metadata();
@@ -139,8 +192,6 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
   const deadline = Date.now() + availabilityGuardConfig.timeoutMs;
 
   return new Promise<GrpcMethodMap[TMethod][1]>((resolve, reject) => {
-    // gRPC client methods accept (request, metadata, options, callback) overloads at runtime
-    // but the generated types only expose the 2-arg form; use unknown bridge cast.
     const handler = grpcClient[method].bind(grpcClient) as unknown as (
       grpcRequest: GrpcMethodMap[TMethod][0],
       grpcMeta: Metadata,
@@ -150,9 +201,22 @@ const callGrpc = <TMethod extends keyof GrpcMethodMap>(
 
     handler(request, meta, { deadline }, (error: ServiceError | null, response) => {
       if (error) {
+        // Track failures to trip breaker
+        BREAKER.failureCount++;
+        if (BREAKER.failureCount >= BREAKER.THRESHOLD && !BREAKER.tripped) {
+          BREAKER.tripped = true;
+          BREAKER.trippedAt = Date.now();
+          reservationsLogger.error(
+            { failureCount: BREAKER.failureCount, method },
+            "Availability Guard circuit breaker TRIPPED — entering fail-open mode",
+          );
+        }
         reject(error);
         return;
       }
+
+      // Success resets failure count
+      BREAKER.failureCount = 0;
       resolve(response);
     });
   });
@@ -203,12 +267,20 @@ export const lockReservationHold = async (
   }
 
   const method = "lockRoom";
-  const startedAt = performance.now();
+  const startedAt = performance.now(); // L1 Cache Check: Key by full lock scope (room + dates, not just reservationId)
+  const cacheKey = `${input.reservationId}:${input.roomId ?? "any"}:${input.stayStart.toISOString()}:${input.stayEnd.toISOString()}`;
+  const cached = await LOCK_CACHE.get(cacheKey);
+  if (cached) {
+    recordAvailabilityGuardRequest(method, "L1_CACHE_HIT");
+    return cached;
+  }
+
   try {
     const response = await runWithRetry(
       () =>
         callGrpc("lockRoom", {
           tenantId: input.tenantId,
+          propertyId: input.propertyId,
           reservationId: input.reservationId,
           roomTypeId: input.roomTypeId,
           roomId: input.roomId ?? "",
@@ -224,51 +296,36 @@ export const lockReservationHold = async (
         retries: 2,
         onFailedAttempt: (error, attempt) => {
           reservationsLogger.warn(
-            { err: error, method, attempt },
-            "Availability Guard lockRoom attempt failed",
+            { err: error, attempt, reservationId: input.reservationId },
+            "Availability Guard lockRoom failed; retrying",
           );
         },
       },
     );
 
-    const status =
-      response.status === "STATUS_LOCKED"
-        ? "LOCKED"
-        : response.status === "STATUS_CONFLICT"
-          ? "CONFLICT"
-          : "ERROR";
+    let status: AvailabilityGuardMetadata["status"] = "ERROR";
+    if (response.status === "STATUS_LOCKED") {
+      status = "LOCKED";
+    } else if (response.status === "STATUS_CONFLICT") {
+      status = "CONFLICT";
+    }
 
-    recordAvailabilityGuardRequest(method, status);
-    observeAvailabilityGuardDuration(method, secondsSince(startedAt));
-
+    // Cache successful locks only
     if (status === "LOCKED") {
-      return {
+      const result: AvailabilityGuardMetadata = {
         status,
         lockId: response.lock?.id ?? input.reservationId,
       };
+      // Populate L1 cache for 5 seconds with full scope key
+      LOCK_CACHE.primeMany([[cacheKey, result]]);
+      return result;
     }
 
-    const message = "Availability Guard reported a conflicting lock";
-    if (status === "CONFLICT") {
-      if (availabilityGuardConfig.shadowMode || availabilityGuardConfig.failOpen) {
-        reservationsLogger.warn(
-          {
-            status,
-            reservationId: input.reservationId,
-            tenantId: input.tenantId,
-          },
-          `${message} (shadow mode: ${availabilityGuardConfig.shadowMode}, failOpen: ${availabilityGuardConfig.failOpen})`,
-        );
-        return {
-          status,
-          lockId: response.conflict?.id,
-          message,
-        };
-      }
-      throw new Error(message);
-    }
-
-    throw new Error("Availability Guard lockRoom returned unknown status");
+    const result: AvailabilityGuardMetadata = {
+      status,
+      message: "Availability Guard reported a conflict or error",
+    };
+    return result;
   } catch (error) {
     recordAvailabilityGuardRequest(method, "ERROR");
     observeAvailabilityGuardDuration(method, secondsSince(startedAt));
@@ -356,10 +413,11 @@ export const checkGuardHealth = async (): Promise<boolean> => {
 };
 
 export const shutdownAvailabilityGuardClient = async (): Promise<void> => {
-  if (client) {
-    client.close();
-    client = null;
+  for (const c of clientPool) {
+    c.close();
   }
+  clientPool.length = 0;
+
   if (healthClient) {
     healthClient.close();
     healthClient = null;

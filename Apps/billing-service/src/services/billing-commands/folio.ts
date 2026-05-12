@@ -130,9 +130,13 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     await acquireFolioLock(client, folioId as string);
 
     // Lock the folio row to prevent concurrent close/settle races
-    const { rows } = await queryWithClient<{ folio_status: string; balance: string }>(
+    const { rows } = await queryWithClient<{
+      folio_status: string;
+      balance: string;
+      version: number;
+    }>(
       client,
-      `SELECT folio_status, balance FROM public.folios
+      `SELECT folio_status, balance, version FROM public.folios
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
        FOR UPDATE`,
       [context.tenantId, folioId],
@@ -157,15 +161,24 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     const newStatus = balance === 0 ? "SETTLED" : "CLOSED";
     const settledAt = newStatus === "SETTLED" ? new Date() : null;
     const settledBy = newStatus === "SETTLED" ? actorId : null;
-    await queryWithClient(
+    const { rowCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET folio_status = $3::text, closed_at = NOW(),
            settled_at = $5::timestamptz, settled_by = $6::uuid,
+           version = version + 1,
            updated_at = NOW(), updated_by = $4::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-      [context.tenantId, folioId, newStatus, actorId, settledAt, settledBy],
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid AND version = $7`,
+      [context.tenantId, folioId, newStatus, actorId, settledAt, settledBy, folio.version],
     );
+
+    if (rowCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "Folio was modified by another process. Please retry.",
+        true,
+      );
+    }
 
     appLogger.info(
       { folioId, newStatus, balance, reservationId: command.reservation_id },
@@ -199,7 +212,30 @@ const applyFolioTransfer = async (
   }
 
   await withTransaction(async (client) => {
-    await queryWithClient(
+    // Lock both folios to prevent races during transfer
+    const { rows } = await queryWithClient<{ folio_id: string; version: number }>(
+      client,
+      `SELECT folio_id, version FROM public.folios
+       WHERE tenant_id = $1::uuid AND folio_id IN ($2::uuid, $3::uuid)
+       FOR UPDATE`,
+      [context.tenantId, fromFolioId, toFolioId],
+    );
+
+    if (rows.length !== 2) {
+      throw new BillingCommandError("FOLIO_NOT_FOUND", "One or both folios not found.");
+    }
+
+    const fromFolio = rows.find((r) => r.folio_id === fromFolioId);
+    const toFolio = rows.find((r) => r.folio_id === toFolioId);
+
+    if (!fromFolio || !toFolio) {
+      throw new BillingCommandError(
+        "FOLIO_NOT_FOUND",
+        "One or both folios missing during transfer.",
+      );
+    }
+
+    const { rowCount: fromCount } = await queryWithClient(
       client,
       `
         UPDATE public.folios
@@ -208,15 +244,17 @@ const applyFolioTransfer = async (
           balance = balance - $2,
           transferred_to_folio_id = $3::uuid,
           transferred_at = NOW(),
+          version = version + 1,
           updated_at = NOW(),
           updated_by = $4::uuid
         WHERE tenant_id = $1::uuid
           AND folio_id = $5::uuid
+          AND version = $6
       `,
-      [context.tenantId, command.amount, toFolioId, actorId, fromFolioId],
+      [context.tenantId, command.amount, toFolioId, actorId, fromFolioId, fromFolio.version],
     );
 
-    await queryWithClient(
+    const { rowCount: toCount } = await queryWithClient(
       client,
       `
         UPDATE public.folios
@@ -225,13 +263,23 @@ const applyFolioTransfer = async (
           balance = balance + $2,
           transferred_from_folio_id = $3::uuid,
           transferred_at = NOW(),
+          version = version + 1,
           updated_at = NOW(),
           updated_by = $4::uuid
         WHERE tenant_id = $1::uuid
           AND folio_id = $5::uuid
+          AND version = $6
       `,
-      [context.tenantId, command.amount, fromFolioId, actorId, toFolioId],
+      [context.tenantId, command.amount, fromFolioId, actorId, toFolioId, toFolio.version],
     );
+
+    if (fromCount === 0 || toCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "One or both folios were modified during transfer. Please retry.",
+        true,
+      );
+    }
 
     await auditWithClient(client, {
       tenantId: context.tenantId,
@@ -365,10 +413,11 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
       total_charges: string;
       total_credits: string;
       total_payments: string;
+      version: number;
     }>(
       client,
       `SELECT folio_id, folio_status, balance, property_id,
-              total_charges, total_credits, total_payments
+              total_charges, total_credits, total_payments, version
        FROM public.folios
        WHERE tenant_id = $1::uuid AND folio_id = ANY($2::uuid[])
        ORDER BY folio_id
@@ -417,15 +466,16 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
     );
 
     // Update target folio totals to absorb all source folio components
-    await queryWithClient(
+    const { rowCount: targetCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET total_charges = total_charges + $3,
            total_credits = total_credits + $4,
            total_payments = total_payments + $5,
            balance = balance + $6,
+           version = version + 1,
            updated_at = NOW(), updated_by = $7::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid AND version = $8`,
       [
         context.tenantId,
         command.target_folio_id,
@@ -434,26 +484,37 @@ export const mergeFolios = async (payload: unknown, context: CommandContext): Pr
         sourcePayments,
         sourceBalance,
         actorId,
+        target.version,
       ],
     );
 
     // Zero out and close the source folio (all components must be zeroed for balance constraint)
-    await queryWithClient(
+    const { rowCount: sourceCount } = await queryWithClient(
       client,
       `UPDATE public.folios
        SET folio_status = 'CLOSED',
            balance = 0, total_charges = 0, total_credits = 0, total_payments = 0,
            closed_at = NOW(),
            notes = CONCAT_WS(E'\\n', notes, $3::text),
+           version = version + 1,
            updated_at = NOW(), updated_by = $4::uuid
-       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
+       WHERE tenant_id = $1::uuid AND folio_id = $2::uuid AND version = $5`,
       [
         context.tenantId,
         command.source_folio_id,
         `MERGED into ${command.target_folio_id}: ${command.reason}`,
         actorId,
+        source.version,
       ],
     );
+
+    if (targetCount === 0 || sourceCount === 0) {
+      throw new BillingCommandError(
+        "CONCURRENT_MODIFICATION",
+        "One or both folios were modified during merge. Please retry.",
+        true,
+      );
+    }
 
     appLogger.info(
       {

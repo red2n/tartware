@@ -15,7 +15,7 @@ import type {
   ReservationWalkInCheckInCommand,
 } from "../../schemas/reservation-command.js";
 import { resolveRatePlan } from "../../services/rate-plan-service.js";
-
+import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 import {
   type CreateReservationResult,
   DEFAULT_CURRENCY,
@@ -945,6 +945,7 @@ export const walkInCheckIn = async (
   // 5. Lock availability
   const walkInGuardMetadata = await lockReservationHold({
     tenantId,
+    propertyId: command.property_id,
     reservationId,
     roomTypeId: command.room_type_id,
     roomId,
@@ -1023,6 +1024,24 @@ export const walkInCheckIn = async (
           source: "WALKIN",
         },
         metadata: { eventType: "reservation.created" },
+      });
+
+      await recordAuditLog({
+        tenantId,
+        propertyId: command.property_id,
+        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        action: "reservation.walkin_checkin",
+        eventType: "CREATE",
+        entityType: "reservation",
+        entityId: reservationId,
+        metadata: {
+          event_id: hashIdentifier(eventId),
+          reservation_id: hashIdentifier(reservationId),
+          guest_id: hashIdentifier(command.guest_id),
+          status: "CHECKED_IN",
+          room_number: roomNumber,
+          redacted_payload: redactPayload(command),
+        },
       });
 
       // Enqueue outbox event for downstream consumers

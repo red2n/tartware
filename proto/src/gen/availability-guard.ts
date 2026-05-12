@@ -24,6 +24,7 @@ export interface InventoryLock {
 
 export interface LockRoomRequest {
   tenantId: string;
+  propertyId: string;
   reservationId: string;
   roomTypeId: string;
   roomId: string;

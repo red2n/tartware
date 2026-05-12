@@ -1986,7 +1986,7 @@ if [[ "$FULL_API" == true ]]; then
   api_smoke "SYS registry/services"        "$GW/v1/registry/services"
   api_smoke "SYS modules/catalog"          "$GW/v1/modules/catalog"
   # commands/definitions requires system admin scope — use SYS_TOKEN
-  local _prev_token="$TOKEN"
+  _prev_token="$TOKEN"
   TOKEN="$SYS_TOKEN"
   api_smoke "SYS commands/definitions"     "$GW/v1/commands/definitions"
   TOKEN="$_prev_token"

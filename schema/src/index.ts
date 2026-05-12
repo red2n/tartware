@@ -21,6 +21,7 @@ export * from "./command-validators.js";
 export * from "./events/availability-guard.js";
 export * from "./events/commands/index.js";
 export * from "./events/reservations.js";
+export * from "./flows/index.js";
 // Re-export all schema categories (will be added as we build them)
 export * from "./schemas/01-core/index.js";
 export * from "./schemas/02-inventory/index.js";

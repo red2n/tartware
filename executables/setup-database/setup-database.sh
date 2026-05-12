@@ -462,8 +462,8 @@ echo -e "${CYAN}Analyzing database scripts...${NC}"
 EXPECTED_TABLES=$(count_expected_tables)
 EXPECTED_ENUMS=$(rg 'CREATE TYPE' "$SCRIPTS_DIR/02-enum-types.sql" 2>/dev/null | wc -l)
 
-# Count table files
-TABLE_FILES=$(find "$SCRIPTS_DIR/tables/" -name "*.sql" -not -name "00-create-all-tables.sql" | wc -l)
+# Count table files actually included by 00-create-all-tables.sql (not orphaned files)
+TABLE_FILES=$(awk '/^\\ir[[:space:]]+/ { print $2 }' "$SCRIPTS_DIR/tables/00-create-all-tables.sql" | wc -l)
 
 # Validate required scripts exist
 REQUIRED_SCRIPTS=(

@@ -12,6 +12,8 @@ import {
   startFinanceAdminCommandCenterConsumer,
 } from "./commands/finance-admin-command-center-consumer.js";
 import { config } from "./config.js";
+import { shutdownArEventConsumer, startArEventConsumer } from "./consumers/ar-event-consumer.js";
+import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
@@ -24,11 +26,14 @@ await bootstrapService({
     startBillingCommandCenterConsumer,
     startAccountsCommandCenterConsumer,
     startFinanceAdminCommandCenterConsumer,
+    startArEventConsumer,
   ],
   consumerShutdowns: [
     shutdownBillingCommandCenterConsumer,
     shutdownAccountsCommandCenterConsumer,
     shutdownFinanceAdminCommandCenterConsumer,
+    shutdownArEventConsumer,
   ],
   shutdownProducer,
+  flowManifests: { manifests: [FLOW_MANIFEST], mode: "throw" },
 });
