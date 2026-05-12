@@ -25,12 +25,7 @@ import { kafka } from "../kafka/client.js";
 import { publishEvent } from "../kafka/producer.js";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
-import {
-  observeCommandDuration,
-  recordCommandOutcome,
-  recordDlqEvent,
-  setCommandConsumerLag,
-} from "../lib/metrics.js";
+import { observeCommandDuration, recordCommandOutcome, recordDlqEvent } from "../lib/metrics.js";
 import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
 
 const logger = appLogger.child({ module: "ar-event-consumer" });
@@ -180,6 +175,7 @@ const processEvent = async (event: z.infer<typeof ReservationEventSchema>): Prom
         propertyId: routing.propertyId,
         actorId: null,
         action: "ar.city_ledger.transfer_on_checkout",
+        eventType: "UPDATE",
         entityType: "ar_account",
         entityId: hashIdentifier(routing.arAccountId),
         metadata: {
@@ -216,7 +212,14 @@ export const startArEventConsumer = async (): Promise<void> => {
 
   await consumer.run({
     eachBatchAutoResolve: false,
-    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+    eachBatch: async ({
+      batch,
+      resolveOffset,
+      heartbeat,
+      commitOffsetsIfNecessary,
+      isRunning,
+      isStale,
+    }) => {
       for (const message of batch.messages) {
         if (!isRunning() || isStale()) break;
 
@@ -307,19 +310,7 @@ export const startArEventConsumer = async (): Promise<void> => {
         }
       }
 
-      // Update lag for the entire batch
-      if (batch.messages.length > 0) {
-        const lastOffset = batch.messages[batch.messages.length - 1]?.offset;
-        try {
-          const high = BigInt(batch.highWatermark);
-          const current = BigInt(lastOffset ?? "0");
-          const rawLag = high - current - 1n;
-          const lag = rawLag > 0n ? Number(rawLag) : 0;
-          setCommandConsumerLag(config.arEvents.topic, batch.partition, lag);
-        } catch (_err) {
-          // Ignore lag calculation errors
-        }
-      }
+      await commitOffsetsIfNecessary();
     },
   });
 
@@ -335,7 +326,6 @@ export const startArEventConsumer = async (): Promise<void> => {
         const description = await consumer.describeGroup();
         for (const member of description.members) {
           logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
-          setCommandConsumerLag(config.arEvents.topic, 0, 0); // Placeholder
         }
       } catch (_err) {
         // Ignore lag reporting errors

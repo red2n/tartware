@@ -4,9 +4,10 @@ import {
   type UpdateSettingsValueInput,
   type SettingsValueFilters as ValueFilters,
 } from "@tartware/schemas";
+import type { PoolClient } from "pg";
 import { z } from "zod";
 
-import { query } from "../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 
 const SettingsValueArraySchema = z.array(SettingsValuesSchema);
 const SettingsValueSchema = SettingsValuesSchema;
@@ -86,89 +87,101 @@ export const listValues = async (filters: ValueFilters) => {
 };
 
 export const createValue = async (input: CreateSettingsValueInput) => {
-  const { rows } = await query(
-    `INSERT INTO settings_values
-      (setting_id, scope_level, tenant_id, property_id, unit_id, user_id, value, status, notes, effective_from, effective_to, context, metadata, created_by, updated_by)
-     VALUES
-      ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'ACTIVE'), $9, $10, $11, COALESCE($12, '{}'::jsonb), COALESCE($13, '{}'::jsonb), $14, $14)
-     RETURNING ${SETTINGS_VALUE_COLUMNS}`,
-    [
-      input.settingId,
-      input.scopeLevel,
-      input.tenantId,
-      input.propertyId ?? null,
-      input.unitId ?? null,
-      input.userId ?? null,
-      input.value ?? null,
-      input.status ?? null,
-      input.notes ?? null,
-      input.effectiveFrom ?? null,
-      input.effectiveTo ?? null,
-      input.context ?? null,
-      input.metadata ?? null,
-      input.createdBy ?? null,
-    ],
-  );
-  const created = SettingsValueSchema.parse(rows[0]);
+  return await withTransaction(async (client) => {
+    const { rows } = await queryWithClient(
+      client,
+      `INSERT INTO settings_values
+        (setting_id, scope_level, tenant_id, property_id, unit_id, user_id, value, status, notes, effective_from, effective_to, context, metadata, created_by, updated_by)
+       VALUES
+        ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'ACTIVE'), $9, $10, $11, COALESCE($12, '{}'::jsonb), COALESCE($13, '{}'::jsonb), $14, $14)
+       RETURNING ${SETTINGS_VALUE_COLUMNS}`,
+      [
+        input.settingId,
+        input.scopeLevel,
+        input.tenantId,
+        input.propertyId ?? null,
+        input.unitId ?? null,
+        input.userId ?? null,
+        input.value ?? null,
+        input.status ?? null,
+        input.notes ?? null,
+        input.effectiveFrom ?? null,
+        input.effectiveTo ?? null,
+        input.context ?? null,
+        input.metadata ?? null,
+        input.createdBy ?? null,
+      ],
+    );
+    const created = SettingsValueSchema.parse(rows[0]);
 
-  // Emit hot-reload event
-  await enqueueSettingsEvent(created);
+    // Emit hot-reload event (INSIDE transaction)
+    await enqueueSettingsEvent(created, client);
 
-  return created;
+    return created;
+  });
 };
 
 export const updateValue = async (input: UpdateSettingsValueInput) => {
-  const { rows } = await query(
-    `UPDATE settings_values
-     SET value = COALESCE($1, value),
-         status = COALESCE($2, status),
-         notes = COALESCE($3, notes),
-         effective_from = COALESCE($4, effective_from),
-         effective_to = COALESCE($5, effective_to),
-         locked_until = COALESCE($6, locked_until),
-         context = COALESCE($7, context),
-         metadata = COALESCE($8, metadata),
-         updated_at = NOW(),
-         updated_by = COALESCE($9, updated_by)
-     WHERE id = $10 AND tenant_id = $11
-     RETURNING ${SETTINGS_VALUE_COLUMNS}`,
-    [
-      input.value ?? null,
-      input.status ?? null,
-      input.notes ?? null,
-      input.effectiveFrom ?? null,
-      input.effectiveTo ?? null,
-      input.lockedUntil ?? null,
-      input.context ?? null,
-      input.metadata ?? null,
-      input.updatedBy ?? null,
-      input.valueId,
-      input.tenantId,
-    ],
-  );
+  return await withTransaction(async (client) => {
+    const { rows } = await queryWithClient(
+      client,
+      `UPDATE settings_values
+       SET value = COALESCE($1, value),
+           status = COALESCE($2, status),
+           notes = COALESCE($3, notes),
+           effective_from = COALESCE($4, effective_from),
+           effective_to = COALESCE($5, effective_to),
+           locked_until = COALESCE($6, locked_until),
+           context = COALESCE($7, context),
+           metadata = COALESCE($8, metadata),
+           updated_at = NOW(),
+           updated_by = COALESCE($9, updated_by)
+       WHERE id = $10 AND tenant_id = $11
+       RETURNING ${SETTINGS_VALUE_COLUMNS}`,
+      [
+        input.value ?? null,
+        input.status ?? null,
+        input.notes ?? null,
+        input.effectiveFrom ?? null,
+        input.effectiveTo ?? null,
+        input.lockedUntil ?? null,
+        input.context ?? null,
+        input.metadata ?? null,
+        input.updatedBy ?? null,
+        input.valueId,
+        input.tenantId,
+      ],
+    );
 
-  if (!rows[0]) {
-    return null;
-  }
-  const updated = SettingsValueSchema.parse(rows[0]);
+    if (!rows[0]) {
+      return null;
+    }
+    const updated = SettingsValueSchema.parse(rows[0]);
 
-  // Emit hot-reload event
-  await enqueueSettingsEvent(updated);
+    // Emit hot-reload event (INSIDE transaction)
+    await enqueueSettingsEvent(updated, client);
 
-  return updated;
+    return updated;
+  });
 };
 
 /**
  * Enqueue a settings.value.set event in the transactional outbox.
  */
-async function enqueueSettingsEvent(value: z.infer<typeof SettingsValueSchema>) {
+async function enqueueSettingsEvent(
+  value: z.infer<typeof SettingsValueSchema>,
+  client: PoolClient,
+) {
   // Fetch setting code to include in event for easier consumption
-  const { rows } = await query("SELECT code FROM settings_definitions WHERE id = $1", [
-    value.setting_id,
-  ]);
+  const { rows } = await queryWithClient(
+    client,
+    "SELECT code FROM settings_definitions WHERE id = $1",
+    [value.setting_id],
+  );
   const code = rows[0]?.code;
 
-  await query(
+  await queryWithClient(
+    client,
     `INSERT INTO transactional_outbox (
       tenant_id, aggregate_id, aggregate_type, event_type, payload, partition_key
     ) VALUES ($1, $2, $3, $4, $5, $6)`,

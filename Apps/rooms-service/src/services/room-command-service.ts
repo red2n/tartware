@@ -124,6 +124,7 @@ export const handleRoomStatusUpdate = async (
     propertyId: null, // Room level
     actorId: actor,
     action: "room.status_update",
+    eventType: "UPDATE",
     entityType: "room",
     entityId: command.room_id,
     metadata: {
@@ -211,6 +212,7 @@ export const handleRoomHousekeepingStatusUpdate = async (
     propertyId: null,
     actorId: actor,
     action: "room.housekeeping_status_update",
+    eventType: "UPDATE",
     entityType: "room",
     entityId: command.room_id,
     metadata: {
@@ -303,6 +305,7 @@ export const handleRoomOutOfOrder = async (
     propertyId: null,
     actorId: actor,
     action: "room.mark_out_of_order",
+    eventType: "UPDATE",
     entityType: "room",
     entityId: command.room_id,
     metadata: {
@@ -357,6 +360,7 @@ export const handleRoomOutOfService = async (
     propertyId: null,
     actorId: actor,
     action: "room.mark_out_of_service",
+    eventType: "UPDATE",
     entityType: "room",
     entityId: command.room_id,
     metadata: {
@@ -601,6 +605,7 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
       propertyId: null,
       actorId: actor,
       action: "room.move",
+      eventType: "UPDATE",
       entityType: "reservation",
       entityId: command.reservation_id,
       metadata: {
@@ -713,6 +718,7 @@ export const handleRoomFeaturesUpdate = async (
     propertyId: null,
     actorId: actor,
     action: "room.features_update",
+    eventType: "UPDATE",
     entityType: "room",
     entityId: command.room_id,
     metadata: {
@@ -786,6 +792,7 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
     propertyId: command.property_id,
     actorId: actor,
     action: "room.mobile_key_issue",
+    eventType: "CREATE",
     entityType: "mobile_key",
     entityId: hashIdentifier(keyCode),
     metadata: {
@@ -878,6 +885,7 @@ export const handleKeyRevoke = async (payload: unknown, context: CommandContext)
     propertyId: null,
     actorId: actor,
     action: "room.mobile_key_revoke",
+    eventType: "DELETE",
     entityType: "mobile_key",
     entityId: command.key_id ? hashIdentifier(command.key_id) : "bulk_revoke",
     metadata: {

@@ -1031,6 +1031,7 @@ export const walkInCheckIn = async (
         propertyId: command.property_id,
         actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
         action: "reservation.walkin_checkin",
+        eventType: "CREATE",
         entityType: "reservation",
         entityId: reservationId,
         metadata: {

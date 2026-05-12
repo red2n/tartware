@@ -209,6 +209,7 @@ export const createReservation = async (
         propertyId: command.property_id,
         actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
         action: "reservation.create",
+        eventType: "CREATE",
         entityType: "reservation",
         entityId: aggregateId,
         metadata: {
@@ -427,6 +428,7 @@ export const modifyReservation = async (
         propertyId: targetPropertyId,
         actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
         action: "reservation.modify",
+        eventType: "UPDATE",
         entityType: "reservation",
         entityId: command.reservation_id,
         metadata: {
@@ -833,6 +835,7 @@ export const cancelReservation = async (
       propertyId: reservation.property_id,
       actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
       action: "reservation.cancel",
+      eventType: "UPDATE",
       entityType: "reservation",
       entityId: command.reservation_id,
       metadata: {
@@ -1053,6 +1056,7 @@ export const walkGuest = async (
       propertyId: reservation.property_id,
       actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
       action: "reservation.walk_guest",
+      eventType: "UPDATE",
       entityType: "reservation",
       entityId: command.reservation_id,
       metadata: {

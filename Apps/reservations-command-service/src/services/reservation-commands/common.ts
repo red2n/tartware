@@ -70,8 +70,9 @@ export const enqueueReservationUpdate = async (
     await recordAuditLog({
       tenantId,
       propertyId: payload.property_id || null,
-      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID, // Use correlationId as hint or system
+      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
       action: commandName,
+      eventType: "UPDATE",
       entityType: "reservation",
       entityId: aggregateId,
       metadata: {

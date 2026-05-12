@@ -41,12 +41,18 @@ CREATE TABLE IF NOT EXISTS public.ar_dunning_rules (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_by          UUID,
-    updated_by          UUID,
-
-    -- Unique: one rule per tenant/property/bucket/action
-    CONSTRAINT uq_dunning_rules_bucket_action
-        UNIQUE (tenant_id, property_id, bucket_name, action_type)
+    updated_by          UUID
 );
+
+-- Unique: one rule per tenant/property/bucket/action.
+-- Two partial indexes are used to correctly handle NULL property_id (PostgreSQL treats NULLs as distinct in normal UNIQUE constraints).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_dunning_rules_property_bucket
+    ON public.ar_dunning_rules (tenant_id, property_id, bucket_name, action_type)
+    WHERE property_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_dunning_rules_tenant_default_bucket
+    ON public.ar_dunning_rules (tenant_id, bucket_name, action_type)
+    WHERE property_id IS NULL;
 
 COMMENT ON TABLE ar_dunning_rules IS 'Configurable dunning escalation rules per aging bucket. Drives automated collection reminders via notification service.';
 COMMENT ON COLUMN ar_dunning_rules.bucket_name IS 'Aging bucket identifier: CURRENT, 30, 60, 90, or 90+. Maps to days-past-due ranges.';

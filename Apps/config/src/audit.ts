@@ -58,6 +58,7 @@ export interface AuditLogParams {
   propertyId: string | null;
   actorId: string | null;
   action: string;
+  eventType: string;
   entityType: string;
   entityId: string | null;
   metadata: Record<string, unknown>;
@@ -69,11 +70,11 @@ export interface AuditLogParams {
 export const INSERT_AUDIT_LOG_SQL = `
   INSERT INTO public.audit_logs (
     tenant_id, property_id, user_id, action,
-    entity_type, entity_id, metadata,
+    event_type, entity_type, entity_id, metadata,
     audit_timestamp
   ) VALUES (
     $1::uuid, $2::uuid, $3::uuid, $4,
-    $5, $6, $7::jsonb,
+    $5, $6, $7, $8::jsonb,
     NOW()
   )
 `;
@@ -90,6 +91,7 @@ export const recordAuditLog = async (
     params.propertyId,
     params.actorId,
     params.action,
+    params.eventType,
     params.entityType,
     params.entityId,
     JSON.stringify(params.metadata),

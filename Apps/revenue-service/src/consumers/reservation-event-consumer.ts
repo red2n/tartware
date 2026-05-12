@@ -100,6 +100,7 @@ const handleReservationCreated = async (
     propertyId,
     actorId: null,
     action: "revenue.otb_increment",
+    eventType: "REVENUE_UPDATE",
     entityType: "demand_calendar",
     entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
     metadata: {
@@ -131,6 +132,7 @@ const handleReservationCancelled = async (
     propertyId,
     actorId: null,
     action: "revenue.otb_decrement",
+    eventType: "REVENUE_UPDATE",
     entityType: "demand_calendar",
     entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
     metadata: {
@@ -162,6 +164,7 @@ const handleReservationCheckedOut = async (
     propertyId,
     actorId: null,
     action: "revenue.checkout_update",
+    eventType: "REVENUE_UPDATE",
     entityType: "demand_calendar",
     entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
     metadata: {
@@ -240,7 +243,14 @@ export const startReservationEventConsumer = async (): Promise<void> => {
 
   await consumer.run({
     eachBatchAutoResolve: false,
-    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+    eachBatch: async ({
+      batch,
+      resolveOffset,
+      heartbeat,
+      commitOffsetsIfNecessary,
+      isRunning,
+      isStale,
+    }) => {
       for (const message of batch.messages) {
         if (!isRunning() || isStale()) break;
 
@@ -355,6 +365,8 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           // Ignore lag calculation errors
         }
       }
+
+      await commitOffsetsIfNecessary();
     },
   });
 
@@ -370,7 +382,6 @@ export const startReservationEventConsumer = async (): Promise<void> => {
         const description = await consumer.describeGroup();
         for (const member of description.members) {
           logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
-          setCommandConsumerLag(config.reservationEvents.topic, 0, 0); // Placeholder
         }
       } catch (err) {
         // Ignore lag reporting errors

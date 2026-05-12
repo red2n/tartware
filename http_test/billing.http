@@ -772,75 +772,75 @@ X-Idempotency-Key: cashier-close-{{$timestamp}}
 ###############################################################################
 # 11. NEW BA-COMPLIANCE COMMANDS
 ###############################################################################
-
+q
 ### 11a. Reopen a Finalized Invoice (creates new draft at revision N+1)
 POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/invoices/55555555-5555-5555-5555-555555555555/reopen
 Authorization: Bearer {{token}}
 Content-Type: application/json
+Idempotency-Key: reopen-inv-001
 
 {
-  "reason": "Incorrect room rate applied — guest dispute resolved in their favour",
-  "idempotency_key": "reopen-inv-001"
+  "reason": "Incorrect room rate applied — guest dispute resolved in their favour"
 }
 
 ### 11b. Reopen a Settled Folio
 POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/folios/66666666-6666-6666-6666-666666666666/reopen
 Authorization: Bearer {{token}}
 Content-Type: application/json
+Idempotency-Key: reopen-folio-001
 
 {
-  "reason": "Guest chargeback won — folio reopened for balance adjustment",
-  "idempotency_key": "reopen-folio-001"
+  "reason": "Guest chargeback won — folio reopened for balance adjustment"
 }
 
 ### 11c. Merge Source Folio into Target Folio
 POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/folios/merge
 Authorization: Bearer {{token}}
 Content-Type: application/json
+Idempotency-Key: merge-folio-001
 
 {
   "property_id": "22222222-2222-2222-2222-222222222222",
   "source_folio_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   "target_folio_id": "66666666-6666-6666-6666-666666666666",
-  "reason": "Consolidating incidental charges to master folio per guest request",
-  "idempotency_key": "merge-folio-001"
+  "reason": "Consolidating incidental charges to master folio per guest request"
 }
 
 ### 11d. Advance Chargeback Status (RECEIVED → EVIDENCE_SUBMITTED)
 POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/payments/88888888-8888-8888-8888-888888888888/chargeback/status
 Authorization: Bearer {{token}}
 Content-Type: application/json
+Idempotency-Key: chargeback-update-001
 
 {
   "refund_id": "88888888-8888-8888-8888-888888888888",
   "chargeback_status": "EVIDENCE_SUBMITTED",
-  "notes": "Submitted transaction logs and signed registration card to processor",
-  "idempotency_key": "chargeback-update-001"
+  "notes": "Submitted transaction logs and signed registration card to processor"
 }
 
 ### 11e. Post No-Show Penalty Charge
 POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/reservations/44444444-4444-4444-4444-444444444444/no-show-charge
 Authorization: Bearer {{token}}
 Content-Type: application/json
+Idempotency-Key: no-show-001
 
 {
   "property_id": "22222222-2222-2222-2222-222222222222",
   "reservation_id": "44444444-4444-4444-4444-444444444444",
-  "reason_code": "NO_SHOW_POLICY",
-  "idempotency_key": "no-show-001"
+  "reason_code": "NO_SHOW_POLICY"
 }
 
 ### 11f. Post Late Checkout Fee (tier-based calculation)
 POST {{base_url}}/v1/tenants/{{tenant_id}}/billing/reservations/44444444-4444-4444-4444-444444444444/late-checkout-charge
 Authorization: Bearer {{token}}
 Content-Type: application/json
+Idempotency-Key: late-co-001
 
 {
   "property_id": "22222222-2222-2222-2222-222222222222",
   "reservation_id": "44444444-4444-4444-4444-444444444444",
   "actual_checkout_time": "2026-03-15T14:30:00+05:30",
-  "standard_checkout_time": "2026-03-15T12:00:00+05:30",
-  "idempotency_key": "late-co-001"
+  "standard_checkout_time": "2026-03-15T12:00:00+05:30"
 }
 
 ### 11g. Post Late Checkout Fee (override amount)

@@ -267,9 +267,7 @@ export const lockReservationHold = async (
   }
 
   const method = "lockRoom";
-  const startedAt = performance.now();
-
-  // L1 Cache Check: Key by full lock scope (room + dates, not just reservationId)
+  const startedAt = performance.now(); // L1 Cache Check: Key by full lock scope (room + dates, not just reservationId)
   const cacheKey = `${input.reservationId}:${input.roomId ?? "any"}:${input.stayStart.toISOString()}:${input.stayEnd.toISOString()}`;
   const cached = await LOCK_CACHE.get(cacheKey);
   if (cached) {
@@ -298,23 +296,21 @@ export const lockReservationHold = async (
         retries: 2,
         onFailedAttempt: (error, attempt) => {
           reservationsLogger.warn(
-            { err: error, method, attempt },
-            "Availability Guard lockRoom attempt failed",
+            { err: error, attempt, reservationId: input.reservationId },
+            "Availability Guard lockRoom failed; retrying",
           );
         },
       },
     );
 
-    const status =
-      response.status === "STATUS_LOCKED"
-        ? "LOCKED"
-        : response.status === "STATUS_CONFLICT"
-          ? "CONFLICT"
-          : "ERROR";
+    let status: AvailabilityGuardMetadata["status"] = "ERROR";
+    if (response.status === "STATUS_LOCKED") {
+      status = "LOCKED";
+    } else if (response.status === "STATUS_CONFLICT") {
+      status = "CONFLICT";
+    }
 
-    recordAvailabilityGuardRequest(method, status);
-    observeAvailabilityGuardDuration(method, secondsSince(startedAt));
-
+    // Cache successful locks only
     if (status === "LOCKED") {
       const result: AvailabilityGuardMetadata = {
         status,
@@ -325,27 +321,11 @@ export const lockReservationHold = async (
       return result;
     }
 
-    const message = "Availability Guard reported a conflicting lock";
-    if (status === "CONFLICT") {
-      if (availabilityGuardConfig.shadowMode || availabilityGuardConfig.failOpen) {
-        reservationsLogger.warn(
-          {
-            status,
-            reservationId: input.reservationId,
-            tenantId: input.tenantId,
-          },
-          `${message} (shadow mode: ${availabilityGuardConfig.shadowMode}, failOpen: ${availabilityGuardConfig.failOpen})`,
-        );
-        return {
-          status,
-          lockId: response.conflict?.id,
-          message,
-        };
-      }
-      throw new Error(message);
-    }
-
-    throw new Error("Availability Guard lockRoom returned unknown status");
+    const result: AvailabilityGuardMetadata = {
+      status,
+      message: "Availability Guard reported a conflict or error",
+    };
+    return result;
   } catch (error) {
     recordAvailabilityGuardRequest(method, "ERROR");
     observeAvailabilityGuardDuration(method, secondsSince(startedAt));

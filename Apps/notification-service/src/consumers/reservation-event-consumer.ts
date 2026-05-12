@@ -532,6 +532,7 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
       propertyId: event.propertyId,
       actorId: null, // System-generated event
       action: "RESERVATION_EVENT_PROCESSED",
+      eventType: "NOTIFICATION_PROCESSED",
       entityType: "reservation",
       entityId: hashIdentifier(event.reservationId),
       metadata: {
@@ -582,7 +583,14 @@ export const startReservationEventConsumer = async (): Promise<void> => {
 
   await consumer.run({
     eachBatchAutoResolve: false,
-    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+    eachBatch: async ({
+      batch,
+      resolveOffset,
+      heartbeat,
+      commitOffsetsIfNecessary,
+      isRunning,
+      isStale,
+    }) => {
       for (const message of batch.messages) {
         if (!isRunning() || isStale()) break;
 
@@ -692,6 +700,8 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           // Ignore lag calculation errors
         }
       }
+
+      await commitOffsetsIfNecessary();
     },
   });
 
@@ -707,7 +717,6 @@ export const startReservationEventConsumer = async (): Promise<void> => {
         const description = await consumer.describeGroup();
         for (const member of description.members) {
           logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
-          setCommandConsumerLag(config.reservationEvents.topic, 0, 0); // Placeholder
         }
       } catch (err) {
         // Ignore lag reporting errors

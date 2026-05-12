@@ -134,6 +134,7 @@ export const registerGuestProfile = async ({
     propertyId: null,
     actorId: createdBy,
     action: "guest.register",
+    eventType: "CREATE",
     entityType: "guest",
     entityId: guestId ?? null,
     metadata: {
@@ -277,6 +278,7 @@ export const mergeGuestProfiles = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.merge",
+    eventType: "MERGE",
     entityType: "guest",
     entityId: primary.id,
     metadata: {
@@ -368,6 +370,7 @@ export const updateGuestProfile = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.update_profile",
+    eventType: "UPDATE",
     entityType: "guest",
     entityId: command.guest_id,
     metadata: {
@@ -430,6 +433,7 @@ export const updateGuestContact = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.update_contact",
+    eventType: "UPDATE",
     entityType: "guest",
     entityId: command.guest_id,
     metadata: {
@@ -512,6 +516,7 @@ export const setGuestLoyalty = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.set_loyalty",
+    eventType: "UPDATE",
     entityType: "guest",
     entityId: command.guest_id,
     metadata: {
@@ -567,6 +572,7 @@ export const setGuestVip = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.set_vip",
+    eventType: "UPDATE",
     entityType: "guest",
     entityId: command.guest_id,
     metadata: {
@@ -617,6 +623,7 @@ export const setGuestBlacklist = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.set_blacklist",
+    eventType: "UPDATE",
     entityType: "guest",
     entityId: command.guest_id,
     metadata: {
@@ -887,6 +894,7 @@ export const eraseGuestForGdpr = async ({
     propertyId: null,
     actorId: actor,
     action: "guest.gdpr.erase",
+    eventType: "DELETE",
     entityType: "guest",
     entityId: command.guest_id,
     metadata: {

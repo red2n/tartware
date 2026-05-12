@@ -241,6 +241,7 @@ const handleLockRoomCommand = async (
       propertyId: parsed.propertyId,
       actorId: metadata.initiatedBy?.userId ?? null,
       action: "inventory.lock.applied",
+      eventType: "GUARD_COMMAND",
       entityType: "inventory_lock",
       entityId: hashIdentifier(lockId),
       metadata: {
@@ -301,6 +302,7 @@ const handleReleaseRoomCommand = async (
     propertyId: releasedPropertyId ?? parsed.propertyId ?? "system",
     actorId: metadata.initiatedBy?.userId ?? null,
     action: "inventory.lock.released",
+    eventType: "GUARD_COMMAND",
     entityType: "inventory_lock",
     entityId: hashIdentifier(releasedId),
     metadata: {

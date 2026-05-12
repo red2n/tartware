@@ -123,6 +123,7 @@ const createCheckoutCleanTask = async (
     propertyId,
     actorId: null, // System event
     action: "housekeeping.task.create_on_checkout",
+    eventType: "HOUSEKEEPING_TRIGGER",
     entityType: "housekeeping_task",
     entityId: hashIdentifier(`${roomNumber}:${today}`),
     metadata: {
@@ -193,7 +194,14 @@ export const startReservationEventConsumer = async (): Promise<void> => {
 
   await consumer.run({
     eachBatchAutoResolve: false,
-    eachBatch: async ({ batch, resolveOffset, heartbeat, isRunning, isStale }) => {
+    eachBatch: async ({
+      batch,
+      resolveOffset,
+      heartbeat,
+      commitOffsetsIfNecessary,
+      isRunning,
+      isStale,
+    }) => {
       for (const message of batch.messages) {
         if (!isRunning() || isStale()) break;
 
@@ -296,6 +304,8 @@ export const startReservationEventConsumer = async (): Promise<void> => {
           // Ignore lag calculation errors
         }
       }
+
+      await commitOffsetsIfNecessary();
     },
   });
 
@@ -311,7 +321,6 @@ export const startReservationEventConsumer = async (): Promise<void> => {
         const description = await consumer.describeGroup();
         for (const member of description.members) {
           logger.trace({ memberId: member.memberId }, "Reporting lag for consumer member");
-          setCommandConsumerLag(EVENTS_TOPIC, 0, 0); // Placeholder
         }
       } catch (_err) {
         // Ignore lag reporting errors

@@ -22,6 +22,8 @@ export default fp(async (app: FastifyInstance) => {
   });
 
   // Start Kafka consumer for hot-reload in background (non-blocking)
+  let settingsConsumer: ReturnType<Kafka["consumer"]> | null = null;
+
   if (config.kafka.brokers.length > 0) {
     // Schedule startup without blocking onReady
     setImmediate(async () => {
@@ -35,6 +37,7 @@ export default fp(async (app: FastifyInstance) => {
           groupId: `${config.kafka.clientId}-settings-group`,
         });
 
+        settingsConsumer = consumer;
         await consumer.connect();
         // Subscribe to settings events topic
         await consumer.subscribe({
@@ -58,13 +61,15 @@ export default fp(async (app: FastifyInstance) => {
             }
           },
         });
-
-        app.addHook("onClose", async () => {
-          await consumer.disconnect();
-        });
       } catch (err) {
         app.log.warn(err, "Failed to start settings hot-reload consumer");
       }
     });
   }
+
+  app.addHook("onClose", async () => {
+    if (settingsConsumer) {
+      await settingsConsumer.disconnect();
+    }
+  });
 });
