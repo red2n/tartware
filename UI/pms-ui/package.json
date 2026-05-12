@@ -24,7 +24,7 @@
     "@angular/router": "^21.2.7",
     "@angular/service-worker": "^21.2.7",
     "@primeng/themes": "^21.0.4",
-    "@primer/primitives": "^11.7.0",
+    "@primer/primitives": "^11.8.1",
     "@tartware/schemas": "workspace:^",
     "primeng": "^21.1.6",
     "rxjs": "~7.8.0",
