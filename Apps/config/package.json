@@ -37,12 +37,12 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "fastify": "^5.8.3",
-    "pg": "^8.16.0",
+    "pg": "^8.20.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",
-    "@types/pg": "^8.15.4",
+    "@types/pg": "^8.20.0",
     "typescript": "^5.3.3",
     "vitest": "^3.2.4"
   },
