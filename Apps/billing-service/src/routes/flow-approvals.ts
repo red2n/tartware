@@ -116,7 +116,14 @@ export const registerFlowApprovalRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = CreateFlowApprovalSchema.parse(request.body);
-      const id = await recordFlowApproval(body);
+      // Override approver fields with authenticated user context
+      const approvedBy = request.auth.user.sub as string;
+      const roleAtApproval = request.auth.user.role || "SYSTEM";
+      const id = await recordFlowApproval({
+        ...body,
+        approved_by: approvedBy,
+        role_at_approval: roleAtApproval,
+      });
       return reply.code(201).send({
         id,
         message: "Flow gate bypass approval recorded successfully.",

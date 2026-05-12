@@ -160,7 +160,7 @@ const processEvent = async (event: z.infer<typeof ReservationEventSchema>): Prom
     const payload = event.payload as Record<string, unknown>;
 
     if (isCheckoutEvent(payload)) {
-      const reservationId = payload.reservation_id as string;
+      const reservationId = payload.id as string;
       if (!reservationId) return;
 
       const roomInfo = await resolveRoomFromReservation(tenantId, reservationId);

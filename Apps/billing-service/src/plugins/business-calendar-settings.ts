@@ -19,26 +19,30 @@ export default fp(async (app: FastifyInstance) => {
   // Startup load
   app.addHook("onReady", async () => {
     await service.loadAllSettings();
+  });
 
-    // Start Kafka consumer for hot-reload
-    if (config.kafka.brokers.length > 0) {
-      const kafka = new Kafka({
-        clientId: `${config.kafka.clientId}-settings-consumer`,
-        brokers: config.kafka.brokers,
-      });
+  // Start Kafka consumer for hot-reload in background (non-blocking)
+  if (config.kafka.brokers.length > 0) {
+    // Schedule startup without blocking onReady
+    setImmediate(async () => {
+      try {
+        const kafka = new Kafka({
+          clientId: `${config.kafka.clientId}-settings-consumer`,
+          brokers: config.kafka.brokers,
+        });
 
-      const consumer = kafka.consumer({
-        groupId: `${config.kafka.clientId}-settings-group`,
-      });
+        const consumer = kafka.consumer({
+          groupId: `${config.kafka.clientId}-settings-group`,
+        });
 
-      await consumer.connect();
-      // Assume the topic for settings events
-      await consumer.subscribe({
-        topic: "platform.settings.events",
-        fromBeginning: false,
-      });
+        await consumer.connect();
+        // Subscribe to settings events topic
+        await consumer.subscribe({
+          topic: "settings.events",
+          fromBeginning: false,
+        });
 
-      await consumer.run({
+        await consumer.run({
         eachMessage: async ({ message }) => {
           if (!message.value) return;
           try {
@@ -53,11 +57,14 @@ export default fp(async (app: FastifyInstance) => {
             app.log.error(err, "Failed to process settings hot-reload event");
           }
         },
-      });
+        });
 
-      app.addHook("onClose", async () => {
-        await consumer.disconnect();
-      });
-    }
-  });
+        app.addHook("onClose", async () => {
+          await consumer.disconnect();
+        });
+      } catch (err) {
+        app.log.warn(err, "Failed to start settings hot-reload consumer");
+      }
+    });
+  }
 });

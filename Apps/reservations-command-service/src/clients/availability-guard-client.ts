@@ -269,8 +269,9 @@ export const lockReservationHold = async (
   const method = "lockRoom";
   const startedAt = performance.now();
 
-  // L1 Cache Check: Rapid duplicate requests for the same reservation return instantly
-  const cached = await LOCK_CACHE.get(input.reservationId);
+  // L1 Cache Check: Key by full lock scope (room + dates, not just reservationId)
+  const cacheKey = `${input.reservationId}:${input.roomId ?? "any"}:${input.stayStart.toISOString()}:${input.stayEnd.toISOString()}`;
+  const cached = await LOCK_CACHE.get(cacheKey);
   if (cached) {
     recordAvailabilityGuardRequest(method, "L1_CACHE_HIT");
     return cached;
@@ -319,8 +320,8 @@ export const lockReservationHold = async (
         status,
         lockId: response.lock?.id ?? input.reservationId,
       };
-      // Populate L1 cache for 5 seconds
-      LOCK_CACHE.primeMany([[input.reservationId, result]]);
+      // Populate L1 cache for 5 seconds with full scope key
+      LOCK_CACHE.primeMany([[cacheKey, result]]);
       return result;
     }
 

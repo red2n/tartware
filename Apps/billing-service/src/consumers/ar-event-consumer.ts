@@ -149,7 +149,7 @@ const processEvent = async (event: z.infer<typeof ReservationEventSchema>): Prom
     const classified = classifyEvent(payload);
 
     if (classified === "reservation.checked_out") {
-      const reservationId = payload.reservation_id as string;
+      const reservationId = payload.id as string;
       if (!reservationId) return;
 
       // Check if this reservation has a direct-bill folio routing to an AR account

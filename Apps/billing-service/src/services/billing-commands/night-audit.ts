@@ -707,7 +707,7 @@ async function postRoomChargesAndTaxes(
   }>(
     client,
     `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id,
-            f.folio_id
+            f.folio_id, f.version
      FROM reservations r
      LEFT JOIN LATERAL (
        SELECT folio_id, version FROM public.folios
