@@ -169,6 +169,42 @@ export const ROOM_TYPE_CREATE_SQL = `
   FROM inserted i
 `;
 
+export const ROOM_TYPE_BY_ID_SQL = `
+  SELECT
+    rt.id,
+    rt.tenant_id,
+    rt.property_id,
+    rt.type_name,
+    rt.type_code,
+    rt.description,
+    rt.short_description,
+    rt.category,
+    rt.base_occupancy,
+    rt.max_occupancy,
+    rt.max_adults,
+    rt.max_children,
+    rt.extra_bed_capacity,
+    rt.size_sqm,
+    rt.bed_type,
+    rt.number_of_beds,
+    rt.amenities,
+    rt.features,
+    rt.base_price,
+    rt.currency,
+    rt.images,
+    rt.display_order,
+    rt.is_active,
+    rt.metadata,
+    rt.created_at,
+    rt.updated_at,
+    rt.version
+  FROM public.room_types rt
+  WHERE rt.id = $1::uuid
+    AND rt.tenant_id = $2::uuid
+    AND COALESCE(rt.is_deleted, false) = false
+    AND rt.deleted_at IS NULL
+`;
+
 // Note: Room type updates use a dynamic query builder in room-type-service.ts
 // to support partial updates (distinguishing undefined vs null).
 

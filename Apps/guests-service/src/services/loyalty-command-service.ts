@@ -5,12 +5,14 @@
  */
 
 import type { CommandContext } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
   LoyaltyPointsEarnCommandSchema,
   LoyaltyPointsExpireSweepCommandSchema,
   LoyaltyPointsRedeemCommandSchema,
+  LoyaltyProgramEnrollCommandSchema,
 } from "../schemas/loyalty-commands.js";
 
 const loyaltyLogger = appLogger.child({ module: "loyalty-command-service" });
@@ -19,6 +21,66 @@ const APP_ACTOR = "COMMAND_CENTER";
 
 const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   initiatedBy?.userId ?? APP_ACTOR;
+
+/**
+ * Enroll a guest in a loyalty program.
+ */
+export const enrollLoyaltyProgram = async ({
+  tenantId,
+  payload,
+  correlationId,
+  initiatedBy,
+}: CommandContext): Promise<void> => {
+  const command = LoyaltyProgramEnrollCommandSchema.parse(payload);
+  const actor = resolveActorId(initiatedBy);
+
+  const { rows, rowCount } = await query<{ program_id: string }>(
+    `
+      INSERT INTO guest_loyalty_programs (
+        tenant_id, guest_id,
+        program_name, program_tier,
+        membership_number, membership_status,
+        enrollment_channel, enrollment_property_id,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid,
+        $3, $4,
+        $5, $6,
+        $7, $8::uuid,
+        $9::uuid, $9::uuid
+      )
+      RETURNING program_id
+    `,
+    [
+      tenantId,
+      command.guest_id,
+      command.program_name,
+      command.program_tier ?? "bronze",
+      command.membership_number ?? null,
+      command.membership_status ?? "active",
+      command.enrollment_channel ?? "property",
+      command.enrollment_property_id ?? null,
+      actor === APP_ACTOR
+        ? "00000000-0000-0000-0000-000000000000"
+        : actor,
+    ],
+  );
+
+  if (!rowCount || rowCount === 0) {
+    throw new Error("FAILED_TO_ENROLL_GUEST");
+  }
+
+  loyaltyLogger.info(
+    {
+      tenantId,
+      programId: rows[0]?.program_id,
+      guestId: command.guest_id,
+      correlationId,
+      initiatedBy,
+    },
+    "loyalty.program.enroll command applied",
+  );
+};
 
 /**
  * Earn points: inserts a ledger row, increments program balance, returns new balance.

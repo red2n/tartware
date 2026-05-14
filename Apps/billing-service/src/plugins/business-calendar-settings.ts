@@ -1,6 +1,7 @@
+import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
-import { Kafka } from "kafkajs";
+import type { Kafka } from "kafkajs";
 
 import { config } from "../config.js";
 import { BusinessCalendarSettingsService } from "../services/business-calendar-settings-service.js";
@@ -28,9 +29,10 @@ export default fp(async (app: FastifyInstance) => {
     // Schedule startup without blocking onReady
     setImmediate(async () => {
       try {
-        const kafka = new Kafka({
+        const kafka = createKafkaClient({
           clientId: `${config.kafka.clientId}-settings-consumer`,
           brokers: config.kafka.brokers,
+          logger: app.log,
         });
 
         const consumer = kafka.consumer({

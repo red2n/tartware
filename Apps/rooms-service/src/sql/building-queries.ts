@@ -183,6 +183,44 @@ export const BUILDING_CREATE_SQL = `
   FROM inserted i
 `;
 
+export const BUILDING_BY_ID_SQL = `
+  SELECT
+    b.building_id,
+    b.tenant_id,
+    b.property_id,
+    b.building_code,
+    b.building_name,
+    b.building_type,
+    b.floor_count,
+    b.basement_floors,
+    b.total_rooms,
+    b.wheelchair_accessible,
+    b.elevator_count,
+    b.has_lobby,
+    b.has_pool,
+    b.has_gym,
+    b.has_spa,
+    b.has_restaurant,
+    b.has_parking,
+    b.parking_spaces,
+    b.year_built,
+    b.last_renovation_year,
+    b.is_active,
+    b.building_status,
+    b.photo_url,
+    b.guest_description,
+    b.internal_notes,
+    b.metadata,
+    b.created_at,
+    b.updated_at,
+    b.version
+  FROM public.buildings b
+  WHERE b.building_id = $1::uuid
+    AND b.tenant_id = $2::uuid
+    AND COALESCE(b.is_deleted, false) = false
+    AND b.deleted_at IS NULL
+`;
+
 // Note: Building updates use a dynamic query builder in building-service.ts
 // to support partial updates (distinguishing undefined vs null).
 

@@ -12,6 +12,7 @@
  * Non-blocking: dispatches to Kafka and returns immediately.
  */
 import { randomUUID } from "node:crypto";
+
 import { config } from "../../config.js";
 import { publishEvent } from "../../kafka/producer.js";
 import { query } from "../../lib/db.js";

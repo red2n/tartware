@@ -29,10 +29,10 @@ const INSERT_COMMUNICATION_SQL = `
 
 const UPDATE_COMMUNICATION_STATUS_SQL = `
   UPDATE guest_communications
-  SET status = $3,
-      external_message_id = COALESCE($4, external_message_id),
-      sent_at = COALESCE($5, sent_at),
-      failed_at = CASE WHEN $3 = 'FAILED' THEN CURRENT_TIMESTAMP ELSE failed_at END,
+  SET status = $3::varchar,
+      external_message_id = COALESCE($4::varchar, external_message_id),
+      sent_at = COALESCE($5::timestamptz, sent_at),
+      failed_at = CASE WHEN $3::varchar = 'FAILED' THEN CURRENT_TIMESTAMP ELSE failed_at END,
       failure_reason = $6,
       updated_at = CURRENT_TIMESTAMP
   WHERE tenant_id = $1::uuid AND id = $2::uuid

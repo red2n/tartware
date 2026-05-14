@@ -54,7 +54,7 @@ const toLabel = (abs) => {
  */
 const discoverWorkspacePackages = () => {
   // Try the fast path first: pnpm list works even without node_modules
-  // but may fail if pnpm itself isn't available or workspace is broken
+  // but may fail if pnpm isn't available or workspace is broken
   try {
     const json = execSync("pnpm list -r --depth -1 --json", {
       encoding: "utf8",
@@ -95,12 +95,24 @@ const discoverWorkspacePackages = () => {
 };
 
 // Per-package artifacts to remove
-const PACKAGE_ARTIFACTS = ["node_modules", "dist", "coverage"];
+const PACKAGE_ARTIFACTS = ["node_modules", "dist", "coverage", "vitest-report", "*.tsbuildinfo"];
 
 // Root-only extras (resolved relative to workspace root)
-const ROOT_EXTRAS = ["playwright-report", "docs/.buildinfo", "docs/_build"];
+const ROOT_EXTRAS = [
+  "playwright-report",
+  "test-results",
+  "docs/.buildinfo",
+  "docs/_build",
+  ".nx",
+  "*.log",
+  ".tartware-last-command"
+];
 
 const main = () => {
+  // 0 — Reset Nx daemon and local cache
+  console.log("[clean] Resetting Nx workspace…");
+  run("pnpm exec nx reset", { optional: true });
+
   // 1 — Run Nx per-project `clean` targets (skipped if nx is not installed)
   console.log("[clean] Running workspace clean targets…");
   run("pnpm exec nx run-many -t clean", { optional: true });
@@ -115,6 +127,19 @@ const main = () => {
 
   for (const pkgPath of packagePaths) {
     for (const artifact of PACKAGE_ARTIFACTS) {
+      if (artifact.includes("*")) {
+        // Handle per-package globs like *.tsbuildinfo
+        const regex = new RegExp("^" + artifact.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$");
+        if (existsSync(pkgPath)) {
+          for (const entry of readdirSync(pkgPath)) {
+            if (regex.test(entry)) {
+              const abs = resolve(pkgPath, entry);
+              removalTargets.set(abs, { label: toLabel(abs), reportSkip: false });
+            }
+          }
+        }
+        continue;
+      }
       const abs = resolve(pkgPath, artifact);
       // Only report node_modules skips; dist/coverage are expected to be gone after Nx clean
       removalTargets.set(abs, {
@@ -125,6 +150,17 @@ const main = () => {
   }
 
   for (const extra of ROOT_EXTRAS) {
+    if (extra.includes("*")) {
+      // Handle root globs like *.log
+      const regex = new RegExp("^" + extra.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$");
+      for (const entry of readdirSync(cwd)) {
+        if (regex.test(entry)) {
+          const abs = resolve(cwd, entry);
+          removalTargets.set(abs, { label: entry, reportSkip: true });
+        }
+      }
+      continue;
+    }
     const abs = resolve(cwd, extra);
     removalTargets.set(abs, { label: extra, reportSkip: true });
   }

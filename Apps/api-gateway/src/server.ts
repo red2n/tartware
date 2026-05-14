@@ -8,6 +8,7 @@ import { registerDuploDashboard } from "./devtools/duplo-dashboard.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { initRedisClient, shutdownRedisClient } from "./lib/redis.js";
 import { gatewayLogger } from "./logger.js";
+import auditLogPlugin from "./plugins/audit-log.js";
 import authContextPlugin from "./plugins/auth-context.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { registerBillingRoutes } from "./routes/billing-routes.js";
@@ -52,6 +53,7 @@ export const buildServer = () => {
   app.register(swaggerPlugin);
   app.register(sseTokenPromotePlugin);
   app.register(authContextPlugin);
+  auditLogPlugin(app);
 
   const rateLimitOptions: RateLimitPluginOptions = {
     max: gatewayConfig.rateLimit.max,
@@ -87,10 +89,14 @@ export const buildServer = () => {
     (rateLimitOptions as RateLimitPluginOptions & { skipOnError: boolean }).skipOnError = true;
   }
 
-  app.register(
-    rateLimit as unknown as FastifyPluginAsync,
-    rateLimitOptions as unknown as RateLimitPluginOptions,
-  );
+  if (gatewayConfig.rateLimit.enabled) {
+    app.register(
+      rateLimit as unknown as FastifyPluginAsync,
+      rateLimitOptions as unknown as RateLimitPluginOptions,
+    );
+  } else {
+    gatewayLogger.info("Rate limiting is disabled for this environment");
+  }
 
   app.after(() => {
     if (devToolsConfig.duploDashboard.enabled) {

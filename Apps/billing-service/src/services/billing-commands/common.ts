@@ -1,4 +1,5 @@
 import type { CommandContext } from "@tartware/schemas";
+
 import { query } from "../../lib/db.js";
 
 export type { CommandContext };
@@ -33,6 +34,39 @@ export const asUuid = (value: string | undefined | null): string | null =>
 
 export const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   asUuid(initiatedBy?.userId) ?? SYSTEM_ACTOR_ID;
+
+export const getUserDetails = async (userId: string): Promise<{ name: string | null; email: string | null; role: string | null }> => {
+  if (!userId || userId === SYSTEM_ACTOR_ID) {
+    return { name: null, email: null, role: null };
+  }
+
+  try {
+    const { rows } = await query(
+      `SELECT
+        CONCAT(first_name, ' ', last_name) as name,
+        email,
+        (SELECT role FROM user_tenant_associations uta WHERE uta.user_id = u.id AND uta.is_active = true LIMIT 1) as role
+       FROM users u
+       WHERE u.id = $1::uuid AND u.is_active = true`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return { name: null, email: null, role: null };
+    }
+
+    const row = rows[0];
+    return {
+      name: row.name?.trim() || null,
+      email: row.email || null,
+      role: row.role || null,
+    };
+  } catch (error) {
+    // Log error but don't fail the command
+    console.error('Failed to fetch user details for audit log:', error);
+    return { name: null, email: null, role: null };
+  }
+};
 
 export const resolveFolioId = async (
   tenantId: string,

@@ -8,8 +8,10 @@
  *
  * @module billing-routes
  */
-import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+
+import { buildRouteSchema, jsonObjectSchema, schemaFromZod } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
@@ -76,6 +78,25 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     requiredModules: "finance-automation",
   });
 
+  const BillingAuditTrailQuerySchema = z.object({
+    tenant_id: z.string().uuid(),
+    property_id: z.string().uuid().optional(),
+    entity_type: z.string().optional(),
+    entity_id: z.string().uuid().optional(),
+    severity: z.enum(["INFO", "WARNING", "CRITICAL", "SECURITY"]).optional(),
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+    is_pci_relevant: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().positive().max(500).default(100),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  type BillingAuditTrailQueryType = z.infer<typeof BillingAuditTrailQuerySchema>;
+  const BillingAuditTrailQueryJsonSchema = schemaFromZod(
+    BillingAuditTrailQuerySchema,
+    "BillingAuditTrailQuery",
+  );
+
   app.get(
     "/v1/billing/payments",
     {
@@ -90,6 +111,28 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     proxyBilling,
+  );
+
+  app.get<{ Querystring: BillingAuditTrailQueryType }>(
+    "/v1/billing/audit-trail",
+    {
+      preHandler: financeTenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy billing audit trail queries to the billing service.",
+        querystring: BillingAuditTrailQueryJsonSchema,
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              data: { type: "array" },
+              meta: { type: "object" },
+            },
+          },
+        },
+      }),
+    },
+    proxyFinanceAdmin,
   );
 
   app.post(

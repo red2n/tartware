@@ -31,6 +31,7 @@ import {
 } from "../services/guest-command-service.js";
 import {
   earnLoyaltyPoints,
+  enrollLoyaltyProgram,
   expireLoyaltyPoints,
   redeemLoyaltyPoints,
 } from "../services/loyalty-command-service.js";
@@ -105,6 +106,14 @@ const routeCommand = async (
       break;
     case "guest.preference.update":
       await updateGuestPreferences({
+        tenantId: metadata.tenantId,
+        payload: envelope.payload,
+        correlationId: metadata.correlationId ?? metadata.requestId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      break;
+    case "loyalty.program.enroll":
+      await enrollLoyaltyProgram({
         tenantId: metadata.tenantId,
         payload: envelope.payload,
         correlationId: metadata.correlationId ?? metadata.requestId,

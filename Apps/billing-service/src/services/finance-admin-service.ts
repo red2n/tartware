@@ -23,7 +23,9 @@ import {
   type TrialBalanceResponse,
   toIsoString,
 } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
+import type { GlExportEntry } from "../lib/gl-export-generator.js";
 import {
   FISCAL_PERIOD_LIST_SQL,
   LEDGER_ENTRY_LIST_SQL,
@@ -1034,8 +1036,6 @@ export async function queryAuditTrail(input: AuditTrailInput): Promise<AuditTrai
 // ============================================================================
 // GL BATCH EXPORT (ACCT-06)
 // ============================================================================
-
-import type { GlExportEntry } from "../lib/gl-export-generator.js";
 
 /**
  * Fetch raw GL entries for a batch, shaped for CSV/XML export.

@@ -530,7 +530,7 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
       };
       const authHeader = request.headers.authorization;
       if (authHeader) {
-        headers["Authorization"] = authHeader;
+        headers.Authorization = authHeader;
       }
       // Use the validated URL param, never the client-supplied header
       const validatedTenantId = (request.params as { tenantId: string }).tenantId;

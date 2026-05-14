@@ -56,6 +56,7 @@ $$;
 -- ─── 2. Dynamic RLS enablement ─────────────────────────────────
 -- Iterates over ALL tables in public schema that have a tenant_id
 -- column, excluding infrastructure/system tables.
+-- We exclude child partitions because RLS is enabled on the parent.
 
 DO $$
 DECLARE
@@ -98,7 +99,7 @@ BEGIN
         JOIN pg_namespace n ON n.oid = c.relnamespace
         JOIN pg_attribute a ON a.attrelid = c.oid
         WHERE n.nspname = 'public'
-          AND c.relkind = 'r'                -- ordinary tables only
+          AND c.relkind IN ('r', 'p')        -- ordinary or partitioned tables
           AND a.attname = 'tenant_id'
           AND a.attnum > 0                   -- not a system column
           AND NOT a.attisdropped
@@ -146,7 +147,7 @@ BEGIN
             JOIN pg_namespace n ON n.oid = c.relnamespace
             JOIN pg_attribute a ON a.attrelid = c.oid
             WHERE n.nspname = 'availability'
-              AND c.relkind = 'r'
+              AND c.relkind IN ('r', 'p')
               AND a.attname = 'tenant_id'
               AND a.attnum > 0
               AND NOT a.attisdropped

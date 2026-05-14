@@ -32,7 +32,7 @@ import {
   DEMAND_CALENDAR_DECREMENT_OTB_SQL,
   DEMAND_CALENDAR_INCREMENT_OTB_SQL,
 } from "../sql/event-queries.js";
-import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
+import { recordAuditLog } from "../utils/audit.js";
 
 const logger = createServiceLogger({
   serviceName: config.service.name,
@@ -98,12 +98,13 @@ const handleReservationCreated = async (
   await recordAuditLog({
     tenantId,
     propertyId,
-    actorId: null,
+    actorId: "00000000-0000-0000-0000-000000000000",
     action: "revenue.otb_increment",
     eventType: "REVENUE_UPDATE",
     entityType: "demand_calendar",
-    entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
+    entityId: null,
     metadata: {
+      calendar_id: `${propertyId}:${dates[0]}`,
       check_in: checkIn,
       check_out: checkOut,
       nights: dates.length,
@@ -130,12 +131,13 @@ const handleReservationCancelled = async (
   await recordAuditLog({
     tenantId,
     propertyId,
-    actorId: null,
+    actorId: "00000000-0000-0000-0000-000000000000",
     action: "revenue.otb_decrement",
     eventType: "REVENUE_UPDATE",
     entityType: "demand_calendar",
-    entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
+    entityId: null,
     metadata: {
+      calendar_id: `${propertyId}:${dates[0]}`,
       check_in: checkIn,
       check_out: checkOut,
       nights: dates.length,
@@ -162,12 +164,13 @@ const handleReservationCheckedOut = async (
   await recordAuditLog({
     tenantId,
     propertyId,
-    actorId: null,
+    actorId: "00000000-0000-0000-0000-000000000000",
     action: "revenue.checkout_update",
     eventType: "REVENUE_UPDATE",
     entityType: "demand_calendar",
-    entityId: hashIdentifier(`${propertyId}:${dates[0]}`),
+    entityId: null,
     metadata: {
+      calendar_id: `${propertyId}:${dates[0]}`,
       check_in: checkIn,
       check_out: checkOut,
       nights: dates.length,

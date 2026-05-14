@@ -97,3 +97,33 @@ export const LoyaltyPointsExpireSweepCommandSchema = z.object({
 export type LoyaltyPointsExpireSweepCommand = z.infer<
 	typeof LoyaltyPointsExpireSweepCommandSchema
 >;
+
+/**
+ * Command to enroll a guest in a loyalty program.
+ * Inserts a new row into guest_loyalty_programs.
+ *
+ * @category commands
+ * @synchronized 2026-05-14
+ */
+export const LoyaltyProgramEnrollCommandSchema = z.object({
+	// Target Guest
+	guest_id: uuid,
+
+	// Program Details
+	program_name: z.string().min(1).max(100),
+	program_tier: z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond', 'elite']).optional(),
+	membership_number: z.string().optional(),
+	membership_status: z.enum(['active', 'inactive', 'suspended', 'expired', 'cancelled']).default('active'),
+
+	// Enrollment Details
+	enrollment_channel: z.enum(['web', 'mobile', 'property', 'phone', 'email', 'referral']).optional(),
+	enrollment_property_id: uuid.optional(),
+
+	// Metadata & Idempotency
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().optional(),
+});
+
+export type LoyaltyProgramEnrollCommand = z.infer<
+	typeof LoyaltyProgramEnrollCommandSchema
+>;

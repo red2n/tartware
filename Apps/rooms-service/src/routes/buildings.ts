@@ -7,6 +7,7 @@ import {
   BuildingItemSchema,
   createBuilding,
   deleteBuilding,
+  getBuildingById,
   listBuildingGrid,
   listBuildings,
   updateBuilding,
@@ -194,6 +195,45 @@ export const registerBuildingRoutes = (app: FastifyInstance): void => {
       });
 
       return BuildingListResponseSchema.parse(buildings);
+    },
+  );
+
+  app.get<{
+    Params: { buildingId: string };
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/buildings/:buildingId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: BUILDINGS_TAG,
+        summary: "Get a building by ID",
+        params: schemaFromZod(BuildingParamsSchema, "BuildingParams"),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "GetBuildingQuery"),
+        response: {
+          200: BuildingItemJsonSchema,
+          404: ErrorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const params = BuildingParamsSchema.parse(request.params);
+      const query = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
+
+      const building = await getBuildingById({
+        tenantId: query.tenant_id,
+        buildingId: params.buildingId,
+      });
+
+      if (!building) {
+        return reply.notFound("Building not found");
+      }
+
+      return reply.send(building);
     },
   );
 

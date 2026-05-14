@@ -252,6 +252,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('loyalty.points.earn', 'Earn loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.redeem', 'Redeem loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.expire_sweep', 'Sweep and expire stale loyalty points', 'guests-service', ARRAY['loyalty']),
+        ('loyalty.program.enroll', 'Enroll guest in loyalty program', 'guests-service', ARRAY['loyalty']),
         ('metasearch.config.create', 'Create a metasearch platform configuration', 'reservations-command-service', ARRAY['distribution']),
         ('metasearch.config.update', 'Update a metasearch platform configuration', 'reservations-command-service', ARRAY['distribution']),
         ('metasearch.click.record', 'Record a click from a metasearch platform', 'reservations-command-service', ARRAY['distribution']),

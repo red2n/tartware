@@ -10,6 +10,7 @@ import { z } from "zod";
 import {
   createRoomType,
   deleteRoomType,
+  getRoomTypeById,
   listRoomTypeGrid,
   listRoomTypes,
   RoomTypeItemSchema,
@@ -166,6 +167,45 @@ export const registerRoomTypeRoutes = (app: FastifyInstance): void => {
       });
 
       return RoomTypeListResponseSchema.parse(roomTypes);
+    },
+  );
+
+  app.get<{
+    Params: { roomTypeId: string };
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/room-types/:roomTypeId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: ROOM_TYPES_TAG,
+        summary: "Get a room type by ID",
+        params: schemaFromZod(RoomTypeParamsSchema, "RoomTypeParams"),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "GetRoomTypeQuery"),
+        response: {
+          200: RoomTypeItemJsonSchema,
+          404: ErrorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const params = RoomTypeParamsSchema.parse(request.params);
+      const query = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
+
+      const roomType = await getRoomTypeById({
+        tenantId: query.tenant_id,
+        roomTypeId: params.roomTypeId,
+      });
+
+      if (!roomType) {
+        return reply.notFound("Room type not found");
+      }
+
+      return reply.send(roomType);
     },
   );
 

@@ -8,6 +8,7 @@ import {
   type BillingPaymentCaptureCommand,
   BillingPaymentCaptureCommandSchema,
 } from "../../schemas/billing-commands.js";
+
 import {
   asUuid,
   BillingCommandError,
@@ -256,8 +257,7 @@ const capturePayment = async (
         UPDATE public.folios
         SET
           total_payments  = total_payments + $2,
-          balance         = GREATEST(0, balance - $2),
-          credit_balance  = credit_balance + GREATEST(0, $2 - balance),
+          balance         = balance - $2,
           version         = version + 1,
           updated_at      = NOW(),
           updated_by      = $3

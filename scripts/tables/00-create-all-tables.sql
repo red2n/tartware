@@ -77,6 +77,7 @@
 \echo '>>> Category 3/8: BOOKINGS & GUEST RELATIONS'
 \ir 03-bookings/10_reservations.sql
 \ir 03-bookings/11_reservation_status_history.sql
+\ir 03-bookings/13_reservations_partition_prep.sql
 \ir 03-bookings/30_deposit_schedules.sql
 \ir 03-bookings/31_allotments.sql
 \ir 03-bookings/32_booking_sources.sql

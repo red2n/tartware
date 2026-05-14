@@ -72,7 +72,7 @@ type ReleaseReservationInput = {
 };
 
 const PROTO_PATH = fileURLToPath(
-  new URL("../../../../proto/availability-guard.proto", import.meta.url),
+  new URL("../../../../proto/availabilityguard/v1/availability_guard.proto", import.meta.url),
 );
 const loaderOptions: protoLoader.Options = {
   defaults: true,
@@ -93,14 +93,14 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, loaderOptions);
 const descriptor = loadPackageDefinition(packageDefinition) as unknown as {
   availabilityguard: {
     v1: {
-      AvailabilityGuard: {
+      AvailabilityGuardService: {
         new (
           address: string,
           connectionCredentials: ReturnType<typeof credentials.createInsecure>,
         ): AvailabilityGuardGrpcClient;
         service: unknown;
       };
-      Health: {
+      HealthService: {
         new (
           address: string,
           connectionCredentials: ReturnType<typeof credentials.createInsecure>,
@@ -158,7 +158,7 @@ const getClient = (): AvailabilityGuardGrpcClient | null => {
   }
 
   if (clientPool.length < POOL_SIZE) {
-    const ctor = descriptor.availabilityguard.v1.AvailabilityGuard;
+    const ctor = descriptor.availabilityguard.v1.AvailabilityGuardService;
     for (let i = clientPool.length; i < POOL_SIZE; i++) {
       clientPool.push(new ctor(availabilityGuardConfig.address, credentials.createInsecure()));
     }
@@ -390,7 +390,7 @@ export const checkGuardHealth = async (): Promise<boolean> => {
   }
 
   if (!healthClient) {
-    const ctor = descriptor.availabilityguard.v1.Health;
+    const ctor = descriptor.availabilityguard.v1.HealthService;
     healthClient = new ctor(availabilityGuardConfig.address, credentials.createInsecure());
   }
 
@@ -407,7 +407,7 @@ export const checkGuardHealth = async (): Promise<boolean> => {
         resolve(false);
         return;
       }
-      resolve(response.status === "SERVING");
+      resolve(response.status === "SERVING_STATUS_SERVING");
     });
   });
 };

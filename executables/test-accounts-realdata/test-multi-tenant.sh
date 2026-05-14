@@ -118,10 +118,34 @@ put() {
     -d "$2"
 }
 
+api_patch() {
+  local idem="${3:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PATCH "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "$2"
+}
+
+api_delete() {
+  local idem="${2:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X DELETE "$1" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: $idem"
+}
+
 get() {
   curl -s -o "$RESP_FILE" -w "%{http_code}" \
     "$1" \
     -H "Authorization: Bearer $TOKEN"
+}
+
+
+get_token() {
+  TOKEN=$(./http_test/get-token.sh 2>/dev/null)
+  if [[ -z "$TOKEN" ]]; then echo "FATAL: Cannot acquire auth token"; exit 1; fi
 }
 
 # ─── API response helpers (replace all direct SQL queries) ─────────────
@@ -141,21 +165,30 @@ resp_first() {
 # Get a field from a single-item or detail response
 resp_field() {
   local field="$1"
-  jq -r ".$field // (.data.$field) // empty" "$RESP_FILE" 2>/dev/null || echo ""
+  # Extract field from root or .data wrapper; handle boolean false correctly
+  jq -r "if has(\"$field\") then .$field elif .data and (.data | has(\"$field\")) then .data.$field else empty end" "$RESP_FILE" 2>/dev/null
 }
 
 # Filter items from last API response and count matches
+resp_ffirst() {
+  local filter="$1"
+  local field="$2"
+  # Extracts the value of 'field' from the first element in the array matching 'filter'
+  # Handles both direct arrays and { data: [] } wrappers
+  local val
+  val=$(cat "$RESP_FILE" | jq -r ".data[]? | select($filter) | .$field" 2>/dev/null | grep -v "null" | head -n 1)
+  if [[ -z "$val" ]]; then
+    val=$(cat "$RESP_FILE" | jq -r ".[]? | select($filter) | .$field" 2>/dev/null | grep -v "null" | head -n 1)
+  fi
+  echo "$val"
+}
+
 resp_fcount() {
   local filter="$1"
   jq -r "(if type == \"array\" then . elif .data and (.data | type == \"array\") then .data else [] end) | map(select($filter)) | length" "$RESP_FILE" 2>/dev/null || echo "0"
 }
 
 # Filter items and get first match's field
-resp_ffirst() {
-  local filter="$1" field="$2"
-  jq -r "(if type == \"array\" then . elif .data and (.data | type == \"array\") then .data else [] end) | map(select($filter)) | .[0].$field // empty" "$RESP_FILE" 2>/dev/null || echo ""
-}
-
 # Sum a numeric field across all items
 resp_sum() {
   local field="$1"
@@ -168,8 +201,9 @@ resp_sum_f() {
   jq -r "(if type == \"array\" then . elif .data and (.data | type == \"array\") then .data else [] end) | map(select($filter)) | map(.$field | tostring | tonumber? // 0) | add // 0" "$RESP_FILE" 2>/dev/null || echo "0"
 }
 
-pass()  { TOTAL=$((TOTAL+1)); PASS=$((PASS+1)); printf "  ✅ %-60s PASS\n" "$1"; }
-fail()  { TOTAL=$((TOTAL+1)); FAIL=$((FAIL+1)); printf "  ❌ %-60s FAIL  %s\n" "$1" "$2"; }
+pass()  { TOTAL=$((TOTAL+1)); PASS=$((PASS+1)); printf "  ✅ %-60s PASS  %s\n" "$1" "${2:-}"; }
+fail()  { TOTAL=$((TOTAL+1)); FAIL=$((FAIL+1)); printf "  ❌ %-60s FAIL  %s\n" "$1" "${2:-}"; }
+warn()  { printf "  ⚠️  %-60s WARN  %s\n" "$1" "${2:-}"; }
 skip()  { TOTAL=$((TOTAL+1)); SKIP=$((SKIP+1)); printf "  ⏭  %-60s SKIP  %s\n" "$1" "${2:-}"; }
 
 assert_eq() {
@@ -254,14 +288,33 @@ poll_delta() {
   skip "$label" "Δ=$delta after $((max_retries + 1)) checks"
 }
 
-# ─── Preflight checks ───────────────────────────────────────────────────────
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  MULTI-TENANT E2E BILLING TEST"
-echo "  2 tenants × 2 properties — USALI property-level isolation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+# ─── Preflight ───────────────────────────────────────────────────────────────
+
+preflight() {
+  local ok=true
+  printf "\n  Checking prerequisites...\n"
+
+  if command -v jq &>/dev/null; then printf "    ✓ jq\n"
+  else printf "    ✗ jq not found\n"; ok=false; fi
+
+  if command -v bc &>/dev/null; then printf "    ✓ bc\n"
+  else printf "    ✗ bc not found\n"; ok=false; fi
+
+  local gw_code
+  gw_code=$(curl -s -o /dev/null -w "%{http_code}" "$GW/health" 2>/dev/null || echo "000")
+  if [[ "$gw_code" =~ ^2 ]]; then printf "    ✓ api-gateway (%s)\n" "$gw_code"
+  else printf "    ✗ api-gateway (HTTP %s)\n" "$gw_code"; ok=false; fi
+
+  get_token
+  if [[ -n "$TOKEN" ]]; then printf "    ✓ auth token\n"
+  else printf "    ✗ auth token\n"; ok=false; fi
+
+  echo ""
+  if ! $ok; then echo "FATAL: Preflight failed"; exit 1; fi
+}
 
 echo "── Preflight ────────────────────────────────────────────────────────"
+preflight
 command -v jq   >/dev/null 2>&1 || { echo "FATAL: jq not found"; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "FATAL: curl not found"; exit 1; }
 command -v bc   >/dev/null 2>&1 || { echo "FATAL: bc not found"; exit 1; }
@@ -494,6 +547,12 @@ fi
 echo ""
 
 # ── 0.4  Create room types + rooms for new properties ──────────────────
+echo "── 0.3b Refresh Tokens ──────────────────────────────────────────────"
+TOKEN_A=$(./http_test/get-token.sh 2>/dev/null)
+TOKEN_B=$(API_USER="$TENANT_B_USER" API_PASS="$TENANT_B_PASS" ./http_test/get-token.sh 2>/dev/null)
+echo "  ✓ Tokens refreshed for both tenants"
+echo ""
+
 echo "── 0.4  Create Room Types & Rooms ───────────────────────────────────"
 
 create_room_type() {
@@ -662,10 +721,200 @@ get "$GW/v1/reservations?tenant_id=$TID_B&limit=100" >/dev/null;    PRE_B_RESERV
 get "$GW/v1/billing/charges?tenant_id=$TID_B&limit=100" >/dev/null; PRE_B_CHARGES=$(resp_count)
 get "$GW/v1/billing/payments?tenant_id=$TID_B&limit=100" >/dev/null; PRE_B_PAYMENTS=$(resp_count)
 get "$GW/v1/billing/invoices?tenant_id=$TID_B&limit=100" >/dev/null;        PRE_B_INVOICES=$(resp_count)
-echo "  Tenant A — guests=$PRE_A_GUESTS res=$PRE_A_RESERVATIONS charges=$PRE_A_CHARGES payments=$PRE_A_PAYMENTS invoices=$PRE_A_INVOICES"
-echo "  Tenant B — guests=$PRE_B_GUESTS res=$PRE_B_RESERVATIONS charges=$PRE_B_CHARGES payments=$PRE_B_PAYMENTS invoices=$PRE_B_INVOICES"
+
+  echo "  Tenant A — guests=$PRE_A_GUESTS res=$PRE_A_RESERVATIONS charges=$PRE_A_CHARGES payments=$PRE_A_PAYMENTS invoices=$PRE_A_INVOICES"
+  echo "  Tenant B — guests=$PRE_B_GUESTS res=$PRE_B_RESERVATIONS charges=$PRE_B_CHARGES payments=$PRE_B_PAYMENTS invoices=$PRE_B_INVOICES"
+  echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 0.5 — CORE DOMAIN CRUD (Buildings, Rooms, Users, Groups, etc.)
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 0.5: CORE DOMAIN CRUD & ISOLATION"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+run_domain_crud() {
+  local tid="$1" pid="$2" tok="$3" label="$4"
+  TOKEN="$tok"
+  CUR_TID="$tid"
+  local tag="${label// /_}"
+  
+  echo "── Domain CRUD: $label ──────────────────────────────────────────"
+
+  # 1. Building CRUD
+  echo "  ▸ Building CRUD..."
+  local b_code=$(echo "BLD-${RUN_TAG}-${tag:0:3}" | tr '[:lower:]' '[:upper:]')
+  code=$(post "$GW/v1/buildings" "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"building_name\":\"Building ${tag}\",\"building_code\":\"$b_code\",\"building_type\":\"MAIN\",\"is_active\":true,\"building_status\":\"OPERATIONAL\"}")
+  
+  if [[ "$code" == "201" ]]; then
+    local bid=$(resp_field "building_id")
+    pass "Building created ($label): $bid"
+  elif [[ "$code" == "409" ]]; then
+    # Fallback: get building ID if it already exists
+    get "$GW/v1/buildings?tenant_id=$tid&property_id=$pid" >/dev/null
+    local bid=$(resp_ffirst ".building_code == \"$b_code\"" "building_id")
+    if [[ -n "$bid" ]]; then
+       warn "Building already exists ($label): $bid"
+    else
+       # Debug: list all buildings found
+       local all_codes=$(jq -r ".[].building_code" "$RESP_FILE" 2>/dev/null | xargs)
+       fail "Building creation conflict but could not find existing building ($label). Expected code: $b_code. Found codes: $all_codes"
+    fi
+  else
+    fail "Building creation failed with $code ($label)"
+    local bid=""
+  fi
+  if [[ -n "$bid" ]]; then
+    code=$(put "$GW/v1/buildings/$bid" "{\"building_name\":\"Updated Building ${tag}\",\"tenant_id\":\"$tid\"}")
+    assert_http "Update building ($label)" "200" "$code"
+    
+    get "$GW/v1/buildings/$bid?tenant_id=$tid" >/dev/null
+    assert_eq "Verify building update ($label)" "Updated Building ${tag}" "$(resp_field "building_name")"
+  fi
+
+  # 2. Room CRUD
+  echo "  ▸ Room CRUD..."
+  local r_num="R-${RUN_TAG}-${tag:0:3}"
+  get "$GW/v1/room-types?tenant_id=$tid&property_id=$pid&limit=1" >/dev/null
+  local rtid=$(resp_first "room_type_id")
+  
+  if [[ -n "$rtid" ]] && [[ -n "$bid" ]]; then
+    code=$(post "$GW/v1/rooms" "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"room_type_id\":\"$rtid\",\"building_id\":\"$bid\",\"room_number\":\"$r_num\",\"floor\":\"1\",\"status\":\"AVAILABLE\"}")
+    
+    if [[ "$code" == "201" ]]; then
+      local rid=$(resp_field "id")
+      pass "Room created ($label): $rid"
+    elif [[ "$code" == "409" ]]; then
+      get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=100" >/dev/null
+      local rid=$(resp_ffirst ".room_number == \"$r_num\"" "id")
+      warn "Room already exists ($label): $rid"
+    else
+      fail "Room creation failed with $code ($label)"
+      local rid=""
+    fi
+    
+    if [[ -n "$rid" ]]; then
+      code=$(put "$GW/v1/rooms/$rid" "{\"maintenance_status\":\"MAINTENANCE_REQUIRED\",\"tenant_id\":\"$tid\"}")
+      assert_http "Update room maintenance ($label)" "200" "$code"
+      
+      get "$GW/v1/rooms/$rid?tenant_id=$tid" >/dev/null
+      assert_eq "Verify maintenance status ($label)" "MAINTENANCE_REQUIRED" "$(resp_field "maintenance_status")"
+    fi
+  else
+    warn "Skipping Room CRUD: missing room_type ($rtid) or building ($bid)"
+  fi
+
+  # 3. User CRUD
+  echo "  ▸ User CRUD..."
+  local u_email="user-${RUN_TAG}-${tag:0:3}@tartware-test.local"
+  local u_name="user_${RUN_TAG}_${tag:0:3}"
+  code=$(post "$GW/v1/users" "{\"tenant_id\":\"$tid\",\"username\":\"$u_name\",\"email\":\"$u_email\",\"password\":\"TempPass123!\",\"first_name\":\"Test\",\"last_name\":\"User\",\"role\":\"STAFF\"}")
+  
+  if [[ "$code" == "201" ]]; then
+    local uid=$(resp_field "id")
+    pass "User created successfully ($label): $uid"
+  elif [[ "$code" == "409" ]]; then
+    warn "User already exists ($label): $u_email"
+  else
+    fail "User creation failed with $code ($label)"
+  fi
+
+  # 4. Group Reservation CRUD
+  echo "  ▸ Group Reservation CRUD..."
+  local g_name="Group ${RUN_TAG} ${tag}"
+  send_command "Create Group ($label)" "group.create" "{\"property_id\":\"$pid\",\"group_name\":\"$g_name\",\"group_type\":\"corporate\",\"contact_name\":\"Test Contact\",\"arrival_date\":\"$TODAY\",\"departure_date\":\"$IN5DAYS\",\"total_rooms_requested\":5,\"block_status\":\"tentative\"}"
+  wait_kafka 4
+  get "$GW/v1/group-bookings?tenant_id=$tid&limit=10" >/dev/null
+  local gid=$(resp_ffirst ".group_name == \"$g_name\"" "group_booking_id")
+  
+  if [[ -n "$gid" ]]; then
+    pass "Group found ($label): $gid"
+    send_command "Update Group Billing ($label)" "group.billing.setup" "{\"group_booking_id\":\"$gid\",\"payment_method\":\"direct_bill\",\"routing_rules\":[{\"charge_type\":\"ROOM\",\"target\":\"master\"},{\"charge_type\":\"TAX\",\"target\":\"master\"}]}"
+    wait_kafka 3
+  else
+    fail "Group not created or not found in time ($label)"
+  fi
+
+  # 5. Packages CRUD
+  echo "  ▸ Packages CRUD..."
+  local p_name="Pkg ${RUN_TAG} ${tag}"
+  local p_code=$(echo "PKG-${RUN_TAG}-${tag:0:3}" | tr '[:lower:]' '[:upper:]')
+  code=$(post "$GW/v1/packages" "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"package_name\":\"$p_name\",\"package_code\":\"$p_code\",\"package_type\":\"room_only\",\"valid_from\":\"$TODAY\",\"valid_to\":\"$IN5DAYS\",\"pricing_model\":\"per_night\",\"base_price\":50.00,\"is_active\":true}")
+  
+  if [[ "$code" == "201" ]]; then
+    local pkgid=$(resp_field "package_id")
+    pass "Package created ($label): $pkgid"
+  elif [[ "$code" == "409" ]]; then
+    get "$GW/v1/packages?tenant_id=$tid&property_id=$pid" >/dev/null
+    local pkgid=$(resp_ffirst ".package_code == \"$p_code\"" "package_id")
+    warn "Package already exists ($label): $pkgid"
+  else
+    fail "Package creation failed with $code ($label)"
+    local pkgid=""
+  fi
+  
+  if [[ -n "$pkgid" ]]; then
+    code=$(api_patch "$GW/v1/packages/$pkgid" "{\"is_active\":false,\"tenant_id\":\"$tid\"}")
+    assert_http "Update package ($label)" "200" "$code"
+    
+    get "$GW/v1/packages/$pkgid?tenant_id=$tid" >/dev/null
+    assert_eq "Verify package status ($label)" "false" "$(resp_field "is_active")"
+  fi
+
+  # 6. Housekeeping CRUD
+  echo "  ▸ Housekeeping CRUD..."
+  get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=1" >/dev/null
+  local h_rid=$(resp_first "id")
+  if [[ -n "$h_rid" ]]; then
+    send_command "Create HK task ($label)" "housekeeping.task.create" "{\"property_id\":\"$pid\",\"room_id\":\"$h_rid\",\"task_type\":\"CLEAN\",\"priority\":\"MEDIUM\",\"notes\":\"Test task ${tag}\"}"
+    wait_kafka 4
+    
+    get "$GW/v1/housekeeping/tasks?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
+    local tid_hk=$(resp_ffirst ".notes == \"Test task ${tag}\"" "id")
+    if [[ -n "$tid_hk" ]]; then
+       pass "Housekeeping task verified ($label): $tid_hk"
+    else
+       warn "Housekeeping task created but not found by notes ($label)"
+    fi
+  fi
+  
+  # 7. Rate Plan CRUD
+  echo "  ▸ Rate Plan CRUD..."
+  local rate_code="RATE-${RUN_TAG}-${tag:0:3}"
+  code=$(post "$GW/v1/rates" "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"room_type_id\":\"$rtid\",\"rate_name\":\"Test Rate ${tag}\",\"rate_code\":\"$rate_code\",\"base_rate\":150.00,\"valid_from\":\"$TODAY\",\"status\":\"ACTIVE\",\"strategy\":\"FIXED\"}")
+  
+  if [[ "$code" == "201" ]]; then
+    local rid_rate=$(resp_field "id")
+    pass "Rate plan created ($label): $rid_rate"
+  elif [[ "$code" == "409" ]]; then
+    get "$GW/v1/rates?tenant_id=$tid&property_id=$pid" >/dev/null
+    local rid_rate=$(resp_ffirst ".rate_code == \"$rate_code\"" "id")
+    warn "Rate plan already exists ($label): $rid_rate"
+  else
+    fail "Rate plan creation failed with $code ($label)"
+    local rid_rate=""
+  fi
+  
+  if [[ -n "$rid_rate" ]]; then
+    code=$(put "$GW/v1/rates/$rid_rate" "{\"base_rate\":175.00,\"tenant_id\":\"$tid\"}")
+    assert_http "Update rate plan ($label)" "200" "$code"
+    
+    get "$GW/v1/rates/$rid_rate?tenant_id=$tid" >/dev/null
+    assert_eq "Verify rate update ($label)" "175" "$(resp_field "base_rate")"
+  fi
+
+  echo ""
+}
+
+echo "── 0.5.1  Tenant A Domain CRUD ─────────────────────────────────────"
+run_domain_crud "$TID_A" "$PID_A1" "$TOKEN_A" "Tenant-A"
+
+echo "── 0.5.2  Tenant B Domain CRUD ─────────────────────────────────────"
+run_domain_crud "$TID_B" "$PID_B1" "$TOKEN_B" "Tenant-B"
+
+echo ""
 echo "  Environment summary:"
 echo "    Tenant A  = $TID_A"
 echo "    Prop A1   = $PID_A1   (existing, rooms 101-202)"
@@ -684,6 +933,19 @@ echo ""
 # "core" = essential subset (1 guest, 1 reservation, charges, payment,
 #          invoice, cashier, night-audit)
 # =============================================================================
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 0.5 — CORE DOMAIN CRUD (Buildings, Rooms, Users, Groups, etc.)
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 0.5: CORE DOMAIN CRUD & ISOLATION"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+run_domain_crud "$TID_A" "$PID_A1" "$TOKEN_A" "Tenant-A"
+run_domain_crud "$TID_B" "$PID_B1" "$TOKEN_B" "Tenant-B"
+
 
 run_billing_pipeline() {
   local tid="$1" pid="$2" tok="$3" rtid="$4" label="$5" mode="$6"
@@ -1351,6 +1613,37 @@ run_billing_pipeline() {
       skip "Comp post ($label)" "no reservation"
     fi
     echo ""
+
+    # ── Loyalty Program Functional Test ──
+    echo "── ${tag} — Loyalty Program Functional Test ────────────────────"
+    if [[ -n "$guest_id" ]]; then
+      # 1. Enroll guest
+      send_command "CMD loyalty.program.enroll" \
+        "loyalty.program.enroll" \
+        "{\"guest_id\":\"$guest_id\",\"program_name\":\"Tartware Rewards\",\"program_tier\":\"bronze\",\"enrollment_channel\":\"property\",\"enrollment_property_id\":\"$pid\"}"
+      wait_kafka 8
+
+      # 2. Find program_id
+      local prog_id=$(PGPASSWORD=postgres psql -h localhost -U postgres -d tartware -t -c "SELECT program_id FROM guest_loyalty_programs WHERE guest_id = '$guest_id' AND tenant_id = '$tid' LIMIT 1" | tr -d '[:space:]')
+      
+      if [[ -n "$prog_id" && "$prog_id" != "NULL" ]]; then
+        # 3. Earn points
+        send_command "CMD loyalty.points.earn: 500 pts" \
+          "loyalty.points.earn" \
+          "{\"guest_id\":\"$guest_id\",\"program_id\":\"$prog_id\",\"points\":500,\"description\":\"Welcome bonus — pipeline $tag\"}"
+        wait_kafka 8
+        
+        # 4. Verify balance
+        get "$GW/v1/loyalty/programs/$prog_id/balance?tenant_id=$tid" >/dev/null
+        local balance=$(resp_field "points_balance")
+        assert_eq "Loyalty balance ($label)" "500" "$balance"
+      else
+        fail "Loyalty enrollment ($label) — could not find program_id"
+      fi
+    else
+      skip "Loyalty functional test ($label)" "no guest"
+    fi
+    echo ""
   fi
 
   echo "  ✓ Pipeline complete for $label"
@@ -1376,7 +1669,7 @@ PHASE1_EXIT=0
 "$SCRIPT_DIR/test-accounts-realdata.sh" "$@" || PHASE1_EXIT=$?
 
 if [[ $PHASE1_EXIT -eq 0 ]]; then
-  pass "Phase 1: Single-tenant full pipeline (test-accounts-realdata.sh)"
+  pass "Phase 1: Single-tenant full pipeline test-accounts-realdata.sh"
 else
   fail "Phase 1: Single-tenant full pipeline" "exit code $PHASE1_EXIT"
 fi
@@ -2040,7 +2333,6 @@ cashier-sessions-alt|/v1/cashier-sessions?tenant_id={TID}&limit=10
 guest-feedback|/v1/guest-feedback?tenant_id={TID}&limit=10
 compliance-breach|/v1/compliance/breach-incidents?tenant_id={TID}&limit=10
 loyalty-tier-rules|/v1/loyalty/tier-rules?tenant_id={TID}
-loyalty-transactions|/v1/loyalty/transactions?tenant_id={TID}&limit=10
 revenue-pricing-rules|/v1/revenue/pricing-rules?tenant_id={TID}&limit=10
 self-service-search|/v1/self-service/search?tenant_id={TID}&property_id={PID}&check_in_date={TODAY}&check_out_date={IN3DAYS}&adults=2
 housekeeping-tasks|/v1/housekeeping/tasks?tenant_id={TID}&limit=10

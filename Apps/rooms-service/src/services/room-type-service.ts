@@ -12,6 +12,7 @@ import {
 import { query } from "../lib/db.js";
 import { buildDynamicUpdate, type UpdateField } from "../sql/dynamic-update-builder.js";
 import {
+  ROOM_TYPE_BY_ID_SQL,
   ROOM_TYPE_CREATE_SQL,
   ROOM_TYPE_DELETE_SQL,
   ROOM_TYPE_GRID_SQL,
@@ -144,6 +145,25 @@ export const listRoomTypeGrid = async (options: {
   ]);
 
   return rows.map(mapRowToRoomTypeGrid);
+};
+
+/**
+ * Get a room type by id.
+ */
+export const getRoomTypeById = async (options: {
+  tenantId: string;
+  roomTypeId: string;
+}): Promise<RoomTypeItem | null> => {
+  const { rows } = await query<RoomTypeRow>(ROOM_TYPE_BY_ID_SQL, [
+    options.roomTypeId,
+    options.tenantId,
+  ]);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return mapRowToRoomType(rows[0]);
 };
 
 /**

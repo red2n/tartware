@@ -201,7 +201,7 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
       }),
       config: {
         rateLimit: {
-          max: 120,
+          max: 5000,
           timeWindow: "1 minute",
         },
       },

@@ -14,6 +14,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+
 import { hashIdentifier, redactPayload } from "@tartware/config";
 import type { BillingAuditEventInput } from "@tartware/schemas";
 import type { PoolClient } from "pg";
@@ -34,11 +35,15 @@ const INSERT_AUDIT_SQL = `
     entity_type,
     entity_id,
     user_id,
+    user_name,
+    user_email,
+    user_role,
     action,
     action_category,
     severity,
     old_values,
     new_values,
+    api_endpoint,
     is_pci_relevant,
     is_gdpr_relevant,
     description,
@@ -56,12 +61,16 @@ const INSERT_AUDIT_SQL = `
     $8,
     $9,
     $10,
-    $11::jsonb,
-    $12::jsonb,
+    $11,
+    $12,
     $13,
-    $14,
-    $15,
-    $16::jsonb,
+    $14::jsonb,
+    $15::jsonb,
+    $16,
+    $17,
+    $18,
+    $19,
+    $20::jsonb,
     'SUCCESS'
   )
   ON CONFLICT DO NOTHING
@@ -76,20 +85,25 @@ function buildParams(e: BillingAuditEventInput): unknown[] {
     e.entityType, // $5  entity_type
     e.entityId ?? null, // $6  entity_id
     e.userId, // $7  user_id
-    e.action, // $8  action
-    e.category ?? "FINANCIAL", // $9  action_category
-    e.severity ?? "INFO", // $10 severity
-    e.oldValues != null ? JSON.stringify(redactPayload(e.oldValues)) : null, // $11 old_values
-    e.newValues != null ? JSON.stringify(redactPayload(e.newValues)) : null, // $12 new_values
-    e.isPciRelevant ?? false, // $13 is_pci_relevant
-    e.isGdprRelevant ?? false, // $14 is_gdpr_relevant
-    e.description ?? null, // $15 description
+    e.userName ?? null, // $8  user_name
+    e.userEmail ?? null, // $9  user_email
+    e.userRole ?? null, // $10 user_role
+    e.action, // $11 action
+    e.category ?? "FINANCIAL", // $12 action_category
+    e.severity ?? "INFO", // $13 severity
+    e.oldValues != null ? JSON.stringify(redactPayload(e.oldValues)) : null, // $14 old_values
+    e.newValues != null ? JSON.stringify(redactPayload(e.newValues)) : null, // $15 new_values
+    e.apiEndpoint ?? null, // $16 api_endpoint
+    e.isPciRelevant ?? false, // $17 is_pci_relevant
+    e.isGdprRelevant ?? false, // $18 is_gdpr_relevant
+    e.description ?? null, // $19 description
     e.metadata != null
       ? JSON.stringify({
           ...(redactPayload(e.metadata) as Record<string, unknown>),
           entity_id_hash: e.entityId ? hashIdentifier(e.entityId) : null,
+          correlation_id: e.correlationId ?? null,
         })
-      : null, // $16 metadata
+      : JSON.stringify({ correlation_id: e.correlationId ?? null }), // $20 metadata
   ];
 }
 
@@ -129,4 +143,27 @@ export function auditAsync(event: BillingAuditEventInput): void {
       );
     });
   });
+}
+
+/**
+ * Helper to create a complete audit event with user details fetched from DB.
+ * Use this in command handlers to ensure all audit fields are populated.
+ */
+export async function createAuditEvent(
+  context: { tenantId: string; initiatedBy?: { userId?: string } | null; correlationId?: string },
+  event: Omit<BillingAuditEventInput, 'tenantId' | 'userId' | 'userName' | 'userEmail' | 'userRole' | 'correlationId'>
+): Promise<BillingAuditEventInput> {
+  const { getUserDetails, resolveActorId } = await import("../services/billing-commands/common.js");
+  const userId = resolveActorId(context.initiatedBy);
+  const userDetails = await getUserDetails(userId);
+
+  return {
+    ...event,
+    tenantId: context.tenantId,
+    userId,
+    userName: userDetails.name,
+    userEmail: userDetails.email,
+    userRole: userDetails.role,
+    correlationId: context.correlationId,
+  };
 }

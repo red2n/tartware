@@ -38,6 +38,7 @@
 -- This DO block scans pg_constraint to find single-column FKs
 -- pointing at our target tables and replaces them with composite
 -- (tenant_id, <col>) FKs when the child table also has tenant_id.
+-- We exclude child partitions because FKs are inherited from the parent.
 -- =====================================================
 
 DO $$
@@ -72,6 +73,8 @@ BEGIN
       AND a_parent.attnum = con.confkey[1]
     WHERE con.contype = 'f'                          -- foreign key
       AND array_length(con.conkey, 1) = 1            -- single-column FK only
+      AND child_cls.relkind IN ('r', 'p')            -- child is ordinary or partitioned table
+      AND NOT child_cls.relispartition               -- exclude child partitions
       AND parent_ns.nspname = 'public'
       AND parent_cls.relname IN (
         'properties', 'guests', 'reservations',

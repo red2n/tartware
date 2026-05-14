@@ -12,7 +12,19 @@ import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import pino, { type Logger as PinoLogger } from "pino";
+import pino, { type Level as PinoLevel, type Logger as PinoLogger } from "pino";
+
+/**
+ * Minimal logger interface compatible with both standard Pino and Fastify loggers.
+ */
+export interface KafkaLogger {
+  info: (obj: object, msg?: string) => void;
+  warn: (obj: object, msg?: string) => void;
+  error: (obj: object, msg?: string) => void;
+  debug: (obj: object, msg?: string) => void;
+  fatal: (obj: object, msg?: string) => void;
+  trace: (obj: object, msg?: string) => void;
+}
 
 type RedactObject = {
   paths?: string[];
@@ -886,3 +898,37 @@ export const createServiceLogger = (options: ServiceLoggerOptions): PinoLogger =
 };
 
 export type { Logger as PinoLogger } from "pino";
+
+/**
+ * Creates a KafkaJS compatible log creator that routes to a Pino logger.
+ *
+ * @param logger The Pino logger instance to route logs to
+ * @returns A KafkaJS log creator function
+ */
+export const createPinoLogCreator = (logger: KafkaLogger) => {
+  return () => {
+    return ({ level, log }: { level: number; log: Record<string, unknown> }) => {
+      const { message, ...extra } = log;
+      const pinoLevel = mapKafkaLevelToPino(level);
+
+      if (pinoLevel) {
+        logger[pinoLevel](extra, String(message));
+      }
+    };
+  };
+};
+
+const mapKafkaLevelToPino = (level: number): PinoLevel | null => {
+  switch (level) {
+    case 1: // ERROR
+      return "error";
+    case 2: // WARN
+      return "warn";
+    case 4: // INFO
+      return "info";
+    case 5: // DEBUG
+      return "debug";
+    default:
+      return null;
+  }
+};

@@ -18,7 +18,7 @@ import {
   RoomOutOfServiceCommandSchema,
   RoomStatusUpdateCommandSchema,
 } from "../schemas/room-commands.js";
-import { hashIdentifier, recordAuditLog } from "../utils/audit.js";
+import { recordAuditLog } from "../utils/audit.js";
 import { findArrivingReservation, publishNotificationCommand } from "./room-notification-helper.js";
 
 const logger = appLogger.child({ module: "room-command-service" });
@@ -609,7 +609,7 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
       entityType: "reservation",
       entityId: command.reservation_id,
       metadata: {
-        reservation_id: hashIdentifier(command.reservation_id),
+        reservation_id: command.reservation_id,
         from_room_id: command.from_room_id,
         to_room_id: command.to_room_id,
         room_type_changed: fromRoom.room_type_id !== toRoom.room_type_id,
@@ -755,7 +755,7 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
   const defaultValidTo = new Date(validFrom.getTime() + 24 * 60 * 60 * 1000);
   const validTo = command.valid_to ?? defaultValidTo;
 
-  await query(
+  const { rows: keyRows } = await query(
     `INSERT INTO public.mobile_keys (
        tenant_id, property_id, guest_id, reservation_id, room_id,
        key_code, key_type, status,
@@ -769,7 +769,8 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
        $10, $11, $12,
        $13, $13
      )
-     ON CONFLICT (key_code) DO NOTHING`,
+     ON CONFLICT (key_code) DO UPDATE SET updated_at = NOW()
+     RETURNING key_id`,
     [
       context.tenantId,
       command.property_id,
@@ -787,6 +788,8 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
     ],
   );
 
+  const keyId = keyRows[0]?.key_id;
+
   await recordAuditLog({
     tenantId: context.tenantId,
     propertyId: command.property_id,
@@ -794,10 +797,12 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
     action: "room.mobile_key_issue",
     eventType: "CREATE",
     entityType: "mobile_key",
-    entityId: hashIdentifier(keyCode),
+    entityId: keyId ?? null,
     metadata: {
-      guest_id: hashIdentifier(command.guest_id),
-      reservation_id: hashIdentifier(command.reservation_id || ""),
+      key_id: keyId,
+      key_code: keyCode,
+      guest_id: command.guest_id,
+      reservation_id: command.reservation_id,
       room_id: command.room_id,
       key_type: command.key_type,
       device_type: command.device_type,
@@ -887,11 +892,12 @@ export const handleKeyRevoke = async (payload: unknown, context: CommandContext)
     action: "room.mobile_key_revoke",
     eventType: "DELETE",
     entityType: "mobile_key",
-    entityId: command.key_id ? hashIdentifier(command.key_id) : "bulk_revoke",
+    entityId: command.key_id ?? null,
     metadata: {
-      reservation_id: command.reservation_id ? hashIdentifier(command.reservation_id) : null,
+      key_id: command.key_id,
+      reservation_id: command.reservation_id,
       reason: command.reason,
-      revoke_all: command.revoke_all_for_reservation,
+      action: command.key_id ? "individual_revoke" : "bulk_revoke",
     },
   });
 };

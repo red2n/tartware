@@ -11,6 +11,7 @@
  * @module consumers/ar-event-consumer
  */
 import { randomUUID } from "node:crypto";
+
 import { buildDlqPayload } from "@tartware/command-consumer-utils/dlq";
 import { createKafkaProducer } from "@tartware/command-consumer-utils/producer";
 import { enterTenantScope } from "@tartware/config/db";

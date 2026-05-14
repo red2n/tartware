@@ -15,6 +15,7 @@ vi.hoisted(() => {
 
 import { buildServer } from "../src/server.js";
 import { kafkaConfig, serviceTargets } from "../src/config.js";
+import { query } from "../src/lib/db.js";
 
 const { submitCommandMock, proxyRequestMock } = vi.hoisted(() => {
   return {
@@ -55,10 +56,10 @@ vi.mock("../src/services/membership-service.js", () => ({
     {
       tenantId: "11111111-1111-1111-1111-111111111111",
       tenantName: "Demo Hotel",
-      role: "MANAGER",
+      role: "ADMIN",
       isActive: true,
       permissions: {},
-      modules: ["core"],
+      modules: ["core", "finance-automation"],
     },
   ]),
 }));
@@ -83,6 +84,7 @@ describe("API Gateway server", () => {
     fetchMock.mockClear();
     submitCommandMock.mockClear();
     proxyRequestMock.mockClear();
+    query.mockClear();
   });
 
   afterAll(async () => {
@@ -173,6 +175,37 @@ describe("API Gateway server", () => {
     expect(proxyRequestMock).toHaveBeenCalledTimes(1);
     expect(proxyRequestMock.mock.calls[0][2]).toBe(
       serviceTargets.guestsServiceUrl,
+    );
+  });
+
+  it("writes gateway audit log entries for proxied API requests", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/guests?tenant_id=11111111-1111-1111-1111-111111111111",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalled();
+    expect((query as any).mock.calls[0][0]).toContain("INSERT INTO public.audit_logs");
+  });
+
+  it("proxies billing audit trail queries to the billing service", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/billing/audit-trail?tenant_id=11111111-1111-1111-1111-111111111111",
+      headers: {
+        authorization: "Bearer unit-test-token",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(proxyRequestMock).toHaveBeenCalledTimes(1);
+    expect(proxyRequestMock.mock.calls[0][2]).toBe(
+      serviceTargets.billingServiceUrl,
     );
   });
 

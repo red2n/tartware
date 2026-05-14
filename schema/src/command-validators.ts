@@ -143,6 +143,7 @@ import {
 	LoyaltyPointsEarnCommandSchema,
 	LoyaltyPointsExpireSweepCommandSchema,
 	LoyaltyPointsRedeemCommandSchema,
+	LoyaltyProgramEnrollCommandSchema,
 } from "./events/commands/loyalty.js";
 import {
 	NotificationAutomatedMessageCreateCommandSchema,
@@ -727,6 +728,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"loyalty.points.expire_sweep",
 		(payload) => LoyaltyPointsExpireSweepCommandSchema.parse(payload),
+	],
+	[
+		"loyalty.program.enroll",
+		(payload) => LoyaltyProgramEnrollCommandSchema.parse(payload),
 	],
 	[
 		"reservation.create",

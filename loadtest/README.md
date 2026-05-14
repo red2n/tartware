@@ -16,6 +16,7 @@ This is a fresh, industry-standard load testing harness focused on realistic PMS
 - [loadtest/k6/scenarios/stress.js](loadtest/k6/scenarios/stress.js): capacity discovery.
 - [loadtest/k6/scenarios/spike.js](loadtest/k6/scenarios/spike.js): burst resilience.
 - [loadtest/k6/scenarios/booking-flow.js](loadtest/k6/scenarios/booking-flow.js): end-to-end booking journey.
+- [loadtest/k6/scenarios/multi-tenant-billing-pipeline.js](loadtest/k6/scenarios/multi-tenant-billing-pipeline.js): complex multi-tenant billing lifecycle (based on test-multi-tenant.sh).
 
 ## Quick Start
 

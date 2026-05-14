@@ -5,6 +5,7 @@
 
 import type { ReplayDriftStatus } from "@tartware/schemas";
 import { Counter, Gauge, Histogram } from "prom-client";
+
 import { metricsRegistry } from "./metrics.js";
 
 const replayDeltaCounter = new Counter({

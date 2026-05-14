@@ -11,6 +11,7 @@ import {
 
 import { query } from "../lib/db.js";
 import {
+  BUILDING_BY_ID_SQL,
   BUILDING_CREATE_SQL,
   BUILDING_DELETE_SQL,
   BUILDING_GRID_SQL,
@@ -140,6 +141,25 @@ export const listBuildingGrid = async (options: {
   ]);
 
   return rows.map(mapRowToBuildingGrid);
+};
+
+/**
+ * Get a building by id.
+ */
+export const getBuildingById = async (options: {
+  tenantId: string;
+  buildingId: string;
+}): Promise<BuildingItem | null> => {
+  const { rows } = await query<BuildingRow>(BUILDING_BY_ID_SQL, [
+    options.buildingId,
+    options.tenantId,
+  ]);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return mapRowToBuilding(rows[0]);
 };
 
 /**

@@ -1,5 +1,4 @@
 import type { AuthContext, TenantScopeDecorator } from "@tartware/tenant-auth";
-
 import type { TenantMembership } from "@tartware/tenant-auth/membership";
 
 declare module "fastify" {

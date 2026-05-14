@@ -58,6 +58,7 @@
   "dependencies": {
     "@tartware/config": "workspace:*",
     "@tartware/schemas": "workspace:*",
+    "@tartware/telemetry": "workspace:*",
     "kafkajs": "^2.2.4",
     "pg": "^8.13.3",
     "prom-client": "^15.1.3"

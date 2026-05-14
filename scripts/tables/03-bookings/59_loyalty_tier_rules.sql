@@ -65,4 +65,16 @@ COMMENT ON COLUMN loyalty_tier_rules.points_per_dollar IS 'Base points earned pe
 COMMENT ON COLUMN loyalty_tier_rules.bonus_multiplier IS 'Multiplier applied to base earning rate for this tier (e.g., 2.0 = double points)';
 COMMENT ON COLUMN loyalty_tier_rules.benefits IS 'JSON: {late_checkout, room_upgrade, free_wifi, lounge_access, free_breakfast, etc.}';
 
+-- =====================================================
+-- DEFAULT SEED DATA
+-- =====================================================
+
+INSERT INTO loyalty_tier_rules (tenant_id, tier_name, tier_rank, display_name, min_nights, min_stays, min_points, min_spend, points_per_dollar, bonus_multiplier, points_expiry_months, benefits)
+VALUES
+    ('11111111-1111-1111-1111-111111111111', 'bronze', 1, 'Bronze', 0, 0, 0, 0.00, 1.00, 1.00, 12, '{"wifi": "free", "bottled_water": true}'),
+    ('11111111-1111-1111-1111-111111111111', 'silver', 2, 'Silver', 10, 5, 10000, 2500.00, 1.00, 1.25, 24, '{"wifi": "premium", "late_checkout": "1pm"}'),
+    ('11111111-1111-1111-1111-111111111111', 'gold', 3, 'Gold', 25, 15, 25000, 7500.00, 1.00, 1.50, 36, '{"wifi": "premium", "late_checkout": "2pm", "room_upgrade": "preferred"}'),
+    ('11111111-1111-1111-1111-111111111111', 'platinum', 4, 'Platinum', 50, 30, 50000, 15000.00, 1.00, 2.00, null, '{"wifi": "premium", "late_checkout": "4pm", "room_upgrade": "suite", "lounge_access": true}')
+ON CONFLICT (tenant_id, tier_name) WHERE property_id IS NULL DO NOTHING;
+
 \echo 'loyalty_tier_rules table created successfully!'

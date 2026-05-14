@@ -1,7 +1,9 @@
 import { cashierHandover as _cashierHandover } from "@tartware/command-consumer-utils/cashier";
+
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingCashierHandoverCommandSchema } from "../../schemas/billing-commands.js";
+
 import type { CommandContext } from "./common.js";
 
 /**

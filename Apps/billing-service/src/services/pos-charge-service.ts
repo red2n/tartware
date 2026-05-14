@@ -16,10 +16,12 @@
  */
 
 import type { PosChargeInput, PosChargeResponse, ReservationFolioRow } from "@tartware/schemas";
+
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { acquireFolioLock } from "../lib/folio-lock.js";
 import { appLogger } from "../lib/logger.js";
 import { addMoney, roundMoney } from "../utils/money.js";
+
 import { BillingCommandError } from "./billing-commands/common.js";
 
 // ---------------------------------------------------------------------------

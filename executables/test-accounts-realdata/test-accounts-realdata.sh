@@ -1986,15 +1986,15 @@ echo ""
 
 # ── 1.33  No-Show Charge (v2 §6.2 — No-Show Penalty) ──
 echo "── 1.33  No-Show Charge ─────────────────────────────────────────────"
-echo "  Scenario: Charge no-show penalty on reservation — \$199 (1 night)"
+echo "  Scenario: Charge no-show penalty on reservation 2 — \$199 (1 night)"
 
-if [[ -n "${RES1_ID:-}" ]]; then
+if [[ -n "${RES2_ID:-}" ]]; then
   get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
   PRE_NOSHOW_CHARGES=$(resp_count)
 
-  send_command "CMD no_show.charge: 1 night penalty" \
+  send_command "CMD no_show.charge: 1 night penalty (res2)" \
     "billing.no_show.charge" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"charge_amount\":199.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES2_ID\",\"charge_amount\":199.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
 
   wait_kafka 8
 
@@ -2050,15 +2050,15 @@ echo ""
 
 # ── 1.35  Cancellation Penalty (v2 §6.4 — Cancellation Policy Enforcement) ──
 echo "── 1.35  Cancellation Penalty ───────────────────────────────────────"
-echo "  Scenario: Apply \$99.50 cancellation penalty to reservation"
+echo "  Scenario: Apply \$99.50 cancellation penalty to reservation 2"
 
-if [[ -n "${RES1_ID:-}" ]]; then
+if [[ -n "${RES2_ID:-}" ]]; then
   get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
   PRE_CANCEL_CHARGES=$(resp_count)
 
-  send_command "CMD cancellation.penalty: \$99.50" \
+  send_command "CMD cancellation.penalty: \$99.50 (res2)" \
     "billing.cancellation.penalty" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Cancellation within 24h of arrival — QA test\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES2_ID\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $UNIQUE\"}"
 
   wait_kafka 8
 

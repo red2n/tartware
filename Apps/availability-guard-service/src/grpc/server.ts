@@ -14,15 +14,15 @@ import protoLoader from "@grpc/proto-loader";
 import type {
   BulkReleaseRequest,
   BulkReleaseResponse,
+  CheckRequest,
+  CheckResponse,
   GrpcInventoryLock,
-  HealthCheckRequest,
-  HealthCheckResponse,
   LockRoomRequest,
   LockRoomResponse,
   ReleaseRoomRequest,
   ReleaseRoomResponse,
 } from "@tartware/proto-types";
-import { HealthCheckResponse_ServingStatus, LockRoomResponse_Status } from "@tartware/proto-types";
+import { CheckResponse_ServingStatus, LockRoomResponse_Status } from "@tartware/proto-types";
 import type { FastifyBaseLogger } from "fastify";
 import { ZodError } from "zod";
 
@@ -39,7 +39,7 @@ type AvailabilityGuardHandlers = {
 };
 
 const PROTO_PATH = fileURLToPath(
-  new URL("../../../../proto/availability-guard.proto", import.meta.url),
+  new URL("../../../../proto/availabilityguard/v1/availability_guard.proto", import.meta.url),
 );
 
 const loaderOptions: protoLoader.Options = {
@@ -54,10 +54,10 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, loaderOptions);
 const grpcDescriptor = loadPackageDefinition(packageDefinition) as unknown as {
   availabilityguard: {
     v1: {
-      AvailabilityGuard: {
+      AvailabilityGuardService: {
         service: Record<string, unknown>;
       };
-      Health: {
+      HealthService: {
         service: Record<string, unknown>;
       };
     };
@@ -111,7 +111,7 @@ const mapLockResponseStatus = (status: "LOCKED" | "CONFLICT"): LockRoomResponse_
   if (status === "CONFLICT") {
     return LockRoomResponse_Status.STATUS_CONFLICT;
   }
-  return LockRoomResponse_Status.STATUS_UNKNOWN;
+  return LockRoomResponse_Status.STATUS_UNSPECIFIED;
 };
 
 const buildLockRoomHandler =
@@ -202,14 +202,14 @@ type HealthHandlers = {
 };
 
 const buildHealthCheckHandler =
-  (logger: FastifyBaseLogger): handleUnaryCall<HealthCheckRequest, HealthCheckResponse> =>
+  (logger: FastifyBaseLogger): handleUnaryCall<CheckRequest, CheckResponse> =>
   async (_call, callback) => {
     try {
       await checkDatabaseHealth();
-      callback(null, { status: HealthCheckResponse_ServingStatus.SERVING });
+      callback(null, { status: CheckResponse_ServingStatus.SERVING_STATUS_SERVING });
     } catch (error) {
       logger.warn({ err: error }, "Health check failed: database unreachable");
-      callback(null, { status: HealthCheckResponse_ServingStatus.NOT_SERVING });
+      callback(null, { status: CheckResponse_ServingStatus.SERVING_STATUS_NOT_SERVING });
     }
   };
 
@@ -248,7 +248,7 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
   };
 
   const server = new Server();
-  const availabilityGuardService = grpcDescriptor.availabilityguard.v1.AvailabilityGuard
+  const availabilityGuardService = grpcDescriptor.availabilityguard.v1.AvailabilityGuardService
     .service as ServiceDefinition<AvailabilityGuardHandlers>;
 
   server.addService(availabilityGuardService, {
@@ -257,7 +257,7 @@ export const startGrpcServer = async (logger: FastifyBaseLogger) => {
     bulkRelease: withGrpcAuth(buildBulkReleaseHandler(logger)),
   });
 
-  const healthService = grpcDescriptor.availabilityguard.v1.Health
+  const healthService = grpcDescriptor.availabilityguard.v1.HealthService
     .service as ServiceDefinition<HealthHandlers>;
   server.addService(healthService, {
     check: buildHealthCheckHandler(logger),

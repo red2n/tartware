@@ -115,12 +115,15 @@ BEGIN
 
     -- Dynamically add soft delete columns (is_deleted, deleted_at, deleted_by)
     -- to ALL tables in public and availability schemas.
+    -- We must exclude child partitions because columns can only be added to the parent.
     FOR r IN
-        SELECT t.table_schema, t.table_name
-        FROM information_schema.tables t
-        WHERE t.table_schema IN ('public', 'availability')
-          AND t.table_type = 'BASE TABLE'
-        ORDER BY t.table_schema, t.table_name
+        SELECT n.nspname AS table_schema, c.relname AS table_name
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('public', 'availability')
+          AND c.relkind IN ('r', 'p') -- r: ordinary table, p: partitioned table
+          AND NOT c.relispartition    -- exclude child partitions
+        ORDER BY n.nspname, c.relname
     LOOP
         EXECUTE format(
             'ALTER TABLE %I.%I ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;',

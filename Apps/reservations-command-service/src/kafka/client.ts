@@ -1,9 +1,11 @@
 import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
 
 import { kafkaConfig } from "../config.js";
+import { reservationsLogger } from "../logger.js";
 
 export const kafka = createKafkaClient({
   clientId: kafkaConfig.clientId,
   brokers: kafkaConfig.brokers,
   logLevel: "ERROR",
+  logger: reservationsLogger,
 });

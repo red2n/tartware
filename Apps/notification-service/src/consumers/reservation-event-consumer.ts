@@ -530,11 +530,11 @@ const processReservationEvent = async (event: ReservationEvent): Promise<void> =
     await recordAuditLog({
       tenantId: event.tenantId,
       propertyId: event.propertyId,
-      actorId: null, // System-generated event
+      actorId: "00000000-0000-0000-0000-000000000000", // System-generated event
       action: "RESERVATION_EVENT_PROCESSED",
       eventType: "NOTIFICATION_PROCESSED",
       entityType: "reservation",
-      entityId: hashIdentifier(event.reservationId),
+      entityId: event.reservationId,
       metadata: {
         eventType: event.eventType,
         originalEventId: event.originalEventId,

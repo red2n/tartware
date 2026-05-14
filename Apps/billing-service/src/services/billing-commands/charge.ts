@@ -14,6 +14,7 @@ import {
 } from "../../schemas/billing-commands.js";
 import { addMoney, parseDbMoneyOrZero } from "../../utils/money.js";
 import { evaluateRoutingRules } from "../routing-rule-service.js";
+
 import {
   asUuid,
   BillingCommandError,
@@ -598,13 +599,21 @@ const applyChargePost = async (
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + $2,
-              balance = balance + $2,
+          SET total_charges = total_charges + CASE WHEN $6 = 'DEBIT' THEN $2 ELSE 0.00 END,
+              total_credits = total_credits + CASE WHEN $6 = 'CREDIT' THEN $2 ELSE 0.00 END,
+              balance       = balance       + CASE WHEN $6 = 'DEBIT' THEN $2 ELSE -$2 END,
               version = version + 1,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5
         `,
-        [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId, destFolio.version],
+        [
+          context.tenantId,
+          routedSubtotal,
+          actorId,
+          decision.destinationFolioId,
+          destFolio.version,
+          command.posting_type,
+        ],
       );
 
       if (destCount === 0) {
@@ -701,12 +710,13 @@ const applyChargePost = async (
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + $2,
-              balance = balance + $2,
+          SET total_charges = total_charges + CASE WHEN $5 = 'DEBIT' THEN $2 ELSE 0.00 END,
+              total_credits = total_credits + CASE WHEN $5 = 'CREDIT' THEN $2 ELSE 0.00 END,
+              balance       = balance       + CASE WHEN $5 = 'DEBIT' THEN $2 ELSE -$2 END,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
         `,
-        [context.tenantId, subtotal, actorId, folioId],
+        [context.tenantId, subtotal, actorId, folioId, command.posting_type],
       );
 
       // GL: paired DR/CR for the remainder on the source folio.

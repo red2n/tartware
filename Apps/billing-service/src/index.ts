@@ -1,4 +1,5 @@
 import { bootstrapService } from "@tartware/fastify-server";
+
 import {
   shutdownAccountsCommandCenterConsumer,
   startAccountsCommandCenterConsumer,

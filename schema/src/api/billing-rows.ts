@@ -24,12 +24,22 @@ export type BillingAuditEventInput = {
 	propertyId?: string | null;
 	/** Resolved actor UUID (use resolveActorId output). */
 	userId: string;
+	/** User name for audit trail. */
+	userName?: string | null;
+	/** User email for audit trail. */
+	userEmail?: string | null;
+	/** User role for audit trail. */
+	userRole?: string | null;
 	/** Short action key, e.g. "PAYMENT_CAPTURE". Prefixed with "BILLING." for event_type column. */
 	action: string;
 	/** Table/resource affected, e.g. "payment", "charge_posting", "invoice". */
 	entityType: string;
 	/** UUID of the affected row. */
 	entityId?: string | null;
+	/** API endpoint that triggered this action. */
+	apiEndpoint?: string | null;
+	/** Correlation ID for tracing across services. */
+	correlationId?: string | null;
 	/** Defaults to FINANCIAL. */
 	category?: "FINANCIAL" | "SECURITY" | "DATA_ACCESS" | "CONFIGURATION";
 	/** Defaults to INFO. */

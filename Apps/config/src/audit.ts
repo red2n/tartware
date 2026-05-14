@@ -57,10 +57,14 @@ export interface AuditLogParams {
   tenantId: string;
   propertyId: string | null;
   actorId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  userRole: string | null;
   action: string;
   eventType: string;
   entityType: string;
   entityId: string | null;
+  apiEndpoint: string | null;
   metadata: Record<string, unknown>;
 }
 
@@ -69,12 +73,12 @@ export interface AuditLogParams {
  */
 export const INSERT_AUDIT_LOG_SQL = `
   INSERT INTO public.audit_logs (
-    tenant_id, property_id, user_id, action,
-    event_type, entity_type, entity_id, metadata,
+    tenant_id, property_id, user_id, user_name, user_email, user_role, action,
+    event_type, entity_type, entity_id, api_endpoint, metadata,
     audit_timestamp
   ) VALUES (
-    $1::uuid, $2::uuid, $3::uuid, $4,
-    $5, $6, $7, $8::jsonb,
+    $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7,
+    $8, $9, $10, $11, $12::jsonb,
     NOW()
   )
 `;
@@ -86,14 +90,23 @@ export const recordAuditLog = async (
   queryFn: (sql: string, params: unknown[]) => Promise<unknown>,
   params: AuditLogParams,
 ): Promise<void> => {
+  const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+  if (!params.tenantId || params.tenantId === NIL_UUID) {
+    return;
+  }
+
   await queryFn(INSERT_AUDIT_LOG_SQL, [
     params.tenantId,
     params.propertyId,
     params.actorId,
+    params.userName,
+    params.userEmail,
+    params.userRole,
     params.action,
     params.eventType,
     params.entityType,
     params.entityId,
+    params.apiEndpoint,
     JSON.stringify(params.metadata),
   ]);
 };

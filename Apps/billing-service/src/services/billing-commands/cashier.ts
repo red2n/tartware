@@ -3,12 +3,14 @@ import {
   openCashierSession as _openCashierSession,
 } from "@tartware/command-consumer-utils/cashier";
 import type { PoolClient } from "pg";
+
 import { query, queryWithClient } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   BillingCashierCloseCommandSchema,
   BillingCashierOpenCommandSchema,
 } from "../../schemas/billing-commands.js";
+
 import type { CommandContext } from "./common.js";
 
 /**

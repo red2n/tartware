@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { auditAsync } from "../../lib/audit-logger.js";
+import { auditAsync, createAuditEvent } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
@@ -19,6 +19,7 @@ import {
   ArPaymentApplyCommandSchema,
   ArPaymentUnapplyCommandSchema,
 } from "../../schemas/billing-commands.js";
+
 import {
   asUuid,
   BillingCommandError,
@@ -1043,16 +1044,14 @@ export const escalateArDispute = async (
   }
 
   appLogger.info({ disputeId: command.dispute_id }, "AR dispute escalated");
-  auditAsync({
-    tenantId,
-    propertyId: command.property_id,
-    userId: actorId,
+  auditAsync(await createAuditEvent(context, {
     action: "AR_DISPUTE_ESCALATE",
     entityType: "ar_dispute",
     entityId: command.dispute_id,
+    propertyId: command.property_id,
     severity: "WARNING",
     description: `Dispute ${command.dispute_id} escalated`,
     newValues: { escalation_notes: command.escalation_notes ?? null },
-  });
+  }));
   return command.dispute_id;
 };

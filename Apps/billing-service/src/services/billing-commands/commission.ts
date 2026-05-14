@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
@@ -8,6 +9,7 @@ import {
   CommissionMarkPaidCommandSchema,
   CommissionStatementGenerateCommandSchema,
 } from "../../schemas/billing-commands.js";
+
 import {
   asUuid,
   BillingCommandError,

@@ -13,11 +13,11 @@ export type {
   ReleaseRoomResponse,
   BulkReleaseRequest,
   BulkReleaseResponse,
-  HealthCheckRequest,
-  HealthCheckResponse,
-} from "./gen/availability-guard.js";
+  CheckRequest,
+  CheckResponse,
+} from "./gen/availabilityguard/v1/availability_guard.js";
 
 export {
   LockRoomResponse_Status,
-  HealthCheckResponse_ServingStatus,
-} from "./gen/availability-guard.js";
+  CheckResponse_ServingStatus,
+} from "./gen/availabilityguard/v1/availability_guard.js";

@@ -10,6 +10,7 @@
  * thresholds (handled by the aging handler itself downstream).
  */
 import { randomUUID } from "node:crypto";
+
 import { config } from "../../config.js";
 import { publishEvent } from "../../kafka/producer.js";
 import { appLogger } from "../../lib/logger.js";

@@ -57,6 +57,14 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  const tenantScopeFromBodyOrQuery = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.body as { tenant_id?: string })?.tenant_id ||
+      (request.query as { tenant_id?: string })?.tenant_id,
+    minRole: "VIEWER",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/rooms/grid",
     {
@@ -108,7 +116,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/rooms/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromBodyOrQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room updates to the rooms service.",
@@ -187,7 +195,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.put(
     "/v1/room-types/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type updates to the rooms service.",
@@ -203,7 +211,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.patch(
     "/v1/room-types/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type partial updates to the rooms service.",
@@ -219,7 +227,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.delete(
     "/v1/room-types/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromBodyOrQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room type deletion to the rooms service.",
@@ -267,7 +275,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/buildings",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy building creation to the rooms service.",
@@ -283,7 +291,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/buildings/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromBodyOrQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy building operations to the rooms service.",
@@ -316,7 +324,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/rates",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Create a new rate.",
@@ -332,7 +340,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/rates/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromBodyOrQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy rate operations to rooms service.",
@@ -364,7 +372,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.put(
     "/v1/rate-calendar",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Bulk upsert rate calendar day entries.",
@@ -380,7 +388,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/rate-calendar/range-fill",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantWriteScopeFromBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Fill a date range with a uniform rate.",

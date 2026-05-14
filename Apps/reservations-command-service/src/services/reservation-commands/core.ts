@@ -43,6 +43,7 @@ import { calculateCancellationFee } from "../cancellation-fee-service.js";
 
 import {
   buildReservationUpdatePayload,
+  type CommandOptions,
   type CreateReservationResult,
   DEFAULT_CURRENCY,
   enqueueReservationUpdate,
@@ -59,7 +60,7 @@ import {
 export const createReservation = async (
   tenantId: string,
   command: ReservationCreateCommand,
-  options: { correlationId?: string } = {},
+  options: CommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const stayStart = new Date(command.check_in_date);
@@ -207,7 +208,7 @@ export const createReservation = async (
       await recordAuditLog({
         tenantId,
         propertyId: command.property_id,
-        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        actorId: options.actorId ?? SYSTEM_ACTOR_ID,
         action: "reservation.create",
         eventType: "CREATE",
         entityType: "reservation",
@@ -294,7 +295,7 @@ export const createReservation = async (
 export const modifyReservation = async (
   tenantId: string,
   command: ReservationModifyCommand,
-  options: { correlationId?: string } = {},
+  options: CommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const snapshot: ReservationStaySnapshot | null = await fetchReservationStaySnapshot(
     tenantId,
@@ -426,7 +427,7 @@ export const modifyReservation = async (
       await recordAuditLog({
         tenantId,
         propertyId: targetPropertyId,
-        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        actorId: options.actorId ?? SYSTEM_ACTOR_ID,
         action: "reservation.modify",
         eventType: "UPDATE",
         entityType: "reservation",
@@ -635,7 +636,7 @@ export const markNoShow = async (
 export const batchNoShowSweep = async (
   tenantId: string,
   command: ReservationBatchNoShowCommand,
-  options: { correlationId?: string } = {},
+  options: CommandOptions = {},
 ): Promise<{ processed: string[]; failed: string[]; skipped: number }> => {
   const businessDate = command.business_date ?? new Date();
 
@@ -717,7 +718,7 @@ export const batchNoShowSweep = async (
 export const cancelReservation = async (
   tenantId: string,
   command: ReservationCancelCommand,
-  options: { correlationId?: string } = {},
+  options: CommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const now = new Date();
@@ -833,7 +834,7 @@ export const cancelReservation = async (
     await recordAuditLog({
       tenantId,
       propertyId: reservation.property_id,
-      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      actorId: options.actorId ?? SYSTEM_ACTOR_ID,
       action: "reservation.cancel",
       eventType: "UPDATE",
       entityType: "reservation",
@@ -928,9 +929,9 @@ export const cancelReservation = async (
 export const walkGuest = async (
   tenantId: string,
   command: ReservationWalkGuestCommand,
-  options: { correlationId?: string } = {},
+  options: CommandOptions = {},
 ): Promise<CreateReservationResult> => {
-  const actorId = SYSTEM_ACTOR_ID;
+  const actorId = options.actorId ?? SYSTEM_ACTOR_ID;
   const eventId = uuid();
   const now = new Date();
 
@@ -1054,7 +1055,7 @@ export const walkGuest = async (
     await recordAuditLog({
       tenantId,
       propertyId: reservation.property_id,
-      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      actorId: options.actorId ?? SYSTEM_ACTOR_ID,
       action: "reservation.walk_guest",
       eventType: "UPDATE",
       entityType: "reservation",

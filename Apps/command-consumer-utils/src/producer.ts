@@ -1,9 +1,11 @@
+import { createPinoLogCreator, type KafkaLogger } from "@tartware/telemetry";
 import { Kafka, logLevel as KafkaLogLevel, type Producer, type RecordMetadata } from "kafkajs";
 
 export type KafkaClientConfig = {
   clientId: string;
   brokers: string[];
   logLevel?: "NOTHING" | "WARN" | "ERROR" | "INFO" | "DEBUG";
+  logger?: KafkaLogger;
 };
 
 export type KafkaProducerConfig = {
@@ -27,6 +29,11 @@ export const createKafkaClient = (config: KafkaClientConfig): Kafka =>
     clientId: config.clientId,
     brokers: config.brokers,
     logLevel: LOG_LEVEL_MAP[config.logLevel ?? "NOTHING"] ?? KafkaLogLevel.NOTHING,
+    logCreator: config.logger ? createPinoLogCreator(config.logger) : undefined,
+    retry: {
+      initialRetryTime: 300,
+      retries: 10,
+    },
   });
 
 export type KafkaEventMessage = {

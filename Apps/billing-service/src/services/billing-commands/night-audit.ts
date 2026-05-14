@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
+
 import type { NightAuditCheckpointStatus } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.js";
+
 import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
 import { buildGlBatchForDate } from "./ledger.js";
 
@@ -621,9 +623,9 @@ export const executeNightAudit = async (
       const { rows: staleTentatives } = await query<{ id: string; version: number }>(
         `SELECT id, version FROM reservations
          WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-           AND status = 'TENTATIVE'
-           AND deposit_due_date IS NOT NULL
-           AND deposit_due_date < $3::date
+           AND status = 'PENDING'
+           AND quote_expires_at IS NOT NULL
+           AND quote_expires_at < $3::date
            AND is_deleted = false`,
         [context.tenantId, command.property_id, auditDate],
       );
@@ -634,7 +636,7 @@ export const executeNightAudit = async (
                cancellation_reason = 'AUTO_DEPOSIT_DEADLINE',
                cancelled_at = NOW(),
                version = version + 1, updated_at = NOW()
-           WHERE id = $1::uuid AND tenant_id = $2::uuid AND status = 'TENTATIVE' AND version = $3`,
+           WHERE id = $1::uuid AND tenant_id = $2::uuid AND status = 'PENDING' AND version = $3`,
           [row.id, context.tenantId, row.version],
         );
       }
@@ -642,7 +644,7 @@ export const executeNightAudit = async (
       if (tentativesCancelled > 0) {
         appLogger.info(
           { tentativesCancelled, auditDate, auditRunId },
-          "Night audit: auto-cancelled TENTATIVE reservations past deposit deadline",
+          "Night audit: auto-cancelled PENDING reservations past deposit deadline",
         );
       }
     } catch (cancelErr) {
