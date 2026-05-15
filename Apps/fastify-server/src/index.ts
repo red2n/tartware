@@ -143,10 +143,19 @@ const defaultErrorHandler = (
 	request: FastifyRequest,
 	reply: FastifyReply,
 ): void => {
-	request.log.error(
-		{ err: error, method: request.method, url: request.url },
-		error.message,
-	);
+	// Log 4xx at warn (expected client errors), 5xx at error (unexpected server errors)
+	const statusCode = error.statusCode ?? 500;
+	if (statusCode >= 500) {
+		request.log.error(
+			{ err: error, method: request.method, url: request.url },
+			error.message,
+		);
+	} else {
+		request.log.warn(
+			{ err: error, method: request.method, url: request.url },
+			error.message,
+		);
+	}
 
 	const instance = request.url;
 
@@ -209,7 +218,6 @@ const defaultErrorHandler = (
 	}
 
 	// Unexpected 500 errors — hide details in production
-	const statusCode = error.statusCode ?? 500;
 	reply
 		.status(statusCode)
 		.header("content-type", PROBLEM_JSON)

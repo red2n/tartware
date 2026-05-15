@@ -59,10 +59,11 @@ CREATE TABLE audit_logs (
     -- Request Context
     ip_address INET,
     user_agent TEXT,
-    request_id VARCHAR(100), -- Correlation ID for tracing
+    request_id VARCHAR(100),    -- Per-request UUID (Fastify X-Request-Id)
+    correlation_id VARCHAR(100), -- Distributed trace ID linking gateway + domain events (X-Correlation-Id or request_id)
     session_id VARCHAR(100),
-    api_endpoint VARCHAR(500), -- API endpoint called
-    http_method VARCHAR(10), -- GET, POST, PUT, DELETE
+    api_endpoint VARCHAR(500),  -- Actual request path (e.g. /v1/billing/folios/abc123)
+    http_method VARCHAR(10),    -- GET, POST, PUT, DELETE
 
     -- Geographic Information
     country_code CHAR(2),

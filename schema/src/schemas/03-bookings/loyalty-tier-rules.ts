@@ -23,7 +23,7 @@
 
 import { z } from "zod";
 
-import { money, uuid } from "../../shared/base-schemas.js";
+import { uuid } from "../../shared/base-schemas.js";
 
 export const LoyaltyTierRulesSchema = z.object({
 	// Primary Key
@@ -46,16 +46,18 @@ export const LoyaltyTierRulesSchema = z.object({
 	display_name: z.string().optional(),
 
 	// Qualification Thresholds
-	min_nights: z.number().int().optional(),
-	min_stays: z.number().int().optional(),
-	min_points: z.number().int().optional(),
-	min_spend: money.optional(),
-	qualification_period_months: z.number().int().optional(),
+	min_nights: z.coerce.number().int().optional(),
+	min_stays: z.coerce.number().int().optional(),
+	min_points: z.coerce.number().int().optional(),
+	// min_spend is NUMERIC in PostgreSQL — pg returns it as string; coerce to number
+	min_spend: z.coerce.number().nonnegative().optional(),
+	qualification_period_months: z.coerce.number().int().optional(),
 
 	// Earning & Multipliers
-	points_per_dollar: z.number().optional(),
-	bonus_multiplier: z.number().optional(),
-	points_expiry_months: z.number().int().optional(),
+	// points_per_dollar and bonus_multiplier are NUMERIC — coerce from pg string
+	points_per_dollar: z.coerce.number().nonnegative().optional(),
+	bonus_multiplier: z.coerce.number().nonnegative().optional(),
+	points_expiry_months: z.coerce.number().int().optional(),
 
 	// Category-specific earning rates (MG-3)
 	category_earning_rates: z

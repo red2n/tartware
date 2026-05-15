@@ -486,13 +486,17 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date, limit, offset } =
+      const { tenant_id, property_id, start_date, end_date, business_date, limit, offset } =
         DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (start_date ?? business_date) as string;
+      const effectiveEnd = (end_date ?? business_date ?? effectiveStart) as string;
+
       return getNoShowReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
         limit,
         offset,
       });
@@ -516,13 +520,17 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date, limit, offset } =
+      const { tenant_id, property_id, start_date, end_date, business_date, limit, offset } =
         DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (start_date ?? business_date) as string;
+      const effectiveEnd = (end_date ?? business_date ?? effectiveStart) as string;
+
       return getVipArrivalsReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
         limit,
         offset,
       });
@@ -573,14 +581,17 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
-        request.query,
-      );
+      const { tenant_id, property_id, start_date, end_date, business_date } =
+        DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (start_date ?? business_date) as string;
+      const effectiveEnd = (end_date ?? business_date ?? effectiveStart) as string;
+
       return getMarketSegmentProductionReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
       });
     },
   );
@@ -639,14 +650,17 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
-        request.query,
-      );
+      const { tenant_id, property_id, start_date, end_date, business_date } =
+        DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (start_date ?? business_date) as string;
+      const effectiveEnd = (end_date ?? business_date ?? effectiveStart) as string;
+
       return getMaintenanceSlaReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
       });
     },
   );

@@ -147,8 +147,8 @@ export const submitCommand = async ({
       ? {
           userId: request.auth.userId,
           role: membership.role,
-          userName: (request.auth as { name?: string }).name ?? null,
-          userEmail: (request.auth as { email?: string }).email ?? null,
+          userName: request.auth.userName ?? null,
+          userEmail: request.auth.userEmail ?? null,
         }
       : null;
 

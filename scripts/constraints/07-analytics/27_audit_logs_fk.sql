@@ -23,15 +23,17 @@ ALTER TABLE audit_logs
 
 COMMENT ON CONSTRAINT fk_audit_logs_tenant ON audit_logs IS 'Audit logs belong to a tenant';
 
--- Property reference (optional - may be tenant-level actions)
+-- Property reference (optional, composite FK to prevent cross-tenant references)
+-- DEFERRABLE INITIALLY DEFERRED: audit inserts must not fail due to property FK timing
+-- (e.g. requests arriving before properties are seeded, or async event writes)
 ALTER TABLE audit_logs
-    ADD CONSTRAINT fk_audit_logs_property
-    FOREIGN KEY (property_id)
-    REFERENCES properties(id)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE;
+    ADD CONSTRAINT fk_audit_logs_tenant_property_id
+    FOREIGN KEY (tenant_id, property_id)
+    REFERENCES properties(tenant_id, id)
+    ON DELETE CASCADE
+    DEFERRABLE INITIALLY DEFERRED;
 
-COMMENT ON CONSTRAINT fk_audit_logs_property ON audit_logs IS 'Audit logs may be property-specific';
+COMMENT ON CONSTRAINT fk_audit_logs_tenant_property_id ON audit_logs IS 'Audit logs may be property-specific; deferred to allow async write paths';
 
 -- User reference (required - who performed the action)
 -- Note: SET NULL to preserve audit trail if user is deleted
