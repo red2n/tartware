@@ -73,6 +73,7 @@ export const coreAuthSchema = z.object({
   AUTH_JWT_ISSUER: z.string().default("tartware-core-service"),
   AUTH_JWT_AUDIENCE: z.string().optional(),
   AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(3600),
+  AUTH_REFRESH_TOKEN_EXPIRES_IN_SECONDS: z.coerce.number().int().default(2_592_000), // 30 days
   AUTH_DEFAULT_PASSWORD: z.string().min(8),
   SYSTEM_ADMIN_JWT_SECRET: z.string().min(32).optional(),
   SYSTEM_ADMIN_JWT_ISSUER: z.string().optional(),

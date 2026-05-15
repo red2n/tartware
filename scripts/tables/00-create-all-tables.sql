@@ -41,6 +41,7 @@
 \ir 01-core/21_role_screen_permissions.sql
 \ir 01-core/22_role_screen_permissions_seed.sql
 \ir 01-core/23_flow_approvals.sql
+\ir 01-core/24_refresh_tokens.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)

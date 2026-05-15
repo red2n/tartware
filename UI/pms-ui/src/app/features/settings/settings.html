@@ -1,8 +1,11 @@
-<div class="settings-page">
+<div class="settings-page content-area">
   <app-page-header title="Settings" description="Property configuration, user preferences, and system setup">
-    <button class="btn btn-invisible" (click)="loadCategories()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh settings' | translate">
-      <app-icon name="refresh" />
-    </button>
+    <div class="page-actions">
+      <button class="btn btn-outline" (click)="loadCategories()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh settings' | translate">
+        <app-icon name="refresh" />
+        {{ 'Sync' | translate }}
+      </button>
+    </div>
   </app-page-header>
 
   @if (loadingCategories()) {

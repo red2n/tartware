@@ -67,6 +67,7 @@ export const LoginResponseSchema = PublicUserSchema.pick({
 }).extend({
 	memberships: z.array(AuthMembershipSchema),
 	access_token: z.string(),
+	refresh_token: z.string(),
 	token_type: z.literal("Bearer"),
 	expires_in: z.number().positive(),
 	must_change_password: z.boolean(),
@@ -74,9 +75,10 @@ export const LoginResponseSchema = PublicUserSchema.pick({
 
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
 
-/** Response for token refresh — returns only the new access token and expiry. */
+/** Response for token refresh — returns new tokens and expiry. */
 export const TokenRefreshResponseSchema = z.object({
 	access_token: z.string(),
+	refresh_token: z.string(),
 	token_type: z.literal("Bearer"),
 	expires_in: z.number().positive(),
 });

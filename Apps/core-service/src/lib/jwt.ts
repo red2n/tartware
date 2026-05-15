@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import type { SystemAdminRole } from "@tartware/schemas";
 import jwt from "jsonwebtoken";
 
@@ -5,12 +7,15 @@ import { config } from "../config.js";
 
 import { appLogger } from "./logger.js";
 
+// ---------------------------------------------------------------------------
+// Access token — carries ONLY routing/identity claims (no PII).
+// sub  = user UUID
+// type = "access"
+// Standard claims (iss, aud, iat, exp) are added by jsonwebtoken.
+// ---------------------------------------------------------------------------
+
 interface BaseAccessTokenPayload {
   sub: string;
-  username: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
   type: "access";
 }
 
@@ -63,6 +68,11 @@ export const extractBearerToken = (headerValue: string | undefined): string | nu
   return token.trim().length > 0 ? token.trim() : null;
 };
 
+/**
+ * Sign an access token containing only non-PII routing claims.
+ * Profile data (name, email) is returned in the login response body and
+ * must NOT be embedded here — JWTs are base64, not encrypted.
+ */
 export const signAccessToken = (payload: BaseAccessTokenPayload): string => {
   const secret = getJwtSecret();
   if (!secret) {
@@ -130,6 +140,21 @@ export const verifyAccessTokenWithGrace = (
     return null;
   }
 };
+
+// ---------------------------------------------------------------------------
+// Opaque refresh tokens — stored in the database, never in JWTs.
+// The raw token is returned to the client; only its SHA-256 hash is persisted.
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a cryptographically random opaque refresh token (32 bytes → 64 hex chars).
+ * The caller is responsible for hashing and storing the token.
+ */
+export const generateRefreshToken = (): string => randomBytes(32).toString("hex");
+
+// ---------------------------------------------------------------------------
+// System-admin tokens (separate secret, wider scope)
+// ---------------------------------------------------------------------------
 
 const getSystemAdminJwtOptions = () => {
   const options: jwt.SignOptions & jwt.VerifyOptions = {

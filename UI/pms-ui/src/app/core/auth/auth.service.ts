@@ -91,6 +91,7 @@ export class AuthService implements OnDestroy {
 		};
 
 		localStorage.setItem("access_token", response.access_token);
+		localStorage.setItem("refresh_token", response.refresh_token);
 		localStorage.setItem("user_info", JSON.stringify(userInfo));
 		this._user.set(userInfo);
 
@@ -114,6 +115,7 @@ export class AuthService implements OnDestroy {
 		this.clearRefreshTimer();
 		this.clearHealthCheck();
 		localStorage.removeItem("access_token");
+		localStorage.removeItem("refresh_token");
 		localStorage.removeItem("tenant_id");
 		localStorage.removeItem("user_info");
 		localStorage.removeItem("memberships");
@@ -267,21 +269,22 @@ export class AuthService implements OnDestroy {
 	}
 
 	/**
-	 * Attempt to refresh the access token with retry + exponential backoff.
+	 * Attempt to refresh the session by exchanging the stored opaque refresh token
+	 * for a new access token + rotated refresh token.
 	 *
-	 * Only force-logs out on definitive auth failures (401/403).
-	 * Transient errors (network, 5xx) are retried up to REFRESH_MAX_RETRIES
-	 * before giving up. After all retries, checks if the current token is
-	 * still within the grace window — if so, schedules another attempt later
-	 * rather than force-logging out.
+	 * Only force-logs out on definitive auth failures (401/403) or when no
+	 * refresh token exists in storage. Transient errors (network, 5xx) are
+	 * retried up to REFRESH_MAX_RETRIES with exponential backoff.
 	 */
 	private async refreshToken(): Promise<void> {
 		if (this.isRefreshing) return;
 		this.isRefreshing = true;
 
 		try {
-			const token = localStorage.getItem("access_token");
-			if (!token) {
+			const storedRefreshToken = localStorage.getItem("refresh_token");
+			if (!storedRefreshToken) {
+				// No refresh token — cannot refresh, must re-login.
+				console.warn("[auth] no refresh_token in storage, forcing logout");
 				this.ngZone.run(() => this.forceLogout());
 				return;
 			}
@@ -298,9 +301,12 @@ export class AuthService implements OnDestroy {
 					const response = await fetch("/v1/auth/refresh", {
 						method: "POST",
 						headers: {
-							Authorization: `Bearer ${localStorage.getItem("access_token") ?? token}`,
+							"Content-Type": "application/json",
 							"Idempotency-Key": generateUUID(),
 						},
+						// Send the opaque refresh token in the body.
+						// The server validates it against its DB hash.
+						body: JSON.stringify({ refresh_token: localStorage.getItem("refresh_token") ?? storedRefreshToken }),
 					});
 
 					lastStatus = response.status;
@@ -308,6 +314,8 @@ export class AuthService implements OnDestroy {
 					if (response.ok) {
 						const data: TokenRefreshResponse = await response.json();
 						localStorage.setItem("access_token", data.access_token);
+						// Store the rotated refresh token returned by the server.
+						localStorage.setItem("refresh_token", data.refresh_token);
 						this.consecutiveRefreshFailures = 0;
 						this.scheduleTokenRefresh(data.access_token);
 						return;
@@ -332,30 +340,21 @@ export class AuthService implements OnDestroy {
 				}
 			}
 
-			// All retries exhausted — check if we still have a usable token
+			// All retries exhausted.
 			this.consecutiveRefreshFailures++;
 			const currentToken = localStorage.getItem("access_token");
 			if (currentToken && !this.isTokenExpired(currentToken)) {
-				// Token is still valid — reschedule and try again later
-				console.warn("[auth] refresh failed but token still valid, rescheduling");
+				// Access token still valid (unlikely if we got here, but safe) — reschedule.
+				console.warn("[auth] refresh failed but access token still valid, rescheduling");
 				this.scheduleTokenRefresh(currentToken);
 				return;
 			}
 
-			if (currentToken && this.isWithinRefreshGrace(currentToken)) {
-				// Token expired but within grace — schedule a retry in 30s
-				console.warn("[auth] token expired, within grace — retrying in 30s");
-				this.ngZone.runOutsideAngular(() => {
-					this.refreshTimerId = setTimeout(() => this.refreshToken(), 30_000);
-				});
-				return;
-			}
-
-			// Token fully expired beyond grace, all retries failed
+			// The refresh token is no longer accepted by the server — force logout.
 			console.warn(
-				"[auth] token expired beyond grace after",
+				"[auth] refresh token exhausted after",
 				REFRESH_MAX_RETRIES + 1,
-				"attempts, status:",
+				"attempts, last status:",
 				lastStatus,
 			);
 			this.ngZone.run(() => this.forceLogout());

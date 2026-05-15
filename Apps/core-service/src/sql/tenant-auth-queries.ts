@@ -56,3 +56,49 @@ export const TENANT_AUTH_UPDATE_MFA_SQL = `
      AND deleted_at IS NULL
      AND COALESCE(is_deleted, false) = false;
 `;
+
+// ---------------------------------------------------------------------------
+// Refresh token queries
+// ---------------------------------------------------------------------------
+
+/** Insert a new refresh token for a user. $1=user_id $2=token_hash $3=expires_at $4=ip $5=user_agent */
+export const INSERT_REFRESH_TOKEN_SQL = `
+  INSERT INTO refresh_tokens (user_id, token_hash, expires_at, created_by_ip, user_agent)
+  VALUES ($1, $2, $3, $4, $5)
+  RETURNING id;
+`;
+
+/**
+ * Look up a valid (non-expired, non-revoked) refresh token by its hash.
+ * Returns the row so the service can issue a new access token.
+ */
+export const FIND_REFRESH_TOKEN_SQL = `
+  SELECT id, user_id, expires_at
+    FROM refresh_tokens
+   WHERE token_hash = $1
+     AND revoked_at IS NULL
+     AND expires_at > NOW()
+   LIMIT 1;
+`;
+
+/** Revoke a single refresh token by its database id (used during rotation). */
+export const REVOKE_REFRESH_TOKEN_SQL = `
+  UPDATE refresh_tokens
+     SET revoked_at = NOW()
+   WHERE id = $1;
+`;
+
+/** Revoke ALL active refresh tokens for a user (used on password change / logout). */
+export const REVOKE_USER_REFRESH_TOKENS_SQL = `
+  UPDATE refresh_tokens
+     SET revoked_at = NOW()
+   WHERE user_id = $1
+     AND revoked_at IS NULL;
+`;
+
+/** Purge expired + revoked tokens older than 7 days (for scheduled maintenance). */
+export const PURGE_STALE_REFRESH_TOKENS_SQL = `
+  DELETE FROM refresh_tokens
+   WHERE (expires_at < NOW() OR revoked_at IS NOT NULL)
+     AND created_at < NOW() - INTERVAL '7 days';
+`;

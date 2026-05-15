@@ -130,6 +130,9 @@ export const config = {
       audience: configValues.AUTH_JWT_AUDIENCE,
       expiresInSeconds: configValues.AUTH_JWT_EXPIRES_IN_SECONDS,
     },
+    refreshToken: {
+      expiresInSeconds: configValues.AUTH_REFRESH_TOKEN_EXPIRES_IN_SECONDS,
+    },
     defaultPassword: configValues.AUTH_DEFAULT_PASSWORD,
   },
   systemAdmin: {

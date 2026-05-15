@@ -13,11 +13,16 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { authenticator } from "otplib";
+import { z } from "zod";
 
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
-import { extractBearerToken, signAccessToken, verifyAccessTokenWithGrace } from "../lib/jwt.js";
-import { authenticateUser, changeUserPassword } from "../services/auth-service.js";
+import { extractBearerToken } from "../lib/jwt.js";
+import {
+  authenticateUser,
+  changeUserPassword,
+  refreshAccessToken,
+} from "../services/auth-service.js";
 import {
   TENANT_AUTH_MFA_PROFILE_SQL,
   TENANT_AUTH_UPDATE_MFA_SQL,
@@ -30,6 +35,10 @@ const AppChangePasswordRequestSchema = ChangePasswordRequestSchema.refine(
   { message: "New password cannot be the default password." },
 );
 
+const RefreshRequestSchema = z.object({
+  refresh_token: z.string().min(1, "refresh_token is required"),
+});
+
 const AUTH_TAG = "Auth";
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -40,6 +49,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   MFA_REQUIRED: "Multi-factor authentication code required.",
   MFA_INVALID: "Invalid multi-factor authentication code.",
   MFA_NOT_ENROLLED: "MFA enrollment required before accessing tenant resources.",
+  INVALID_REFRESH_TOKEN: "Refresh token is invalid or has expired.",
 };
 
 const AUTH_ERROR_STATUS: Record<string, number> = {
@@ -50,6 +60,7 @@ const AUTH_ERROR_STATUS: Record<string, number> = {
   MFA_REQUIRED: 401,
   MFA_INVALID: 401,
   MFA_NOT_ENROLLED: 403,
+  INVALID_REFRESH_TOKEN: 401,
 };
 
 const LoginRequestJsonSchema = schemaFromZod(LoginRequestSchema, "AuthLoginRequest");
@@ -70,6 +81,7 @@ const TokenRefreshResponseJsonSchema = schemaFromZod(
   TokenRefreshResponseSchema,
   "TokenRefreshResponse",
 );
+const RefreshRequestJsonSchema = schemaFromZod(RefreshRequestSchema, "AuthRefreshRequest");
 
 type TenantMfaProfile = {
   id: string;
@@ -88,13 +100,19 @@ const loadTenantMfaProfile = async (userId: string): Promise<TenantMfaProfile | 
 const buildOtpAuthUrl = (username: string, secret: string): string =>
   authenticator.keyuri(username, config.tenantAuth.security.mfa.issuer, secret);
 
+const clientIp = (request: { ip?: string }): string | undefined => request.ip;
+const userAgent = (request: { headers: Record<string, string | string[] | undefined> }): string | undefined =>
+  Array.isArray(request.headers["user-agent"])
+    ? request.headers["user-agent"][0]
+    : (request.headers["user-agent"] as string | undefined);
+
 export const registerAuthRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/auth/login",
     {
       schema: buildRouteSchema({
         tag: AUTH_TAG,
-        summary: "Authenticate a user and return a JWT",
+        summary: "Authenticate a user and return a JWT access token and opaque refresh token",
         body: LoginRequestJsonSchema,
         response: {
           200: LoginResponseJsonSchema,
@@ -108,7 +126,13 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const { username, password, mfa_code } = LoginRequestSchema.parse(request.body);
 
-      const result = await authenticateUser({ username, password, mfaCode: mfa_code });
+      const result = await authenticateUser({
+        username,
+        password,
+        mfaCode: mfa_code,
+        clientIp: clientIp(request),
+        userAgent: userAgent(request),
+      });
 
       if (!result.ok) {
         const statusCode = AUTH_ERROR_STATUS[result.reason] ?? 401;
@@ -133,7 +157,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
           });
       }
 
-      const { user, memberships, accessToken, expiresIn } = result.data;
+      const { user, memberships, accessToken, refreshToken, expiresIn } = result.data;
 
       const responsePayload = sanitizeForJson({
         id: user.id,
@@ -144,6 +168,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
         is_active: user.is_active,
         memberships,
         access_token: accessToken,
+        refresh_token: refreshToken,
         token_type: "Bearer",
         expires_in: expiresIn,
         must_change_password: result.data.mustChangePassword,
@@ -211,7 +236,13 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
 
       const { current_password, new_password } = ChangePasswordRequestSchema.parse(request.body);
 
-      const result = await changeUserPassword(request.auth.userId, current_password, new_password);
+      const result = await changeUserPassword(
+        request.auth.userId,
+        current_password,
+        new_password,
+        clientIp(request),
+        userAgent(request),
+      );
 
       if (!result.ok) {
         if (result.reason === "ACCOUNT_INACTIVE") {
@@ -226,7 +257,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
         return reply.badRequest(message);
       }
 
-      const { user, memberships, accessToken, expiresIn } = result.data;
+      const { user, memberships, accessToken, refreshToken, expiresIn } = result.data;
       const payload = sanitizeForJson({
         id: user.id,
         email: user.email,
@@ -236,6 +267,7 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
         is_active: user.is_active,
         memberships,
         access_token: accessToken,
+        refresh_token: refreshToken,
         token_type: "Bearer",
         expires_in: expiresIn,
         must_change_password: false,
@@ -401,9 +433,11 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/auth/refresh",
     {
+      config: { skipAuth: true },
       schema: buildRouteSchema({
         tag: AUTH_TAG,
-        summary: "Refresh an access token before it expires",
+        summary: "Exchange a refresh token for a new access token + rotated refresh token",
+        body: RefreshRequestJsonSchema,
         response: {
           200: TokenRefreshResponseJsonSchema,
           401: errorResponseSchema,
@@ -411,27 +445,50 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request, reply) => {
-      const token = extractBearerToken(request.headers.authorization);
-      // Allow tokens expired up to 10 minutes ago so browser timer throttling
-      // and backgrounded tabs don't force logout on returning users.
-      const REFRESH_GRACE_SECONDS = 600;
-      const payload = token ? verifyAccessTokenWithGrace(token, REFRESH_GRACE_SECONDS) : null;
+      // Also accept a Bearer token for backwards-compat with clients still on the old flow,
+      // but the canonical path is body { refresh_token }.
+      let rawToken: string | null = null;
 
-      if (!payload?.sub) {
-        reply.unauthorized("You must be logged in to refresh your token.");
+      const body = request.body as { refresh_token?: string } | null;
+      if (body?.refresh_token) {
+        rawToken = body.refresh_token;
+      } else {
+        // Fallback: treat the Authorization Bearer value as a legacy refresh token.
+        rawToken = extractBearerToken(request.headers.authorization);
+      }
+
+      if (!rawToken) {
+        reply.unauthorized("refresh_token is required.");
         return reply;
       }
 
-      const accessToken = signAccessToken({
-        sub: payload.sub,
-        username: payload.username ?? "",
-        type: "access",
-      });
+      const result = await refreshAccessToken(
+        rawToken,
+        clientIp(request),
+        userAgent(request),
+      );
+
+      if (!result.ok) {
+        const statusCode = AUTH_ERROR_STATUS[result.reason] ?? 401;
+        const errorMessage = AUTH_ERROR_MESSAGES[result.reason] ?? result.reason;
+        return reply
+          .status(statusCode)
+          .header("content-type", "application/problem+json")
+          .send({
+            type: "about:blank",
+            title: STATUS_CODES[statusCode] ?? "Error",
+            status: statusCode,
+            detail: errorMessage,
+            instance: request.url,
+            code: result.reason,
+          });
+      }
 
       return TokenRefreshResponseSchema.parse({
-        access_token: accessToken,
+        access_token: result.data.accessToken,
+        refresh_token: result.data.refreshToken,
         token_type: "Bearer",
-        expires_in: config.auth.jwt.expiresInSeconds,
+        expires_in: result.data.expiresIn,
       });
     },
   );
