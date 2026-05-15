@@ -74,6 +74,11 @@
                 <app-icon name="skip_next" />
                 {{ 'Advance Date' | translate }}
               </button>
+              <button class="btn btn-outline btn-sm" (click)="processNoShows()" [disabled]="processingNoShows()" [pTooltip]="'Bulk process cancellation fees for unarrived guests' | translate">
+                @if (processingNoShows()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
+                <app-icon name="person_off" />
+                {{ 'Process No-Shows' | translate }}
+              </button>
             </div>
           }
         }

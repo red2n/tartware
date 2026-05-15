@@ -258,12 +258,10 @@ export const routes: Routes = [
 					import("./features/webhooks/webhooks").then((m) => m.WebhooksComponent),
 			},
 			{
-				path: "screen-permissions",
-				canActivate: [screenGuard("users")],
+				path: "admin/bootstrap",
+				canActivate: [screenGuard("system_admin")],
 				loadComponent: () =>
-					import("./features/screen-permissions/screen-permissions").then(
-						(m) => m.ScreenPermissionsComponent,
-					),
+					import("./features/admin/bootstrap/bootstrap").then((m) => m.AdminBootstrapComponent),
 			},
 			{ path: "", redirectTo: "dashboard", pathMatch: "full" },
 		],

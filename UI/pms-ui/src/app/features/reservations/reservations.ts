@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import type { ReservationGridItem, ReservationGridResponse } from "@tartware/schemas";
+import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -14,6 +15,7 @@ import { reservationStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { ToastService } from "../../shared/toast/toast.service";
 import {
 	createSortState,
 	getAriaSort,
@@ -32,6 +34,7 @@ type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED"
 		FormsModule,
 		IconComponent,
 		TooltipModule,
+		ProgressSpinnerModule,
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -44,6 +47,7 @@ export class ReservationsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
+	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
@@ -52,6 +56,7 @@ export class ReservationsComponent {
 	readonly error = signal<string | null>(null);
 	readonly activeFilter = signal<StatusFilter>("ALL");
 	readonly currentPage = signal(1);
+	readonly processingExpress = signal(false);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
 	private readonly _resetPage = effect(() => {
@@ -218,5 +223,29 @@ export class ReservationsComponent {
 
 	openCreateReservation(): void {
 		this.router.navigate(["/reservations/new"]);
+	}
+
+	async expressCheckout(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		if (!tenantId || !propertyId) return;
+
+		const confirmed = window.confirm(
+			"This will automatically check out ALL in-house reservations with a zero balance departing today. Proceed?",
+		);
+		if (!confirmed) return;
+
+		this.processingExpress.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/commands/billing.express_checkout`, {
+				property_id: propertyId,
+			});
+			this.toast.success("Bulk express checkout initiated.");
+			await this.loadReservations();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Express checkout failed");
+		} finally {
+			this.processingExpress.set(false);
+		}
 	}
 }

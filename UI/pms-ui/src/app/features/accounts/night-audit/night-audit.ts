@@ -87,6 +87,9 @@ export class NightAuditComponent {
 	readonly confirmingDateRoll = signal(false);
 	readonly dateRollReason = signal("");
 
+	// ── Bulk No-Shows ──
+	readonly processingNoShows = signal(false);
+
 	// ── Trial Balance ──
 	readonly trialBalance = signal<TrialBalanceResponse | null>(null);
 	readonly dataReady = signal(false);
@@ -349,6 +352,27 @@ export class NightAuditComponent {
 			this.toast.error(e instanceof Error ? e.message : "Failed to advance date");
 		} finally {
 			this.dateRolling.set(false);
+		}
+	}
+
+	async processNoShows(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const propertyId = this.ctx.propertyId();
+		const s = this.businessDateStatus();
+		if (!tenantId || !propertyId || !s) return;
+
+		this.processingNoShows.set(true);
+		try {
+			await this.api.post(`/tenants/${tenantId}/commands/night_audit.process_no_shows`, {
+				property_id: propertyId,
+				business_date: s.business_date,
+			});
+			this.toast.success("Bulk no-show processing initiated.");
+			await this.loadBusinessDateStatus();
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to process no-shows");
+		} finally {
+			this.processingNoShows.set(false);
 		}
 	}
 

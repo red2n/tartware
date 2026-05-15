@@ -17,6 +17,10 @@
           {{ 'Check In Group' | translate }}
         </button>
       }
+      <button class="btn btn-outline btn-sm" (click)="showSetupBilling()" [disabled]="actionLoading()" [pTooltip]="'Configure master folio routing rules and billing contacts' | translate">
+        <app-icon name="payments" />
+        {{ 'Setup Billing' | translate }}
+      </button>
     </div>
   }
 </div>
@@ -58,6 +62,105 @@
         } @else {
           <app-icon name="login" />
           {{ 'Confirm Group Check-In' | translate }}
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Billing Setup Form -->
+@if (settingUpBilling()) {
+  <div class="action-confirm-card action-billing-card">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon confirm-icon-billing" name="payments" />
+      <h3 class="confirm-title">{{ 'Setup Group Billing' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-section">
+        <h4>{{ 'Billing Contact' | translate }}</h4>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>{{ 'Contact Name' | translate }}</label>
+            <input type="text" class="field-input" [ngModel]="billingForm().billing_contact_name" (ngModelChange)="updateBillingForm({ billing_contact_name: $event })" />
+          </div>
+          <div class="form-field">
+            <label>{{ 'Email' | translate }}</label>
+            <input type="email" class="field-input" [ngModel]="billingForm().billing_contact_email" (ngModelChange)="updateBillingForm({ billing_contact_email: $event })" />
+          </div>
+          <div class="form-field">
+            <label>{{ 'Phone' | translate }}</label>
+            <input type="tel" class="field-input" [ngModel]="billingForm().billing_contact_phone" (ngModelChange)="updateBillingForm({ billing_contact_phone: $event })" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>{{ 'Payment & Tax' | translate }}</h4>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>{{ 'Payment Method' | translate }}</label>
+            <select class="field-input" [ngModel]="billingForm().payment_method" (ngModelChange)="updateBillingForm({ payment_method: $event })">
+              @for (opt of paymentMethodOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label | translate }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field checkbox-field">
+            <label class="checkbox-label">
+              <input type="checkbox" [ngModel]="billingForm().tax_exempt" (ngModelChange)="updateBillingForm({ tax_exempt: $event })" />
+              {{ 'Tax Exempt' | translate }}
+            </label>
+          </div>
+          @if (billingForm().tax_exempt) {
+            <div class="form-field">
+              <label>{{ 'Tax ID / Exemption #' | translate }}</label>
+              <input type="text" class="field-input" [ngModel]="billingForm().tax_id" (ngModelChange)="updateBillingForm({ tax_id: $event })" />
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-header">
+          <h4>{{ 'Charge Routing Rules' | translate }}</h4>
+          <button class="btn btn-invisible btn-xs" (click)="addRoutingRule()">
+            <app-icon name="add" /> {{ 'Add Rule' | translate }}
+          </button>
+        </div>
+        @if (billingForm().routing_rules.length === 0) {
+          <p class="text-subtle small">{{ 'All charges will remain on individual guest folios.' | translate }}</p>
+        } @else {
+          <div class="routing-rule-list">
+            @for (rule of billingForm().routing_rules; track $index) {
+              <div class="routing-rule-row">
+                <select class="field-input field-sm" [(ngModel)]="rule.charge_type">
+                  @for (opt of chargeTypeOptions; track opt.value) {
+                    <option [value]="opt.value">{{ opt.label | translate }}</option>
+                  }
+                </select>
+                <span class="routing-arrow">→</span>
+                <select class="field-input field-sm" [(ngModel)]="rule.target">
+                  <option value="master">{{ 'Master Folio' | translate }}</option>
+                  <option value="individual">{{ 'Individual Folio' | translate }}</option>
+                </select>
+                <button class="btn btn-invisible btn-xs text-danger" (click)="removeRoutingRule($index)">
+                  <app-icon name="delete" />
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelSetupBilling()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="setupBilling()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+          {{ 'Setting up...' | translate }}
+        } @else {
+          <app-icon name="payments" />
+          {{ 'Save Billing Setup' | translate }}
         }
       </button>
     </div>

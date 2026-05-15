@@ -53,6 +53,35 @@ export class GroupDetailComponent implements OnInit {
 	readonly confirmingCheckIn = signal(false);
 	readonly preferredFloor = signal<number | null>(null);
 
+	/* ── Billing setup state ── */
+	readonly settingUpBilling = signal(false);
+	readonly billingForm = signal({
+		payment_method: "direct_bill",
+		billing_contact_name: "",
+		billing_contact_email: "",
+		billing_contact_phone: "",
+		tax_exempt: false,
+		tax_id: "",
+		routing_rules: [] as { charge_type: string; target: "master" | "individual" }[],
+	});
+
+	readonly paymentMethodOptions = [
+		{ label: "Direct Bill", value: "direct_bill" },
+		{ label: "Credit Card", value: "credit_card" },
+		{ label: "Deposit", value: "deposit" },
+		{ label: "Prepaid", value: "prepaid" },
+		{ label: "Individual Pay", value: "individual_pay" },
+		{ label: "Mixed", value: "mixed" },
+	];
+
+	readonly chargeTypeOptions = [
+		{ label: "All Room & Tax", value: "room_and_tax" },
+		{ label: "All Charges", value: "all" },
+		{ label: "F&B Only", value: "food_and_beverage" },
+		{ label: "Incidentals Only", value: "incidentals" },
+		{ label: "Meeting Space", value: "meeting_space" },
+	];
+
 	statusClass = groupBlockStatusClass;
 	formatDate(dateStr: string): string {
 		return this.settings.formatDate(dateStr);
@@ -275,6 +304,85 @@ export class GroupDetailComponent implements OnInit {
 		this.actionSuccess.set(null);
 		this.actionError.set(null);
 		this.confirmingCheckIn.set(false);
+		this.settingUpBilling.set(false);
+	}
+
+	/* ── Billing setup flow ── */
+
+	showSetupBilling(): void {
+		const g = this.group();
+		this.clearActionState();
+		this.settingUpBilling.set(true);
+		this.billingForm.set({
+			payment_method: "direct_bill",
+			billing_contact_name: g?.contact_name ?? "",
+			billing_contact_email: g?.contact_email ?? "",
+			billing_contact_phone: g?.contact_phone ?? "",
+			tax_exempt: false,
+			tax_id: "",
+			routing_rules: [
+				{ charge_type: "room_and_tax", target: "master" },
+				{ charge_type: "incidentals", target: "individual" },
+			],
+		});
+	}
+
+	cancelSetupBilling(): void {
+		this.settingUpBilling.set(false);
+	}
+
+	updateBillingForm(partial: Partial<ReturnType<typeof this.billingForm>>): void {
+		this.billingForm.set({ ...this.billingForm(), ...partial });
+	}
+
+	addRoutingRule(): void {
+		const current = this.billingForm();
+		this.billingForm.set({
+			...current,
+			routing_rules: [
+				...current.routing_rules,
+				{ charge_type: "incidentals", target: "individual" },
+			],
+		});
+	}
+
+	removeRoutingRule(index: number): void {
+		const current = this.billingForm();
+		this.billingForm.set({
+			...current,
+			routing_rules: current.routing_rules.filter((_, i) => i !== index),
+		});
+	}
+
+	async setupBilling(): Promise<void> {
+		const g = this.group();
+		const tenantId = this.auth.tenantId();
+		if (!g || !tenantId) return;
+
+		this.actionLoading.set(true);
+		this.actionError.set(null);
+
+		try {
+			const form = this.billingForm();
+			await this.api.post(`/tenants/${tenantId}/commands/group.billing.setup`, {
+				group_booking_id: g.group_booking_id,
+				payment_method: form.payment_method,
+				billing_contact_name: form.billing_contact_name || undefined,
+				billing_contact_email: form.billing_contact_email || undefined,
+				billing_contact_phone: form.billing_contact_phone || undefined,
+				routing_rules: form.routing_rules.length > 0 ? form.routing_rules : undefined,
+				tax_exempt: form.tax_exempt,
+				tax_id: form.tax_id || undefined,
+			});
+
+			this.toast.success(`Billing setup for "${g.group_name}" initiated.`);
+			this.settingUpBilling.set(false);
+			await this.pollGroupUntilChanged(g.group_booking_id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Billing setup failed");
+		} finally {
+			this.actionLoading.set(false);
+		}
 	}
 
 	/**

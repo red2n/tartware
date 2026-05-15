@@ -1,0 +1,190 @@
+<div class="bootstrap-page">
+  <app-page-header title="Tenant Bootstrap" description="Provision a new tenant, property, and owner account in a single operation.">
+  </app-page-header>
+
+  <div class="stepper-container">
+    <div class="stepper">
+      <div class="step-indicator" [class.step-active]="step() >= 1" [class.step-complete]="step() > 1">
+        <div class="step-circle">1</div>
+        <div class="step-label">Organization</div>
+      </div>
+      <div class="step-line" [class.line-active]="step() > 1"></div>
+      <div class="step-indicator" [class.step-active]="step() >= 2" [class.step-complete]="step() > 2">
+        <div class="step-circle">2</div>
+        <div class="step-label">Property</div>
+      </div>
+      <div class="step-line" [class.line-active]="step() > 2"></div>
+      <div class="step-indicator" [class.step-active]="step() >= 3">
+        <div class="step-circle">3</div>
+        <div class="step-label">Owner User</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <!-- Step 1: Organization -->
+    @if (step() === 1) {
+      <div class="step-content">
+        <h3>Organization Details</h3>
+        <p class="text-muted">General information about the tenant entity.</p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="tenantName">Organization Name</label>
+            <input id="tenantName" type="text" class="field-input" [(ngModel)]="form().tenant.name" (blur)="generateSlug()" placeholder="e.g. Grand Plaza Hotels">
+          </div>
+          <div class="form-field">
+            <label for="tenantSlug">URL Slug</label>
+            <input id="tenantSlug" type="text" class="field-input" [(ngModel)]="form().tenant.slug" placeholder="e.g. grand-plaza">
+          </div>
+          <div class="form-field">
+            <label for="tenantType">Organization Type</label>
+            <select id="tenantType" class="field-input" [(ngModel)]="form().tenant.type">
+              <option value="INDEPENDENT">Independent</option>
+              <option value="CHAIN">Chain / Brand</option>
+              <option value="FRANCHISE">Franchise</option>
+              <option value="MANAGEMENT_COMPANY">Management Company</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="tenantEmail">Corporate Email</label>
+            <input id="tenantEmail" type="email" class="field-input" [(ngModel)]="form().tenant.email" placeholder="admin@example.com">
+          </div>
+          <div class="form-field">
+            <label for="tenantPhone">Phone</label>
+            <input id="tenantPhone" type="text" class="field-input" [(ngModel)]="form().tenant.phone">
+          </div>
+          <div class="form-field">
+            <label for="tenantWebsite">Website</label>
+            <input id="tenantWebsite" type="url" class="field-input" [(ngModel)]="form().tenant.website">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <span></span>
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!form().tenant.name || !form().tenant.email">
+            Next: Property Details
+            <app-icon name="arrow_forward" />
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Step 2: Property -->
+    @if (step() === 2) {
+      <div class="step-content">
+        <h3>Primary Property Details</h3>
+        <p class="text-muted">The initial hotel or facility to be created under this tenant.</p>
+
+        <div class="form-grid">
+          <div class="form-field col-span-2">
+            <label for="propName">Property Name</label>
+            <input id="propName" type="text" class="field-input" [(ngModel)]="form().property.property_name" (blur)="generatePropertyCode()" placeholder="e.g. Grand Plaza New York">
+          </div>
+          <div class="form-field">
+            <label for="propCode">Property Code</label>
+            <input id="propCode" type="text" class="field-input" [(ngModel)]="form().property.property_code" placeholder="e.g. GPNY01">
+          </div>
+          <div class="form-field">
+            <label for="propRooms">Total Rooms</label>
+            <input id="propRooms" type="number" class="field-input" [(ngModel)]="form().property.total_rooms">
+          </div>
+          <div class="form-field">
+            <label for="propStar">Star Rating</label>
+            <input id="propStar" type="number" class="field-input" [(ngModel)]="form().property.star_rating" min="1" max="5">
+          </div>
+          <div class="form-field">
+            <label for="propLang">Primary Language</label>
+            <select id="propLang" class="field-input" [(ngModel)]="form().property.default_language">
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="fr-FR">French</option>
+              <option value="de-DE">German</option>
+              <option value="es-ES">Spanish</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="propCurrency">Currency</label>
+            <input id="propCurrency" type="text" class="field-input" [(ngModel)]="form().property.currency" maxlength="3">
+          </div>
+          <div class="form-field">
+            <label for="propTz">Timezone</label>
+            <input id="propTz" type="text" class="field-input" [(ngModel)]="form().property.timezone">
+          </div>
+
+          <div class="form-field col-span-2">
+            <label for="addr1">Street Address</label>
+            <input id="addr1" type="text" class="field-input" [(ngModel)]="form().property.address.line1">
+          </div>
+          <div class="form-field">
+            <label for="city">City</label>
+            <input id="city" type="text" class="field-input" [(ngModel)]="form().property.address.city">
+          </div>
+          <div class="form-field">
+            <label for="country">Country</label>
+            <input id="country" type="text" class="field-input" [(ngModel)]="form().property.address.country">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-outline" (click)="prevStep()">
+            <app-icon name="arrow_back" />
+            Back
+          </button>
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!form().property.property_name || !form().property.property_code">
+            Next: Owner Account
+            <app-icon name="arrow_forward" />
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Step 3: Owner -->
+    @if (step() === 3) {
+      <div class="step-content">
+        <h3>Owner Account</h3>
+        <p class="text-muted">The primary administrative user for this tenant.</p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="firstName">First Name</label>
+            <input id="firstName" type="text" class="field-input" [(ngModel)]="form().owner.first_name">
+          </div>
+          <div class="form-field">
+            <label for="lastName">Last Name</label>
+            <input id="lastName" type="text" class="field-input" [(ngModel)]="form().owner.last_name">
+          </div>
+          <div class="form-field">
+            <label for="username">Username</label>
+            <input id="username" type="text" class="field-input" [(ngModel)]="form().owner.username" placeholder="e.g. admin">
+          </div>
+          <div class="form-field">
+            <label for="ownerEmail">User Email</label>
+            <input id="ownerEmail" type="email" class="field-input" [(ngModel)]="form().owner.email">
+          </div>
+          <div class="form-field">
+            <label for="password">Initial Password</label>
+            <input id="password" type="password" class="field-input" [(ngModel)]="form().owner.password">
+          </div>
+        </div>
+
+        <div class="summary-box">
+          <app-icon name="info" />
+          <p>This will create the tenant <strong>{{ form().tenant.name }}</strong>, the property <strong>{{ form().property.property_name }}</strong>, and grant <strong>OWNER</strong> permissions to <strong>{{ form().owner.username }}</strong>.</p>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-outline" (click)="prevStep()">
+            <app-icon name="arrow_back" />
+            Back
+          </button>
+          <button class="btn btn-primary btn-lg" (click)="bootstrap()" [disabled]="loading() || !form().owner.username || !form().owner.password">
+            @if (loading()) { <p-progressSpinner [style]="{ width: '20px', height: '20px' }" /> }
+            <app-icon name="rocket_launch" />
+            Provision System
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

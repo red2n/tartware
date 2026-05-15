@@ -4,6 +4,11 @@
       <app-icon name="add" />
       {{ 'New reservation' | translate }}
     </button>
+    <button class="btn btn-outline btn-sm" (click)="expressCheckout()" [disabled]="processingExpress()" [pTooltip]="'Bulk check-out zero-balance departures' | translate">
+      @if (processingExpress()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
+      <app-icon name="bolt" />
+      {{ 'Express Checkout' | translate }}
+    </button>
     <button class="btn btn-invisible" (click)="loadReservations()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh reservations' | translate">
       <app-icon name="refresh" />
     </button>

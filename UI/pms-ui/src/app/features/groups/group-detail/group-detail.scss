@@ -46,6 +46,108 @@
   color: var(--fgColor-muted);
 }
 
+/* ── Billing setup form ── */
+.action-billing-card {
+  max-width: 600px;
+}
+
+.form-section {
+  margin-top: var(--base-size-16);
+  padding-top: var(--base-size-16);
+  border-top: 1px solid var(--borderColor-muted);
+
+  h4 {
+    margin: 0 0 var(--base-size-8) 0;
+    font-size: var(--base-text-size-xs);
+    font-weight: var(--base-text-weight-bold);
+    color: var(--fgColor-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--base-size-8);
+
+  h4 { margin: 0; }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--base-size-12);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+
+  label {
+    font-size: var(--base-text-size-xs);
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-muted);
+  }
+}
+
+.field-input {
+  width: 100%;
+  padding: var(--base-size-4) var(--base-size-8);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  font-size: var(--base-text-size-sm);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+
+  &:focus {
+    border-color: var(--fgColor-accent);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--fgColor-accent);
+  }
+
+  &.field-sm {
+    padding: var(--base-size-2) var(--base-size-6);
+  }
+}
+
+.checkbox-field {
+  flex-direction: row;
+  align-items: center;
+  padding-top: var(--base-size-20);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  font-size: var(--base-text-size-sm);
+  cursor: pointer;
+}
+
+.routing-rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+}
+
+.routing-rule-row {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+
+  .field-sm {
+    flex: 1;
+  }
+
+  .routing-arrow {
+    color: var(--fgColor-muted);
+    font-weight: var(--base-text-weight-bold);
+  }
+}
+
 /* ── Status description hint shown below the badge ── */
 .detail-hint {
   display: block;
