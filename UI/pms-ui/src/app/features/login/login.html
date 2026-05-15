@@ -7,23 +7,23 @@
         <span class="hero-logo-text">tartware</span>
       </div>
 
-      <h1 class="hero-headline">{{ 'Property Management,' | translate }}<br />{{ 'Reimagined.' | translate }}</h1>
+      <h1 class="hero-headline">{{ 'Elevate Your' | translate }}<br />{{ 'Hospitality' | translate }}</h1>
       <p class="hero-tagline">
-        {{ 'A modern PMS built for speed, clarity, and scale — powering front desk, reservations, billing, and operations from a single command-driven platform.' | translate }}
+        {{ 'The next-generation command platform for elite property operations. Engineered for precision, speed, and seamless multi-property management.' | translate }}
       </p>
 
       <div class="hero-features">
         <div class="hero-feature">
-          <app-icon name="speed" />
-          <span>{{ '20K ops/sec throughput' | translate }}</span>
+          <app-icon name="bolt" />
+          <span>{{ 'Hyperscale Performance (20K ops/sec)' | translate }}</span>
         </div>
         <div class="hero-feature">
-          <app-icon name="domain" />
-          <span>{{ 'Multi-property support' | translate }}</span>
+          <app-icon name="corporate_fare" />
+          <span>{{ 'Global Portfolio Orchestration' | translate }}</span>
         </div>
         <div class="hero-feature">
-          <app-icon name="shield" />
-          <span>{{ 'Enterprise-grade security' | translate }}</span>
+          <app-icon name="verified" />
+          <span>{{ 'Military-Grade Security Protocol' | translate }}</span>
         </div>
       </div>
     </div>
@@ -51,38 +51,48 @@
       }
 
       <form (ngSubmit)="onSubmit()" method="post" class="login-form">
-        <div class="form-field-outline">
-          <label class="form-label">{{ 'Username' | translate }}</label>
-          <app-icon class="field-icon" name="person_outline" />
-          <input pInputText
-                 [(ngModel)]="username"
-                 name="username"
-                 autocomplete="username"
-                 required />
+        <div class="field-group">
+          <label class="field-label" for="username">{{ 'Username' | translate }}</label>
+          <div class="input-wrapper">
+            <app-icon class="input-icon" name="person_outline" />
+            <input pInputText
+                   class="field-input field-input-lg"
+                   id="username"
+                   [(ngModel)]="username"
+                   name="username"
+                   placeholder="e.g. j.doe@tartware.com"
+                   autocomplete="username"
+                   required />
+          </div>
         </div>
 
-        <div class="form-field-outline">
-          <label class="form-label">{{ 'Password' | translate }}</label>
-          <app-icon class="field-icon" name="lock_outline" />
-          <input pInputText
-                 [type]="hidePassword() ? 'password' : 'text'"
-                 [(ngModel)]="password"
-                 name="password"
-                 autocomplete="current-password"
-                 required
-                 #passwordInput />
-          <button class="btn btn-invisible btn-xs"
-                  type="button"
-                  (click)="togglePasswordVisibility()"
-                  [attr.aria-label]="'Toggle password visibility' | translate">
-            <app-icon [name]="hidePassword() ? 'visibility' : 'visibility_off'" />
-          </button>
+        <div class="field-group">
+          <label class="field-label" for="password">{{ 'Password' | translate }}</label>
+          <div class="input-wrapper">
+            <app-icon class="input-icon" name="lock_outline" />
+            <input pInputText
+                   class="field-input field-input-lg"
+                   id="password"
+                   [type]="hidePassword() ? 'password' : 'text'"
+                   [(ngModel)]="password"
+                   name="password"
+                   placeholder="••••••••"
+                   autocomplete="current-password"
+                   required
+                   #passwordInput />
+            <button class="input-action"
+                    type="button"
+                    (click)="togglePasswordVisibility()"
+                    [attr.aria-label]="'Toggle password visibility' | translate">
+              <app-icon [name]="hidePassword() ? 'visibility' : 'visibility_off'" />
+            </button>
+          </div>
         </div>
 
         <div class="remember-me-row">
           <label class="checkbox-label">
             <p-checkbox [(ngModel)]="rememberMe" name="rememberMe" [binary]="true" />
-            {{ 'Remember me' | translate }}
+            <span>{{ 'Keep me signed in' | translate }}</span>
           </label>
         </div>
 
@@ -90,9 +100,9 @@
                 type="submit"
                 [disabled]="loading()">
           @if (loading()) {
-            <p-progressSpinner [style]="{ width: '20px', height: '20px' }" />
+            <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
           } @else {
-            {{ 'Sign in' | translate }}
+            {{ 'Sign in to Dashboard' | translate }}
           }
         </button>
       </form>

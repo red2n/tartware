@@ -362,19 +362,18 @@
   flex-shrink: 0;
 }
 
-/* ── Form fields ── */
+/* ── Form fields — Premium design system ── */
 .field-group {
   display: flex;
   flex-direction: column;
-  gap: var(--base-size-4);
+  gap: var(--base-size-8);
 }
 
 .field-label {
-  font-size: var(--base-text-size-xs);
+  font-size: var(--base-text-size-sm);
   font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--fgColor-default);
+  margin-left: 2px;
 }
 
 .field-required .field-label::after {
@@ -382,80 +381,117 @@
   color: var(--fgColor-danger);
 }
 
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: var(--base-size-16);
+  color: var(--fgColor-muted);
+  z-index: 1;
+  pointer-events: none;
+  @include icon-size(20px);
+}
+
 .field-input {
   appearance: none;
   -webkit-appearance: none;
-  min-height: var(--control-medium-size);
-  padding: var(--control-medium-paddingBlock) var(--control-medium-paddingInline-normal);
-  font-size: var(--text-body-size-medium);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--base-size-12) var(--base-size-16);
+  font-size: var(--base-text-size-md);
   font-family: inherit;
-  line-height: var(--text-body-lineHeight-medium);
+  line-height: var(--base-text-lineHeight-normal);
   color: var(--fgColor-default);
-  background: var(--bgColor-default);
-  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  border: 2px solid transparent;
   border-radius: var(--borderRadius-medium);
-  transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
+  transition: all 0.2s ease;
 
-  /* Date/time inputs: restore native picker chrome stripped by appearance:none */
-  &[type="date"],
-  &[type="time"],
-  &[type="datetime-local"] {
-    appearance: auto;
-    -webkit-appearance: auto;
+  /* Adjust padding if icon is present */
+  .input-wrapper & {
+    padding-left: var(--base-size-48);
   }
 
   &::placeholder {
     color: var(--fgColor-muted);
+    opacity: 0.5;
   }
 
   &:hover:not(:disabled):not(:focus) {
-    border-color: var(--fgColor-muted);
+    background: color-mix(in srgb, var(--bgColor-muted) 80%, var(--bgColor-inset));
   }
 
   &:focus {
     outline: none;
+    background: var(--bgColor-default);
     border-color: var(--fgColor-accent);
-    box-shadow: 0 0 0 3px var(--bgColor-accent-muted);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fgColor-accent) 15%, transparent);
   }
 
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     background: var(--bgColor-inset);
+    border-color: transparent;
   }
 }
 
-/* Restore native date picker chrome that appearance:none removes */
-input[type="date"].field-input,
-input[type="time"].field-input,
-input[type="datetime-local"].field-input {
-  &::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    opacity: 0.6;
-    filter: var(--color-scheme-filter, none);
-  }
-}
-
-select.field-input {
+/* Input action button (e.g. password toggle, clear button) */
+.input-action {
+  position: absolute;
+  right: var(--base-size-8);
+  height: 36px;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fgColor-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--borderRadius-small);
   cursor: pointer;
-  padding-right: var(--base-size-32);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236e7781' d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 12px;
+  transition: all 0.15ms ease;
+  
+  &:hover {
+    color: var(--fgColor-default);
+    background: var(--bgColor-neutral-muted);
+  }
+
+  app-icon {
+    @include icon-size(20px);
+  }
 }
 
-textarea.field-input {
-  resize: vertical;
-  min-height: 64px;
+/* Field variants */
+.field-input-lg {
+  min-height: 56px;
+  font-size: var(--base-text-size-md);
 }
 
+.field-input-sm {
+  min-height: 36px;
+  padding: var(--base-size-6) var(--base-size-12);
+  font-size: var(--base-text-size-sm);
+  border-radius: var(--borderRadius-small);
+  
+  .input-wrapper & {
+    padding-left: var(--base-size-36);
+  }
+}
+
+/* Error states */
 .field-error .field-input,
 .field-input.field-input-error {
-  border-color: var(--bgColor-danger-emphasis);
+  border-color: var(--fgColor-danger);
+  background: var(--bgColor-danger-muted);
 
   &:focus {
-    box-shadow: 0 0 0 3px var(--borderColor-danger-emphasis);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fgColor-danger) 15%, transparent);
   }
 }
 
@@ -466,18 +502,14 @@ textarea.field-input {
 .field-hint {
   font-size: var(--base-text-size-xs);
   color: var(--fgColor-muted);
-  margin-top: var(--base-size-2);
+  margin-top: var(--base-size-4);
+  line-height: 1.4;
 }
 
 .field-hint-error {
   font-size: var(--base-text-size-xs);
   color: var(--fgColor-danger);
-  margin-top: var(--base-size-2);
-}
-
-.field-hint-muted {
-  font-style: italic;
-  opacity: 0.75;
+  margin-top: var(--base-size-4);
 }
 
 .field-value-locked {
