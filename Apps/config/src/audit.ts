@@ -58,14 +58,14 @@ export interface AuditLogParams {
   tenantId: string;
   propertyId: string | null;
   actorId: string | null;
-  userName: string | null;
-  userEmail: string | null;
-  userRole: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
+  userRole?: string | null;
   action: string;
   eventType: string;
   entityType: string;
   entityId: string | null;
-  apiEndpoint: string | null;
+  apiEndpoint?: string | null;
   status?: "SUCCESS" | "FAILURE" | "PARTIAL";
   errorCode?: string | null;
   responseTimeMs?: number | null;

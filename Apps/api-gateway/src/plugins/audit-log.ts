@@ -93,6 +93,9 @@ const getUserDetails = async (
     }
 
     const row = rows[0];
+    if (!row) {
+      return { name: null, email: null, role: null };
+    }
     return {
       name: row.name?.trim() || null,
       email: row.email || null,
