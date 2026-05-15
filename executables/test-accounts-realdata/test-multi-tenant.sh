@@ -1514,27 +1514,40 @@ run_billing_pipeline() {
     fi
     echo ""
 
-    # ── No-Show Charge ──
+    # ── No-Show Charge (requires CONFIRMED/NO_SHOW) ──
     echo "── ${tag} — No-Show Charge ──────────────────────────────────────"
-    if [[ -n "$res_id" ]]; then
+    local res_ns_id
+    send_command "CMD reservation: for no-show" \
+      "reservation.create" \
+      "{\"property_id\":\"$pid\",\"guest_id\":\"$guest_id\",\"room_type_id\":\"$rtid\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"status\":\"CONFIRMED\",\"source\":\"DIRECT\",\"total_amount\":189.00,\"currency\":\"USD\"}"
+    res_ns_id=$(jq -r '.id // .data.id // .reservation_id // empty' "$RESP_FILE" 2>/dev/null)
+    wait_kafka 8
+    
+    if [[ -n "$res_ns_id" ]]; then
       local pre_ns
       get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
       pre_ns=$(resp_count)
       send_command "CMD no_show.charge" \
         "billing.no_show.charge" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_ns_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
       wait_kafka 8
       poll_delta "No-show charge ($label)" \
         "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
         "$pre_ns"
     else
-      skip "No-show charge ($label)" "no reservation"
+      skip "No-show charge ($label)" "no fresh reservation"
     fi
     echo ""
 
-    # ── Late Checkout Charge ──
+    # ── Late Checkout Charge (requires CHECKED_IN) ──
     echo "── ${tag} — Late Checkout Charge ────────────────────────────────"
     if [[ -n "$res_id" ]]; then
+      # Must check-in before late checkout
+      send_command "CMD check-in: for late checkout" \
+        "reservation.check_in" \
+        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\"}"
+      wait_kafka 8
+
       local late_iso
       late_iso=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
         || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")

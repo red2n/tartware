@@ -54,6 +54,12 @@ export type BillingAuditEventInput = {
 	isGdprRelevant?: boolean;
 	/** Human-readable description for audit reviewers. */
 	description?: string;
+	/** Defaults to SUCCESS. */
+	status?: "SUCCESS" | "FAILURE" | "PARTIAL";
+	/** Error code if status is FAILURE. */
+	errorCode?: string | null;
+	/** Operation duration in milliseconds. */
+	responseTimeMs?: number | null;
 	metadata?: Record<string, unknown>;
 };
 

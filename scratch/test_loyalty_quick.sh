@@ -38,11 +38,12 @@ curl -s -X PATCH "$GW/v1/commands/loyalty.program.enroll/features" \
 
 # 2. Enroll
 echo "Enrolling..."
-curl -s -X POST "$GW/v1/commands/loyalty.program.enroll/execute" \
+ENROLL_RESP=$(curl -s -X POST "$GW/v1/commands/loyalty.program.enroll/execute" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: enroll-$(date +%s)" \
-  -d "{\"tenant_id\":\"$TID\",\"payload\":{\"guest_id\":\"$GUEST_ID\",\"program_name\":\"Quick Test\",\"program_tier\":\"bronze\",\"enrollment_channel\":\"web\",\"enrollment_property_id\":\"$PID\"}}" >/dev/null
+  -d "{\"tenant_id\":\"$TID\",\"payload\":{\"guest_id\":\"$GUEST_ID\",\"program_name\":\"Quick Test\",\"program_tier\":\"bronze\",\"enrollment_channel\":\"web\",\"enrollment_property_id\":\"$PID\"}}")
+echo "Enroll Response: $ENROLL_RESP"
 sleep 5
 
 # 3. Get Program ID

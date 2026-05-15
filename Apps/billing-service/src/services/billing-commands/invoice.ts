@@ -258,16 +258,19 @@ const applyInvoiceFinalize = async (
     return command.invoice_id;
   });
 
-  auditAsync({
-    tenantId: context.tenantId,
-    userId: actor,
-    action: "INVOICE_FINALIZE",
-    entityType: "invoice",
-    entityId: finalizedId,
-    severity: "INFO",
-    description: `Invoice finalized and locked: ${finalizedId}`,
-    newValues: { invoice_id: finalizedId },
-  });
+  auditAsync(
+    {
+      tenantId: context.tenantId,
+      userId: actor,
+      action: "INVOICE_FINALIZE",
+      entityType: "invoice",
+      entityId: finalizedId,
+      severity: "INFO",
+      description: `Invoice finalized and locked: ${finalizedId}`,
+      newValues: { invoice_id: finalizedId },
+    },
+    context,
+  );
 
   return finalizedId;
 };
@@ -326,17 +329,20 @@ export const voidInvoice = async (payload: unknown, context: CommandContext): Pr
 
   appLogger.info({ invoiceId: command.invoice_id }, "Invoice voided");
 
-  auditAsync({
-    tenantId: context.tenantId,
-    userId: actor,
-    action: "INVOICE_VOID",
-    entityType: "invoice",
-    entityId: command.invoice_id,
-    severity: "WARNING",
-    description: `Invoice voided: ${command.invoice_id} reason=${command.reason ?? "not provided"}`,
-    oldValues: { status: "DRAFT" },
-    newValues: { status: "VOIDED", reason: command.reason },
-  });
+  auditAsync(
+    {
+      tenantId: context.tenantId,
+      userId: actor,
+      action: "INVOICE_VOID",
+      entityType: "invoice",
+      entityId: command.invoice_id,
+      severity: "WARNING",
+      description: `Invoice voided: ${command.invoice_id} reason=${command.reason ?? "not provided"}`,
+      oldValues: { status: "DRAFT" },
+      newValues: { status: "VOIDED", reason: command.reason },
+    },
+    context,
+  );
 
   return command.invoice_id;
 };

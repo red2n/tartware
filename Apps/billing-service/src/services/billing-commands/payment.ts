@@ -257,10 +257,11 @@ const capturePayment = async (
         UPDATE public.folios
         SET
           total_payments  = total_payments + $2,
-          balance         = balance - $2,
+          balance         = GREATEST(0, balance - $2),
+          credit_balance  = credit_balance + GREATEST(0, $2 - balance),
           version         = version + 1,
           updated_at      = NOW(),
-          updated_by      = $3
+          updated_by      = $3::uuid
         WHERE tenant_id = $1::uuid
           AND folio_id  = $4::uuid
           AND version   = $5
@@ -302,29 +303,33 @@ const capturePayment = async (
     });
 
     // PCI-DSS Req 10: audit all payment captures synchronously within the transaction.
-    await auditWithClient(client, {
-      tenantId: context.tenantId,
-      propertyId: command.property_id,
-      userId: actor,
-      action: "PAYMENT_CAPTURE",
-      entityType: "payment",
-      entityId: id,
-      severity: "INFO",
-      isPciRelevant: true,
-      isGdprRelevant: true,
-      description: `Payment captured: ${command.amount} ${command.currency ?? "USD"} via ${command.payment_method}`,
-      newValues: {
-        payment_id: id,
-        amount: command.amount,
-        currency: command.currency ?? "USD",
-        payment_method: command.payment_method,
-        transaction_type: command.transaction_type,
-        folio_id: resolvedFolioId,
-        reservation_id: command.reservation_id,
-        payment_reference: command.payment_reference,
-        credit_balance: creditBalance > 0 ? creditBalance : undefined,
+    await auditWithClient(
+      client,
+      {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        userId: actor,
+        action: "PAYMENT_CAPTURE",
+        entityType: "payment",
+        entityId: id,
+        severity: "INFO",
+        isPciRelevant: true,
+        isGdprRelevant: true,
+        description: `Payment captured: ${command.amount} ${command.currency ?? "USD"} via ${command.payment_method}`,
+        newValues: {
+          payment_id: id,
+          amount: command.amount,
+          currency: command.currency ?? "USD",
+          payment_method: command.payment_method,
+          transaction_type: command.transaction_type,
+          folio_id: resolvedFolioId,
+          reservation_id: command.reservation_id,
+          payment_reference: command.payment_reference,
+          credit_balance: creditBalance > 0 ? creditBalance : undefined,
+        },
       },
-    });
+      context,
+    );
 
     return { paymentId: id, creditBalance };
   });
@@ -332,24 +337,27 @@ const capturePayment = async (
   // Fire async overpayment audit outside the transaction (zero hot-path latency).
   // The credit_balance column is already persisted above; this is informational only.
   if (paymentId.creditBalance > 0 && resolvedFolioId) {
-    auditAsync({
-      tenantId: context.tenantId,
-      propertyId: command.property_id,
-      userId: actor,
-      action: "OVERPAYMENT_DETECTED",
-      entityType: "folio",
-      entityId: resolvedFolioId,
-      category: "FINANCIAL",
-      severity: "WARNING",
-      isPciRelevant: true,
-      description: `Overpayment of ${paymentId.creditBalance} credited to folio ${resolvedFolioId}`,
-      newValues: {
-        folio_id: resolvedFolioId,
-        credit_balance: paymentId.creditBalance,
-        payment_reference: command.payment_reference,
-        payment_amount: command.amount,
+    auditAsync(
+      {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        userId: actor,
+        action: "OVERPAYMENT_DETECTED",
+        entityType: "folio",
+        entityId: resolvedFolioId,
+        category: "FINANCIAL",
+        severity: "WARNING",
+        isPciRelevant: true,
+        description: `Overpayment of ${paymentId.creditBalance} credited to folio ${resolvedFolioId}`,
+        newValues: {
+          folio_id: resolvedFolioId,
+          credit_balance: paymentId.creditBalance,
+          payment_reference: command.payment_reference,
+          payment_amount: command.amount,
+        },
       },
-    });
+      context,
+    );
     appLogger.warn(
       {
         folioId: resolvedFolioId,

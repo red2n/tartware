@@ -144,7 +144,12 @@ export const submitCommand = async ({
   const requestId = idempotencyKey;
   const initiatedBy =
     request.auth.userId && membership
-      ? { userId: request.auth.userId, role: membership.role }
+      ? {
+          userId: request.auth.userId,
+          role: membership.role,
+          userName: (request.auth as { name?: string }).name ?? null,
+          userEmail: (request.auth as { email?: string }).email ?? null,
+        }
       : null;
 
   let acceptance: AcceptedCommand;

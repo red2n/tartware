@@ -123,11 +123,12 @@ export const postComp = async (payload: unknown, context: CommandContext): Promi
     await queryWithClient(
       client,
       `UPDATE public.folios
-       SET total_credits = total_credits + $3,
-           balance = balance - $3,
+       SET total_credits = total_credits + $3::numeric,
+           balance = GREATEST(0, balance - $3::numeric),
+           credit_balance = credit_balance + GREATEST(0, $3::numeric - balance),
            updated_at = NOW(), updated_by = $4::uuid
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
-      [context.tenantId, folioId, command.amount, actorId],
+      [context.tenantId, folioId, command.amount as number, actorId as string],
     );
 
     // Resolve guest_id: prefer folio.guest_id, fall back to reservation

@@ -47,6 +47,12 @@
       ],
       "@tartware/proto-types/*": [
         "../../../proto/src/*"
+      ],
+      "@tartware/command-consumer-utils": [
+        "../../command-consumer-utils/src/index.ts"
+      ],
+      "@tartware/command-consumer-utils/*": [
+        "../../command-consumer-utils/src/*"
       ]
     },
     "types": [

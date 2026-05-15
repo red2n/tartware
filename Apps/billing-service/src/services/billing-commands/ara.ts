@@ -1044,14 +1044,16 @@ export const escalateArDispute = async (
   }
 
   appLogger.info({ disputeId: command.dispute_id }, "AR dispute escalated");
-  auditAsync(await createAuditEvent(context, {
-    action: "AR_DISPUTE_ESCALATE",
-    entityType: "ar_dispute",
-    entityId: command.dispute_id,
-    propertyId: command.property_id,
-    severity: "WARNING",
-    description: `Dispute ${command.dispute_id} escalated`,
-    newValues: { escalation_notes: command.escalation_notes ?? null },
-  }));
+  auditAsync(
+    await createAuditEvent(context, {
+      action: "AR_DISPUTE_ESCALATE",
+      entityType: "ar_dispute",
+      entityId: command.dispute_id,
+      propertyId: command.property_id,
+      severity: "WARNING",
+      description: `Dispute ${command.dispute_id} escalated`,
+      newValues: { escalation_notes: command.escalation_notes ?? null },
+    }),
+  );
   return command.dispute_id;
 };

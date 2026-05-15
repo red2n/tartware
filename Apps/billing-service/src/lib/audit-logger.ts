@@ -48,7 +48,9 @@ const INSERT_AUDIT_SQL = `
     is_gdpr_relevant,
     description,
     metadata,
-    status
+    status,
+    error_code,
+    response_time_ms
   ) VALUES (
     $1::uuid,
     $2::uuid,
@@ -71,7 +73,9 @@ const INSERT_AUDIT_SQL = `
     $18,
     $19,
     $20::jsonb,
-    'SUCCESS'
+    $21,
+    $22,
+    $23
   )
   ON CONFLICT DO NOTHING
 `;
@@ -104,6 +108,9 @@ function buildParams(e: BillingAuditEventInput): unknown[] {
           correlation_id: e.correlationId ?? null,
         })
       : JSON.stringify({ correlation_id: e.correlationId ?? null }), // $20 metadata
+    e.status ?? "SUCCESS", // $21 status
+    e.errorCode ?? null, // $22 error_code
+    e.responseTimeMs ?? null, // $23 response_time_ms
   ];
 }
 
@@ -115,12 +122,25 @@ function buildParams(e: BillingAuditEventInput): unknown[] {
  * If the transaction rolls back, the audit entry is also rolled back.
  *
  * @param client - Active pg PoolClient with an open transaction.
+ * @param event - Audit event details.
+ * @param context - Optional command context for automatic user/correlation attribution.
  */
 export async function auditWithClient(
   client: PoolClient,
   event: BillingAuditEventInput,
+  context?: {
+    tenantId: string;
+    initiatedBy?: {
+      userId?: string;
+      userName?: string | null;
+      userEmail?: string | null;
+      role?: string | null;
+    } | null;
+    correlationId?: string;
+  },
 ): Promise<void> {
-  await queryWithClient(client, INSERT_AUDIT_SQL, buildParams(event));
+  const fullEvent = context ? await createAuditEvent(context, event) : event;
+  await queryWithClient(client, INSERT_AUDIT_SQL, buildParams(fullEvent));
 }
 
 /**
@@ -131,17 +151,37 @@ export async function auditWithClient(
  *
  * Failures are logged to stderr but never thrown. This function returns void
  * immediately and the INSERT runs after the current call stack unwinds.
+ *
+ * @param event - Audit event details.
+ * @param context - Optional command context for automatic user/correlation attribution.
  */
-export function auditAsync(event: BillingAuditEventInput): void {
-  setImmediate(() => {
-    query(INSERT_AUDIT_SQL, buildParams(event)).catch((err: unknown) => {
+export function auditAsync(
+  event: BillingAuditEventInput,
+  context?: {
+    tenantId: string;
+    initiatedBy?: {
+      userId?: string;
+      userName?: string | null;
+      userEmail?: string | null;
+      role?: string | null;
+    } | null;
+    correlationId?: string;
+  },
+): void {
+  setImmediate(async () => {
+    try {
+      const fullEvent = context ? await createAuditEvent(context, event) : event;
+      await query(INSERT_AUDIT_SQL, buildParams(fullEvent));
+    } catch (err: unknown) {
       // Audit failures must never crash a command. The financial operation
       // has already committed. Log for ops alerting and continue.
+      const action = event.action || "unknown";
+      const entityId = event.entityId || "?";
       const errMsg = err instanceof Error ? err.message : String(err);
       process.stderr.write(
-        `[audit-logger] async write failed action=${event.action} entity=${event.entityId ?? "?"} err=${errMsg}\n`,
+        `[audit-logger] async write failed action=${action} entity=${entityId} err=${errMsg}\n`,
       );
-    });
+    }
   });
 }
 
@@ -150,12 +190,33 @@ export function auditAsync(event: BillingAuditEventInput): void {
  * Use this in command handlers to ensure all audit fields are populated.
  */
 export async function createAuditEvent(
-  context: { tenantId: string; initiatedBy?: { userId?: string } | null; correlationId?: string },
-  event: Omit<BillingAuditEventInput, 'tenantId' | 'userId' | 'userName' | 'userEmail' | 'userRole' | 'correlationId'>
+  context: {
+    tenantId: string;
+    initiatedBy?: {
+      userId?: string;
+      userName?: string | null;
+      userEmail?: string | null;
+      role?: string | null;
+    } | null;
+    correlationId?: string;
+  },
+  event: Omit<
+    BillingAuditEventInput,
+    "tenantId" | "userId" | "userName" | "userEmail" | "userRole" | "correlationId"
+  >,
 ): Promise<BillingAuditEventInput> {
   const { getUserDetails, resolveActorId } = await import("../services/billing-commands/common.js");
   const userId = resolveActorId(context.initiatedBy);
-  const userDetails = await getUserDetails(userId);
+
+  // Optimization: use details from context if available, otherwise fetch from DB
+  const hasDetails = context.initiatedBy?.userName && context.initiatedBy?.userEmail;
+  const userDetails = hasDetails
+    ? {
+        name: context.initiatedBy?.userName ?? null,
+        email: context.initiatedBy?.userEmail ?? null,
+        role: context.initiatedBy?.role ?? null,
+      }
+    : await getUserDetails(userId);
 
   return {
     ...event,

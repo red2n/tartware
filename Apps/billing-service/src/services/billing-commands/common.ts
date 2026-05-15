@@ -35,7 +35,9 @@ export const asUuid = (value: string | undefined | null): string | null =>
 export const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   asUuid(initiatedBy?.userId) ?? SYSTEM_ACTOR_ID;
 
-export const getUserDetails = async (userId: string): Promise<{ name: string | null; email: string | null; role: string | null }> => {
+export const getUserDetails = async (
+  userId: string,
+): Promise<{ name: string | null; email: string | null; role: string | null }> => {
   if (!userId || userId === SYSTEM_ACTOR_ID) {
     return { name: null, email: null, role: null };
   }
@@ -48,7 +50,7 @@ export const getUserDetails = async (userId: string): Promise<{ name: string | n
         (SELECT role FROM user_tenant_associations uta WHERE uta.user_id = u.id AND uta.is_active = true LIMIT 1) as role
        FROM users u
        WHERE u.id = $1::uuid AND u.is_active = true`,
-      [userId]
+      [userId],
     );
 
     if (rows.length === 0) {
@@ -63,7 +65,7 @@ export const getUserDetails = async (userId: string): Promise<{ name: string | n
     };
   } catch (error) {
     // Log error but don't fail the command
-    console.error('Failed to fetch user details for audit log:', error);
+    console.error("Failed to fetch user details for audit log:", error);
     return { name: null, email: null, role: null };
   }
 };

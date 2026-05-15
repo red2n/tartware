@@ -70,7 +70,9 @@ const shouldSkipRoute = (request: FastifyRequest): boolean => {
   return SKIPPED_ROUTE_PREFIXES.some((prefix) => routePath.startsWith(prefix));
 };
 
-const getUserDetails = async (userId: string): Promise<{ name: string | null; email: string | null; role: string | null }> => {
+const getUserDetails = async (
+  userId: string,
+): Promise<{ name: string | null; email: string | null; role: string | null }> => {
   if (!userId || userId === SYSTEM_UUID) {
     return { name: null, email: null, role: null };
   }
@@ -83,7 +85,7 @@ const getUserDetails = async (userId: string): Promise<{ name: string | null; em
         (SELECT role FROM user_tenant_associations uta WHERE uta.user_id = u.id AND uta.is_active = true LIMIT 1) as role
        FROM users u
        WHERE u.id = $1::uuid AND u.is_active = true`,
-      [userId]
+      [userId],
     );
 
     if (rows.length === 0) {
@@ -98,78 +100,17 @@ const getUserDetails = async (userId: string): Promise<{ name: string | null; em
     };
   } catch (error) {
     // Log error but don't fail the audit log
-    console.error('Failed to fetch user details for audit log:', error);
+    console.error("Failed to fetch user details for audit log:", error);
     return { name: null, email: null, role: null };
   }
-};
-
-const findEntityId = (request: FastifyRequest): string | null => {
-  const candidates = [request.params, request.query, request.body] as Array<
-    Record<string, unknown> | undefined
-  >;
-
-  for (const container of candidates) {
-    if (!container || typeof container !== "object") continue;
-    for (const value of Object.values(container)) {
-      if (typeof value === "string" && isUuid(value)) {
-        return value;
-      }
-    }
-  }
-
-  return null;
-};
-
-const extractTenantId = (request: FastifyRequest): string => {
-  const paramTenantId = (request.params as Record<string, unknown> | undefined)?.tenantId;
-  const queryTenantId = (request.query as Record<string, unknown> | undefined)?.tenant_id;
-
-  if (typeof paramTenantId === "string" && isUuid(paramTenantId)) {
-    return paramTenantId;
-  }
-
-  if (typeof queryTenantId === "string" && isUuid(queryTenantId)) {
-    return queryTenantId;
-  }
-
-  const authTenantId = request.auth?.authorizedTenantIds?.values().next().value;
-  if (typeof authTenantId === "string" && isUuid(authTenantId)) {
-    return authTenantId;
-  }
-
-  return SYSTEM_UUID;
-};
-
-const extractPropertyId = (request: FastifyRequest): string | null => {
-  const paramPropertyId = (request.params as Record<string, unknown> | undefined)?.propertyId;
-  const queryPropertyId = (request.query as Record<string, unknown> | undefined)?.property_id;
-  const bodyPropertyId = (request.body as Record<string, unknown> | undefined)?.property_id;
-
-  if (typeof paramPropertyId === "string" && isUuid(paramPropertyId)) {
-    return paramPropertyId;
-  }
-
-  if (typeof queryPropertyId === "string" && isUuid(queryPropertyId)) {
-    return queryPropertyId;
-  }
-
-  if (typeof bodyPropertyId === "string" && isUuid(bodyPropertyId)) {
-    return bodyPropertyId;
-  }
-
-  return null;
-};
-
-const shouldSkipRoute = (request: FastifyRequest): boolean => {
-  const routePath = request.routeOptions?.url ?? request.url;
-  return SKIPPED_ROUTE_PREFIXES.some((prefix) => routePath.startsWith(prefix));
 };
 
 const buildAuditMetadata = (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Record<string, unknown> => {
-  const correlationId = request.headers["x-correlation-id"] as string || request.id?.toString() || null;
+  const correlationId =
+    (request.headers["x-correlation-id"] as string) || request.id?.toString() || null;
 
   const metadata: Record<string, unknown> = {
     route: request.routeOptions?.url ?? request.url,
@@ -211,8 +152,14 @@ const writeGatewayAuditLog = async (
   const userDetails = await getUserDetails(actorId);
   const action = `${request.method.toUpperCase()} ${request.routeOptions?.url ?? request.url}`;
   const entityId = findEntityId(request);
-  const entityType = request.routeOptions?.url ?? "api";
-  const apiEndpoint = request.raw.url ?? request.url;
+  const routePattern = request.routeOptions?.url ?? "api";
+  const entityType = routePattern.replace(/\/\*$/, "").replace(/^\/v1\//, "") || "api";
+  const apiEndpoint = request.url;
+
+  // Deriving status and error code from HTTP status
+  const status = reply.statusCode >= 400 ? "FAILURE" : "SUCCESS";
+  const errorCode = reply.statusCode >= 400 ? String(reply.statusCode) : null;
+  const responseTimeMs = Math.round(reply.elapsedTime);
 
   await recordAuditLog(query, {
     tenantId,
@@ -226,6 +173,9 @@ const writeGatewayAuditLog = async (
     entityType,
     entityId,
     apiEndpoint,
+    status,
+    errorCode,
+    responseTimeMs,
     metadata: buildAuditMetadata(request, reply),
   });
 };

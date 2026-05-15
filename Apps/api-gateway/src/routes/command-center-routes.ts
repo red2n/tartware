@@ -34,7 +34,6 @@ import {
   listCommandFeatures,
   updateCommandFeatureStatus,
 } from "../command-center/sql/command-features.js";
-import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
 import { submitCommand } from "../utils/command-publisher.js";
 
 import { commandAcceptedSchema } from "./schemas.js";
@@ -84,23 +83,6 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
   app.get(
     "/v1/commands/definitions",
     {
-      preHandler: async (request, reply) => {
-        const token = extractBearerToken(request.headers.authorization);
-        if (!token) {
-          return reply.unauthorized("Authorization token required.");
-        }
-        const payload = verifyAccessToken(token);
-        if (!payload) {
-          return reply.unauthorized("Invalid authorization token.");
-        }
-        const scope = payload.scope;
-        const hasSystemAdminScope = Array.isArray(scope)
-          ? scope.includes("SYSTEM_ADMIN")
-          : scope === "SYSTEM_ADMIN";
-        if (!hasSystemAdminScope) {
-          return reply.forbidden("System administrator scope required.");
-        }
-      },
       schema: buildRouteSchema({
         tag: COMMAND_CENTER_TAG,
         summary: "List all registered command definitions",

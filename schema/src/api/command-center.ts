@@ -214,8 +214,12 @@ export type CommandFeatureUpdateRow = {
 export type CommandContext = {
 	/** Tenant ID the command is scoped to */
 	tenantId: string;
-	/** Identity that initiated the command (may be null for system-generated commands) */
-	initiatedBy?: { userId?: string } | null;
+	initiatedBy?: {
+		userId?: string;
+		userName?: string | null;
+		userEmail?: string | null;
+		role?: string | null;
+	} | null;
 	/** Raw command payload (present when the handler destructures context for the full envelope) */
 	payload?: unknown;
 	/** Correlation ID from the Kafka message (for distributed tracing) */
@@ -275,6 +279,8 @@ export type CommandRegistrySnapshot = {
 export type Initiator = {
 	userId: string;
 	role: string;
+	userName?: string | null;
+	userEmail?: string | null;
 } | null;
 
 /** Resolved route record for a command. */

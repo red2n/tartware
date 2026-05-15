@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { auditWithClient } from "../../lib/audit-logger.js";
+import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -46,7 +46,7 @@ export const authorizePayment = async (
   const currency = command.currency ?? "USD";
   const gatewayResponse = command.gateway?.response ?? {};
 
-  const result = await query<{ id: string }>(
+  const { rows } = await query<{ id: string }>(
     `
       INSERT INTO public.payments (
         tenant_id,
@@ -113,13 +113,35 @@ export const authorizePayment = async (
     ],
   );
 
-  const paymentId = result.rows[0]?.id;
+  const paymentId = rows[0]?.id;
   if (!paymentId) {
     throw new BillingCommandError(
       "PAYMENT_AUTHORIZE_FAILED",
       "Failed to record payment authorization.",
     );
   }
+
+  await auditAsync(
+    {
+      tenantId: context.tenantId,
+      propertyId: command.property_id,
+      userId: actor,
+      action: "PAYMENT_AUTHORIZE",
+      entityType: "payment",
+      entityId: paymentId,
+      severity: "INFO",
+      isPciRelevant: true,
+      description: `Payment authorization recorded: ${command.payment_reference} amount=${command.amount}`,
+      newValues: {
+        payment_id: paymentId,
+        reference: command.payment_reference,
+        amount: command.amount,
+        method: command.payment_method,
+      },
+    },
+    context,
+  );
+
   return paymentId;
 };
 
@@ -206,27 +228,31 @@ export const voidPayment = async (payload: unknown, context: CommandContext): Pr
     const newVoidId = result.rows[0]?.id ?? randomUUID();
 
     // PCI-DSS Req 10: audit payment voids synchronously within the transaction.
-    await auditWithClient(client, {
-      tenantId: context.tenantId,
-      propertyId: command.property_id,
-      userId: actorId,
-      action: "PAYMENT_VOID",
-      entityType: "payment",
-      entityId: authPayment.id,
-      severity: "WARNING",
-      isPciRelevant: true,
-      description: `Payment authorization voided: ${command.payment_reference} reason=${command.reason ?? "not provided"}`,
-      oldValues: {
-        original_payment_id: authPayment.id,
-        original_status: "AUTHORIZED",
-        amount: parseDbMoneyOrZero(authPayment.amount),
+    await auditWithClient(
+      client,
+      {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        userId: actorId,
+        action: "PAYMENT_VOID",
+        entityType: "payment",
+        entityId: authPayment.id,
+        severity: "WARNING",
+        isPciRelevant: true,
+        description: `Payment authorization voided: ${command.payment_reference} reason=${command.reason ?? "not provided"}`,
+        oldValues: {
+          original_payment_id: authPayment.id,
+          original_status: "AUTHORIZED",
+          amount: parseDbMoneyOrZero(authPayment.amount),
+        },
+        newValues: {
+          void_payment_id: newVoidId,
+          new_status: "CANCELLED",
+          reason: command.reason,
+        },
       },
-      newValues: {
-        void_payment_id: newVoidId,
-        new_status: "CANCELLED",
-        reason: command.reason,
-      },
-    });
+      context,
+    );
 
     return newVoidId;
   });
@@ -310,14 +336,24 @@ export const incrementAuthorization = async (
     );
   }
 
-  appLogger.info(
+  auditAsync(
     {
-      paymentId: existing.id,
-      previousAmount: Number(existing.amount),
-      increment: command.additional_amount,
-      newAmount,
+      tenantId: context.tenantId,
+      userId: actor,
+      action: "PAYMENT_AUTHORIZE_INCREMENT",
+      entityType: "payment",
+      entityId: existing.id,
+      severity: "INFO",
+      isPciRelevant: true,
+      description: `Payment authorization incremented: ${command.payment_reference} by ${command.additional_amount}`,
+      oldValues: { previous_amount: Number(existing.amount) },
+      newValues: {
+        new_amount: newAmount,
+        increment: command.additional_amount,
+        reason: command.reason,
+      },
     },
-    "Payment authorization incremented",
+    context,
   );
 
   return existing.id;

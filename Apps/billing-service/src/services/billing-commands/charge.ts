@@ -710,9 +710,10 @@ const applyChargePost = async (
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + CASE WHEN $5 = 'DEBIT' THEN $2 ELSE 0.00 END,
-              total_credits = total_credits + CASE WHEN $5 = 'CREDIT' THEN $2 ELSE 0.00 END,
-              balance       = balance       + CASE WHEN $5 = 'DEBIT' THEN $2 ELSE -$2 END,
+          SET total_charges = total_charges + CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE 0.00 END,
+              total_credits = total_credits + CASE WHEN $5 = 'CREDIT' THEN $2::numeric ELSE 0.00 END,
+              balance       = GREATEST(0, balance - credit_balance + (CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE -$2::numeric END)),
+              credit_balance = GREATEST(0, credit_balance - balance - (CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE -$2::numeric END)),
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
         `,
@@ -746,22 +747,25 @@ const applyChargePost = async (
   });
 
   // Async audit — fire-and-forget; must not block or fail the charge post.
-  auditAsync({
-    tenantId: context.tenantId,
-    userId: actorId,
-    action: "CHARGE_POST",
-    entityType: "charge_posting",
-    entityId: postingId,
-    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${command.amount} on folio ${folioId}`,
-    newValues: {
-      posting_id: postingId,
-      folio_id: folioId,
-      charge_code: command.charge_code,
-      amount: command.amount * command.quantity,
-      posting_type: command.posting_type,
-      reservation_id: command.reservation_id,
+  auditAsync(
+    {
+      tenantId: context.tenantId,
+      userId: actorId,
+      action: "CHARGE_POST",
+      entityType: "charge_posting",
+      entityId: postingId,
+      description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${command.amount} on folio ${folioId}`,
+      newValues: {
+        posting_id: postingId,
+        folio_id: folioId,
+        charge_code: command.charge_code,
+        amount: command.amount * command.quantity,
+        posting_type: command.posting_type,
+        reservation_id: command.reservation_id,
+      },
     },
-  });
+    context,
+  );
 
   return postingId;
 };
@@ -990,17 +994,20 @@ const applyChargeVoid = async (
   });
 
   // Async audit — fires after the transaction commits; never blocks the response.
-  auditAsync({
-    tenantId: context.tenantId,
-    userId: actorId,
-    action: "CHARGE_VOID",
-    entityType: "charge_posting",
-    entityId: command.posting_id,
-    severity: "WARNING",
-    description: `Charge voided: posting ${command.posting_id} reason=${command.void_reason ?? "not provided"}`,
-    oldValues: { posting_id: command.posting_id },
-    newValues: { void_posting_id: voidPostingId, void_reason: command.void_reason },
-  });
+  auditAsync(
+    {
+      tenantId: context.tenantId,
+      userId: actorId,
+      action: "CHARGE_VOID",
+      entityType: "charge_posting",
+      entityId: command.posting_id,
+      severity: "WARNING",
+      description: `Charge voided: posting ${command.posting_id} reason=${command.void_reason ?? "not provided"}`,
+      oldValues: { posting_id: command.posting_id },
+      newValues: { void_posting_id: voidPostingId, void_reason: command.void_reason },
+    },
+    context,
+  );
 
   return voidPostingId;
 };

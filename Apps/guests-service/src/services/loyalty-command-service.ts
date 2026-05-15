@@ -60,9 +60,7 @@ export const enrollLoyaltyProgram = async ({
       command.membership_status ?? "active",
       command.enrollment_channel ?? "property",
       command.enrollment_property_id ?? null,
-      actor === APP_ACTOR
-        ? "00000000-0000-0000-0000-000000000000"
-        : actor,
+      actor === APP_ACTOR ? "00000000-0000-0000-0000-000000000000" : actor,
     ],
   );
 

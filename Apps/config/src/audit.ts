@@ -13,6 +13,7 @@ export const hashIdentifier = (id: string): string => {
  * Redacts sensitive PII fields from a payload object before audit persistence.
  */
 export const redactPayload = (payload: unknown): unknown => {
+  if (payload instanceof Date) return payload.toISOString();
   if (!payload || typeof payload !== "object") return payload;
 
   const sensitiveKeys = [
@@ -65,6 +66,9 @@ export interface AuditLogParams {
   entityType: string;
   entityId: string | null;
   apiEndpoint: string | null;
+  status?: "SUCCESS" | "FAILURE" | "PARTIAL";
+  errorCode?: string | null;
+  responseTimeMs?: number | null;
   metadata: Record<string, unknown>;
 }
 
@@ -74,11 +78,12 @@ export interface AuditLogParams {
 export const INSERT_AUDIT_LOG_SQL = `
   INSERT INTO public.audit_logs (
     tenant_id, property_id, user_id, user_name, user_email, user_role, action,
-    event_type, entity_type, entity_id, api_endpoint, metadata,
+    event_type, entity_type, entity_id, api_endpoint, status, error_code, 
+    response_time_ms, metadata,
     audit_timestamp
   ) VALUES (
     $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12::jsonb,
+    $8, $9, $10, $11, $12, $13, $14, $15::jsonb,
     NOW()
   )
 `;
@@ -107,6 +112,9 @@ export const recordAuditLog = async (
     params.entityType,
     params.entityId,
     params.apiEndpoint,
+    params.status ?? "SUCCESS",
+    params.errorCode ?? null,
+    params.responseTimeMs ?? null,
     JSON.stringify(params.metadata),
   ]);
 };
