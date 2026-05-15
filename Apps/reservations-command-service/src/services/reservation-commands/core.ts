@@ -217,12 +217,14 @@ export const createReservation = async (
           event_id: hashIdentifier(eventId),
           reservation_id: hashIdentifier(aggregateId),
           guest_id: command.guest_id ? hashIdentifier(command.guest_id) : null,
-          check_in_date: command.check_in_date instanceof Date 
-            ? command.check_in_date.toISOString().split("T")[0] 
-            : command.check_in_date,
-          check_out_date: command.check_out_date instanceof Date 
-            ? command.check_out_date.toISOString().split("T")[0] 
-            : command.check_out_date,
+          check_in_date:
+            command.check_in_date instanceof Date
+              ? command.check_in_date.toISOString().split("T")[0]
+              : command.check_in_date,
+          check_out_date:
+            command.check_out_date instanceof Date
+              ? command.check_out_date.toISOString().split("T")[0]
+              : command.check_out_date,
           status: command.status || "PENDING",
           redacted_payload: redactPayload(command),
           availabilityGuard: guardMetadata,

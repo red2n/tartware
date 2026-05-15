@@ -157,28 +157,28 @@ export const recordAuditLog = async (
   const newValues = params.newValues ? serializeDates(params.newValues) : null;
 
   await queryFn(INSERT_AUDIT_LOG_SQL, [
-    params.tenantId,                    // $1  tenant_id
-    propertyId,                         // $2  property_id
-    params.actorId,                     // $3  user_id
-    params.userName ?? null,            // $4  user_name
-    params.userEmail ?? null,           // $5  user_email
-    params.userRole ?? null,            // $6  user_role
-    params.action,                      // $7  action
-    params.eventType,                   // $8  event_type
-    params.entityType,                  // $9  entity_type
-    params.entityId ?? null,            // $10 entity_id
-    params.apiEndpoint ?? null,         // $11 api_endpoint
-    params.correlationId ?? null,       // $12 correlation_id
-    status,                             // $13 status
-    errorCode,                          // $14 error_code
-    params.responseTimeMs ?? null,      // $15 response_time_ms
+    params.tenantId, // $1  tenant_id
+    propertyId, // $2  property_id
+    params.actorId, // $3  user_id
+    params.userName ?? null, // $4  user_name
+    params.userEmail ?? null, // $5  user_email
+    params.userRole ?? null, // $6  user_role
+    params.action, // $7  action
+    params.eventType, // $8  event_type
+    params.entityType, // $9  entity_type
+    params.entityId ?? null, // $10 entity_id
+    params.apiEndpoint ?? null, // $11 api_endpoint
+    params.correlationId ?? null, // $12 correlation_id
+    status, // $13 status
+    errorCode, // $14 error_code
+    params.responseTimeMs ?? null, // $15 response_time_ms
     oldValues ? JSON.stringify(oldValues) : null, // $16 old_values
     newValues ? JSON.stringify(newValues) : null, // $17 new_values
-    JSON.stringify(metadata),           // $18 metadata
+    JSON.stringify(metadata), // $18 metadata
     // Extract HTTP context from metadata (set by gateway audit-log.ts)
-    metadata?.request_id ?? null,       // $19 request_id
-    metadata?.http_method ?? null,      // $20 http_method
-    metadata?.ip_address ?? null,       // $21 ip_address
-    metadata?.user_agent ?? null,       // $22 user_agent
+    metadata?.request_id ?? null, // $19 request_id
+    metadata?.http_method ?? null, // $20 http_method
+    metadata?.ip_address ?? null, // $21 ip_address
+    metadata?.user_agent ?? null, // $22 user_agent
   ]);
 };

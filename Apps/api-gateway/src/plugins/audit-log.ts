@@ -84,7 +84,11 @@ const resolveUserRole = (request: FastifyRequest, tenantId: string): string | nu
 
   // Fallback: highest-privilege membership (OWNER > ADMIN > MANAGER > STAFF > VIEWER)
   const ROLE_RANK: Record<string, number> = {
-    OWNER: 500, ADMIN: 400, MANAGER: 300, STAFF: 200, VIEWER: 100,
+    OWNER: 500,
+    ADMIN: 400,
+    MANAGER: 300,
+    STAFF: 200,
+    VIEWER: 100,
   };
   let best: string | null = null;
   let bestRank = -1;
@@ -170,8 +174,10 @@ const writeGatewayAuditLog = async (
   const status = reply.raw.statusCode >= 400 ? "FAILURE" : "SUCCESS";
   const errorCode = reply.raw.statusCode >= 400 ? String(reply.raw.statusCode) : null;
   const responseTimeMs = Math.round(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (typeof (reply as any).getResponseTime === "function" ? (reply as any).getResponseTime() : 0) || 0
+    (typeof (reply as FastifyReply & { getResponseTime?: () => number }).getResponseTime ===
+    "function"
+      ? (reply as FastifyReply & { getResponseTime?: () => number }).getResponseTime?.()
+      : 0) || 0,
   );
 
   await recordAuditLog(query, {
