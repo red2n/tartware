@@ -23,13 +23,13 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         tags: ["recommendations"],
         querystring: {
           type: "object",
-          required: ["tenant_id", "propertyId", "checkInDate", "checkOutDate"],
+          required: ["tenant_id", "property_id", "check_in_date", "check_out_date"],
           properties: {
             tenant_id: { type: "string", format: "uuid" },
-            propertyId: { type: "string", format: "uuid" },
-            guestId: { type: "string", format: "uuid" },
-            checkInDate: { type: "string", format: "date" },
-            checkOutDate: { type: "string", format: "date" },
+            property_id: { type: "string", format: "uuid" },
+            guest_id: { type: "string", format: "uuid" },
+            check_in_date: { type: "string", format: "date" },
+            check_out_date: { type: "string", format: "date" },
             adults: { type: "integer", minimum: 1, maximum: 10, default: 1 },
             children: { type: "integer", minimum: 0, maximum: 10, default: 0 },
             limit: { type: "integer", minimum: 1, maximum: 50 },
@@ -85,10 +85,10 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
 
       const result = await getRecommendations({
         tenantId: tenant_id,
-        propertyId: query.propertyId,
-        guestId: query.guestId,
-        checkInDate: query.checkInDate,
-        checkOutDate: query.checkOutDate,
+        propertyId: query.property_id,
+        guestId: query.guest_id,
+        checkInDate: query.check_in_date,
+        checkOutDate: query.check_out_date,
         adults: query.adults,
         children: query.children,
         limit: query.limit,
@@ -117,16 +117,16 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
         tags: ["recommendations"],
         body: {
           type: "object",
-          required: ["tenant_id", "propertyId", "checkInDate", "checkOutDate", "roomIds"],
+          required: ["tenant_id", "property_id", "check_in_date", "check_out_date", "room_ids"],
           properties: {
             tenant_id: { type: "string", format: "uuid" },
-            propertyId: { type: "string", format: "uuid" },
-            guestId: { type: "string", format: "uuid" },
-            checkInDate: { type: "string", format: "date" },
-            checkOutDate: { type: "string", format: "date" },
+            property_id: { type: "string", format: "uuid" },
+            guest_id: { type: "string", format: "uuid" },
+            check_in_date: { type: "string", format: "date" },
+            check_out_date: { type: "string", format: "date" },
             adults: { type: "integer", minimum: 1, maximum: 10, default: 1 },
             children: { type: "integer", minimum: 0, maximum: 10, default: 0 },
-            roomIds: {
+            room_ids: {
               type: "array",
               items: { type: "string", format: "uuid" },
               minItems: 1,
@@ -173,13 +173,13 @@ export function registerRecommendationRoutes(app: FastifyInstance) {
 
       const result = await rankRooms({
         tenantId: tenant_id,
-        propertyId: body.propertyId,
-        guestId: body.guestId,
-        checkInDate: body.checkInDate,
-        checkOutDate: body.checkOutDate,
+        propertyId: body.property_id,
+        guestId: body.guest_id,
+        checkInDate: body.check_in_date,
+        checkOutDate: body.check_out_date,
         adults: body.adults,
         children: body.children,
-        roomIds: body.roomIds,
+        roomIds: body.room_ids,
       });
 
       return reply.send(result);

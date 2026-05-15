@@ -89,6 +89,31 @@ export const INSERT_AUDIT_LOG_SQL = `
 `;
 
 /**
+ * Sanitizes property_id to prevent FK violations.
+ * If property_id is not a valid UUID (e.g. "system", empty string), it is nullified.
+ */
+const sanitizePropertyId = (id: string | null | undefined): string | null => {
+  if (!id || id === "system") return null;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id) ? id : null;
+};
+
+/**
+ * Ensures all Date objects in an object (recursively) are converted to ISO strings
+ * to prevent empty objects {} in JSON serialization.
+ */
+const serializeDates = (obj: unknown): unknown => {
+  if (obj instanceof Date) return obj.toISOString();
+  if (Array.isArray(obj)) return obj.map(serializeDates);
+  if (obj !== null && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [k, serializeDates(v)]),
+    );
+  }
+  return obj;
+};
+
+/**
  * Helper to record an audit log using a provided query function.
  */
 export const recordAuditLog = async (
@@ -100,9 +125,19 @@ export const recordAuditLog = async (
     return;
   }
 
+  // Derive status and error code from metadata status_code if provided
+  const responseStatusCode = params.metadata?.status_code ?? 200;
+  const status = params.status ?? (Number(responseStatusCode) >= 400 ? "FAILURE" : "SUCCESS");
+  const errorCode =
+    params.errorCode ?? (Number(responseStatusCode) >= 400 ? String(responseStatusCode) : null);
+
+  // Sanitize inputs
+  const propertyId = sanitizePropertyId(params.propertyId);
+  const metadata = serializeDates(params.metadata);
+
   await queryFn(INSERT_AUDIT_LOG_SQL, [
     params.tenantId,
-    params.propertyId,
+    propertyId,
     params.actorId,
     params.userName,
     params.userEmail,
@@ -112,9 +147,9 @@ export const recordAuditLog = async (
     params.entityType,
     params.entityId,
     params.apiEndpoint,
-    params.status ?? "SUCCESS",
-    params.errorCode ?? null,
+    status,
+    errorCode,
     params.responseTimeMs ?? null,
-    JSON.stringify(params.metadata),
+    JSON.stringify(metadata),
   ]);
 };

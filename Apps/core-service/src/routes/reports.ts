@@ -46,18 +46,40 @@ const PerformanceReportQuerySchema = z.object({
     }),
 });
 
-/** Shared query schema for date-ranged reports (occupancy, revenue-kpis, arrivals, departures). */
-const DateRangeReportQuerySchema = z.object({
+const DateRangeReportQueryObject = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid().optional(),
-  start_date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
-    message: "start_date must be a valid ISO date string",
-  }),
-  end_date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
-    message: "end_date must be a valid ISO date string",
-  }),
+  business_date: z
+    .string()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Date.parse(v)), {
+      message: "business_date must be a valid ISO date string",
+    }),
+  start_date: z
+    .string()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Date.parse(v)), {
+      message: "start_date must be a valid ISO date string",
+    }),
+  end_date: z
+    .string()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Date.parse(v)), {
+      message: "end_date must be a valid ISO date string",
+    }),
   limit: z.coerce.number().int().min(1).max(500).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+});
+
+/** Shared query schema for date-ranged reports (occupancy, revenue-kpis, arrivals, departures). */
+const DateRangeReportQuerySchema = DateRangeReportQueryObject.superRefine((data, ctx) => {
+  if (!data.start_date && !data.business_date) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Either start_date or business_date must be provided",
+      path: ["start_date"],
+    });
+  }
 });
 
 /** In-house doesn't need date range. */
@@ -151,15 +173,16 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
-        request.query,
-      );
+      const query = DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (query.start_date ?? query.business_date) as string;
+      const effectiveEnd = (query.end_date ?? query.business_date ?? effectiveStart) as string;
 
       return getOccupancyReport({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        tenantId: query.tenant_id,
+        propertyId: query.property_id,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
       });
     },
   );
@@ -181,15 +204,16 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
-        request.query,
-      );
+      const query = DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (query.start_date ?? query.business_date) as string;
+      const effectiveEnd = (query.end_date ?? query.business_date ?? effectiveStart) as string;
 
       return getRevenueKpiReport({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        tenantId: query.tenant_id,
+        propertyId: query.property_id,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
       });
     },
   );
@@ -211,16 +235,18 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date, limit, offset } =
-        DateRangeReportQuerySchema.parse(request.query);
+      const query = DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (query.start_date ?? query.business_date) as string;
+      const effectiveEnd = (query.end_date ?? query.business_date ?? effectiveStart) as string;
 
       return getArrivalsReport({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
-        limit,
-        offset,
+        tenantId: query.tenant_id,
+        propertyId: query.property_id,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+        limit: query.limit,
+        offset: query.offset,
       });
     },
   );
@@ -242,16 +268,18 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date, limit, offset } =
-        DateRangeReportQuerySchema.parse(request.query);
+      const query = DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = (query.start_date ?? query.business_date) as string;
+      const effectiveEnd = (query.end_date ?? query.business_date ?? effectiveStart) as string;
 
       return getDeparturesReport({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
-        limit,
-        offset,
+        tenantId: query.tenant_id,
+        propertyId: query.property_id,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+        limit: query.limit,
+        offset: query.offset,
       });
     },
   );
@@ -301,15 +329,17 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
-        request.query,
-      );
+      const { tenant_id, property_id, start_date, end_date, business_date } =
+        DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = start_date ?? business_date!;
+      const effectiveEnd = end_date ?? business_date ?? effectiveStart;
 
       return getDemandForecastReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
       });
     },
   );
@@ -331,21 +361,23 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date } = DateRangeReportQuerySchema.parse(
-        request.query,
-      );
+      const { tenant_id, property_id, start_date, end_date, business_date } =
+        DateRangeReportQuerySchema.parse(request.query);
+
+      const effectiveStart = start_date ?? business_date!;
+      const effectiveEnd = end_date ?? business_date ?? effectiveStart;
 
       return getPaceReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
       });
     },
   );
 
   // ─── S13: Revenue Forecast Report ─────────────────────────────────────────
-  const RevenueForecastQuerySchema = DateRangeReportQuerySchema.extend({
+  const RevenueForecastQuerySchema = DateRangeReportQueryObject.extend({
     scenario: z.string().optional(),
   });
   type RevenueForecastQuery = z.infer<typeof RevenueForecastQuerySchema>;
@@ -370,14 +402,25 @@ export const registerReportRoutes = (app: FastifyInstance): void => {
       }),
     },
     async (request) => {
-      const { tenant_id, property_id, start_date, end_date, scenario, limit, offset } =
-        RevenueForecastQuerySchema.parse(request.query);
+      const {
+        tenant_id,
+        property_id,
+        start_date,
+        end_date,
+        business_date,
+        scenario,
+        limit,
+        offset,
+      } = RevenueForecastQuerySchema.parse(request.query);
+
+      const effectiveStart = start_date ?? business_date!;
+      const effectiveEnd = end_date ?? business_date ?? effectiveStart;
 
       return getRevenueForecastReport({
         tenantId: tenant_id,
         propertyId: property_id,
-        startDate: start_date,
-        endDate: end_date,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
         scenario,
         limit,
         offset,

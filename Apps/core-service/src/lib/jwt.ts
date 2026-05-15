@@ -8,6 +8,9 @@ import { appLogger } from "./logger.js";
 interface BaseAccessTokenPayload {
   sub: string;
   username: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
   type: "access";
 }
 

@@ -32,9 +32,9 @@ export const handleOverpayment = async (
   ) as BillingOverpaymentHandleCommand;
   const actor = resolveActorId(context.initiatedBy);
 
-  // Read current credit_balance
-  const { rows: folioRows } = await query<{ credit_balance: string; folio_id: string }>(
-    `SELECT folio_id, credit_balance
+  // Read current balance (negative means overpayment)
+  const { rows: folioRows } = await query<{ balance: string; folio_id: string }>(
+    `SELECT folio_id, balance
      FROM public.folios
      WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
        AND COALESCE(is_deleted, false) = false`,
@@ -46,7 +46,8 @@ export const handleOverpayment = async (
     throw new BillingCommandError("FOLIO_NOT_FOUND", `Folio ${command.folio_id} not found`);
   }
 
-  const currentCredit = Number(folio.credit_balance);
+  const currentBalance = Number(folio.balance);
+  const currentCredit = currentBalance < 0 ? Math.abs(currentBalance) : 0;
   const actAmount = command.amount ?? currentCredit;
 
   if (actAmount <= 0 || actAmount > currentCredit) {
@@ -77,11 +78,11 @@ export const handleOverpayment = async (
     await acquireFolioLock(client, command.folio_id);
 
     if (command.action === "REFUND") {
-      // Reduce credit_balance and record a REFUND payment row
+      // Reduce the overpayment (increase balance back towards zero)
       await queryWithClient(
         client,
         `UPDATE public.folios
-         SET credit_balance = credit_balance - $2,
+         SET balance = balance + $2,
              updated_at = NOW(), updated_by = $3
          WHERE tenant_id = $1::uuid AND folio_id = $4::uuid`,
         [context.tenantId, actAmount, actor, command.folio_id],
@@ -172,11 +173,11 @@ export const handleOverpayment = async (
         severity: "INFO",
         isPciRelevant: true,
         description: `Overpayment of ${actAmount} refunded from folio ${command.folio_id}`,
-        oldValues: { credit_balance: currentCredit },
-        newValues: { credit_balance: currentCredit - actAmount },
+        oldValues: { balance: currentBalance },
+        newValues: { balance: currentBalance + actAmount },
       });
     } else {
-      // CREDIT — intentional credit, just log; credit_balance stays as-is
+      // CREDIT — intentional credit, just log; balance stays as-is (negative)
       await auditWithClient(client, {
         tenantId: context.tenantId,
         propertyId: command.property_id,
@@ -187,17 +188,18 @@ export const handleOverpayment = async (
         category: "FINANCIAL",
         severity: "INFO",
         description: `Overpayment of ${actAmount} retained as credit on folio ${command.folio_id}`,
-        newValues: { credit_balance: currentCredit, notes: command.notes },
+        newValues: { balance: currentBalance, notes: command.notes },
       });
     }
 
-    const { rows: updated } = await queryWithClient<{ credit_balance: string }>(
+    const { rows: updated } = await queryWithClient<{ balance: string }>(
       client,
-      `SELECT credit_balance FROM public.folios
+      `SELECT balance FROM public.folios
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
       [context.tenantId, command.folio_id],
     );
-    return Number(updated[0]?.credit_balance ?? 0);
+    const updatedBalance = Number(updated[0]?.balance ?? 0);
+    return updatedBalance < 0 ? Math.abs(updatedBalance) : 0;
   });
 
   return { action: command.action, creditBalance: newCredit };

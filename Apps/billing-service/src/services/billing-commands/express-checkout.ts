@@ -48,10 +48,9 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
     if (!command.skip_balance_check) {
       const { rows: balanceRows } = await queryWithClient<{
         balance: number;
-        credit_balance: number;
       }>(
         client,
-        `SELECT COALESCE(balance, 0) AS balance, COALESCE(credit_balance, 0) AS credit_balance
+        `SELECT COALESCE(balance, 0) AS balance
 			   FROM folios
 			   WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
 			     AND COALESCE(is_deleted, false) = false
@@ -67,12 +66,11 @@ export const expressCheckout = async (payload: unknown, context: CommandContext)
         );
       }
 
-      // USALI 12th Ed §7.3 — credit balance must be resolved before checkout
-      const creditBalance = balanceRows[0]?.credit_balance ?? 0;
-      if (creditBalance > 0) {
+      // USALI 12th Ed §7.3 — credit balance (negative balance) must be resolved before checkout
+      if (balance < 0) {
         throw new BillingCommandError(
           "CREDIT_BALANCE_UNRESOLVED",
-          `Folio ${folioId} has unresolved credit balance of ${creditBalance}. Issue a refund or apply to charges before checkout.`,
+          `Folio ${folioId} has unresolved credit balance of ${Math.abs(balance)}. Issue a refund or apply to charges before checkout.`,
         );
       }
     }

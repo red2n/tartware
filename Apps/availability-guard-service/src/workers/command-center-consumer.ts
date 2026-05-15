@@ -65,6 +65,8 @@ export const startAvailabilityGuardCommandCenterConsumer = async (
     groupId: config.commandCenter.consumerGroupId,
     allowAutoTopicCreation: false,
     maxBytesPerPartition: config.commandCenter.maxBatchBytes,
+    sessionTimeout: 45000,
+    rebalanceTimeout: 60000,
   });
 
   await consumer.connect();

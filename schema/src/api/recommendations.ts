@@ -19,10 +19,10 @@ import { uuid } from "../shared/base-schemas.js";
 
 /** Query schema for getting room recommendations. */
 export const RecommendationQuerySchema = z.object({
-	propertyId: uuid,
-	guestId: uuid.optional(),
-	checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-	checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	property_id: uuid,
+	guest_id: uuid.optional(),
+	check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 	adults: z.coerce.number().int().min(1).max(10).default(1),
 	children: z.coerce.number().int().min(0).max(10).default(0),
 	limit: z.coerce.number().int().min(1).max(50).optional(),
@@ -36,13 +36,13 @@ export type RecommendationQuery = z.infer<typeof RecommendationQuerySchema>;
 
 /** Body schema for ranking a list of room IDs. */
 export const RankRoomsBodySchema = z.object({
-	propertyId: uuid,
-	guestId: uuid.optional(),
-	checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-	checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	property_id: uuid,
+	guest_id: uuid.optional(),
+	check_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 	adults: z.number().int().min(1).max(10).default(1),
 	children: z.number().int().min(0).max(10).default(0),
-	roomIds: z.array(uuid).min(1).max(100),
+	room_ids: z.array(uuid).min(1).max(100),
 });
 
 export type RankRoomsBody = z.infer<typeof RankRoomsBodySchema>;

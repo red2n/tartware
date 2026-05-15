@@ -176,6 +176,9 @@ export const authenticateUser = async ({
   const accessToken = signAccessToken({
     sub: user.id,
     username: user.username,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
     type: "access",
   });
 
@@ -267,6 +270,9 @@ export const changeUserPassword = async (
   const accessToken = signAccessToken({
     sub: userId,
     username: user.username,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
     type: "access",
   });
 

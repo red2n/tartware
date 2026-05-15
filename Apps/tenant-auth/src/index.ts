@@ -18,6 +18,8 @@ export interface TenantMembershipBase {
 
 export type AuthContext<Membership extends TenantMembershipBase> = {
   userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
   isAuthenticated: boolean;
   memberships: Membership[];
   membershipMap: Map<string, Membership>;
@@ -94,7 +96,12 @@ const coerceModules = (modules: string[] | readonly string[] | undefined): strin
 
 const createAuthContextFactory =
   <Membership extends TenantMembershipBase>(rolePriority: Record<string, number>) =>
-  (userId: string | null, memberships: Membership[]): AuthContext<Membership> => {
+  (
+    userId: string | null,
+    memberships: Membership[],
+    userName: string | null = null,
+    userEmail: string | null = null,
+  ): AuthContext<Membership> => {
     const membershipMap = new Map(
       memberships.map((membership) => [membership.tenantId, membership]),
     );
@@ -109,6 +116,8 @@ const createAuthContextFactory =
 
     return {
       userId,
+      userName,
+      userEmail,
       isAuthenticated: Boolean(userId),
       memberships,
       membershipMap,
@@ -258,12 +267,15 @@ export const createTenantAuthPlugin = <Membership extends TenantMembershipBase>(
         return;
       }
 
+      const userName = (payload.name as string) || (payload.username as string) || null;
+      const userEmail = (payload.email as string) || null;
+
       try {
         const memberships = await getUserMemberships(payload.sub);
-        scopedRequest.auth = createAuthContext(payload.sub, memberships);
+        scopedRequest.auth = createAuthContext(payload.sub, memberships, userName, userEmail);
       } catch (error) {
         request.log.error(error, "failed to load tenant memberships");
-        scopedRequest.auth = createAuthContext(payload.sub, []);
+        scopedRequest.auth = createAuthContext(payload.sub, [], userName, userEmail);
       }
     });
   });

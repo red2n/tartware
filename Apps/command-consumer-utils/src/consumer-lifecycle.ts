@@ -29,6 +29,8 @@ type CommandCenterConfig = {
   maxRetries: number;
   retryBackoffMs: number;
   retryScheduleMs: number[];
+  sessionTimeout?: number;
+  rebalanceTimeout?: number;
 };
 
 type CommandConsumerMetrics = {
@@ -87,6 +89,8 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
       groupId: input.commandCenterConfig.consumerGroupId,
       allowAutoTopicCreation: false,
       maxBytesPerPartition: input.commandCenterConfig.maxBatchBytes,
+      sessionTimeout: input.commandCenterConfig.sessionTimeout,
+      rebalanceTimeout: input.commandCenterConfig.rebalanceTimeout,
     });
 
     await consumer.connect();

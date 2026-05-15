@@ -712,8 +712,7 @@ const applyChargePost = async (
           UPDATE public.folios
           SET total_charges = total_charges + CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE 0.00 END,
               total_credits = total_credits + CASE WHEN $5 = 'CREDIT' THEN $2::numeric ELSE 0.00 END,
-              balance       = GREATEST(0, balance - credit_balance + (CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE -$2::numeric END)),
-              credit_balance = GREATEST(0, credit_balance - balance - (CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE -$2::numeric END)),
+              balance       = balance + CASE WHEN $5 = 'DEBIT' THEN $2::numeric ELSE -$2::numeric END,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
         `,

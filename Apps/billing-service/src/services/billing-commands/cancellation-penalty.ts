@@ -210,8 +210,7 @@ export const chargeCancellationPenalty = async (
       client,
       `UPDATE public.folios
        SET total_charges = total_charges + $3::numeric,
-           balance = balance + GREATEST(0, $3::numeric - credit_balance),
-           credit_balance = GREATEST(0, credit_balance - $3::numeric),
+           balance = balance + $3::numeric,
            updated_at = NOW(), updated_by = $4::uuid
        WHERE tenant_id = $1::uuid AND folio_id = $2::uuid`,
       [context.tenantId, folioId, penaltyAmount, actorId],

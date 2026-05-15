@@ -42,6 +42,8 @@ export const startReservationConsumer = async (): Promise<void> => {
     groupId: kafkaConfig.consumerGroupId,
     allowAutoTopicCreation: false,
     maxBytesPerPartition: kafkaConfig.maxBatchBytes,
+    sessionTimeout: 45000,
+    rebalanceTimeout: 60000,
   });
 
   await newConsumer.connect();

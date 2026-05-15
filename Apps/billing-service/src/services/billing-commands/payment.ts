@@ -230,10 +230,8 @@ const capturePayment = async (
       throw new BillingCommandError("PAYMENT_CAPTURE_FAILED", "Failed to record captured payment.");
     }
 
-    // Update folio balance atomically. Overpayment detection in one round-trip:
-    //   balance     → GREATEST(0, balance - amount)          never go negative
-    //   credit_balance → existing + GREATEST(0, amount - balance)  capture excess
-    // RETURNING both values so we can detect and audit overpayments without a 2nd query.
+    // Update folio balance atomically. Net balance is simply (charges - payments - credits).
+    // RETURNING new balance so we can detect overpayments (negative balance) for auditing.
     let creditBalance = 0;
     if (resolvedFolioId) {
       // Fetch current version for OCC
@@ -248,36 +246,35 @@ const capturePayment = async (
       }
       const expectedVersion = folio.version;
 
-      const { rows: folioRows, rowCount } = await queryWithClient<{
-        balance: string;
-        credit_balance: string;
-      }>(
+      const folioUpdateResult = await queryWithClient<{ balance: number }>(
         client,
         `
         UPDATE public.folios
         SET
           total_payments  = total_payments + $2,
-          balance         = GREATEST(0, balance - $2),
-          credit_balance  = credit_balance + GREATEST(0, $2 - balance),
+          balance         = balance - $2,
           version         = version + 1,
           updated_at      = NOW(),
           updated_by      = $3::uuid
         WHERE tenant_id = $1::uuid
           AND folio_id  = $4::uuid
           AND version   = $5
-        RETURNING balance, credit_balance
+        RETURNING balance
         `,
         [context.tenantId, command.amount, actor, resolvedFolioId, expectedVersion],
       );
 
-      if (rowCount === 0) {
+      if (folioUpdateResult.rowCount === 0) {
         throw new BillingCommandError(
           "CONCURRENT_MODIFICATION",
           "Folio was modified by another process. Please retry.",
           true,
         );
       }
-      creditBalance = Number(folioRows[0]?.credit_balance ?? 0);
+      // With signed balance, we no longer use the separate credit_balance column for overpayments.
+      // Net balance is now simply reflected as a negative 'balance'.
+      const newBalance = Number(folioUpdateResult.rows[0]?.balance ?? 0);
+      creditBalance = newBalance < 0 ? Math.abs(newBalance) : 0;
     }
 
     // GL posting (USALI double-entry): DR cash account / CR Guest Ledger (1100).
@@ -364,7 +361,7 @@ const capturePayment = async (
         creditBalance: paymentId.creditBalance,
         tenantId: context.tenantId,
       },
-      "Overpayment detected — credit_balance updated on folio",
+      "Overpayment detected — balance is now negative",
     );
   }
 
