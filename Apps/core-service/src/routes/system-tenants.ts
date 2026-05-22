@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
   SystemBootstrapTenantSchema,

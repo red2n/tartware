@@ -225,6 +225,7 @@ export const MODULE_IDS = [
 	"facility-maintenance",
 	"analytics-bi",
 	"marketing-channel",
+	"loyalty",
 	"enterprise-api",
 ] as const;
 

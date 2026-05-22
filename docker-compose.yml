@@ -119,6 +119,29 @@ services:
       timeout: 5s
       retries: 5
 
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: tartware-postgrest
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/tartware
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_SERVER_PORT: 3000
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3000
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tartware_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: tartware-redis
@@ -296,27 +319,6 @@ services:
       timeout: 5s
       retries: 5
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: tartware-pgadmin
-    restart: always
-    # Expose PGAdmin UI on host port (override with PGADMIN_PORT env); default 5555 -> container 80
-    ports:
-      - "${PGADMIN_PORT:-5555}:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-    # Persistent storage for PGAdmin (keeps settings/sessions)
-    volumes:
-      - tartware_pgadmin_data:/var/lib/pgadmin
-    networks:
-      - tartware_network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   tartware_postgres_data:
     name: tartware_postgres_data
@@ -338,9 +340,6 @@ volumes:
     driver: local
   tartware_grafana_data:
     name: tartware_grafana_data
-    driver: local
-  tartware_pgadmin_data:
-    name: tartware_pgadmin_data
     driver: local
   # pgbouncer is stateless — no volume needed
 

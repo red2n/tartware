@@ -1,4 +1,5 @@
 import type { UiPreferencesRow, UserUiPreferences } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import {
   GET_UI_PREFERENCES_SQL,

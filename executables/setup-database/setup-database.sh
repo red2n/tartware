@@ -271,6 +271,12 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
         echo -e "${YELLOW}⚠  Reset password script not found at $RESET_PASSWORD_SCRIPT - skipping${NC}"
     fi
 
+    # Notify PostgREST to reload schema
+    echo "Notifying PostgREST to reload schema..."
+    docker exec tartware-postgres psql -U postgres -d tartware -c "NOTIFY pgrst, 'reload schema';" &> /dev/null || true
+    echo -e "${GREEN}✓ PostgREST schema cache reloaded${NC}"
+    echo ""
+
     # Success
     echo "╔════════════════════════════════════════════════════════════════╗"
     echo "║           TARTWARE PMS DOCKER DEPLOYMENT COMPLETE              ║"
@@ -1121,6 +1127,11 @@ echo -e "  List Tables:   ${YELLOW}\\dt${NC}"
 echo -e "  View Data:     ${YELLOW}SELECT * FROM tenants;${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+
+# Notify PostgREST to reload schema (if it's running)
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "NOTIFY pgrst, 'reload schema';" &> /dev/null || true
+echo -e "${GREEN}✓ PostgREST schema cache reloaded (if running)${NC}"
+
 echo -e "${GREEN}✓ Database is ready for use!${NC}"
 echo ""
 

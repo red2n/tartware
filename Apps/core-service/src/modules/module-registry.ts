@@ -103,6 +103,21 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       "Email/SMS marketing tools",
     ],
   },
+  loyalty: {
+    id: "loyalty",
+    name: "Loyalty & Rewards",
+    tier: "add-on",
+    category: "Experience",
+    description:
+      "Guest loyalty programs, tier management, points earning, rewards redemption, and loyalty analytics.",
+    features: [
+      "Loyalty program enrollment",
+      "Points balance tracking",
+      "Tier qualification and progression",
+      "Rewards catalog and redemption",
+      "Loyalty activity reporting",
+    ],
+  },
   "enterprise-api": {
     id: "enterprise-api",
     name: "Enterprise & API",

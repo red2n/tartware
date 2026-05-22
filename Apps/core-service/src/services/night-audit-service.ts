@@ -82,7 +82,11 @@ export const getBusinessDateStatus = async (
     return null;
   }
 
-  const row = rows[0]!;
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
   return BusinessDateStatusResponseSchema.parse({
     business_date_id: row.business_date_id,
     tenant_id: row.tenant_id,
@@ -181,7 +185,10 @@ export const getNightAuditRunDetail = async (
   }
 
   // First row contains run-level data
-  const firstRow = rows[0]!;
+  const firstRow = rows[0];
+  if (!firstRow) {
+    return null;
+  }
 
   // Map all steps
   const steps: NightAuditStep[] = rows.map((row) =>

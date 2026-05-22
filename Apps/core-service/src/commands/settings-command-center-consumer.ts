@@ -46,9 +46,11 @@ export const startSettingsCommandCenterConsumer = async (): Promise<void> => {
     maxBytesPerPartition: config.settings.commandCenter.maxBatchBytes,
   });
 
-  // consumer is guaranteed non-null after assignment above
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const c = consumer!;
+  if (!consumer) {
+    throw new Error("Settings command consumer was not initialized");
+  }
+
+  const c = consumer;
   await c.connect();
   await c.subscribe({
     topic: config.settings.commandCenter.topic,

@@ -9,7 +9,7 @@ describe("Module Registry", () => {
   });
 
   it("normalizes and de-duplicates module ids", () => {
-    const modules = normalizeModuleList(["CORE", "core", "analytics-bi", "unknown"]);
-    expect(modules).toEqual(["core", "analytics-bi"]);
+    const modules = normalizeModuleList(["CORE", "core", "analytics-bi", "loyalty", "unknown"]);
+    expect(modules).toEqual(["core", "analytics-bi", "loyalty"]);
   });
 });

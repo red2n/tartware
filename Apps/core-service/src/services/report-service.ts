@@ -33,6 +33,7 @@ import {
   type RevenueSummaryRow,
   RevenueSummarySchema,
 } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import {
   ARRIVALS_COUNT_SQL,
@@ -66,6 +67,14 @@ export {
 
 // Backward compatibility alias
 export const ReservationSourceSchema = ReservationSourceSummarySchema;
+
+const getFirstRowOrThrow = <T>(rows: T[], queryName: string): T => {
+  const row = rows[0];
+  if (!row) {
+    throw new Error(`Expected first row from ${queryName}`);
+  }
+  return row;
+};
 
 const normalizeStatusKey = (value: string | null): keyof ReservationStatusSummary | null => {
   if (!value || typeof value !== "string") {
@@ -660,7 +669,7 @@ export const getFlashReport = async (params: {
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
     qParams,
   );
-  const r = reservesRes.rows[0]!;
+  const r = getFirstRowOrThrow(reservesRes.rows, "reserves query");
   const sold = parseInt(r.sold, 10);
   const comp = parseInt(r.comp, 10);
   const available = Math.max(0, totalRooms - sold - ooo - oos);
@@ -713,7 +722,7 @@ export const getFlashReport = async (params: {
        AND COALESCE(is_deleted, false) = false`,
     qParams,
   );
-  const hk = hkRes.rows[0]!;
+  const hk = getFirstRowOrThrow(hkRes.rows, "housekeeping tasks query");
 
   // Maintenance
   const maintRes = await query<{ open_req: string; urgent: string; completed: string }>(
@@ -725,7 +734,7 @@ export const getFlashReport = async (params: {
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
     qParams,
   );
-  const mt = maintRes.rows[0]!;
+  const mt = getFirstRowOrThrow(maintRes.rows, "maintenance requests query");
 
   return {
     business_date: params.businessDate ?? new Date().toISOString().slice(0, 10),
@@ -1073,7 +1082,7 @@ export const getHousekeepingProductivityReport = async (params: {
     qParams,
   );
 
-  const s = summary.rows[0]!;
+  const s = getFirstRowOrThrow(summary.rows, "housekeeping summary query");
   const total = parseInt(s.total, 10);
   const completed = parseInt(s.completed, 10);
 
@@ -1145,7 +1154,7 @@ export const getMaintenanceSlaReport = async (params: {
     qParams,
   );
 
-  const s = summary.rows[0]!;
+  const s = getFirstRowOrThrow(summary.rows, "maintenance SLA summary query");
   return {
     total_requests: parseInt(s.total, 10),
     completed: parseInt(s.completed, 10),
