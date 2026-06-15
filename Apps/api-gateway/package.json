@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@fastify/helmet": "^13.0.2",
-    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/rate-limit": "^11.0.0",
     "@fastify/sensible": "^6.0.4",
     "@tartware/command-center-shared": "workspace:*",
     "@tartware/config": "workspace:*",
