@@ -1,6 +1,6 @@
 <div class="tax-config-page">
   <app-page-header title="Tax Configuration" description="Tax rules, jurisdictions, and rate configuration">
-    <button class="btn btn-primary btn-sm" (click)="toggleCreateForm()" [pTooltip]="'Add new tax rule' | translate">
+    <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateForm()" [pTooltip]="'Add new tax rule' | translate">
       <app-icon name="add" /> {{ 'Add Tax Rule' | translate }}
     </button>
     <button class="btn btn-invisible" (click)="loadTaxConfigs()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh tax configurations' | translate">
@@ -10,8 +10,8 @@
 
   <!-- ═══ CREATE FORM ═══ -->
   @if (showCreateForm()) {
-    <div class="action-form">
-      <div class="close-form-row"><h3>{{ 'Create Tax Rule' | translate }}</h3><button class="btn btn-ghost btn-sm" (click)="toggleCreateForm()"><app-icon name="close" /></button></div>
+    <div class="action-form" appUnsavedGuard appSubmitOnEnter>
+      <div class="close-form-row"><h3>{{ 'Create Tax Rule' | translate }}</h3><button class="btn btn-ghost btn-sm" unsavedClose (click)="toggleCreateForm()"><app-icon name="close" /></button></div>
       <div class="form-grid">
         <div class="form-field">
           <label>{{ 'Tax Code' | translate }} *</label>
@@ -79,7 +79,7 @@
           @if (creating()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
           {{ 'Create Tax Rule' | translate }}
         </button>
-        <button class="btn btn-outline btn-sm" (click)="toggleCreateForm()">{{ 'Cancel' | translate }}</button>
+        <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateForm()">{{ 'Cancel' | translate }}</button>
       </div>
     </div>
   }

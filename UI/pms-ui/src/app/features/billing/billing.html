@@ -95,14 +95,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCapturePaymentForm()" [pTooltip]="'Capture a payment' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCapturePaymentForm()" [pTooltip]="'Capture a payment' | translate">
         <app-icon name="add" /> {{ 'Capture Payment' | translate }}
       </button>
     </div>
 
     <!-- Capture Payment Form -->
     @if (showCapturePaymentForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Capture Payment' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -146,7 +146,7 @@
             @if (capturingPayment()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Capture Payment' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCapturePaymentForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCapturePaymentForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -322,14 +322,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateInvoiceForm()" [pTooltip]="'Create a new invoice' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateInvoiceForm()" [pTooltip]="'Create a new invoice' | translate">
         <app-icon name="add" /> {{ 'New Invoice' | translate }}
       </button>
     </div>
 
     <!-- Create Invoice Form -->
     @if (showCreateInvoiceForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Create Invoice' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -384,7 +384,7 @@
             @if (creatingInvoice()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Invoice' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCreateInvoiceForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateInvoiceForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -563,14 +563,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateFolioForm()" [pTooltip]="'Create standalone folio' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateFolioForm()" [pTooltip]="'Create standalone folio' | translate">
         <app-icon name="add" /> {{ 'New Folio' | translate }}
       </button>
     </div>
 
     <!-- Create Folio Form -->
     @if (showCreateFolioForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Create Standalone Folio' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -597,7 +597,7 @@
             @if (creatingFolio()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Folio' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCreateFolioForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateFolioForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -1099,14 +1099,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()" [pTooltip]="'Post a charge to a folio' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="togglePostChargeForm()" [pTooltip]="'Post a charge to a folio' | translate">
         <app-icon name="add" /> {{ 'Post Charge' | translate }}
       </button>
     </div>
 
     <!-- Post Charge Form -->
     @if (showPostChargeForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Post Charge' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -1155,7 +1155,7 @@
             @if (postingCharge()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Post Charge' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="togglePostChargeForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="togglePostChargeForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -1323,13 +1323,13 @@
   @if (activeView() === 'routing') {
     <div class="filter-bar filter-bar-with-action">
       <div class="text-subtle">{{ 'Active rules and reusable templates for folio routing.' | translate }}</div>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateRoutingRuleForm()">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateRoutingRuleForm()">
         <app-icon name="add" /> {{ 'New Routing Rule' | translate }}
       </button>
     </div>
 
     @if (showCreateRoutingRuleForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Create Routing Rule' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -1427,7 +1427,7 @@
             @if (creatingRoutingRule()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Rule' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCreateRoutingRuleForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateRoutingRuleForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }

@@ -15,6 +15,7 @@ import { RegistryService } from "../../core/registry/registry.service";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { ThemeService } from "../../core/theme/theme.service";
 import { IconComponent } from "../../shared/components/icon/icon";
+import { UnsavedChangesService } from "../../shared/forms/unsaved-changes.service";
 import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 
 @Component({
@@ -36,6 +37,7 @@ export class TopbarComponent {
 	private readonly auth = inject(AuthService);
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
+	private readonly unsaved = inject(UnsavedChangesService);
 	private readonly i18n = inject(I18nService);
 	private readonly registry = inject(RegistryService);
 	private readonly router = inject(Router);
@@ -65,13 +67,20 @@ export class TopbarComponent {
 		return this.memberships().length > 1;
 	}
 
-	switchTenant(tenantId: string): void {
+	async switchTenant(tenantId: string): Promise<void> {
+		if (!(await this.unsaved.confirmLeave())) return;
 		this.auth.selectTenant(tenantId);
 		// Force reload to re-fetch all data for the new tenant
 		window.location.reload();
 	}
 
-	selectProperty(propertyId: string): void {
+	/**
+	 * Switching property re-scopes every screen underneath. A form left half
+	 * filled would either lose its input or, worse, post against the property
+	 * the user just switched to — so ask first.
+	 */
+	async selectProperty(propertyId: string): Promise<void> {
+		if (!(await this.unsaved.confirmLeave())) return;
 		this.ctx.selectProperty(propertyId);
 	}
 

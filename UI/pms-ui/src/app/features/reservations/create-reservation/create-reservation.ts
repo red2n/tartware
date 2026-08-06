@@ -61,6 +61,8 @@ type GuestOption = {
 };
 
 import type { RoomRecommendationResponse } from "@tartware/schemas";
+import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 
 /** Aggregated recommendation stats per room type */
 type RoomTypeRecommendation = {
@@ -83,6 +85,7 @@ type RoomTypeRecommendation = {
 		PaginationComponent,
 		TranslatePipe,
 	],
+	hostDirectives: [UnsavedGuardDirective, SubmitOnEnterDirective],
 	templateUrl: "./create-reservation.html",
 	styleUrl: "./create-reservation.scss",
 })

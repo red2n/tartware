@@ -1,6 +1,6 @@
 <div class="cashiering-page">
   <app-page-header title="Cashiering" description="Cashier sessions, shift management, and float reconciliation">
-    <button class="btn btn-primary btn-sm" (click)="toggleOpenForm()" [pTooltip]="'Open new cashier session' | translate">
+    <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleOpenForm()" [pTooltip]="'Open new cashier session' | translate">
       <app-icon name="add" /> {{ 'Open Session' | translate }}
     </button>
     <button class="btn btn-invisible" (click)="loadSessions()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh cashier sessions' | translate">
@@ -10,7 +10,7 @@
 
   <!-- ═══ OPEN SESSION FORM ═══ -->
   @if (showOpenForm()) {
-    <div class="action-form">
+    <div class="action-form" appUnsavedGuard appSubmitOnEnter>
       <h3>{{ 'Open Cashier Session' | translate }}</h3>
       <div class="form-grid">
         <div class="form-field">
@@ -43,7 +43,7 @@
           @if (openingSession()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
           {{ 'Open Session' | translate }}
         </button>
-        <button class="btn btn-outline btn-sm" (click)="toggleOpenForm()">{{ 'Cancel' | translate }}</button>
+        <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleOpenForm()">{{ 'Cancel' | translate }}</button>
       </div>
     </div>
   }

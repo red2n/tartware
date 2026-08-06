@@ -15,6 +15,8 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { groupBlockStatusClass } from "../../../shared/badge-utils";
 import { IconComponent } from "../../../shared/components/icon/icon";
+import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type DetailRow = { label: string; value: string; badge?: string; description?: string };
@@ -30,6 +32,9 @@ type DetailRow = { label: string; value: string; badge?: string; description?: s
 		ProgressSpinnerModule,
 		TooltipModule,
 		TranslatePipe,
+		UnsavedGuardDirective,
+
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./group-detail.html",
 	styleUrl: "./group-detail.scss",

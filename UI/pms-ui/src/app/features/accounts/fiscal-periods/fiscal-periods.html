@@ -86,7 +86,7 @@
             @if (closingPeriodId() === p.fiscal_period_id) {
               <tr>
                 <td colspan="11">
-                  <div class="inline-form">
+                  <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
                     <h4>{{ 'Close Fiscal Period' | translate }}: {{ p.period_name }}</h4>
                     <div class="form-grid">
                       <div class="form-group">
@@ -101,7 +101,7 @@
                         </label>
                       </div>
                       <div class="form-group form-group-actions">
-                        <button class="btn btn-outline btn-sm" (click)="cancelClose()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelClose()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-warning btn-sm" (click)="submitClose()" [disabled]="actionLoading()">
                           @if (actionLoading()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Close Period' | translate }}
@@ -116,7 +116,7 @@
             @if (reopeningPeriodId() === p.fiscal_period_id) {
               <tr>
                 <td colspan="11">
-                  <div class="inline-form">
+                  <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
                     <h4>{{ 'Reopen Fiscal Period' | translate }}: {{ p.period_name }}</h4>
                     <div class="form-grid">
                       <div class="form-group">
@@ -125,7 +125,7 @@
                                [ngModel]="reopenReason()" (ngModelChange)="reopenReason.set($event)" />
                       </div>
                       <div class="form-group form-group-actions">
-                        <button class="btn btn-outline btn-sm" (click)="cancelReopen()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelReopen()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-primary btn-sm" (click)="submitReopen()" [disabled]="actionLoading() || !reopenReason()">
                           @if (actionLoading()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Reopen Period' | translate }}

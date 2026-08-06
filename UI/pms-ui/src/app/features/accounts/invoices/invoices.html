@@ -11,7 +11,7 @@
 
   <!-- ═══ CREATE FORM ═══ -->
   @if (showCreateForm()) {
-    <div class="action-confirm-card">
+    <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
       <div class="confirm-header">
         <app-icon class="confirm-icon" name="receipt" />
         <h3 class="confirm-title">{{ 'Create Invoice' | translate }}</h3>
@@ -51,7 +51,7 @@
         </div>
       </div>
       <div class="confirm-actions">
-        <button class="btn btn-outline btn-sm" (click)="cancelCreate()" [disabled]="creating()">{{ 'Cancel' | translate }}</button>
+        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelCreate()" [disabled]="creating()">{{ 'Cancel' | translate }}</button>
         <button class="btn btn-primary btn-sm" (click)="submitCreate()" [disabled]="creating()">
           @if (creating()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
           {{ 'Create Invoice' | translate }}
@@ -224,7 +224,7 @@
             @if (adjustingInvoiceId() === inv.id) {
               <tr>
                 <td colspan="6">
-                  <div class="inline-form">
+                  <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Adjustment Amount' | translate }} *</label>
@@ -239,7 +239,7 @@
                                (ngModelChange)="adjustForm.set({...adjustForm(), reason: $event})" />
                       </div>
                       <div class="form-group form-group-actions">
-                        <button class="btn btn-outline btn-sm" (click)="cancelAdjust()" [disabled]="adjusting()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAdjust()" [disabled]="adjusting()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-primary btn-sm" (click)="submitAdjust()" [disabled]="adjusting()">
                           @if (adjusting()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Apply' | translate }}
@@ -253,7 +253,7 @@
             @if (voidingInvoiceId() === inv.id) {
               <tr>
                 <td colspan="6">
-                  <div class="inline-form">
+                  <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Reason' | translate }}</label>
@@ -262,7 +262,7 @@
                                (ngModelChange)="voidReason.set($event)" />
                       </div>
                       <div class="form-group form-group-actions">
-                        <button class="btn btn-outline btn-sm" (click)="cancelVoid()" [disabled]="voiding()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelVoid()" [disabled]="voiding()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-danger btn-sm" (click)="submitVoid()" [disabled]="voiding()">
                           @if (voiding()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Void Invoice' | translate }}
@@ -276,7 +276,7 @@
             @if (creditingInvoiceId() === inv.id) {
               <tr>
                 <td colspan="6">
-                  <div class="inline-form">
+                  <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Credit Amount' | translate }} *</label>
@@ -291,7 +291,7 @@
                                (ngModelChange)="creditForm.set({...creditForm(), reason: $event})" />
                       </div>
                       <div class="form-group form-group-actions">
-                        <button class="btn btn-outline btn-sm" (click)="cancelCredit()" [disabled]="crediting()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelCredit()" [disabled]="crediting()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-primary btn-sm" (click)="submitCredit()" [disabled]="crediting()">
                           @if (crediting()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Create Credit Note' | translate }}
@@ -305,7 +305,7 @@
             @if (reopeningInvoiceId() === inv.id) {
               <tr>
                 <td colspan="6">
-                  <div class="inline-form">
+                  <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Reason' | translate }} *</label>
@@ -314,7 +314,7 @@
                                (ngModelChange)="reopenReason.set($event)" />
                       </div>
                       <div class="form-group form-group-actions">
-                        <button class="btn btn-outline btn-sm" (click)="cancelReopen()" [disabled]="reopening()">{{ 'Cancel' | translate }}</button>
+                        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelReopen()" [disabled]="reopening()">{{ 'Cancel' | translate }}</button>
                         <button class="btn btn-primary btn-sm" (click)="submitReopen()" [disabled]="reopening() || !reopenReason()">
                           @if (reopening()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
                           {{ 'Reopen Invoice' | translate }}

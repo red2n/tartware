@@ -19,6 +19,8 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
+import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { CHARGE_CODE_OPTIONS } from "../../billing/billing-constants";
@@ -52,6 +54,9 @@ const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED", "CHE
 		TooltipModule,
 		PaginationComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
+
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./reservation-detail.html",
 	styleUrl: "./reservation-detail.scss",

@@ -42,30 +42,5 @@
   display: none;
 }
 
-/* Unsaved-changes prompt, shown in place of the caller's action row. Tinted so
- * it reads as a warning rather than as another row of neutral buttons. */
-.dialog-footer.is-confirming {
-  background: var(--bgColor-attention-muted);
-  border-top-color: var(--borderColor-attention-muted);
-}
-
-.dialog-confirm {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--base-size-16);
-  flex-wrap: wrap;
-}
-
-.dialog-confirm-message {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--base-size-8);
-  font-size: var(--base-text-size-sm);
-  font-weight: var(--base-text-weight-medium);
-  color: var(--fgColor-attention);
-}
-
-.dialog-confirm-icon {
-  font-size: var(--base-text-size-lg);
-}
+/* The unsaved-changes prompt itself lives in DiscardConfirmComponent, which
+ * carries its own warning colours — it simply replaces the action row here. */

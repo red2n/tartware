@@ -10,6 +10,9 @@ import {
 import { DynamicDialogRef } from "primeng/dynamicdialog";
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { attachDirtyTracking } from "../../forms/dirty-tracking";
+import { DiscardConfirmComponent } from "../../forms/discard-confirm";
+import { SubmitOnEnterDirective } from "../../forms/submit-on-enter.directive";
 import { IconComponent } from "../icon/icon";
 
 let nextTitleId = 0;
@@ -32,13 +35,8 @@ let nextTitleId = 0;
 @Component({
 	selector: "app-dialog-shell",
 	standalone: true,
-	imports: [IconComponent, TranslatePipe],
-	host: {
-		// input/change bubble from every control in the body. Programmatic
-		// prefill (the edit dialogs) fires neither, so they don't start dirty.
-		"(input)": "markDirty()",
-		"(change)": "markDirty()",
-	},
+	imports: [DiscardConfirmComponent, IconComponent, TranslatePipe],
+	hostDirectives: [SubmitOnEnterDirective],
 	template: `
     <h2 class="dialog-title" [id]="titleId">
       @if (icon(); as iconName) {
@@ -51,18 +49,9 @@ let nextTitleId = 0;
       <ng-content />
     </div>
 
-    <div class="dialog-footer" [class.is-confirming]="confirming()">
+    <div class="dialog-footer">
       @if (confirming()) {
-        <div class="dialog-confirm">
-          <span class="dialog-confirm-message">
-            <app-icon class="dialog-confirm-icon" name="warning" />
-            {{ 'Discard your changes?' | translate }}
-          </span>
-          <div class="dialog-actions">
-            <button class="btn btn-invisible" (click)="keepEditing()">{{ 'Keep editing' | translate }}</button>
-            <button class="btn btn-warning" (click)="discard()">{{ 'Discard' | translate }}</button>
-          </div>
-        </div>
+        <app-discard-confirm (keepEditing)="keepEditing()" (discard)="discard()" />
       }
       <!-- Kept in the DOM rather than swapped out: re-projecting content would
            tear down the caller's action buttons and their state. -->
@@ -95,14 +84,18 @@ export class DialogShellComponent {
 			this.host.closest(".p-dialog")?.setAttribute("aria-labelledby", this.titleId);
 		});
 
+		const detachTracking = attachDirtyTracking(this.host, () => this.markDirty());
 		// Capture phase, so a dirty form can stop the click before the caller's own
 		// (click)="cancel()" handler runs and closes the dialog behind our back.
 		this.host.addEventListener("click", this.onClickCapture, true);
 		document.addEventListener("keydown", this.onEscape);
-		inject(DestroyRef).onDestroy(() => this.teardown());
+		inject(DestroyRef).onDestroy(() => {
+			detachTracking();
+			this.teardown();
+		});
 	}
 
-	markDirty(): void {
+	private markDirty(): void {
 		this.dirty = true;
 	}
 
@@ -117,12 +110,7 @@ export class DialogShellComponent {
 
 	private readonly onClickCapture = (event: Event): void => {
 		const target = event.target as HTMLElement | null;
-		if (!target) return;
-		// Chips and toggles set values on click without emitting input/change.
-		if (target.closest(".dialog-body") && target.closest("button")) {
-			this.markDirty();
-		}
-		if (!target.closest("[dialogCancel]")) return;
+		if (!target?.closest("[unsavedClose]")) return;
 		if (!this.requestClose()) {
 			event.preventDefault();
 			event.stopPropagation();

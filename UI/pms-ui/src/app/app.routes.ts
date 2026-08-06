@@ -3,6 +3,7 @@ import type { Routes } from "@angular/router";
 import { authGuard } from "./core/auth/auth.guard";
 import { propertyGuard } from "./core/auth/property.guard";
 import { screenGuard } from "./core/auth/role.guard";
+import { unsavedChangesGuard } from "./shared/forms/unsaved-changes.guard";
 
 export const routes: Routes = [
 	{
@@ -45,6 +46,7 @@ export const routes: Routes = [
 			},
 			{
 				path: "reservations/new",
+				canDeactivate: [unsavedChangesGuard],
 				canActivate: [propertyGuard, screenGuard("reservations")],
 				data: { screen: "reservations" },
 				loadComponent: () =>
@@ -69,6 +71,7 @@ export const routes: Routes = [
 			},
 			{
 				path: "groups/new",
+				canDeactivate: [unsavedChangesGuard],
 				canActivate: [propertyGuard, screenGuard("groups")],
 				data: { screen: "groups" },
 				loadComponent: () =>

@@ -91,7 +91,7 @@
 
 <!-- Check-in confirmation with room selection -->
 @if (confirmingCheckIn()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkin" name="login" />
       <h3 class="confirm-title">{{ 'Check-In — Assign Room' | translate }}</h3>
@@ -195,7 +195,7 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="checkIn()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -211,7 +211,7 @@
 
 <!-- Express Check-Out confirmation -->
 @if (confirmingExpressCheckout()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkin" name="flash_on" />
       <h3 class="confirm-title">{{ 'Express Check-Out' | translate }}</h3>
@@ -251,7 +251,7 @@
       }
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="expressCheckout()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -267,7 +267,7 @@
 
 <!-- Check-out confirmation -->
 @if (confirmingCheckOut()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkout" name="logout" />
       <h3 class="confirm-title">{{ 'Confirm Check-Out' | translate }}</h3>
@@ -280,7 +280,7 @@
       </ul>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-outline btn-sm" (click)="checkOut()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -305,7 +305,7 @@
       <p>{{ 'Are you sure you want to cancel this reservation? This action cannot be undone.' | translate }}</p>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Go Back' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Go Back' | translate }}</button>
       <button class="btn btn-danger btn-sm" (click)="cancelReservation()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -351,7 +351,7 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-danger btn-sm" (click)="chargeNoShow()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -367,7 +367,7 @@
 
 <!-- Late checkout charge -->
 @if (confirmingLateCheckoutCharge()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkout" name="schedule" />
       <h3 class="confirm-title">{{ 'Post Late Checkout Fee' | translate }}</h3>
@@ -403,7 +403,7 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="chargeLateCheckout()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -419,7 +419,7 @@
 
 <!-- Cancellation penalty -->
 @if (confirmingCancellationPenalty()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkout" name="price_change" />
       <h3 class="confirm-title">{{ 'Post Cancellation Penalty' | translate }}</h3>
@@ -449,7 +449,7 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="chargeCancellationPenalty()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -465,7 +465,7 @@
 
 <!-- Modify reservation dates -->
 @if (confirmingModifyDates()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkin" name="date_range" />
       <h3 class="confirm-title">{{ 'Modify Reservation Dates' | translate }}</h3>
@@ -511,7 +511,7 @@
       }
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="modifyDates()" [disabled]="actionLoading() || modifyDatesNights() === 0">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
@@ -616,7 +616,7 @@
         <div class="card-header">
           <h3 class="card-title">{{ 'Folio & Charges' | translate }}</h3>
           @if (canPostCharge()) {
-            <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()"
+            <button class="btn btn-primary btn-sm" unsavedClose (click)="togglePostChargeForm()"
                     [pTooltip]="'Post a charge to this reservation\'s folio' | translate">
               <app-icon name="add" /> {{ 'Post Charge' | translate }}
             </button>
@@ -626,7 +626,7 @@
         <!-- Post Charge Form -->
         @if (showPostChargeForm()) {
           <div class="card-body">
-            <div class="action-form">
+            <div class="action-form" appUnsavedGuard appSubmitOnEnter>
               <h3>{{ 'Post Charge' | translate }}</h3>
               <div class="form-grid">
                 <div class="form-field">
@@ -663,7 +663,7 @@
                   @if (postingCharge()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Post Charge' | translate }}
                 </button>
-                <button class="btn btn-outline btn-sm" (click)="togglePostChargeForm()">
+                <button class="btn btn-outline btn-sm" unsavedClose (click)="togglePostChargeForm()">
                   {{ 'Cancel' | translate }}
                 </button>
               </div>
@@ -827,7 +827,7 @@
 }
 
 @if (confirmingAssignRoom()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header"><app-icon class="confirm-icon" name="bed" /><h3 class="confirm-title">{{ 'Assign Room' | translate }}</h3></div>
     <div class="confirm-body">
       <div class="form-group">
@@ -841,25 +841,25 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="assignRoom()" [disabled]="actionLoading() || !assignRoomForm().room_id">{{ 'Assign' | translate }}</button>
     </div>
   </div>
 }
 
 @if (confirmingUnassignRoom()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header"><app-icon class="confirm-icon" name="bed" /><h3 class="confirm-title">{{ 'Unassign Room' | translate }}</h3></div>
     <div class="confirm-body"><p>{{ 'Remove the assigned room from this reservation?' | translate }}</p></div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-warning btn-sm" (click)="unassignRoom()" [disabled]="actionLoading()">{{ 'Unassign' | translate }}</button>
     </div>
   </div>
 }
 
 @if (confirmingExtend()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header"><app-icon class="confirm-icon" name="more_time" /><h3 class="confirm-title">{{ 'Extend Stay' | translate }}</h3></div>
     <div class="confirm-body">
       <div class="form-group">
@@ -874,14 +874,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="extendStay()" [disabled]="actionLoading()">{{ 'Extend' | translate }}</button>
     </div>
   </div>
 }
 
 @if (confirmingRateOverride()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header"><app-icon class="confirm-icon" name="price_change" /><h3 class="confirm-title">{{ 'Override Rate' | translate }}</h3></div>
     <div class="confirm-body">
       <div class="form-group">
@@ -896,14 +896,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="overrideRate()" [disabled]="actionLoading()">{{ 'Override' | translate }}</button>
     </div>
   </div>
 }
 
 @if (confirmingAddDeposit()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header"><app-icon class="confirm-icon" name="payments" /><h3 class="confirm-title">{{ 'Add Deposit' | translate }}</h3></div>
     <div class="confirm-body">
       <div class="form-group">
@@ -928,14 +928,14 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="addDeposit()" [disabled]="actionLoading()">{{ 'Add Deposit' | translate }}</button>
     </div>
   </div>
 }
 
 @if (confirmingReleaseDeposit()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header"><app-icon class="confirm-icon" name="undo" /><h3 class="confirm-title">{{ 'Release Deposit' | translate }}</h3></div>
     <div class="confirm-body">
       <div class="form-group">
@@ -950,7 +950,7 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="releaseDeposit()" [disabled]="actionLoading()">{{ 'Release' | translate }}</button>
     </div>
   </div>

@@ -17,6 +17,8 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
 	createSortState,
@@ -65,6 +67,9 @@ type AgingFilter =
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
+
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./accounts-receivable.html",
 	styleUrl: "./accounts-receivable.scss",

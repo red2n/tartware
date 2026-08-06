@@ -8,12 +8,14 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({
 	selector: "app-create-group",
 	standalone: true,
 	imports: [FormsModule, RouterLink, IconComponent, ProgressSpinnerModule, TranslatePipe],
+	hostDirectives: [UnsavedGuardDirective],
 	templateUrl: "./create-group.html",
 	styleUrl: "./create-group.scss",
 })

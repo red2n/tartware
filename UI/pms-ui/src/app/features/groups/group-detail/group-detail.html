@@ -23,7 +23,7 @@
 
 <!-- Group check-in confirmation -->
 @if (confirmingCheckIn()) {
-  <div class="action-confirm-card">
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon confirm-icon-checkin" name="login" />
       <h3 class="confirm-title">{{ 'Group Check-In' | translate }}</h3>
@@ -50,7 +50,7 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="checkInGroup()" [disabled]="actionLoading()">
         @if (actionLoading()) {
           <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
