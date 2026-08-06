@@ -139,7 +139,7 @@
           </thead>
           <tbody>
             @for (ar of paginated(); track ar.ar_id) {
-              <tr [class.overdue]="ar.is_overdue" (click)="selectAr(ar)">
+              <tr [class.overdue]="ar.is_overdue" (click)="selectAr(ar)" tabindex="0" (keydown.enter)="$event.preventDefault(); selectAr(ar)" (keydown.space)="$event.preventDefault(); selectAr(ar)">
                 <td class="mono">{{ ar.ar_number }}</td>
                 <td>
                   <div class="cell-primary">

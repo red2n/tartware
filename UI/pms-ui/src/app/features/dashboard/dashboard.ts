@@ -160,7 +160,6 @@ export class DashboardComponent {
 	/** Room inventory summary computed from rooms grid data. */
 	readonly roomSummary = computed(() => {
 		const all = this.rooms();
-		if (all.length === 0) return null;
 		const total = all.length;
 		const occupied = all.filter((r) => r.status === "OCCUPIED").length;
 		const available = all.filter((r) => r.status === "AVAILABLE" || r.status === "VACANT").length;
@@ -184,7 +183,6 @@ export class DashboardComponent {
 	/** Rate summary computed from rates data. */
 	readonly rateSummary = computed(() => {
 		const all = this.rates();
-		if (all.length === 0) return null;
 		const active = all.filter((r) => r.status === "ACTIVE");
 		const baseRates = active.map((r) => r.base_rate).filter((r) => r > 0);
 		const minRate = baseRates.length > 0 ? Math.min(...baseRates) : 0;
@@ -209,7 +207,6 @@ export class DashboardComponent {
 	/** Housekeeping summary computed from tasks data. */
 	readonly hkSummary = computed(() => {
 		const all = this.hkTasks();
-		if (all.length === 0) return null;
 		const pending = all.filter((t) => t.status === "PENDING" || t.status === "ASSIGNED").length;
 		const inProgress = all.filter((t) => t.status === "IN_PROGRESS").length;
 		const completed = all.filter(

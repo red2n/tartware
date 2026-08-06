@@ -25,7 +25,9 @@
 	--color-header-text-muted: var(--fgColor-muted);
 	--color-header-border: var(--borderColor-default);
 	--color-header-logo: var(--fgColor-accent);
-	--color-header-search-bg: var(--bgColor-muted);
+	/* Matches .field-input in the content area — the search box reads as the same
+	   control wherever it appears, rather than a muted variant in the topbar. */
+	--color-header-search-bg: var(--bgColor-default);
 	--color-header-search-border: var(--borderColor-default);
 
 	/* ── Topbar ── */

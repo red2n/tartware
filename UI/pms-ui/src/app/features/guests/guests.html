@@ -27,14 +27,14 @@
     </div>
   } @else if (guestStats(); as stats) {
     <div class="overview-bar">
-      <div class="overview-section clickable" (click)="setFilter('ALL')">
+      <a class="overview-section clickable" routerLink="/guests/segment/all">
         <div class="overview-label">
           <app-icon name="people" />
           {{ 'Total Guests' | translate }}
         </div>
         <div class="overview-value">{{ stats.total_guests }}</div>
         <div class="overview-sub text-muted">{{ stats.returning_guests }} {{ 'returning' | translate }}</div>
-      </div>
+      </a>
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-new">
         <div class="overview-label">
@@ -45,23 +45,23 @@
         <div class="overview-sub text-muted">{{ pctOf(stats.new_guests_this_month, stats.total_guests) }} {{ 'of total' | translate }}</div>
       </div>
       <div class="overview-divider"></div>
-      <div class="overview-section guest-section-vip clickable" (click)="setFilter('VIP')">
+      <a class="overview-section guest-section-vip clickable" routerLink="/guests/segment/vip">
         <div class="overview-label">
           <app-icon name="star" />
           {{ 'VIP' | translate }}
         </div>
         <div class="overview-value">{{ stats.vip_guests }}</div>
         <div class="overview-sub text-muted">{{ stats.long_stay_guests }} {{ 'long stay' | translate }}</div>
-      </div>
+      </a>
       <div class="overview-divider"></div>
-      <div class="overview-section guest-section-loyalty clickable" (click)="setFilter('LOYALTY')">
+      <a class="overview-section guest-section-loyalty clickable" routerLink="/guests/segment/loyalty">
         <div class="overview-label">
           <app-icon name="card_membership" />
           {{ 'Loyalty Members' | translate }}
         </div>
         <div class="overview-value">{{ stats.loyalty_members }}</div>
         <div class="overview-sub text-muted">{{ pctOf(stats.loyalty_members, stats.total_guests) }} {{ 'enrolled' | translate }}</div>
-      </div>
+      </a>
       <div class="overview-divider"></div>
       <div class="overview-section guest-section-stay">
         <div class="overview-label">

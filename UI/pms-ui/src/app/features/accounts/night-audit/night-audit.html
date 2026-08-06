@@ -594,7 +594,7 @@
           </thead>
           <tbody>
             @for (run of sortedHistory(); track run.audit_run_id) {
-              <tr class="history-row" [class.expanded]="expandedRunId() === run.audit_run_id" (click)="toggleRunDetail(run.audit_run_id)">
+              <tr class="history-row" [class.expanded]="expandedRunId() === run.audit_run_id" (click)="toggleRunDetail(run.audit_run_id)" tabindex="0" (keydown.enter)="$event.preventDefault(); toggleRunDetail(run.audit_run_id)" (keydown.space)="$event.preventDefault(); toggleRunDetail(run.audit_run_id)">
                 <td class="expand-cell">
                   <app-icon class="expand-icon" [class.rotated]="expandedRunId() === run.audit_run_id" name="expand_more" />
                 </td>

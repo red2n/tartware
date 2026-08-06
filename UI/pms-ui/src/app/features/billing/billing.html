@@ -634,7 +634,7 @@
             </thead>
             <tbody>
               @for (fol of paginatedFolios(); track fol.id) {
-                <tr class="clickable-row" [class.row-selected]="selectedFolioId() === fol.id" (click)="selectFolio(fol)">
+                <tr class="clickable-row" [class.row-selected]="selectedFolioId() === fol.id" (click)="selectFolio(fol)" tabindex="0" (keydown.enter)="$event.preventDefault(); selectFolio(fol)" (keydown.space)="$event.preventDefault(); selectFolio(fol)">
                   <td class="cell-primary">
                     <span class="ref-code">{{ fol.folio_number }}</span>
                     @if (fol.confirmation_number) {
