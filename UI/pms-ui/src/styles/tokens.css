@@ -45,6 +45,28 @@
 	--color-hero-text-subtle: #c9d1d9;
 	--color-hero-text-faint: #2a3060;
 
+	/* ── Login scene — warm "boutique hotel suite" palette ──
+	 * Deep espresso room tones lit by brass. Deliberately theme-independent:
+	 * the login screen forces LIGHT mode (ThemeService.setLoginDefault) but the
+	 * scene behind the card is always the dark suite.
+	 */
+	--login-room-bg-start: #17130f;
+	--login-room-bg-mid: #221b15;
+	--login-room-bg-end: #0f0c0a;
+	--login-brass: #d9b471;
+	--login-brass-soft: #a98a52;
+	--login-linen: #f6f1e8;
+	--login-rule: rgba(217, 180, 113, 0.13);
+	--login-watermark: rgba(246, 241, 232, 0.07);
+	--login-text: #f6f1e8;
+	--login-text-muted: rgba(246, 241, 232, 0.62);
+	--login-text-faint: rgba(246, 241, 232, 0.34);
+	--login-card-bg: rgba(255, 255, 255, 0.94);
+
+	/* ── Display typography (login scene) ── */
+	--fontStack-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+	--fontStack-accent: "Jost", "Inter", -apple-system, sans-serif;
+
 	/* ── Typography extensions (Primer base has no bold token) ── */
 	--base-text-weight-bold: 700;
 

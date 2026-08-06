@@ -1,4 +1,13 @@
-import { AfterViewInit, Component, ElementRef, inject, signal, ViewChild } from "@angular/core";
+import { NgTemplateOutlet } from "@angular/common";
+import {
+	AfterViewInit,
+	Component,
+	ElementRef,
+	inject,
+	OnDestroy,
+	signal,
+	ViewChild,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { CheckboxModule } from "primeng/checkbox";
@@ -13,22 +22,28 @@ import { ThemeService } from "../../core/theme/theme.service";
 import { findFirstAllowedRoute } from "../../layout/nav-config";
 import { IconComponent } from "../../shared/components/icon/icon";
 
+/** One zone of the background floor plan — a labelled cluster of amenity marks. */
+interface RoomZone {
+	readonly label: string;
+	readonly icons: readonly string[];
+}
+
 @Component({
 	selector: "app-login",
 	standalone: true,
 	imports: [
 		FormsModule,
 		CheckboxModule,
-		InputTextModule,
 		IconComponent,
 		InputTextModule,
+		NgTemplateOutlet,
 		ProgressSpinnerModule,
 		TranslatePipe,
 	],
 	templateUrl: "./login.html",
-	styleUrl: "./login.scss",
+	styleUrls: ["./login-scene.scss", "./login.scss"],
 })
-export class LoginComponent implements AfterViewInit {
+export class LoginComponent implements AfterViewInit, OnDestroy {
 	private static readonly REMEMBER_KEY = "tartware_remember_username";
 
 	private readonly auth = inject(AuthService);
@@ -39,6 +54,35 @@ export class LoginComponent implements AfterViewInit {
 	private readonly router = inject(Router);
 
 	@ViewChild("passwordInput") passwordInput!: ElementRef<HTMLInputElement>;
+	@ViewChild("scene") scene!: ElementRef<HTMLElement>;
+	@ViewChild("card") card!: ElementRef<HTMLElement>;
+
+	/** Glow level the scene settles back to once the cursor leaves. */
+	private static readonly REST_SPOT = "0.35";
+
+	/**
+	 * Background watermark, laid out as a suite floor plan rather than a random
+	 * scatter — four zones, six amenity marks each, on a blueprint rule grid.
+	 * Only ligatures from the classic Material Icons set are used.
+	 */
+	readonly roomPlan: readonly RoomZone[] = [
+		{
+			label: "Suite",
+			icons: ["king_bed", "checkroom", "weekend", "lightbulb_outline", "ac_unit", "tv"],
+		},
+		{
+			label: "Bath & Spa",
+			icons: ["bathtub", "hot_tub", "spa", "local_laundry_service", "local_florist", "smoke_free"],
+		},
+		{
+			label: "Dining",
+			icons: ["room_service", "free_breakfast", "local_cafe", "local_bar", "restaurant", "kitchen"],
+		},
+		{
+			label: "Leisure",
+			icons: ["pool", "fitness_center", "beach_access", "business_center", "vpn_key", "wifi"],
+		},
+	];
 
 	username = "";
 	password = "";
@@ -46,6 +90,11 @@ export class LoginComponent implements AfterViewInit {
 	hidePassword = signal(true);
 	loading = signal(false);
 	error = signal<string | null>(null);
+
+	/** Honour OS-level motion preferences — the parallax is decorative only. */
+	private readonly reduceMotion =
+		typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+	private pointerFrame = 0;
 
 	togglePasswordVisibility(): void {
 		this.hidePassword.update((v) => !v);
@@ -68,6 +117,61 @@ export class LoginComponent implements AfterViewInit {
 		if (this.username && this.passwordInput) {
 			setTimeout(() => this.passwordInput.nativeElement.focus());
 		}
+	}
+
+	ngOnDestroy(): void {
+		if (this.pointerFrame) {
+			cancelAnimationFrame(this.pointerFrame);
+		}
+	}
+
+	/**
+	 * Drives the scene's cursor-reactive CSS custom properties. Writes are
+	 * coalesced to one per animation frame and go straight to the element's
+	 * inline style, so pointer movement never triggers change detection.
+	 */
+	onPointerMove(event: PointerEvent): void {
+		if (this.reduceMotion || this.pointerFrame) {
+			return;
+		}
+		const { clientX, clientY } = event;
+		this.pointerFrame = requestAnimationFrame(() => {
+			this.pointerFrame = 0;
+			const el = this.scene?.nativeElement;
+			if (!el) {
+				return;
+			}
+			const rect = el.getBoundingClientRect();
+			if (!rect.width || !rect.height) {
+				return;
+			}
+			const x = clientX - rect.left;
+			const y = clientY - rect.top;
+			el.style.setProperty("--mx", `${x}px`);
+			el.style.setProperty("--my", `${y}px`);
+			el.style.setProperty("--px", (x / rect.width - 0.5).toFixed(3));
+			el.style.setProperty("--py", (y / rect.height - 0.5).toFixed(3));
+			el.style.setProperty("--spot", "1");
+
+			// The card's sheen and edge hairline need card-local coordinates.
+			const cardEl = this.card?.nativeElement;
+			if (cardEl) {
+				const cardRect = cardEl.getBoundingClientRect();
+				cardEl.style.setProperty("--cmx", `${clientX - cardRect.left}px`);
+				cardEl.style.setProperty("--cmy", `${clientY - cardRect.top}px`);
+			}
+		});
+	}
+
+	/** Settle the scene back to rest when the cursor leaves. */
+	onPointerLeave(): void {
+		const el = this.scene?.nativeElement;
+		if (!el) {
+			return;
+		}
+		el.style.setProperty("--px", "0");
+		el.style.setProperty("--py", "0");
+		el.style.setProperty("--spot", LoginComponent.REST_SPOT);
 	}
 
 	async onSubmit(): Promise<void> {

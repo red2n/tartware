@@ -1,171 +1,143 @@
 @use 'mixins' as *;
 
-/* ── Split-panel login layout ── */
-.login-page {
+/* =============================================================
+ * Login — the sign-in card
+ *
+ * Docked to the right of the suite scene (login-scene.scss), which
+ * also documents the cursor custom properties. The card adds two of
+ * its own, in card-local pixels:
+ *   --cmx/--cmy  pointer position within the card
+ * ============================================================= */
+
+.login-dock {
+	position: relative;
+	z-index: 10;
+	flex: 0 0 auto;
 	display: flex;
-	min-height: 100vh;
+	justify-content: flex-end;
+	width: min(430px, 100%);
 }
 
-/* ── Left hero panel ── */
-.login-hero {
-	display: none; /* hidden on mobile, shown on desktop */
-	flex-direction: column;
-	justify-content: space-between;
-	width: 50%;
-	max-width: 640px;
-	padding: var(--base-size-48) var(--base-size-40);
-	background: linear-gradient(145deg, var(--color-hero-bg-start) 0%, var(--color-hero-bg-mid) 50%, var(--color-hero-bg-end) 100%);
-	color: var(--color-hero-text);
-	position: relative;
-	overflow: hidden;
+.login-card {
+	--cmx: 50%;
+	--cmy: 0%;
 
-	/* Subtle pattern overlay */
-	&::before {
+	position: relative;
+	width: 100%;
+	padding: clamp(28px, 2.6vw, 40px);
+	border: 1px solid rgba(255, 255, 255, 0.45);
+	border-radius: 22px;
+	background: var(--login-card-bg);
+	backdrop-filter: blur(22px) saturate(150%);
+	box-shadow:
+		0 40px 90px -30px rgba(0, 0, 0, 0.72),
+		0 2px 10px rgba(0, 0, 0, 0.24);
+	transition:
+		transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
+		box-shadow 380ms ease;
+
+	&:hover {
+		transform: translateY(-4px);
+		box-shadow:
+			0 52px 110px -30px rgba(0, 0, 0, 0.78),
+			0 2px 10px rgba(0, 0, 0, 0.26);
+	}
+
+	/* Brass hairline tracking the cursor around the card edge */
+	&::after {
 		content: "";
 		position: absolute;
 		inset: 0;
-		background:
-			radial-gradient(ellipse at 20% 80%, color-mix(in srgb, var(--fgColor-accent) 12%, transparent) 0%, transparent 60%),
-			radial-gradient(ellipse at 80% 20%, color-mix(in srgb, var(--fgColor-accent) 8%, transparent) 0%, transparent 50%);
+		padding: 1px;
+		border-radius: inherit;
+		background: radial-gradient(circle 200px at var(--cmx) var(--cmy), var(--login-brass), transparent 70%);
+		mask:
+			linear-gradient(#000 0 0) content-box,
+			linear-gradient(#000 0 0);
+		mask-composite: exclude;
+		-webkit-mask-composite: xor;
 		pointer-events: none;
+		opacity: var(--spot);
+		transition: opacity 420ms ease;
+	}
+
+	/* Positioned content stacks above the sheen */
+	> *:not(.card-sheen) {
+		position: relative;
+		z-index: 1;
 	}
 }
 
-.hero-content {
-	position: relative;
-	z-index: 1;
+.card-sheen {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	background: radial-gradient(circle 260px at var(--cmx) var(--cmy), rgba(217, 180, 113, 0.16) 0%, transparent 72%);
+	opacity: var(--spot);
+	transition: opacity 420ms ease;
 }
 
-/* Logo */
-.hero-logo {
-	display: flex;
-	align-items: center;
-	gap: var(--base-size-12);
-	margin-bottom: var(--base-size-48);
-}
-
-.hero-logo-img {
-	width: 40px;
-	height: var(--control-large-size);
-	flex-shrink: 0;
-}
-
-.hero-logo-text {
-	font-size: var(--text-title-size-medium);
-	font-weight: var(--base-text-weight-semibold);
-	letter-spacing: -0.5px;
-}
-
-/* Headline */
-.hero-headline {
-	font-size: var(--base-text-size-xl);
-	font-weight: var(--base-text-weight-semibold);
-	line-height: var(--base-text-lineHeight-tight);
-	margin: 0 0 var(--base-size-24);
-	letter-spacing: -1px;
-}
-
-.hero-tagline {
-	font-size: var(--base-text-size-md);
-	line-height: var(--base-text-lineHeight-normal);
-	color: var(--color-hero-text-muted);
-	margin: 0 0 var(--base-size-40);
-	max-width: 440px;
-}
-
-/* Feature pills */
-.hero-features {
-	display: flex;
-	flex-direction: column;
-	gap: var(--base-size-16);
-}
-
-.hero-feature {
-	display: flex;
-	align-items: center;
-	gap: var(--base-size-12);
-	font-size: var(--base-text-size-sm);
-	color: var(--color-hero-text-subtle);
-
-	mat-icon {
-		@include icon-size(20px);
-		color: var(--fgColor-accent);
-	}
-}
-
-/* Copyright */
-.hero-copyright {
-	position: relative;
-	z-index: 1;
-	font-size: var(--base-text-size-xs);
-	color: var(--color-hero-text-faint);
-}
-
-/* ── Right panel ── */
-.login-panel {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--base-size-32) var(--base-size-24);
-	background: var(--bgColor-default);
-}
-
-.login-panel-inner {
-	width: 100%;
-	max-width: 400px;
-}
-
-/* Mobile-only logo */
+/* ── Card header ── */
 .mobile-logo {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: var(--base-size-8);
-	margin-bottom: var(--base-size-32);
+	margin-bottom: var(--base-size-24);
 }
 
 .mobile-logo-img {
-	width: 32px;
-	height: var(--control-medium-size);
+	width: 30px;
+	height: 30px;
 	flex-shrink: 0;
 }
 
 .mobile-logo-text {
+	font-family: var(--fontStack-accent);
 	font-size: var(--text-title-size-medium);
-	font-weight: var(--base-text-weight-semibold);
+	letter-spacing: 0.16em;
 	color: var(--fgColor-default);
-	letter-spacing: -0.5px;
 }
 
-/* Headings */
-.login-heading {
-	font-size: var(--text-title-size-medium);
-	font-weight: var(--base-text-weight-semibold);
-	color: var(--fgColor-default);
+.card-eyebrow {
 	margin: 0 0 var(--base-size-8);
-	letter-spacing: -0.4px;
+	font-family: var(--fontStack-accent);
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.3em;
+	text-transform: uppercase;
+	color: var(--login-brass-soft);
+}
+
+.login-heading {
+	margin: 0 0 var(--base-size-4);
+	font-family: var(--fontStack-display);
+	font-size: 40px;
+	font-weight: 400;
+	line-height: 1.1;
+	color: var(--fgColor-default);
 }
 
 .login-subheading {
+	margin: 0 0 var(--base-size-28);
 	font-size: var(--base-text-size-sm);
 	color: var(--fgColor-muted);
-	margin: 0 0 var(--base-size-32);
 }
 
-/* Error banner */
+/* ── Error banner ── */
 .login-error {
 	display: flex;
 	align-items: center;
 	gap: var(--base-size-8);
-	background: var(--bgColor-danger-muted);
-	color: var(--fgColor-danger);
+	margin-bottom: var(--base-size-20);
 	padding: var(--base-size-12) var(--base-size-16);
-	border-radius: var(--borderRadius-medium);
-	font-size: var(--base-text-size-sm);
 	border: 1px solid var(--fgColor-danger);
-	margin-bottom: var(--base-size-24);
+	border-radius: var(--borderRadius-medium);
+	background: var(--bgColor-danger-muted);
+	font-size: var(--base-text-size-sm);
 	line-height: var(--base-text-lineHeight-normal);
+	color: var(--fgColor-danger);
 }
 
 .error-icon {
@@ -173,54 +145,146 @@
 	flex-shrink: 0;
 }
 
-/* Form */
+/* ── Form ── */
 .login-form {
 	display: flex;
 	flex-direction: column;
-	gap: var(--base-size-8);
 }
 
+.form-field-outline {
+	margin-bottom: var(--base-size-16);
+}
+
+.form-label {
+	display: block;
+	margin-bottom: var(--base-size-8);
+	font-family: var(--fontStack-accent);
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--fgColor-muted);
+}
+
+.field-shell {
+	display: flex;
+	align-items: center;
+	gap: var(--base-size-8);
+	height: 50px;
+	padding: 0 var(--base-size-12);
+	border: 1px solid var(--borderColor-default);
+	border-radius: 12px;
+	background: #fff;
+	transition:
+		border-color 200ms ease,
+		box-shadow 200ms ease;
+
+	&:hover {
+		border-color: var(--login-brass-soft);
+	}
+
+	&:focus-within {
+		border-color: var(--fgColor-accent);
+		box-shadow: 0 0 0 3px var(--bgColor-accent-muted);
+	}
+}
+
+.field-icon {
+	font-size: 20px;
+	color: var(--fgColor-muted);
+	flex-shrink: 0;
+}
+
+.field-toggle {
+	flex-shrink: 0;
+	color: var(--fgColor-muted);
+
+	&:hover {
+		color: var(--fgColor-accent);
+	}
+}
+
+/* Two classes + element beats PrimeNG's .p-inputtext without !important */
+.login-card .field-shell input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	box-shadow: none;
+	font-family: inherit;
+	font-size: var(--base-text-size-md);
+	color: var(--fgColor-default);
+}
+
+/* ── Remember me ── */
+.remember-me-row {
+	display: flex;
+	align-items: center;
+	margin-bottom: var(--base-size-20);
+
+	label {
+		display: flex;
+		align-items: center;
+		gap: var(--base-size-8);
+		font-size: var(--base-text-size-sm);
+		color: var(--fgColor-muted);
+		cursor: pointer;
+	}
+}
+
+/* ── Submit ── */
 .full-width {
 	width: 100%;
 }
 
-.field-icon {
-	color: var(--fgColor-muted);
-	margin-right: var(--base-size-4);
-}
-
-.login-button {
-	height: 48px;
+/* Two classes beats .btn-primary's single class */
+.login-card .login-button {
+	height: 50px;
+	border: none;
+	border-radius: 12px;
+	font-family: var(--fontStack-accent);
 	font-size: var(--base-text-size-md);
-	font-weight: var(--base-text-weight-semibold);
-	margin-top: var(--base-size-8);
-	border-radius: var(--borderRadius-medium);
-	letter-spacing: 0.2px;
-}
+	font-weight: 500;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: #1b1512;
+	background: linear-gradient(135deg, #e8c88a 0%, var(--login-brass) 46%, #c19a55 100%);
+	box-shadow: 0 10px 26px -10px rgba(193, 154, 85, 0.75);
+	transition:
+		transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+		box-shadow 200ms ease,
+		filter 200ms ease;
 
-/* Remember me */
-.remember-me-row {
-	display: flex;
-	align-items: center;
-	margin-top: calc(-1 * var(--base-size-4));
-	margin-bottom: var(--base-size-4);
+	&:hover:not(:disabled) {
+		transform: translateY(-2px);
+		filter: brightness(1.06);
+		box-shadow: 0 16px 34px -10px rgba(193, 154, 85, 0.85);
+	}
 
-	label {
-		font-size: var(--base-text-size-sm);
-		color: var(--fgColor-muted);
+	&:active:not(:disabled) {
+		transform: translateY(0);
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		box-shadow: none;
 	}
 }
 
-/* Footer trust indicator */
+/* ── Footer ── */
 .login-footer {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: var(--base-size-8);
-	margin-top: var(--base-size-32);
-	padding-top: var(--base-size-24);
+	margin-top: var(--base-size-24);
+	padding-top: var(--base-size-20);
 	border-top: 1px solid var(--borderColor-muted);
 	font-size: var(--base-text-size-xs);
+	letter-spacing: 0.04em;
 	color: var(--fgColor-muted);
 }
 
@@ -229,13 +293,34 @@
 	color: var(--fgColor-success);
 }
 
-/* ── Desktop breakpoint ── */
-@media (min-width: 960px) {
-	.login-hero {
-		display: flex;
-	}
-
+/* ── Breakpoints ── */
+@media (min-width: 1120px) {
 	.mobile-logo {
 		display: none;
+	}
+}
+
+@media (max-width: 1119px) {
+	.login-dock {
+		justify-content: center;
+	}
+}
+
+@media (max-width: 560px) {
+	.login-card {
+		border-radius: 18px;
+	}
+
+	.login-heading {
+		font-size: 32px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.login-card,
+	.login-card:hover,
+	.login-card .login-button:hover:not(:disabled) {
+		transform: none;
+		transition: none;
 	}
 }
