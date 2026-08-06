@@ -10,9 +10,6 @@
 /* Layer 1: App-specific tokens (sidebar, hero, layout — no Primer equivalent) */
 @import url('./styles/tokens.css');
 
-/* Layer 2: Tailwind CSS v4 (url() syntax avoids Sass @import deprecation) */
-@import url('tailwindcss');
-
 /* ── Global resets ── */
 *,
 *::before,

@@ -1,6 +1,9 @@
 @use 'mixins' as *;
 
-.toast-container {
+/* Always mounted so the live regions inside it pre-exist their content.
+   Never use display:none here — a hidden region is removed from the
+   accessibility tree and announces nothing. */
+.toast-viewport {
   position: fixed;
   bottom: var(--base-size-16);
   right: var(--base-size-16);
@@ -10,6 +13,14 @@
   gap: var(--base-size-8);
   max-width: 420px;
   pointer-events: none;
+}
+
+/* An empty stack collapses to zero height, so the viewport shows nothing
+   until a toast arrives. */
+.toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
 }
 
 .toast {

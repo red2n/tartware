@@ -11,6 +11,7 @@ import { hashPassword } from "../utils/password.js";
 const authLogger = appLogger.child({ module: "auth-service" });
 
 import { emitMembershipCacheInvalidation } from "./membership-cache-hooks.js";
+import { checkPassword, getPasswordPolicy } from "./password-policy-service.js";
 import {
   checkTenantThrottle,
   isAccountLocked,
@@ -23,6 +24,7 @@ import { userCacheService } from "./user-cache-service.js";
 
 const AuthUserSchema = UserSchema.pick({
   id: true,
+  tenant_id: true,
   username: true,
   email: true,
   first_name: true,
@@ -69,7 +71,9 @@ type AuthResultError = {
     | "THROTTLED"
     | "MFA_REQUIRED"
     | "MFA_INVALID"
-    | "MFA_NOT_ENROLLED";
+    | "MFA_NOT_ENROLLED"
+    | "PASSWORD_POLICY_VIOLATION";
+  detail?: string;
   lockExpiresAt?: Date;
   retryAfterMs?: number;
 };
@@ -201,7 +205,7 @@ export const authenticateUser = async ({
 const findUserById = async (userId: string): Promise<AuthUser | null> => {
   try {
     const result = await pool.query(
-      `SELECT id, username, email, first_name, last_name, password_hash, is_active
+      `SELECT id, tenant_id, username, email, first_name, last_name, password_hash, is_active
        FROM public.users
        WHERE id = $1
          AND deleted_at IS NULL
@@ -244,6 +248,14 @@ export const changeUserPassword = async (
 
   if (newPassword === config.auth.defaultPassword) {
     return { ok: false, reason: "PASSWORD_REUSE_NOT_ALLOWED" };
+  }
+
+  // A self-service password change is user-chosen, so the tenant's policy
+  // applies in full — no first-use carve-out here.
+  const policy = await getPasswordPolicy(user.tenant_id);
+  const violations = checkPassword(newPassword, policy);
+  if (violations.length > 0) {
+    return { ok: false, reason: "PASSWORD_POLICY_VIOLATION", detail: violations.join("; ") };
   }
 
   const newHash = await hashPassword(newPassword);

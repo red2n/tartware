@@ -11,7 +11,7 @@
 # Environment Variables (optional):
 #   API_URL     - Base URL (default: http://localhost:8080)
 #   API_USER    - Username (default: setup.admin)
-#   API_PASS    - Password (default: TempPass123)
+#   API_PASS    - Password (default: TempPass1234)
 #
 # Examples:
 #   # Get token and use in curl
@@ -28,7 +28,7 @@ set -euo pipefail
 # Configuration (override with environment variables)
 API_URL="${API_URL:-http://localhost:8080}"
 API_USER="${API_USER:-setup.admin}"
-API_PASS="${API_PASS:-TempPass123}"
+API_PASS="${API_PASS:-TempPass1234}"
 
 # Colors for terminal output
 RED='\033[0;31m'

@@ -105,7 +105,7 @@ Screens tested: Dashboard, Reservations, Group Bookings, Guests, Rooms, Room Typ
 
 ### Authentication
 
-The test suite uses a setup project (`e2e/auth.setup.ts`) that logs in once with `setup.admin` / `TempPass123`, selects "Tartware Beach Resort", and saves the browser state to `e2e/.auth/state.json`. All screen tests reuse this saved session.
+The test suite uses a setup project (`e2e/auth.setup.ts`) that logs in once with `setup.admin` / `TempPass1234`, selects "Tartware Beach Resort", and saves the browser state to `e2e/.auth/state.json`. All screen tests reuse this saved session.
 
 ### Test artifacts
 

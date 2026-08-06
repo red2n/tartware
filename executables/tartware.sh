@@ -179,7 +179,7 @@ ensure_env_vars() {
         log "Adding AUTH_DEFAULT_PASSWORD to .env"
         echo "" >> "$env_file"
         echo "# Default password for seeded users (min 8 characters)" >> "$env_file"
-        echo "AUTH_DEFAULT_PASSWORD=TempPass123" >> "$env_file"
+        echo "AUTH_DEFAULT_PASSWORD=TempPass1234" >> "$env_file"
         updated=true
     fi
 
@@ -191,7 +191,7 @@ ensure_env_vars() {
 reset_default_passwords() {
     # Reset user passwords to AUTH_DEFAULT_PASSWORD value
     local reset_script="$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
-    local default_password="${AUTH_DEFAULT_PASSWORD:-TempPass123}"
+    local default_password="${AUTH_DEFAULT_PASSWORD:-TempPass1234}"
 
     if [ -f "$reset_script" ]; then
         if command -v npx >/dev/null 2>&1; then

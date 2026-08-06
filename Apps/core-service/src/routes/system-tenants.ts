@@ -11,6 +11,10 @@ import {
 import type { FastifyInstance } from "fastify";
 
 import { pool, query } from "../lib/db.js";
+import {
+  assertPasswordMeetsPolicy,
+  PasswordPolicyError,
+} from "../services/password-policy-service.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
 import { listTenants } from "../services/tenant-service.js";
 import { hashPassword } from "../utils/password.js";
@@ -69,6 +73,17 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
       const tenantSlug = tenantInput.slug.toLowerCase();
       const propertyCode = propertyInput.property_code.toUpperCase();
       const propertyAddress = propertyInput.address ?? {};
+
+      // Bootstrap path: the tenant has no settings yet, so strict PCI defaults apply.
+      try {
+        await assertPasswordMeetsPolicy(null, ownerInput.password);
+      } catch (error) {
+        if (error instanceof PasswordPolicyError) {
+          throw request.server.httpErrors.badRequest(error.message);
+        }
+        throw error;
+      }
+
       const passwordHash = await hashPassword(ownerInput.password);
 
       const client = await pool.connect();

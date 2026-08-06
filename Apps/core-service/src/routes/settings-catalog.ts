@@ -17,10 +17,9 @@ import {
   UpdateValueSchema,
   ValuesQuerySchema,
 } from "@tartware/schemas";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
-
 import { config } from "../config.js";
 import { settingsCatalogData } from "../data/settings-catalog.js";
 import { createSeedValue, listSeedValues, updateSeedValue } from "../data/settings-values-store.js";
@@ -35,9 +34,33 @@ import {
   listValues as listDbValues,
   updateValue as updateDbValue,
 } from "../repositories/settings-values-repository.js";
+import { invalidateSettingsCache } from "../services/settings-resolver-service.js";
+import { hasScope } from "../utils/scope.js";
 
 const SETTINGS_CATALOG_TAG = "Settings Catalog";
 const defaultSettingsResponseSchema = jsonObjectSchema;
+
+/**
+ * Guards a write endpoint behind the `settings:write` scope, which
+ * `settingsAuthPlugin` grants only to OWNER/ADMIN/MANAGER memberships.
+ *
+ * Reads stay open to any authenticated member — the UI resolves booking rules,
+ * password policy and display preferences from the catalog on every screen.
+ * Writes must not be, or any signed-in account could relax password policy,
+ * disable MFA, or raise discount ceilings. Mirrors the guard already used by
+ * settings-packages, settings-amenities and settings-screen-permissions.
+ */
+const enforceScope = (request: FastifyRequest, reply: FastifyReply, scope: string): void => {
+  if (process.env.DISABLE_AUTH === "true") {
+    return;
+  }
+  if (!request.authUser) {
+    throw reply.server.httpErrors.unauthorized("Unauthorized");
+  }
+  if (!hasScope(request.authUser, scope)) {
+    throw reply.server.httpErrors.forbidden(`Missing scope ${scope}`);
+  }
+};
 
 const SettingsCategoryListJson = schemaFromZod(
   SettingsCategoryListSchema,
@@ -459,6 +482,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request, reply) => {
+      enforceScope(request, reply, "settings:write");
       if (!isDbEnabled()) {
         const tenantId = request.authUser?.tenantId;
         if (!tenantId) {
@@ -505,6 +529,8 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         metadata: body.metadata ?? null,
         createdBy: request.authUser?.sub ?? null,
       });
+      // Drop the resolver cache so enforcement picks the new value up at once.
+      invalidateSettingsCache(tenantId);
       reply.status(201).send({ data: created });
     },
   );
@@ -524,6 +550,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       }),
     },
     async (request, reply) => {
+      enforceScope(request, reply, "settings:write");
       if (!isDbEnabled()) {
         const tenantId = request.authUser?.tenantId;
         if (!tenantId) {
@@ -572,6 +599,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
       if (!updated) {
         return reply.notFound("Settings value not found");
       }
+      invalidateSettingsCache(tenantId);
       reply.send({ data: updated });
     },
   );

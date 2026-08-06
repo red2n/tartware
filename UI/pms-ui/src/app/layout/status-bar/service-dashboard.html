@@ -57,7 +57,9 @@
           </h3>
           @for (svc of downServices(); track svc.instanceId) {
             <div class="service-row service-row-down">
-              <div class="service-status-dot service-dot-down" [pTooltip]="'DOWN' | translate" tooltipPosition="top"></div>
+              <div class="service-status-dot service-dot-down" [pTooltip]="'DOWN' | translate" tooltipPosition="top">
+                <span class="sr-only">{{ 'Down' | translate }}</span>
+              </div>
               <div class="service-info">
                 <div class="service-name-row">
                   <span class="service-name">{{ displayName(svc) }}</span>
@@ -88,7 +90,9 @@
           </h3>
           @for (svc of upServices(); track svc.instanceId) {
             <div class="service-row">
-              <div class="service-status-dot service-dot-up" [pTooltip]="'UP' | translate" tooltipPosition="top"></div>
+              <div class="service-status-dot service-dot-up" [pTooltip]="'UP' | translate" tooltipPosition="top">
+                <span class="sr-only">{{ 'Up' | translate }}</span>
+              </div>
               <div class="service-info">
                 <div class="service-name-row">
                   <span class="service-name">{{ displayName(svc) }}</span>

@@ -1379,9 +1379,6 @@ importers:
       jsdom:
         specifier: ^27.1.0
         version: 27.4.0(@noble/hashes@2.0.1)
-      tailwindcss:
-        specifier: ^4.1.0
-        version: 4.2.0
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
@@ -15232,7 +15229,8 @@ snapshots:
 
   symbol-tree@3.2.4: {}
 
-  tailwindcss@4.2.0: {}
+  tailwindcss@4.2.0:
+    optional: true
 
   tar-stream@2.2.0:
     dependencies:

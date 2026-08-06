@@ -86,6 +86,7 @@ interface JsonFieldGroup {
 		TranslatePipe,
 	],
 	templateUrl: "./settings.html",
+	styleUrl: "./settings.scss",
 })
 export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
@@ -109,6 +110,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	readonly loadingCategories = signal(false);
 	readonly loadingCatalog = signal(false);
 	readonly error = signal<string | null>(null);
+
+	/** Fixed-length arrays used only to render skeleton placeholders. */
+	readonly skeletonCategories = Array.from({ length: 4 });
+	readonly skeletonSettings = Array.from({ length: 6 });
 
 	/** Definitions grouped by section_id for display */
 	readonly sectionDefinitions = computed(() => {
@@ -299,6 +304,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
 	isDateValue(def: SettingsDefinition): boolean {
 		return def.control_type === "DATE_PICKER" || def.data_type === "DATE";
+	}
+
+	/**
+	 * Time-of-day settings (check-in/out, night audit run time, housekeeping
+	 * shift start, booking cutoff). Without this they fell through to a free
+	 * text input, so "9am" was accepted where the backend expects "09:00".
+	 */
+	isTimeValue(def: SettingsDefinition): boolean {
+		return def.control_type === "TIME_PICKER" || def.data_type === "TIME";
 	}
 
 	isTextAreaValue(def: SettingsDefinition): boolean {

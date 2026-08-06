@@ -229,7 +229,10 @@
   }
 }
 
+/* The dot carries meaning by colour alone, so it hosts an .sr-only label.
+   position:relative anchors that absolutely-positioned text. */
 .service-status-dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;

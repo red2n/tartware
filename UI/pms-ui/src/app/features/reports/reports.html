@@ -23,13 +23,13 @@
   </div>
 
   <div class="filter-form">
-    @if (active().needsDate) {
+    @if (needsBusinessDate()) {
       <div class="form-group">
         <label class="field-label">{{ 'Business Date' | translate }}</label>
         <input type="date" class="field-input field-sm" [ngModel]="businessDate()" (ngModelChange)="businessDate.set($event)" />
       </div>
     }
-    @if (active().needsRange) {
+    @if (needsRange()) {
       <div class="form-group">
         <label class="field-label">{{ 'From' | translate }}</label>
         <input type="date" class="field-input field-sm" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)" />
@@ -45,9 +45,21 @@
   </div>
 
   @if (loading()) {
-    <div class="empty-state">
-      <p-progressSpinner styleClass="spinner-sm" />
-      <span>{{ 'Loading…' | translate }}</span>
+    <div class="table-container" aria-busy="true" [attr.aria-label]="'Loading report' | translate">
+      <div class="skeleton-table" [style.--skeleton-cols]="skeletonCols().length" aria-hidden="true">
+        <div class="skeleton-row skeleton-row-head">
+          @for (c of skeletonCols(); track $index) {
+            <span class="skeleton skeleton-text"></span>
+          }
+        </div>
+        @for (r of skeletonRows; track $index) {
+          <div class="skeleton-row">
+            @for (c of skeletonCols(); track $index) {
+              <span class="skeleton skeleton-text"></span>
+            }
+          </div>
+        }
+      </div>
     </div>
   } @else if (error(); as err) {
     <div class="empty-state">

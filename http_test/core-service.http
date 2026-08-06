@@ -26,7 +26,7 @@ Content-Type: application/json
 
 {
   "username": "setup.admin",
-  "password": "TempPass123"
+  "password": "TempPass1234"
 }
 
 ### Extract token for subsequent requests
@@ -48,7 +48,7 @@ POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
 
 {
-  "password": "TempPass123"
+  "password": "TempPass1234"
 }
 
 ###############################################################################
@@ -66,7 +66,7 @@ Content-Type: application/json
 Authorization: Bearer {{authToken}}
 
 {
-  "current_password": "TempPass123",
+  "current_password": "TempPass1234",
   "new_password": "NewSecure123!"
 }
 
@@ -125,7 +125,7 @@ Authorization: Bearer {{authToken}}
   "tenant_id": "{{tenantId}}",
   "username": "test.staff",
   "email": "staff@tartware.demo",
-  "password": "TempPass123",
+  "password": "TempPass1234",
   "first_name": "Test",
   "last_name": "Staff",
   "role": "STAFF"
@@ -209,7 +209,7 @@ Content-Type: application/json
 
 {
   "username": "system.admin",
-  "password": "TempPass123",
+  "password": "TempPass1234",
   "device_fingerprint": "test-device-001"
 }
 

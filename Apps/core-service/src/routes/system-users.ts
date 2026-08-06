@@ -8,6 +8,10 @@ import {
 import type { FastifyInstance } from "fastify";
 
 import { query } from "../lib/db.js";
+import {
+  assertPasswordMeetsPolicy,
+  PasswordPolicyError,
+} from "../services/password-policy-service.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
 import { listUsers } from "../services/user-service.js";
 import { hashPassword } from "../utils/password.js";
@@ -50,6 +54,18 @@ export const registerSystemUserRoutes = (app: FastifyInstance): void => {
       }
 
       const data = CreateUserRequestSchema.parse(request.body);
+
+      // System admins may create users outside any tenant; those fall back to the
+      // strict PCI defaults rather than skipping policy entirely.
+      try {
+        await assertPasswordMeetsPolicy(data.tenant_id ?? null, data.password);
+      } catch (error) {
+        if (error instanceof PasswordPolicyError) {
+          throw request.server.httpErrors.badRequest(error.message);
+        }
+        throw error;
+      }
+
       const passwordHash = await hashPassword(data.password);
 
       // PR feedback: Check for both username AND email conflicts before insert

@@ -187,7 +187,7 @@
                           }
                         </tbody>
                         <tfoot>
-                          <tr class="font-semibold">
+                          <tr class="row-total">
                             <td colspan="6" class="text-right">{{ 'Totals' | translate }}</td>
                             <td class="text-right">{{ formatCurrency(entryTotals().totalDebit, entries()[0]?.currency_code ?? 'USD') }}</td>
                             <td class="text-right">{{ formatCurrency(entryTotals().totalCredit, entries()[0]?.currency_code ?? 'USD') }}</td>

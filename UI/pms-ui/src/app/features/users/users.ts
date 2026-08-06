@@ -48,7 +48,7 @@ export class UsersComponent {
 	);
 	/** Minimum password length for new users. */
 	readonly passwordMinLength = computed(() =>
-		this.settings.getNumber("admin.password_min_length", 8),
+		this.settings.getNumber("admin.password_min_length", 12),
 	);
 	/** Maximum concurrent sessions per user. */
 	readonly maxConcurrentSessions = computed(() =>

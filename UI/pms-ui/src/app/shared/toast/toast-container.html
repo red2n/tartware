@@ -1,8 +1,21 @@
-@if (toast.toasts().length > 0) {
-  <div class="toast-container" role="status" aria-live="polite">
-    @for (t of toast.toasts(); track t.id) {
-      <div class="toast" [class.toast-success]="t.type === 'success'" [class.toast-error]="t.type === 'error'">
-        <app-icon class="toast-icon" [name]="t.type === 'success' ? 'check_circle' : 'error_outline'" />
+<!--
+  Both live regions stay mounted at all times, even when empty.
+
+  A screen reader only announces content inserted into a region that already
+  existed in the accessibility tree — a region created in the same tick as its
+  content is silent. Wrapping this in @if (toasts.length > 0), as it was, meant
+  no toast was ever reliably announced.
+
+  Severity is split rather than shared: successes are polite (wait for a pause),
+  failures are assertive (interrupt), because a 4s auto-dismiss can retire an
+  error before a polite queue reaches it.
+-->
+<div class="toast-viewport">
+  <div class="toast-stack" role="status" aria-live="polite">
+    @for (t of politeToasts(); track t.id) {
+      <div class="toast toast-success">
+        <app-icon class="toast-icon" name="check_circle" />
+        <span class="sr-only">{{ 'Success:' | translate }}</span>
         <span class="toast-message">{{ t.message }}</span>
         <button class="toast-dismiss" (click)="toast.dismiss(t.id)" [attr.aria-label]="'Dismiss' | translate">
           <app-icon name="close" />
@@ -10,4 +23,17 @@
       </div>
     }
   </div>
-}
+
+  <div class="toast-stack" role="alert" aria-live="assertive">
+    @for (t of errorToasts(); track t.id) {
+      <div class="toast toast-error">
+        <app-icon class="toast-icon" name="error_outline" />
+        <span class="sr-only">{{ 'Error:' | translate }}</span>
+        <span class="toast-message">{{ t.message }}</span>
+        <button class="toast-dismiss" (click)="toast.dismiss(t.id)" [attr.aria-label]="'Dismiss' | translate">
+          <app-icon name="close" />
+        </button>
+      </div>
+    }
+  </div>
+</div>

@@ -96,7 +96,7 @@ Service inventory (from [Apps/](../Apps/)):
 ### 3.2 `core-service` (port 3000) — auth, tenants, users, settings, modules, retention
 | Finding | Sev | Evidence |
 |---|---|---|
-| Hardcoded default password `"TempPass123"` for bootstrap admin remains in code | 🔴 | [Apps/core-service/src/config.ts](../Apps/core-service/src/config.ts) |
+| Hardcoded default password `"TempPass1234"` for bootstrap admin remains in code | 🔴 | [Apps/core-service/src/config.ts](../Apps/core-service/src/config.ts) |
 | `SELECT *` in settings values repository | 🟠 | [Apps/core-service/src/repositories/settings-values-repository.ts](../Apps/core-service/src/repositories/settings-values-repository.ts) |
 | `SELECT *` in compliance service | 🟠 | [Apps/core-service/src/services/compliance-service.ts](../Apps/core-service/src/services/compliance-service.ts) |
 | Excellent: bloom-filter username dedupe, TOTP MFA, retention sweep, tenant-throttled auth | ✅ | [Apps/core-service/src/lib/](../Apps/core-service/src/lib/) |
@@ -152,7 +152,7 @@ Service inventory (from [Apps/](../Apps/)):
 ### 3.7 `guests-service` (port 3010)
 | Finding | Sev | Evidence |
 |---|---|---|
-| Hardcoded service-auth password fallback `"TempPass123"` | 🔴 | [Apps/guests-service/src/config.ts](../Apps/guests-service/src/config.ts) |
+| Hardcoded service-auth password fallback `"TempPass1234"` | 🔴 | [Apps/guests-service/src/config.ts](../Apps/guests-service/src/config.ts) |
 | GDPR erasure / rectification / consent endpoints exist | ✅ | [Apps/guests-service/src/routes/](../Apps/guests-service/src/routes/) |
 | **No "right to data portability" export endpoint** (GDPR Art. 20) | 🟠 | service-wide |
 | **No cryptographic anonymisation strategy** documented for erased guests still referenced by historical reservations (legal hold) | 🟠 | service-wide |

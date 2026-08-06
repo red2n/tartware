@@ -1,7 +1,7 @@
 import { test as setup, expect } from "@playwright/test";
 
 const USERNAME = "setup.admin";
-const PASSWORD = "TempPass123";
+const PASSWORD = "TempPass1234";
 const PROPERTY_NAME = "Tartware Beach Resort";
 
 const authFile = "e2e/.auth/state.json";

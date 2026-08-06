@@ -25,7 +25,7 @@
 # Prerequisites:
 #   - All services running (pnpm run dev)
 #   - jq, bc, curl available
-#   - Default admin credentials working (setup.admin / TempPass123)
+#   - Default admin credentials working (setup.admin / TempPass1234)
 #   - Database procedures and indexes must exist. Run ONCE before first test:
 #       docker cp scripts/ tartware-postgres:/tmp/scripts/
 #       docker exec -w /tmp/scripts/tables tartware-postgres psql -U postgres -d tartware -f 00-create-all-tables.sql
@@ -130,7 +130,7 @@ echo "  ✓ System admin token acquired"
 # Try login first; if it fails, create the user via system admin API then retry
 DEFAULT_TENANT="11111111-1111-1111-1111-111111111111"
 DEFAULT_USER="setup.admin"
-DEFAULT_PASS="TempPass123"
+DEFAULT_PASS="TempPass1234"
 
 echo "  Acquiring default tenant token..."
 DEFAULT_TOKEN_RESP=$(curl -s "$GW/v1/auth/login" \

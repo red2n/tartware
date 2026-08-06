@@ -218,6 +218,10 @@ export const registerAuthRoutes = (app: FastifyInstance): void => {
           return reply.forbidden("This account is not active");
         }
 
+        if (result.reason === "PASSWORD_POLICY_VIOLATION") {
+          return reply.badRequest(`Password does not meet policy: ${result.detail}`);
+        }
+
         const message =
           result.reason === "PASSWORD_REUSE_NOT_ALLOWED"
             ? "New password cannot be the system default password."

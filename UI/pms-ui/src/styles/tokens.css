@@ -55,6 +55,8 @@
 	/* Watermark wash — theme-aware, see the dark block below */
 	--brand-watermark: rgba(169, 138, 82, 0.22);
 	--brand-watermark-bloom: rgba(169, 138, 82, 0.1);
+	/* Sweep highlight on skeleton placeholders */
+	--skeleton-sheen: rgba(217, 180, 113, 0.22);
 
 	/* ── Login scene — warm "boutique hotel suite" palette ──
 	 * Deep espresso room tones lit by brass. Deliberately theme-independent:
@@ -103,6 +105,7 @@
 	/* Brass reads brighter on dark, so the wash is dialled back */
 	--brand-watermark: rgba(217, 180, 113, 0.16);
 	--brand-watermark-bloom: rgba(217, 180, 113, 0.08);
+	--skeleton-sheen: rgba(217, 180, 113, 0.12);
 
 	/* ── Login hero ── */
 	--color-hero-bg-start: #070912;

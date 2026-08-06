@@ -11,13 +11,24 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
 
+/**
+ * Query contract of a report's backend route, mirroring its Fastify schema.
+ * Sending anything else is at best ignored and at worst a 400, so each report
+ * declares exactly what its endpoint accepts.
+ *
+ *  - `range-paged`   start_date + end_date (required) and limit  — DateRangeReportQuery
+ *  - `range`         start_date + end_date (required), no paging — finance DateRangeQuery
+ *  - `business-date` business_date only
+ *  - `paged`         limit only
+ */
+type ReportQuery = "range-paged" | "range" | "business-date" | "paged";
+
 interface ReportDef {
 	readonly key: string;
 	readonly label: string;
 	readonly description: string;
 	readonly path: string;
-	readonly needsDate: boolean;
-	readonly needsRange: boolean;
+	readonly query: ReportQuery;
 	readonly icon: string;
 }
 
@@ -25,19 +36,17 @@ const REPORTS: readonly ReportDef[] = [
 	{
 		key: "arrivals",
 		label: "Arrivals",
-		description: "Expected arrivals for the business date.",
+		description: "Expected arrivals for the date range.",
 		path: "/reports/arrivals",
-		needsDate: true,
-		needsRange: false,
+		query: "range-paged",
 		icon: "flight_land",
 	},
 	{
 		key: "departures",
 		label: "Departures",
-		description: "Expected departures for the business date.",
+		description: "Expected departures for the date range.",
 		path: "/reports/departures",
-		needsDate: true,
-		needsRange: false,
+		query: "range-paged",
 		icon: "flight_takeoff",
 	},
 	{
@@ -45,17 +54,15 @@ const REPORTS: readonly ReportDef[] = [
 		label: "In-House",
 		description: "Currently in-house guests.",
 		path: "/reports/in-house",
-		needsDate: false,
-		needsRange: false,
+		query: "paged",
 		icon: "hotel",
 	},
 	{
 		key: "no-show",
 		label: "No-Show",
-		description: "No-show reservations for the business date.",
-		path: "/reports/no-show",
-		needsDate: true,
-		needsRange: false,
+		description: "No-show reservations for the date range.",
+		path: "/reports/no-shows",
+		query: "range-paged",
 		icon: "person_off",
 	},
 	{
@@ -63,71 +70,47 @@ const REPORTS: readonly ReportDef[] = [
 		label: "Occupancy",
 		description: "Occupancy statistics for the date range.",
 		path: "/reports/occupancy",
-		needsDate: false,
-		needsRange: true,
+		query: "range-paged",
 		icon: "meeting_room",
 	},
 	{
 		key: "revenue-summary",
 		label: "Revenue Summary",
-		description: "Revenue summary (rooms, F&B, other) for the date range.",
-		path: "/reports/revenue-summary",
-		needsDate: false,
-		needsRange: true,
+		description: "Gross and net revenue broken down by department.",
+		path: "/billing/reports/departmental-revenue",
+		query: "range",
 		icon: "payments",
 	},
 	{
-		key: "daily-revenue",
-		label: "Daily Revenue",
-		description: "Daily revenue with ADR and RevPAR.",
-		path: "/reports/daily-revenue",
-		needsDate: false,
-		needsRange: true,
-		icon: "trending_up",
+		key: "str-metrics",
+		label: "STR Metrics",
+		description: "ADR, RevPAR, TRevPAR and occupancy for the date range.",
+		path: "/reports/revenue-kpis",
+		query: "range-paged",
+		icon: "leaderboard",
 	},
 	{
 		key: "manager-flash",
 		label: "Manager Flash",
 		description: "Key daily metrics snapshot for management.",
-		path: "/reports/manager-flash",
-		needsDate: true,
-		needsRange: false,
+		path: "/reports/flash",
+		query: "business-date",
 		icon: "flash_on",
 	},
 	{
 		key: "forecast",
 		label: "Forecast",
-		description: "Forward-looking occupancy and revenue forecast.",
-		path: "/reports/forecast",
-		needsDate: false,
-		needsRange: true,
+		description: "Demand forecast for the date range.",
+		path: "/reports/demand-forecast",
+		query: "range-paged",
 		icon: "insights",
 	},
 	{
-		key: "str-metrics",
-		label: "STR Metrics",
-		description: "STR-compatible performance metrics (ADR, RevPAR, Occupancy).",
-		path: "/reports/str-metrics",
-		needsDate: false,
-		needsRange: true,
-		icon: "leaderboard",
-	},
-	{
-		key: "night-audit-summary",
-		label: "Night Audit Summary",
-		description: "Night audit posting totals, adjustments, and balance.",
-		path: "/reports/night-audit-summary",
-		needsDate: true,
-		needsRange: false,
-		icon: "receipt_long",
-	},
-	{
 		key: "housekeeping-status",
-		label: "Housekeeping Status",
-		description: "Room housekeeping status matrix.",
-		path: "/reports/housekeeping-status",
-		needsDate: false,
-		needsRange: false,
+		label: "Housekeeping",
+		description: "Housekeeping productivity for the business date.",
+		path: "/reports/housekeeping-productivity",
+		query: "business-date",
 		icon: "cleaning_services",
 	},
 ];
@@ -175,6 +158,15 @@ export class ReportsComponent {
 		return Object.keys(first);
 	});
 
+	/**
+	 * Skeleton geometry. Column count follows the previous run's table so a
+	 * refresh reserves the same width; first load falls back to six.
+	 */
+	readonly skeletonRows = Array.from({ length: 8 });
+	readonly skeletonCols = computed(() =>
+		Array.from({ length: Math.min(Math.max(this.columns().length || 6, 3), 8) }),
+	);
+
 	constructor() {
 		effect(() => {
 			this.auth.tenantId();
@@ -184,8 +176,50 @@ export class ReportsComponent {
 		});
 	}
 
+	/** True when the active report is driven by a single business date. */
+	readonly needsBusinessDate = computed(() => this.active().query === "business-date");
+
+	/** True when the active report is driven by a start/end date range. */
+	readonly needsRange = computed(() => this.active().query.startsWith("range"));
+
 	setActive(key: string): void {
 		this.activeKey.set(key);
+	}
+
+	/**
+	 * Builds the querystring for a report, sending only the keys its route
+	 * declares. `start_date`/`end_date` are required by every ranged route, so
+	 * they are always sent rather than conditionally omitted.
+	 */
+	private buildParams(
+		def: ReportDef,
+		tenantId: string,
+		propertyId: string,
+	): Record<string, string> {
+		const params: Record<string, string> = {
+			tenant_id: tenantId,
+			property_id: propertyId,
+		};
+
+		switch (def.query) {
+			case "range-paged":
+				params["start_date"] = this.startDate();
+				params["end_date"] = this.endDate();
+				params["limit"] = "500";
+				break;
+			case "range":
+				params["start_date"] = this.startDate();
+				params["end_date"] = this.endDate();
+				break;
+			case "business-date":
+				params["business_date"] = this.businessDate();
+				break;
+			case "paged":
+				params["limit"] = "500";
+				break;
+		}
+
+		return params;
 	}
 
 	async loadReport(): Promise<void> {
@@ -198,20 +232,7 @@ export class ReportsComponent {
 		this.dataReady.set(false);
 		this.error.set(null);
 		try {
-			const params: Record<string, string> = {
-				tenant_id: tenantId,
-				property_id: propertyId,
-				limit: "500",
-			};
-			if (def.needsDate && this.businessDate()) {
-				params["business_date"] = this.businessDate();
-				params["date"] = this.businessDate();
-			}
-			if (def.needsRange) {
-				if (this.startDate()) params["start_date"] = this.startDate();
-				if (this.endDate()) params["end_date"] = this.endDate();
-			}
-			const res = await this.api.get<unknown>(def.path, params);
+			const res = await this.api.get<unknown>(def.path, this.buildParams(def, tenantId, propertyId));
 			this.raw.set(res);
 			this.rows.set(this.extractRows(res));
 		} catch (e) {

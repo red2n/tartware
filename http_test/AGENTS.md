@@ -48,7 +48,7 @@ API_URL=https://prod.example.com API_USER=admin API_PASS=secret ./get-token.sh
 |----------|---------|-------------|
 | `API_URL` | `http://localhost:8080` | Base URL for API Gateway |
 | `API_USER` | `setup.admin` | Login username |
-| `API_PASS` | `TempPass123` | Login password |
+| `API_PASS` | `TempPass1234` | Login password |
 
 ## Using VS Code REST Client
 
@@ -123,7 +123,7 @@ cd /path/to/tartware && npm run dev
 ```
 
 ### "Authentication failed"
-- Verify credentials: default is `setup.admin` / `TempPass123`
+- Verify credentials: default is `setup.admin` / `TempPass1234`
 - Check if database was seeded properly
 - Ensure `TARTWARE_DROP_EXISTING=true` was set during initial setup
 

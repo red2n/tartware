@@ -7,7 +7,7 @@ export const GATEWAY_URL = __ENV.GATEWAY_URL || "http://localhost:8080";
 
 export const API_TOKEN = __ENV.API_TOKEN || "";
 export const ADMIN_USERNAME = __ENV.ADMIN_USERNAME || "setup.admin";
-export const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "TempPass123";
+export const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "TempPass1234";
 
 const defaultTenantId = "11111111-1111-1111-1111-111111111111";
 const defaultPropertyId = "22222222-2222-2222-2222-222222222222";

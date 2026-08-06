@@ -14,7 +14,7 @@ import { parseNumberEnv, parseNumberList } from "./kafka.js";
  * if a value ever leaks past the env layer.
  */
 const DEV_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
-const DEV_DEFAULT_PASSWORD = "TempPass123";
+const DEV_DEFAULT_PASSWORD = "TempPass1234";
 
 /** Throw with a consistent, actionable error when a required prod secret is missing. */
 function requireInProduction(name: string): never {

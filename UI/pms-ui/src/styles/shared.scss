@@ -60,6 +60,15 @@
   min-width: 0;
 }
 
+/* Leading cluster of a page header — typically a back button beside the title.
+   The breadcrumb pattern covers detail pages; this covers wizard/create pages. */
+.page-header-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  min-width: 0;
+}
+
 .page-title {
   font-size: var(--text-title-size-medium);
   font-weight: var(--base-text-weight-bold);
@@ -153,9 +162,24 @@
   color: var(--fgColor-attention);
 }
 
-.badge-danger {
+/* `.badge-error` is an alias used by webhook delivery status and loyalty point
+   deltas; without it those badges rendered with no severity colour at all. */
+.badge-danger,
+.badge-error {
   background: var(--bgColor-danger-muted);
   color: var(--fgColor-danger);
+}
+
+/* Highlight for editorial flags such as "Featured". */
+.badge-attention {
+  background: var(--bgColor-accent-muted);
+  color: var(--fgColor-accent);
+}
+
+/* Icons sit inside badges at label scale, not the 24px default. */
+.badge-icon {
+  font-size: 14px;
+  vertical-align: -2px;
 }
 
 .badge-muted {
@@ -500,7 +524,23 @@ textarea.field-input {
   border-bottom: 1px solid var(--borderColor-default);
 }
 
+/* Card header that splits a title from a trailing action. */
+.card-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-12);
+  padding: var(--base-size-12) var(--base-size-16);
+  background: var(--bgColor-muted);
+  border-bottom: 1px solid var(--borderColor-default);
+}
+
+/* Flex-centred so the 11 card titles that lead with an icon align it to the
+   text without per-component utilities. Harmless for text-only titles. */
 .card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
   margin: 0;
   font-size: var(--base-text-size-sm);
   font-weight: var(--base-text-weight-semibold);
@@ -807,6 +847,101 @@ textarea.field-input {
 .data-table .badge,
 .table .badge {
   margin-right: var(--base-size-4);
+}
+
+/* ── Screen-reader utilities ───────────────────────────────────
+ * Content that must reach assistive tech but not the screen: the accessible
+ * name of an icon-only control, the meaning behind a colour-coded badge, or a
+ * status change that is only conveyed visually.
+ *
+ * Use `.sr-only` for text that stays hidden, `.sr-only-focusable` for controls
+ * that must appear once focused (skip links).
+ */
+.sr-only,
+.sr-only-focusable:not(:focus):not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Skeleton placeholders ─────────────────────────────────────
+ * For full-panel loads, a skeleton that mirrors the incoming content beats a
+ * spinner: it holds layout, so nothing jumps when data lands. Spinners stay
+ * for inline/button-level waits where there is no shape to preview.
+ *
+ * Compose: <span class="skeleton skeleton-text"></span>
+ * Mark the container aria-busy="true" and the placeholders aria-hidden="true".
+ */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--borderRadius-small);
+  background: var(--bgColor-muted);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--skeleton-sheen), transparent);
+    animation: skeleton-sweep 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-text {
+  height: 14px;
+  border-radius: var(--borderRadius-full);
+}
+
+.skeleton-block {
+  height: 56px;
+}
+
+/* Rows of evenly-spaced cells — set --skeleton-cols to match the real table */
+.skeleton-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+  padding: var(--base-size-16) 0;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(var(--skeleton-cols, 6), 1fr);
+  gap: var(--base-size-16);
+}
+
+/* Header row reads slightly heavier than the body rows */
+.skeleton-row-head .skeleton {
+  height: 10px;
+  background: var(--borderColor-default);
+}
+
+/* Stack of full-width blocks, for card/list panels */
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+  padding: var(--base-size-16) 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
 }
 
 /* ── Loading / Error / Empty states ── */
@@ -1867,6 +2002,7 @@ textarea.field-input {
 .row-total {
   border-top: 2px solid var(--borderColor-default);
   background: var(--bgColor-muted);
+  font-weight: var(--base-text-weight-semibold);
 }
 
 /* ═══════════════════════════════════════════
