@@ -14,9 +14,7 @@ export class ToastContainerComponent {
 	readonly toast = inject(ToastService);
 
 	/** Successes announce politely — they can wait for a pause in speech. */
-	readonly politeToasts = computed(() =>
-		this.toast.toasts().filter((t) => t.type === "success"),
-	);
+	readonly politeToasts = computed(() => this.toast.toasts().filter((t) => t.type === "success"));
 
 	/** Failures interrupt: a 4s auto-dismiss can outrun a polite queue. */
 	readonly errorToasts = computed(() => this.toast.toasts().filter((t) => t.type === "error"));

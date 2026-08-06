@@ -74,7 +74,7 @@
   </div>
 
   <div class="dialog-actions" dialogFooter>
-    <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
+    <button class="btn btn-outline" dialogCancel (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
     <button class="btn btn-primary" (click)="save()" [disabled]="!hasChanges || saving()">
       @if (saving()) {
         <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
