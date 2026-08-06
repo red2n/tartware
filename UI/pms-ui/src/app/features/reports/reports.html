@@ -56,7 +56,7 @@
     </div>
   } @else if (rows().length === 0) {
     <div class="empty-state">
-      <app-icon [name]="active().icon" />
+      <app-icon class="empty-icon" [name]="active().icon" />
       <span>{{ 'No data returned for the current filters.' | translate }}</span>
     </div>
   } @else {

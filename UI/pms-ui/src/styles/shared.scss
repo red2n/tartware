@@ -820,6 +820,16 @@ textarea.field-input {
   color: var(--fgColor-muted);
 }
 
+/* Panel-level loads are a brand moment — the spinner picks up brass while the
+   label stays muted. Button spinners keep inheriting their button's colour. */
+.loading-state,
+.loading-center,
+.empty-state {
+  .p-progressspinner {
+    color: var(--brand-brass-soft);
+  }
+}
+
 .error-state {
   display: flex;
   align-items: center;
@@ -833,7 +843,13 @@ textarea.field-input {
   font-size: var(--base-text-size-lg);
 }
 
+/* Empty states carry the hospitality watermark: each screen's own
+ * .empty-icon is enlarged into a brass wash and lit by a soft bloom,
+ * echoing the login scene. Safe here because empty states have no data
+ * to obscure — never apply this treatment behind tables or forms. */
 .empty-state {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -845,11 +861,29 @@ textarea.field-input {
   p {
     margin: 0;
   }
+
+  /* Brass bloom behind the watermark. Gated on :has() so an empty state
+     without an icon gets no stray glow. Sized to stay inside the box so it
+     can never extend the scroll region of a nested panel. */
+  &:has(.empty-icon)::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: var(--base-size-8);
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--brand-watermark-bloom) 0%, transparent 70%);
+    pointer-events: none;
+  }
 }
 
 .empty-icon {
-  @include icon-size(48px);
-  color: var(--borderColor-default);
+  @include icon-size(clamp(72px, 8vw, 96px));
+  line-height: 1;
+  color: var(--brand-watermark);
 }
 
 .empty-hint {
@@ -1759,7 +1793,8 @@ textarea.field-input {
   border-radius: var(--borderRadius-small);
 }
 
-/* Small empty state (for nested panels) */
+/* Small empty state (for nested panels) — stays compact, so it opts out
+   of the .empty-state watermark and bloom when the two are combined. */
 .empty-state-sm {
   display: flex;
   align-items: center;
@@ -1769,6 +1804,15 @@ textarea.field-input {
   font-size: var(--base-text-size-sm);
 
   mat-icon {
+    @include icon-size(20px);
+  }
+
+  /* Matches the gated selector's specificity, and wins on source order */
+  &:has(.empty-icon)::before {
+    display: none;
+  }
+
+  .empty-icon {
     @include icon-size(20px);
   }
 }

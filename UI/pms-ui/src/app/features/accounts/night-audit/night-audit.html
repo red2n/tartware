@@ -340,7 +340,7 @@
           }
         </div>
       } @else if (preAuditChecks().length === 0) {
-        <div class="empty-state"><app-icon name="checklist" /><span>{{ 'No pre-audit checks available.' | translate }}</span></div>
+        <div class="empty-state"><app-icon class="empty-icon" name="checklist" /><span>{{ 'No pre-audit checks available.' | translate }}</span></div>
       } @else {
         <div class="kpi-grid" style="margin-bottom: 1rem;">
           <div class="kpi-card audit-kpi-debits">
@@ -409,7 +409,7 @@
           }
         </div>
       } @else if (bucketCheckItems().length === 0) {
-        <div class="empty-state"><app-icon name="fact_check" /><span>{{ 'No bucket check data available.' | translate }}</span></div>
+        <div class="empty-state"><app-icon class="empty-icon" name="fact_check" /><span>{{ 'No bucket check data available.' | translate }}</span></div>
       } @else {
         <table class="table table-compact" role="grid">
           <thead>
@@ -460,7 +460,7 @@
           }
         </div>
       } @else if (deptRevenueItems().length === 0) {
-        <div class="empty-state"><app-icon name="bar_chart" /><span>{{ 'No revenue data available.' | translate }}</span></div>
+        <div class="empty-state"><app-icon class="empty-icon" name="bar_chart" /><span>{{ 'No revenue data available.' | translate }}</span></div>
       } @else {
         <table class="table table-compact" role="grid">
           <thead>
@@ -517,7 +517,7 @@
           }
         </div>
       } @else if (taxSummaryItems().length === 0) {
-        <div class="empty-state"><app-icon name="receipt_long" /><span>{{ 'No tax data available.' | translate }}</span></div>
+        <div class="empty-state"><app-icon class="empty-icon" name="receipt_long" /><span>{{ 'No tax data available.' | translate }}</span></div>
       } @else {
         <table class="table table-compact" role="grid">
           <thead>

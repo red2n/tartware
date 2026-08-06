@@ -60,7 +60,7 @@
     <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadReport()">{{ 'Retry' | translate }}</button></div>
   } @else if (items().length === 0) {
     <div class="empty-state">
-      <app-icon name="account_balance" />
+      <app-icon class="empty-icon" name="account_balance" />
       <span>{{ 'No commission data for the selected period.' | translate }}</span>
     </div>
   } @else {

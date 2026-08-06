@@ -50,7 +50,7 @@
 		inset: 0;
 		padding: 1px;
 		border-radius: inherit;
-		background: radial-gradient(circle 200px at var(--cmx) var(--cmy), var(--login-brass), transparent 70%);
+		background: radial-gradient(circle 200px at var(--cmx) var(--cmy), var(--brand-brass), transparent 70%);
 		mask:
 			linear-gradient(#000 0 0) content-box,
 			linear-gradient(#000 0 0);
@@ -107,7 +107,7 @@
 	font-weight: 500;
 	letter-spacing: 0.3em;
 	text-transform: uppercase;
-	color: var(--login-brass-soft);
+	color: var(--brand-brass-soft);
 }
 
 .login-heading {
@@ -180,7 +180,7 @@
 		box-shadow 200ms ease;
 
 	&:hover {
-		border-color: var(--login-brass-soft);
+		border-color: var(--brand-brass-soft);
 	}
 
 	&:focus-within {
@@ -251,7 +251,7 @@
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
 	color: #1b1512;
-	background: linear-gradient(135deg, #e8c88a 0%, var(--login-brass) 46%, #c19a55 100%);
+	background: linear-gradient(135deg, #e8c88a 0%, var(--brand-brass) 46%, #c19a55 100%);
 	box-shadow: 0 10px 26px -10px rgba(193, 154, 85, 0.75);
 	transition:
 		transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1),

@@ -55,11 +55,14 @@
   --p-tooltip-color:              var(--fgColor-default);
   --p-tooltip-border-radius:      var(--borderRadius-small, 6px);
 
-  /* ── Progress spinner ── */
-  --p-progressspinner-color-1:    #2081e2;
-  --p-progressspinner-color-2:    #7b3fe4;
-  --p-progressspinner-color-3:    #2081e2;
-  --p-progressspinner-color-4:    #7b3fe4;
+  /* ── Progress spinner ──
+   * All four stops resolve to currentColor so PrimeNG's colour-cycling
+   * keyframes are a no-op. The look is defined in the restyle block below.
+   */
+  --p-progressspinner-color-1:    currentColor;
+  --p-progressspinner-color-2:    currentColor;
+  --p-progressspinner-color-3:    currentColor;
+  --p-progressspinner-color-4:    currentColor;
 }
 
 /* ── Primary button — OpenSea gradient ── */
@@ -140,6 +143,47 @@
   --p-toggleswitch-checked-background: #2081e2;
 }
 
+/* ── Progress spinner — thin single-colour arc ──────────────────
+ * PrimeNG ships a Material-era spinner: a dashing circle whose stroke
+ * cycles through four colours. We keep its DOM and replace the look with
+ * one round-capped arc rotating at constant speed.
+ *
+ * The stroke is currentColor, not brass. 92 of the 119 spinners in the app
+ * sit inside buttons, where a fixed brand colour would misfire — on the
+ * login screen's brass CTA it would be invisible. Inheriting means each
+ * spinner is legible against whatever it sits on. Panel-level loads get a
+ * brass tint from shared.scss instead.
+ *
+ * PrimeNG injects its theme CSS at runtime, so these need !important.
+ */
+.p-progressspinner-spin {
+  animation: spinner-rotate 800ms linear infinite !important;
+  transform-origin: center;
+}
+
+.p-progressspinner-circle {
+  /* viewBox is 50 units wide, so stroke-width 4 is 8% of the rendered size —
+     visible at 14px and still fine at 32px. */
+  stroke: currentColor !important;
+  stroke-width: 4 !important;
+  stroke-linecap: round;
+  stroke-dasharray: 38 126; /* ~30% of the r=20 circumference */
+  stroke-dashoffset: 0;
+  animation: none !important; /* drop PrimeNG's dash + colour cycle */
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-progressspinner-spin {
+    animation-duration: 2s !important;
+  }
+}
+
 /* ── Progress spinner size helpers ── */
 .p-progressspinner-sm {
   width: 1rem !important;
@@ -149,6 +193,13 @@
 .p-progressspinner-md {
   width: 1.5rem !important;
   height: 1.5rem !important;
+}
+
+/* Was referenced by reports and housekeeping but never defined, so those
+   two fell back to PrimeNG's default size. */
+.spinner-sm {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
 }
 
 /* ── Popover — menu item buttons ── */

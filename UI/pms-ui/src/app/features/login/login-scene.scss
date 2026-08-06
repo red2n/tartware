@@ -96,7 +96,7 @@
 		flex-shrink: 0;
 		width: 18px;
 		height: 1px;
-		background: var(--login-brass-soft);
+		background: var(--brand-brass-soft);
 		opacity: 0.5;
 	}
 }
@@ -123,12 +123,12 @@
 	transition: opacity 420ms ease;
 
 	.plan-mark {
-		color: var(--login-brass);
+		color: var(--brand-brass);
 		text-shadow: 0 0 22px rgba(217, 180, 113, 0.45);
 	}
 
 	.plan-zone-label {
-		color: var(--login-brass);
+		color: var(--brand-brass);
 	}
 
 	.plan-zone {
@@ -191,7 +191,7 @@
 	font-size: 11px;
 	letter-spacing: 0.32em;
 	text-transform: uppercase;
-	color: var(--login-brass-soft);
+	color: var(--brand-brass-soft);
 }
 
 .brand-headline {
@@ -206,7 +206,7 @@
 	em {
 		font-style: italic;
 		font-weight: 400;
-		color: var(--login-brass);
+		color: var(--brand-brass);
 	}
 }
 
@@ -242,16 +242,16 @@
 
 	app-icon {
 		font-size: 18px;
-		color: var(--login-brass-soft);
+		color: var(--brand-brass-soft);
 	}
 
 	&:hover {
 		color: var(--login-linen);
-		border-left-color: var(--login-brass);
+		border-left-color: var(--brand-brass);
 		transform: translateX(6px);
 
 		app-icon {
-			color: var(--login-brass);
+			color: var(--brand-brass);
 		}
 	}
 }

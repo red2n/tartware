@@ -132,7 +132,7 @@
     <div class="error-state"><app-icon class="error-icon" name="error_outline" /><span>{{ err }}</span><button class="btn btn-outline" (click)="loadInvoices()">{{ 'Retry' | translate }}</button></div>
   } @else if (paginated().length === 0) {
     <div class="empty-state">
-      <app-icon name="receipt_long" />
+      <app-icon class="empty-icon" name="receipt_long" />
       <span>{{ 'No invoices found.' | translate }}</span>
     </div>
   } @else {

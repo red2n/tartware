@@ -812,7 +812,7 @@ export const listChargebacks = async (options: {
        r.created_at::text
      FROM public.refunds r
      LEFT JOIN public.payments p ON p.id = r.original_payment_id
-     LEFT JOIN public.guests g ON g.guest_id = r.guest_id
+     LEFT JOIN public.guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
      LEFT JOIN public.reservations res ON res.id = r.reservation_id
      WHERE r.tenant_id = $1::uuid
        AND r.is_chargeback = TRUE
