@@ -1,6 +1,6 @@
 import { DecimalPipe, NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
-import { Router } from "@angular/router";
+import { RouterLink } from "@angular/router";
 import type {
 	ActivityItem,
 	DashboardStats,
@@ -19,6 +19,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { StatCardComponent } from "../../shared/components/stat-card/stat-card";
 
 @Component({
 	selector: "app-dashboard",
@@ -28,8 +29,10 @@ import { PageHeaderComponent } from "../../shared/components/page-header/page-he
 		NgClass,
 		IconComponent,
 		ProgressSpinnerModule,
+		RouterLink,
 		TooltipModule,
 		PageHeaderComponent,
+		StatCardComponent,
 		TranslatePipe,
 	],
 	templateUrl: "./dashboard.html",
@@ -39,7 +42,6 @@ export class DashboardComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly router = inject(Router);
 	readonly settings = inject(SettingsService);
 
 	readonly stats = signal<DashboardStats | null>(null);
@@ -118,6 +120,8 @@ export class DashboardComponent {
 	readonly timezone = computed(() => this.settings.getString("property.timezone", ""));
 	/** Property star rating (e.g. "4", "5"). */
 	readonly starRating = computed(() => this.settings.getNumber("property.star_rating", 0));
+	/** Star rating as glyphs — decorative; the pill carries an sr-only numeric label. */
+	readonly starRatingStars = computed(() => "★".repeat(this.starRating()));
 
 	/** SVG sparkline path from reservation_sparkline weekly buckets. */
 	readonly sparkline = computed(() => {
@@ -143,6 +147,15 @@ export class DashboardComponent {
 		return { line, area, width: w, height: h };
 	});
 
+	/** Text alternative for the sparkline — the chart itself is unreadable to AT. */
+	readonly sparklineSummary = computed(() => {
+		const buckets = this.stats()?.reservation_sparkline;
+		if (!buckets?.length) return "";
+		const total = buckets.reduce((a, b) => a + b, 0);
+		const peak = Math.max(...buckets);
+		return `${total} reservations over the last ${buckets.length} weeks, peak ${peak} in a single week`;
+	});
+
 	/** Room inventory summary computed from rooms grid data. */
 	readonly roomSummary = computed(() => {
 		const all = this.rooms();
@@ -159,6 +172,12 @@ export class DashboardComponent {
 		const inProgress = all.filter((r) => r.housekeeping_status === "IN_PROGRESS").length;
 		const occupancyPct = total > 0 ? Math.round((occupied / total) * 100) : 0;
 		return { total, occupied, available, blocked, ooo, dirty, clean, inProgress, occupancyPct };
+	});
+
+	/** Share of rooms in a ready (clean/inspected) state — drives the housekeeping bar. */
+	readonly roomsReadyPct = computed(() => {
+		const rm = this.roomSummary();
+		return rm && rm.total > 0 ? (rm.clean / rm.total) * 100 : 0;
 	});
 
 	/** Rate summary computed from rates data. */
@@ -333,41 +352,8 @@ export class DashboardComponent {
 		}
 	}
 
-	priorityClass(priority: string): string {
-		switch (priority) {
-			case "urgent":
-				return "badge-danger";
-			case "high":
-				return "badge-warning";
-			case "medium":
-				return "badge-accent";
-			default:
-				return "badge-muted";
-		}
-	}
-
 	formatCurrency(amount: number, currency?: string): string {
 		return this.settings.formatCurrency(amount, currency);
-	}
-
-	navigateToReservations(): void {
-		this.router.navigate(["/reservations"]);
-	}
-
-	navigateToRooms(): void {
-		this.router.navigate(["/rooms"]);
-	}
-
-	navigateToRates(): void {
-		this.router.navigate(["/rates"]);
-	}
-
-	navigateToHousekeeping(): void {
-		this.router.navigate(["/housekeeping"]);
-	}
-
-	navigateToBilling(): void {
-		this.router.navigate(["/billing"]);
 	}
 
 	/** Manually refresh only the Recent Activity feed. */
@@ -400,11 +386,6 @@ export class DashboardComponent {
 		return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 	}
 
-	/** Navigate to the full activity log page. */
-	navigateToActivityLog(): void {
-		this.router.navigate(["/dashboard/activity"]);
-	}
-
 	/** Map an activity type key to a human-readable label. */
 	activityTypeLabel(type: string): string {
 		const labels: Record<string, string> = {
@@ -420,16 +401,4 @@ export class DashboardComponent {
 		};
 		return labels[type] ?? type.replace(/_/g, " ");
 	}
-
-	/** Legend entries shown above the timeline. */
-	readonly activityLegend = [
-		{ type: "checkin", label: "Check-in" },
-		{ type: "checkout", label: "Check-out" },
-		{ type: "reservation", label: "Reservation" },
-		{ type: "cancellation", label: "Cancellation" },
-		{ type: "noshow", label: "No-show" },
-		{ type: "payment", label: "Payment" },
-		{ type: "folio", label: "Folio" },
-		{ type: "housekeeping", label: "Housekeeping" },
-	];
 }

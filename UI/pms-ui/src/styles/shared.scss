@@ -550,6 +550,64 @@ textarea.field-input {
   color: var(--fgColor-default);
 }
 
+/* Card that navigates as a whole. The title is a real link whose ::after
+   stretches over the card, so the entire surface is clickable while only the
+   link is focusable and announced — the heading stays a heading. */
+.detail-card.clickable {
+  position: relative;
+  cursor: pointer;
+  transition: border-color var(--base-duration-100) ease, box-shadow var(--base-duration-100) ease;
+
+  &:hover {
+    border-color: var(--borderColor-accent-muted);
+  }
+
+  &:focus-within {
+    border-color: var(--borderColor-accent-emphasis);
+    box-shadow: 0 0 0 var(--focus-outline-width) var(--borderColor-accent-emphasis);
+  }
+}
+
+.card-title-link {
+  color: inherit;
+  text-decoration: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  &:hover {
+    color: var(--fgColor-accent);
+    text-decoration: none;
+  }
+
+  /* The ring is drawn on the card by :focus-within, not around the text. */
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+/* Trailing affordance marking a card as one that opens another screen.
+   Decorative — the title link already announces the destination.
+   Wraps <app-icon> because that host is `display: contents` and cannot
+   itself carry flex properties. */
+.card-link-icon {
+  @include icon-size(14px);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--fgColor-muted);
+  transition: color var(--base-duration-100) ease;
+}
+
+.detail-card.clickable:hover .card-link-icon,
+.detail-card.clickable:focus-within .card-link-icon {
+  color: var(--fgColor-accent);
+}
+
 .card-body {
   padding: var(--base-size-16);
 }
@@ -1241,6 +1299,35 @@ textarea.field-input {
       background: var(--bgColor-muted);
     }
   }
+}
+
+/* Sections that navigate are rendered as anchors so they are keyboard
+   reachable and support open-in-new-tab. The link reset keeps them visually
+   identical to the plain `<div>` sections beside them. */
+a.overview-section {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
+
+  &:hover .overview-link-icon,
+  &:focus-visible .overview-link-icon {
+    color: var(--fgColor-accent);
+  }
+}
+
+/* Same "opens another screen" affordance as .card-link-icon, pinned to the
+   trailing edge of the section's label row. */
+.overview-link-icon {
+  @include icon-size(14px);
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--fgColor-muted);
+  transition: color var(--base-duration-100) ease;
 }
 
 .overview-divider {
@@ -2108,6 +2195,20 @@ textarea.field-input {
   color: var(--fgColor-accent);
 }
 
+.hk-policy-flag-success {
+  background: var(--bgColor-success-muted);
+  border: 1px solid var(--borderColor-success-muted);
+  color: var(--fgColor-success);
+}
+
+/* Neutral pill — for config values that carry no status meaning
+   (property times, timezone, star rating). */
+.hk-policy-flag-muted {
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  color: var(--fgColor-muted);
+}
+
 
 /* ── Styles moved from shared.scss ── */
 /* ── Stat dots — small colored indicators ── */
@@ -2322,17 +2423,6 @@ $tl-colors: (
   display: flex;
   flex-direction: column;
   gap: var(--base-size-16);
-}
-
-.kpi-sk {
-  border-radius: var(--borderRadius-small);
-  background: var(--borderColor-muted);
-
-  &-label { height: 11px; width: 55%; margin-bottom: var(--base-size-8); }
-  &-value { height: 26px; width: 45%; margin-bottom: var(--base-size-8); }
-  &-trend { height: 10px; width: 70%; }
-
-  &--pulse { animation: tl-pulse 1.2s ease-in-out infinite; }
 }
 
 .card-sk {
