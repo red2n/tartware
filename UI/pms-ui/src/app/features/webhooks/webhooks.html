@@ -97,7 +97,7 @@
           <th>{{ 'Last success' | translate }}</th>
           <th>{{ 'Last failure' | translate }}</th>
           <th>{{ 'Counts' | translate }}</th>
-          <th class="actions-cell">{{ 'Actions' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -119,7 +119,7 @@
                 {{ w.success_count ?? 0 }} / {{ w.failure_count ?? 0 }}
               </span>
             </td>
-            <td class="actions-cell">
+            <td class="cell-actions">
               <button class="btn btn-outline btn-xs" (click)="openEdit(w)" pTooltip="Edit">
                 <app-icon name="edit" />
               </button>
@@ -152,7 +152,7 @@
 
 @if (deliveriesFor()) {
   <div class="detail-card">
-    <div class="card-header-row">
+    <div class="card-header-flex">
       <h3 class="card-title">{{ 'Delivery history' | translate }}</h3>
       <button class="btn btn-outline btn-xs" (click)="closeDeliveries()">
         <app-icon name="close" /> {{ 'Close' | translate }}

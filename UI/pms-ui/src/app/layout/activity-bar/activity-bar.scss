@@ -43,7 +43,7 @@
   cursor: pointer;
   transition: color var(--base-duration-100);
 
-  mat-icon {
+  app-icon {
     @include icon-size(24px);
   }
 

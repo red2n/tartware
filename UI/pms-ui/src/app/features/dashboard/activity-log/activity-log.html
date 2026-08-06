@@ -19,7 +19,7 @@
       @if (total() > 0) {
         <span class="al-total-badge">{{ total() }} {{ 'events' | translate }}</span>
       }
-      <button class="btn btn-default btn-sm al-refresh-btn"
+      <button class="btn btn-outline btn-sm al-refresh-btn"
         (click)="load()"
         [disabled]="loading()"
         [pTooltip]="'Refresh' | translate">
@@ -110,14 +110,14 @@
 
     <!-- Pagination -->
     <div class="al-pagination">
-      <button class="btn btn-default btn-sm"
+      <button class="btn btn-outline btn-sm"
         [disabled]="!hasPrev() || loading()"
         (click)="prevPage()">
         <app-icon name="chevron_left" />
         {{ 'Previous' | translate }}
       </button>
       <span class="al-page-label">{{ pageLabel() }}</span>
-      <button class="btn btn-default btn-sm"
+      <button class="btn btn-outline btn-sm"
         [disabled]="!hasNext() || loading()"
         (click)="nextPage()">
         {{ 'Next' | translate }}

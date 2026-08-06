@@ -7,9 +7,9 @@
 .tax-config-page { max-width: 1600px; }
 
 /* ── KPI color modifiers ── */
-.tax-kpi-total > mat-icon { color: var(--fgColor-accent); }
-.tax-kpi-active > mat-icon { color: var(--fgColor-success); }
-.tax-kpi-jurisdictions > mat-icon { color: var(--fgColor-attention); }
+.tax-kpi-total > app-icon { color: var(--fgColor-accent); }
+.tax-kpi-active > app-icon { color: var(--fgColor-success); }
+.tax-kpi-jurisdictions > app-icon { color: var(--fgColor-attention); }
 
 /* ── Cells ── */
 .tax-name-cell,

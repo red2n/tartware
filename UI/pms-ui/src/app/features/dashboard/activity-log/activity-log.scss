@@ -21,7 +21,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--base-size-4);
-  mat-icon { @include icon-size(16px); }
+  app-icon { @include icon-size(16px); }
 }
 
 .al-toolbar-right {
@@ -44,7 +44,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--base-size-4);
-  mat-icon { @include icon-size(14px); }
+  app-icon { @include icon-size(14px); }
 }
 
 /* ── Spinner centered ── */
@@ -111,7 +111,7 @@
   align-items: center;
   justify-content: center;
 
-  mat-icon { @include icon-size(20px); }
+  app-icon { @include icon-size(20px); }
 
   &--reservation  { background: var(--bgColor-accent-muted);    color: var(--fgColor-accent); }
   &--checkin      { background: var(--bgColor-success-muted);   color: var(--fgColor-success); }
@@ -125,7 +125,7 @@
   &--child {
     width: 28px;
     height: 28px;
-    mat-icon { @include icon-size(16px); }
+    app-icon { @include icon-size(16px); }
   }
 }
 

@@ -75,7 +75,7 @@
     border-color: var(--bgColor-accent-muted);
   }
 
-  > mat-icon:first-child {
+  > app-icon:first-child {
     color: var(--fgColor-muted);
     @include icon-size(20px);
     flex-shrink: 0;
@@ -164,7 +164,7 @@
   gap: var(--base-size-4);
   color: var(--fgColor-danger);
 
-  mat-icon {
+  app-icon {
     @include icon-size(14px);
   }
 }

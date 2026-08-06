@@ -10,10 +10,10 @@
 }
 
 /* ── Billing KPI — icon/value accent colors ── */
-.bill-section-received .overview-label mat-icon { color: var(--fgColor-success); }
-.bill-section-outstanding .overview-label mat-icon { color: var(--fgColor-attention); }
-.bill-section-folios .overview-label mat-icon { color: var(--fgColor-accent); }
-.bill-section-alert .overview-label mat-icon { color: var(--fgColor-danger); }
+.bill-section-received .overview-label app-icon { color: var(--fgColor-success); }
+.bill-section-outstanding .overview-label app-icon { color: var(--fgColor-attention); }
+.bill-section-folios .overview-label app-icon { color: var(--fgColor-accent); }
+.bill-section-alert .overview-label app-icon { color: var(--fgColor-danger); }
 .bill-section-alert .overview-value { color: var(--fgColor-danger); }
 
 .charge-code {

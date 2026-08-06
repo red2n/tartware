@@ -28,7 +28,7 @@
   border-radius: var(--borderRadius-full);
   padding: var(--control-small-paddingBlock) var(--control-small-paddingInline-normal);
 
-  mat-icon {
+  app-icon {
     @include icon-size(14px);
   }
 }
@@ -155,7 +155,7 @@
   align-items: center;
   gap: var(--base-size-8);
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
     color: var(--fgColor-muted);
   }
@@ -174,7 +174,7 @@
   padding: var(--base-size-2);
   color: var(--fgColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(16px);
   }
 

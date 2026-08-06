@@ -181,7 +181,7 @@
   padding: 0;
   color: var(--fgColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(14px);
   }
 
@@ -192,7 +192,10 @@
 
 .search-kbd {
   font-size: var(--base-text-size-xs);
-  font-family: var(--fontStack-sansSerif);
+  /* Monospace is the convention for <kbd>, and unlike Primer's
+     --fontStack-sansSerif it does not lead with "Mona Sans VF", a GitHub face
+     this app never loads — that silently fell through to the system font. */
+  font-family: var(--fontStack-monospace);
   padding: var(--base-size-2) var(--base-size-6);
   border: 1px solid var(--borderColor-default);
   border-radius: var(--borderRadius-small);
@@ -223,7 +226,7 @@
   cursor: pointer;
   transition: background var(--base-duration-100);
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
   }
 

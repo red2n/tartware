@@ -11,10 +11,6 @@
   padding: var(--base-size-24) var(--base-size-32);
 }
 
-.page-header {
-  margin-bottom: var(--base-size-20);
-}
-
 /* ── Package header ── */
 .pkg-header {
   display: flex;
@@ -86,7 +82,7 @@
   cursor: pointer;
   transition: background var(--base-duration-100), border-color var(--base-duration-100), color var(--base-duration-100);
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
   }
 
@@ -185,7 +181,7 @@
   color: var(--fgColor-accent);
   flex-shrink: 0;
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
   }
 }

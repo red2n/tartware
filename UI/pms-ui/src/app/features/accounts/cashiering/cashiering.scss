@@ -6,8 +6,8 @@
 .cashiering-page { max-width: 1600px; }
 
 /* ── KPI color modifiers ── */
-.cashier-kpi-total > mat-icon { color: var(--fgColor-accent); }
-.cashier-kpi-open > mat-icon { color: var(--fgColor-success); }
+.cashier-kpi-total > app-icon { color: var(--fgColor-accent); }
+.cashier-kpi-open > app-icon { color: var(--fgColor-success); }
 
 /* ── Cells ── */
 .variance-alert { color: var(--fgColor-danger); font-weight: var(--base-text-weight-semibold); }

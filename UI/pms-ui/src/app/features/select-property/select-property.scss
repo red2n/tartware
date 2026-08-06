@@ -60,7 +60,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
     margin-right: var(--base-size-4);
   }
@@ -72,10 +72,6 @@
   align-items: center;
   gap: var(--base-size-12);
   margin-bottom: var(--base-size-16);
-}
-
-.full-width {
-  flex: 1;
 }
 
 .search-count {
@@ -196,7 +192,7 @@
   color: var(--fgColor-muted);
   font-size: var(--base-text-size-sm);
 
-  mat-icon {
+  app-icon {
     @include icon-size(32px);
     opacity: 0.5;
   }
@@ -265,7 +261,7 @@
   color: var(--fgColor-accent);
   flex-shrink: 0;
 
-  mat-icon {
+  app-icon {
     @include icon-size(20px);
   }
 }

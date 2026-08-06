@@ -93,7 +93,7 @@
   font-size: var(--base-text-size-sm);
   border-bottom: 1px solid var(--borderColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(16px);
   }
 }
