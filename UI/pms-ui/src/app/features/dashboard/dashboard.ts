@@ -17,6 +17,7 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { SettingsService } from "../../core/settings/settings.service";
+import { relativeTime } from "../../shared/format-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { StatCardComponent } from "../../shared/components/stat-card/stat-card";
@@ -367,24 +368,8 @@ export class DashboardComponent {
 		}
 	}
 
-	/** Format a date as a relative time string (e.g. "3h ago", "tomorrow", "Apr 14"). */
-	relativeTime(date: Date | string): string {
-		const d = new Date(date);
-		const now = new Date();
-		const diffMs = d.getTime() - now.getTime();
-		const absDiffMs = Math.abs(diffMs);
-		const diffMins = Math.floor(absDiffMs / 60_000);
-		const diffHours = Math.floor(diffMins / 60);
-		const diffDays = Math.floor(diffHours / 24);
-		const isPast = diffMs < 0;
-
-		if (diffMins < 1) return "just now";
-		if (diffMins < 60) return isPast ? `${diffMins}m ago` : `in ${diffMins}m`;
-		if (diffHours < 24) return isPast ? `${diffHours}h ago` : `in ${diffHours}h`;
-		if (diffDays === 1) return isPast ? "yesterday" : "tomorrow";
-		if (diffDays < 7) return isPast ? `${diffDays}d ago` : `in ${diffDays}d`;
-		return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-	}
+	/** Exposed for the template — see shared/format-utils. */
+	readonly relativeTime = relativeTime;
 
 	/** Map an activity type key to a human-readable label. */
 	activityTypeLabel(type: string): string {

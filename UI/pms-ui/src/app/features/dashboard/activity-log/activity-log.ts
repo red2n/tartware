@@ -9,6 +9,7 @@ import { TenantContextService } from "../../../core/context/tenant-context.servi
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { relativeTime } from "../../../shared/format-utils";
 
 const PAGE_SIZE = 20;
 
@@ -138,23 +139,8 @@ export class ActivityLogComponent {
 		return labels[type] ?? type.replace(/_/g, " ");
 	}
 
-	relativeTime(date: Date | string): string {
-		const d = new Date(date);
-		const now = new Date();
-		const diffMs = d.getTime() - now.getTime();
-		const absDiffMs = Math.abs(diffMs);
-		const diffMins = Math.floor(absDiffMs / 60_000);
-		const diffHours = Math.floor(diffMins / 60);
-		const diffDays = Math.floor(diffHours / 24);
-
-		const past = diffMs < 0;
-		if (diffMins < 1) return "just now";
-		if (diffMins < 60) return past ? `${diffMins}m ago` : `in ${diffMins}m`;
-		if (diffHours < 24) return past ? `${diffHours}h ago` : `in ${diffHours}h`;
-		if (diffDays === 1) return past ? "yesterday" : "tomorrow";
-		if (diffDays < 7) return past ? `${diffDays}d ago` : `in ${diffDays}d`;
-		return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-	}
+	/** Exposed for the template — see shared/format-utils. */
+	readonly relativeTime = relativeTime;
 
 	formatDate(date: Date | string): string {
 		return new Date(date).toLocaleString(undefined, {
