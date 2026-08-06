@@ -177,7 +177,7 @@
             @if (selectedSessionId() === session.session_id) {
               <tr class="close-form-row">
                 <td colspan="10">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Session Details' | translate }} — {{ session.session_number }}</span>
                     @if (loadingSessionDetail()) {
                       <div class="loading-state">
@@ -357,7 +357,7 @@
             @if (closingSessionId() === session.session_id) {
               <tr class="close-form-row">
                 <td colspan="10">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Close session' | translate }} {{ session.session_number }}</span>
                     <div class="form-inline-fields">
                       <div class="form-field">
@@ -391,7 +391,7 @@
             @if (handoveringSessionId() === session.session_id) {
               <tr class="close-form-row">
                 <td colspan="10">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Shift Handover' | translate }} — {{ session.session_number }}</span>
                     <p class="form-hint">{{ 'Close outgoing session and open incoming session atomically.' | translate }}</p>
                     <div class="form-section-title">{{ 'Outgoing Reconciliation' | translate }}</div>

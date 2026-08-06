@@ -114,7 +114,7 @@
             @if (advancingId() === c.refund_id) {
               <tr class="action-row-form">
                 <td colspan="9">
-                  <div class="inline-action-form">
+                  <div class="inline-action-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Advance chargeback' | translate }} {{ c.chargeback_reference ?? c.refund_id }} ({{ c.chargeback_status }})</span>
                     <div class="form-inline-fields">
                       <div class="form-field">

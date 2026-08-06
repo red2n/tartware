@@ -12,6 +12,7 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "RECEIVED" | "EVIDENCE_SUBMITTED" | "WON" | "LOST";
@@ -28,6 +29,7 @@ type AdvanceTarget = "EVIDENCE_SUBMITTED" | "WON" | "LOST";
 		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
 	],
 	templateUrl: "./chargebacks.html",
 	styleUrl: "./chargebacks.scss",

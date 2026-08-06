@@ -220,7 +220,7 @@
             @if (editingTaxId() === tax.tax_config_id) {
               <tr class="close-form-row">
                 <td colspan="9">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Edit' | translate }} — {{ tax.tax_code }}</span>
                     <div class="form-inline-fields">
                       <div class="form-field">
@@ -270,7 +270,7 @@
             @if (deletingTaxId() === tax.tax_config_id) {
               <tr class="close-form-row">
                 <td colspan="9">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label delete-confirm-label">{{ 'Delete' | translate }} {{ tax.tax_code }}?</span>
                     <div class="form-inline-fields">
                       <div class="form-field">
