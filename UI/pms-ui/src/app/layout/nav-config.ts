@@ -412,3 +412,86 @@ export function findFirstAllowedRoute(allowedScreens: ReadonlySet<string>): stri
 	}
 	return "/dashboard";
 }
+
+/** A screen the search can offer to navigate to. */
+export type ScreenMatch = {
+	label: string;
+	icon: string;
+	route: string;
+	description?: string;
+	/** Parent nav section, shown as context in the results list. */
+	section?: string;
+};
+
+/** Every routable screen the user is allowed to open, parents and children alike. */
+export function listScreens(
+	allowedScreens: ReadonlySet<string>,
+	permissionsLoaded: boolean,
+): ScreenMatch[] {
+	const visible = filterNavByAllowedScreens(
+		[...PRIMARY_NAV_ITEMS, ...SECONDARY_NAV_ITEMS],
+		allowedScreens,
+		permissionsLoaded,
+	);
+
+	const screens: ScreenMatch[] = [];
+	for (const item of visible) {
+		if (item.route) {
+			screens.push({
+				label: item.label,
+				icon: item.icon,
+				route: item.route,
+				description: item.description,
+			});
+		}
+		for (const child of item.children ?? []) {
+			if (!child.route) continue;
+			screens.push({
+				label: child.label,
+				icon: child.icon,
+				route: child.route,
+				description: child.description,
+				section: item.label,
+			});
+		}
+	}
+	return screens;
+}
+
+/**
+ * Screens matching a search term, best match first: an exact label beats a
+ * label that starts with the term, which beats one that merely contains it,
+ * then the parent section, then the description. Searching "reservation" finds
+ * Reservations before Arrivals-under-Reservations before anything that only
+ * mentions reservations in its description.
+ */
+export function searchScreens(
+	query: string,
+	allowedScreens: ReadonlySet<string>,
+	permissionsLoaded: boolean,
+	limit = 8,
+): ScreenMatch[] {
+	const term = query.trim().toLowerCase();
+	if (!term) return [];
+
+	const ranked: { rank: number; screen: ScreenMatch }[] = [];
+	for (const screen of listScreens(allowedScreens, permissionsLoaded)) {
+		const label = screen.label.toLowerCase();
+		const rank =
+			label === term
+				? 0
+				: label.startsWith(term)
+					? 1
+					: label.includes(term)
+						? 2
+						: (screen.section?.toLowerCase().includes(term) ?? false)
+							? 3
+							: (screen.description?.toLowerCase().includes(term) ?? false)
+								? 4
+								: -1;
+		if (rank >= 0) ranked.push({ rank, screen });
+	}
+
+	ranked.sort((a, b) => a.rank - b.rank || a.screen.label.localeCompare(b.screen.label));
+	return ranked.slice(0, limit).map((entry) => entry.screen);
+}

@@ -1,9 +1,19 @@
-import { Component, type ElementRef, HostListener, inject, output, viewChild } from "@angular/core";
+import {
+	Component,
+	computed,
+	type ElementRef,
+	HostListener,
+	inject,
+	output,
+	signal,
+	viewChild,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router, RouterLink } from "@angular/router";
 import { PopoverModule } from "primeng/popover";
 import { TooltipModule } from "primeng/tooltip";
 import { AuthService } from "../../core/auth/auth.service";
+import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { I18nService, type LangCode, SUPPORTED_LANGUAGES } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -17,6 +27,7 @@ import { ThemeService } from "../../core/theme/theme.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { UnsavedChangesService } from "../../shared/forms/unsaved-changes.service";
 import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
+import { type ScreenMatch, searchScreens } from "../nav-config";
 
 @Component({
 	selector: "app-topbar",
@@ -38,6 +49,7 @@ export class TopbarComponent {
 	private readonly theme = inject(ThemeService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly unsaved = inject(UnsavedChangesService);
+	private readonly screenPerms = inject(ScreenPermissionsService);
 	private readonly i18n = inject(I18nService);
 	private readonly registry = inject(RegistryService);
 	private readonly router = inject(Router);
@@ -51,6 +63,7 @@ export class TopbarComponent {
 
 	private readonly notifPanel = viewChild<ElementRef>("notifPanel");
 	private readonly searchInput = viewChild<ElementRef>("searchInputEl");
+	private readonly searchWidget = viewChild<ElementRef>("searchWidgetEl");
 
 	readonly user = this.auth.user;
 	readonly isDark = this.theme.isDark;
@@ -129,7 +142,78 @@ export class TopbarComponent {
 		}
 	}
 
+	/**
+	 * Screens matching what's typed. The query also filters the list on the
+	 * current page, so this offers navigation on top of that rather than
+	 * replacing it — searching "reservation" from Guests still reaches
+	 * Reservations.
+	 */
+	readonly screenResults = computed<ScreenMatch[]>(() =>
+		searchScreens(
+			this.globalSearch.query(),
+			this.screenPerms.allowedScreens(),
+			this.screenPerms.loaded(),
+		),
+	);
+
+	readonly resultsOpen = signal(false);
+	readonly highlighted = signal(0);
+
+	onSearchInput(value: string): void {
+		this.globalSearch.setQuery(value);
+		this.highlighted.set(0);
+		this.resultsOpen.set(true);
+	}
+
+	openScreen(screen: ScreenMatch): void {
+		this.closeResults();
+		this.router.navigateByUrl(screen.route);
+	}
+
+	closeResults(): void {
+		this.resultsOpen.set(false);
+		this.highlighted.set(0);
+	}
+
+	onSearchKeydown(event: KeyboardEvent): void {
+		const results = this.screenResults();
+		switch (event.key) {
+			case "ArrowDown":
+				if (!results.length) return;
+				event.preventDefault();
+				// Reopening lands on the first result rather than skipping past it.
+				if (!this.resultsOpen()) {
+					this.resultsOpen.set(true);
+					return;
+				}
+				this.highlighted.update((i) => (i + 1) % results.length);
+				break;
+			case "ArrowUp":
+				if (!results.length) return;
+				event.preventDefault();
+				this.highlighted.update((i) => (i - 1 + results.length) % results.length);
+				break;
+			case "Enter": {
+				const target = results[this.highlighted()];
+				if (!target) return;
+				event.preventDefault();
+				this.openScreen(target);
+				break;
+			}
+			case "Escape":
+				event.preventDefault();
+				if (this.resultsOpen() && this.globalSearch.query()) {
+					this.closeResults();
+				} else {
+					this.globalSearch.clear();
+					this.searchInput()?.nativeElement?.blur();
+				}
+				break;
+		}
+	}
+
 	focusSearch(): void {
+		this.resultsOpen.set(true);
 		this.searchInput()?.nativeElement?.focus();
 	}
 
@@ -143,9 +227,16 @@ export class TopbarComponent {
 
 	@HostListener("document:click", ["$event"])
 	onDocumentClick(event: MouseEvent): void {
+		const target = event.target;
+		if (
+			this.resultsOpen() &&
+			target instanceof Node &&
+			!this.searchWidget()?.nativeElement.contains(target)
+		) {
+			this.closeResults();
+		}
 		if (!this.notifications.panelOpen()) return;
 		const panel = this.notifPanel();
-		const target = event.target;
 		if (panel && target instanceof Node && !panel.nativeElement.contains(target)) {
 			this.notifications.closePanel();
 		}

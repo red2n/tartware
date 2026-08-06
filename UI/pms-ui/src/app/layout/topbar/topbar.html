@@ -58,20 +58,60 @@
 
   <!-- Center: Search widget (VS Code command palette style) -->
   <div class="title-bar-center">
-    <div class="search-widget" (click)="focusSearch()">
-      <app-icon class="search-icon" name="search" />
-      <input #searchInputEl
-             type="text"
-             class="search-input"
-             [placeholder]="'Search...' | translate"
-             [ngModel]="globalSearch.query()"
-             (ngModelChange)="globalSearch.setQuery($event)" />
-      @if (globalSearch.query()) {
-        <button class="search-clear" (click)="globalSearch.clear(); $event.stopPropagation()">
-          <app-icon name="close" />
-        </button>
-      } @else {
-        <kbd class="search-kbd">Ctrl+K</kbd>
+    <div #searchWidgetEl class="search-shell">
+      <div class="search-widget" (click)="focusSearch()">
+        <app-icon class="search-icon" name="search" />
+        <input #searchInputEl
+               type="text"
+               class="search-input"
+               role="combobox"
+               aria-controls="search-results"
+               [attr.aria-expanded]="resultsOpen() && globalSearch.query().length > 0"
+               [placeholder]="'Search...' | translate"
+               [ngModel]="globalSearch.query()"
+               (ngModelChange)="onSearchInput($event)"
+               (keydown)="onSearchKeydown($event)" />
+        @if (globalSearch.query()) {
+          <button class="search-clear" (click)="globalSearch.clear(); closeResults(); $event.stopPropagation()">
+            <app-icon name="close" />
+          </button>
+        } @else {
+          <kbd class="search-kbd">Ctrl+K</kbd>
+        }
+      </div>
+
+      @if (resultsOpen() && globalSearch.query()) {
+        <div class="search-results" id="search-results" role="listbox">
+          @if (screenResults().length > 0) {
+            <span class="search-results-heading">{{ 'Screens' | translate }}</span>
+            @for (screen of screenResults(); track screen.route; let i = $index) {
+              <button class="search-result"
+                      role="option"
+                      [attr.aria-selected]="i === highlighted()"
+                      [class.is-highlighted]="i === highlighted()"
+                      (mouseenter)="highlighted.set(i)"
+                      (click)="openScreen(screen)">
+                <app-icon class="search-result-icon" [name]="screen.icon" />
+                <span class="search-result-text">
+                  <span class="search-result-label">
+                    @if (screen.section) {
+                      <span class="search-result-section">{{ screen.section | translate }} /</span>
+                    }
+                    {{ screen.label | translate }}
+                  </span>
+                  @if (screen.description) {
+                    <span class="search-result-description">{{ screen.description | translate }}</span>
+                  }
+                </span>
+              </button>
+            }
+          } @else {
+            <span class="search-results-empty">
+              {{ 'No screen matches' | translate }} “{{ globalSearch.query() }}” —
+              {{ 'filtering this page instead' | translate }}
+            </span>
+          }
+        </div>
       }
     </div>
   </div>

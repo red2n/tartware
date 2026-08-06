@@ -126,6 +126,103 @@
   min-width: 0;
 }
 
+/* Wraps the input so the results panel can anchor to it. */
+.search-shell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + var(--base-size-4));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 460px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--base-size-4);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--overlay-bgColor, var(--bgColor-default));
+  box-shadow: var(--shadow-floating-medium);
+}
+
+.search-results-heading {
+  padding: var(--base-size-8) var(--base-size-8) var(--base-size-4);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fgColor-muted);
+}
+
+.search-results-empty {
+  padding: var(--base-size-12) var(--base-size-8);
+  font-size: var(--base-text-size-sm);
+  color: var(--fgColor-muted);
+}
+
+.search-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: var(--base-size-8);
+  border: 0;
+  border-radius: var(--borderRadius-medium);
+  background: transparent;
+  color: var(--fgColor-default);
+  text-align: left;
+  cursor: pointer;
+
+  &.is-highlighted {
+    background: var(--bgColor-accent-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fgColor-accent);
+    outline-offset: -2px;
+  }
+}
+
+.search-result-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--fgColor-accent);
+  font-size: var(--base-text-size-md);
+}
+
+.search-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.search-result-label {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-medium);
+}
+
+.search-result-section {
+  color: var(--fgColor-muted);
+  font-weight: var(--base-text-weight-normal);
+}
+
+.search-result-description {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .search-widget {
   display: flex;
   align-items: center;
