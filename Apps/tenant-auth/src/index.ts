@@ -136,7 +136,9 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const scopedRequest = request as unknown as RequestWithAuth<Membership>;
 
-    const sendError = (statusCode: number, code: string) => {
+    // `extra` carries machine-readable context (e.g. which modules are missing)
+    // so callers get more than an opaque code.
+    const sendError = (statusCode: number, code: string, extra?: Record<string, unknown>) => {
       reply
         .code(statusCode)
         .header("content-type", "application/problem+json")
@@ -147,6 +149,7 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
           detail: code,
           instance: request.url,
           code,
+          ...extra,
         });
     };
 
@@ -191,7 +194,7 @@ const buildTenantScopeGuard = <Membership extends TenantMembershipBase>(
       const enabledModules = new Set(coerceModules(membership.modules));
       const missing = modules.filter((moduleId) => !enabledModules.has(moduleId));
       if (missing.length > 0) {
-        sendError(403, "TENANT_MODULE_NOT_ENABLED");
+        sendError(403, "TENANT_MODULE_NOT_ENABLED", { missingModules: missing });
         return reply;
       }
     }

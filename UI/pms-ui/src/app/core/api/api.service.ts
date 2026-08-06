@@ -107,11 +107,29 @@ export class ApiService {
 		}
 	}
 
+	/**
+	 * Backend error codes surface raw in the UI otherwise — "TENANT_MODULE_NOT_ENABLED"
+	 * tells a front-desk user nothing and hides the fact that an admin can fix it
+	 * from the Modules screen.
+	 */
+	private static readonly ERROR_CODE_MESSAGES: Record<string, string> = {
+		TENANT_MODULE_NOT_ENABLED:
+			"This feature's module isn't enabled for your property. An administrator can turn it on from Settings → Modules.",
+		TENANT_ACCESS_DENIED: "You don't have access to this property.",
+		TENANT_INACTIVE: "This property is inactive. Contact your administrator.",
+	};
+
 	private async handleError(response: Response): Promise<Error> {
 		let message = `HTTP ${response.status}`;
 		try {
 			const body = await response.json();
 			message = body.detail || body.message || message;
+			message = ApiService.ERROR_CODE_MESSAGES[message] ?? message;
+			// The server names the entitlements it rejected; without this the admin
+			// gets the same sentence for every feature and has to guess.
+			if (Array.isArray(body.missingModules) && body.missingModules.length > 0) {
+				message = `${message} (missing: ${body.missingModules.join(", ")})`;
+			}
 			if (Array.isArray(body.errors) && body.errors.length > 0) {
 				return new ApiValidationError(message, body.errors);
 			}
