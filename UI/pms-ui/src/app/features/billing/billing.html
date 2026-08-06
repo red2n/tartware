@@ -15,7 +15,9 @@
       <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
       <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
     </div>
-  } @else if (payments().length > 0 || invoices().length > 0 || folios().length > 0) {
+  } @else {
+    <!-- Rendered even with no data: summary() reduces to zeros, and a KPI strip
+         that vanishes reads as a broken page rather than an empty property. -->
     <div class="overview-bar">
       <div class="overview-section bill-section-received">
         <div class="overview-label">

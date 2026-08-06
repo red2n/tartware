@@ -96,7 +96,9 @@
         @if ($index < 3) { <div class="overview-divider"></div> }
       }
     </div>
-  } @else if (taxConfigs().length > 0) {
+  } @else {
+    <!-- Rendered even with no data: the summary reduces to zeros, and a KPI
+         strip that vanishes reads as a broken page rather than an empty set. -->
     <div class="kpi-grid">
       <div class="kpi-card tax-kpi-total">
         <app-icon name="gavel" />
