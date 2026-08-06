@@ -271,7 +271,7 @@
 .btn-outline {
   background: transparent;
   color: var(--fgColor-accent);
-  border-color: var(--borderColor-default);
+  border-color: var(--borderColor-control);
 
   &:hover {
     background: var(--bgColor-accent-muted);
@@ -416,7 +416,10 @@
   line-height: var(--text-body-lineHeight-medium);
   color: var(--fgColor-default);
   background: var(--bgColor-default);
-  border: 1px solid var(--borderColor-default);
+  /* Load-bearing: this border is the only thing distinguishing the field from
+     the page behind it, so it needs the 3:1 control token, not the decorative
+     separator colour. */
+  border: 1px solid var(--borderColor-control);
   border-radius: var(--borderRadius-medium);
   transition: border-color var(--base-duration-100), box-shadow var(--base-duration-100);
 

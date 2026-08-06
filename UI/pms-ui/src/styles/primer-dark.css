@@ -18,6 +18,11 @@
 
   /* ── Borders ── */
   --borderColor-default: #1e2442;       /** Default border — tighter, dark navy */
+  /* WCAG 1.4.11 requires 3:1 for the visual boundary of a UI component.
+     --borderColor-default is 1.27:1 on the page, fine for decorative
+     separators but far too faint to delineate an input. Controls use this
+     instead: 4.53:1 on the page, 3.57:1 on the lightest surface. */
+  --borderColor-control: #737a95;
   --borderColor-muted: #1e2442b3;       /** Subtle separator */
   --borderColor-translucent: #ffffff18; /** Semi-transparent border for overlays */
 
@@ -65,6 +70,6 @@
   /* ── Shadows — deeper, more atmospheric ── */
   --shadow-resting-small: 0 1px 2px 0 #00000066, 0 1px 4px 0 #00000099;
   --shadow-resting-medium: 0 2px 4px 0 #00000080, 0 4px 12px 0 #000000b3;
-  --shadow-floating-medium: 0 0 0 1px #1e2442, 0 8px 24px -4px #00000099, 0 16px 48px -8px #000000b3;
-  --shadow-floating-large: 0 0 0 1px #1e2442, 0 24px 64px 0 #000000cc;
+  --shadow-floating-medium: 0 0 0 1px #3d4462, 0 8px 24px -4px #00000099, 0 16px 48px -8px #000000b3;
+  --shadow-floating-large: 0 0 0 1px #3d4462, 0 24px 64px 0 #000000cc;
 }
