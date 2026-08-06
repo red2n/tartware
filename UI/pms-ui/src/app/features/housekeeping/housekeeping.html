@@ -1,5 +1,8 @@
 <div class="housekeeping-page">
-  <app-page-header title="Housekeeping" description="Room cleaning schedules, task assignments, and inspections">
+  <!-- The sub-sidebar owns view selection, so the header names the open one. -->
+  <app-page-header
+    [title]="activeView() === 'tasks' ? 'Housekeeping tasks' : 'Room board'"
+    [description]="activeView() === 'tasks' ? 'Cleaning assignments and inspections' : 'Room status board with housekeeping and occupancy state'">
     <button class="btn btn-invisible" (click)="refresh()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
       <app-icon name="refresh" />
     </button>
@@ -120,29 +123,6 @@
       }
     </div>
   }
-
-  <!-- ═════════════════════════════════════════════ -->
-  <!-- VIEW TABS                                    -->
-  <!-- ═════════════════════════════════════════════ -->
-  <div class="view-tabs">
-    <button
-      class="view-tab"
-      [class.view-tab-active]="activeView() === 'rooms'"
-      (click)="setView('rooms')">
-      <app-icon name="hotel" />
-      {{ 'Room Board' | translate }}
-    </button>
-    <button
-      class="view-tab"
-      [class.view-tab-active]="activeView() === 'tasks'"
-      (click)="setView('tasks')">
-      <app-icon name="task_alt" />
-      {{ 'Tasks' | translate }}
-      @if (tasks().length > 0) {
-        <span class="counter">{{ tasks().length }}</span>
-      }
-    </button>
-  </div>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- ROOM BOARD VIEW (data table)                 -->

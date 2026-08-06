@@ -1,5 +1,6 @@
 <div class="guests-page">
-  <app-page-header title="Guests" description="Guest profiles, preferences, and loyalty history">
+  <!-- The sub-sidebar owns segment selection, so the header names the open one. -->
+  <app-page-header [title]="segmentTitle()" [description]="segmentSummary()">
     <button class="btn btn-primary btn-sm" (click)="openCreateDialog()">
       <app-icon name="person_add" />
       {{ 'New guest' | translate }}
@@ -90,23 +91,6 @@
       </div>
     </div>
   }
-
-  <!-- Filter tabs + search -->
-  <div class="filter-bar">
-    <nav class="filter-tabs" [attr.aria-label]="'Guest filters' | translate">
-      @for (f of guestFilters; track f.key) {
-        <button
-          class="filter-tab"
-          [attr.aria-pressed]="activeFilter() === f.key"
-          [class.filter-tab-active]="activeFilter() === f.key"
-          (click)="setFilter(f.key)">
-          {{ f.label | translate }}
-          <span class="counter">{{ filterCounts()[f.key] }}</span>
-        </button>
-      }
-    </nav>
-
-  </div>
 
   <!-- Content -->
   @defer (when dataReady(); prefetch on idle) {

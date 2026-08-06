@@ -120,6 +120,10 @@
   text-align: right;
 }
 
+.text-center {
+  text-align: center;
+}
+
 .text-truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -193,13 +197,6 @@
   padding: var(--base-size-2) var(--base-size-6);
 }
 
-/* ── Divider ── */
-.divider {
-  border: none;
-  border-top: 1px solid var(--borderColor-muted);
-  margin: var(--base-size-16) 0;
-}
-
 /* ── Scrollable container ── */
 .scroll-container {
   overflow-y: auto;
@@ -224,12 +221,6 @@
   .content-area {
     padding: var(--base-size-12);
   }
-}
-
-/* ── Smooth transitions ── */
-.transition-colors {
-  transition: color var(--base-duration-100), background-color var(--base-duration-100),
-    border-color var(--base-duration-100);
 }
 
 /* ── Primer-aligned button system ──
@@ -342,13 +333,6 @@
   border: 1px solid var(--borderColor-default);
   border-radius: var(--borderRadius-full);
   color: var(--fgColor-default);
-}
-
-/* ── Truncation ── */
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ── Avatar placeholder ── */
@@ -512,6 +496,26 @@ textarea.field-input {
   font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-default);
   padding: var(--base-size-8) 0;
+}
+
+/* Stacked guest name + sub-line inside a table cell. */
+.guest-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-2);
+}
+
+/* ── Nav rows — shared by the sidebar and sub-sidebar ── */
+.nav-icon {
+  @include icon-size(18px);
+  color: var(--fgColor-muted);
+  flex-shrink: 0;
+}
+
+.nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Detail card (header + body) ── */
@@ -2263,20 +2267,6 @@ a.overview-section {
   color: var(--fgColor-muted);
 }
 
-/* ── Stat grid (dashboard cards) ── */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--base-size-16);
-}
-
-
-.stat-value {
-  font-size: var(--base-text-size-xl);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-  margin-top: var(--base-size-12);
-}
 
 
 
@@ -2413,7 +2403,6 @@ $tl-colors: (
 
 @each $type, $color in $tl-colors {
   .tl-dot--#{$type}  { background: $color; }
-  .tl-legend-dot.tl-dot--#{$type} { background: $color; }
   .tl-type--#{$type} { color: $color; }
 }
 
@@ -2533,16 +2522,7 @@ $tl-colors: (
   border: 1px solid transparent;
   line-height: 1.6;
 
-  &--reservation  { background: var(--bgColor-accent-muted);    color: var(--fgColor-accent);    border-color: var(--borderColor-accent-muted); }
-  &--checkin      { background: var(--bgColor-success-muted);   color: var(--fgColor-success);   border-color: var(--borderColor-success-muted); }
-  &--checkout     { background: var(--bgColor-attention-muted); color: var(--fgColor-attention); border-color: var(--borderColor-attention-muted); }
-  &--payment      { background: var(--bgColor-done-muted, var(--bgColor-accent-muted)); color: var(--fgColor-done, var(--fgColor-accent)); border-color: var(--borderColor-done-muted, var(--borderColor-accent-muted)); }
-  &--maintenance  { background: var(--bgColor-danger-muted);    color: var(--fgColor-danger);    border-color: var(--borderColor-danger-muted); }
-  &--housekeeping { background: var(--bgColor-success-muted);   color: var(--fgColor-success);   border-color: var(--borderColor-success-muted); }
-  &--cancellation { background: var(--bgColor-danger-muted);    color: var(--fgColor-danger);    border-color: var(--borderColor-danger-muted); }
-  &--noshow       { background: var(--bgColor-attention-muted); color: var(--fgColor-attention); border-color: var(--borderColor-attention-muted); }
-  &--urgent       { background: var(--bgColor-danger-muted);    color: var(--fgColor-danger);    border-color: var(--borderColor-danger-muted); }
-
+  /* Activity-type variants live on .tl-type-- instead; only priorities are used here. */
   &--priority-urgent { background: var(--bgColor-danger-muted);    color: var(--fgColor-danger);    border-color: var(--borderColor-danger-muted); }
   &--priority-high   { background: var(--bgColor-attention-muted); color: var(--fgColor-attention); border-color: var(--borderColor-attention-muted); }
   &--priority-medium { background: var(--bgColor-accent-muted);    color: var(--fgColor-accent);    border-color: var(--borderColor-accent-muted); }

@@ -22,20 +22,9 @@
   font-weight: var(--base-text-weight-medium);
 }
 
-.guest-cell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-2);
-}
 
 .row-voided {
   opacity: 0.5;
   text-decoration: line-through;
 }
-
-.cell-void {
-  white-space: nowrap;
-  text-align: right;
-}
-
 

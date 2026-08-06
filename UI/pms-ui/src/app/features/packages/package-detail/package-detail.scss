@@ -129,18 +129,6 @@
   margin-left: auto;
 }
 
-/* ── Flash sm ── */
-.flash-sm {
-  font-size: var(--base-text-size-xs);
-  padding: var(--base-size-8) var(--base-size-12);
-  margin-bottom: var(--base-size-12);
-}
-
-/* ── Card body flush (no padding for tables) ── */
-.card-body-flush {
-  padding: 0;
-}
-
 /* ── Card header flex (title + action button side-by-side) ── */
 .card-header-flex {
   display: flex;
@@ -210,15 +198,6 @@
   gap: var(--base-size-8);
   flex-shrink: 0;
 }
-
-/* ── Components ── */
-.comp-type-icon {
-  @include icon-size(18px);
-  vertical-align: text-bottom;
-  color: var(--fgColor-muted);
-  margin-right: var(--base-size-8);
-}
-
 
 .empty-state-sm {
   padding: var(--base-size-16) var(--base-size-12);

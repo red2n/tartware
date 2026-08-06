@@ -333,20 +333,6 @@
   max-width: 440px;
 }
 
-.settings-tooltip {
-  font-size: var(--text-body-size-medium) !important;
-  line-height: 1.45 !important;
-  max-width: 360px !important;
-  white-space: normal !important;
-  padding: var(--base-size-8) var(--base-size-12) !important;
-}
-
-.def-toggle-row {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-12);
-}
-
 @media (max-width: 768px) {
   .settings-item-body {
     flex-direction: column;

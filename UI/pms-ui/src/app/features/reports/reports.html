@@ -1,5 +1,6 @@
 <div class="reports-page">
-  <app-page-header title="Reports" description="Operational reports, analytics, and CSV exports">
+  <!-- The sub-sidebar owns report selection, so the header names the open one. -->
+  <app-page-header [title]="active().label" [description]="active().description">
     <button class="btn btn-invisible" (click)="loadReport()" [pTooltip]="'Refresh' | translate">
       <app-icon name="refresh" />
     </button>
@@ -7,20 +8,6 @@
       <app-icon name="file_download" /> {{ 'Export CSV' | translate }}
     </button>
   </app-page-header>
-
-  <div class="filter-bar">
-    <nav class="filter-tabs" [attr.aria-label]="'Report selector' | translate">
-      @for (r of reports; track r.key) {
-        <button
-          class="filter-tab"
-          [class.filter-tab-active]="activeKey() === r.key"
-          (click)="setActive(r.key)"
-          [pTooltip]="r.description">
-          <app-icon [name]="r.icon" /> {{ r.label | translate }}
-        </button>
-      }
-    </nav>
-  </div>
 
   <div class="filter-form">
     @if (needsBusinessDate()) {

@@ -1,9 +1,11 @@
 import { DecimalPipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { Router, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { GuestGridItem, GuestGridResponse, GuestSummaryStats } from "@tartware/schemas";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -56,7 +58,23 @@ export class GuestsComponent {
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
 	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly activeFilter = signal<GuestFilter>("ALL");
+	private readonly route = inject(ActivatedRoute);
+
+	/**
+	 * The active segment comes from the URL, so the sub-sidebar link selects it
+	 * and each segment is deep-linkable. Unknown segments fall back to ALL.
+	 */
+	readonly activeFilter = toSignal(
+		this.route.paramMap.pipe(
+			map((p) => {
+				const segment = (p.get("segment") ?? "all").toUpperCase();
+				return (
+					["ALL", "VIP", "LOYALTY", "BLACKLISTED"].includes(segment) ? segment : "ALL"
+				) as GuestFilter;
+			}),
+		),
+		{ initialValue: "ALL" as GuestFilter },
+	);
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
@@ -108,6 +126,15 @@ export class GuestsComponent {
 		);
 		const start = (this.currentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
+	});
+
+	/** Header text for the open segment — the sub-sidebar no longer carries counts. */
+	readonly segmentTitle = computed(
+		() => this.guestFilters.find((f) => f.key === this.activeFilter())?.label ?? "All",
+	);
+	readonly segmentSummary = computed(() => {
+		const count = this.filterCounts()[this.activeFilter()] ?? 0;
+		return `${count} ${count === 1 ? "guest" : "guests"} in this segment`;
 	});
 
 	readonly filterCounts = computed(() => {
@@ -163,6 +190,15 @@ export class GuestsComponent {
 			this.loadGuestStats();
 		});
 
+		// Switching segment starts at page 1, however the segment was entered
+		effect(
+			() => {
+				this.activeFilter();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
+
 		// Clamp currentPage when filtered list shrinks
 		effect(
 			() => {
@@ -176,8 +212,7 @@ export class GuestsComponent {
 	}
 
 	setFilter(filter: GuestFilter): void {
-		this.activeFilter.set(filter);
-		this.currentPage.set(1);
+		void this.router.navigate(["/guests/segment", filter.toLowerCase()]);
 	}
 
 	onSort(column: string): void {

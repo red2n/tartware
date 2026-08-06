@@ -1,11 +1,13 @@
 import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { Router, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { HousekeepingTaskListItem, RoomItem, UserWithTenants } from "@tartware/schemas";
 import { PopoverModule } from "primeng/popover";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -92,7 +94,15 @@ export class HousekeepingComponent {
 	);
 
 	// ── View state ──
-	readonly activeView = signal<ViewTab>("rooms");
+	private readonly route = inject(ActivatedRoute);
+
+	/** Board vs Tasks comes from the URL — the sub-sidebar link is what selects it. */
+	readonly activeView = toSignal(
+		this.route.paramMap.pipe(
+			map((p) => (p.get("view") === "tasks" ? "tasks" : "rooms") as ViewTab),
+		),
+		{ initialValue: "rooms" as ViewTab },
+	);
 	readonly activeFilter = signal<HkFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 30;
@@ -260,14 +270,21 @@ export class HousekeepingComponent {
 			},
 			{ allowSignalWrites: true },
 		);
+
+		// Switching board/tasks starts at page 1, however the view was entered.
+		effect(
+			() => {
+				this.activeView();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
 	}
 
 	// ── View / filter ──
 
 	setView(view: ViewTab): void {
-		this.activeView.set(view);
-		this.currentPage.set(1);
-		this.globalSearch.clear();
+		void this.router.navigate(["/housekeeping", view]);
 	}
 
 	setFilter(filter: HkFilter): void {

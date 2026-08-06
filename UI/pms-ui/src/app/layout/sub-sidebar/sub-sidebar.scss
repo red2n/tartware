@@ -72,17 +72,6 @@
   }
 }
 
-.nav-icon {
-  @include icon-size(18px);
-  color: var(--fgColor-muted);
-  flex-shrink: 0;
-}
-
-.nav-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 .nav-item-active {
   background: var(--bgColor-accent-muted);

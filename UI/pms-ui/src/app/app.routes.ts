@@ -3,6 +3,7 @@ import type { Routes } from "@angular/router";
 import { authGuard } from "./core/auth/auth.guard";
 import { propertyGuard } from "./core/auth/property.guard";
 import { screenGuard } from "./core/auth/role.guard";
+import { REPORTS } from "./features/reports/report-defs";
 import { unsavedChangesGuard } from "./shared/forms/unsaved-changes.guard";
 
 export const routes: Routes = [
@@ -142,6 +143,12 @@ export const routes: Routes = [
 			},
 			{
 				path: "guests",
+				pathMatch: "full",
+				redirectTo: "guests/segment/all",
+			},
+			{
+				// Declared before guests/:guestId; the extra segment keeps them distinct.
+				path: "guests/segment/:segment",
 				canActivate: [propertyGuard, screenGuard("guests")],
 				data: { screen: "guests" },
 				loadComponent: () => import("./features/guests/guests").then((m) => m.GuestsComponent),
@@ -155,6 +162,11 @@ export const routes: Routes = [
 			},
 			{
 				path: "housekeeping",
+				pathMatch: "full",
+				redirectTo: "housekeeping/rooms",
+			},
+			{
+				path: "housekeeping/:view",
 				canActivate: [propertyGuard, screenGuard("housekeeping")],
 				data: { screen: "housekeeping" },
 				loadComponent: () =>
@@ -242,6 +254,11 @@ export const routes: Routes = [
 			},
 			{
 				path: "reports",
+				pathMatch: "full",
+				redirectTo: `reports/${REPORTS[0].key}`,
+			},
+			{
+				path: "reports/:reportKey",
 				canActivate: [propertyGuard, screenGuard("reports")],
 				data: { screen: "reports" },
 				loadComponent: () => import("./features/reports/reports").then((m) => m.ReportsComponent),
@@ -286,6 +303,11 @@ export const routes: Routes = [
 			},
 			{
 				path: "loyalty",
+				pathMatch: "full",
+				redirectTo: "loyalty/tiers",
+			},
+			{
+				path: "loyalty/:tab",
 				canActivate: [screenGuard("loyalty")],
 				data: { screen: "loyalty" },
 				loadComponent: () => import("./features/loyalty/loyalty").then((m) => m.LoyaltyComponent),

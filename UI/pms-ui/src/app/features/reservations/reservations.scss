@@ -33,18 +33,9 @@
   flex-shrink: 0;
 }
 
-.guest-cell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-2);
-}
 
 .guest-name {
   font-weight: var(--base-text-weight-medium);
-}
-
-.text-center {
-  text-align: center;
 }
 
 

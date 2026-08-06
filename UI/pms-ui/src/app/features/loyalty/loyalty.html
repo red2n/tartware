@@ -1,17 +1,9 @@
-<app-page-header
-  title="Loyalty programs"
-  description="Tier rules and points ledger." />
-
-<div class="filter-bar detail-tabs">
-  <nav class="filter-tabs">
-    <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'tiers'" (click)="setTab('tiers')">
-      <app-icon class="tab-icon" name="emoji_events" /> {{ 'Tier rules' | translate }}
-    </button>
-    <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'transactions'" (click)="setTab('transactions')">
-      <app-icon class="tab-icon" name="receipt_long" /> {{ 'Transactions' | translate }}
-    </button>
-  </nav>
-</div>
+<!-- The sub-sidebar owns tab selection, so the header names the open one. -->
+@if (activeTab() === 'tiers') {
+  <app-page-header title="Tier rules" description="Earn rates and tier thresholds." />
+} @else {
+  <app-page-header title="Transactions" description="Points ledger across all members." />
+}
 
 @if (activeTab() === 'tiers') {
   @if (loadingTiers()) {

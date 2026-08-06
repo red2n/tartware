@@ -47,13 +47,6 @@
   app-icon { @include icon-size(14px); }
 }
 
-/* ── Spinner centered ── */
-.al-spinner-wrap {
-  display: flex;
-  justify-content: center;
-  padding: var(--base-size-48) 0;
-}
-
 /* ── Event list ── */
 .al-list {
   display: flex;

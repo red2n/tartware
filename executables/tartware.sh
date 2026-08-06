@@ -70,8 +70,23 @@ fail() {
 }
 
 info() { log "$*"; }
-ok() { echo "[tartware] OK: $*" >> "$TARTWARE_LOG_FILE"; [ "${TARTWARE_QUIET}" != "true" ] && printf '%s\n' "[tartware] OK: $*"; }
-warn() { echo "[tartware] WARN: $*" >> "$TARTWARE_LOG_FILE"; [ "${TARTWARE_QUIET}" != "true" ] && printf '%s\n' "[tartware] WARN: $*"; }
+
+# NOTE: these use `if` rather than `[ ... ] && printf`. With `set -e`, the
+# short-circuit form returns 1 whenever TARTWARE_QUIET=true, which aborted the
+# whole script at the next ok()/warn() call.
+ok() {
+    echo "[tartware] OK: $*" >> "$TARTWARE_LOG_FILE"
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] OK: $*"
+    fi
+}
+
+warn() {
+    echo "[tartware] WARN: $*" >> "$TARTWARE_LOG_FILE"
+    if [ "${TARTWARE_QUIET}" != "true" ]; then
+        printf '%s\n' "[tartware] WARN: $*"
+    fi
+}
 
 # Run a command, capture full output to log file, and show concise status to user.
 # Usage: run_and_log "Description" <shell-command-string>
@@ -88,7 +103,14 @@ run_and_log() {
 
     if [ "${TARTWARE_VERBOSE}" = "true" ]; then
         # show live output to console and also append to log
-        bash -c "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"
+        if bash -c "$cmd" 2>&1 | tee -a "$TARTWARE_LOG_FILE"; then
+            :
+        else
+            printf '==> %s FAIL %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$desc" >> "$TARTWARE_LOG_FILE"
+            # Output was already streamed to the console, so no tail here.
+            printf '%s\n' "[tartware] ERROR: ${desc} failed. See ${TARTWARE_LOG_FILE} for details." >&2
+            exit 1
+        fi
     else
         # quiet mode: redirect command output to log only
         if bash -c "$cmd" >> "$TARTWARE_LOG_FILE" 2>&1; then
@@ -279,7 +301,7 @@ DB:
         db health   Run DB architecture health check for 20K ops/sec readiness
 
 Docker:
-    docker up|down|restart|ps|logs|purge|fresh
+    docker up|down|restart|ps|logs|purge|purge-all|postgres|fresh
 
 Dev:
     dev ui

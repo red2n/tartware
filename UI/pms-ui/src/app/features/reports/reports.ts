@@ -1,7 +1,10 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -10,110 +13,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
-
-/**
- * Query contract of a report's backend route, mirroring its Fastify schema.
- * Sending anything else is at best ignored and at worst a 400, so each report
- * declares exactly what its endpoint accepts.
- *
- *  - `range-paged`   start_date + end_date (required) and limit  — DateRangeReportQuery
- *  - `range`         start_date + end_date (required), no paging — finance DateRangeQuery
- *  - `business-date` business_date only
- *  - `paged`         limit only
- */
-type ReportQuery = "range-paged" | "range" | "business-date" | "paged";
-
-interface ReportDef {
-	readonly key: string;
-	readonly label: string;
-	readonly description: string;
-	readonly path: string;
-	readonly query: ReportQuery;
-	readonly icon: string;
-}
-
-const REPORTS: readonly ReportDef[] = [
-	{
-		key: "arrivals",
-		label: "Arrivals",
-		description: "Expected arrivals for the date range.",
-		path: "/reports/arrivals",
-		query: "range-paged",
-		icon: "flight_land",
-	},
-	{
-		key: "departures",
-		label: "Departures",
-		description: "Expected departures for the date range.",
-		path: "/reports/departures",
-		query: "range-paged",
-		icon: "flight_takeoff",
-	},
-	{
-		key: "in-house",
-		label: "In-House",
-		description: "Currently in-house guests.",
-		path: "/reports/in-house",
-		query: "paged",
-		icon: "hotel",
-	},
-	{
-		key: "no-show",
-		label: "No-Show",
-		description: "No-show reservations for the date range.",
-		path: "/reports/no-shows",
-		query: "range-paged",
-		icon: "person_off",
-	},
-	{
-		key: "occupancy",
-		label: "Occupancy",
-		description: "Occupancy statistics for the date range.",
-		path: "/reports/occupancy",
-		query: "range-paged",
-		icon: "meeting_room",
-	},
-	{
-		key: "revenue-summary",
-		label: "Revenue Summary",
-		description: "Gross and net revenue broken down by department.",
-		path: "/billing/reports/departmental-revenue",
-		query: "range",
-		icon: "payments",
-	},
-	{
-		key: "str-metrics",
-		label: "STR Metrics",
-		description: "ADR, RevPAR, TRevPAR and occupancy for the date range.",
-		path: "/reports/revenue-kpis",
-		query: "range-paged",
-		icon: "leaderboard",
-	},
-	{
-		key: "manager-flash",
-		label: "Manager Flash",
-		description: "Key daily metrics snapshot for management.",
-		path: "/reports/flash",
-		query: "business-date",
-		icon: "flash_on",
-	},
-	{
-		key: "forecast",
-		label: "Forecast",
-		description: "Demand forecast for the date range.",
-		path: "/reports/demand-forecast",
-		query: "range-paged",
-		icon: "insights",
-	},
-	{
-		key: "housekeeping-status",
-		label: "Housekeeping",
-		description: "Housekeeping productivity for the business date.",
-		path: "/reports/housekeeping-productivity",
-		query: "business-date",
-		icon: "cleaning_services",
-	},
-];
+import { REPORTS, type ReportDef } from "./report-defs";
 
 type ReportRow = Record<string, unknown>;
 
@@ -137,8 +37,17 @@ export class ReportsComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
 
-	readonly reports = REPORTS;
-	readonly activeKey = signal<string>(REPORTS[0].key);
+	private readonly route = inject(ActivatedRoute);
+
+	/**
+	 * Which report is open comes from the URL, so the sub-sidebar link is the
+	 * only thing that selects one. An unknown key falls back to the first report
+	 * rather than rendering an empty screen.
+	 */
+	readonly activeKey = toSignal(
+		this.route.paramMap.pipe(map((p) => p.get("reportKey") ?? REPORTS[0].key)),
+		{ initialValue: REPORTS[0].key },
+	);
 	readonly active = computed(() => REPORTS.find((r) => r.key === this.activeKey()) ?? REPORTS[0]);
 
 	readonly businessDate = signal(this.todayString());
@@ -181,10 +90,6 @@ export class ReportsComponent {
 
 	/** True when the active report is driven by a start/end date range. */
 	readonly needsRange = computed(() => this.active().query.startsWith("range"));
-
-	setActive(key: string): void {
-		this.activeKey.set(key);
-	}
 
 	/**
 	 * Builds the querystring for a report, sending only the keys its route
@@ -232,7 +137,10 @@ export class ReportsComponent {
 		this.dataReady.set(false);
 		this.error.set(null);
 		try {
-			const res = await this.api.get<unknown>(def.path, this.buildParams(def, tenantId, propertyId));
+			const res = await this.api.get<unknown>(
+				def.path,
+				this.buildParams(def, tenantId, propertyId),
+			);
 			this.raw.set(res);
 			this.rows.set(this.extractRows(res));
 		} catch (e) {

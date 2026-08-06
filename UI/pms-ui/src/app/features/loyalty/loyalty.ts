@@ -1,9 +1,12 @@
 import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import type { LoyaltyPointTransactions, LoyaltyTierRules } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -36,7 +39,15 @@ export class LoyaltyComponent {
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
-	readonly activeTab = signal<Tab>("tiers");
+	private readonly route = inject(ActivatedRoute);
+
+	/** The open tab comes from the URL — the sub-sidebar link is what selects it. */
+	readonly activeTab = toSignal(
+		this.route.paramMap.pipe(
+			map((p) => (p.get("tab") === "transactions" ? "transactions" : "tiers") as Tab),
+		),
+		{ initialValue: "tiers" as Tab },
+	);
 	readonly tiers = signal<TierRule[]>([]);
 	readonly txns = signal<LoyaltyTxn[]>([]);
 	readonly loadingTiers = signal(false);
@@ -52,10 +63,6 @@ export class LoyaltyComponent {
 		effect(() => {
 			if (this.auth.tenantId()) this.loadTiers();
 		});
-	}
-
-	setTab(tab: Tab): void {
-		this.activeTab.set(tab);
 	}
 
 	async loadTiers(): Promise<void> {

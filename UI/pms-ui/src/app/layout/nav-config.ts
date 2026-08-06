@@ -1,4 +1,4 @@
-import type { TenantRole } from "@tartware/schemas";
+import { REPORTS } from "../features/reports/report-defs";
 
 export type NavItem = {
 	label: string;
@@ -9,20 +9,6 @@ export type NavItem = {
 	screenKey?: string;
 	children?: NavItem[];
 };
-
-/** Maps roles to numeric priority for comparison. Higher = more access. */
-const ROLE_PRIORITY: Record<TenantRole, number> = {
-	VIEWER: 100,
-	STAFF: 200,
-	MANAGER: 300,
-	ADMIN: 400,
-	OWNER: 500,
-};
-
-/** Returns true if the user's role meets or exceeds the required minimum role. */
-export function hasMinRole(userRole: TenantRole, minRole: TenantRole): boolean {
-	return ROLE_PRIORITY[userRole] >= ROLE_PRIORITY[minRole];
-}
 
 /** Filter nav items the user can access based on their allowed screen keys. */
 export function filterNavByAllowedScreens(
@@ -83,16 +69,50 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Guests",
 		icon: "people",
-		route: "/guests",
 		screenKey: "guests",
 		description: "Guest profiles, preferences, and loyalty history",
+		// Nested under /segment so these never collide with /guests/:guestId.
+		children: [
+			{
+				label: "All guests",
+				icon: "people",
+				route: "/guests/segment/all",
+				description: "Every guest profile",
+			},
+			{ label: "VIP", icon: "star", route: "/guests/segment/vip", description: "VIP guests" },
+			{
+				label: "Loyalty",
+				icon: "loyalty",
+				route: "/guests/segment/loyalty",
+				description: "Guests enrolled in the loyalty programme",
+			},
+			{
+				label: "Blacklisted",
+				icon: "block",
+				route: "/guests/segment/blacklisted",
+				description: "Guests flagged as blacklisted",
+			},
+		],
 	},
 	{
 		label: "Loyalty",
 		icon: "emoji_events",
-		route: "/loyalty",
 		screenKey: "loyalty",
 		description: "Loyalty tier rules and points transactions",
+		children: [
+			{
+				label: "Tier rules",
+				icon: "emoji_events",
+				route: "/loyalty/tiers",
+				description: "Earn rates and tier thresholds",
+			},
+			{
+				label: "Transactions",
+				icon: "receipt_long",
+				route: "/loyalty/transactions",
+				description: "Points ledger across all members",
+			},
+		],
 	},
 	{
 		label: "Availability",
@@ -155,9 +175,22 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Housekeeping",
 		icon: "cleaning_services",
-		route: "/housekeeping",
 		screenKey: "housekeeping",
 		description: "Room cleaning schedules, task assignments, and inspections",
+		children: [
+			{
+				label: "Room Board",
+				icon: "hotel",
+				route: "/housekeeping/rooms",
+				description: "Room status board with housekeeping and occupancy state",
+			},
+			{
+				label: "Tasks",
+				icon: "task_alt",
+				route: "/housekeeping/tasks",
+				description: "Cleaning assignments and inspections",
+			},
+		],
 	},
 	{
 		label: "Accounts",
@@ -250,9 +283,15 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Reports",
 		icon: "assessment",
-		route: "/reports",
 		screenKey: "reports",
 		description: "Operational reports, analytics, and data exports",
+		// Derived from the report catalogue so adding a report adds its nav entry.
+		children: REPORTS.map((report) => ({
+			label: report.label,
+			icon: report.icon,
+			route: `/reports/${report.key}`,
+			description: report.description,
+		})),
 	},
 	{
 		label: "Settings",
@@ -363,21 +402,6 @@ export function findActiveParent(url: string): NavItem | null {
 	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
 		for (const item of items) {
 			if (item.children?.some((child) => child.route && url.startsWith(child.route))) {
-				return item;
-			}
-		}
-	}
-	return null;
-}
-
-/** Find the NavItem (parent or direct) whose route or child route matches the URL. */
-export function findActiveNavItem(url: string): NavItem | null {
-	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
-		for (const item of items) {
-			if (item.children?.some((child) => child.route && url.startsWith(child.route))) {
-				return item;
-			}
-			if (item.route && url.startsWith(item.route)) {
 				return item;
 			}
 		}

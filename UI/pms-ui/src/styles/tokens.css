@@ -14,10 +14,6 @@
 	--color-sidebar-bg: var(--bgColor-muted);
 	--color-sidebar-border: var(--borderColor-default);
 
-	/* ── Activity Bar ── */
-	--color-activity-bar-bg: var(--bgColor-inset);
-	--color-activity-bar-border: var(--borderColor-default);
-
 	/* ── Status Bar ── */
 	--color-statusbar-bg: var(--bgColor-inset);
 	--color-statusbar-text: var(--fgColor-muted);
@@ -91,13 +87,11 @@
 	--sidebar-width: 240px;
 	--sidebar-collapsed-width: 64px;
 	--sub-sidebar-width: 220px;
-	--activity-bar-width: 48px;
 	--topbar-height: 48px;
 }
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-	--color-activity-bar-bg: #070912;
 	--color-sidebar-bg: #10142a;
 	--color-header-bg: #070912;
 	--color-statusbar-bg: #070912;
