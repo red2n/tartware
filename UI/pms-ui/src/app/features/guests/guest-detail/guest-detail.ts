@@ -3,7 +3,6 @@ import { Component, computed, inject, type OnInit, signal } from "@angular/core"
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { GuestConsentLedger, GuestWithStats } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
@@ -53,6 +52,7 @@ type CommunicationItem = {
 type DetailTab = "profile" | "preferences" | "documents" | "communications" | "account";
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 @Component({
 	selector: "app-guest-detail",
 	standalone: true,
@@ -71,7 +71,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 export class GuestDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
@@ -522,9 +522,6 @@ export class GuestDetailComponent implements OnInit {
 
 		import("../edit-guest-dialog/edit-guest-dialog").then(({ EditGuestDialogComponent }) => {
 			const ref = this.dialog.open(EditGuestDialogComponent, {
-				width: "600px",
-				showHeader: false,
-				closable: false,
 				data: {
 					id: g.id,
 					first_name: g.first_name,
@@ -540,7 +537,7 @@ export class GuestDetailComponent implements OnInit {
 					loyalty_tier: g.loyalty_tier,
 				},
 			});
-			ref!.onClose.subscribe((updated: boolean) => {
+			ref?.onClose.subscribe((updated: boolean) => {
 				if (updated) {
 					this.toast.success("Guest profile update submitted. It may take a moment to apply.");
 					setTimeout(() => this.loadGuest(), 1500);

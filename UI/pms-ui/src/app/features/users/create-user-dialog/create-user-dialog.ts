@@ -13,10 +13,18 @@ type DialogData = {
 };
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-create-user-dialog",
 	standalone: true,
-	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
+	imports: [
+		FormsModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TranslatePipe,
+		DialogShellComponent,
+	],
 	templateUrl: "./create-user-dialog.html",
 })
 export class CreateUserDialogComponent {

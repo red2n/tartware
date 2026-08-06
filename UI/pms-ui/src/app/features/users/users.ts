@@ -2,7 +2,6 @@ import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { UserWithTenants } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -11,6 +10,7 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import { createSortState, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -36,7 +36,7 @@ type UserRow = UserWithTenants & { version: string };
 export class UsersComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -200,12 +200,9 @@ export class UsersComponent {
 	async openCreateDialog(): Promise<void> {
 		const { CreateUserDialogComponent } = await import("./create-user-dialog/create-user-dialog");
 		const dialogRef = this.dialog.open(CreateUserDialogComponent, {
-			width: "480px",
-			showHeader: false,
-			closable: false,
 			data: { tenantId: this.auth.tenantId() },
 		});
-		dialogRef!.onClose.subscribe((result) => {
+		dialogRef?.onClose.subscribe((result) => {
 			if (result) {
 				this.toast.success("User created successfully");
 				this.loadUsers();
@@ -216,16 +213,13 @@ export class UsersComponent {
 	async openEditDialog(user: UserRow): Promise<void> {
 		const { EditUserDialogComponent } = await import("./edit-user-dialog/edit-user-dialog");
 		const dialogRef = this.dialog.open(EditUserDialogComponent, {
-			width: "480px",
-			showHeader: false,
-			closable: false,
 			data: {
 				tenantId: this.auth.tenantId(),
 				user,
 				currentRole: this.getUserRole(user),
 			},
 		});
-		dialogRef!.onClose.subscribe((result) => {
+		dialogRef?.onClose.subscribe((result) => {
 			if (result) {
 				this.loadUsers();
 			}

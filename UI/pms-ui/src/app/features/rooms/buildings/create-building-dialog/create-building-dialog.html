@@ -1,9 +1,4 @@
-<h2 class="dialog-title">
-  <app-icon class="dialog-title-icon" name="domain" />
-  {{ isEditMode ? ('Edit Building' | translate) : ('New Building' | translate) }}
-</h2>
-
-<div class="dialog-content">
+<app-dialog-shell icon="domain" [heading]="isEditMode ? 'Edit Building' : 'New Building'">
   <div class="form-fields">
     <!-- Basic Info -->
     <section class="form-section">
@@ -210,12 +205,13 @@
       }
     </section>
   </div>
-</div>
 
-<app-dialog-actions
-  [saving]="saving()"
-  [valid]="isValid"
-  [saveLabel]="isEditMode ? 'Save changes' : 'Create building'"
-  [savingLabel]="isEditMode ? 'Saving…' : 'Creating…'"
-  (cancel)="cancel()"
-  (save)="save()" />
+  <app-dialog-actions
+    dialogFooter
+    [saving]="saving()"
+    [valid]="isValid"
+    [saveLabel]="isEditMode ? 'Save changes' : 'Create building'"
+    [savingLabel]="isEditMode ? 'Saving…' : 'Creating…'"
+    (cancel)="cancel()"
+    (save)="save()" />
+</app-dialog-shell>

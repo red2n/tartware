@@ -3,7 +3,6 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router, RouterLink } from "@angular/router";
 import type { RoomGridItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { InputTextModule } from "primeng/inputtext";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
@@ -14,6 +13,7 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import {
 	createSortState,
@@ -49,7 +49,7 @@ export class RoomsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -228,12 +228,8 @@ export class RoomsComponent {
 
 	openCreateDialog(): void {
 		import("./create-room-dialog/create-room-dialog").then(({ CreateRoomDialogComponent }) => {
-			const ref = this.dialog.open(CreateRoomDialogComponent, {
-				width: "520px",
-				showHeader: false,
-				closable: false,
-			});
-			ref!.onClose.subscribe((created: boolean) => {
+			const ref = this.dialog.open(CreateRoomDialogComponent);
+			ref?.onClose.subscribe((created: boolean) => {
 				if (created) {
 					this.toast.success("Room created successfully.");
 					this.loadRooms();

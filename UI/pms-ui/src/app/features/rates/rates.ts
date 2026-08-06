@@ -2,7 +2,6 @@ import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { RateItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -12,6 +11,7 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
 import {
 	createSortState,
@@ -44,7 +44,7 @@ export class RatesComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -328,12 +328,8 @@ export class RatesComponent {
 
 	openCreateDialog(): void {
 		import("./create-rate-dialog/create-rate-dialog").then(({ CreateRateDialogComponent }) => {
-			const ref = this.dialog.open(CreateRateDialogComponent, {
-				width: "600px",
-				showHeader: false,
-				closable: false,
-			});
-			ref!.onClose.subscribe((created: boolean) => {
+			const ref = this.dialog.open(CreateRateDialogComponent);
+			ref?.onClose.subscribe((created: boolean) => {
 				if (created) {
 					this.toast.success("Rate plan created successfully.");
 					this.loadRates();

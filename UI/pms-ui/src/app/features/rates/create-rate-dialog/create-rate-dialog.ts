@@ -5,7 +5,6 @@ import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
-import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomTypeOption = {
@@ -15,10 +14,17 @@ type RoomTypeOption = {
 };
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-create-rate-dialog",
 	standalone: true,
-	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
+	imports: [
+		FormsModule,
+		DynamicDialogModule,
+		ProgressSpinnerModule,
+		TranslatePipe,
+		DialogShellComponent,
+	],
 	templateUrl: "./create-rate-dialog.html",
 })
 export class CreateRateDialogComponent implements OnInit {

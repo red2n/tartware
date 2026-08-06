@@ -19,10 +19,18 @@ type DialogData = {
 const VALID_ROLES = new Set<string>(["VIEWER", "STAFF", "MANAGER", "ADMIN", "OWNER"]);
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-edit-user-dialog",
 	standalone: true,
-	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
+	imports: [
+		FormsModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TranslatePipe,
+		DialogShellComponent,
+	],
 	templateUrl: "./edit-user-dialog.html",
 	styleUrl: "./edit-user-dialog.scss",
 })

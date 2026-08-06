@@ -11,10 +11,18 @@ export interface AddComponentDialogData {
 }
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-add-component-dialog",
 	standalone: true,
-	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
+	imports: [
+		FormsModule,
+		DynamicDialogModule,
+		IconComponent,
+		ProgressSpinnerModule,
+		TranslatePipe,
+		DialogShellComponent,
+	],
 	templateUrl: "./add-component-dialog.html",
 	styleUrl: "./add-component-dialog.scss",
 })

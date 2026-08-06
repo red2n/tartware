@@ -2,7 +2,6 @@ import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { BuildingGridItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -11,6 +10,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
 	createSortState,
@@ -40,7 +40,7 @@ export class BuildingsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -137,12 +137,8 @@ export class BuildingsComponent {
 	openCreateDialog(): void {
 		import("./create-building-dialog/create-building-dialog").then(
 			({ CreateBuildingDialogComponent }) => {
-				const ref = this.dialog.open(CreateBuildingDialogComponent, {
-					width: "580px",
-					showHeader: false,
-					closable: false,
-				});
-				ref!.onClose.subscribe((created: boolean) => {
+				const ref = this.dialog.open(CreateBuildingDialogComponent);
+				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
 						this.toast.success("Building created successfully.");
 						this.loadBuildings();
@@ -156,12 +152,9 @@ export class BuildingsComponent {
 		import("./create-building-dialog/create-building-dialog").then(
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
-					width: "580px",
-					showHeader: false,
-					closable: false,
 					data: building,
 				});
-				ref!.onClose.subscribe((saved: boolean) => {
+				ref?.onClose.subscribe((saved: boolean) => {
 					if (saved) {
 						this.toast.success("Building updated successfully.");
 						this.loadBuildings();

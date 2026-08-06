@@ -1438,26 +1438,14 @@ textarea.field-input {
   &:nth-child(8) { animation-delay: 0.35s; }
 }
 
-/* ── Dialog title row ──
- * Dialogs are opened with `showHeader: false` so the title lives in the
- * content, where it can carry an icon. This renders it as the title bar:
- * full-bleed divider across the dialog, aligned with the content padding. */
-.dialog-title {
+/* ── Dialog action row ──
+ * Projected into DialogShellComponent's pinned footer, which owns the padding
+ * and the divider — this only lays the buttons out. */
+.dialog-actions {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  gap: var(--base-size-8);
-  /* Matches PrimeNG's overlay.modal.padding (1.5rem) — see primeng-theme.scss */
-  margin: 0 calc(var(--base-size-24) * -1) var(--base-size-20);
-  padding: 0 var(--base-size-24) var(--base-size-16);
-  border-bottom: 1px solid var(--borderColor-muted);
-  font-size: var(--base-text-size-lg);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-}
-
-.dialog-title-icon {
-  color: var(--bgColor-accent-emphasis);
-  font-size: var(--base-text-size-lg);
+  gap: var(--base-size-12);
 }
 
 /* ── Form layout (dialog/modal forms) ── */
@@ -1465,7 +1453,6 @@ textarea.field-input {
   display: flex;
   flex-direction: column;
   gap: var(--base-size-16);
-  min-width: 400px;
 }
 
 .form-section {

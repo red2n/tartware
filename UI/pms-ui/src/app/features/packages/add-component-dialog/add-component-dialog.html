@@ -1,9 +1,4 @@
-<h2 class="dialog-title">
-	<app-icon class="dialog-title-icon" name="extension" />
-	{{ 'Add Component' | translate }}
-</h2>
-
-<div class="dialog-content">
+<app-dialog-shell icon="extension" heading="Add Component">
 	@if (error()) {
 		<div class="error-banner">{{ error() }}</div>
 	}
@@ -118,15 +113,15 @@
 			</div>
 		</div>
 	</div>
-</div>
 
-<div class="dialog-actions">
-	<button class="btn btn-invisible" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
-	<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
-		@if (saving()) {
-			<p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
-		} @else {
-			<app-icon name="add" /> {{ 'Add Component' | translate }}
-		}
-	</button>
-</div>
+	<div class="dialog-actions" dialogFooter>
+		<button class="btn btn-invisible" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
+		<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
+			@if (saving()) {
+				<p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
+			} @else {
+				<app-icon name="add" /> {{ 'Add Component' | translate }}
+			}
+		</button>
+	</div>
+</app-dialog-shell>

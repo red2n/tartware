@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
-import { DialogService, DynamicDialogModule } from "primeng/dynamicdialog";
+import { DynamicDialogModule } from "primeng/dynamicdialog";
 import { InputTextModule } from "primeng/inputtext";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { AuthService } from "../../core/auth/auth.service";
@@ -11,6 +11,7 @@ import {
 } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 
 @Component({
 	selector: "app-select-property",
@@ -31,7 +32,7 @@ export class SelectPropertyComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 
 	readonly properties = this.ctx.properties;
 	readonly loading = this.ctx.loading;
@@ -74,12 +75,8 @@ export class SelectPropertyComponent {
 	openCreateDialog(): void {
 		import("./create-property-dialog/create-property-dialog").then(
 			({ CreatePropertyDialogComponent }) => {
-				const ref = this.dialog.open(CreatePropertyDialogComponent, {
-					width: "600px",
-					showHeader: false,
-					closable: false,
-				});
-				ref!.onClose.subscribe((created: boolean) => {
+				const ref = this.dialog.open(CreatePropertyDialogComponent);
+				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
 						this.ctx.fetchProperties();
 					}

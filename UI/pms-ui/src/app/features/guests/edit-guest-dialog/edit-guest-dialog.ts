@@ -4,7 +4,6 @@ import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
-import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { GuestFormFieldsComponent } from "../guest-form-fields/guest-form-fields";
 import {
@@ -29,17 +28,16 @@ export interface EditGuestDialogData {
 	loyalty_tier: string | null;
 }
 
-import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-edit-guest-dialog",
 	standalone: true,
 	imports: [
 		DynamicDialogModule,
-		IconComponent,
 		ProgressSpinnerModule,
 		DialogActionsComponent,
 		GuestFormFieldsComponent,
-		TranslatePipe,
+		DialogShellComponent,
 	],
 	templateUrl: "./edit-guest-dialog.html",
 })

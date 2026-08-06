@@ -1,7 +1,6 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { RoomTypeGridItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -10,6 +9,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
 import {
 	createSortState,
@@ -38,7 +38,7 @@ export class RoomTypesComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -136,12 +136,8 @@ export class RoomTypesComponent {
 	openCreateDialog(): void {
 		import("./create-room-type-dialog/create-room-type-dialog").then(
 			({ CreateRoomTypeDialogComponent }) => {
-				const ref = this.dialog.open(CreateRoomTypeDialogComponent, {
-					width: "580px",
-					showHeader: false,
-					closable: false,
-				});
-				ref!.onClose.subscribe((created: boolean) => {
+				const ref = this.dialog.open(CreateRoomTypeDialogComponent);
+				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
 						this.toast.success("Room type created successfully.");
 						this.loadRoomTypes();
@@ -155,12 +151,9 @@ export class RoomTypesComponent {
 		import("./create-room-type-dialog/create-room-type-dialog").then(
 			({ CreateRoomTypeDialogComponent }) => {
 				const ref = this.dialog.open(CreateRoomTypeDialogComponent, {
-					width: "580px",
-					showHeader: false,
-					closable: false,
 					data: roomType,
 				});
-				ref!.onClose.subscribe((saved: boolean) => {
+				ref?.onClose.subscribe((saved: boolean) => {
 					if (saved) {
 						this.toast.success("Room type updated successfully.");
 						this.loadRoomTypes();

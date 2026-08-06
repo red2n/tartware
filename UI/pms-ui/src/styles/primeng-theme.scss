@@ -105,13 +105,25 @@
     color: var(--fgColor-default);
   }
 
-  /* App dialogs opt out of the PrimeNG header (showHeader: false) and render
-   * their own `.dialog-title` row inside the content instead. PrimeNG zeroes
-   * the content's top padding because the header normally supplies it — put it
-   * back, and round the corners the content now owns. */
-  &:not(:has(> .p-dialog-header)) .p-dialog-content {
-    padding-top: var(--base-size-20);
-    border-radius: 16px;
+  /* App dialogs opt out of the PrimeNG header (showHeader: false) and hand the
+   * whole frame to DialogShellComponent, which pins its own title and footer
+   * rows and scrolls only the body between them. That needs an unbroken flex
+   * chain: dialog → content → the dynamically-created component host → shell.
+   * PrimeNG's content padding and scrolling move to the shell. */
+  &:not(:has(> .p-dialog-header)) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .p-dialog-content,
+    .p-dialog-content > * {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0;
+    }
   }
 
   .p-dialog-footer {

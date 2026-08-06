@@ -1,9 +1,4 @@
-<h2 class="dialog-title">
-  <app-icon class="dialog-title-icon" name="person_add" />
-  {{ 'New Guest Profile' | translate }}
-</h2>
-
-<div class="dialog-content">
+<app-dialog-shell icon="person_add" heading="New Guest Profile">
   <div class="form-fields">
     <app-guest-form-fields
       idPrefix="cg"
@@ -36,12 +31,13 @@
       (loyaltyTierChange)="loyaltyTier = $event"
       (markTouched)="markTouched($event)" />
   </div>
-</div>
 
-<app-dialog-actions
-  [saving]="saving()"
-  [valid]="isValid"
-  saveLabel="Create guest"
-  savingLabel="Creating…"
-  (cancel)="cancel()"
-  (save)="save()" />
+  <app-dialog-actions
+    dialogFooter
+    [saving]="saving()"
+    [valid]="isValid"
+    saveLabel="Create guest"
+    savingLabel="Creating…"
+    (cancel)="cancel()"
+    (save)="save()" />
+</app-dialog-shell>

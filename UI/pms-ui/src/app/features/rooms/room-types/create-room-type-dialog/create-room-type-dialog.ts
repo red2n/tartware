@@ -7,7 +7,6 @@ import { ApiService, ApiValidationError } from "../../../../core/api/api.service
 import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
 import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
-import { IconComponent } from "../../../../shared/components/icon/icon";
 import { ToastService } from "../../../../shared/toast/toast.service";
 
 const ROOM_CATEGORIES = [
@@ -33,16 +32,17 @@ const ROOM_CATEGORIES = [
 ];
 
 import { TranslatePipe } from "../../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-create-room-type-dialog",
 	standalone: true,
 	imports: [
 		FormsModule,
 		DynamicDialogModule,
-		IconComponent,
 		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
+		DialogShellComponent,
 	],
 	templateUrl: "./create-room-type-dialog.html",
 })
