@@ -139,6 +139,7 @@ export class BuildingsComponent {
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
 					width: "580px",
+					showHeader: false,
 					closable: false,
 				});
 				ref!.onClose.subscribe((created: boolean) => {
@@ -156,6 +157,7 @@ export class BuildingsComponent {
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
 					width: "580px",
+					showHeader: false,
 					closable: false,
 					data: building,
 				});

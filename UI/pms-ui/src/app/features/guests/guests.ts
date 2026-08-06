@@ -255,6 +255,7 @@ export class GuestsComponent {
 		import("./create-guest-dialog/create-guest-dialog").then(({ CreateGuestDialogComponent }) => {
 			const ref = this.dialog.open(CreateGuestDialogComponent, {
 				width: "600px",
+				showHeader: false,
 				closable: false,
 			});
 			ref!.onClose.subscribe((created: boolean) => {

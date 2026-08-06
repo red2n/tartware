@@ -201,6 +201,8 @@ export class UsersComponent {
 		const { CreateUserDialogComponent } = await import("./create-user-dialog/create-user-dialog");
 		const dialogRef = this.dialog.open(CreateUserDialogComponent, {
 			width: "480px",
+			showHeader: false,
+			closable: false,
 			data: { tenantId: this.auth.tenantId() },
 		});
 		dialogRef!.onClose.subscribe((result) => {
@@ -215,6 +217,8 @@ export class UsersComponent {
 		const { EditUserDialogComponent } = await import("./edit-user-dialog/edit-user-dialog");
 		const dialogRef = this.dialog.open(EditUserDialogComponent, {
 			width: "480px",
+			showHeader: false,
+			closable: false,
 			data: {
 				tenantId: this.auth.tenantId(),
 				user,

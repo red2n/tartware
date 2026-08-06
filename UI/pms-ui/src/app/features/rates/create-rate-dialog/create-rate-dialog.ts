@@ -20,7 +20,6 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 	standalone: true,
 	imports: [FormsModule, DynamicDialogModule, IconComponent, ProgressSpinnerModule, TranslatePipe],
 	templateUrl: "./create-rate-dialog.html",
-	styleUrl: "./create-rate-dialog.scss",
 })
 export class CreateRateDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);

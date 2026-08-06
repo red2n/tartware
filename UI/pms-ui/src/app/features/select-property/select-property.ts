@@ -76,6 +76,7 @@ export class SelectPropertyComponent {
 			({ CreatePropertyDialogComponent }) => {
 				const ref = this.dialog.open(CreatePropertyDialogComponent, {
 					width: "600px",
+					showHeader: false,
 					closable: false,
 				});
 				ref!.onClose.subscribe((created: boolean) => {

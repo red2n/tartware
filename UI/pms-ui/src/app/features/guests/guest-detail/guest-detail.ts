@@ -523,6 +523,7 @@ export class GuestDetailComponent implements OnInit {
 		import("../edit-guest-dialog/edit-guest-dialog").then(({ EditGuestDialogComponent }) => {
 			const ref = this.dialog.open(EditGuestDialogComponent, {
 				width: "600px",
+				showHeader: false,
 				closable: false,
 				data: {
 					id: g.id,

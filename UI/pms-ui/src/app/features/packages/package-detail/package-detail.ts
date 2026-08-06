@@ -272,6 +272,8 @@ export class PackageDetailComponent {
 
 		const ref = this.dialog.open(AddComponentDialogComponent, {
 			width: "560px",
+			showHeader: false,
+			closable: false,
 			data: { packageId: p.package_id },
 		});
 

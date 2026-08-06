@@ -45,7 +45,6 @@ import { TranslatePipe } from "../../../../core/i18n/translate.pipe";
 		TranslatePipe,
 	],
 	templateUrl: "./create-room-type-dialog.html",
-	styleUrl: "./create-room-type-dialog.scss",
 })
 export class CreateRoomTypeDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);

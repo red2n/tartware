@@ -235,6 +235,7 @@ export class PackagesComponent {
 		);
 		const ref = this.dialog.open(CreatePackageDialogComponent, {
 			width: "640px",
+			showHeader: false,
 			closable: false,
 		});
 		ref!.onClose.subscribe((created) => {

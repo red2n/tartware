@@ -42,7 +42,6 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 		TranslatePipe,
 	],
 	templateUrl: "./edit-guest-dialog.html",
-	styleUrl: "./edit-guest-dialog.scss",
 })
 export class EditGuestDialogComponent {
 	private readonly api = inject(ApiService);

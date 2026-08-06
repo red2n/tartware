@@ -26,7 +26,6 @@ import {
 		TranslatePipe,
 	],
 	templateUrl: "./create-guest-dialog.html",
-	styleUrl: "./create-guest-dialog.scss",
 })
 export class CreateGuestDialogComponent {
 	private readonly api = inject(ApiService);

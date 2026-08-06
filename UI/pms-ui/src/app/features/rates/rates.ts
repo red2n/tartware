@@ -330,6 +330,7 @@ export class RatesComponent {
 		import("./create-rate-dialog/create-rate-dialog").then(({ CreateRateDialogComponent }) => {
 			const ref = this.dialog.open(CreateRateDialogComponent, {
 				width: "600px",
+				showHeader: false,
 				closable: false,
 			});
 			ref!.onClose.subscribe((created: boolean) => {

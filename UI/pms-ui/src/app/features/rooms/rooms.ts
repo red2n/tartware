@@ -230,6 +230,7 @@ export class RoomsComponent {
 		import("./create-room-dialog/create-room-dialog").then(({ CreateRoomDialogComponent }) => {
 			const ref = this.dialog.open(CreateRoomDialogComponent, {
 				width: "520px",
+				showHeader: false,
 				closable: false,
 			});
 			ref!.onClose.subscribe((created: boolean) => {

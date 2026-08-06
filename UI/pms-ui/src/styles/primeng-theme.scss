@@ -105,6 +105,15 @@
     color: var(--fgColor-default);
   }
 
+  /* App dialogs opt out of the PrimeNG header (showHeader: false) and render
+   * their own `.dialog-title` row inside the content instead. PrimeNG zeroes
+   * the content's top padding because the header normally supplies it — put it
+   * back, and round the corners the content now owns. */
+  &:not(:has(> .p-dialog-header)) .p-dialog-content {
+    padding-top: var(--base-size-20);
+    border-radius: 16px;
+  }
+
   .p-dialog-footer {
     background: var(--overlay-bgColor, var(--bgColor-default));
     border-top: 1px solid var(--borderColor-muted);

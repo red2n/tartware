@@ -138,6 +138,7 @@ export class RoomTypesComponent {
 			({ CreateRoomTypeDialogComponent }) => {
 				const ref = this.dialog.open(CreateRoomTypeDialogComponent, {
 					width: "580px",
+					showHeader: false,
 					closable: false,
 				});
 				ref!.onClose.subscribe((created: boolean) => {
@@ -155,6 +156,7 @@ export class RoomTypesComponent {
 			({ CreateRoomTypeDialogComponent }) => {
 				const ref = this.dialog.open(CreateRoomTypeDialogComponent, {
 					width: "580px",
+					showHeader: false,
 					closable: false,
 					data: roomType,
 				});
