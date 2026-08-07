@@ -1,0 +1,95 @@
+/* =============================================================
+ * Title bar — watermark band
+ *
+ * A faint travel scene printed behind the title bar: hills, trees,
+ * the road in, and the suite marks waiting at the end — the same
+ * brass hand as the login scene's floor plan, so the chrome carries
+ * the brand rather than sitting flat.
+ *
+ * Purely decorative. The layer is aria-hidden, ignores the pointer,
+ * and never covers a control: it is first in the DOM and the three
+ * content clusters are positioned, so they paint on top of it. No
+ * z-index is used anywhere here — introducing a stacking context on
+ * the bar would trap the notification and search panels inside it.
+ *
+ * Split from topbar.scss so each stylesheet stays inside the
+ * anyComponentStyle budget.
+ * ============================================================= */
+
+.title-bar-motif {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	/* Every mark stands on the bar's bottom edge, so the row reads as a
+	   skyline along a horizon rather than as a floating strip. */
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--base-size-8);
+	padding: 0 var(--base-size-24);
+	overflow: hidden;
+	pointer-events: none;
+	/* Brass bloom rising off that horizon, so the band reads as lit
+	   rather than as a flat row of glyphs. */
+	background:
+		radial-gradient(ellipse 44% 150% at 18% 118%, var(--topbar-motif-bloom) 0%, transparent 72%),
+		radial-gradient(ellipse 38% 130% at 80% 118%, var(--topbar-motif-bloom) 0%, transparent 72%);
+	/* Feather the ends so the band never crowds the brand lockup or the right
+	   controls. Fixed lengths, not percentages: both clusters are a fixed
+	   width, so the clearance has to hold at every viewport size. */
+	mask-image: linear-gradient(
+		to right,
+		transparent 0,
+		#000 200px,
+		#000 calc(100% - 210px),
+		transparent 100%
+	);
+}
+
+.motif-mark {
+	flex: 0 0 auto;
+	/* Flex, not inline: the icon span's vertical-align would otherwise drop the
+	   glyph below the line box and the bar's bottom edge would slice it. */
+	display: flex;
+	align-items: flex-end;
+	padding-bottom: 2px;
+	font-size: 22px;
+	line-height: 1;
+	color: var(--topbar-motif-ink);
+
+	/* Sizes vary while the feet stay planted, so the silhouette rises and
+	   falls like a treeline instead of running as a ruler. */
+	&:nth-child(3n) {
+		font-size: 28px;
+	}
+
+	&:nth-child(3n + 2) {
+		font-size: 18px;
+		opacity: 0.75;
+	}
+
+	&:nth-child(4n) {
+		font-size: 24px;
+	}
+}
+
+/* ── Responsive ──
+ * Marks thin out as the bar narrows rather than bunching up. Hidden marks
+ * still count for :nth-child, so the pattern above stays intact.
+ */
+@media (max-width: 1280px) {
+	.motif-mark:nth-child(4n) {
+		display: none;
+	}
+}
+
+@media (max-width: 1024px) {
+	.motif-mark:nth-child(even) {
+		display: none;
+	}
+}
+
+@media (max-width: 768px) {
+	.title-bar-motif {
+		display: none;
+	}
+}

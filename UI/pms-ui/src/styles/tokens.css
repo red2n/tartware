@@ -33,6 +33,10 @@
 	/* ── Topbar ── */
 	--color-topbar-bg: var(--color-header-bg);
 	--color-topbar-border: var(--color-header-border);
+	/* Watermark band printed behind the title bar — brass ink, kept faint
+	   enough that the bar's own controls stay the only thing you read. */
+	--topbar-motif-ink: rgba(169, 138, 82, 0.2);
+	--topbar-motif-bloom: rgba(169, 138, 82, 0.07);
 
 	/* ── Login hero — dark navy gradient matching OpenSea ── */
 	--color-hero-bg-start: #0b0e1a;
@@ -102,6 +106,8 @@
 	--brand-watermark: rgba(217, 180, 113, 0.16);
 	--brand-watermark-bloom: rgba(217, 180, 113, 0.08);
 	--skeleton-sheen: rgba(217, 180, 113, 0.12);
+	--topbar-motif-ink: rgba(217, 180, 113, 0.15);
+	--topbar-motif-bloom: rgba(217, 180, 113, 0.05);
 
 	/* ── Login hero ── */
 	--color-hero-bg-start: #070912;

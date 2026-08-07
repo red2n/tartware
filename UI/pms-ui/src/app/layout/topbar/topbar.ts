@@ -42,7 +42,7 @@ import { type ScreenMatch, searchScreens } from "../nav-config";
 		TranslatePipe,
 	],
 	templateUrl: "./topbar.html",
-	styleUrl: "./topbar.scss",
+	styleUrls: ["./topbar.scss", "./topbar-motif.scss"],
 })
 export class TopbarComponent {
 	private readonly auth = inject(AuthService);
@@ -60,6 +60,35 @@ export class TopbarComponent {
 
 	readonly supportedLanguages = SUPPORTED_LANGUAGES;
 	readonly currentLang = this.i18n.currentLang;
+
+	/**
+	 * Decorative watermark printed behind the title bar — a guest's journey
+	 * read left to right: hills and trees, the road in, arrival, then the
+	 * suite and its amenities. Same faint brass hand as the login scene's
+	 * floor plan. Only ligatures from the classic Material Icons set.
+	 */
+	readonly motifs: readonly string[] = [
+		"terrain",
+		"nature",
+		"directions_car",
+		"hotel",
+		"flight_takeoff",
+		"landscape",
+		"local_florist",
+		"local_taxi",
+		"king_bed",
+		"map",
+		"filter_hdr",
+		"spa",
+		"directions_bike",
+		"room_service",
+		"explore",
+		"beach_access",
+		"apartment",
+		"pool",
+		"card_travel",
+		"local_cafe",
+	];
 
 	private readonly notifPanel = viewChild<ElementRef>("notifPanel");
 	private readonly searchInput = viewChild<ElementRef>("searchInputEl");

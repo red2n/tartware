@@ -1,4 +1,12 @@
 <header class="title-bar">
+  <!-- Watermark band — decorative travel scene behind the bar. Sits first in
+       the DOM so the positioned clusters below always paint over it. -->
+  <div class="title-bar-motif" aria-hidden="true">
+    @for (motif of motifs; track $index) {
+      <span class="motif-mark"><app-icon [name]="motif" /></span>
+    }
+  </div>
+
   <div class="title-bar-left">
     <button class="mobile-menu-toggle" (click)="menuToggle.emit()" [attr.aria-label]="'Toggle sidebar' | translate">
       <app-icon name="menu" />
