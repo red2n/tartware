@@ -397,35 +397,64 @@ export const tenantWebhookParamsSchema = {
 } as const satisfies JsonSchema;
 
 /** JSON Schema describing a webhook subscription resource. */
+/**
+ * Mirrors WebhookSubscriptionsSchema in @tartware/schemas — the shape the table
+ * and the UI both use. This previously declared id/url/events, which combined
+ * with additionalProperties:false meant Fastify silently stripped every real
+ * field (subscription_id/webhook_url/event_types) out of the response.
+ */
 export const webhookSubscriptionSchema = {
   type: "object",
   properties: {
-    id: { type: "string", format: "uuid" },
+    subscription_id: { type: "string", format: "uuid" },
     tenant_id: { type: "string", format: "uuid" },
-    url: { type: "string", format: "uri", description: "Target URL for event delivery." },
-    events: { type: "array", items: { type: "string" }, description: "Subscribed event types." },
-    secret: { type: "string", description: "HMAC signing secret (write-only)." },
+    property_id: { type: ["string", "null"], format: "uuid" },
+    webhook_name: { type: "string" },
+    webhook_url: { type: "string", description: "Target URL for event delivery." },
+    event_types: { type: "array", items: { type: "string" } },
     is_active: { type: "boolean" },
+    http_method: { type: "string" },
+    authentication_type: { type: ["string", "null"] },
+    retry_count: { type: "integer" },
+    retry_backoff_seconds: { type: "integer" },
+    last_triggered_at: { type: ["string", "null"], format: "date-time" },
+    last_success_at: { type: ["string", "null"], format: "date-time" },
+    last_failure_at: { type: ["string", "null"], format: "date-time" },
+    success_count: { type: "integer" },
+    failure_count: { type: "integer" },
     created_at: { type: "string", format: "date-time" },
     updated_at: { type: "string", format: "date-time" },
   },
-  required: ["id", "tenant_id", "url", "events", "is_active"],
+  required: [
+    "subscription_id",
+    "tenant_id",
+    "webhook_name",
+    "webhook_url",
+    "event_types",
+    "is_active",
+  ],
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
 /** JSON Schema describing a webhook delivery log entry. */
+/**
+ * Mirrors WebhookDeliveryRow in @tartware/schemas and the webhook_deliveries
+ * table. Previously declared id/attempts/response_status, which with
+ * additionalProperties:false stripped the real columns out of the response.
+ */
 export const webhookDeliverySchema = {
   type: "object",
   properties: {
-    id: { type: "string", format: "uuid" },
+    delivery_id: { type: "string", format: "uuid" },
     webhook_id: { type: "string", format: "uuid" },
-    event_type: { type: "string" },
-    status: { type: "string", enum: ["pending", "delivered", "failed"] },
-    attempts: { type: "integer", minimum: 0 },
-    last_attempt_at: { type: "string", format: "date-time" },
-    response_status: { type: "integer", nullable: true },
-    created_at: { type: "string", format: "date-time" },
+    event_type: { type: ["string", "null"] },
+    status: { type: ["string", "null"], enum: ["pending", "delivered", "failed", null] },
+    http_status_code: { type: ["integer", "null"] },
+    attempt: { type: ["integer", "null"] },
+    error_message: { type: ["string", "null"] },
+    duration_ms: { type: ["integer", "null"] },
+    created_at: { type: ["string", "null"], format: "date-time" },
   },
-  required: ["id", "webhook_id", "event_type", "status", "attempts"],
+  required: ["delivery_id", "webhook_id"],
   additionalProperties: false,
 } as const satisfies JsonSchema;

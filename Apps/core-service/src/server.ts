@@ -46,6 +46,7 @@ import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUiPreferencesRoutes } from "./routes/ui-preferences.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { registerWebhookRoutes } from "./routes/webhooks.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureEncryptionRequirementsMet();
@@ -90,6 +91,7 @@ export const buildServer = (): FastifyInstance => {
       registerReservationRoutes(app);
       registerReportRoutes(app);
       registerModuleRoutes(app);
+      registerWebhookRoutes(app);
       registerBookingConfigRoutes(app);
       registerComplianceRoutes(app);
       registerNightAuditRoutes(app);
