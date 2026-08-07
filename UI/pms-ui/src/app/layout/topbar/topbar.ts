@@ -28,6 +28,7 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { UnsavedChangesService } from "../../shared/forms/unsaved-changes.service";
 import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 import { type ScreenMatch, searchScreens } from "../nav-config";
+import { TOPBAR_MOTIF_LEFT, TOPBAR_MOTIF_RIGHT } from "./topbar-motif";
 
 @Component({
 	selector: "app-topbar",
@@ -62,33 +63,13 @@ export class TopbarComponent {
 	readonly currentLang = this.i18n.currentLang;
 
 	/**
-	 * Decorative watermark printed behind the title bar — a guest's journey
-	 * read left to right: hills and trees, the road in, arrival, then the
-	 * suite and its amenities. Same faint brass hand as the login scene's
-	 * floor plan. Only ligatures from the classic Material Icons set.
+	 * Decorative watermark printed behind the title bar — a hospitality
+	 * landscape standing on the bar's bottom edge, in two wings either side of
+	 * the search field. Composition and depth live in topbar-motif.ts, inking
+	 * in topbar-motif.scss.
 	 */
-	readonly motifs: readonly string[] = [
-		"terrain",
-		"nature",
-		"directions_car",
-		"hotel",
-		"flight_takeoff",
-		"landscape",
-		"local_florist",
-		"local_taxi",
-		"king_bed",
-		"map",
-		"filter_hdr",
-		"spa",
-		"directions_bike",
-		"room_service",
-		"explore",
-		"beach_access",
-		"apartment",
-		"pool",
-		"card_travel",
-		"local_cafe",
-	];
+	readonly motifsLeft = TOPBAR_MOTIF_LEFT;
+	readonly motifsRight = TOPBAR_MOTIF_RIGHT;
 
 	private readonly notifPanel = viewChild<ElementRef>("notifPanel");
 	private readonly searchInput = viewChild<ElementRef>("searchInputEl");

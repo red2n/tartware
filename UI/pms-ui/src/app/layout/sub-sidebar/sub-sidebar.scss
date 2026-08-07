@@ -38,9 +38,12 @@
   white-space: nowrap;
 }
 
+/* Stands for the parent section the whole dock belongs to, so it is sized a
+   rank above the child nav icons below it (which inherit 14px from .nav-item)
+   rather than the 16px it would otherwise pick up from the body. */
 .header-icon {
+  @include icon-size(20px);
   color: var(--fgColor-muted);
-  margin: 0 auto;
 }
 
 .sub-sidebar-nav {
@@ -97,7 +100,15 @@
   }
 }
 
-/* Collapsed: center icons */
+/* Collapsed: center icons.
+   Centring is done by the flex container, not by auto margins on .header-icon:
+   app-icon's host is `display: contents`, so it generates no box and margins on
+   it are dropped — the glyph span is the actual flex item. */
+.collapsed .sub-sidebar-header {
+  justify-content: center;
+  padding: 0;
+}
+
 .collapsed .nav-item {
   justify-content: center;
   padding: var(--base-size-8);

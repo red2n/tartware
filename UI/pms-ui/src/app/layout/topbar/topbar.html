@@ -1,9 +1,26 @@
 <header class="title-bar">
-  <!-- Watermark band — decorative travel scene behind the bar. Sits first in
-       the DOM so the positioned clusters below always paint over it. -->
-  <div class="title-bar-motif" aria-hidden="true">
-    @for (motif of motifs; track $index) {
-      <span class="motif-mark"><app-icon [name]="motif" /></span>
+  <!-- Watermark scene — decorative hospitality landscape, printed as two wings
+       either side of the search field. Marks are listed far to near so the
+       planes occlude correctly. Sits first in the DOM so the positioned
+       clusters below always paint over it. -->
+  <div class="title-bar-motif title-bar-motif--left" aria-hidden="true">
+    @for (mark of motifsLeft; track $index) {
+      <span
+        class="motif-mark motif-mark--{{ mark.plane }} motif-mark--t{{ mark.tier }}"
+        [style.left.%]="mark.x"
+        [style.bottom.px]="mark.lift"
+        [style.font-size.px]="mark.size"
+        [style.rotate.deg]="mark.tilt"><app-icon [name]="mark.icon" /></span>
+    }
+  </div>
+  <div class="title-bar-motif title-bar-motif--right" aria-hidden="true">
+    @for (mark of motifsRight; track $index) {
+      <span
+        class="motif-mark motif-mark--{{ mark.plane }} motif-mark--t{{ mark.tier }}"
+        [style.left.%]="mark.x"
+        [style.bottom.px]="mark.lift"
+        [style.font-size.px]="mark.size"
+        [style.rotate.deg]="mark.tilt"><app-icon [name]="mark.icon" /></span>
     }
   </div>
 

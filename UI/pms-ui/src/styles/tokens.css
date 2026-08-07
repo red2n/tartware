@@ -33,9 +33,14 @@
 	/* ── Topbar ── */
 	--color-topbar-bg: var(--color-header-bg);
 	--color-topbar-border: var(--color-header-border);
-	/* Watermark band printed behind the title bar — brass ink, kept faint
-	   enough that the bar's own controls stay the only thing you read. */
-	--topbar-motif-ink: rgba(169, 138, 82, 0.2);
+	/* Watermark scene printed behind the title bar — kept faint enough that the
+	   bar's own controls stay the only thing you read. Ink is the brass of the
+	   near plane; haze is the cooler, weaker wash the distance is drawn in, so
+	   the planes separate by colour temperature as well as by strength. */
+	--topbar-motif-ink: rgba(169, 138, 82, 0.28);
+	--topbar-motif-haze: rgba(118, 126, 140, 0.24);
+	/* Sun over the ridge, and the warm haze pooling on the land. */
+	--topbar-motif-glow: rgba(217, 180, 113, 0.12);
 	--topbar-motif-bloom: rgba(169, 138, 82, 0.07);
 
 	/* ── Login hero — dark navy gradient matching OpenSea ── */
@@ -106,7 +111,9 @@
 	--brand-watermark: rgba(217, 180, 113, 0.16);
 	--brand-watermark-bloom: rgba(217, 180, 113, 0.08);
 	--skeleton-sheen: rgba(217, 180, 113, 0.12);
-	--topbar-motif-ink: rgba(217, 180, 113, 0.15);
+	--topbar-motif-ink: rgba(217, 180, 113, 0.2);
+	--topbar-motif-haze: rgba(166, 184, 208, 0.2);
+	--topbar-motif-glow: rgba(217, 180, 113, 0.07);
 	--topbar-motif-bloom: rgba(217, 180, 113, 0.05);
 
 	/* ── Login hero ── */

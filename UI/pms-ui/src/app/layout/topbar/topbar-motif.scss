@@ -1,16 +1,23 @@
 /* =============================================================
- * Title bar — watermark band
+ * Title bar — watermark scene
  *
- * A faint travel scene printed behind the title bar: hills, trees,
- * the road in, and the suite marks waiting at the end — the same
- * brass hand as the login scene's floor plan, so the chrome carries
- * the brand rather than sitting flat.
+ * A faint hospitality landscape printed behind the title bar: the bar's
+ * bottom edge is the land, a ridge and clouds sit back in haze, and the
+ * near plane — the road in, the parasol, the bed, the table — stands sharp
+ * in front. Same brass hand as the login scene's floor plan, so the chrome
+ * carries the brand rather than sitting flat.
  *
- * Purely decorative. The layer is aria-hidden, ignores the pointer,
- * and never covers a control: it is first in the DOM and the three
- * content clusters are positioned, so they paint on top of it. No
- * z-index is used anywhere here — introducing a stacking context on
- * the bar would trap the notification and search panels inside it.
+ * It is printed as two wings, framing the centred search field instead of
+ * running under it. The marks and their placement live in topbar-motif.ts;
+ * this file only frames the wings and inks the marks, and every rule below
+ * is a photographic depth cue: distance cools the ink, fades it and throws
+ * it out of focus, so the four planes separate without a glyph being redrawn.
+ *
+ * Purely decorative. The layers are aria-hidden, ignore the pointer, and
+ * never cover a control: they are first in the DOM and the three content
+ * clusters are positioned, so they paint on top. No z-index is used anywhere
+ * here — introducing a stacking context on the bar would trap the
+ * notification and search panels inside it.
  *
  * Split from topbar.scss so each stylesheet stays inside the
  * anyComponentStyle budget.
@@ -18,77 +25,117 @@
 
 .title-bar-motif {
 	position: absolute;
-	inset: 0;
-	display: flex;
-	/* Every mark stands on the bar's bottom edge, so the row reads as a
-	   skyline along a horizon rather than as a floating strip. */
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: var(--base-size-8);
-	padding: 0 var(--base-size-24);
+	top: 0;
+	bottom: 0;
 	overflow: hidden;
 	pointer-events: none;
-	/* Brass bloom rising off that horizon, so the band reads as lit
-	   rather than as a flat row of glyphs. */
+}
+
+/* Each wing is carved out in fixed lengths rather than percentages: the brand
+   lockup, the search field (460px, centred) and the right-hand controls are
+   all fixed widths, so the clearance has to hold at every viewport size. Marks
+   are then placed in percentages of whatever the wing is left with, which is
+   what lets the scene re-compose as the window resizes. */
+.title-bar-motif--left {
+	left: 240px;
+	right: calc(50% + 244px);
+	/* Haze pooling on the land at the foot of the ridge. */
+	background: radial-gradient(
+		ellipse 55% 96% at 26% 128%,
+		var(--topbar-motif-bloom) 0%,
+		transparent 72%
+	);
+	/* Vignette both ends, so the scene resolves out of the chrome instead of
+	   stopping at an edge beside the property name or the search field. */
+	mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 93%, transparent 100%);
+}
+
+.title-bar-motif--right {
+	left: calc(50% + 244px);
+	right: 212px;
+	/* The light in the shot: a low sun at 13%, where wb_sunny stands, and the
+	   same haze pooling off the far end of the land. */
 	background:
-		radial-gradient(ellipse 44% 150% at 18% 118%, var(--topbar-motif-bloom) 0%, transparent 72%),
-		radial-gradient(ellipse 38% 130% at 80% 118%, var(--topbar-motif-bloom) 0%, transparent 72%);
-	/* Feather the ends so the band never crowds the brand lockup or the right
-	   controls. Fixed lengths, not percentages: both clusters are a fixed
-	   width, so the clearance has to hold at every viewport size. */
-	mask-image: linear-gradient(
+		radial-gradient(circle 62px at 13% 28%, var(--topbar-motif-glow) 0%, transparent 68%),
+		radial-gradient(ellipse 50% 92% at 72% 128%, var(--topbar-motif-bloom) 0%, transparent 72%);
+	mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 91%, transparent 100%);
+}
+
+/* The land — a feathered ground line the marks stand on. First child of the
+   wing, so every mark paints over it. */
+.title-bar-motif::before {
+	content: "";
+	position: absolute;
+	inset: auto 0 2px;
+	height: 1px;
+	background: linear-gradient(
 		to right,
 		transparent 0,
-		#000 200px,
-		#000 calc(100% - 210px),
+		var(--topbar-motif-ink) 18%,
+		var(--topbar-motif-ink) 82%,
 		transparent 100%
 	);
+	opacity: 0.5;
 }
 
 .motif-mark {
-	flex: 0 0 auto;
+	position: absolute;
+	/* `translate`, not a transform: the individual transform properties apply
+	   before `transform`, so the aircraft still centres on its x after it banks
+	   on `rotate`. */
+	translate: -50%;
 	/* Flex, not inline: the icon span's vertical-align would otherwise drop the
 	   glyph below the line box and the bar's bottom edge would slice it. */
 	display: flex;
 	align-items: flex-end;
-	padding-bottom: 2px;
-	font-size: 22px;
+	/* Feet clear the bar's border, so the marks stand on the land line rather
+	   than on the chrome below it. */
+	padding-bottom: 3px;
 	line-height: 1;
 	color: var(--topbar-motif-ink);
+}
 
-	/* Sizes vary while the feet stay planted, so the silhouette rises and
-	   falls like a treeline instead of running as a ruler. */
-	&:nth-child(3n) {
-		font-size: 28px;
-	}
+/* ── Depth planes ──
+ * Aerial perspective: the further back a mark sits, the cooler and weaker its
+ * ink and the softer its edge. Only the near plane keeps full brass and a
+ * sharp edge, which is what makes the band read as depth rather than clutter.
+ */
+.motif-mark--sky {
+	color: var(--topbar-motif-haze);
+	opacity: 0.55;
+	filter: blur(0.6px);
+}
 
-	&:nth-child(3n + 2) {
-		font-size: 18px;
-		opacity: 0.75;
-	}
+.motif-mark--far {
+	color: var(--topbar-motif-haze);
+	opacity: 0.62;
+	filter: blur(0.5px);
+}
 
-	&:nth-child(4n) {
-		font-size: 24px;
-	}
+.motif-mark--mid {
+	opacity: 0.66;
 }
 
 /* ── Responsive ──
- * Marks thin out as the bar narrows rather than bunching up. Hidden marks
- * still count for :nth-child, so the pattern above stays intact.
+ * The wings lose roughly half of every pixel the window loses, so the scene
+ * thins by rank well before the bar itself is tight: detail goes first, then
+ * the second rank, leaving the few marks that carry the composition. What
+ * remains re-spaces itself, since every x is a percentage of the wing.
  */
-@media (max-width: 1280px) {
-	.motif-mark:nth-child(4n) {
+@media (max-width: 1700px) {
+	.motif-mark--t3 {
 		display: none;
 	}
 }
 
-@media (max-width: 1024px) {
-	.motif-mark:nth-child(even) {
+@media (max-width: 1440px) {
+	.motif-mark--t2 {
 		display: none;
 	}
 }
 
-@media (max-width: 768px) {
+/* Below this the wings are too narrow to hold a scene rather than a huddle. */
+@media (max-width: 1200px) {
 	.title-bar-motif {
 		display: none;
 	}
