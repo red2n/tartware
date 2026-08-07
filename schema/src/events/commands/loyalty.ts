@@ -97,3 +97,44 @@ export const LoyaltyPointsExpireSweepCommandSchema = z.object({
 export type LoyaltyPointsExpireSweepCommand = z.infer<
 	typeof LoyaltyPointsExpireSweepCommandSchema
 >;
+
+/**
+ * Enrol a guest into a loyalty program, creating the guest_loyalty_programs row
+ * that the points ledger commands (earn/redeem/expire) operate against.
+ *
+ * Without an enrolment row, loyalty.points.earn fails with
+ * LOYALTY_PROGRAM_NOT_FOUND — this command is the entry point to that flow.
+ *
+ * @category commands
+ * @synchronized 2026-08-07
+ */
+export const LoyaltyProgramEnrollCommandSchema = z.object({
+	// Target guest
+	guest_id: uuid,
+
+	// Caller-supplied program id. Enrolment is processed asynchronously and no
+	// read endpoint lists a guest's programs, so supplying the id up front is the
+	// only way a caller can address the program afterwards (balance, ledger).
+	// Mirrors reservation.create accepting reservation_id.
+	program_id: uuid.optional(),
+
+	// Optional property scope (null = tenant-wide membership)
+	property_id: uuid.optional(),
+
+	// Program identity
+	program_name: z.string().min(1).max(100),
+	program_tier: z.string().max(50).optional(),
+	membership_number: z.string().max(100).optional(),
+
+	// Opening balance / status
+	points_balance: z.number().int().nonnegative().optional(),
+	enrollment_channel: z.string().max(50).optional(),
+
+	// Metadata & Idempotency
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().optional(),
+});
+
+export type LoyaltyProgramEnrollCommand = z.infer<
+	typeof LoyaltyProgramEnrollCommandSchema
+>;

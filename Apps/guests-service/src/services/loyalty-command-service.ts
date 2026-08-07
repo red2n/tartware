@@ -11,6 +11,7 @@ import {
   LoyaltyPointsEarnCommandSchema,
   LoyaltyPointsExpireSweepCommandSchema,
   LoyaltyPointsRedeemCommandSchema,
+  LoyaltyProgramEnrollCommandSchema,
 } from "../schemas/loyalty-commands.js";
 
 const loyaltyLogger = appLogger.child({ module: "loyalty-command-service" });
@@ -251,5 +252,66 @@ export const expireLoyaltyPoints = async ({
       correlationId,
     },
     "loyalty.points.expire_sweep completed",
+  );
+};
+
+/**
+ * Enrol a guest into a loyalty program.
+ *
+ * Creates the guest_loyalty_programs row that earn/redeem/expire operate on —
+ * without it those commands fail with LOYALTY_PROGRAM_NOT_FOUND. Re-enrolling
+ * the same guest into the same program is a no-op so the command is safe to
+ * replay.
+ */
+export const enrollLoyaltyProgram = async ({
+  tenantId,
+  payload,
+  correlationId,
+  initiatedBy,
+}: CommandContext): Promise<void> => {
+  const command = LoyaltyProgramEnrollCommandSchema.parse(payload);
+  const actor = resolveActorId(initiatedBy);
+
+  const { rows } = await query<{ program_id: string }>(
+    `
+      INSERT INTO guest_loyalty_programs (
+        program_id, tenant_id, property_id, guest_id,
+        program_name, program_tier, membership_number,
+        membership_status, points_balance,
+        enrollment_date, enrollment_channel, enrollment_property_id,
+        is_active, last_activity_date, created_by, updated_by
+      ) VALUES (
+        COALESCE($10::uuid, uuid_generate_v4()), $1::uuid, $2::uuid, $3::uuid,
+        $4, $5, COALESCE($6, 'MB-' || SUBSTRING(REPLACE($3::text, '-', '') FROM 1 FOR 10)),
+        'active', COALESCE($7, 0),
+        CURRENT_DATE, $8, $2::uuid,
+        true, CURRENT_DATE, $9, $9
+      )
+      ON CONFLICT (program_id) DO NOTHING
+      RETURNING program_id
+    `,
+    [
+      tenantId,
+      command.property_id ?? null,
+      command.guest_id,
+      command.program_name,
+      command.program_tier ?? null,
+      command.membership_number ?? null,
+      command.points_balance ?? null,
+      command.enrollment_channel ?? "DIRECT",
+      actor,
+      command.program_id ?? null,
+    ],
+  );
+
+  loyaltyLogger.info(
+    {
+      tenantId,
+      guestId: command.guest_id,
+      programId: rows[0]?.program_id ?? null,
+      alreadyEnrolled: rows.length === 0,
+      correlationId,
+    },
+    "loyalty.program.enroll completed",
   );
 };

@@ -104,3 +104,74 @@ export const recordAuditLog = async (
     JSON.stringify(params.metadata),
   ]);
 };
+
+/**
+ * A gate bypass — an operator overriding a flow precondition.
+ *
+ * flow_approvals is append-only and exists so every override of a blocking
+ * control leaves a trail (who, which gate, why). Night audit already writes
+ * here when skip_preconditions is used; any other `force`-style bypass of a
+ * financial or operational gate must do the same, otherwise the control is
+ * silently skippable.
+ */
+export interface FlowApprovalParams {
+  tenantId: string;
+  propertyId: string | null;
+  /** Flow the gate belongs to, e.g. "check_in". */
+  flowName: string;
+  /** Gate being bypassed, e.g. "deposit_required_check". */
+  gateName: string;
+  entityType: string;
+  entityId: string | null;
+  approvedBy: string | null;
+  roleAtApproval: string;
+  reasonCode: string;
+  reasonNotes?: string | null;
+  correlationId?: string | null;
+}
+
+/**
+ * SQL for recording a gate bypass approval.
+ */
+export const INSERT_FLOW_APPROVAL_SQL = `
+  INSERT INTO public.flow_approvals (
+    tenant_id, property_id, flow_name, gate_name,
+    entity_type, entity_id, approved_by, role_at_approval,
+    reason_code, reason_notes, approved_at, correlation_id
+  ) VALUES (
+    $1::uuid, $2::uuid, $3, $4,
+    $5, $6::uuid, $7::uuid, $8,
+    $9, $10, NOW(), $11::uuid
+  )
+`;
+
+/**
+ * Records a gate bypass using a provided query function.
+ *
+ * Never throws: an override that cannot be logged must not also fail the
+ * operation the operator deliberately forced. Callers pass an onError hook to
+ * surface the failure in their own logger.
+ */
+export const recordFlowApproval = async (
+  queryFn: (sql: string, params: unknown[]) => Promise<unknown>,
+  params: FlowApprovalParams,
+  onError?: (error: unknown) => void,
+): Promise<void> => {
+  try {
+    await queryFn(INSERT_FLOW_APPROVAL_SQL, [
+      params.tenantId,
+      params.propertyId,
+      params.flowName,
+      params.gateName,
+      params.entityType,
+      params.entityId,
+      params.approvedBy ?? SYSTEM_ACTOR_ID,
+      params.roleAtApproval,
+      params.reasonCode,
+      params.reasonNotes ?? null,
+      params.correlationId ?? null,
+    ]);
+  } catch (error) {
+    onError?.(error);
+  }
+};

@@ -15,7 +15,7 @@ import type {
   ReservationWalkInCheckInCommand,
 } from "../../schemas/reservation-command.js";
 import { resolveRatePlan } from "../../services/rate-plan-service.js";
-import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
+import { hashIdentifier, recordAuditLog, recordFlowApproval, redactPayload } from "../../utils/audit.js";
 import {
   type CreateReservationResult,
   DEFAULT_CURRENCY,
@@ -37,7 +37,7 @@ import {
 export const checkInReservation = async (
   tenantId: string,
   command: ReservationCheckInCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and status allows check-in
   const resResult = await query(
@@ -142,7 +142,24 @@ export const checkInReservation = async (
     }
   }
 
-  // 3. S26: Enforce blocking deposit schedules before check-in
+  // 3. S26: Enforce blocking deposit schedules before check-in.
+  // force=true is an operator override of a financial control, so it is logged
+  // to flow_approvals the same way night audit logs skip_preconditions.
+  if (command.force) {
+    await recordFlowApproval({
+      tenantId,
+      propertyId: reservation?.property_id ?? null,
+      flowName: "check_in",
+      gateName: "deposit_required_check",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      approvedBy: options.actorId ?? null,
+      roleAtApproval: "FORCE_OVERRIDE",
+      reasonCode: "FORCE_CHECK_IN",
+      reasonNotes: command.notes ?? "Check-in forced with force=true; deposit gate bypassed",
+      correlationId: options.correlationId ?? null,
+    });
+  }
   if (!command.force) {
     try {
       const blockingDeposits = await query<{
@@ -350,7 +367,7 @@ export const checkInReservation = async (
 export const checkOutReservation = async (
   tenantId: string,
   command: ReservationCheckOutCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and is CHECKED_IN
   const resResult = await query(
@@ -428,6 +445,23 @@ export const checkOutReservation = async (
           );
         }
       } else if (command.force) {
+        // Forcing check-out over an unsettled balance is an override of a
+        // financial control — record it before moving the money to AR.
+        await recordFlowApproval({
+          tenantId,
+          propertyId: reservation.property_id,
+          flowName: "check_out",
+          gateName: "folio_settlement_check",
+          entityType: "reservation",
+          entityId: command.reservation_id,
+          approvedBy: options.actorId ?? null,
+          roleAtApproval: "FORCE_OVERRIDE",
+          reasonCode: "FORCE_CHECK_OUT",
+          reasonNotes:
+            command.notes ??
+            `Check-out forced with unsettled balance ${folio.balance}; transferred to city-ledger AR`,
+          correlationId: options.correlationId ?? null,
+        });
         // Auto-transfer unsettled balance to city-ledger AR
         try {
           const arNumber = `CL-${command.reservation_id.slice(0, 8)}-${Date.now()}`;

@@ -411,6 +411,23 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     proxyGuests,
   );
 
+  app.post(
+    "/v1/loyalty/tier-rules",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "Create or update a loyalty tier rule.",
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyGuests,
+  );
+
   app.get(
     "/v1/loyalty/programs/:programId/balance",
     {

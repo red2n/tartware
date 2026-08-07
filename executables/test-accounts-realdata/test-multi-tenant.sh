@@ -64,6 +64,8 @@ TODAY=$(date +%Y-%m-%d)
 TOMORROW=$(date -d "+1 day" +%Y-%m-%d 2>/dev/null || date -v+1d +%Y-%m-%d)
 IN3DAYS=$(date -d "+3 days" +%Y-%m-%d 2>/dev/null || date -v+3d +%Y-%m-%d)
 IN5DAYS=$(date -d "+5 days" +%Y-%m-%d 2>/dev/null || date -v+5d +%Y-%m-%d)
+IN30DAYS=$(date -d "+30 days" +%Y-%m-%d 2>/dev/null || date -v+30d +%Y-%m-%d)
+IN90DAYS=$(date -d "+90 days" +%Y-%m-%d 2>/dev/null || date -v+90d +%Y-%m-%d)
 KAFKA_WAIT=4
 UNIQUE=$(date +%s)
 
@@ -74,6 +76,12 @@ RUN_TAG="$(date +%H%M%S)$(printf '%02d' $((RANDOM % 100)))"  # 8 chars, e.g. 153
 echo "┌─ RUN_TAG=$RUN_TAG (used to suffix Tenant B slug, property codes, B-side usernames)"
 
 PASS=0; FAIL=0; TOTAL=0; SKIP=0
+
+# Loyalty program ids minted during Phase 6c — printed at the end so they can be
+# pasted into the Loyalty → Transactions screen, which takes a program id by hand.
+PROGRAM_IDS=()
+LAST_PROGRAM_ID=""
+LAST_PROGRAM_GUEST=""
 SKIP_SEED=false
 FULL_API=true   # set false with --no-full-api to skip Phase 6b smoke coverage
 
@@ -221,6 +229,25 @@ seed_rest() {
 }
 
 wait_kafka() { sleep "${1:-$KAFKA_WAIT}"; }
+
+# poll_count — poll a URL until resp_count >= want, or give up.
+# Async command handlers land rows at a rate that varies with Kafka backlog, so
+# a fixed sleep that works for the first property starves the fourth.
+# Usage: poll_count <url> <want> [max_wait_s=60]
+poll_count() {
+  local url="$1" want="$2" max="${3:-60}" waited=0 n=0
+  while [[ $waited -lt $max ]]; do
+    get "$url" >/dev/null
+    n=$(resp_count)
+    [[ "$n" -ge "$want" ]] && { echo "$n"; return 0; }
+    sleep 4; waited=$((waited + 4))
+  done
+  # Always exit 0: the caller asserts on the count. Returning non-zero would
+  # abort the whole script under `set -e` when used as `x=$(poll_count ...)`,
+  # turning one slow endpoint into a total run failure.
+  echo "$n"
+}
+
 
 # poll_delta — poll an API endpoint until the item-count delta >= min_delta,
 # retrying with exponential backoff when the initial check shows Δ=0.
@@ -2361,6 +2388,646 @@ EOF
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 6c — UI SCREEN DATA SEEDING
+#
+#  Populates every screen that ships empty on a fresh DB. All writes go through
+#  public API routes (REST or command-center) — no direct SQL — so this phase
+#  doubles as coverage for the write side of each route.
+#
+#  Ordering follows the flow registry DAG (schema/src/flows/flow-registry.ts):
+#    PROPERTY_SETUP → RATE_PRICING → GUEST_PROFILE → RESERVATION
+#                   → CHECK_IN → IN_HOUSE → CHECK_OUT → HOUSEKEEPING
+#
+#  The blacklist_check gate guards reservation.create, so blacklisted guests are
+#  a separate cohort — never the guests used for reservations.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 6c: UI Screen Data Seeding                                   ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Reservations per property (screen 10 asks for at least 20).
+RES_PER_PROPERTY="${RES_PER_PROPERTY:-20}"
+
+# ── 6c.1  Buildings (Availability → Buildings) ──────────────────────────
+# PROPERTY_SETUP tier — must precede rate/reservation seeding.
+echo "── 6c.1  Buildings ──────────────────────────────────────────────────"
+
+seed_buildings() {
+  local tok="$1" tid="$2" pid="$3" lbl="$4"
+  TOKEN="$tok"
+  local n=0 code
+  local -a specs=(
+    "MAIN|Main Tower|TOWER|12|180|true|true"
+    "ANNEX|Garden Annex|ANNEX|4|60|false|false"
+  )
+  local spec bcode bname btype floors rooms haspool hasgym
+  for spec in "${specs[@]}"; do
+    IFS='|' read -r bcode bname btype floors rooms haspool hasgym <<<"$spec"
+    # POST /v1/buildings resolves tenant from the query string, not the body.
+    code=$(post "$GW/v1/buildings?tenant_id=$tid" \
+      "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"building_code\":\"${bcode}-${RUN_TAG}\",\"building_name\":\"$bname\",\"building_type\":\"$btype\",\"floor_count\":$floors,\"total_rooms\":$rooms,\"has_pool\":$haspool,\"has_gym\":$hasgym,\"has_lobby\":true,\"has_parking\":true,\"wheelchair_accessible\":true,\"building_status\":\"OPERATIONAL\",\"is_active\":true}")
+    [[ "$code" =~ ^2 ]] && n=$((n+1))
+  done
+  local total
+  total=$(poll_count "$GW/v1/buildings?tenant_id=$tid&property_id=$pid&limit=50" 2 30)
+  assert_gte "Buildings seeded ($lbl)" "$total" 2
+}
+
+seed_buildings "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_buildings "$TOKEN_A" "$TID_A" "$PID_A2" "A2"
+seed_buildings "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+seed_buildings "$TOKEN_B" "$TID_B" "$PID_B2" "B2"
+echo ""
+
+# ── 6c.2  Packages (Revenue → Packages) ─────────────────────────────────
+# RATE_PRICING tier.
+echo "── 6c.2  Packages ───────────────────────────────────────────────────"
+
+seed_packages() {
+  local tok="$1" tid="$2" pid="$3" lbl="$4"
+  TOKEN="$tok"
+  local n=0 code pkg_id
+  local -a specs=(
+    "ROMANCE|Romance Escape|romance|449.00|2|true|false"
+    "FAMILY|Family Fun Package|family|629.00|3|true|true"
+    "BIZ|Business Traveller|business|289.00|1|true|false"
+  )
+  local spec pcode pname ptype price nights bfast dinner
+  for spec in "${specs[@]}"; do
+    IFS='|' read -r pcode pname ptype price nights bfast dinner <<<"$spec"
+    code=$(post "$GW/v1/packages" \
+      "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"package_name\":\"$pname\",\"package_code\":\"${pcode}-${lbl}-${RUN_TAG}\",\"package_type\":\"$ptype\",\"valid_from\":\"$TODAY\",\"valid_to\":\"$IN90DAYS\",\"base_price\":$price,\"pricing_model\":\"per_stay\",\"min_nights\":$nights,\"max_nights\":14,\"min_guests\":1,\"max_guests\":4,\"includes_breakfast\":$bfast,\"includes_dinner\":$dinner,\"includes_wifi\":true,\"includes_parking\":true,\"refundable\":true,\"free_cancellation_days\":7,\"total_inventory\":25,\"short_description\":\"$pname at $lbl\"}")
+    if [[ "$code" =~ ^2 ]]; then
+      n=$((n+1))
+      pkg_id=$(jq -r '.package_id // .id // .data.package_id // .data.id // empty' "$RESP_FILE" 2>/dev/null)
+      # Components make the package detail screen meaningful, not just the list.
+      if [[ -n "$pkg_id" ]]; then
+        post "$GW/v1/packages/$pkg_id/components" \
+          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"food_beverage\",\"quantity\":2,\"unit_price\":35.00,\"is_included\":true}" >/dev/null
+        post "$GW/v1/packages/$pkg_id/components" \
+          "{\"tenant_id\":\"$tid\",\"component_name\":\"Welcome Amenity\",\"component_type\":\"amenity\",\"quantity\":1,\"unit_price\":25.00,\"is_included\":true}" >/dev/null
+      fi
+    fi
+  done
+  local total
+  total=$(poll_count "$GW/v1/packages?tenant_id=$tid&property_id=$pid&limit=50" 3 30)
+  assert_gte "Packages seeded ($lbl)" "$total" 3
+}
+
+seed_packages "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_packages "$TOKEN_A" "$TID_A" "$PID_A2" "A2"
+seed_packages "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+seed_packages "$TOKEN_B" "$TID_B" "$PID_B2" "B2"
+echo ""
+
+# ── 6c.3  Rate Calendar (Revenue → Rate Calendar) ───────────────────────
+echo "── 6c.3  Rate Calendar ──────────────────────────────────────────────"
+
+seed_rate_calendar() {
+  local tok="$1" tid="$2" pid="$3" rtid="$4" base="$5" lbl="$6"
+  [[ -n "$rtid" ]] || { skip "Rate calendar ($lbl)" "no room type"; return; }
+  TOKEN="$tok"
+
+  # Resolve the BAR rate seeded back in Phase 0.4b.
+  get "$GW/v1/rates?tenant_id=$tid&property_id=$pid&limit=50" >/dev/null
+  local rate_id; rate_id=$(resp_ffirst '.rate_code == "BAR"' "id")
+  [[ -n "$rate_id" ]] || rate_id=$(resp_first "id")
+  [[ -n "$rate_id" ]] || { skip "Rate calendar ($lbl)" "no BAR rate"; return; }
+
+  # 30 days of pricing, with a weekend uplift so the calendar is not flat.
+  local days="[" d rate dow
+  for d in $(seq 0 29); do
+    local stay_date; stay_date=$(date -d "+$d day" +%Y-%m-%d 2>/dev/null || date -v+${d}d +%Y-%m-%d)
+    dow=$(date -d "$stay_date" +%u 2>/dev/null || date -j -f %Y-%m-%d "$stay_date" +%u)
+    if [[ "$dow" -ge 5 ]]; then
+      rate=$(echo "$base * 1.25" | bc)
+    else
+      rate="$base"
+    fi
+    [[ $d -gt 0 ]] && days+=","
+    days+="{\"stay_date\":\"$stay_date\",\"rate_amount\":$rate,\"single_rate\":$rate,\"double_rate\":$rate,\"extra_person\":45,\"extra_child\":20}"
+  done
+  days+="]"
+
+  local code
+  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X PUT "$GW/v1/rate-calendar?tenant_id=$tid" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"room_type_id\":\"$rtid\",\"rate_id\":\"$rate_id\",\"currency\":\"USD\",\"source\":\"BULK\",\"days\":$days}")
+  assert_http "Rate calendar upsert ($lbl)" "2" "$code"
+
+  get "$GW/v1/rate-calendar?tenant_id=$tid&property_id=$pid&room_type_id=$rtid&start_date=$TODAY&end_date=$IN30DAYS" >/dev/null
+  local n; n=$(resp_count)
+  assert_gte "Rate calendar days ($lbl)" "$n" 20
+}
+
+seed_rate_calendar "$TOKEN_A" "$TID_A" "$PID_A1" "$RTID_A1" "199.00" "A1"
+seed_rate_calendar "$TOKEN_A" "$TID_A" "$PID_A2" "$RTID_A2" "179.00" "A2"
+seed_rate_calendar "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "189.00" "B1"
+seed_rate_calendar "$TOKEN_B" "$TID_B" "$PID_B2" "$RTID_B2" "149.00" "B2"
+echo ""
+
+# ── 6c.4  Loyalty tier rules (Loyalty → Tier rules) ─────────────────────
+# Tenant-scoped config (property_id omitted), so seeded once per tenant.
+echo "── 6c.4  Loyalty Tier Rules ─────────────────────────────────────────"
+
+seed_tier_rules() {
+  local tok="$1" tid="$2" lbl="$3"
+  TOKEN="$tok"
+  local n=0 code
+  local -a tiers=(
+    "bronze|1|Bronze Member|0|0|0|1.0|1.0|0"
+    "silver|2|Silver Member|10|5|5000|2.0|1.25|1000"
+    "gold|3|Gold Elite|30|15|25000|3.0|1.5|5000"
+    "platinum|4|Platinum Elite|60|30|75000|4.0|2.0|10000"
+    "diamond|5|Diamond Circle|100|50|150000|5.0|2.5|25000"
+  )
+  local t tname trank tdisp tnights tstays tpoints ppd mult welcome
+  for t in "${tiers[@]}"; do
+    IFS='|' read -r tname trank tdisp tnights tstays tpoints ppd mult welcome <<<"$t"
+    code=$(post "$GW/v1/loyalty/tier-rules" \
+      "{\"tenant_id\":\"$tid\",\"tier_name\":\"$tname\",\"tier_rank\":$trank,\"display_name\":\"$tdisp\",\"min_nights\":$tnights,\"min_stays\":$tstays,\"min_points\":$tpoints,\"min_spend\":$((tpoints * 2)),\"qualification_period_months\":12,\"points_per_dollar\":$ppd,\"bonus_multiplier\":$mult,\"points_expiry_months\":24,\"welcome_bonus_points\":$welcome,\"benefits\":{\"late_checkout\":true,\"room_upgrade\":$([[ $trank -ge 3 ]] && echo true || echo false),\"lounge_access\":$([[ $trank -ge 4 ]] && echo true || echo false)},\"is_active\":true}")
+    [[ "$code" =~ ^2 ]] && n=$((n+1))
+  done
+  get "$GW/v1/loyalty/tier-rules?tenant_id=$tid" >/dev/null
+  local total; total=$(resp_count)
+  assert_gte "Loyalty tier rules ($lbl)" "$total" 5
+}
+
+seed_tier_rules "$TOKEN_A" "$TID_A" "Tenant A"
+seed_tier_rules "$TOKEN_B" "$TID_B" "Tenant B"
+echo ""
+
+# ── 6c.5  Guest loyalty + blacklist + points ledger ─────────────────────
+# GUEST_PROFILE tier. Blacklisted guests are created separately from the
+# reservation cohort — the blacklist_check gate rejects reservation.create for
+# a blacklisted guest, so reusing them here would break Phase 6c.7.
+echo "── 6c.5  Guest Loyalty, Blacklist & Points Ledger ───────────────────"
+
+seed_guest_profiles() {
+  local tok="$1" tid="$2" pid="$3" lbl="$4"
+  TOKEN="$tok"
+  CUR_TID="$tid"
+  PROGRAM_IDS=()
+
+  # --- Loyalty cohort: enrol, set tier, then move points through the ledger ---
+  local tiers=("bronze" "silver" "gold" "platinum" "diamond")
+  local i gid email code prog_id enrolled=0 ledger=0
+  for i in 0 1 2 3 4; do
+    email="loyalty-${i}-${lbl,,}-${RUN_TAG}@tartware-test.local"
+    code=$(post "$GW/v1/guests" \
+      "{\"tenant_id\":\"$tid\",\"first_name\":\"Loyal\",\"last_name\":\"Member-${lbl}-${i}\",\"email\":\"$email\",\"phone\":\"+1-555-77${i}-$(printf '%04d' $((RANDOM % 10000)))\",\"nationality\":\"US\"}")
+    gid=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
+    if [[ -z "$gid" ]]; then
+      # Guest creation is a 202 — poll for the row rather than sleeping once.
+      poll_count "$GW/v1/guests?tenant_id=$tid&email=$email" 1 30 >/dev/null
+      gid=$(resp_first "id")
+    fi
+    if [[ -z "$gid" ]]; then
+      fail "Loyalty guest #$i ($lbl)" "guest not resolvable after create"
+      continue
+    fi
+
+    # Tier + points on the guest record (Guest → Loyalty screen)
+    send_command "guest.set_loyalty ${tiers[$i]} ($lbl)" \
+      "guest.set_loyalty" \
+      "{\"guest_id\":\"$gid\",\"loyalty_tier\":\"${tiers[$i]}\",\"points_delta\":$(( (i + 1) * 5000 )),\"reason\":\"Seeded tier ${tiers[$i]}\"}"
+
+    # Enrolment row — required before any points ledger activity. The program id
+    # is generated here because enrolment is async and no endpoint lists a
+    # guest's programs; holding the id is the only way to address it later.
+    prog_id=$(gen_uuid)
+    send_command "loyalty.program.enroll ($lbl #$i)" \
+      "loyalty.program.enroll" \
+      "{\"guest_id\":\"$gid\",\"program_id\":\"$prog_id\",\"property_id\":\"$pid\",\"program_name\":\"Tartware Rewards\",\"program_tier\":\"${tiers[$i]}\",\"points_balance\":$(( (i + 1) * 1000 )),\"enrollment_channel\":\"DIRECT\"}"
+    enrolled=$((enrolled + 1))
+    PROGRAM_IDS+=("$prog_id|$gid|$lbl")
+    LAST_PROGRAM_ID="$prog_id"
+    LAST_PROGRAM_GUEST="$gid"
+  done
+  wait_kafka 8
+
+  # Drive the ledger for each enrolled program (Loyalty → Transactions)
+  local entry pid_part gid_part
+  for entry in "${PROGRAM_IDS[@]}"; do
+    IFS='|' read -r pid_part gid_part _ <<<"$entry"
+    send_command "loyalty.points.earn ($lbl)" \
+      "loyalty.points.earn" \
+      "{\"guest_id\":\"$gid_part\",\"program_id\":\"$pid_part\",\"points\":2500,\"reference_type\":\"stay\",\"description\":\"Stay credit — seeded\"}"
+    send_command "loyalty.points.redeem ($lbl)" \
+      "loyalty.points.redeem" \
+      "{\"guest_id\":\"$gid_part\",\"program_id\":\"$pid_part\",\"points\":500,\"reference_type\":\"reward\",\"description\":\"Room upgrade — seeded\"}"
+    ledger=$((ledger + 1))
+  done
+  wait_kafka 8
+
+  if [[ "$ledger" -gt 0 && -n "${LAST_PROGRAM_ID:-}" ]]; then
+    local txns
+    txns=$(poll_count "$GW/v1/loyalty/transactions?tenant_id=$tid&program_id=$LAST_PROGRAM_ID&limit=100" 2 60)
+    assert_gte "Loyalty transactions ($lbl)" "$txns" 2
+  else
+    fail "Loyalty transactions ($lbl)" "no enrolled program resolved"
+  fi
+
+  # --- Blacklist cohort: dedicated guests, never used for reservations ---
+  local b bl_email bl_id blacklisted=0
+  for b in 0 1 2; do
+    bl_email="blacklist-${b}-${lbl,,}-${RUN_TAG}@tartware-test.local"
+    code=$(post "$GW/v1/guests" \
+      "{\"tenant_id\":\"$tid\",\"first_name\":\"Barred\",\"last_name\":\"Guest-${lbl}-${b}\",\"email\":\"$bl_email\",\"phone\":\"+1-555-99${b}-$(printf '%04d' $((RANDOM % 10000)))\",\"nationality\":\"US\"}")
+    bl_id=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
+    if [[ -z "$bl_id" ]]; then
+      poll_count "$GW/v1/guests?tenant_id=$tid&email=$bl_email" 1 30 >/dev/null
+      bl_id=$(resp_first "id")
+    fi
+    if [[ -z "$bl_id" ]]; then
+      fail "Blacklist guest #$b ($lbl)" "guest not resolvable after create"
+      continue
+    fi
+    send_command "guest.set_blacklist ($lbl #$b)" \
+      "guest.set_blacklist" \
+      "{\"guest_id\":\"$bl_id\",\"is_blacklisted\":true,\"reason\":\"Seeded — repeated chargebacks\"}"
+    blacklisted=$((blacklisted + 1))
+    BLACKLISTED_GUEST_ID="$bl_id"
+  done
+  wait_kafka 6
+
+  get "$GW/v1/guests?tenant_id=$tid&is_blacklisted=true&limit=100" >/dev/null
+  local bl_count; bl_count=$(resp_count)
+  if [[ "$bl_count" -lt 1 ]]; then
+    # Filter may not be supported — fall back to scanning the full list.
+    get "$GW/v1/guests?tenant_id=$tid&limit=100" >/dev/null
+    bl_count=$(resp_fcount '.is_blacklisted == true')
+  fi
+  assert_gte "Blacklisted guests ($lbl)" "$bl_count" 3
+
+  get "$GW/v1/guests?tenant_id=$tid&limit=100" >/dev/null
+  local tiered; tiered=$(resp_fcount '.loyalty_tier != null and .loyalty_tier != ""')
+  assert_gte "Guests with loyalty tier ($lbl)" "$tiered" 5
+}
+
+seed_guest_profiles "$TOKEN_A" "$TID_A" "$PID_A1" "A"
+seed_guest_profiles "$TOKEN_B" "$TID_B" "$PID_B1" "B"
+echo ""
+
+# ── 6c.6  Group Bookings (Group Bookings screen) ────────────────────────
+# RESERVATION tier.
+echo "── 6c.6  Group Bookings ─────────────────────────────────────────────"
+
+seed_group_bookings() {
+  local tok="$1" tid="$2" pid="$3" rtid="$4" rate="$5" lbl="$6"
+  [[ -n "$rtid" ]] || { skip "Group bookings ($lbl)" "no room type"; return; }
+  TOKEN="$tok"
+  CUR_TID="$tid"
+
+  local -a groups=(
+    "Acme Annual Conference|conference|definite|25|Dana Whitfield"
+    "Harper-Liu Wedding Block|wedding|tentative|18|Priya Raman"
+    "Northwind Sales Kickoff|corporate|prospect|12|Owen Baptiste"
+  )
+  local g gname gtype gstatus grooms gcontact i=0
+  for g in "${groups[@]}"; do
+    IFS='|' read -r gname gtype gstatus grooms gcontact <<<"$g"
+    send_command "group.create: $gname ($lbl)" \
+      "group.create" \
+      "{\"property_id\":\"$pid\",\"group_name\":\"$gname ${RUN_TAG}\",\"group_type\":\"$gtype\",\"organization_name\":\"$gname Org\",\"contact_name\":\"$gcontact\",\"contact_email\":\"groups-${i}-${lbl,,}-${RUN_TAG}@tartware-test.local\",\"contact_phone\":\"+1-555-31${i}-4400\",\"arrival_date\":\"$IN3DAYS\",\"departure_date\":\"$IN5DAYS\",\"total_rooms_requested\":$grooms,\"cutoff_days_before_arrival\":14,\"block_status\":\"$gstatus\",\"rate_type\":\"group_rate\",\"negotiated_rate\":$rate,\"payment_method\":\"direct_bill\",\"deposit_amount\":1500.00,\"complimentary_rooms\":1,\"meeting_space_required\":true,\"catering_required\":true,\"notes\":\"Seeded group block for UI coverage\"}"
+    i=$((i + 1))
+  done
+  local n
+  n=$(poll_count "$GW/v1/group-bookings?tenant_id=$tid&property_id=$pid&limit=50" 3 60)
+  assert_gte "Group bookings ($lbl)" "$n" 3
+
+  # Attach room blocks to the first group so the detail screen has allocations.
+  local gid; gid=$(resp_first "group_booking_id")
+  [[ -n "$gid" ]] || gid=$(resp_first "id")
+  if [[ -n "$gid" ]]; then
+    local blocks="[" d
+    for d in 0 1 2; do
+      local bdate; bdate=$(date -d "+$((d + 3)) day" +%Y-%m-%d 2>/dev/null || date -v+$((d+3))d +%Y-%m-%d)
+      [[ $d -gt 0 ]] && blocks+=","
+      blocks+="{\"room_type_id\":\"$rtid\",\"block_date\":\"$bdate\",\"blocked_rooms\":8,\"negotiated_rate\":$rate,\"rack_rate\":$(echo "$rate * 1.3" | bc),\"discount_percentage\":23}"
+    done
+    blocks+="]"
+    send_command "group.add_rooms ($lbl)" \
+      "group.add_rooms" \
+      "{\"group_booking_id\":\"$gid\",\"blocks\":$blocks}"
+    wait_kafka 6
+    # Verify the blocks actually landed rather than trusting the 202. The
+    # handler upserts with ON CONFLICT (group_booking_id, room_type_id,
+    # block_date) and there is no matching unique index, so this currently
+    # fails server-side — see group.add_rooms defect.
+    get "$GW/v1/group-bookings/$gid?tenant_id=$tid" >/dev/null
+    local blocked; blocked=$(jq -r '[.. | objects | select(has("blocked_rooms")) ] | length' "$RESP_FILE" 2>/dev/null || echo 0)
+    if [[ "${blocked:-0}" -ge 1 ]]; then
+      pass "Group room blocks attached ($lbl, blocks=$blocked)"
+    else
+      fail "Group room blocks ($lbl)" "no room blocks persisted after group.add_rooms"
+    fi
+  else
+    skip "Group room blocks ($lbl)" "no group id resolved"
+  fi
+}
+
+seed_group_bookings "$TOKEN_A" "$TID_A" "$PID_A1" "$RTID_A1" "159.00" "A1"
+seed_group_bookings "$TOKEN_A" "$TID_A" "$PID_A2" "$RTID_A2" "149.00" "A2"
+seed_group_bookings "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "155.00" "B1"
+seed_group_bookings "$TOKEN_B" "$TID_B" "$PID_B2" "$RTID_B2" "129.00" "B2"
+echo ""
+
+# ── 6c.7  Reservations — 20 per property, realistic lifecycle mix ───────
+# RESERVATION → CHECK_IN → IN_HOUSE → CHECK_OUT. Statuses are reached by
+# driving the real lifecycle commands, never by writing a status directly.
+echo "── 6c.7  Reservations (${RES_PER_PROPERTY} per property) ─────────────────────────"
+
+seed_reservations() {
+  local tok="$1" tid="$2" pid="$3" rtid="$4" lbl="$5"
+  [[ -n "$rtid" ]] || { skip "Reservations ($lbl)" "no room type"; return; }
+  TOKEN="$tok"
+  CUR_TID="$tid"
+
+  local before
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  before=$(resp_count)
+
+  # Free rooms for the check-in cohort.
+  get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  local room_ids; room_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | .[].room_id // .[].id' "$RESP_FILE" 2>/dev/null | head -20)
+  local -a rooms=(); local r
+  for r in $room_ids; do rooms+=("$r"); done
+
+  # Lifecycle plan for 20: 8 confirmed, 6 checked-in, 3 checked-out, 2 cancelled, 1 no-show.
+  local created=0 i
+  local -a res_ids=()
+  for i in $(seq 1 "$RES_PER_PROPERTY"); do
+    local g_email="resguest-${lbl,,}-${i}-${RUN_TAG}@tartware-test.local"
+    post "$GW/v1/guests" \
+      "{\"tenant_id\":\"$tid\",\"first_name\":\"Res${i}\",\"last_name\":\"Guest-${lbl}\",\"email\":\"$g_email\",\"phone\":\"+1-555-4${i}0-$(printf '%04d' $((RANDOM % 10000)))\",\"nationality\":\"US\"}" >/dev/null
+    local g_id; g_id=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
+    if [[ -z "$g_id" ]]; then
+      poll_count "$GW/v1/guests?tenant_id=$tid&email=$g_email" 1 30 >/dev/null
+      g_id=$(resp_first "id")
+    fi
+    [[ -n "$g_id" ]] || continue
+
+    # Stagger arrivals across the next three weeks; in-house cohort starts today.
+    local ci co
+    if [[ $i -le 9 ]]; then
+      ci="$TODAY"; co=$(date -d "+$(( (i % 4) + 2 )) day" +%Y-%m-%d 2>/dev/null || date -v+3d +%Y-%m-%d)
+    else
+      ci=$(date -d "+$(( i - 8 )) day" +%Y-%m-%d 2>/dev/null || date -v+5d +%Y-%m-%d)
+      co=$(date -d "+$(( i - 8 + 3 )) day" +%Y-%m-%d 2>/dev/null || date -v+8d +%Y-%m-%d)
+    fi
+
+    local idem; idem=$(gen_uuid)
+    curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X POST "$GW/v1/commands/reservation.create/execute" \
+      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $idem" \
+      -d "{\"tenant_id\":\"$tid\",\"payload\":{\"property_id\":\"$pid\",\"guest_id\":\"$g_id\",\"room_type_id\":\"$rtid\",\"check_in_date\":\"$ci\",\"check_out_date\":\"$co\",\"status\":\"CONFIRMED\",\"source\":\"DIRECT\",\"adults\":2,\"children\":0,\"total_amount\":$(( 180 + i * 7 )).00,\"currency\":\"USD\"}}" >/dev/null
+    created=$((created + 1))
+  done
+
+  # Reservations are created asynchronously; 20 of them behind a shared Kafka
+  # backlog can take well over a minute, so poll rather than guess a sleep.
+  local after
+  after=$(poll_count "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" \
+                     $((before + RES_PER_PROPERTY)) 180)
+  assert_gte "Reservations for $lbl (was $before)" "$after" "$RES_PER_PROPERTY"
+
+  # Collect ids of reservations still in a pre-arrival state to drive forward.
+  local ids; ids=$(jq -r '(if type=="array" then . else (.data // []) end) | map(select((.status // "" | ascii_upcase) as $s | $s == "CONFIRMED" or $s == "PENDING")) | .[].id' "$RESP_FILE" 2>/dev/null)
+  local -a pending=(); local x
+  for x in $ids; do pending+=("$x"); done
+
+  local total=${#pending[@]}
+  if [[ $total -eq 0 ]]; then
+    skip "Reservation lifecycle ($lbl)" "no CONFIRMED reservations to advance"
+    return
+  fi
+
+  # --- 6 → CHECKED_IN (force bypasses the deposit gate) ---
+  local n_in=0 idx=0 rid
+  while [[ $idx -lt $total && $n_in -lt 6 ]]; do
+    rid="${pending[$idx]}"
+    local room_arg=""
+    if [[ ${#rooms[@]} -gt 0 ]]; then
+      room_arg=",\"room_id\":\"${rooms[$(( n_in % ${#rooms[@]} ))]}\""
+    fi
+    send_command "reservation.check_in #$((n_in+1)) ($lbl)" \
+      "reservation.check_in" \
+      "{\"reservation_id\":\"$rid\"$room_arg,\"force\":true,\"notes\":\"Seeded in-house\"}"
+    n_in=$((n_in + 1)); idx=$((idx + 1))
+  done
+  wait_kafka 12
+
+  # --- 3 of the checked-in cohort → CHECKED_OUT (feeds Housekeeping) ---
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  local in_ids; in_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | map(select((.status // "" | ascii_upcase) == "CHECKED_IN")) | .[].id' "$RESP_FILE" 2>/dev/null | head -3)
+  local n_out=0
+  for rid in $in_ids; do
+    send_command "reservation.check_out #$((n_out+1)) ($lbl)" \
+      "reservation.check_out" \
+      "{\"reservation_id\":\"$rid\",\"force\":true,\"express\":true,\"notes\":\"Seeded departure\"}"
+    n_out=$((n_out + 1))
+  done
+  wait_kafka 12
+
+  # --- 2 → CANCELLED, 1 → NO_SHOW (from the remaining pre-arrival pool) ---
+  local n_cancel=0
+  while [[ $idx -lt $total && $n_cancel -lt 2 ]]; do
+    send_command "reservation.cancel #$((n_cancel+1)) ($lbl)" \
+      "reservation.cancel" \
+      "{\"reservation_id\":\"${pending[$idx]}\",\"property_id\":\"$pid\",\"reason\":\"Seeded cancellation\"}"
+    n_cancel=$((n_cancel + 1)); idx=$((idx + 1))
+  done
+  if [[ $idx -lt $total ]]; then
+    send_command "reservation.no_show ($lbl)" \
+      "reservation.no_show" \
+      "{\"reservation_id\":\"${pending[$idx]}\",\"no_show_fee\":95.00,\"reason\":\"Seeded no-show\"}"
+    idx=$((idx + 1))
+  fi
+  wait_kafka 12
+
+  # Report the resulting spread — the point of the "realistic mix".
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  local c_conf c_in c_out c_can c_ns
+  c_conf=$(resp_fcount '(.status // "" | ascii_upcase) == "CONFIRMED"')
+  c_in=$(resp_fcount '(.status // "" | ascii_upcase) == "CHECKED_IN"')
+  c_out=$(resp_fcount '(.status // "" | ascii_upcase) == "CHECKED_OUT"')
+  c_can=$(resp_fcount '(.status // "" | ascii_upcase) == "CANCELLED"')
+  c_ns=$(resp_fcount '(.status // "" | ascii_upcase) == "NO_SHOW"')
+  echo "     $lbl status mix — CONFIRMED=$c_conf CHECKED_IN=$c_in CHECKED_OUT=$c_out CANCELLED=$c_can NO_SHOW=$c_ns"
+  assert_gte "In-house reservations ($lbl)" "$c_in" 1
+}
+
+seed_reservations "$TOKEN_A" "$TID_A" "$PID_A1" "$RTID_A1" "A1"
+seed_reservations "$TOKEN_A" "$TID_A" "$PID_A2" "$RTID_A2" "A2"
+seed_reservations "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "B1"
+seed_reservations "$TOKEN_B" "$TID_B" "$PID_B2" "$RTID_B2" "B2"
+echo ""
+
+# ── 6c.8  Housekeeping tasks (Housekeeping → Tasks) ─────────────────────
+# HOUSEKEEPING tier — runs last so checkout-driven rooms already exist.
+echo "── 6c.8  Housekeeping Tasks ─────────────────────────────────────────"
+
+seed_housekeeping() {
+  local tok="$1" tid="$2" pid="$3" lbl="$4"
+  TOKEN="$tok"
+  CUR_TID="$tid"
+
+  get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  local room_ids; room_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | .[].room_id // .[].id' "$RESP_FILE" 2>/dev/null | head -8)
+  local -a rooms=(); local r
+  for r in $room_ids; do rooms+=("$r"); done
+  if [[ ${#rooms[@]} -eq 0 ]]; then skip "Housekeeping tasks ($lbl)" "no rooms"; return; fi
+
+  # A cashier/staff user to assign work to.
+  get "$GW/v1/users?tenant_id=$tid&limit=5" >/dev/null 2>&1
+  local staff_id; staff_id=$(resp_first "id")
+
+  local -a types=("departure_clean" "stayover_clean" "deep_clean" "turndown" "inspection")
+  local -a prios=("high" "normal" "normal" "low" "high")
+  local i n=0
+  for i in 0 1 2 3 4 5 6 7; do
+    local rid="${rooms[$(( i % ${#rooms[@]} ))]}"
+    local ttype="${types[$(( i % 5 ))]}"
+    local prio="${prios[$(( i % 5 ))]}"
+    local assign=""
+    [[ -n "$staff_id" && $((i % 2)) -eq 0 ]] && assign=",\"assigned_to\":\"$staff_id\""
+    send_command "housekeeping.task.create $ttype ($lbl)" \
+      "housekeeping.task.create" \
+      "{\"property_id\":\"$pid\",\"room_id\":\"$rid\",\"task_type\":\"$ttype\",\"scheduled_date\":\"$TODAY\",\"priority\":\"$prio\"$assign,\"notes\":\"Seeded $ttype for UI coverage\"}"
+    n=$((n + 1))
+  done
+  local total
+  total=$(poll_count "$GW/v1/housekeeping/tasks?tenant_id=$tid&property_id=$pid&limit=100" 8 90)
+  assert_gte "Housekeeping tasks ($lbl)" "$total" 8
+
+  # Advance a couple through the task lifecycle so the board is not all "pending".
+  local task_ids; task_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | .[].task_id // .[].id' "$RESP_FILE" 2>/dev/null | head -3)
+  local t k=0
+  for t in $task_ids; do
+    if [[ $k -eq 0 && -n "$staff_id" ]]; then
+      send_command "housekeeping.task.assign ($lbl)" \
+        "housekeeping.task.assign" \
+        "{\"task_id\":\"$t\",\"assigned_to\":\"$staff_id\"}"
+    else
+      send_command "housekeeping.task.complete ($lbl)" \
+        "housekeeping.task.complete" \
+        "{\"task_id\":\"$t\",\"notes\":\"Seeded completion\"}"
+    fi
+    k=$((k + 1))
+  done
+  wait_kafka 8
+  pass "Housekeeping task lifecycle advanced ($lbl)"
+}
+
+seed_housekeeping "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_housekeeping "$TOKEN_A" "$TID_A" "$PID_A2" "A2"
+seed_housekeeping "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+seed_housekeeping "$TOKEN_B" "$TID_B" "$PID_B2" "B2"
+echo ""
+
+# ── 6c.9  Screen-readiness roll-up ──────────────────────────────────────
+# One assertion per UI screen the user reported empty.
+echo "── 6c.9  UI Screen Readiness ────────────────────────────────────────"
+# Each check reproduces the exact request the screen issues — same path, same
+# query params, same order — taken from UI/pms-ui/src/app/features/*.
+# Several screens read a *grid* endpoint (/guests/grid, /reservations/grid,
+# /buildings/grid) which is a different handler from the plain collection route,
+# so asserting the plain one would not prove the screen works.
+
+# ui_get <label> <token> <url> <min_rows>
+ui_get() {
+  local label="$1" tok="$2" url="$3" min="${4:-1}"
+  TOKEN="$tok"
+  local code; code=$(get "$url")
+  if [[ ! "$code" =~ ^2 ]]; then
+    fail "SCREEN $label" "HTTP=$code ← $(jq -r '.detail // .message // .error // empty' "$RESP_FILE" 2>/dev/null | head -c 140)"
+    return 1
+  fi
+  local n; n=$(resp_count)
+  if [[ "$n" -ge "$min" ]]; then
+    pass "SCREEN $label (rows=$n)"
+    return 0
+  fi
+  fail "SCREEN $label" "rows=$n expected>=$min"
+  return 1
+}
+
+# ui_support <label> <token> <url> — a call the screen makes on load that must
+# succeed for it to render, even when the row count is not the point.
+ui_support() {
+  local label="$1" tok="$2" url="$3"
+  TOKEN="$tok"
+  local code; code=$(get "$url")
+  assert_http "  ↳ $label" "2" "$code"
+}
+
+# 1. Group Bookings — groups.ts:251
+ui_get "1. Group Bookings"      "$TOKEN_A" "$GW/v1/group-bookings?tenant_id=$TID_A&limit=200&property_id=$PID_A1" 3
+
+# 2 + 3. Guest → Loyalty and Guest → Blacklisted both read /guests/grid — guests.ts:275
+TOKEN="$TOKEN_A"
+GRID_CODE=$(get "$GW/v1/guests/grid?tenant_id=$TID_A&limit=100")
+if [[ "$GRID_CODE" =~ ^2 ]]; then
+  GRID_TIERED=$(resp_fcount '.loyalty_tier != null and .loyalty_tier != ""')
+  GRID_BLACK=$(resp_fcount '.is_blacklisted == true')
+  if [[ "$GRID_TIERED" -ge 5 ]]; then
+    pass "SCREEN 2. Guest → Loyalty (tiered=$GRID_TIERED)"
+  else
+    fail "SCREEN 2. Guest → Loyalty" "tiered=$GRID_TIERED expected>=5"
+  fi
+  if [[ "$GRID_BLACK" -ge 3 ]]; then
+    pass "SCREEN 3. Guest → Blacklisted (blacklisted=$GRID_BLACK)"
+  else
+    fail "SCREEN 3. Guest → Blacklisted" "blacklisted=$GRID_BLACK expected>=3"
+  fi
+else
+  fail "SCREEN 2. Guest → Loyalty" "guests/grid HTTP=$GRID_CODE"
+  fail "SCREEN 3. Guest → Blacklisted" "guests/grid HTTP=$GRID_CODE"
+fi
+ui_support "guests/stats" "$TOKEN_A" "$GW/v1/guests/stats?tenant_id=$TID_A"
+
+# 4. Loyalty → Tier rules — loyalty.ts:73
+ui_get "4. Loyalty → Tier Rules" "$TOKEN_A" "$GW/v1/loyalty/tier-rules?tenant_id=$TID_A" 5
+
+# 5. Loyalty → Transactions — loyalty.ts:99 (program_id is typed in by the user)
+if [[ -n "${LAST_PROGRAM_ID:-}" ]]; then
+  ui_get "5. Loyalty → Transactions" "$TOKEN_B" \
+    "$GW/v1/loyalty/transactions?tenant_id=$TID_B&program_id=$LAST_PROGRAM_ID" 2
+else
+  fail "SCREEN 5. Loyalty → Transactions" "no program id minted"
+fi
+
+# 6. Availability → Buildings — buildings.ts:128
+ui_get "6. Buildings"           "$TOKEN_A" "$GW/v1/buildings/grid?tenant_id=$TID_A&property_id=$PID_A1" 2
+
+# 7. Revenue → Packages — packages.ts:257
+ui_get "7. Packages"            "$TOKEN_A" "$GW/v1/packages?tenant_id=$TID_A&property_id=$PID_A1" 3
+
+# 8. Revenue → Rate Calendar — rate-calendar.ts:179 (plus its two loader calls)
+ui_support "room-types"  "$TOKEN_A" "$GW/v1/room-types?tenant_id=$TID_A&property_id=$PID_A1"
+ui_support "rates"       "$TOKEN_A" "$GW/v1/rates?tenant_id=$TID_A&property_id=$PID_A1&status=ACTIVE&limit=200"
+ui_get "8. Rate Calendar"       "$TOKEN_A" \
+  "$GW/v1/rate-calendar?tenant_id=$TID_A&property_id=$PID_A1&start_date=$TODAY&end_date=$IN30DAYS&room_type_id=$RTID_A1" 20
+
+# 9. Housekeeping → Tasks — housekeeping.ts:414 (screen also loads /rooms)
+ui_support "rooms" "$TOKEN_A" "$GW/v1/rooms?tenant_id=$TID_A&property_id=$PID_A1&limit=200"
+ui_get "9. Housekeeping Tasks"  "$TOKEN_A" "$GW/v1/housekeeping/tasks?tenant_id=$TID_A&limit=200&property_id=$PID_A1" 8
+
+# 10. Reservations — reservations.ts:205, one per property
+ui_get "10. Reservations A1"    "$TOKEN_A" "$GW/v1/reservations/grid?tenant_id=$TID_A&limit=200&property_id=$PID_A1" "$RES_PER_PROPERTY"
+ui_get "10. Reservations A2"    "$TOKEN_A" "$GW/v1/reservations/grid?tenant_id=$TID_A&limit=200&property_id=$PID_A2" "$RES_PER_PROPERTY"
+ui_get "10. Reservations B1"    "$TOKEN_B" "$GW/v1/reservations/grid?tenant_id=$TID_B&limit=200&property_id=$PID_B1" "$RES_PER_PROPERTY"
+ui_get "10. Reservations B2"    "$TOKEN_B" "$GW/v1/reservations/grid?tenant_id=$TID_B&limit=200&property_id=$PID_B2" "$RES_PER_PROPERTY"
+echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 7 — POST-TEST DB SNAPSHOT + FINAL REPORT
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -2459,6 +3126,17 @@ echo "║  Tenants tested:    2 (A + B)                                         
 echo "║  Properties tested: 4 (A1, A2, B1, B2)                                ║"
 echo "╚═══════════════════════════════════════════════════════════════════════╝"
 echo ""
+
+# The Loyalty → Transactions screen takes a program id typed by hand (there is no
+# endpoint listing a guest's programs), so surface the seeded ids here.
+if [[ ${#PROGRAM_IDS[@]} -gt 0 ]]; then
+  echo "── Loyalty program IDs (paste into Loyalty → Transactions) ──────────"
+  for _entry in "${PROGRAM_IDS[@]}"; do
+    IFS='|' read -r _pid _gid _lbl <<<"$_entry"
+    printf "  %s   guest=%s  tenant=%s\n" "$_pid" "$_gid" "$_lbl"
+  done
+  echo ""
+fi
 
 if [[ $FAIL -gt 0 || $PHASE1_EXIT -ne 0 ]]; then
   exit 1

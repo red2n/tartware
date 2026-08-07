@@ -19,4 +19,4 @@ jobs:
     uses: ./.github/workflows/package-ci.yml
     with:
       package-scope: '@tartware/command-consumer-utils'
-      has-tests: false
+      has-tests: true
