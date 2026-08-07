@@ -317,7 +317,7 @@ MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_A/modules" \
   -H "Authorization: Bearer $TOKEN_A" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\",\"revenue-management\",\"loyalty\",\"distribution\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant A (HTTP $MOD_CODE)"
 else
@@ -455,7 +455,7 @@ MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_B/modules" \
   -H "Authorization: Bearer $TOKEN_B" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\",\"revenue-management\",\"loyalty\",\"distribution\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant B (HTTP $MOD_CODE)"
 else
@@ -2603,7 +2603,7 @@ seed_guest_profiles() {
     prog_id=$(gen_uuid)
     send_command "loyalty.program.enroll ($lbl #$i)" \
       "loyalty.program.enroll" \
-      "{\"guest_id\":\"$gid\",\"program_id\":\"$prog_id\",\"property_id\":\"$pid\",\"program_name\":\"Tartware Rewards\",\"program_tier\":\"${tiers[$i]}\",\"points_balance\":$(( (i + 1) * 1000 )),\"enrollment_channel\":\"DIRECT\"}"
+      "{\"guest_id\":\"$gid\",\"program_id\":\"$prog_id\",\"property_id\":\"$pid\",\"program_name\":\"Tartware Rewards\",\"program_tier\":\"${tiers[$i]}\",\"points_balance\":$(( (i + 1) * 1000 )),\"enrollment_channel\":\"property\"}"
     enrolled=$((enrolled + 1))
     PROGRAM_IDS+=("$prog_id|$gid|$lbl")
     LAST_PROGRAM_ID="$prog_id"

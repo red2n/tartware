@@ -226,6 +226,13 @@ export const MODULE_IDS = [
 	"analytics-bi",
 	"marketing-channel",
 	"enterprise-api",
+	// Gated commands already reference these three (revenue-management: 32
+	// commands, loyalty: 4, distribution: 3). Without them here no tenant can
+	// enable the module, so every one of those commands answers 403
+	// COMMAND_MODULES_NOT_ENABLED and is permanently undispatchable.
+	"revenue-management",
+	"loyalty",
+	"distribution",
 ] as const;
 
 /** A valid module identifier. */

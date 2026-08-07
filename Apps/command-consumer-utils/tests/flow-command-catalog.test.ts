@@ -15,7 +15,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { ALL_FLOW_IDS, FLOW_REGISTRY, registeredCommandNames } from "@tartware/schemas";
+import {
+  ALL_FLOW_IDS,
+  FLOW_REGISTRY,
+  MODULE_IDS,
+  registeredCommandNames,
+} from "@tartware/schemas";
 import { describe, expect, it } from "vitest";
 
 const CATALOG_SQL = fileURLToPath(
@@ -88,6 +93,45 @@ describe("command catalog ↔ payload validators", () => {
       missing,
       `\nCatalogued commands with no payload validator — these dispatch but always\n` +
         `fail with COMMAND_PAYLOAD_INVALID:\n${missing.map((m) => `  ✗ ${m}`).join("\n")}\n`,
+    ).toEqual([]);
+  });
+});
+
+describe("command catalog ↔ module registry", () => {
+  /**
+   * Commands are gated on `required_modules`. The gateway rejects a command
+   * whose module a tenant has not enabled — and a module id absent from
+   * MODULE_IDS can never be enabled by anyone, so the command is permanently
+   * dead behind 403 COMMAND_MODULES_NOT_ENABLED.
+   *
+   * This regressed silently once already: revenue-management (32 commands),
+   * loyalty (4) and distribution (3) were gated on unregistered modules.
+   */
+  it("gates every command on a module that actually exists", () => {
+    const sql = readFileSync(CATALOG_SQL, "utf8");
+    const start = sql.indexOf("WITH seed_commands(");
+    const known = new Set<string>(MODULE_IDS);
+
+    const offenders = new Map<string, string[]>();
+    for (const row of sql.slice(start).matchAll(
+      /\(\s*'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'\s*,[^)]*?ARRAY\[([^\]]*)\]/g,
+    )) {
+      const commandName = row[1]!;
+      for (const mod of row[2]!.matchAll(/'([a-z0-9-]+)'/g)) {
+        const moduleId = mod[1]!;
+        if (!known.has(moduleId as (typeof MODULE_IDS)[number])) {
+          offenders.set(moduleId, [...(offenders.get(moduleId) ?? []), commandName]);
+        }
+      }
+    }
+
+    const summary = [...offenders.entries()]
+      .map(([mod, cmds]) => `  ✗ "${mod}" is not in MODULE_IDS — ${cmds.length} command(s) dead`)
+      .join("\n");
+
+    expect(
+      [...offenders.keys()].sort(),
+      `\nCommands gated on unregistered modules (403 for every tenant, forever):\n${summary}\n`,
     ).toEqual([]);
   });
 });

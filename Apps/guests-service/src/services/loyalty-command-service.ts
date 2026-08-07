@@ -298,7 +298,7 @@ export const enrollLoyaltyProgram = async ({
       command.program_tier ?? null,
       command.membership_number ?? null,
       command.points_balance ?? null,
-      command.enrollment_channel ?? "DIRECT",
+      command.enrollment_channel ?? "property",
       actor,
       command.program_id ?? null,
     ],

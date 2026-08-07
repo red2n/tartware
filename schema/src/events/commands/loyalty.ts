@@ -128,7 +128,11 @@ export const LoyaltyProgramEnrollCommandSchema = z.object({
 
 	// Opening balance / status
 	points_balance: z.number().int().nonnegative().optional(),
-	enrollment_channel: z.string().max(50).optional(),
+	// Mirrors guest_loyalty_programs_enrollment_channel_check — keep in sync so
+	// an invalid channel fails at the API boundary instead of in the handler.
+	enrollment_channel: z
+		.enum(["web", "mobile", "property", "phone", "email", "referral"])
+		.optional(),
 
 	// Metadata & Idempotency
 	metadata: z.record(z.unknown()).optional(),
