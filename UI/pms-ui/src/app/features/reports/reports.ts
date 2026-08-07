@@ -1,15 +1,17 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, RouterLink } from "@angular/router";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { map } from "rxjs";
 
-import { ApiService } from "../../core/api/api.service";
+import { ApiService, ModuleNotEnabledError } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { CalloutComponent } from "../../shared/components/callout/callout";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -21,9 +23,11 @@ type ReportRow = Record<string, unknown>;
 	selector: "app-reports",
 	standalone: true,
 	imports: [
+		CalloutComponent,
 		FormsModule,
 		IconComponent,
 		ProgressSpinnerModule,
+		RouterLink,
 		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -36,6 +40,7 @@ export class ReportsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
+	private readonly screenPerms = inject(ScreenPermissionsService);
 
 	private readonly route = inject(ActivatedRoute);
 
@@ -59,6 +64,14 @@ export class ReportsComponent {
 	readonly dataReady = signal(false);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
+	/**
+	 * Kept apart from `error` because a switched-off module is not a failure —
+	 * it gets the "here is how to turn this on" callout, not the red one.
+	 */
+	readonly moduleLocked = signal<ModuleNotEnabledError | null>(null);
+
+	/** Only offer the shortcut to people the Modules screen would let in. */
+	readonly canOpenModules = computed(() => this.screenPerms.isScreenAllowed("modules"));
 
 	readonly columns = computed<string[]>(() => {
 		const items = this.rows();
@@ -136,6 +149,7 @@ export class ReportsComponent {
 		this.loading.set(true);
 		this.dataReady.set(false);
 		this.error.set(null);
+		this.moduleLocked.set(null);
 		try {
 			const res = await this.api.get<unknown>(
 				def.path,
@@ -146,9 +160,15 @@ export class ReportsComponent {
 		} catch (e) {
 			this.rows.set([]);
 			this.raw.set(null);
-			this.error.set(
-				e instanceof Error ? e.message : `Report endpoint ${def.path} is not currently available.`,
-			);
+			if (e instanceof ModuleNotEnabledError) {
+				this.moduleLocked.set(e);
+			} else {
+				this.error.set(
+					e instanceof Error
+						? e.message
+						: `Report endpoint ${def.path} is not currently available.`,
+				);
+			}
 		} finally {
 			this.loading.set(false);
 			this.dataReady.set(true);

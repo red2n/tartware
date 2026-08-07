@@ -18,6 +18,32 @@ export class ApiValidationError extends Error {
 	}
 }
 
+/**
+ * A feature the property has not bought. Screens show this as a callout rather
+ * than an error line, so the parts are carried separately instead of being
+ * baked into one sentence a template would have to take apart again.
+ * `message` stays the whole thing for toasts and logs.
+ */
+export class ModuleNotEnabledError extends Error {
+	/** Display names, as printed on the Modules screen. Empty if unrecognised. */
+	readonly moduleNames: string[];
+	/** Headline — what is switched off. */
+	readonly title: string;
+	/** Why the screen is empty. */
+	readonly detail: string;
+	/** How to get it switched on. */
+	readonly action: string;
+
+	constructor(parts: { moduleNames: string[]; title: string; detail: string; action: string }) {
+		super(`${parts.title}. ${parts.action}`);
+		this.name = "ModuleNotEnabledError";
+		this.moduleNames = parts.moduleNames;
+		this.title = parts.title;
+		this.detail = parts.detail;
+		this.action = parts.action;
+	}
+}
+
 @Injectable({ providedIn: "root" })
 export class ApiService {
 	private buildUrl(path: string, params?: Record<string, string>): string {
@@ -108,28 +134,68 @@ export class ApiService {
 	}
 
 	/**
+	 * The server rejects by module id ("analytics-bi"); staff only ever see the
+	 * names printed on the Modules screen, so the ids never reach the message.
+	 */
+	private static readonly MODULE_LABELS: Record<string, string> = {
+		core: "Core / Base",
+		"finance-automation": "Finance & Automation",
+		"tenant-owner-portal": "Tenant & Owner Portal",
+		"facility-maintenance": "Facility & Maintenance",
+		"analytics-bi": "Analytics & BI",
+		"marketing-channel": "Marketing & Channel Management",
+		"enterprise-api": "Enterprise & API",
+	};
+
+	/**
 	 * Backend error codes surface raw in the UI otherwise — "TENANT_MODULE_NOT_ENABLED"
 	 * tells a front-desk user nothing and hides the fact that an admin can fix it
 	 * from the Modules screen.
 	 */
 	private static readonly ERROR_CODE_MESSAGES: Record<string, string> = {
-		TENANT_MODULE_NOT_ENABLED:
-			"This feature's module isn't enabled for your property. An administrator can turn it on from Settings → Modules.",
 		TENANT_ACCESS_DENIED: "You don't have access to this property.",
 		TENANT_INACTIVE: "This property is inactive. Contact your administrator.",
 	};
+
+	private static moduleNotEnabledError(missingModules: unknown): ModuleNotEnabledError {
+		const names = (Array.isArray(missingModules) ? missingModules : [])
+			.filter((id): id is string => typeof id === "string")
+			.map((id) => ApiService.MODULE_LABELS[id])
+			// An id we have no name for would read as jargon, so it is left out
+			// and the callout falls back to the generic wording.
+			.filter((name): name is string => Boolean(name));
+
+		const subject =
+			names.length === 0
+				? null
+				: names.length === 1
+					? names[0]
+					: `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
+		return new ModuleNotEnabledError({
+			moduleNames: names,
+			title: subject
+				? `${subject} ${names.length > 1 ? "aren't" : "isn't"} switched on`
+				: "This feature isn't switched on",
+			detail: subject
+				? `This screen needs ${subject}, which your property hasn't switched on yet.`
+				: "This screen needs a feature your property hasn't switched on yet.",
+			action:
+				"An administrator at your property can switch it on under Settings → Modules. Everything here starts working as soon as they do.",
+		});
+	}
 
 	private async handleError(response: Response): Promise<Error> {
 		let message = `HTTP ${response.status}`;
 		try {
 			const body = await response.json();
-			message = body.detail || body.message || message;
-			message = ApiService.ERROR_CODE_MESSAGES[message] ?? message;
-			// The server names the entitlements it rejected; without this the admin
-			// gets the same sentence for every feature and has to guess.
-			if (Array.isArray(body.missingModules) && body.missingModules.length > 0) {
-				message = `${message} (missing: ${body.missingModules.join(", ")})`;
+			const code = body.detail || body.message || message;
+			// The server names the entitlements it rejected; naming them keeps the
+			// admin from having to guess which one to switch on.
+			if (code === "TENANT_MODULE_NOT_ENABLED") {
+				return ApiService.moduleNotEnabledError(body.missingModules);
 			}
+			message = ApiService.ERROR_CODE_MESSAGES[code] ?? code;
 			if (Array.isArray(body.errors) && body.errors.length > 0) {
 				return new ApiValidationError(message, body.errors);
 			}

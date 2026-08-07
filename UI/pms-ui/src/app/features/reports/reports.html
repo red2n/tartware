@@ -48,11 +48,28 @@
         }
       </div>
     </div>
+  } @else if (moduleLocked(); as locked) {
+    <!-- Not a failure: the property simply hasn't bought this yet, so the
+         panel explains what is off and who can switch it on. -->
+    <app-callout variant="warning" icon="lock" [block]="true" [title]="locked.title">
+      <p>{{ locked.detail | translate }}</p>
+      <p>{{ locked.action | translate }}</p>
+      @if (canOpenModules()) {
+        <a callout-actions class="btn btn-sm btn-primary" routerLink="/modules">
+          <app-icon name="extension" /> {{ 'Open Settings → Modules' | translate }}
+        </a>
+      }
+    </app-callout>
   } @else if (error(); as err) {
-    <div class="empty-state">
-      <app-icon name="error_outline" />
-      <span>{{ err }}</span>
-    </div>
+    <app-callout
+      variant="danger"
+      [block]="true"
+      [title]="'This report could not be loaded' | translate">
+      <p>{{ err }}</p>
+      <button callout-actions type="button" class="btn btn-sm" (click)="loadReport()">
+        <app-icon name="refresh" /> {{ 'Try again' | translate }}
+      </button>
+    </app-callout>
   } @else if (rows().length === 0) {
     <div class="empty-state">
       <app-icon class="empty-icon" [name]="active().icon" />
