@@ -15,13 +15,17 @@
 \echo '======================================================'
 \echo ''
 
+-- Table existence and structure are verified once, dynamically, by
+-- tables/verify-tables.sql (expected set parsed from 00-create-all-tables.sql).
+-- What follows are the per-category index and constraint checks.
+\i tables/verify-tables.sql
+
 -- =====================================================
 -- CATEGORY 1: CORE FOUNDATION
 -- =====================================================
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 1/8: Core Foundation'
 \echo '══════════════════════════════════════════════════════'
-\i tables/01-core/verify-01-core-foundation.sql
 \i indexes/01-core/verify-01-core-foundation-indexes.sql
 \i constraints/01-core/verify-01-core-foundation-constraints.sql
 
@@ -31,9 +35,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 2/8: Inventory & Revenue Management'
 \echo '══════════════════════════════════════════════════════'
-\i tables/02-inventory/verify-02-room-inventory.sql
-\i tables/02-inventory/verify-08-revenue-management.sql
-\i tables/02-inventory/verify-16-commercial-groups.sql
 \i indexes/02-inventory/verify-02-room-inventory-indexes.sql
 \i indexes/02-inventory/verify-08-revenue-management-indexes.sql
 \i indexes/02-inventory/verify-16-commercial-groups-indexes.sql
@@ -47,9 +48,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 3/8: Bookings & Guest Experience'
 \echo '══════════════════════════════════════════════════════'
-\i tables/03-bookings/verify-03-reservations-booking.sql
-\i tables/03-bookings/verify-07-guest-crm.sql
-\i tables/03-bookings/verify-08-roll-guard-shadow.sql
 \i indexes/03-bookings/verify-03-reservations-booking-indexes.sql
 \i indexes/03-bookings/verify-07-guest-crm-indexes.sql
 \i constraints/03-bookings/verify-03-reservations-booking-constraints.sql
@@ -61,7 +59,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 4/8: Financial Management'
 \echo '══════════════════════════════════════════════════════'
-\i tables/04-financial/verify-04-financial-management.sql
 \i indexes/04-financial/verify-04-financial-management-indexes.sql
 \i constraints/04-financial/verify-04-financial-management-constraints.sql
 
@@ -71,9 +68,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 5/8: Operations & Guest Services'
 \echo '══════════════════════════════════════════════════════'
-\i tables/05-operations/verify-05-services-housekeeping.sql
-\i tables/05-operations/verify-09-staff-operations.sql
-\i tables/05-operations/verify-13-mobile-digital.sql
 \i indexes/05-operations/verify-05-services-housekeeping-indexes.sql
 \i indexes/05-operations/verify-09-staff-operations-indexes.sql
 \i indexes/05-operations/verify-13-mobile-digital-indexes.sql
@@ -87,10 +81,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 6/8: Integrations & Distribution'
 \echo '══════════════════════════════════════════════════════'
-\i tables/06-integrations/verify-06-channel-ota.sql
-\i tables/06-integrations/verify-10-marketing-campaigns.sql
-\i tables/06-integrations/verify-15-integration-hub.sql
-\i tables/06-integrations/verify-17-ai-ml-pricing.sql
 \i indexes/06-integrations/verify-06-channel-ota-indexes.sql
 \i indexes/06-integrations/verify-10-marketing-campaigns-indexes.sql
 \i indexes/06-integrations/verify-15-integration-hub-indexes.sql
@@ -106,9 +96,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 7/8: Analytics, Compliance & Audit'
 \echo '══════════════════════════════════════════════════════'
-\i tables/07-analytics/verify-11-compliance-legal.sql
-\i tables/07-analytics/verify-12-analytics-reporting.sql
-\i tables/07-analytics/verify-14-system-audit.sql
 \i indexes/07-analytics/verify-11-compliance-legal-indexes.sql
 \i indexes/07-analytics/verify-12-analytics-reporting-indexes.sql
 \i indexes/07-analytics/verify-14-system-audit-indexes.sql
@@ -122,7 +109,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 8/8: Settings Catalog'
 \echo '══════════════════════════════════════════════════════'
-\i tables/08-settings/verify-08-settings-catalog.sql
 
 -- =====================================================
 -- CATEGORY 9: REFERENCE DATA
@@ -130,7 +116,6 @@
 \echo '══════════════════════════════════════════════════════'
 \echo 'CATEGORY 9/9: Reference Data'
 \echo '══════════════════════════════════════════════════════'
-\i tables/09-reference-data/verify-09-reference-data.sql
 
 -- =====================================================
 -- PROCEDURES VERIFICATION
