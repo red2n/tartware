@@ -1,0 +1,49 @@
+# Istio ingress gateway — the ONLY workload in the platform with a
+# cloud LoadBalancer / externally reachable address.
+#
+# Everything else (api-gateway included) is ClusterIP and reachable only
+# through this hop. Do not add a second Gateway, a NodePort Service, or a
+# Kubernetes Ingress for any backend service.
+
+# The chart names the ServiceAccount after the release, producing the SPIFFE id
+#   spiffe://cluster.local/ns/istio-system/sa/istio-ingressgateway
+# which authorization-policies.yaml pins as the sole caller of api-gateway.
+serviceAccount:
+  create: true
+
+service:
+  type: LoadBalancer
+  ports:
+    - name: status-port
+      port: 15021
+      targetPort: 15021
+    - name: http2
+      port: 80
+      targetPort: 8080
+    - name: https
+      port: 443
+      targetPort: 8443
+  # No other ports. Backend service ports (3000-3075, 4400, 8080) must never
+  # be published here.
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 2000m
+    memory: 1Gi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "15020"
+  prometheus.io/path: "/stats/prometheus"
+
+securityContext:
+  runAsNonRoot: true

@@ -11,9 +11,18 @@ spec:
       app: reservations-command-service
   namespaceSelector:
     matchNames:
-      - pms
+      # Was `pms`. `namespaceSelector.matchNames` is a field value rather than
+      # object metadata, so the kustomization's `namespace:` setting does not
+      # rewrite it — moving the workload to tartware-system without changing
+      # this would leave the ServiceMonitor selecting an empty namespace and
+      # silently collecting nothing.
+      - tartware-system
   endpoints:
-    - port: http
-      path: /metrics
+    # Envoy's merged application+proxy metrics, not the application port.
+    # Under STRICT mTLS the app port rejects Prometheus (which has no sidecar
+    # and therefore no mesh certificate); port 15020 is served by pilot-agent
+    # outside the mTLS path and includes the app's own /metrics.
+    - port: istio-metrics
+      path: /stats/prometheus
       interval: 15s
       scrapeTimeout: 10s

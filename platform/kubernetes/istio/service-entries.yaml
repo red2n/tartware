@@ -1,0 +1,116 @@
+# =====================================================================
+# service-entries.yaml — DECLARED EXTERNAL EGRESS
+#
+# The mesh runs with outboundTrafficPolicy REGISTRY_ONLY (istiod.yaml and
+# sidecar.yaml), so a workload can only reach an external host registered
+# here. An attacker with code execution in a pod cannot phone home.
+#
+# The entries below were derived by auditing the source, not from the
+# environment. Each names the file that makes the call.
+#
+# To find what is being blocked in a running cluster:
+#   kubectl logs -n tartware-system <pod> -c istio-proxy \
+#     | grep -i 'BlackHoleCluster'
+#
+# NOTE ON DYNAMIC DESTINATIONS
+#   core-service dispatches tenant-configured webhooks to URLs read from
+#   the `webhook_subscriptions` table (src/services/webhook-service.ts).
+#   Those hosts are arbitrary and change at runtime, so they CANNOT be
+#   expressed as static ServiceEntries. See the "Tenant webhooks" section
+#   in docs/ZERO_TRUST_MTLS.md for the options.
+# =====================================================================
+
+---
+# notification-service — SendGrid email provider.
+#   Apps/notification-service/src/providers/sendgrid-provider.ts
+#   Active when NOTIFICATION_DEFAULT_CHANNEL=sendgrid and SENDGRID_API_KEY is set.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: sendgrid-api
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: egress
+spec:
+  hosts:
+    - api.sendgrid.com
+  ports:
+    - number: 443
+      name: https
+      protocol: TLS
+  resolution: DNS
+  location: MESH_EXTERNAL
+
+---
+# notification-service — Resend email provider.
+#   Apps/notification-service/src/providers/resend-provider.ts
+#   Active when NOTIFICATION_DEFAULT_CHANNEL=resend and RESEND_API_KEY is set.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: resend-api
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: egress
+spec:
+  hosts:
+    - api.resend.com
+  ports:
+    - number: 443
+      name: https
+      protocol: TLS
+  resolution: DNS
+  location: MESH_EXTERNAL
+
+---
+# guests-service — Stripe payment gateway.
+#   Apps/guests-service/src/services/stripe-payment-gateway.ts
+#   The Stripe Node SDK talks to api.stripe.com; file uploads and some
+#   dashboard links use files.stripe.com.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: stripe-api
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: egress
+spec:
+  hosts:
+    - api.stripe.com
+    - files.stripe.com
+  ports:
+    - number: 443
+      name: https
+      protocol: TLS
+  resolution: DNS
+  location: MESH_EXTERNAL
+
+---
+# availability-guard-service — operational notification webhooks.
+#   Apps/availability-guard-service/src/workers/manual-release-notification-consumer.ts
+#
+# The URLs come from the `availability-guard-notification-secrets` Secret
+# (AVAILABILITY_GUARD_NOTIFICATION_{EMAIL,SMS,SLACK}_WEBHOOK_URL), so the
+# hostnames are environment-specific and cannot be committed. The Slack
+# entry below covers the default Slack webhook host; add the email and SMS
+# provider hosts for your environment alongside it.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: slack-webhooks
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: egress
+spec:
+  hosts:
+    - hooks.slack.com
+  ports:
+    - number: 443
+      name: https
+      protocol: TLS
+  resolution: DNS
+  location: MESH_EXTERNAL

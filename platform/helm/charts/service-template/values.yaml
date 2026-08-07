@@ -9,15 +9,67 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# Each service MUST have its own ServiceAccount. The ServiceAccount is the
+# workload's identity in the mesh: Istio mints a certificate for
+# spiffe://cluster.local/ns/<ns>/sa/<name> and every authorization decision
+# is made against it. Sharing one ServiceAccount across services would make
+# them indistinguishable to the policy engine.
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
+# Service mesh / zero-trust settings.
+istio:
+  # Inject the Envoy sidecar. Turning this off removes the workload from the
+  # mesh, which means it can neither present nor verify an identity — with
+  # STRICT PeerAuthentication in place it simply stops being reachable.
+  injection: true
+
+  # Network tier. `domain-service` is selected by the namespace policy that
+  # restricts inbound traffic to the api-gateway identity. Only api-gateway
+  # itself should ever override this.
+  tier: domain-service
+
+  # Render a per-service AuthorizationPolicy pinning the set of SPIFFE
+  # principals allowed to call it. Empty list means "inherit the namespace
+  # rule" (api-gateway only).
+  authorizedCallers: []
+
+  # Ports this service exposes to sanctioned east-west callers in addition
+  # to its HTTP port — e.g. availability-guard-service's gRPC port.
+  extraAuthorizedPorts: []
+
+# L3/L4 backstop enforced by the CNI, independent of the Envoy sidecar.
+networkPolicy:
+  enabled: true
+  # Pod `app` labels mirroring istio.authorizedCallers. Kept separate
+  # because NetworkPolicy selects on labels while Istio selects on SPIFFE
+  # identities — the two are not interchangeable.
+  additionalIngressPods: []
+  # Namespaces this service may open connections to. Trimmed per service
+  # where possible; a stateless service needs far less than this.
+  egressNamespaces:
+    - database
+    - cache
+    - messaging
+    - observability
+
+# These annotations are what tell the Istio sidecar which application port
+# and path to scrape when building its merged /stats/prometheus output. They
+# are not read by Prometheus directly — Prometheus targets port 15020 via the
+# ServiceMonitor/PodMonitor.
 podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "3000"
   prometheus.io/path: "/metrics"
+
+# `templates/servicemonitor.yaml` reads .Values.monitoring.serviceMonitor.enabled.
+# The key was previously absent, so rendering the chart failed with a nil
+# pointer error on that template.
+monitoring:
+  serviceMonitor:
+    enabled: true
 
 podLabels: {}
 
@@ -38,8 +90,18 @@ service:
   port: 3000
   targetPort: 3000
 
+# External exposure is denied by construction.
+#
+# The platform has exactly one ingress path: internet →
+# istio-ingressgateway → api-gateway (platform/kubernetes/istio/gateway.yaml).
+# A Kubernetes Ingress pointed at a backend Service would route around the
+# gateway's authentication, rate limiting and tenant scoping, so the
+# template refuses to render one unless `allowExternalExposure` is set
+# explicitly — a deliberate, reviewable act rather than a typo.
 ingress:
   enabled: false
+  # Guard rail. Must be true for `enabled: true` to be honoured.
+  allowExternalExposure: false
   className: "nginx"
   annotations: {}
   hosts:
@@ -95,6 +157,20 @@ env:
     value: "3000"
   - name: LOG_LEVEL
     value: "info"
+
+  # Application-level check that the caller's mTLS identity is one we accept,
+  # independent of the Envoy sidecar enforcing the same thing.
+  #
+  # Ships as "warn" on purpose. Switching straight to "enforce" rejects every
+  # caller whose ServiceAccount is not yet in the list below, including ones
+  # nobody remembered. Run in warn, confirm the logs are clean
+  # ("unverified mesh caller" should stop appearing), then set "enforce".
+  - name: MESH_IDENTITY_ENFORCEMENT
+    value: "warn"
+  # Both spellings of the gateway ServiceAccount — the raw manifests in
+  # platform/kubernetes/ and the Helm release name it differently.
+  - name: MESH_ALLOWED_PRINCIPALS
+    value: "cluster.local/ns/tartware-system/sa/api-gateway,cluster.local/ns/tartware-system/sa/tartware-api-gateway"
 
   # Database
   - name: DB_HOST

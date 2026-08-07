@@ -1,0 +1,100 @@
+# =====================================================================
+# sidecar.yaml — EGRESS CONFINEMENT
+#
+# The network boundary has two directions. AuthorizationPolicy stops
+# unauthorized traffic coming *in*; this stops a compromised workload
+# reaching *out*.
+#
+# The Sidecar resource also shrinks each proxy's config to just the
+# destinations it may use, which materially reduces Envoy memory and
+# xDS churn at the 20K ops/sec target this platform is built for.
+# =====================================================================
+
+---
+apiVersion: networking.istio.io/v1
+kind: Sidecar
+metadata:
+  name: default
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  # No workloadSelector → applies to every pod in the namespace.
+  egress:
+    - hosts:
+        # Sibling Tartware services.
+        - "tartware-system/*"
+        # Mesh control plane (certificate rotation, xDS).
+        - "istio-system/*"
+        # Managed infrastructure. These namespaces are not sidecar-injected,
+        # so the hop is TLS-to-the-server's-own-cert or plaintext-in-VPC
+        # rather than mesh mTLS — see docs/ZERO_TRUST_MTLS.md.
+        - "database/*"
+        - "cache/*"
+        - "messaging/*"
+        - "observability/*"
+        - "analytics/*"
+        # Cluster DNS.
+        - "kube-system/*"
+        # Explicitly declared external dependencies only.
+        - "./*"
+
+  outboundTrafficPolicy:
+    # Belt and braces with meshConfig.outboundTrafficPolicy in istiod.yaml.
+    # Anything not listed above or registered as a ServiceEntry is refused.
+    mode: REGISTRY_ONLY
+
+---
+# =====================================================================
+# EXCEPTION — core-service tenant webhook delivery.
+#
+# core-service POSTs to webhook URLs stored per tenant in the
+# `webhook_subscriptions` table (src/services/webhook-service.ts). Those
+# hosts are supplied by customers and change at runtime, so no static
+# ServiceEntry can express them and REGISTRY_ONLY blocks every delivery.
+#
+# This workload-scoped Sidecar overrides the namespace default for
+# core-service ONLY. Every other service in tartware-system keeps
+# REGISTRY_ONLY, so the ability to reach an arbitrary internet host is
+# confined to the one pod that has a product reason to need it, instead
+# of being handed to the whole mesh.
+#
+# The network-level counterpart is the `allow-core-service-webhook-egress`
+# NetworkPolicy, which permits 80/443 to public addresses but carves out
+# the private and link-local ranges — without that carve-out, a tenant
+# could point a webhook at an in-cluster Service or at the cloud metadata
+# endpoint (169.254.169.254) and turn this into an SSRF primitive.
+#
+# Both must stay in place. The Sidecar alone re-opens SSRF; the
+# NetworkPolicy alone leaves Istio still refusing the connection.
+# =====================================================================
+apiVersion: networking.istio.io/v1
+kind: Sidecar
+metadata:
+  name: core-service-webhook-egress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: egress
+  annotations:
+    tartware.io/exception-reason: >-
+      Tenant-configured webhook destinations are dynamic and cannot be
+      enumerated as ServiceEntry resources.
+spec:
+  workloadSelector:
+    labels:
+      app: core-service
+  egress:
+    - hosts:
+        - "tartware-system/*"
+        - "istio-system/*"
+        - "database/*"
+        - "cache/*"
+        - "messaging/*"
+        - "observability/*"
+        - "analytics/*"
+        - "kube-system/*"
+        - "./*"
+  outboundTrafficPolicy:
+    mode: ALLOW_ANY

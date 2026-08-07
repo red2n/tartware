@@ -1,4 +1,28 @@
+import { getOutboundUrlRejection } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
+
+/**
+ * Reject a webhook target that points somewhere the platform must not dial.
+ *
+ * Enforced in the service rather than only in the route so it also covers any
+ * future caller — a Kafka consumer, an admin script, a bulk import — that
+ * reaches these functions without passing through Fastify validation.
+ *
+ * `statusCode` is set so the shared error handler in @tartware/fastify-server
+ * renders it as a 400 Problem Details response instead of a 500: a bad URL is
+ * the caller's mistake, not a server fault.
+ *
+ * @throws {Error} with `statusCode` 400 when the URL is not a safe target.
+ */
+const assertDialableWebhookUrl = (webhookUrl: string): void => {
+  const rejection = getOutboundUrlRejection(webhookUrl);
+  if (rejection === null) return;
+
+  throw Object.assign(new Error(`webhook_url ${rejection}`), {
+    statusCode: 400,
+  });
+};
 
 /**
  * Webhook subscription persistence.
@@ -67,6 +91,8 @@ export const getWebhook = async (tenantId: string, webhookId: string) => {
 };
 
 export const createWebhook = async (tenantId: string, input: WebhookInput, userId?: string) => {
+  assertDialableWebhookUrl(input.webhook_url);
+
   const res = await query(
     `INSERT INTO public.webhook_subscriptions
        (tenant_id, property_id, webhook_name, webhook_url, event_types, is_active,
@@ -105,6 +131,12 @@ export const updateWebhook = async (
   input: Partial<WebhookInput>,
   userId?: string,
 ) => {
+  // Only when supplied — the UPDATE COALESCEs an omitted URL to its current
+  // value, so an absent field is not a change and needs no check.
+  if (input.webhook_url !== undefined) {
+    assertDialableWebhookUrl(input.webhook_url);
+  }
+
   const res = await query(
     `UPDATE public.webhook_subscriptions
         SET webhook_name           = COALESCE($3, webhook_name),
@@ -163,23 +195,38 @@ export const sendTestEvent = async (tenantId: string, webhookId: string) => {
   let status: number | null = null;
   let error: string | null = null;
 
-  try {
-    // Bounded so a hanging endpoint cannot hold the request open indefinitely.
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
+  // Re-check at dispatch time, not just at subscription time. Rows predating
+  // this validation, or inserted by a migration or direct SQL, still hold
+  // whatever URL was stored — and this is the moment the connection is
+  // actually opened. Recorded as a normal failed delivery so the tenant sees
+  // why in the delivery log rather than getting an opaque timeout.
+  const rejection = getOutboundUrlRejection(webhook.webhook_url);
+
+  if (rejection !== null) {
+    error = `Refused to dial webhook_url: ${rejection}`;
+  } else {
     try {
-      const res = await fetch(webhook.webhook_url, {
-        method: webhook.http_method === "PUT" ? "PUT" : "POST",
-        headers: { "content-type": "application/json", ...(webhook.headers ?? {}) },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      status = res.status;
-    } finally {
-      clearTimeout(timeout);
+      // Bounded so a hanging endpoint cannot hold the request open indefinitely.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const res = await fetch(webhook.webhook_url, {
+          method: webhook.http_method === "PUT" ? "PUT" : "POST",
+          headers: { "content-type": "application/json", ...(webhook.headers ?? {}) },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+          // Do not follow redirects: a target that passes validation can 302
+          // to 169.254.169.254, which would hand back exactly the SSRF this
+          // validation exists to prevent.
+          redirect: "manual",
+        });
+        status = res.status;
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Request failed";
     }
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Request failed";
   }
 
   const ok = status !== null && status >= 200 && status < 300;

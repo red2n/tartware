@@ -1,48 +1,63 @@
-# =====================================================
+# =====================================================================
 # network-policies.yaml
 # Kubernetes NetworkPolicy resources for Tartware PMS
 #
-# Enforces the network boundary contract:
-#   External traffic → api-gateway (only public entry point)
-#   api-gateway      → domain services (HTTP proxy + Kafka)
-#   domain services  ✗ direct external access
+# L3/L4 enforcement of the network boundary contract:
+#   External traffic → istio-ingressgateway → api-gateway (only entry point)
+#   api-gateway      → domain services
+#   domain services  ✗ no direct external access, in either direction
 #
-# Prerequisites:
-#   - All domain-service Deployments must carry the label
-#       tier: domain-service
-#   - The API gateway Deployment must carry
-#       app: api-gateway
-#   - A CNI plugin that supports NetworkPolicy (Calico, Cilium, etc.)
+# This layer is deliberately redundant with the Istio policies in
+# platform/kubernetes/istio/. Istio is enforced by the Envoy sidecar; if a
+# pod ends up without a sidecar, its mesh policy evaporates but these rules
+# still hold, because they are enforced by the CNI.
 #
-# Date: 2026-04-24
-# =====================================================
+# PREREQUISITES
+#   - Deployments carry `tier: domain-service` and `app: <name>`. The Helm
+#     chart applies these via the "service.meshLabels" helper. Before that
+#     helper existed these selectors matched no Helm-deployed pod and this
+#     entire file enforced nothing — if you refactor labels, re-verify with:
+#       kubectl get pods -n tartware-system --show-labels
+#   - The api-gateway Deployment carries `app: api-gateway`.
+#   - A CNI plugin that supports NetworkPolicy (Calico, Cilium, ...).
+#     Without one, these objects are stored and silently ignored.
+#
+# PORT SELECTION
+#   Rules target the *named* container port `http` rather than a numeric
+#   list. The previous numeric enumeration (3000-3075 step 5) silently
+#   failed to cover services that bind other ports — reservations-command
+#   listens on 3101 in platform/apps/ and was blocked by rule 2.
+# =====================================================================
 
 ---
 # ==========================================================
-# 1. DEFAULT DENY — block all ingress to domain services
-#    unless explicitly allowed by a more specific policy.
+# 1. DEFAULT DENY — both directions, whole namespace.
+#
+# The keystone. Everything below is an explicit exception to this.
+# Note it selects ALL pods (podSelector: {}), not just domain services,
+# so a new workload is locked down the moment it is created rather than
+# whenever someone remembers to write a policy for it.
 # ==========================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: domain-services-deny-all-ingress
+  name: default-deny-all
   namespace: tartware-system
   labels:
     app.kubernetes.io/part-of: tartware
     policy-type: network-boundary
 spec:
-  podSelector:
-    matchLabels:
-      tier: domain-service
+  podSelector: {}
   policyTypes:
     - Ingress
-  # No ingress rules → all inbound traffic is denied by default.
+    - Egress
 
 ---
 # ==========================================================
-# 2. ALLOW gateway → domain services (HTTP ports)
-#    Only the api-gateway pods may reach the domain services'
-#    HTTP ports (3000-3075 range).
+# 2. ALLOW gateway → domain services.
+#
+# Only api-gateway pods may open a connection to a domain service, and
+# only on the port the service actually serves HTTP on.
 # ==========================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -65,43 +80,15 @@ spec:
               app: api-gateway
       ports:
         - protocol: TCP
-          port: 3000
-        - protocol: TCP
-          port: 3005
-        - protocol: TCP
-          port: 3010
-        - protocol: TCP
-          port: 3015
-        - protocol: TCP
-          port: 3020
-        - protocol: TCP
-          port: 3025
-        - protocol: TCP
-          port: 3030
-        - protocol: TCP
-          port: 3035
-        - protocol: TCP
-          port: 3040
-        - protocol: TCP
-          port: 3045
-        - protocol: TCP
-          port: 3050
-        - protocol: TCP
-          port: 3055
-        - protocol: TCP
-          port: 3060
-        - protocol: TCP
-          port: 3065
-        - protocol: TCP
-          port: 3070
-        - protocol: TCP
-          port: 3075
+          port: http
 
 ---
 # ==========================================================
-# 3. ALLOW reservations-command-service → availability-guard
-#    gRPC port (4400). This is the only permitted
-#    inter-service call that bypasses the gateway.
+# 3. ALLOW reservations-command-service → availability-guard gRPC (4400).
+#
+# The only permitted inter-service call that bypasses the gateway.
+# Mirrors the AuthorizationPolicy of the same name; both must be changed
+# together or the mesh and the CNI will disagree.
 # ==========================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -128,72 +115,159 @@ spec:
 
 ---
 # ==========================================================
-# 4. ALLOW Prometheus scraping on metrics endpoints.
-#    Assumes the monitoring stack runs in the
-#    'monitoring' namespace with label
-#    app.kubernetes.io/name: prometheus.
+# 3b. ALLOW the sanctioned east-west HTTP calls.
+#
+# L4 counterpart to the AuthorizationPolicies of the same names. Audited
+# from the source, not assumed — see
+# platform/kubernetes/istio/authorization-policies.yaml for the file and
+# line of each call.
+#
+#   guests-service  → core-service, rooms-service, guests-service
+#   billing-service → core-service
+#   every service   → service-registry (boot registration + heartbeat)
+#
+# Rule 2 restricts domain-service ingress to api-gateway; these are the
+# documented exceptions to it.
 # ==========================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-prometheus-scrape-domain-services
+  name: allow-sanctioned-east-west
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      app: core-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: guests-service
+        - podSelector:
+            matchLabels:
+              app: billing-service
+      ports:
+        - protocol: TCP
+          port: http
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-guests-to-rooms-service
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      app: rooms-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: guests-service
+      ports:
+        - protocol: TCP
+          port: http
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-guests-service-self-calls
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      app: guests-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: guests-service
+      ports:
+        - protocol: TCP
+          port: http
+
+---
+# Every service registers itself and heartbeats, so this is scoped to the
+# namespace rather than naming each caller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-service-registry-registration
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      app: service-registry
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: http
+
+---
+# ==========================================================
+# 4. ALLOW Prometheus scraping.
+#
+# Targets the sidecar's merged-metrics port (15020) rather than the app
+# port. Under STRICT mTLS a sidecar-less Prometheus cannot complete a
+# handshake against the application port at all; 15020 is served by
+# pilot-agent and is exempt from both PeerAuthentication and
+# AuthorizationPolicy. 15090 is Envoy's own admin stats.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
   namespace: tartware-system
   labels:
     app.kubernetes.io/part-of: tartware
     policy-type: monitoring
 spec:
-  podSelector:
-    matchLabels:
-      tier: domain-service
+  podSelector: {}
   policyTypes:
     - Ingress
   ingress:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: monitoring
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: prometheus
+              kubernetes.io/metadata.name: observability
       ports:
         - protocol: TCP
-          port: 3000
+          port: 15020
         - protocol: TCP
-          port: 3005
-        - protocol: TCP
-          port: 3010
-        - protocol: TCP
-          port: 3015
-        - protocol: TCP
-          port: 3020
-        - protocol: TCP
-          port: 3025
-        - protocol: TCP
-          port: 3030
-        - protocol: TCP
-          port: 3035
-        - protocol: TCP
-          port: 3040
-        - protocol: TCP
-          port: 3045
-        - protocol: TCP
-          port: 3050
-        - protocol: TCP
-          port: 3055
-        - protocol: TCP
-          port: 3060
-        - protocol: TCP
-          port: 3065
-        - protocol: TCP
-          port: 3070
-        - protocol: TCP
-          port: 3075
+          port: 15090
 
 ---
 # ==========================================================
-# 5. API GATEWAY — allow inbound from Ingress controller
-#    and deny everything else. The gateway is the only
-#    pod that should receive external traffic.
+# 5. API GATEWAY — inbound from the Istio ingress gateway only.
+#
+# Previously this allowed the whole ingress-nginx namespace. The platform
+# no longer uses an nginx Ingress for the gateway: north-south traffic
+# terminates at istio-ingressgateway so that the hop into api-gateway is
+# mTLS with a verifiable peer identity.
 # ==========================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -210,22 +284,237 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # Allow traffic from the ingress-nginx namespace
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
+              kubernetes.io/metadata.name: istio-system
       ports:
         - protocol: TCP
           port: 8080
-    # Allow Prometheus scraping
-    - from:
+
+---
+# ==========================================================
+# 6. EGRESS — cluster DNS.
+#
+# Required by every pod. Omitting this with a default-deny egress in
+# place breaks all service discovery, which presents as slow, confusing
+# connection timeouts rather than an obvious policy error.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: monitoring
-          podSelector:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ==========================================================
+# 7. EGRESS — istiod.
+#
+# The sidecar fetches its workload certificate and xDS config from
+# istiod. Without this rule no certificate is issued, so every mTLS
+# handshake fails and the whole namespace goes dark.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-istiod-egress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/name: prometheus
+              kubernetes.io/metadata.name: istio-system
       ports:
         - protocol: TCP
-          port: 8080
+          port: 15012 # xDS + CA (mTLS)
+        - protocol: TCP
+          port: 15010 # xDS (plaintext, dev only)
+        - protocol: TCP
+          port: 15014 # control plane metrics
+        - protocol: TCP
+          port: 443 # sidecar injector webhook
+
+---
+# ==========================================================
+# 8. EGRESS — in-namespace service-to-service.
+#
+# Permits the calls rules 2 and 3 allow on the inbound side. Egress and
+# ingress are evaluated independently: a connection needs a matching rule
+# at both ends.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace-egress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector: {}
+
+---
+# ==========================================================
+# 9. EGRESS — managed infrastructure.
+#
+# Postgres, Redis, Redpanda/NATS, the OTel collector and ClickHouse.
+# These namespaces are not sidecar-injected, so traffic to them is not
+# mesh mTLS — see docs/ZERO_TRUST_MTLS.md for how those hops are secured.
+#
+# Note there is no rule permitting egress to 0.0.0.0/0. Combined with
+# Istio's REGISTRY_ONLY outbound policy, a compromised workload has no
+# route to the internet.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-infrastructure-egress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: database
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 5433
+        - protocol: TCP
+          port: 6432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cache
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: messaging
+      ports:
+        - protocol: TCP
+          port: 9092 # Redpanda / Kafka
+        - protocol: TCP
+          port: 8081 # Schema registry
+        - protocol: TCP
+          port: 4222 # NATS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4317 # OTLP gRPC
+        - protocol: TCP
+          port: 4318 # OTLP HTTP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: analytics
+      ports:
+        - protocol: TCP
+          port: 8123 # ClickHouse HTTP
+        - protocol: TCP
+          port: 9000 # ClickHouse native
+
+---
+# ==========================================================
+# 10. EGRESS EXCEPTION — core-service tenant webhook delivery.
+#
+# Pairs with the `core-service-webhook-egress` Sidecar in
+# platform/kubernetes/istio/sidecar.yaml. core-service delivers webhooks
+# to URLs customers configure per tenant
+# (src/services/webhook-service.ts), which cannot be enumerated ahead of
+# time. This is the ONLY workload in the platform permitted to open a
+# connection to the public internet.
+#
+# THE `except` LIST IS THE SECURITY CONTROL, NOT BOILERPLATE.
+#
+# The destination is attacker-influenced: anyone who can create a webhook
+# subscription chooses where this pod connects. Without these carve-outs
+# a tenant could register a webhook pointing at
+#
+#   http://billing-service:3025/...        an internal service
+#   http://169.254.169.254/latest/meta-data/  cloud instance credentials
+#   http://127.0.0.1:15000/                   the pod's own Envoy admin API
+#
+# and read the response back out of the delivery log — a full SSRF chain.
+# Restricting egress to public address space is what stops that at the
+# network layer, independent of any URL validation in application code.
+#
+# Ports are limited to 80/443: webhooks are HTTP. This also prevents the
+# same primitive being aimed at SMTP, SSH or a database port.
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-core-service-webhook-egress
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: egress
+  annotations:
+    tartware.io/exception-reason: >-
+      Tenant-configured webhook destinations are dynamic. Scoped to
+      core-service and to public address space only.
+spec:
+  podSelector:
+    matchLabels:
+      app: core-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8 # RFC1918 — pod and service CIDRs live here
+              - 172.16.0.0/12 # RFC1918
+              - 192.168.0.0/16 # RFC1918
+              - 169.254.0.0/16 # link-local — cloud metadata endpoint
+              - 127.0.0.0/8 # loopback — the pod's own Envoy admin
+              - 100.64.0.0/10 # CGNAT — used for internal ranges by some clouds
+              - 192.0.0.0/24 # IETF protocol assignments
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443

@@ -1,0 +1,25 @@
+# Zero-trust mesh policy bundle.
+#
+# Apply order matters: transport identity (PeerAuthentication) must exist
+# before anything tries to authorize on it, and the deny-all in
+# authorization-policies.yaml must not land before workloads carry the
+# ServiceAccounts the allow-rules name.
+#
+#   kubectl apply -k platform/kubernetes/istio/
+#
+# See docs/ZERO_TRUST_MTLS.md for the staged rollout procedure — going
+# straight to STRICT on a running cluster will drop traffic from any pod
+# that does not yet have a sidecar.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - peer-authentication.yaml
+  - destination-rules.yaml
+  - authorization-policies.yaml
+  - gateway.yaml
+  - sidecar.yaml
+  - service-entries.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: tartware

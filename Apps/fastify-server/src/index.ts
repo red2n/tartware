@@ -18,6 +18,11 @@ import Fastify, {
 	type FastifyServerOptions,
 } from "fastify";
 import type { Registry } from "prom-client";
+import {
+	type MeshIdentityOptions,
+	meshIdentityOptionsFromEnv,
+	meshIdentityPlugin,
+} from "./mesh-identity.js";
 import { startServiceRegistration } from "./registry-client.js";
 
 /** Detect ZodError by duck typing to avoid hard zod dependency. */
@@ -127,6 +132,18 @@ export interface BuildFastifyServerOptions {
 		displayName?: string;
 		description?: string;
 	};
+
+	/**
+	 * Mesh caller-identity verification — rejects callers whose mTLS peer
+	 * identity is not on the allowlist.
+	 *
+	 * Defaults to reading `MESH_IDENTITY_ENFORCEMENT` and
+	 * `MESH_ALLOWED_PRINCIPALS` from the environment, which means it is off
+	 * unless a deployment turns it on. Pass an explicit object to override.
+	 *
+	 * @see ./mesh-identity.ts
+	 */
+	meshIdentity?: MeshIdentityOptions;
 }
 
 /** Content-Type for RFC 9457 Problem Details responses. */
@@ -247,6 +264,7 @@ export const buildFastifyServer = (
 		beforeRoutes,
 		registerRoutes,
 		serviceRegistry,
+		meshIdentity,
 	} = options;
 
 	// Build Fastify instance with logger
@@ -287,6 +305,14 @@ export const buildFastifyServer = (
 
 	// Register core plugins
 	app.register(fastifySensible);
+
+	// Verify the caller's mesh identity before any route logic runs.
+	// No-op unless MESH_IDENTITY_ENFORCEMENT is set to warn/enforce, so this
+	// changes nothing for local development or non-mesh deployments.
+	const meshIdentityOptions = meshIdentity ?? meshIdentityOptionsFromEnv();
+	if (meshIdentityOptions.enforcement !== "off") {
+		app.register(meshIdentityPlugin, meshIdentityOptions);
+	}
 
 	// Register centralized error handler
 	app.setErrorHandler(defaultErrorHandler);
@@ -507,4 +533,13 @@ export type { FastifyBaseLogger, FastifyInstance } from "fastify";
 export { type BootstrapServiceInput, bootstrapService } from "./bootstrap.js";
 export type { CreateHealthRoutesOptions, HealthDependency } from "./health.js";
 export { createHealthRoutes } from "./health.js";
+export type {
+	MeshIdentityEnforcement,
+	MeshIdentityOptions,
+} from "./mesh-identity.js";
+export {
+	meshIdentityOptionsFromEnv,
+	meshIdentityPlugin,
+	parseClientCertPrincipals,
+} from "./mesh-identity.js";
 export { sseTokenPromotePlugin } from "./sse-token.js";

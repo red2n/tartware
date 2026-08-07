@@ -41,11 +41,45 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Selector labels.
+
+WARNING: these land in Deployment.spec.selector, which is immutable once a
+Deployment exists. Never add to this helper — put new labels in
+"service.meshLabels" instead, which is applied to the pod template only.
 */}}
 {{- define "service.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Mesh / network-boundary labels applied to the pod template.
+
+These are what NetworkPolicy and Istio AuthorizationPolicy select on:
+
+  app:  matched by the per-service policies and by the availability-guard
+        gRPC exception.
+  tier: matched by the namespace-wide "domain services accept traffic only
+        from api-gateway" rule.
+
+Before this helper existed the policies in platform/kubernetes/ selected
+labels no Helm-deployed pod carried, so they matched zero pods and
+enforced nothing. Removing these labels silently restores that failure
+mode — the policies do not error, they just stop applying.
+*/}}
+{{- define "service.meshLabels" -}}
+app: {{ include "service.name" . }}
+tier: {{ .Values.istio.tier | quote }}
+app.kubernetes.io/part-of: tartware
+{{- end }}
+
+{{/*
+The SPIFFE identity this workload will present on every mesh connection.
+Derived from the ServiceAccount, so it changes if serviceAccount.name is
+overridden — keep authorization-policies.yaml in sync when it is.
+*/}}
+{{- define "service.spiffeId" -}}
+{{- printf "cluster.local/ns/%s/sa/%s" .Release.Namespace (include "service.serviceAccountName" .) }}
 {{- end }}
 
 {{/*

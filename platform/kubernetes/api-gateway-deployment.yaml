@@ -43,6 +43,24 @@ stringData:
   REDIS_PASSWORD: "__REPLACE_WITH_SECURE_PASSWORD__"
 
 ---
+# Dedicated ServiceAccount — this is the gateway's identity in the mesh.
+#
+# Istio issues a certificate for
+#   spiffe://cluster.local/ns/tartware-system/sa/api-gateway
+# and every domain service authorizes inbound calls against exactly that
+# principal. Running on the `default` ServiceAccount (the previous
+# behaviour) would give the gateway the same identity as any other pod
+# that also defaulted, making the authorization rule meaningless.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-gateway
+  namespace: tartware-system
+  labels:
+    app: api-gateway
+    app.kubernetes.io/part-of: tartware
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,6 +68,7 @@ metadata:
   namespace: tartware-system
   labels:
     app: api-gateway
+    app.kubernetes.io/part-of: tartware
 spec:
   replicas: 2
   selector:
@@ -59,13 +78,34 @@ spec:
     metadata:
       labels:
         app: api-gateway
+        app.kubernetes.io/part-of: tartware
+        # Deliberately NOT `tier: domain-service`. That label selects the
+        # policy restricting inbound traffic to the api-gateway identity;
+        # applying it here would tell the gateway to accept calls only
+        # from itself.
+        tier: gateway
+      annotations:
+        sidecar.istio.io/inject: "true"
+        proxy.istio.io/config: |
+          holdApplicationUntilProxyStarts: true
     spec:
+      serviceAccountName: api-gateway
       # Uncomment and create the PriorityClass resource separately if needed:
       # priorityClassName: tartware-critical
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
         - name: api-gateway
           image: tartware/api-gateway:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8080
               name: http
@@ -117,26 +157,24 @@ spec:
       name: http
 
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: api-gateway-ingress
-  namespace: tartware-system
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: api.tartware.localhost
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway
-                port:
-                  number: 8080
+# INGRESS — intentionally removed.
+#
+# North-south traffic now enters through the Istio ingress gateway, which
+# is defined in platform/kubernetes/istio/gateway.yaml along with its
+# TLS certificate and the single VirtualService route to this Service.
+#
+# Two reasons the nginx Ingress had to go:
+#
+#  1. An nginx Ingress forwards to the Service over plain HTTP from a pod
+#     with no mesh identity. Under STRICT PeerAuthentication that
+#     connection is rejected, and if it were permitted it would be the one
+#     unauthenticated hop in the whole request path.
+#
+#  2. Its `nginx.ingress.kubernetes.io/rewrite-target: /` annotation
+#     rewrote every request path to `/` before proxying, so nothing but
+#     the root route was reachable through it.
+#
+# Do not add an Ingress for any Tartware Service.
 
 ---
 apiVersion: autoscaling/v2

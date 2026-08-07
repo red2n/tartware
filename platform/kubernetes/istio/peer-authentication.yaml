@@ -1,0 +1,93 @@
+# =====================================================================
+# peer-authentication.yaml — MUTUAL TLS ENFORCEMENT
+#
+# Istio's *default* peer authentication mode is PERMISSIVE, which accepts
+# plaintext alongside mTLS. Installing Istio therefore does NOT give you
+# mTLS — it only makes it available. These resources flip the mesh to
+# STRICT so a plaintext connection to any sidecar is rejected at the
+# transport layer, before it ever reaches application code.
+#
+# Effect once applied:
+#   * every workload presents an X.509 SVID minted by istiod
+#   * both peers verify the other's certificate chain against the mesh CA
+#   * a pod without a sidecar (or an attacker with a shell in the cluster)
+#     cannot speak to any Tartware service at all
+#
+# Apply order: this must land BEFORE authorization-policies.yaml, because
+# AuthorizationPolicy `principals` rules can only be evaluated on a
+# connection that carries a verified peer identity.
+# =====================================================================
+
+---
+# ---------------------------------------------------------------------
+# 1. MESH-WIDE STRICT mTLS.
+#    Lives in the Istio root namespace (istio-system) and is inherited by
+#    every namespace that does not override it.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: mtls
+spec:
+  mtls:
+    mode: STRICT
+
+---
+# ---------------------------------------------------------------------
+# 2. INGRESS GATEWAY EXCEPTION.
+#    External clients are browsers and partner systems — they hold no
+#    mesh-issued certificate, so the gateway's *public* listeners must
+#    stay PERMISSIVE. TLS for those ports is terminated by the Gateway
+#    resource (gateway.yaml) using a cert-manager certificate, and the
+#    hop from the gateway to api-gateway is full mTLS again.
+#
+#    Without this exception, mesh-wide STRICT rejects all external
+#    traffic and the platform is unreachable.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: istio-ingressgateway-public-ports
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: mtls
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    # Public HTTP listener (redirected to HTTPS by the Gateway).
+    "8080":
+      mode: PERMISSIVE
+    # Public HTTPS listener — TLS terminated here from a public CA cert.
+    "8443":
+      mode: PERMISSIVE
+    # Load-balancer health probe endpoint.
+    "15021":
+      mode: PERMISSIVE
+
+---
+# ---------------------------------------------------------------------
+# 3. NAMESPACE-LEVEL STRICT for the application namespace.
+#    Redundant with (1) by design: if someone later relaxes the mesh
+#    default, Tartware workloads stay strict. Namespace policy wins over
+#    mesh policy, so this is the authoritative setting for our services.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: mtls
+spec:
+  mtls:
+    mode: STRICT
