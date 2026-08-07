@@ -180,18 +180,80 @@ type MockTenant = {
   slug: string;
 };
 
+type MockModuleRequest = {
+  id: string;
+  tenant_id: string;
+  property_id: string | null;
+  module_id: string;
+  requested_by: string;
+  requested_screen: string | null;
+  reason: string | null;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: Date | null;
+  review_notes: string | null;
+  created_at: Date;
+};
+
 const mockUsers = new Map<string, MockUser>();
 const mockAssociations = new Map<string, MockAssociation>();
 const mockTenants = new Map<string, MockTenant>();
+const mockModuleRequests = new Map<string, MockModuleRequest>();
+
+/** Modules the mock tenant has switched on; approving a request adds to it. */
+let mockTenantModules: string[] = ["core"];
+
+export const setMockTenantModules = (modules: string[]): void => {
+  mockTenantModules = [...modules];
+};
+
+export const getMockTenantModules = (): string[] => [...mockTenantModules];
+
+export const seedModuleRequest = (
+  overrides: Partial<MockModuleRequest> & { id: string },
+): MockModuleRequest => {
+  const request: MockModuleRequest = {
+    tenant_id: TEST_TENANT_ID,
+    property_id: null,
+    module_id: "analytics-bi",
+    requested_by: STAFF_USER_ID,
+    requested_screen: "reports",
+    reason: null,
+    status: "pending",
+    reviewed_by: null,
+    reviewed_at: null,
+    review_notes: null,
+    created_at: new Date("2026-08-01T00:00:00Z"),
+    ...overrides,
+  };
+  mockModuleRequests.set(request.id, request);
+  return request;
+};
+
+export const getMockModuleRequest = (id: string): MockModuleRequest | undefined =>
+  mockModuleRequests.get(id);
 
 export const resetMockData = (): void => {
   mockUsers.clear();
   mockAssociations.clear();
   mockTenants.clear();
+  mockModuleRequests.clear();
+  mockTenantModules = ["core"];
   mockUsers.set(TEST_USER_ID, {
     id: TEST_USER_ID,
     username: TEST_USER_USERNAME,
     email: "test@example.com",
+  });
+  // The module-request queries join users to resolve requester/reviewer names.
+  mockUsers.set(STAFF_USER_ID, {
+    id: STAFF_USER_ID,
+    username: "staffuser",
+    email: "staff@example.com",
+  });
+  mockUsers.set(VIEWER_USER_ID, {
+    id: VIEWER_USER_ID,
+    username: "vieweruser",
+    email: "viewer@example.com",
   });
   mockTenants.set(TEST_TENANT_ID, {
     id: TEST_TENANT_ID,
@@ -213,6 +275,111 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
   params?: unknown[],
 ): Promise<pg.QueryResult<T>> => {
   const sql = text.trim().toLowerCase();
+
+  const ok = <R>(rows: R[], command = "SELECT"): pg.QueryResult<T> => ({
+    rows: rows as unknown as T[],
+    rowCount: rows.length,
+    command,
+    oid: 0,
+    fields: [],
+  });
+
+  // ── Module access requests ──
+  if (sql.includes("module_access_requests")) {
+    const displayName = (userId: string | null): string | null => {
+      if (!userId) return null;
+      return mockUsers.get(userId)?.email ?? null;
+    };
+    const toRow = (r: MockModuleRequest) => ({
+      ...r,
+      requested_by_name: displayName(r.requested_by),
+      reviewed_by_name: displayName(r.reviewed_by),
+    });
+
+    if (sql.startsWith("insert into public.module_access_requests")) {
+      const [tenantId, propertyId, moduleId, requestedBy, requestedScreen, reason] = params as [
+        string,
+        string | null,
+        string,
+        string,
+        string | null,
+        string | null,
+      ];
+      // Mirrors the partial unique index: a second ask for the same module
+      // joins the open request rather than creating another row.
+      const open = [...mockModuleRequests.values()].find(
+        (r) => r.tenant_id === tenantId && r.module_id === moduleId && r.status === "pending",
+      );
+      if (open) {
+        open.reason = open.reason || reason;
+        return ok([{ id: open.id }], "INSERT");
+      }
+      const created = seedModuleRequest({
+        id: randomUUID(),
+        tenant_id: tenantId,
+        property_id: propertyId,
+        module_id: moduleId,
+        requested_by: requestedBy,
+        requested_screen: requestedScreen,
+        reason,
+        created_at: new Date(),
+      });
+      return ok([{ id: created.id }], "INSERT");
+    }
+
+    if (sql.startsWith("update public.module_access_requests")) {
+      const [requestId, tenantId, status, reviewerId, notes] = params as [
+        string,
+        string,
+        string,
+        string,
+        string | null,
+      ];
+      const row = mockModuleRequests.get(requestId);
+      // The real UPDATE is guarded on status = 'pending', so a second decision
+      // matches no row — that is what surfaces as a 409.
+      if (!row || row.tenant_id !== tenantId || row.status !== "pending") {
+        return ok([], "UPDATE");
+      }
+      row.status = status;
+      row.reviewed_by = reviewerId;
+      row.reviewed_at = new Date();
+      row.review_notes = notes;
+      return ok([{ id: row.id, module_id: row.module_id }], "UPDATE");
+    }
+
+    // Reads: by id, mine, or the tenant queue.
+    if (sql.includes("where r.id = $1::uuid")) {
+      const [requestId, tenantId] = params as [string, string];
+      const row = mockModuleRequests.get(requestId);
+      return ok(row && row.tenant_id === tenantId ? [toRow(row)] : []);
+    }
+
+    if (sql.includes("r.requested_by = $2::uuid")) {
+      const [tenantId, userId] = params as [string, string];
+      return ok(
+        [...mockModuleRequests.values()]
+          .filter((r) => r.tenant_id === tenantId && r.requested_by === userId)
+          .map(toRow),
+      );
+    }
+
+    const [tenantId, status] = params as [string, string | null];
+    return ok(
+      [...mockModuleRequests.values()]
+        .filter((r) => r.tenant_id === tenantId && (!status || r.status === status))
+        .map(toRow),
+    );
+  }
+
+  // Tenant module list — the source of truth the request flow reads and writes.
+  if (sql.includes("coalesce(t.config -> 'modules'")) {
+    return ok([{ modules: mockTenantModules }]);
+  }
+  if (sql.startsWith("update public.tenants") && sql.includes("'modules'")) {
+    mockTenantModules = JSON.parse(String(params?.[1] ?? "[]"));
+    return ok([], "UPDATE");
+  }
 
   const buildSystemAdminRow = () => ({
     id: TEST_SYSTEM_ADMIN_ID,

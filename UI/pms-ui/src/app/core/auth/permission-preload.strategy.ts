@@ -1,4 +1,4 @@
-import { inject, Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import type { PreloadingStrategy, Route } from "@angular/router";
 import { EMPTY, type Observable } from "rxjs";
 

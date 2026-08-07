@@ -25,6 +25,8 @@ export class ApiValidationError extends Error {
  * `message` stays the whole thing for toasts and logs.
  */
 export class ModuleNotEnabledError extends Error {
+	/** Registry ids the server rejected — what a request to enable is raised against. */
+	readonly moduleIds: string[];
 	/** Display names, as printed on the Modules screen. Empty if unrecognised. */
 	readonly moduleNames: string[];
 	/** Headline — what is switched off. */
@@ -34,9 +36,16 @@ export class ModuleNotEnabledError extends Error {
 	/** How to get it switched on. */
 	readonly action: string;
 
-	constructor(parts: { moduleNames: string[]; title: string; detail: string; action: string }) {
+	constructor(parts: {
+		moduleIds: string[];
+		moduleNames: string[];
+		title: string;
+		detail: string;
+		action: string;
+	}) {
 		super(`${parts.title}. ${parts.action}`);
 		this.name = "ModuleNotEnabledError";
+		this.moduleIds = parts.moduleIds;
 		this.moduleNames = parts.moduleNames;
 		this.title = parts.title;
 		this.detail = parts.detail;
@@ -158,12 +167,13 @@ export class ApiService {
 	};
 
 	private static moduleNotEnabledError(missingModules: unknown): ModuleNotEnabledError {
-		const names = (Array.isArray(missingModules) ? missingModules : [])
+		// An id we have no name for would read as jargon, so it is dropped and the
+		// callout falls back to the generic wording — and, having no name to show,
+		// it is not offered as something to request either.
+		const ids = (Array.isArray(missingModules) ? missingModules : [])
 			.filter((id): id is string => typeof id === "string")
-			.map((id) => ApiService.MODULE_LABELS[id])
-			// An id we have no name for would read as jargon, so it is left out
-			// and the callout falls back to the generic wording.
-			.filter((name): name is string => Boolean(name));
+			.filter((id) => Boolean(ApiService.MODULE_LABELS[id]));
+		const names = ids.map((id) => ApiService.MODULE_LABELS[id]);
 
 		const subject =
 			names.length === 0
@@ -173,6 +183,7 @@ export class ApiService {
 					: `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 		return new ModuleNotEnabledError({
+			moduleIds: ids,
 			moduleNames: names,
 			title: subject
 				? `${subject} ${names.length > 1 ? "aren't" : "isn't"} switched on`

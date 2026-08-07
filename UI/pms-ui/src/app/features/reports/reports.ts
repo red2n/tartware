@@ -1,18 +1,18 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute, RouterLink } from "@angular/router";
+import { ActivatedRoute } from "@angular/router";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { map } from "rxjs";
 
 import { ApiService, ModuleNotEnabledError } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
-import { ScreenPermissionsService } from "../../core/auth/screen-permissions.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { CalloutComponent } from "../../shared/components/callout/callout";
 import { IconComponent } from "../../shared/components/icon/icon";
+import { ModuleLockedComponent } from "../../shared/components/module-locked/module-locked";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
 import { REPORTS, type ReportDef } from "./report-defs";
@@ -26,8 +26,8 @@ type ReportRow = Record<string, unknown>;
 		CalloutComponent,
 		FormsModule,
 		IconComponent,
+		ModuleLockedComponent,
 		ProgressSpinnerModule,
-		RouterLink,
 		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
@@ -40,7 +40,6 @@ export class ReportsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
-	private readonly screenPerms = inject(ScreenPermissionsService);
 
 	private readonly route = inject(ActivatedRoute);
 
@@ -69,9 +68,6 @@ export class ReportsComponent {
 	 * it gets the "here is how to turn this on" callout, not the red one.
 	 */
 	readonly moduleLocked = signal<ModuleNotEnabledError | null>(null);
-
-	/** Only offer the shortcut to people the Modules screen would let in. */
-	readonly canOpenModules = computed(() => this.screenPerms.isScreenAllowed("modules"));
 
 	readonly columns = computed<string[]>(() => {
 		const items = this.rows();

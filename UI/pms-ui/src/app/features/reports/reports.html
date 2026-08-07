@@ -49,17 +49,9 @@
       </div>
     </div>
   } @else if (moduleLocked(); as locked) {
-    <!-- Not a failure: the property simply hasn't bought this yet, so the
-         panel explains what is off and who can switch it on. -->
-    <app-callout variant="warning" icon="lock" [block]="true" [title]="locked.title">
-      <p>{{ locked.detail | translate }}</p>
-      <p>{{ locked.action | translate }}</p>
-      @if (canOpenModules()) {
-        <a callout-actions class="btn btn-sm btn-primary" routerLink="/modules">
-          <app-icon name="extension" /> {{ 'Open Settings → Modules' | translate }}
-        </a>
-      }
-    </app-callout>
+    <!-- Not a failure: the property simply hasn't bought this yet. The shared
+         panel works out what this particular user can do about it. -->
+    <app-module-locked [error]="locked" screen="reports" />
   } @else if (error(); as err) {
     <app-callout
       variant="danger"

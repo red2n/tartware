@@ -1266,6 +1266,141 @@ textarea.field-input {
   margin-top: var(--base-size-2);
 }
 
+/* ═══════════════════════════════════════════
+   CALLOUT — tinted panel with an icon badge, a headline, body copy
+   and an optional button row. Where .notice is a one-line inline
+   remark, a callout is the thing the user has to read and act on:
+   a feature that is switched off, a load that failed.
+
+   Rendered by <app-callout>, but the classes live here so any screen
+   can build one in plain markup without pulling in the component.
+   ═══════════════════════════════════════════ */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-12);
+  padding: var(--base-size-16);
+  border: 1px solid;
+  border-radius: var(--borderRadius-medium);
+  /* Tint and border hue come from the variant; the copy stays default-coloured
+     so several lines of it remain comfortable to read. */
+  color: var(--fgColor-default);
+  text-align: left;
+}
+
+.callout-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--borderRadius-full);
+
+  app-icon,
+  .material-icons {
+    @include icon-size(20px);
+  }
+}
+
+.callout-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+  min-width: 0;
+}
+
+.callout-title {
+  margin: 0;
+  font-size: var(--base-text-size-md);
+  font-weight: var(--base-text-weight-semibold);
+  line-height: var(--text-body-lineHeight-medium);
+}
+
+.callout-copy {
+  font-size: var(--base-text-size-sm);
+  line-height: var(--base-text-lineHeight-normal);
+  color: var(--fgColor-muted);
+
+  p {
+    margin: 0;
+
+    + p {
+      margin-top: var(--base-size-4);
+    }
+  }
+}
+
+.callout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin-top: var(--base-size-12);
+
+  /* Nothing projected — collapse rather than leave the gap hanging. */
+  &:not(:has(*)) {
+    display: none;
+  }
+}
+
+/* ── Block variant — stands in for a screen's whole content area ──
+   Centred with a reading-width cap so the copy does not stretch across a
+   wide table region, but the panel itself stays left-aligned inside. */
+.callout-block {
+  max-width: 560px;
+  margin: var(--base-size-48) auto;
+  padding: var(--base-size-24);
+}
+
+/* ── Callout variants ── */
+.callout-info {
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-muted);
+
+  .callout-badge {
+    color: var(--fgColor-onEmphasis);
+    background: var(--bgColor-accent-emphasis);
+  }
+}
+
+.callout-warning {
+  background: var(--bgColor-attention-muted);
+  border-color: var(--borderColor-attention-muted);
+
+  .callout-badge {
+    color: var(--fgColor-onEmphasis);
+    background: var(--bgColor-attention-emphasis);
+  }
+}
+
+.callout-danger {
+  background: var(--bgColor-danger-muted);
+  border-color: var(--borderColor-danger-muted);
+
+  .callout-badge {
+    color: var(--fgColor-onEmphasis);
+    background: var(--bgColor-danger-emphasis);
+  }
+}
+
+.callout-success {
+  background: var(--bgColor-success-muted);
+  border-color: var(--borderColor-success-muted);
+
+  .callout-badge {
+    color: var(--fgColor-onEmphasis);
+    background: var(--bgColor-success-emphasis);
+  }
+}
+
+@media (max-width: 600px) {
+  .callout-block {
+    margin: var(--base-size-24) 0;
+    padding: var(--base-size-16);
+  }
+}
+
 /* ── Meta line ── */
 .meta-line {
   font-size: var(--base-text-size-xs);

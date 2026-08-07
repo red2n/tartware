@@ -1,14 +1,6 @@
-import {
-	Injectable,
-	NgZone,
-	OnDestroy,
-	computed,
-	inject,
-	signal,
-} from "@angular/core";
-import { generateUUID } from "../../shared/uuid-utils";
-
+import { computed, Injectable, inject, NgZone, OnDestroy, signal } from "@angular/core";
 import type { AuthMembership, LoginResponse, TokenRefreshResponse } from "@tartware/schemas";
+import { generateUUID } from "../../shared/uuid-utils";
 
 import { ApiService } from "../api/api.service";
 

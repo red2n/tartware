@@ -1,0 +1,61 @@
+<app-callout variant="warning" icon="lock" [block]="true" [title]="error().title">
+  <p>{{ error().detail | translate }}</p>
+
+  @if (openRequest(); as open) {
+    <!-- Already asked — say who is holding it rather than inviting a second ask. -->
+    <p>
+      {{ 'Requested by' | translate }} {{ open.requestedByName }}. {{ 'Your administrator has been
+      asked to switch it on.' | translate }}
+    </p>
+  } @else {
+    <p>{{ error().action | translate }}</p>
+  }
+
+  @if (canReview()) {
+    <!-- Reviewer: they can act on this themselves, so send them to the switch. -->
+    <a callout-actions class="btn btn-sm btn-primary" routerLink="/modules">
+      <app-icon name="extension" /> {{ 'Open Settings → Modules' | translate }}
+    </a>
+  } @else if (openRequest()) {
+    <span callout-actions class="badge badge-warning">
+      <app-icon name="schedule" /> {{ 'Request pending' | translate }}
+    </span>
+  } @else if (canRequest() && !composing()) {
+    <button
+      callout-actions
+      type="button"
+      class="btn btn-sm btn-primary"
+      (click)="composing.set(true)">
+      <app-icon name="outgoing_mail" /> {{ 'Request access' | translate }}
+    </button>
+  }
+</app-callout>
+
+@if (composing()) {
+  <!-- Sits outside the callout so the textarea gets the panel's full width. -->
+  <div class="request-form">
+    <label class="field-label" for="module-request-reason">
+      {{ 'Why do you need this? (optional)' | translate }}
+    </label>
+    <textarea
+      id="module-request-reason"
+      class="field-input"
+      rows="3"
+      [ngModel]="reason()"
+      (ngModelChange)="reason.set($event)"
+      [placeholder]="'e.g. I need the occupancy report for the weekly owner call' | translate">
+    </textarea>
+    <div class="request-form-actions">
+      <button type="button" class="btn btn-sm" (click)="composing.set(false)">
+        {{ 'Cancel' | translate }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-primary"
+        [disabled]="submitting()"
+        (click)="submit()">
+        {{ (submitting() ? 'Sending…' : 'Send request') | translate }}
+      </button>
+    </div>
+  </div>
+}

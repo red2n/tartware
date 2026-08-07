@@ -19,6 +19,7 @@ import { registerComplianceRoutes } from "./routes/compliance.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerDirectBookingRoutes } from "./routes/direct-booking.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerModuleRequestRoutes } from "./routes/module-requests.js";
 import { registerModuleRoutes } from "./routes/modules.js";
 import { registerNightAuditRoutes, registerOtaRoutes } from "./routes/night-audit.js";
 import {
@@ -91,6 +92,7 @@ export const buildServer = (): FastifyInstance => {
       registerReservationRoutes(app);
       registerReportRoutes(app);
       registerModuleRoutes(app);
+      registerModuleRequestRoutes(app);
       registerWebhookRoutes(app);
       registerBookingConfigRoutes(app);
       registerComplianceRoutes(app);

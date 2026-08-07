@@ -55,7 +55,9 @@ const DEFAULT_ICONS: Record<CalloutVariant, string> = {
       </div>
     </div>
   `,
-	styleUrl: "./callout.scss",
+	// The .callout-* classes are global (styles/shared.scss) so screens can build
+	// one in plain markup too; the host only has to stay out of the layout.
+	styles: [":host { display: contents; }"],
 })
 export class CalloutComponent {
 	readonly variant = input<CalloutVariant>("info");
