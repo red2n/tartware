@@ -151,6 +151,7 @@ const mapRowToFolio = (row: FolioRow): FolioListItem => {
     total_charges: toNumberOrFallback(row.total_charges),
     total_payments: toNumberOrFallback(row.total_payments),
     total_credits: toNumberOrFallback(row.total_credits),
+    credit_balance: toNumberOrFallback(row.credit_balance),
     currency: row.currency ?? "USD",
     opened_at: toIsoString(row.opened_at) ?? "",
     closed_at: toIsoString(row.closed_at),

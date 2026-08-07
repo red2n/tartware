@@ -11,9 +11,11 @@
 #     express checkout, night audit, date roll
 #
 # Architecture:
-#   Phase 0 — Bootstrap: create N tenants × M properties via API
-#   Phase 1 — Concurrent: parallel workers execute reservation + billing
-#   Phase 2 — Report: aggregate results from all workers
+#   Phase 0   — Bootstrap: create N tenants × M properties via API
+#   Phase 1   — Concurrent: parallel workers execute reservation + billing
+#   Phase 1.5 — Isolation + observability assertions
+#   Phase 1.6 — Module access request races (open-request index, review guard)
+#   Phase 2   — Report: aggregate results from all workers
 #
 # Usage:
 #   ./executables/test-accounts-realdata/test-concurrent-50-tenants.sh
@@ -24,7 +26,8 @@
 #
 # Prerequisites:
 #   - All services running (pnpm run dev)
-#   - jq, bc, curl available
+#   - jq, bc, curl, psql — installed automatically by ensure-deps.sh if missing
+#     (TARTWARE_AUTO_INSTALL_DEPS=1 to skip the confirmation prompt)
 #   - Default admin credentials working (setup.admin / TempPass1234)
 #   - Database procedures and indexes must exist. Run ONCE before first test:
 #       docker cp scripts/ tartware-postgres:/tmp/scripts/
@@ -37,6 +40,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
+
+source "$SCRIPT_DIR/ensure-deps.sh"
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 GW="http://localhost:8080"
@@ -82,9 +87,8 @@ echo ""
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
 echo "── Preflight ────────────────────────────────────────────────────────"
-command -v jq   >/dev/null 2>&1 || { echo "FATAL: jq not found"; exit 1; }
-command -v curl >/dev/null 2>&1 || { echo "FATAL: curl not found"; exit 1; }
-command -v bc   >/dev/null 2>&1 || { echo "FATAL: bc not found"; exit 1; }
+# psql too — the DB-procedure check below shells out to it.
+ensure_deps jq curl bc psql || exit 1
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$GW/health" 2>/dev/null) || HTTP_CODE="000"
 [[ "$HTTP_CODE" =~ ^2 ]] || { echo "FATAL: API gateway not reachable at $GW ($HTTP_CODE)"; exit 1; }
@@ -1049,6 +1053,10 @@ T2_TID=$(echo "$T2_LINE" | cut -d'|' -f2); T2_TOK=$(echo "$T2_LINE" | cut -d'|' 
 if [[ -n "$T1_TID" && -n "$T2_TID" ]]; then
   assert_isolation "T2 accessing T1 guests" "$GW/v1/guests?tenant_id=$T1_TID" "$T2_TOK"
   assert_isolation "T1 accessing T2 reservations" "$GW/v1/reservations?tenant_id=$T2_TID" "$T1_TOK"
+  assert_isolation "T2 accessing T1 module-requests" \
+    "$GW/v1/tenants/$T1_TID/module-requests" "$T2_TOK"
+  assert_isolation "T1 accessing T2 module-requests/mine" \
+    "$GW/v1/tenants/$T2_TID/module-requests/mine" "$T1_TOK"
 else
   echo "  ⚠ Not enough tenants for cross-check"
 fi
@@ -1107,6 +1115,158 @@ fi
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
+# PHASE 1.6 — MODULE ACCESS REQUEST CONCURRENCY
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# The CRUD surface of module_access_requests is covered by test-multi-tenant.sh.
+# What only this script can exercise is the two races the table's schema exists
+# to survive (scripts/tables/01-core/24_module_access_requests.sql):
+#
+#   1. uq_module_access_requests_open — a partial unique index over
+#      (tenant_id, module_id) WHERE status='pending'. N staff hitting the same
+#      locked screen at the same instant must collapse into ONE row via the
+#      insert's ON CONFLICT DO UPDATE, not N rows and not a unique violation
+#      surfacing as a 500.
+#
+#   2. The `WHERE status='pending'` guard on the review UPDATE. N admins
+#      clicking approve on the same queue entry must yield exactly one 200;
+#      the losers get 409 because their queue is stale.
+#
+# Both are run per-tenant across several tenants at once, so the races overlap
+# with each other as well as internally.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 1.6: MODULE ACCESS REQUEST CONCURRENCY                         ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+MODREQ_PASS=0; MODREQ_FAIL=0
+MODREQ_RACERS=8          # simultaneous callers per race
+MODREQ_TENANTS=3         # tenants racing at once
+
+mr_pass() { echo "  [MRQ] ✓ $1"; MODREQ_PASS=$((MODREQ_PASS + 1)); }
+mr_fail() { echo "  [MRQ] ✗ $1 — $2"; MODREQ_FAIL=$((MODREQ_FAIL + 1)); }
+mr_eq()   { if [[ "$2" == "$3" ]]; then mr_pass "$1"; else mr_fail "$1" "expected=[$2] actual=[$3]"; fi; }
+
+# One racer: POST and print "<http_code> <request_id>" to stdout, which the
+# caller collects from a file. Runs in a subshell, so it must not touch counters.
+mr_race_create() {
+  local tid="$1" tok="$2" module="$3" tag="$4" out="$5"
+  local body code
+  body=$(curl -s -w '\n%{http_code}' -X POST "$GW/v1/tenants/$tid/module-requests" \
+    -H "Authorization: Bearer $tok" -H "Content-Type: application/json" \
+    -d "{\"moduleId\":\"$module\",\"requestedScreen\":\"reports\",\"reason\":\"race $tag\"}" 2>/dev/null)
+  code=$(echo "$body" | tail -1)
+  echo "$code $(echo "$body" | sed '$d' | jq -r '.id // "-"' 2>/dev/null || echo '-')" >> "$out"
+}
+
+mr_race_approve() {
+  local tid="$1" tok="$2" rid="$3" out="$4"
+  local code
+  code=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST "$GW/v1/tenants/$tid/module-requests/$rid/approve" \
+    -H "Authorization: Bearer $tok" -H "Content-Type: application/json" \
+    -d '{"notes":"concurrent approve"}' 2>/dev/null)
+  echo "$code" >> "$out"
+}
+
+mr_tested=0
+while IFS='|' read -r mr_idx mr_tid mr_tok _rest; do
+  [[ $mr_tested -ge $MODREQ_TENANTS ]] && break
+  [[ -z "$mr_tid" || -z "$mr_tok" ]] && continue
+
+  # Every bootstrapped tenant starts on DEFAULT_ENABLED_MODULES (["core"]), but
+  # read it back rather than assuming — --skip-bootstrap reuses tenants that may
+  # already carry an approval from an earlier run.
+  mr_mods=$(curl -s "$GW/v1/tenants/$mr_tid/modules" \
+    -H "Authorization: Bearer $mr_tok" 2>/dev/null | jq -r '.modules // [] | join(",")' 2>/dev/null || echo "")
+  mr_module=""
+  for m in analytics-bi facility-maintenance marketing-channel \
+           finance-automation tenant-owner-portal enterprise-api; do
+    if [[ ",$mr_mods," != *",$m,"* ]]; then mr_module="$m"; break; fi
+  done
+  if [[ -z "$mr_module" ]]; then
+    echo "  [MRQ] ⏭ T$mr_idx — every module already enabled, nothing to request"
+    continue
+  fi
+
+  mr_tested=$((mr_tested + 1))
+  echo "── T$mr_idx / $mr_module ────────────────────────────────────────────"
+
+  # ── Race 1: N simultaneous requests for the same module ──
+  mr_out="$WORK_DIR/modreq-create-${mr_idx}.txt"
+  : > "$mr_out"
+  for _ in $(seq 1 "$MODREQ_RACERS"); do
+    # </dev/null so a backgrounded racer cannot inherit — and consume — the
+    # manifest this loop is reading from.
+    mr_race_create "$mr_tid" "$mr_tok" "$mr_module" "t${mr_idx}" "$mr_out" </dev/null &
+  done
+  wait
+
+  mr_created=$(grep -c '^201 ' "$mr_out" 2>/dev/null || true)
+  mr_non2xx=$(grep -cv '^201 ' "$mr_out" 2>/dev/null || true)
+  mr_ids=$(awk '$1 == 201 {print $2}' "$mr_out" | sort -u | grep -v '^-$' || true)
+  mr_id_count=$(echo "$mr_ids" | grep -c . || true)
+  mr_5xx=$(grep -c '^5' "$mr_out" 2>/dev/null || true)
+
+  mr_eq "T$mr_idx concurrent creates all accepted" "$MODREQ_RACERS" "$mr_created"
+  mr_eq "T$mr_idx no 5xx from the unique index" "0" "$mr_5xx"
+  [[ "$mr_non2xx" -eq 0 ]] || echo "      (non-201 codes: $(awk '$1 != 201 {print $1}' "$mr_out" | sort | uniq -c | tr '\n' ' '))"
+  mr_eq "T$mr_idx $MODREQ_RACERS creates collapsed to 1 request id" "1" "$mr_id_count"
+
+  mr_rid=$(echo "$mr_ids" | head -1)
+  if [[ -z "$mr_rid" ]]; then
+    mr_fail "T$mr_idx race produced a usable request id" "none returned"
+    continue
+  fi
+
+  # The index is the guarantee; the queue is the observable proof of it.
+  mr_pending=$(curl -s "$GW/v1/tenants/$mr_tid/module-requests?status=pending" \
+    -H "Authorization: Bearer $mr_tok" 2>/dev/null \
+    | jq -r --arg m "$mr_module" '[.requests // [] | .[] | select(.moduleId == $m)] | length' 2>/dev/null || echo "?")
+  mr_eq "T$mr_idx exactly one pending row for $mr_module" "1" "$mr_pending"
+
+  # ── Race 2: N simultaneous approvals of that one request ──
+  mr_out2="$WORK_DIR/modreq-approve-${mr_idx}.txt"
+  : > "$mr_out2"
+  for _ in $(seq 1 "$MODREQ_RACERS"); do
+    mr_race_approve "$mr_tid" "$mr_tok" "$mr_rid" "$mr_out2" </dev/null &
+  done
+  wait
+
+  mr_won=$(grep -c '^200$' "$mr_out2" 2>/dev/null || true)
+  mr_lost=$(grep -c '^409$' "$mr_out2" 2>/dev/null || true)
+  mr_other=$(grep -cvE '^(200|409)$' "$mr_out2" 2>/dev/null || true)
+
+  mr_eq "T$mr_idx exactly one approval wins" "1" "$mr_won"
+  mr_eq "T$mr_idx losers all get 409 (stale queue)" "$((MODREQ_RACERS - 1))" "$mr_lost"
+  mr_eq "T$mr_idx no other status from the review race" "0" "$mr_other"
+
+  # Approval enables the module. Two winners would have appended it twice, so a
+  # duplicate here is how a lost race shows up in the tenant's module list.
+  mr_after=$(curl -s "$GW/v1/tenants/$mr_tid/modules" \
+    -H "Authorization: Bearer $mr_tok" 2>/dev/null | jq -r '.modules // []' 2>/dev/null || echo '[]')
+  mr_eq "T$mr_idx $mr_module switched on by the approval" "1" \
+    "$(echo "$mr_after" | jq -r --arg m "$mr_module" '[.[] | select(. == $m)] | length' 2>/dev/null || echo "?")"
+  mr_eq "T$mr_idx module list has no duplicates" \
+    "$(echo "$mr_after" | jq -r 'length' 2>/dev/null || echo "?")" \
+    "$(echo "$mr_after" | jq -r 'unique | length' 2>/dev/null || echo "?")"
+
+  # And the settled request must not be re-openable by a straggler.
+  mr_late=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST "$GW/v1/tenants/$mr_tid/module-requests/$mr_rid/reject" \
+    -H "Authorization: Bearer $mr_tok" -H "Content-Type: application/json" \
+    -d '{}' 2>/dev/null)
+  mr_eq "T$mr_idx late reject on a decided request → 409" "409" "$mr_late"
+done < "$MANIFEST"
+
+if [[ $mr_tested -eq 0 ]]; then
+  echo "  [MRQ] ⏭ No tenant had a locked module to request"
+fi
+echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
 # PHASE 2 — AGGREGATE RESULTS
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -1161,6 +1321,7 @@ printf "  Tenants:      %d (%d OK, %d failed)\n" \
   "$((tenants_ok + tenants_failed))" "$tenants_ok" "$tenants_failed"
 printf "  Properties:   %d per tenant\n" "$NUM_PROPS"
 printf "  Isolation:    %d Pass, %d Fail\n" "$ISOLATION_PASS" "$ISOLATION_FAIL"
+printf "  Module reqs:  %d Pass, %d Fail\n" "$MODREQ_PASS" "$MODREQ_FAIL"
 printf "  Observability: %d Verified\n" "$OBS_PASS"
 printf "  Total tests:  %d  pass=%d  fail=%d  skip=%d\n" \
   "$total_tests" "$total_pass" "$total_fail" "$total_skip"
@@ -1182,4 +1343,4 @@ echo ""
 echo "  Logs: $WORK_DIR/log-*.txt"
 echo ""
 
-[[ $total_fail -gt 0 ]] && exit 1 || exit 0
+[[ $total_fail -gt 0 || $MODREQ_FAIL -gt 0 ]] && exit 1 || exit 0

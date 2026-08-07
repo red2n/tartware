@@ -139,12 +139,29 @@ export const dbConfig = {
   statementTimeoutMs: baseConfig.DB_STATEMENT_TIMEOUT_MS,
 };
 
+const authJwtIssuer = process.env.AUTH_JWT_ISSUER ?? "tartware-core-service";
+const authJwtAudience = process.env.AUTH_JWT_AUDIENCE ?? "tartware-core";
+
 export const authConfig = {
   jwt: {
     // AUTH_JWT_SECRET is guaranteed set by ensureAuthDefaults() above (throws in production).
     secret: process.env.AUTH_JWT_SECRET as string,
-    issuer: process.env.AUTH_JWT_ISSUER ?? "tartware-core-service",
-    audience: process.env.AUTH_JWT_AUDIENCE ?? "tartware-core",
+    issuer: authJwtIssuer,
+    audience: authJwtAudience,
+  },
+};
+
+/**
+ * System-admin tokens are minted by core-service with their own issuer/audience,
+ * so they never validate against authConfig. These resolution rules mirror
+ * core-service's config exactly — keep the two in sync.
+ */
+export const systemAdminAuthConfig = {
+  jwt: {
+    secret: process.env.SYSTEM_ADMIN_JWT_SECRET || (process.env.AUTH_JWT_SECRET as string),
+    issuer: process.env.SYSTEM_ADMIN_JWT_ISSUER || `${authJwtIssuer}:system`,
+    audience:
+      process.env.SYSTEM_ADMIN_JWT_AUDIENCE || process.env.AUTH_JWT_AUDIENCE || "tartware-system",
   },
 };
 

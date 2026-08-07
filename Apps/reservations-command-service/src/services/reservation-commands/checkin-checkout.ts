@@ -848,7 +848,7 @@ export const checkOutReservation = async (
 export const walkInCheckIn = async (
   tenantId: string,
   command: ReservationWalkInCheckInCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const reservationId = uuid();
@@ -1029,7 +1029,7 @@ export const walkInCheckIn = async (
       await recordAuditLog({
         tenantId,
         propertyId: command.property_id,
-        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        actorId: options.actorId ?? SYSTEM_ACTOR_ID,
         action: "reservation.walkin_checkin",
         eventType: "CREATE",
         entityType: "reservation",

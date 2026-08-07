@@ -133,6 +133,10 @@ export const FolioListItemSchema = z.object({
 	total_charges: z.number(),
 	total_payments: z.number(),
 	total_credits: z.number(),
+	// Guest credit from overpayment. balance clamps at zero and the excess lands
+	// here, so the folio invariant only closes when this field is exposed:
+	// balance = total_charges - total_payments - total_credits + credit_balance
+	credit_balance: z.number(),
 	currency: z.string(),
 	opened_at: z.string(),
 	closed_at: z.string().optional(),

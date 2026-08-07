@@ -51,6 +51,13 @@ export const redactPayload = (payload: unknown): unknown => {
 };
 
 /**
+ * Fallback actor used when a command carries no authenticated user.
+ * public.audit_logs.user_id is NOT NULL, so a null actor must resolve to the
+ * seeded system.actor row rather than reaching the database as null.
+ */
+export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+
+/**
  * Shared audit log parameters.
  */
 export interface AuditLogParams {
@@ -89,7 +96,7 @@ export const recordAuditLog = async (
   await queryFn(INSERT_AUDIT_LOG_SQL, [
     params.tenantId,
     params.propertyId,
-    params.actorId,
+    params.actorId ?? SYSTEM_ACTOR_ID,
     params.action,
     params.eventType,
     params.entityType,

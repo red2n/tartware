@@ -18,6 +18,7 @@
 #   PHASE 3   Tenant B / Property B1 — core billing (tenant isolation)
 #   PHASE 4   USALI property-level isolation assertions
 #   PHASE 5   Cross-tenant isolation assertions (DB + API)
+#   PHASE 5b  Module access requests (raise → review → module toggled)
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -27,7 +28,8 @@
 #
 # Prerequisites:
 #   - All services running (pnpm run dev)
-#   - jq, bc available
+#   - jq, bc, curl — installed automatically by ensure-deps.sh if missing
+#     (TARTWARE_AUTO_INSTALL_DEPS=1 to skip the confirmation prompt)
 #   - http_test/get-token.sh working
 ###############################################################################
 set -euo pipefail
@@ -35,6 +37,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
+
+source "$SCRIPT_DIR/ensure-deps.sh"
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 GW="http://localhost:8080"
@@ -262,9 +266,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 echo "── Preflight ────────────────────────────────────────────────────────"
-command -v jq   >/dev/null 2>&1 || { echo "FATAL: jq not found"; exit 1; }
-command -v curl >/dev/null 2>&1 || { echo "FATAL: curl not found"; exit 1; }
-command -v bc   >/dev/null 2>&1 || { echo "FATAL: bc not found"; exit 1; }
+ensure_deps jq curl bc || exit 1
 
 # API Gateway
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$GW/health" 2>/dev/null || echo "000")
@@ -1045,9 +1047,13 @@ run_billing_pipeline() {
 
     # ── Charge Void ──
     echo "── ${tag} — Charge Void ─────────────────────────────────────────────"
-    local spa_id
-    get "$GW/v1/billing/charges?tenant_id=$tid&reservation_id=$res_id&charge_code=SPA&limit=100" >/dev/null
-    spa_id=$(resp_ffirst '.is_voided != true' "id")
+    # An empty res_id would send reservation_id= and get a 400 back from the
+    # billing API, masking the real cause as "SPA charge not found".
+    local spa_id=""
+    if [[ -n "$res_id" ]]; then
+      get "$GW/v1/billing/charges?tenant_id=$tid&reservation_id=$res_id&charge_code=SPA&limit=100" >/dev/null
+      spa_id=$(resp_ffirst '.is_voided != true' "id")
+    fi
     if [[ -n "$spa_id" ]]; then
       send_command "CMD void: SPA" \
         "billing.charge.void" \
@@ -1089,9 +1095,11 @@ run_billing_pipeline() {
     if [[ -n "$house_id" ]]; then
       pass "House account created ($label)"
       # Transfer minibar charge
-      local minibar_id
-      get "$GW/v1/billing/charges?tenant_id=$tid&reservation_id=$res_id&charge_code=MINIBAR&limit=100" >/dev/null
-      minibar_id=$(resp_ffirst '.is_voided != true' "id")
+      local minibar_id=""
+      if [[ -n "$res_id" ]]; then
+        get "$GW/v1/billing/charges?tenant_id=$tid&reservation_id=$res_id&charge_code=MINIBAR&limit=100" >/dev/null
+        minibar_id=$(resp_ffirst '.is_voided != true' "id")
+      fi
       if [[ -n "$minibar_id" ]]; then
         send_command "CMD transfer: MINIBAR → house" \
           "billing.charge.transfer" \
@@ -1468,7 +1476,10 @@ get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A1&limit=
 get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_SESSIONS=$(resp_count)
 get "$GW/v1/billing/cashier-sessions?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_SESSIONS=$(resp_count)
 EXPECTED_SUM=$((A1_SESSIONS + A2_SESSIONS))
-assert_eq "USALI: A sessions = A1($A1_SESSIONS) + A2($A2_SESSIONS)" "$EXPECTED_SUM" "$ALL_A_SESSIONS"
+# Tenant A accumulates a new A2 property per run, so the tenant-wide count is a
+# superset of A1+A2 rather than equal to it. >= still fails loudly if the
+# property filter stops partitioning (a broken filter makes the sum exceed the total).
+assert_gte "USALI: A sessions >= A1($A1_SESSIONS) + A2($A2_SESSIONS)" "$ALL_A_SESSIONS" "$EXPECTED_SUM"
 if [[ "$A1_SESSIONS" -gt 0 && "$A2_SESSIONS" -gt 0 ]]; then
   pass "USALI: Both properties have cashier sessions"
 else
@@ -1481,7 +1492,7 @@ get "$GW/v1/night-audit/history?tenant_id=$TID_A&property_id=$PID_A1" >/dev/null
 get "$GW/v1/night-audit/history?tenant_id=$TID_A&property_id=$PID_A2" >/dev/null; A2_AUDIT=$(resp_count)
 get "$GW/v1/night-audit/history?tenant_id=$TID_A" >/dev/null;                     ALL_A_AUDIT=$(resp_count)
 EXPECTED_SUM=$((A1_AUDIT + A2_AUDIT))
-assert_eq "USALI: A audit = A1($A1_AUDIT) + A2($A2_AUDIT)" "$EXPECTED_SUM" "$ALL_A_AUDIT"
+assert_gte "USALI: A audit >= A1($A1_AUDIT) + A2($A2_AUDIT)" "$ALL_A_AUDIT" "$EXPECTED_SUM"
 if [[ "$A1_AUDIT" -gt 0 && "$A2_AUDIT" -gt 0 ]]; then
   pass "USALI: Both properties have audit logs"
 else
@@ -1548,7 +1559,7 @@ get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_A1&limit=100" >
 get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&property_id=$PID_A2&limit=100" >/dev/null; A2_GL=$(resp_count)
 get "$GW/v1/billing/gl-batches?tenant_id=$TID_A&limit=100" >/dev/null;                     ALL_A_GL=$(resp_count)
 EXPECTED_SUM=$((A1_GL + A2_GL))
-assert_eq "USALI: A GL batches = A1($A1_GL) + A2($A2_GL)" "$EXPECTED_SUM" "$ALL_A_GL"
+assert_gte "USALI: A GL batches >= A1($A1_GL) + A2($A2_GL)" "$ALL_A_GL" "$EXPECTED_SUM"
 if [[ "$A1_GL" -gt 0 || "$A2_GL" -gt 0 ]]; then
   pass "USALI: GL batches property-scoped (A1=$A1_GL A2=$A2_GL)"
 else
@@ -1831,6 +1842,226 @@ else
   fail "P0-5 isolation: A GL batches leak B1 property data" "HTTP=$code count=$GL_CROSS_A"
 fi
 echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5b — MODULE ACCESS REQUESTS
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Covers the endpoints backed by module_access_requests
+# (scripts/tables/01-core/24_module_access_requests.sql):
+#
+#   POST /v1/tenants/:tid/module-requests               raise         (VIEWER+)
+#   GET  /v1/tenants/:tid/module-requests[?status=]     review queue  (ADMIN)
+#   GET  /v1/tenants/:tid/module-requests/mine          own requests  (VIEWER+)
+#   POST /v1/tenants/:tid/module-requests/:rid/approve  decide        (ADMIN)
+#   POST /v1/tenants/:tid/module-requests/:rid/reject   decide        (ADMIN)
+#
+# Runs against Tenant B, not Tenant A: approving switches a module on for the
+# whole tenant, and doing that to the long-lived seeded Tenant A would carry
+# into every later run and turn "module is locked" into a false precondition.
+# Tenant A appears here only as the outsider in the isolation checks.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5b: Module Access Requests                                   ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# jq against the last response, tolerating a non-JSON body under `set -e`.
+mrq() { jq -r "$1" "$RESP_FILE" 2>/dev/null || echo ""; }
+
+if [[ -z "$TOKEN_B" || -z "$TID_B" ]]; then
+  skip "Module access requests" "Tenant B token unavailable"
+else
+  TOKEN="$TOKEN_B"
+
+  echo "── 5b.1  Preconditions ────────────────────────────────────────────"
+
+  code=$(get "$GW/v1/tenants/$TID_B/modules")
+  assert_http "Tenant B modules readable" "200" "$code"
+  MODS_BEFORE=$(mrq '.modules // [] | join(",")')
+
+  # Pick two modules this tenant does NOT already have. Tenant B is normally
+  # fresh, but Phase 0 reuses an existing one when the slug is already taken —
+  # and a reused tenant may carry approvals from an earlier run.
+  MODREQ_MOD=""; MODREQ_MOD2=""
+  for m in analytics-bi facility-maintenance marketing-channel \
+           finance-automation tenant-owner-portal enterprise-api; do
+    if [[ ",$MODS_BEFORE," != *",$m,"* ]]; then
+      if   [[ -z "$MODREQ_MOD"  ]]; then MODREQ_MOD="$m"
+      elif [[ -z "$MODREQ_MOD2" ]]; then MODREQ_MOD2="$m"
+      fi
+    fi
+  done
+fi
+
+if [[ -n "${MODREQ_MOD:-}" && -n "${MODREQ_MOD2:-}" ]]; then
+  echo "  ℹ Using locked modules: $MODREQ_MOD (approve path), $MODREQ_MOD2 (reject path)"
+  echo ""
+
+  echo "── 5b.2  Raise a request ──────────────────────────────────────────"
+
+  TOKEN="$TOKEN_B"
+  code=$(post "$GW/v1/tenants/$TID_B/module-requests" \
+    "{\"moduleId\":\"$MODREQ_MOD\",\"requestedScreen\":\"reports\",\"propertyId\":\"$PID_B1\",\"reason\":\"E2E $RUN_TAG\"}")
+  assert_http "POST module-requests → 201" "201" "$code"
+  MODREQ_ID=$(mrq '.id // empty')
+  assert_eq "Request status is pending"        "pending"      "$(mrq '.status // empty')"
+  assert_eq "Request echoes moduleId"          "$MODREQ_MOD"  "$(mrq '.moduleId // empty')"
+  assert_eq "Request echoes requestedScreen"   "reports"      "$(mrq '.requestedScreen // empty')"
+  if [[ -n "$MODREQ_ID" ]]; then pass "Request has an id ($MODREQ_ID)"
+  else fail "Request has an id" "empty"; fi
+
+  # moduleId is the only required field.
+  code=$(post "$GW/v1/tenants/$TID_B/module-requests" '{"reason":"no module id"}')
+  assert_http "POST without moduleId → 400" "400" "$code"
+
+  # uq_module_access_requests_open: a second person hitting the same locked
+  # screen joins the open request rather than filing a duplicate, so the same
+  # id comes back instead of a unique-violation 500.
+  code=$(post "$GW/v1/tenants/$TID_B/module-requests" \
+    "{\"moduleId\":\"$MODREQ_MOD\",\"reason\":\"second asker $RUN_TAG\"}")
+  assert_http "Duplicate open request → 201 (joins queue)" "201" "$code"
+  assert_eq "Duplicate returns the same request id" "$MODREQ_ID" "$(mrq '.id // empty')"
+  echo ""
+
+  echo "── 5b.3  Read back ────────────────────────────────────────────────"
+
+  code=$(get "$GW/v1/tenants/$TID_B/module-requests/mine")
+  assert_http "GET module-requests/mine → 200" "200" "$code"
+  assert_eq "Requester sees their own request" "1" \
+    "$(mrq "[.requests // [] | .[] | select(.id == \"$MODREQ_ID\")] | length")"
+
+  code=$(get "$GW/v1/tenants/$TID_B/module-requests")
+  if [[ "$code" == "403" ]]; then
+    skip "Admin review queue" "Tenant B user is not ADMIN"
+    MODREQ_ADMIN=false
+  else
+    MODREQ_ADMIN=true
+    assert_http "GET module-requests (admin queue) → 200" "200" "$code"
+    assert_eq "Queue contains the request" "1" \
+      "$(mrq "[.requests // [] | .[] | select(.id == \"$MODREQ_ID\")] | length")"
+
+    get "$GW/v1/tenants/$TID_B/module-requests?status=pending" >/dev/null
+    assert_eq "?status=pending returns it" "1" \
+      "$(mrq "[.requests // [] | .[] | select(.id == \"$MODREQ_ID\")] | length")"
+
+    get "$GW/v1/tenants/$TID_B/module-requests?status=approved" >/dev/null
+    assert_eq "?status=approved excludes it" "0" \
+      "$(mrq "[.requests // [] | .[] | select(.id == \"$MODREQ_ID\")] | length")"
+
+    code=$(get "$GW/v1/tenants/$TID_B/module-requests?status=not-a-status")
+    assert_http "?status=<garbage> → 400" "400" "$code"
+  fi
+  echo ""
+
+  echo "── 5b.4  Cross-tenant isolation ───────────────────────────────────"
+
+  # Tenant A's admin has no membership in Tenant B, so every one of B's
+  # request routes must refuse them — including the decision routes.
+  TOKEN="$TOKEN_A"
+  code=$(get "$GW/v1/tenants/$TID_B/module-requests")
+  assert_http "Tenant A cannot read B's queue → 403/404" "40[34]" "$code"
+
+  code=$(get "$GW/v1/tenants/$TID_B/module-requests/mine")
+  assert_http "Tenant A cannot read B's /mine → 403/404" "40[34]" "$code"
+
+  code=$(post "$GW/v1/tenants/$TID_B/module-requests" "{\"moduleId\":\"$MODREQ_MOD2\"}")
+  assert_http "Tenant A cannot raise against B → 403/404" "40[34]" "$code"
+
+  code=$(post "$GW/v1/tenants/$TID_B/module-requests/$MODREQ_ID/approve" '{}')
+  assert_http "Tenant A cannot approve B's request → 403/404" "40[34]" "$code"
+
+  # Same request id, but routed under Tenant A: the service scopes the UPDATE
+  # by tenant_id, so this must not decide B's request from A's side.
+  code=$(post "$GW/v1/tenants/$TID_A/module-requests/$MODREQ_ID/approve" '{}')
+  assert_http "B's request id under Tenant A → 4xx" "4" "$code"
+
+  TOKEN="$TOKEN_B"
+  code=$(get "$GW/v1/tenants/$TID_B/module-requests/mine")
+  assert_eq "B's request still pending after A's attempts" "pending" \
+    "$(mrq "[.requests // [] | .[] | select(.id == \"$MODREQ_ID\")] | .[0].status // empty")"
+  echo ""
+
+  if [[ "${MODREQ_ADMIN:-false}" == "true" ]]; then
+    echo "── 5b.5  Approve — switches the module on ─────────────────────────"
+
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests/$MODREQ_ID/approve" \
+      '{"notes":"Approved by E2E"}')
+    assert_http "POST approve → 200" "200" "$code"
+    assert_eq "Decision recorded as approved" "approved" "$(mrq '.request.status // empty')"
+    assert_eq "Review notes stored"           "Approved by E2E" "$(mrq '.request.reviewNotes // empty')"
+    if [[ -n "$(mrq '.request.reviewedAt // empty')" ]]; then pass "reviewedAt stamped"
+    else fail "reviewedAt stamped" "null"; fi
+    if [[ -n "$(mrq '.request.reviewedBy // empty')" ]]; then pass "reviewedBy stamped"
+    else fail "reviewedBy stamped" "null"; fi
+
+    # The whole point of the workflow: approval enables the module, rather than
+    # leaving the admin a second manual toggle.
+    assert_eq "Approval response lists the module as enabled" "1" \
+      "$(mrq "[.modules.modules // [] | .[] | select(. == \"$MODREQ_MOD\")] | length")"
+
+    get "$GW/v1/tenants/$TID_B/modules" >/dev/null
+    assert_eq "GET modules now includes $MODREQ_MOD" "1" \
+      "$(mrq "[.modules // [] | .[] | select(. == \"$MODREQ_MOD\")] | length")"
+    assert_eq "GET modules still includes core" "1" \
+      "$(mrq '[.modules // [] | .[] | select(. == "core")] | length')"
+
+    # Re-deciding a settled request means the caller's queue is stale.
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests/$MODREQ_ID/approve" '{}')
+    assert_http "Approving twice → 409" "409" "$code"
+
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests/$MODREQ_ID/reject" '{}')
+    assert_http "Rejecting an approved request → 409" "409" "$code"
+
+    # Nothing left to ask for once it is on.
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests" "{\"moduleId\":\"$MODREQ_MOD\"}")
+    assert_http "Request for an enabled module → 409" "409" "$code"
+    echo ""
+
+    echo "── 5b.6  Reject — leaves the module locked ────────────────────────"
+
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests" \
+      "{\"moduleId\":\"$MODREQ_MOD2\",\"reason\":\"reject path $RUN_TAG\"}")
+    assert_http "POST second module-request → 201" "201" "$code"
+    MODREQ_ID2=$(mrq '.id // empty')
+
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests/$MODREQ_ID2/reject" \
+      '{"notes":"Not this quarter"}')
+    assert_http "POST reject → 200" "200" "$code"
+    assert_eq "Decision recorded as rejected" "rejected" "$(mrq '.request.status // empty')"
+    assert_eq "Rejection returns no module change" "null" "$(mrq '.modules')"
+
+    get "$GW/v1/tenants/$TID_B/modules" >/dev/null
+    assert_eq "GET modules still excludes $MODREQ_MOD2" "0" \
+      "$(mrq "[.modules // [] | .[] | select(. == \"$MODREQ_MOD2\")] | length")"
+
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests/$MODREQ_ID2/approve" '{}')
+    assert_http "Approving a rejected request → 409" "409" "$code"
+
+    # The partial unique index only covers pending rows, so the module can be
+    # asked for again after a rejection — a new row, not the rejected one.
+    code=$(post "$GW/v1/tenants/$TID_B/module-requests" "{\"moduleId\":\"$MODREQ_MOD2\"}")
+    assert_http "Re-request after rejection → 201" "201" "$code"
+    if [[ "$(mrq '.id // empty')" != "$MODREQ_ID2" ]]; then
+      pass "Re-request creates a new row (history preserved)"
+    else
+      fail "Re-request creates a new row" "reused rejected id $MODREQ_ID2"
+    fi
+
+    get "$GW/v1/tenants/$TID_B/module-requests?status=rejected" >/dev/null
+    assert_eq "Rejected request kept in history" "1" \
+      "$(mrq "[.requests // [] | .[] | select(.id == \"$MODREQ_ID2\")] | length")"
+  fi
+  echo ""
+else
+  skip "Module access requests" "no locked modules available on Tenant B"
+  echo ""
+fi
+
+TOKEN="$TOKEN_A"
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 6 — MULTI-TENANT API READ VALIDATION

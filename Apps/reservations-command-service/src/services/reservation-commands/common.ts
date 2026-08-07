@@ -29,7 +29,7 @@ export const enqueueReservationUpdate = async (
   tenantId: string,
   commandName: string,
   payload: ReservationUpdatePayload,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const updateEvent = ReservationUpdatedEventSchema.parse({
@@ -70,7 +70,7 @@ export const enqueueReservationUpdate = async (
     await recordAuditLog({
       tenantId,
       propertyId: payload.property_id || null,
-      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      actorId: options.actorId ?? SYSTEM_ACTOR_ID,
       action: commandName,
       eventType: "UPDATE",
       entityType: "reservation",

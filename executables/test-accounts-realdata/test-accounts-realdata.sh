@@ -13,7 +13,8 @@
 #
 # Prerequisites:
 #   - All services running (pnpm run dev)
-#   - jq, bc available
+#   - jq, bc, curl — installed automatically by ensure-deps.sh if missing
+#     (TARTWARE_AUTO_INSTALL_DEPS=1 to skip the confirmation prompt)
 #   - http_test/get-token.sh working
 ###############################################################################
 set -euo pipefail
@@ -22,6 +23,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
+
+source "$SCRIPT_DIR/ensure-deps.sh"
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 GW="http://localhost:8080"
@@ -271,11 +274,10 @@ preflight() {
   local ok=true
   printf "\n  Checking prerequisites...\n"
 
-  if command -v jq &>/dev/null; then printf "    ✓ jq\n"
-  else printf "    ✗ jq not found\n"; ok=false; fi
-
-  if command -v bc &>/dev/null; then printf "    ✓ bc\n"
-  else printf "    ✗ bc not found\n"; ok=false; fi
+  # Installs anything missing rather than just reporting it; only fails here if
+  # the install was declined or impossible.
+  if ensure_deps jq bc curl; then printf "    ✓ jq\n    ✓ bc\n    ✓ curl\n"
+  else ok=false; fi
 
   local gw_code
   gw_code=$(curl -s -o /dev/null -w "%{http_code}" "$GW/health" 2>/dev/null || echo "000")

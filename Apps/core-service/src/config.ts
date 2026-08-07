@@ -36,10 +36,13 @@ const systemAdminJwtSecret =
     ? configValues.SYSTEM_ADMIN_JWT_SECRET
     : configValues.AUTH_JWT_SECRET;
 
+// Derived from AUTH_JWT_ISSUER (not SERVICE_NAME) so peers that must verify a
+// system-admin token — e.g. the gateway's /v1/commands/definitions route — can
+// reconstruct the same issuer from config they already share.
 const systemAdminJwtIssuer =
   configValues.SYSTEM_ADMIN_JWT_ISSUER && configValues.SYSTEM_ADMIN_JWT_ISSUER.length > 0
     ? configValues.SYSTEM_ADMIN_JWT_ISSUER
-    : `${configValues.SERVICE_NAME}:system`;
+    : `${configValues.AUTH_JWT_ISSUER}:system`;
 
 const systemAdminJwtAudience =
   configValues.SYSTEM_ADMIN_JWT_AUDIENCE && configValues.SYSTEM_ADMIN_JWT_AUDIENCE.length > 0
