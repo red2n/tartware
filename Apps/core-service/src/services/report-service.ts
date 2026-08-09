@@ -817,15 +817,23 @@ export const getNoShowReport = async (params: {
     `SELECT r.id AS reservation_id,
             r.confirmation_number,
             COALESCE(g.first_name || ' ' || g.last_name, 'Unknown') AS guest_name,
-            r.room_type,
+            rt.type_name AS room_type,
             r.room_number,
             r.check_in_date::text,
             r.check_out_date::text,
             r.source,
             COALESCE(r.total_amount, 0)::text AS total_amount,
-            COALESCE(r.deposit_amount, 0)::text AS deposit_amount
+            deposit.amount_due::text AS deposit_amount
      FROM reservations r
      LEFT JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
+     LEFT JOIN room_types rt ON rt.id = r.room_type_id AND rt.tenant_id = r.tenant_id
+     LEFT JOIN LATERAL (
+       SELECT COALESCE(SUM(ds.amount_due), 0) AS amount_due
+       FROM deposit_schedules ds
+       WHERE ds.reservation_id = r.id
+         AND ds.tenant_id = r.tenant_id
+         AND COALESCE(ds.is_deleted, false) = false
+     ) deposit ON TRUE
      WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
        AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
        AND r.status = 'NO_SHOW'
@@ -880,7 +888,7 @@ export const getVipArrivalsReport = async (params: {
             g.email AS guest_email,
             g.phone AS guest_phone,
             r.room_number,
-            r.room_type,
+            rt.type_name AS room_type,
             r.check_in_date::text,
             r.check_out_date::text,
             r.status,
@@ -892,6 +900,7 @@ export const getVipArrivalsReport = async (params: {
             true AS vip
      FROM reservations r
      JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
+     LEFT JOIN room_types rt ON rt.id = r.room_type_id AND rt.tenant_id = r.tenant_id
      WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
        AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
        AND r.status IN ('CONFIRMED', 'CHECKED_IN')
@@ -988,15 +997,17 @@ export const getMarketSegmentProductionReport = async (params: {
     avg_rate: string;
   }>(
     `SELECT
-       COALESCE(r.market_segment, 'UNCLASSIFIED') AS market_segment,
+       COALESCE(ms.segment_name, 'UNCLASSIFIED') AS market_segment,
        COUNT(*)::text AS room_nights,
        COALESCE(SUM(r.total_amount), 0)::text AS revenue,
        CASE WHEN COUNT(*) > 0 THEN (SUM(r.total_amount) / COUNT(*))::text ELSE '0' END AS avg_rate
      FROM reservations r
+     LEFT JOIN market_segments ms
+       ON ms.segment_id = r.market_segment_id AND ms.tenant_id = r.tenant_id
      WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
        AND r.check_in_date >= $3::date AND r.check_in_date <= $4::date
        AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
-     GROUP BY COALESCE(r.market_segment, 'UNCLASSIFIED')
+     GROUP BY COALESCE(ms.segment_name, 'UNCLASSIFIED')
      ORDER BY SUM(r.total_amount) DESC`,
     [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate],
   );

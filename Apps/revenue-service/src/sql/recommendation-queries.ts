@@ -106,14 +106,14 @@ export const ACTIVE_PRICING_RULES_SQL = `
     pr.conditions,
     pr.applies_to_room_types,
     pr.effective_from,
-    pr.effective_to
+    pr.effective_until AS effective_to
   FROM public.pricing_rules pr
   WHERE pr.tenant_id = $1::uuid
     AND pr.property_id = $2::uuid
     AND pr.is_active = true
     AND COALESCE(pr.is_deleted, false) = false
     AND (pr.effective_from IS NULL OR pr.effective_from <= $4::date)
-    AND (pr.effective_to IS NULL OR pr.effective_to >= $3::date)
+    AND (pr.effective_until IS NULL OR pr.effective_until >= $3::date)
   ORDER BY pr.priority ASC
 `;
 

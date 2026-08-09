@@ -151,7 +151,6 @@ export const PricingRuleListItemSchema = z.object({
 	effective_to: z.string().optional(),
 	applies_to_room_types: z.array(z.string()).optional(),
 	applies_to_rate_plans: z.array(z.string()).optional(),
-	condition_type: z.string().optional(),
 	adjustment_type: z.string().optional(),
 	adjustment_value: z.number().optional(),
 	min_rate: z.number().optional(),

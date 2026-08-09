@@ -93,9 +93,13 @@
   <!-- Tab navigation -->
   <div class="filter-bar detail-tabs">
     <nav class="filter-tabs" [attr.aria-label]="'Guest detail sections' | translate">
-      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'profile'" [class.filter-tab-active]="activeTab() === 'profile'" (click)="setTab('profile')">
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'overview'" [class.filter-tab-active]="activeTab() === 'overview'" (click)="setTab('overview')">
         <app-icon class="tab-icon" name="person" />
-        {{ 'Profile' | translate }}
+        {{ 'Overview' | translate }}
+      </button>
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'reservations'" [class.filter-tab-active]="activeTab() === 'reservations'" (click)="setTab('reservations')">
+        <app-icon class="tab-icon" name="event" />
+        {{ 'Reservations' | translate }}
       </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'preferences'" [class.filter-tab-active]="activeTab() === 'preferences'" (click)="setTab('preferences')">
         <app-icon class="tab-icon" name="tune" />
@@ -109,15 +113,20 @@
         <app-icon class="tab-icon" name="chat" />
         {{ 'Communications' | translate }}
       </button>
-      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'account'" [class.filter-tab-active]="activeTab() === 'account'" (click)="setTab('account')">
+      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'compliance'" [class.filter-tab-active]="activeTab() === 'compliance'" (click)="setTab('compliance')">
         <app-icon class="tab-icon" name="admin_panel_settings" />
-        {{ 'Account & Compliance' | translate }}
+        {{ 'Compliance' | translate }}
       </button>
     </nav>
   </div>
 
+  <!-- What this tab is for — sits above the content it describes -->
+  @if (tabOverview(); as overview) {
+    <app-tab-strap [text]="overview" />
+  }
+
   <!-- Tab content -->
-  @if (activeTab() === 'profile') {
+  @if (activeTab() === 'overview') {
     <div class="detail-layout">
       <!-- Personal information -->
       @if (personalRows().length > 0) {
@@ -265,11 +274,147 @@
           </div>
         </div>
       }
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Contact details' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="form-group"><label class="field-label">{{ 'Email' | translate }}</label>
+          <input type="email" class="field-input" [ngModel]="contactForm().email"
+            (ngModelChange)="contactForm.set({ ...contactForm(), email: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Phone' | translate }}</label>
+          <input type="tel" class="field-input" [ngModel]="contactForm().phone"
+            (ngModelChange)="contactForm.set({ ...contactForm(), phone: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Secondary phone' | translate }}</label>
+          <input type="tel" class="field-input" [ngModel]="contactForm().secondary_phone"
+            (ngModelChange)="contactForm.set({ ...contactForm(), secondary_phone: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitContact()" [disabled]="processing() === 'contact'">
+            <app-icon name="save" /> {{ 'Save contact' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'VIP status' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="form-group"><label class="field-label">{{ 'VIP level' | translate }}</label>
+          <select class="field-input" [ngModel]="vipForm().vip_status"
+            (ngModelChange)="vipForm.set({ ...vipForm(), vip_status: $event })">
+            <option value="NONE">None</option>
+            <option value="VIP1">VIP 1</option>
+            <option value="VIP2">VIP 2</option>
+            <option value="VIP3">VIP 3</option>
+            <option value="VVIP">VVIP</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Reason' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="vipForm().reason"
+            (ngModelChange)="vipForm.set({ ...vipForm(), reason: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitVip()" [disabled]="processing() === 'vip'">
+            <app-icon name="star" /> {{ 'Update VIP' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header"><h3 class="card-title">{{ 'Loyalty enrollment' | translate }}</h3></div>
+      <div class="card-body">
+        <div class="form-group"><label class="field-label">{{ 'Tier' | translate }}</label>
+          <select class="field-input" [ngModel]="loyaltyForm().loyalty_tier"
+            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_tier: $event })">
+            <option value="">— None —</option>
+            <option value="BRONZE">Bronze</option>
+            <option value="SILVER">Silver</option>
+            <option value="GOLD">Gold</option>
+            <option value="PLATINUM">Platinum</option>
+            <option value="DIAMOND">Diamond</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Loyalty number' | translate }}</label>
+          <input type="text" class="field-input" [ngModel]="loyaltyForm().loyalty_number"
+            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_number: $event ?? '' })" />
+        </div>
+        <div class="form-group"><label class="field-label">{{ 'Points adjustment (+/-)' | translate }}</label>
+          <input type="number" class="field-input" [ngModel]="loyaltyForm().points_adjustment"
+            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), points_adjustment: $event ?? '' })" />
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" (click)="submitLoyalty()" [disabled]="processing() === 'loyalty'">
+            <app-icon name="card_membership" /> {{ 'Update loyalty' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
     </div>
   }
 
   <!-- Defer heavy tab content until idle -->
   @defer (on idle) {
+    @if (activeTab() === 'reservations') {
+      @if (loadingTab()) {
+        <div class="loading-state">
+          <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
+          <span class="text-muted">{{ 'Loading reservations...' | translate }}</span>
+        </div>
+      } @else if (reservations().length === 0) {
+        <div class="empty-state">
+          <app-icon class="empty-icon" name="event_busy" />
+          <p>{{ 'No reservations for this guest' | translate }}</p>
+        </div>
+      } @else {
+        @for (group of [
+          { title: 'Current & Upcoming', rows: currentReservations() },
+          { title: 'Past Stays', rows: pastReservations() }
+        ]; track group.title) {
+          @if (group.rows.length > 0) {
+            <div class="detail-card">
+              <div class="card-header">
+                <h3 class="card-title">{{ group.title | translate }} ({{ group.rows.length }})</h3>
+              </div>
+              <div class="card-body">
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>{{ 'Confirmation' | translate }}</th>
+                        <th>{{ 'Property' | translate }}</th>
+                        <th>{{ 'Room' | translate }}</th>
+                        <th>{{ 'Check-In' | translate }}</th>
+                        <th>{{ 'Check-Out' | translate }}</th>
+                        <th>{{ 'Nights' | translate }}</th>
+                        <th>{{ 'Status' | translate }}</th>
+                        <th>{{ 'Total' | translate }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of group.rows; track r.id) {
+                        <tr class="clickable-row" (click)="openReservation(r.id)">
+                          <td><a [routerLink]="['/reservations', r.id]">{{ r.confirmation_number }}</a></td>
+                          <td>{{ r.property_name ?? '—' }}</td>
+                          <td>{{ r.room_number ?? r.room_type_name ?? '—' }}</td>
+                          <td>{{ formatDate(r.check_in_date) }}</td>
+                          <td>{{ formatDate(r.check_out_date) }}</td>
+                          <td>{{ r.nights }}</td>
+                          <td><span class="badge" [ngClass]="reservationStatusBadge(r.status)">{{ r.status_display }}</span></td>
+                          <td>{{ formatCurrency(r.total_amount) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      }
+    }
+
     @if (activeTab() === 'preferences') {
       @if (loadingTab()) {
       <div class="loading-state">
@@ -440,85 +585,8 @@
   }
 }
 
-@if (activeTab() === 'account' && guest()) {
+@if (activeTab() === 'compliance' && guest()) {
   <div class="detail-layout">
-    <div class="detail-card">
-      <div class="card-header"><h3 class="card-title">{{ 'Contact details' | translate }}</h3></div>
-      <div class="card-body">
-        <div class="form-group"><label class="field-label">{{ 'Email' | translate }}</label>
-          <input type="email" class="field-input" [ngModel]="contactForm().email"
-            (ngModelChange)="contactForm.set({ ...contactForm(), email: $event ?? '' })" />
-        </div>
-        <div class="form-group"><label class="field-label">{{ 'Phone' | translate }}</label>
-          <input type="tel" class="field-input" [ngModel]="contactForm().phone"
-            (ngModelChange)="contactForm.set({ ...contactForm(), phone: $event ?? '' })" />
-        </div>
-        <div class="form-group"><label class="field-label">{{ 'Secondary phone' | translate }}</label>
-          <input type="tel" class="field-input" [ngModel]="contactForm().secondary_phone"
-            (ngModelChange)="contactForm.set({ ...contactForm(), secondary_phone: $event ?? '' })" />
-        </div>
-        <div class="action-row">
-          <button class="btn btn-primary btn-sm" (click)="submitContact()" [disabled]="processing() === 'contact'">
-            <app-icon name="save" /> {{ 'Save contact' | translate }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="detail-card">
-      <div class="card-header"><h3 class="card-title">{{ 'VIP status' | translate }}</h3></div>
-      <div class="card-body">
-        <div class="form-group"><label class="field-label">{{ 'VIP level' | translate }}</label>
-          <select class="field-input" [ngModel]="vipForm().vip_status"
-            (ngModelChange)="vipForm.set({ ...vipForm(), vip_status: $event })">
-            <option value="NONE">None</option>
-            <option value="VIP1">VIP 1</option>
-            <option value="VIP2">VIP 2</option>
-            <option value="VIP3">VIP 3</option>
-            <option value="VVIP">VVIP</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="field-label">{{ 'Reason' | translate }}</label>
-          <input type="text" class="field-input" [ngModel]="vipForm().reason"
-            (ngModelChange)="vipForm.set({ ...vipForm(), reason: $event ?? '' })" />
-        </div>
-        <div class="action-row">
-          <button class="btn btn-primary btn-sm" (click)="submitVip()" [disabled]="processing() === 'vip'">
-            <app-icon name="star" /> {{ 'Update VIP' | translate }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="detail-card">
-      <div class="card-header"><h3 class="card-title">{{ 'Loyalty enrollment' | translate }}</h3></div>
-      <div class="card-body">
-        <div class="form-group"><label class="field-label">{{ 'Tier' | translate }}</label>
-          <select class="field-input" [ngModel]="loyaltyForm().loyalty_tier"
-            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_tier: $event })">
-            <option value="">— None —</option>
-            <option value="BRONZE">Bronze</option>
-            <option value="SILVER">Silver</option>
-            <option value="GOLD">Gold</option>
-            <option value="PLATINUM">Platinum</option>
-            <option value="DIAMOND">Diamond</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="field-label">{{ 'Loyalty number' | translate }}</label>
-          <input type="text" class="field-input" [ngModel]="loyaltyForm().loyalty_number"
-            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_number: $event ?? '' })" />
-        </div>
-        <div class="form-group"><label class="field-label">{{ 'Points adjustment (+/-)' | translate }}</label>
-          <input type="number" class="field-input" [ngModel]="loyaltyForm().points_adjustment"
-            (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), points_adjustment: $event ?? '' })" />
-        </div>
-        <div class="action-row">
-          <button class="btn btn-primary btn-sm" (click)="submitLoyalty()" [disabled]="processing() === 'loyalty'">
-            <app-icon name="card_membership" /> {{ 'Update loyalty' | translate }}
-          </button>
-        </div>
-      </div>
-    </div>
 
     <div class="detail-card">
       <div class="card-header"><h3 class="card-title">{{ 'Blacklist' | translate }}</h3></div>

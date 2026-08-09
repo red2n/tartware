@@ -45,9 +45,11 @@ export const evaluatePricingRules = async (
      FROM pricing_rules
      WHERE tenant_id = $1 AND property_id = $2
        AND is_active = true AND is_deleted = false
-       AND (room_type_id IS NULL OR room_type_id = $3)
+       AND (applies_to_room_types IS NULL
+            OR cardinality(applies_to_room_types) = 0
+            OR $3::uuid = ANY(applies_to_room_types))
        AND (effective_from IS NULL OR effective_from <= $4::date)
-       AND (effective_to IS NULL OR effective_to >= $4::date)
+       AND (effective_until IS NULL OR effective_until >= $4::date)
      ORDER BY priority ASC, created_at ASC`,
     [
       tenantId,

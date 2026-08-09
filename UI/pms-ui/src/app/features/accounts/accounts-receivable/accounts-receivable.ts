@@ -20,6 +20,7 @@ import { PageHeaderComponent } from "../../../shared/components/page-header/page
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { filterBySearch } from "../../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -159,13 +160,12 @@ export class AccountsReceivableComponent {
 		if (type !== "ALL") list = list.filter((a) => a.account_type === type);
 		if (aging !== "ALL") list = list.filter((a) => a.aging_bucket === aging);
 		if (query) {
-			list = list.filter(
-				(a) =>
-					a.ar_number.toLowerCase().includes(query) ||
-					a.account_name.toLowerCase().includes(query) ||
-					(a.guest_name?.toLowerCase().includes(query) ?? false) ||
-					(a.ar_reference?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (a) => [
+				a.ar_number,
+				a.account_name,
+				a.guest_name,
+				a.ar_reference,
+			]);
 		}
 		return list;
 	});

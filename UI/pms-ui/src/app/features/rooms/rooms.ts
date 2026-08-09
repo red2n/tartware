@@ -15,6 +15,7 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -95,14 +96,14 @@ export class RoomsComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(r) =>
-					r.room_number.toLowerCase().includes(query) ||
-					(r.room_name?.toLowerCase().includes(query) ?? false) ||
-					(r.room_type_name?.toLowerCase().includes(query) ?? false) ||
-					(r.floor?.toLowerCase().includes(query) ?? false) ||
-					(r.amenities?.some((a) => a.toLowerCase().includes(query)) ?? false),
-			);
+			list = filterBySearch(list, query, (r) => [
+				r.room_number,
+				r.room_name,
+				r.room_type_name,
+				r.floor,
+				r.amenities,
+				r.status,
+			]);
 		}
 
 		return list;

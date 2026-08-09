@@ -15,7 +15,12 @@ import type {
   ReservationWalkInCheckInCommand,
 } from "../../schemas/reservation-command.js";
 import { resolveRatePlan } from "../../services/rate-plan-service.js";
-import { hashIdentifier, recordAuditLog, recordFlowApproval, redactPayload } from "../../utils/audit.js";
+import {
+  hashIdentifier,
+  recordAuditLog,
+  recordFlowApproval,
+  redactPayload,
+} from "../../utils/audit.js";
 import {
   type CreateReservationResult,
   DEFAULT_CURRENCY,

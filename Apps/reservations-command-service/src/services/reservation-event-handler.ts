@@ -168,6 +168,10 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
         guest_email,
         confirmation_number,
         cancellation_policy_snapshot,
+        market_segment_id,
+        eta,
+        company_id,
+        travel_agent_id,
         created_at,
         updated_at
       ) VALUES (
@@ -175,7 +179,8 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
         $6, $7, $8,
         $9, $10, $11, $12,
         $13, $14, $15,
-        $16, $17, $18, NOW(), NOW()
+        $16, $17, $18, $19,
+        $20::time, $21, $22, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE
         SET
@@ -196,6 +201,12 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
           confirmation_number = EXCLUDED.confirmation_number,
           -- Never overwrite a non-null snapshot with null on event re-delivery.
           cancellation_policy_snapshot = COALESCE(reservations.cancellation_policy_snapshot, EXCLUDED.cancellation_policy_snapshot),
+          -- Same reasoning: a re-delivered event without a segment must not
+          -- erase an attribution that was already recorded.
+          market_segment_id = COALESCE(reservations.market_segment_id, EXCLUDED.market_segment_id),
+          eta = COALESCE(EXCLUDED.eta, reservations.eta),
+          company_id = COALESCE(reservations.company_id, EXCLUDED.company_id),
+          travel_agent_id = COALESCE(reservations.travel_agent_id, EXCLUDED.travel_agent_id),
           updated_at = NOW();
     `,
     [
@@ -219,6 +230,10 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
       payload.cancellation_policy_snapshot
         ? JSON.stringify(payload.cancellation_policy_snapshot)
         : null,
+      payload.market_segment_id ?? null,
+      payload.eta ?? null,
+      payload.company_id ?? null,
+      payload.travel_agent_id ?? null,
     ],
   );
 
@@ -270,6 +285,8 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
     addField("total_amount", Number(payload.total_amount ?? 0));
   if (payload.currency !== undefined) addField("currency", payload.currency);
   if (payload.internal_notes !== undefined) addField("internal_notes", payload.internal_notes);
+  if (payload.market_segment_id !== undefined)
+    addField("market_segment_id", payload.market_segment_id);
   if (payload.metadata !== undefined) {
     const index = fields.length + 3;
     fields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${index}::jsonb`);

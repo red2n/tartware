@@ -1,4 +1,5 @@
 import { REPORTS } from "../features/reports/report-defs";
+import { anyTermMatches, labelMatchRank, matchesSearch } from "../shared/search-utils";
 
 export type NavItem = {
 	label: string;
@@ -500,19 +501,23 @@ export function searchScreens(
 
 	const ranked: { rank: number; screen: ScreenMatch }[] = [];
 	for (const screen of listScreens(allowedScreens, permissionsLoaded)) {
-		const label = screen.label.toLowerCase();
+		// Term-by-term so a multi-word query still reaches a screen: "king room"
+		// must find Rooms (and Settings, whose description mentions rooms) rather
+		// than nothing, which is what testing the whole string as one substring
+		// did. Label matches outrank section, which outranks description.
+		const labelRank = labelMatchRank(term, screen.label);
 		const rank =
-			label === term
-				? 0
-				: label.startsWith(term)
-					? 1
-					: label.includes(term)
-						? 2
-						: (screen.section?.toLowerCase().includes(term) ?? false)
-							? 3
-							: (screen.description?.toLowerCase().includes(term) ?? false)
-								? 4
-								: -1;
+			labelRank >= 0
+				? labelRank
+				: matchesSearch(term, screen.section)
+					? 3
+					: matchesSearch(term, screen.description)
+						? 4
+						: // Relaxed tier, mirroring the grids: a query carrying an extra
+							// word ("king room") must still reach Rooms rather than nothing.
+							anyTermMatches(term, screen.label, screen.section, screen.description)
+							? 5
+							: -1;
 		if (rank >= 0) ranked.push({ rank, screen });
 	}
 

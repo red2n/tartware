@@ -162,6 +162,10 @@
     </nav>
   </div>
 
+  @if (tabOverview(); as overview) {
+    <app-tab-strap [text]="overview" />
+  }
+
   <!-- ═══ TAB: OVERVIEW (KPIs) ═══ -->
   @if (activeTab() === 'status') {
     @if (!dataReady()) {

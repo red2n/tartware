@@ -409,6 +409,21 @@ export type GroupBookingRow = {
 	updated_at: string | null;
 };
 
+/** Raw row shape from group_room_blocks joined to room_types. */
+export type GroupRoomBlockRow = {
+	block_id: string;
+	room_type_id: string;
+	room_type_name: string | null;
+	block_date: string | Date;
+	blocked_rooms: number | null;
+	picked_rooms: number | null;
+	confirmed_rooms: number | null;
+	negotiated_rate: number | string | null;
+	rack_rate: number | string | null;
+	discount_percentage: number | string | null;
+	block_status: string;
+};
+
 // =====================================================
 // PROMOTIONAL CODE ROW
 // =====================================================

@@ -52,7 +52,7 @@
         </button>
       }
       @if (canModifyDates()) {
-        <button class="btn btn-outline btn-sm" (click)="showModifyDatesConfirm()" [disabled]="actionLoading()" [pTooltip]="'Advance or postpone reservation dates' | translate">
+        <button class="btn btn-outline btn-sm" (click)="showModifyDatesConfirm()" [disabled]="actionLoading()" [pTooltip]="'Move the arrival and/or departure date before the guest arrives' | translate">
           <app-icon name="date_range" />
           {{ 'Modify Dates' | translate }}
         </button>
@@ -68,7 +68,7 @@
         </button>
       }
       @if (canExtendStay()) {
-        <button class="btn btn-outline btn-sm" (click)="showExtendConfirm()" [disabled]="actionLoading()">
+        <button class="btn btn-outline btn-sm" (click)="showExtendConfirm()" [disabled]="actionLoading()" [pTooltip]="'Push the departure date later for an in-house guest' | translate">
           <app-icon name="more_time" /> {{ 'Extend Stay' | translate }}
         </button>
       }
@@ -539,8 +539,9 @@
   <div class="detail-layout">
     <!-- Booking Information -->
     <div class="detail-card">
-      <div class="card-header">
+      <div class="card-header card-header-flex">
         <h3 class="card-title">{{ 'Booking Information' | translate }}</h3>
+        <span class="card-note">{{ 'Dates, room and rate for this stay.' | translate }}</span>
       </div>
       <div class="card-body">
         <dl class="detail-list">
@@ -562,8 +563,9 @@
 
     <!-- Guest Information -->
     <div class="detail-card">
-      <div class="card-header">
+      <div class="card-header card-header-flex">
         <h3 class="card-title">{{ 'Guest Information' | translate }}</h3>
+        <span class="card-note">{{ 'Who is staying and how to reach them.' | translate }}</span>
       </div>
       <div class="card-body">
         <dl class="detail-list">
@@ -589,8 +591,9 @@
     @defer (on idle) {
       <!-- Financial Summary -->
       <div class="detail-card">
-        <div class="card-header">
+        <div class="card-header card-header-flex">
           <h3 class="card-title">{{ 'Financial Summary' | translate }}</h3>
+          <span class="card-note">{{ 'Charges, payments and what is still owed.' | translate }}</span>
       </div>
       <div class="card-body">
         <dl class="detail-list">
@@ -613,8 +616,9 @@
     <!-- Folio & Charges -->
     @if (r.folio || canPostCharge()) {
       <div class="detail-card">
-        <div class="card-header">
+        <div class="card-header card-header-flex">
           <h3 class="card-title">{{ 'Folio & Charges' | translate }}</h3>
+          <span class="card-note">{{ 'Every posting on the folio for this reservation.' | translate }}</span>
           @if (canPostCharge()) {
             <button class="btn btn-primary btn-sm" unsavedClose (click)="togglePostChargeForm()"
                     [pTooltip]="'Post a charge to this reservation\'s folio' | translate">
@@ -748,8 +752,9 @@
     <!-- Notes -->
     @if (r.special_requests || r.internal_notes) {
       <div class="detail-card">
-        <div class="card-header">
+        <div class="card-header card-header-flex">
           <h3 class="card-title">{{ 'Notes' | translate }}</h3>
+          <span class="card-note">{{ 'Internal notes and special requests from the guest.' | translate }}</span>
         </div>
         <div class="card-body">
           @if (r.special_requests) {
@@ -771,8 +776,9 @@
     <!-- Status History -->
     @if (r.status_history && r.status_history.length > 0) {
       <div class="detail-card">
-        <div class="card-header">
+        <div class="card-header card-header-flex">
           <h3 class="card-title">{{ 'Status History' | translate }}</h3>
+          <span class="card-note">{{ 'Every status change, with who made it and when.' | translate }}</span>
         </div>
         <div class="card-body">
           <div class="table-container">

@@ -13,6 +13,7 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -135,13 +136,12 @@ export class RatesComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(r) =>
-					r.rate_name.toLowerCase().includes(query) ||
-					r.rate_code.toLowerCase().includes(query) ||
-					(r.description?.toLowerCase().includes(query) ?? false) ||
-					r.rate_type.toLowerCase().includes(query),
-			);
+			list = filterBySearch(list, query, (r) => [
+				r.rate_name,
+				r.rate_code,
+				r.description,
+				r.rate_type,
+			]);
 		}
 
 		return list;

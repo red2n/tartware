@@ -80,6 +80,11 @@ export const ReservationsSchema = z.object({
 		.optional(),
 	company_id: uuid.optional(),
 	travel_agent_id: uuid.optional(),
+	/**
+	 * USALI market segment this booking is attributed to
+	 * (market_segments.segment_id). Absent = unclassified.
+	 */
+	market_segment_id: uuid.optional(),
 	quoted_at: z.coerce.date().optional(),
 	quote_expires_at: z.coerce.date().optional(),
 	expired_at: z.coerce.date().optional(),

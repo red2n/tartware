@@ -483,9 +483,9 @@ export const setGuestLoyalty = async ({
           ELSE COALESCE(loyalty_points, 0) + $4::numeric
         END,
         notes = CASE
-          WHEN $5 IS NULL THEN notes
-          WHEN notes IS NULL THEN $5
-          ELSE CONCAT_WS(E'\\n', notes, $5)
+          WHEN $5::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $5::text
+          ELSE CONCAT_WS(E'\\n', notes, $5::text)
         END,
         version = version + 1,
         updated_at = NOW(),
@@ -547,9 +547,9 @@ export const setGuestVip = async ({
       SET
         vip_status = $3,
         notes = CASE
-          WHEN $4 IS NULL THEN notes
-          WHEN notes IS NULL THEN $4
-          ELSE CONCAT_WS(E'\\n', notes, $4)
+          WHEN $4::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $4::text
+          ELSE CONCAT_WS(E'\\n', notes, $4::text)
         END,
         version = version + 1,
         updated_at = NOW(),

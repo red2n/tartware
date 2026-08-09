@@ -376,7 +376,7 @@ if [[ -n "$EXISTING_B" ]]; then
       "$GW/v1/properties?tenant_id=$TID_B&limit=10" \
       -H "Authorization: Bearer $TOKEN_B")
     # Pick this run's B1 property by dynamic code
-    PID_B1=$(jq -r --arg code "$PROPERTY_B1_CODE" '(if type == "array" then . else (.data // .properties // []) end) | map(select(.property_code == $code)) | .[0].id // empty' "$RESP_FILE" 2>/dev/null)
+    PID_B1=$(jq -r --arg code "$PROPERTY_B1_CODE" '(if type == "array" then . else (.data? // .properties // []) end) | map(select(.property_code == $code)) | .[0].id // empty' "$RESP_FILE" 2>/dev/null)
     # Fallback: any property if dynamic code not present yet
     if [[ -z "$PID_B1" ]]; then
       PID_B1=$(jq -r '(if type == "array" then .[0] else (.data[0] // .properties[0] // null) end) | .id // empty' "$RESP_FILE" 2>/dev/null)
@@ -1244,7 +1244,7 @@ run_billing_pipeline() {
       local merge_src="" _mwait=8 _mattempt
       for _mattempt in 1 2 3; do
         get "$GW/v1/billing/folios?tenant_id=$tid&reservation_id=$res_id" >/dev/null
-        merge_src=$(jq -r --arg fid "$folio_id" '[.data // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+        merge_src=$(jq -r --arg fid "$folio_id" '[.data? // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
         [[ -n "$merge_src" ]] && break
         if [[ $_mattempt -lt 3 ]]; then
           printf "  ⏳ Retry %d/3 in %ds: waiting for merge-source folio...\n" "$_mattempt" "$_mwait"
@@ -2750,7 +2750,7 @@ seed_reservations() {
   CUR_TID="$tid"
 
   local before
-  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   before=$(resp_count)
 
   # Free rooms for the check-in cohort.
@@ -2794,7 +2794,7 @@ seed_reservations() {
   # Reservations are created asynchronously; 20 of them behind a shared Kafka
   # backlog can take well over a minute, so poll rather than guess a sleep.
   local after
-  after=$(poll_count "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" \
+  after=$(poll_count "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" \
                      $((before + RES_PER_PROPERTY)) 180)
   assert_gte "Reservations for $lbl (was $before)" "$after" "$RES_PER_PROPERTY"
 
@@ -2825,7 +2825,7 @@ seed_reservations() {
   wait_kafka 12
 
   # --- 3 of the checked-in cohort → CHECKED_OUT (feeds Housekeeping) ---
-  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   local in_ids; in_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | map(select((.status // "" | ascii_upcase) == "CHECKED_IN")) | .[].id' "$RESP_FILE" 2>/dev/null | head -3)
   local n_out=0
   for rid in $in_ids; do
@@ -2853,7 +2853,7 @@ seed_reservations() {
   wait_kafka 12
 
   # Report the resulting spread — the point of the "realistic mix".
-  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   local c_conf c_in c_out c_can c_ns
   c_conf=$(resp_fcount '(.status // "" | ascii_upcase) == "CONFIRMED"')
   c_in=$(resp_fcount '(.status // "" | ascii_upcase) == "CHECKED_IN"')

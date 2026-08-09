@@ -46,6 +46,9 @@ CREATE INDEX IF NOT EXISTS idx_hk_tasks_staff_today ON housekeeping_tasks(assign
 CREATE INDEX IF NOT EXISTS idx_hk_tasks_property_date ON housekeeping_tasks(property_id, scheduled_date, status, deleted_at)
     WHERE deleted_at IS NULL;
 
+-- Completion tracking
+CREATE INDEX IF NOT EXISTS idx_hk_tasks_completed_by ON housekeeping_tasks(completed_by) WHERE completed_by IS NOT NULL;
+
 -- Inspection tracking
 CREATE INDEX IF NOT EXISTS idx_hk_tasks_inspected_by ON housekeeping_tasks(inspected_by) WHERE inspected_by IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_hk_tasks_inspected_at ON housekeeping_tasks(inspected_at) WHERE inspected_at IS NOT NULL;

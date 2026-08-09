@@ -542,6 +542,24 @@ textarea.field-input {
   border-bottom: 1px solid var(--borderColor-default);
 }
 
+/* Trailing note in a card header — the section equivalent of .tab-strap.
+ * Sits opposite the title on the same ribbon, watermark weight so it explains
+ * the section without competing with it. Hidden on narrow viewports, where the
+ * ribbon has only enough room for the title. */
+.card-note {
+  font-size: var(--base-text-size-xs);
+  line-height: var(--base-text-lineHeight-normal);
+  color: var(--fgColor-muted);
+  text-align: right;
+  user-select: none;
+}
+
+@media (max-width: 700px) {
+  .card-note {
+    display: none;
+  }
+}
+
 /* Flex-centred so the 11 card titles that lead with an icon align it to the
    text without per-component utilities. Harmless for text-only titles. */
 .card-title {
@@ -1007,6 +1025,30 @@ textarea.field-input {
   .skeleton::after {
     animation: none;
   }
+}
+
+/* ── Tab strap ──────────────────────────────────────────────────────────────
+ * Describes the selected tab above its content. See TabStrapComponent.
+ * Watermark weight on purpose: it orients without competing with the data. */
+.tab-strap {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin: 0 0 var(--base-size-12);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-left: 2px solid var(--borderColor-muted);
+  background: var(--bgColor-muted, transparent);
+  border-radius: 0 var(--borderRadius-medium) var(--borderRadius-medium) 0;
+  font-size: var(--base-text-size-xs);
+  line-height: var(--base-text-lineHeight-normal);
+  color: var(--fgColor-muted);
+  user-select: none;
+}
+
+.tab-strap-icon {
+  @include icon-size(16px);
+  flex-shrink: 0;
+  opacity: 0.65;
 }
 
 /* ── Loading / Error / Empty states ── */

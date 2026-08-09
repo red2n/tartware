@@ -586,6 +586,36 @@ export const GroupBookingListItemSchema = z.object({
 export type GroupBookingListItem = z.infer<typeof GroupBookingListItemSchema>;
 
 /**
+ * A single room-type/date block held against a group booking.
+ */
+export const GroupRoomBlockSchema = z.object({
+	block_id: z.string(),
+	room_type_id: z.string(),
+	room_type_name: z.string().optional(),
+	block_date: z.string(),
+	blocked_rooms: z.number().int().nonnegative(),
+	picked_rooms: z.number().int().nonnegative(),
+	confirmed_rooms: z.number().int().nonnegative(),
+	negotiated_rate: z.number().nullable(),
+	rack_rate: z.number().nullable(),
+	discount_percentage: z.number().nullable(),
+	block_status: z.string(),
+});
+
+export type GroupRoomBlock = z.infer<typeof GroupRoomBlockSchema>;
+
+/**
+ * Group booking detail schema — the list item plus the room blocks held
+ * against it. The blocks are the reason a detail view exists at all: the list
+ * projection deliberately omits them because they are unbounded per booking.
+ */
+export const GroupBookingDetailSchema = GroupBookingListItemSchema.extend({
+	room_blocks: z.array(GroupRoomBlockSchema),
+});
+
+export type GroupBookingDetail = z.infer<typeof GroupBookingDetailSchema>;
+
+/**
  * Group booking list response schema.
  */
 export const GroupBookingListResponseSchema = z.object({

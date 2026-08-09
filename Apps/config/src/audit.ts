@@ -9,6 +9,9 @@ export const hashIdentifier = (id: string): string => {
   return createHash("sha256").update(id).digest("hex");
 };
 
+/** Matches a canonical UUID, used to keep non-UUID entity ids out of a uuid column. */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Redacts sensitive PII fields from a payload object before audit persistence.
  */
@@ -93,6 +96,18 @@ export const recordAuditLog = async (
   queryFn: (sql: string, params: unknown[]) => Promise<unknown>,
   params: AuditLogParams,
 ): Promise<void> => {
+  // audit_logs.entity_id is a UUID column, but callers legitimately pass a
+  // hashIdentifier() digest or a composite key (e.g. "<property>:<date>") when
+  // the entity has no UUID of its own. Those are carried in metadata as
+  // entity_id_hash — the same shape billing-service already writes — so the
+  // insert never fails with 22P02 on an unparseable UUID.
+  const isUuid = params.entityId != null && UUID_PATTERN.test(params.entityId);
+  const entityId = isUuid ? params.entityId : null;
+  const metadata =
+    params.entityId != null && !isUuid
+      ? { ...params.metadata, entity_id_hash: params.entityId }
+      : params.metadata;
+
   await queryFn(INSERT_AUDIT_LOG_SQL, [
     params.tenantId,
     params.propertyId,
@@ -100,8 +115,8 @@ export const recordAuditLog = async (
     params.action,
     params.eventType,
     params.entityType,
-    params.entityId,
-    JSON.stringify(params.metadata),
+    entityId,
+    JSON.stringify(metadata),
   ]);
 };
 

@@ -67,10 +67,7 @@ const TierRuleCreateBodySchema = z.object({
 
 type TierRuleCreateBody = z.infer<typeof TierRuleCreateBodySchema>;
 
-const TierRuleCreateBodyJsonSchema = schemaFromZod(
-  TierRuleCreateBodySchema,
-  "TierRuleCreateBody",
-);
+const TierRuleCreateBodyJsonSchema = schemaFromZod(TierRuleCreateBodySchema, "TierRuleCreateBody");
 const TierRuleCreateResponseJsonSchema = schemaFromZod(
   LoyaltyTierRulesSchema,
   "TierRuleCreateResponse",
@@ -112,8 +109,7 @@ const normalizeRow = <T extends Record<string, unknown>>(
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(row)) {
     if (value === null) continue; // null → undefined, satisfying .optional()
-    out[key] =
-      numericFields.includes(key) && typeof value === "string" ? Number(value) : value;
+    out[key] = numericFields.includes(key) && typeof value === "string" ? Number(value) : value;
   }
   return out;
 };

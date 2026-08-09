@@ -15,6 +15,7 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -99,13 +100,12 @@ export class PackagesComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(p) =>
-					p.package_name.toLowerCase().includes(query) ||
-					p.package_code.toLowerCase().includes(query) ||
-					(p.short_description?.toLowerCase().includes(query) ?? false) ||
-					p.package_type_display.toLowerCase().includes(query),
-			);
+			list = filterBySearch(list, query, (p) => [
+				p.package_name,
+				p.package_code,
+				p.short_description,
+				p.package_type_display,
+			]);
 		}
 
 		return list;

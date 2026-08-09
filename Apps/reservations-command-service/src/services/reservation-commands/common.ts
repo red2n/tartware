@@ -11,9 +11,28 @@ import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit
 
 export class ReservationCommandError extends Error {
   code: string;
-  constructor(code: string, message: string) {
+  /**
+   * When true the command consumer will retry this error rather than routing
+   * immediately to the DLQ. Set to true only for transient failures (e.g.
+   * unexpected DB write failures) that may succeed on a subsequent attempt.
+   * Business-logic validation errors (wrong status, missing FK) should leave
+   * this false — retrying them wastes attempts and delays DLQ diagnosis.
+   *
+   * These commands are consumed in partition order, so a retried error also
+   * stalls every command queued behind it for the length of the backoff
+   * ladder. Defaulting to false keeps a deterministic rejection from blocking
+   * unrelated work.
+   */
+  retryable: boolean;
+
+  constructor(code: string, message: string, retryable = false) {
     super(message);
     this.code = code;
+    this.retryable = retryable;
+  }
+
+  toJSON() {
+    return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
   }
 }
 
@@ -216,6 +235,9 @@ export const buildReservationUpdatePayload = (
   }
   if (command.notes) {
     payload.internal_notes = command.notes;
+  }
+  if (command.market_segment_id) {
+    payload.market_segment_id = command.market_segment_id;
   }
   if (rateCode) {
     payload.rate_code = rateCode;

@@ -154,6 +154,25 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/guests/guests").then((m) => m.GuestsComponent),
 			},
 			{
+				// Declared before guests/:guestId so the literal segment wins the match.
+				path: "guests/new",
+				canDeactivate: [unsavedChangesGuard],
+				canActivate: [propertyGuard, screenGuard("guests")],
+				data: { screen: "guests" },
+				loadComponent: () =>
+					import("./features/guests/guest-form/guest-form").then((m) => m.GuestFormComponent),
+			},
+			{
+				// Declared before guests/:guestId for the same reason: the two-segment
+				// edit path must not be swallowed by the single-segment detail route.
+				path: "guests/:guestId/edit",
+				canDeactivate: [unsavedChangesGuard],
+				canActivate: [propertyGuard, screenGuard("guests")],
+				data: { screen: "guests" },
+				loadComponent: () =>
+					import("./features/guests/guest-form/guest-form").then((m) => m.GuestFormComponent),
+			},
+			{
 				path: "guests/:guestId",
 				canActivate: [propertyGuard, screenGuard("guests")],
 				data: { screen: "guests" },

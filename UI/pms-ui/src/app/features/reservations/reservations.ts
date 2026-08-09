@@ -14,6 +14,7 @@ import { reservationStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -78,14 +79,17 @@ export class ReservationsComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(r) =>
-					r.guest_name.toLowerCase().includes(query) ||
-					r.confirmation_number.toLowerCase().includes(query) ||
-					(r.room_number?.toLowerCase().includes(query) ?? false) ||
-					(r.guest_email?.toLowerCase().includes(query) ?? false) ||
-					(r.room_type_name?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (r) => [
+				r.guest_name,
+				r.confirmation_number,
+				r.room_number,
+				r.guest_email,
+				r.room_type_name,
+				// Searchable so typing a status word ("conf", "checked in") filters the
+				// grid the same way the status chips do.
+				r.status,
+				r.status_display,
+			]);
 		}
 
 		return list;

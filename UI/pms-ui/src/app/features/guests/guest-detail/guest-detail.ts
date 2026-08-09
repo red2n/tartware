@@ -8,8 +8,13 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { SettingsService } from "../../../core/settings/settings.service";
-import { loyaltyTierClass, vipStatusClass } from "../../../shared/badge-utils";
+import {
+	loyaltyTierClass,
+	reservationStatusClass,
+	vipStatusClass,
+} from "../../../shared/badge-utils";
 import { IconComponent } from "../../../shared/components/icon/icon";
+import { TabStrapComponent } from "../../../shared/components/tab-strap/tab-strap";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 /** API returns version as string instead of bigint. */
@@ -49,10 +54,31 @@ type CommunicationItem = {
 	created_at: string;
 };
 
-type DetailTab = "profile" | "preferences" | "documents" | "communications" | "account";
+type DetailTab =
+	| "overview"
+	| "reservations"
+	| "preferences"
+	| "documents"
+	| "communications"
+	| "compliance";
+
+/** Reservation row as shown on the guest's stay history. */
+type GuestReservationItem = {
+	id: string;
+	confirmation_number: string;
+	property_name?: string;
+	room_type_name?: string;
+	room_number?: string;
+	check_in_date: string;
+	check_out_date: string;
+	nights: number;
+	status: string;
+	status_display: string;
+	total_amount: number;
+	balance_due?: number;
+};
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
-import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 @Component({
 	selector: "app-guest-detail",
 	standalone: true,
@@ -64,6 +90,7 @@ import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 		ProgressSpinnerModule,
 		TooltipModule,
 		TranslatePipe,
+		TabStrapComponent,
 	],
 	templateUrl: "./guest-detail.html",
 	styleUrl: "./guest-detail.scss",
@@ -71,7 +98,6 @@ import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 export class GuestDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialog = inject(AppDialogService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
@@ -80,12 +106,62 @@ export class GuestDetailComponent implements OnInit {
 	readonly guest = signal<GuestDetail | null>(null);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly activeTab = signal<DetailTab>("profile");
+	readonly activeTab = signal<DetailTab>("overview");
+
+	/**
+	 * One-line description of what each tab is for, shown above its content.
+	 *
+	 * Several of these sections look similar at a glance (preferences vs
+	 * documents vs communications are all "lists about the guest"), so the strap
+	 * states what the tab is actually for and what can be done there.
+	 */
+	private static readonly TAB_OVERVIEWS: Record<DetailTab, string> = {
+		overview:
+			"Identity, contact and stay summary. Update contact details, VIP status and loyalty tier here.",
+		reservations:
+			"Every stay this guest has booked — current and upcoming first, past stays below. Select one to open it.",
+		preferences: "Standing room, dietary and accessibility preferences honoured on every stay.",
+		documents: "Identity documents held for this guest, with verification and expiry status.",
+		communications:
+			"Messages sent to this guest — booking confirmations, pre-arrival notices and campaigns.",
+		compliance:
+			"Blacklist status, duplicate merges, the consent ledger and GDPR requests. Actions here are audited.",
+	};
+
+	readonly tabOverview = computed(() => GuestDetailComponent.TAB_OVERVIEWS[this.activeTab()]);
 
 	readonly preferences = signal<PreferenceItem[]>([]);
 	readonly documents = signal<DocumentItem[]>([]);
 	readonly communications = signal<CommunicationItem[]>([]);
+	readonly reservations = signal<GuestReservationItem[]>([]);
+	readonly reservationsLoaded = signal(false);
 	readonly loadingTab = signal(false);
+
+	/**
+	 * Split the guest's stays into current/upcoming and past.
+	 *
+	 * Derived from status rather than dates: a reservation whose departure has
+	 * passed but which is still CHECKED_IN is an operational exception the front
+	 * desk needs to see under "current", not filed away as history.
+	 */
+	private static readonly PAST_STATUSES = new Set([
+		"CHECKED_OUT",
+		"CANCELLED",
+		"NO_SHOW",
+		"EXPIRED",
+	]);
+
+	readonly currentReservations = computed(() =>
+		this.reservations().filter(
+			(r) => !GuestDetailComponent.PAST_STATUSES.has(r.status.toUpperCase()),
+		),
+	);
+
+	readonly pastReservations = computed(() =>
+		this.reservations().filter((r) =>
+			GuestDetailComponent.PAST_STATUSES.has(r.status.toUpperCase()),
+		),
+	);
 
 	/* ── Phase E: account actions ── */
 	readonly vipForm = signal({ vip_status: "NONE", reason: "" });
@@ -226,13 +302,17 @@ export class GuestDetailComponent implements OnInit {
 
 	setTab(tab: DetailTab): void {
 		this.activeTab.set(tab);
-		if (tab === "preferences" && this.preferences().length === 0) {
+		// Guard on a loaded flag rather than an empty array: a guest with genuinely
+		// no reservations would otherwise re-fetch on every visit to the tab.
+		if (tab === "reservations" && !this.reservationsLoaded()) {
+			this.loadReservations();
+		} else if (tab === "preferences" && this.preferences().length === 0) {
 			this.loadPreferences();
 		} else if (tab === "documents" && this.documents().length === 0) {
 			this.loadDocuments();
 		} else if (tab === "communications" && this.communications().length === 0) {
 			this.loadCommunications();
-		} else if (tab === "account") {
+		} else if (tab === "compliance") {
 			this.primeAccountForms();
 			this.loadConsent();
 		}
@@ -516,34 +596,14 @@ export class GuestDetailComponent implements OnInit {
 		return `${guest.first_name.charAt(0)}${guest.last_name.charAt(0)}`.toUpperCase();
 	}
 
+	/**
+	 * Editing is a full page rather than a dialog — see GuestFormComponent.
+	 * Kept as openEditDialog so existing template bindings keep working.
+	 */
 	openEditDialog(): void {
 		const g = this.guest();
 		if (!g) return;
-
-		import("../edit-guest-dialog/edit-guest-dialog").then(({ EditGuestDialogComponent }) => {
-			const ref = this.dialog.open(EditGuestDialogComponent, {
-				data: {
-					id: g.id,
-					first_name: g.first_name,
-					last_name: g.last_name,
-					email: g.email,
-					phone: g.phone,
-					title: g.title,
-					nationality: g.nationality,
-					gender: g.gender,
-					date_of_birth: g.date_of_birth,
-					company_name: g.company_name,
-					vip_status: g.vip_status,
-					loyalty_tier: g.loyalty_tier,
-				},
-			});
-			ref?.onClose.subscribe((updated: boolean) => {
-				if (updated) {
-					this.toast.success("Guest profile update submitted. It may take a moment to apply.");
-					setTimeout(() => this.loadGuest(), 1500);
-				}
-			});
-		});
+		this.router.navigate(["/guests", g.id, "edit"]);
 	}
 
 	async loadGuest(): Promise<void> {
@@ -563,6 +623,42 @@ export class GuestDetailComponent implements OnInit {
 			this.error.set(e instanceof Error ? e.message : "Failed to load guest");
 		} finally {
 			this.loading.set(false);
+		}
+	}
+
+	/**
+	 * Load this guest's stay history, newest first.
+	 *
+	 * Unlike preferences/documents this surfaces its error: an operator checking
+	 * whether a guest has stayed before needs to know the difference between
+	 * "no previous stays" and "we could not load them".
+	 */
+	reservationStatusBadge = reservationStatusClass;
+
+	openReservation(reservationId: string): void {
+		this.router.navigate(["/reservations", reservationId]);
+	}
+
+	async loadReservations(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		const guestId = this.route.snapshot.paramMap.get("guestId");
+		if (!tenantId || !guestId) return;
+
+		this.loadingTab.set(true);
+		try {
+			const res = await this.api.get<GuestReservationItem[] | { data: GuestReservationItem[] }>(
+				"/reservations",
+				{ tenant_id: tenantId, guest_id: guestId, limit: "200" },
+			);
+			const items = Array.isArray(res) ? res : (res?.data ?? []);
+			this.reservations.set(
+				[...items].sort((a, b) => b.check_in_date.localeCompare(a.check_in_date)),
+			);
+			this.reservationsLoaded.set(true);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to load reservations");
+		} finally {
+			this.loadingTab.set(false);
 		}
 	}
 

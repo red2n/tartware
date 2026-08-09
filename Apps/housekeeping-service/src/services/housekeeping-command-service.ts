@@ -127,9 +127,9 @@ const applyAssignment = async (
         END,
         priority = COALESCE($4, priority),
         notes = CASE
-          WHEN $5 IS NULL THEN notes
-          WHEN notes IS NULL THEN $5
-          ELSE CONCAT_WS(E'\\n', notes, $5)
+          WHEN $5::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $5::text
+          ELSE CONCAT_WS(E'\\n', notes, $5::text)
         END,
         updated_at = NOW(),
         updated_by = $6
@@ -173,9 +173,9 @@ const applyCompletion = async (
         completed_by = $3::uuid,
         completed_at = NOW(),
         notes = CASE
-          WHEN $5 IS NULL THEN notes
-          WHEN notes IS NULL THEN $5
-          ELSE CONCAT_WS(E'\\n', notes, $5)
+          WHEN $5::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $5::text
+          ELSE CONCAT_WS(E'\\n', notes, $5::text)
         END,
         inspection_passed = $6,
         inspected_by = $7::uuid,
@@ -333,9 +333,9 @@ const applyReassign = async (
           ELSE 'IN_PROGRESS'
         END,
         notes = CASE
-          WHEN $4 IS NULL THEN notes
-          WHEN notes IS NULL THEN $4
-          ELSE CONCAT_WS(E'\\n', notes, $4)
+          WHEN $4::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $4::text
+          ELSE CONCAT_WS(E'\\n', notes, $4::text)
         END,
         updated_at = NOW(),
         updated_by = $5
@@ -370,9 +370,9 @@ const applyReopen = async (
         inspected_at = NULL,
         inspection_notes = NULL,
         notes = CASE
-          WHEN $3 IS NULL THEN notes
-          WHEN notes IS NULL THEN $3
-          ELSE CONCAT_WS(E'\\n', notes, $3)
+          WHEN $3::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $3::text
+          ELSE CONCAT_WS(E'\\n', notes, $3::text)
         END,
         updated_at = NOW(),
         updated_by = $4
@@ -401,8 +401,8 @@ const applyAddNote = async (
       UPDATE public.housekeeping_tasks
       SET
         notes = CASE
-          WHEN notes IS NULL THEN $3
-          ELSE CONCAT_WS(E'\\n', notes, $3)
+          WHEN notes IS NULL THEN $3::text
+          ELSE CONCAT_WS(E'\\n', notes, $3::text)
         END,
         updated_at = NOW(),
         updated_by = $4
@@ -432,9 +432,9 @@ const applyBulkStatus = async (
       SET
         status = $2::housekeeping_status,
         notes = CASE
-          WHEN $3 IS NULL THEN notes
-          WHEN notes IS NULL THEN $3
-          ELSE CONCAT_WS(E'\\n', notes, $3)
+          WHEN $3::text IS NULL THEN notes
+          WHEN notes IS NULL THEN $3::text
+          ELSE CONCAT_WS(E'\\n', notes, $3::text)
         END,
         updated_at = NOW(),
         updated_by = $4

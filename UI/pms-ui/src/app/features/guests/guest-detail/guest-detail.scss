@@ -142,3 +142,28 @@
     justify-content: space-around;
   }
 }
+
+/* ── Tab strap ──────────────────────────────────────────────────────────────
+ * A watermark-weight line describing the selected tab. Deliberately low
+ * contrast and non-interactive: it orients someone landing on an unfamiliar
+ * tab without competing with the data underneath it. */
+.tab-strap {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin: 0 0 var(--base-size-12);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-left: 2px solid var(--borderColor-muted);
+  background: var(--bgColor-muted, transparent);
+  border-radius: 0 var(--borderRadius-medium) var(--borderRadius-medium) 0;
+  font-size: var(--base-text-size-xs);
+  line-height: var(--base-text-lineHeight-normal);
+  color: var(--fgColor-muted);
+  user-select: none;
+}
+
+.tab-strap-icon {
+  @include icon-size(16px);
+  flex-shrink: 0;
+  opacity: 0.65;
+}

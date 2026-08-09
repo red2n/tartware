@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS housekeeping_tasks (
     scheduled_time TIME,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
+    completed_by UUID,
 
     -- Inspection
     inspected_by UUID,
@@ -102,6 +103,7 @@ COMMENT ON COLUMN housekeeping_tasks.status IS 'ENUM: clean, dirty, inspected, i
 COMMENT ON COLUMN housekeeping_tasks.assigned_to IS 'Reference to users.id (housekeeping staff)';
 COMMENT ON COLUMN housekeeping_tasks.started_at IS 'When cleaning started';
 COMMENT ON COLUMN housekeeping_tasks.completed_at IS 'When cleaning completed';
+COMMENT ON COLUMN housekeeping_tasks.completed_by IS 'Reference to users.id (attendant who completed the task)';
 COMMENT ON COLUMN housekeeping_tasks.inspected_by IS 'Reference to users.id (supervisor)';
 COMMENT ON COLUMN housekeeping_tasks.inspection_passed IS 'Quality control result';
 COMMENT ON COLUMN housekeeping_tasks.is_guest_request IS 'Guest-requested cleaning';

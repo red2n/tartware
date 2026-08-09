@@ -48,6 +48,14 @@ REFERENCES rates(id)
 ON DELETE RESTRICT
 ON UPDATE CASCADE;
 
+-- Foreign key to market_segments table (nullable — USALI revenue attribution)
+ALTER TABLE reservations
+ADD CONSTRAINT fk_reservations_market_segment_id
+FOREIGN KEY (market_segment_id)
+REFERENCES market_segments(segment_id)
+ON DELETE RESTRICT
+ON UPDATE CASCADE;
+
 COMMENT ON CONSTRAINT fk_reservations_tenant_id ON reservations IS
 'Ensures tenant exists. RESTRICT prevents deleting tenants with reservations.';
 
@@ -62,5 +70,8 @@ COMMENT ON CONSTRAINT fk_reservations_room_type_id ON reservations IS
 
 COMMENT ON CONSTRAINT fk_reservations_rate_id ON reservations IS
 'Ensures rate exists if specified. RESTRICT prevents deleting rates with reservations.';
+
+COMMENT ON CONSTRAINT fk_reservations_market_segment_id ON reservations IS
+'Ensures market segment exists if specified. RESTRICT preserves historical revenue attribution.';
 
 \echo '✓ Reservations foreign keys created successfully!'

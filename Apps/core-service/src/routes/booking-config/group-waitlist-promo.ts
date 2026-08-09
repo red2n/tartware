@@ -1,5 +1,6 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  GroupBookingDetailSchema,
   GroupBookingListItemSchema,
   PromotionalCodeListItemSchema,
   ValidatePromoCodeRequestSchema,
@@ -11,7 +12,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
-  getGroupBookingById,
+  getGroupBookingDetail,
   getPromotionalCodeById,
   getWaitlistEntryById,
   listGroupBookings,
@@ -185,7 +186,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
     "GroupBookingListResponse",
   );
   const GroupBookingDetailResponseJsonSchema = schemaFromZod(
-    GroupBookingListItemSchema,
+    GroupBookingDetailSchema,
     "GroupBookingDetailResponse",
   );
 
@@ -268,11 +269,11 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
     async (request, reply) => {
       const { groupBookingId } = GroupBookingParamsSchema.parse(request.params);
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
-      const booking = await getGroupBookingById({ groupBookingId, tenantId: tenant_id });
+      const booking = await getGroupBookingDetail({ groupBookingId, tenantId: tenant_id });
       if (!booking) {
         return reply.notFound("Group booking not found");
       }
-      return GroupBookingListItemSchema.parse(booking);
+      return GroupBookingDetailSchema.parse(booking);
     },
   );
 

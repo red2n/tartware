@@ -100,6 +100,9 @@ CREATE TABLE IF NOT EXISTS reservations (
     company_id UUID,
     travel_agent_id UUID,
 
+    -- Revenue Attribution (USALI market segmentation)
+    market_segment_id UUID,
+
     -- Quote Lifecycle (INQUIRY → QUOTED → PENDING)
     quoted_at TIMESTAMPTZ,
     quote_expires_at TIMESTAMPTZ,
@@ -155,6 +158,7 @@ COMMENT ON COLUMN reservations.property_id IS 'Reference to properties.id';
 COMMENT ON COLUMN reservations.guest_id IS 'Reference to guests.id';
 COMMENT ON COLUMN reservations.room_type_id IS 'Reference to room_types.id';
 COMMENT ON COLUMN reservations.rate_id IS 'Reference to rates.id (NULL if custom rate)';
+COMMENT ON COLUMN reservations.market_segment_id IS 'Reference to market_segments.segment_id (USALI segment attribution; NULL = unclassified)';
 COMMENT ON COLUMN reservations.confirmation_number IS 'Human-readable confirmation number (e.g., CNF123456)';
 COMMENT ON COLUMN reservations.room_number IS 'Assigned room number (NULL until assigned)';
 COMMENT ON COLUMN reservations.actual_check_in IS 'Actual check-in timestamp (NULL until checked in)';

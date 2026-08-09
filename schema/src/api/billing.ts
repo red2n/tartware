@@ -893,7 +893,8 @@ export const applyPricingAdjustment = (
  * range strings and room-type ID for pre-fetched filtering.
  */
 export type BulkPricingRuleRow = PricingEngineRuleRow & {
-	room_type_id: string | null;
+	/** Empty or null means the rule applies to every room type. */
+	applies_to_room_types: string[] | null;
 	effective_from_str: string | null;
 	effective_to_str: string | null;
 };
@@ -943,7 +944,9 @@ export const computeBulkPricingCell = (
 
 	const scopedRules = allRules.filter(
 		(r) =>
-			(r.room_type_id === null || r.room_type_id === roomTypeId) &&
+			(r.applies_to_room_types === null ||
+				r.applies_to_room_types.length === 0 ||
+				r.applies_to_room_types.includes(roomTypeId)) &&
 			(r.effective_from_str === null || r.effective_from_str <= dateStr) &&
 			(r.effective_to_str === null || r.effective_to_str >= dateStr),
 	);
@@ -1057,7 +1060,7 @@ export const bulkGeneratePricingRecommendationsImpl = async (
 	const roomTypeIds = roomTypes.map((rt) => rt.id);
 	const { rows: allRulesRaw } = await queryFn(
 		`SELECT rule_id, rule_name, rule_type, priority,
-            room_type_id, effective_from::text AS effective_from_str, effective_to::text AS effective_to_str,
+            applies_to_room_types, effective_from::text AS effective_from_str, effective_until::text AS effective_to_str,
             conditions, adjustment_type,
             COALESCE(adjustment_value, 0) AS adjustment_value,
             adjustment_cap_min, adjustment_cap_max,
@@ -1066,9 +1069,11 @@ export const bulkGeneratePricingRecommendationsImpl = async (
      FROM pricing_rules
      WHERE tenant_id = $1 AND property_id = $2
        AND is_active = true AND is_deleted = false
-       AND (room_type_id IS NULL OR room_type_id = ANY($3::uuid[]))
+       AND (applies_to_room_types IS NULL
+            OR cardinality(applies_to_room_types) = 0
+            OR applies_to_room_types && $3::uuid[])
        AND (effective_from IS NULL OR effective_from <= $5::date)
-       AND (effective_to IS NULL OR effective_to >= $4::date)
+       AND (effective_until IS NULL OR effective_until >= $4::date)
      ORDER BY priority ASC`,
 		[
 			tenantId,

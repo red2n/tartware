@@ -14,8 +14,8 @@ import { SettingsService } from "../../core/settings/settings.service";
 import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
-import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -49,7 +49,6 @@ export class GuestsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -104,15 +103,18 @@ export class GuestsComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(g) =>
-					g.first_name.toLowerCase().includes(query) ||
-					g.last_name.toLowerCase().includes(query) ||
-					`${g.first_name} ${g.last_name}`.toLowerCase().includes(query) ||
-					(g.email?.toLowerCase().includes(query) ?? false) ||
-					(g.phone?.includes(query) ?? false) ||
-					(g.company_name?.toLowerCase().includes(query) ?? false),
-			);
+			// The old predicate also tested "first last" concatenated, to catch a
+			// full-name search. Term-by-term matching across fields covers that
+			// case on its own, so the extra disjunct is gone.
+			list = filterBySearch(list, query, (g) => [
+				g.first_name,
+				g.last_name,
+				g.email,
+				g.phone,
+				g.company_name,
+				g.loyalty_tier,
+				g.vip_status,
+			]);
 		}
 
 		return list;
@@ -286,20 +288,13 @@ export class GuestsComponent {
 		}
 	}
 
+	/**
+	 * Guest creation is a full page rather than a dialog: the profile spans
+	 * identity, contact, address, company, loyalty and preferences, which does
+	 * not fit a modal without scrolling the operator through it blind.
+	 */
 	openCreateDialog(): void {
-		import("./create-guest-dialog/create-guest-dialog").then(({ CreateGuestDialogComponent }) => {
-			const ref = this.dialog.open(CreateGuestDialogComponent);
-			ref?.onClose.subscribe((created: boolean) => {
-				if (created) {
-					this.toast.success("Guest registration submitted. It may take a moment to appear.");
-					// Kafka consumer processes async — delay refresh
-					setTimeout(() => {
-						this.loadGuests();
-						this.loadGuestStats();
-					}, 1500);
-				}
-			});
-		});
+		this.router.navigate(["/guests/new"]);
 	}
 
 	private async loadGuestStats(): Promise<void> {

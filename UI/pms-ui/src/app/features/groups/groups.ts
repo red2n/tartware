@@ -18,6 +18,7 @@ import { groupBlockStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -131,14 +132,13 @@ export class GroupsComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(g) =>
-					g.group_name.toLowerCase().includes(query) ||
-					(g.group_code?.toLowerCase().includes(query) ?? false) ||
-					g.contact_name.toLowerCase().includes(query) ||
-					(g.contact_email?.toLowerCase().includes(query) ?? false) ||
-					(g.organization_name?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (g) => [
+				g.group_name,
+				g.group_code,
+				g.contact_name,
+				g.contact_email,
+				g.organization_name,
+			]);
 		}
 
 		return list;

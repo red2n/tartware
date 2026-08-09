@@ -16,6 +16,7 @@ import { PageHeaderComponent } from "../../../shared/components/page-header/page
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { filterBySearch } from "../../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -127,13 +128,12 @@ export class CashieringComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((s) => s.session_status === status);
 		if (query) {
-			list = list.filter(
-				(s) =>
-					s.session_number.toLowerCase().includes(query) ||
-					(s.cashier_name?.toLowerCase().includes(query) ?? false) ||
-					(s.terminal_name?.toLowerCase().includes(query) ?? false) ||
-					(s.session_name?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (s) => [
+				s.session_number,
+				s.cashier_name,
+				s.terminal_name,
+				s.session_name,
+			]);
 		}
 		return list;
 	});

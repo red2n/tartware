@@ -66,6 +66,12 @@ export const ReservationCreateCommandSchema = z.object({
 		.optional(),
 	company_id: z.string().uuid().optional(),
 	travel_agent_id: z.string().uuid().optional(),
+	/**
+	 * USALI market segment this booking is attributed to
+	 * (market_segments.segment_id). Optional: walk-ins and unclassified
+	 * bookings report as UNCLASSIFIED rather than being forced into a segment.
+	 */
+	market_segment_id: z.string().uuid().optional(),
 });
 
 export type ReservationCreateCommand = z.infer<
@@ -88,6 +94,12 @@ export const ReservationModifyCommandSchema = z
 		total_amount: z.coerce.number().nonnegative().optional(),
 		currency: z.string().length(3).optional(),
 		notes: z.string().max(2000).optional(),
+		/**
+		 * Re-attribute the booking to a different USALI market segment
+		 * (market_segments.segment_id). Segment corrections are routine before
+		 * period close, so this is modifiable rather than create-only.
+		 */
+		market_segment_id: z.string().uuid().optional(),
 	})
 	.refine(
 		(value) =>
@@ -101,7 +113,8 @@ export const ReservationModifyCommandSchema = z
 					value.status ||
 					value.total_amount ||
 					value.currency ||
-					value.notes,
+					value.notes ||
+					value.market_segment_id,
 			),
 		"At least one field must be provided to modify the reservation",
 	);

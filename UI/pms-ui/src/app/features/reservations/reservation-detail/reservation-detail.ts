@@ -1,5 +1,12 @@
 import { NgClass } from "@angular/common";
-import { Component, computed, inject, type OnInit, signal } from "@angular/core";
+import {
+	Component,
+	computed,
+	inject,
+	type OnInit,
+	signal,
+	type WritableSignal,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type {
@@ -39,8 +46,17 @@ const NO_SHOW_CHARGE_ALLOWED = new Set(["CONFIRMED", "NO_SHOW"]);
 const LATE_CHECKOUT_CHARGE_ALLOWED = new Set(["CHECKED_IN"]);
 /** Statuses that allow a cancellation penalty posting. */
 const CANCELLATION_PENALTY_ALLOWED = new Set(["CANCELLED", "NO_SHOW"]);
-/** Statuses that allow date modification (advance/postpone). */
-const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED", "CHECKED_IN"]);
+/**
+ * Statuses that allow date modification (move arrival and/or departure).
+ *
+ * CHECKED_IN is deliberately excluded. modifyDates already refuses to change
+ * the arrival of an in-house guest and refuses to pull their departure
+ * forward, so the only edit it would accept for CHECKED_IN is pushing the
+ * departure out — which is precisely what Extend Stay does. Listing it here
+ * put two buttons on an in-house reservation that did the same job, with
+ * nothing to tell the operator which one to use.
+ */
+const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
 
 @Component({
 	selector: "app-reservation-detail",
@@ -574,16 +590,40 @@ export class ReservationDetailComponent implements OnInit {
 		}
 	}
 
+	/**
+	 * Every collapsible action panel on this screen.
+	 *
+	 * cancelAction() closes them by walking this list rather than naming each
+	 * signal in turn. The hand-written version had drifted to cover 8 of 14, so
+	 * Cancel silently left Add Deposit, Assign Room, Extend Stay, Rate Override,
+	 * Release Deposit and Unassign Room open — the panel stayed on screen with
+	 * the operator's input still in it. Adding a panel here is the one step
+	 * needed for it to close correctly.
+	 */
+	private actionPanels(): WritableSignal<boolean>[] {
+		return [
+			this.confirmingCheckIn,
+			this.confirmingCheckOut,
+			this.confirmingCancel,
+			this.confirmingExpressCheckout,
+			this.confirmingNoShowCharge,
+			this.confirmingLateCheckoutCharge,
+			this.confirmingCancellationPenalty,
+			this.confirmingModifyDates,
+			this.confirmingAddDeposit,
+			this.confirmingReleaseDeposit,
+			this.confirmingAssignRoom,
+			this.confirmingUnassignRoom,
+			this.confirmingExtend,
+			this.confirmingRateOverride,
+		];
+	}
+
 	cancelAction(): void {
-		this.confirmingCheckIn.set(false);
+		for (const panel of this.actionPanels()) {
+			panel.set(false);
+		}
 		this.showAllRoomTypes.set(false);
-		this.confirmingCheckOut.set(false);
-		this.confirmingCancel.set(false);
-		this.confirmingExpressCheckout.set(false);
-		this.confirmingNoShowCharge.set(false);
-		this.confirmingLateCheckoutCharge.set(false);
-		this.confirmingCancellationPenalty.set(false);
-		this.confirmingModifyDates.set(false);
 	}
 
 	/** Load available rooms matching the reservation's room type for manual selection. */
@@ -907,6 +947,10 @@ export class ReservationDetailComponent implements OnInit {
 		const today = this.todayDateString();
 
 		// CHECKED_IN: cannot change arrival, can only postpone checkout
+		// Defensive: the Modify Dates button is hidden for CHECKED_IN (Extend Stay
+		// owns that case), so this is unreachable from the UI today. It stays
+		// because it guards the invariant rather than the button — anything that
+		// reaches this method must not move an in-house guest's arrival.
 		if (status === "CHECKED_IN") {
 			if (form.check_in_date !== origIn) {
 				this.toast.error("Cannot change check-in date for an in-house guest.");

@@ -11,6 +11,18 @@
   </div>
   @if (group(); as g) {
     <div class="page-actions">
+      @if (canAddRooms()) {
+        <button class="btn btn-outline btn-sm" (click)="showAddBlock()" [disabled]="actionLoading()" [pTooltip]="'Hold rooms of a given type for each night of the group stay' | translate">
+          <app-icon name="library_add" />
+          {{ 'Add Room Block' | translate }}
+        </button>
+      }
+      @if (canBookRoomingList()) {
+        <button class="btn btn-primary btn-sm" (click)="showRoomingList()" [disabled]="actionLoading()" [pTooltip]="'Enter the rooming list to create reservations from the block' | translate">
+          <app-icon name="person_add" />
+          {{ 'Book Rooming List' | translate }}
+        </button>
+      }
       @if (canCheckIn()) {
         <button class="btn btn-primary btn-sm" (click)="showCheckInConfirm()" [disabled]="actionLoading()" [pTooltip]="'Batch check-in all picked reservations with proximity-based room assignment' | translate">
           <app-icon name="login" />
@@ -20,6 +32,135 @@
     </div>
   }
 </div>
+
+<!-- Add room block -->
+@if (addingBlock()) {
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="library_add" />
+      <h3 class="confirm-title">{{ 'Add Room Block' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p>{{ 'Holds rooms of one type for every night in the range. Re-submitting a range updates those nights rather than adding duplicates.' | translate }}</p>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="blockRoomType">{{ 'Room Type' | translate }}</label>
+          <select id="blockRoomType" [ngModel]="blockRoomTypeId()" (ngModelChange)="blockRoomTypeId.set($event)">
+            <option value="">{{ 'Select a room type' | translate }}</option>
+            @for (rt of roomTypes(); track rt.room_type_id) {
+              <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="blockRooms">{{ 'Rooms per night' | translate }}</label>
+          <input id="blockRooms" type="number" min="1" [ngModel]="blockRooms()" (ngModelChange)="blockRooms.set($event)" />
+        </div>
+        <div class="form-field">
+          <label for="blockStart">{{ 'First night' | translate }}</label>
+          <input id="blockStart" type="date" [ngModel]="blockStartDate()" (ngModelChange)="blockStartDate.set($event)" />
+        </div>
+        <div class="form-field">
+          <label for="blockEnd">{{ 'Departure' | translate }}</label>
+          <input id="blockEnd" type="date" [ngModel]="blockEndDate()" (ngModelChange)="blockEndDate.set($event)" />
+        </div>
+        <div class="form-field">
+          <label for="blockRate">{{ 'Negotiated Rate' | translate }}</label>
+          <input id="blockRate" type="number" min="0" step="0.01" [ngModel]="blockRate()" (ngModelChange)="blockRate.set($event)" />
+        </div>
+      </div>
+
+      @if (blockNights().length > 0) {
+        <p class="text-muted">{{ 'Nights to block' | translate }}: <strong>{{ blockNights().length }}</strong> ({{ blockNights()[0] }} → {{ blockNights()[blockNights().length - 1] }})</p>
+      } @else {
+        <p class="text-muted">{{ 'Departure must be after the first night.' | translate }}</p>
+      }
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="addRoomBlock()" [disabled]="actionLoading() || !canSubmitBlock()">
+        @if (actionLoading()) {
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+          {{ 'Blocking...' | translate }}
+        } @else {
+          <app-icon name="library_add" />
+          {{ 'Add Block' | translate }}
+        }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Rooming list (book) -->
+@if (bookingRoomingList()) {
+  <div class="action-confirm-card" appUnsavedGuard>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="person_add" />
+      <h3 class="confirm-title">{{ 'Book Rooming List' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p>{{ 'Each row creates a confirmed reservation linked to this group and picks one room up from the block.' | translate }}</p>
+
+      <div class="rooming-table-wrap">
+        <table class="rooming-table">
+          <thead>
+            <tr>
+              <th>{{ 'Guest Name' | translate }}</th>
+              <th>{{ 'Email' | translate }}</th>
+              <th>{{ 'Room Type' | translate }}</th>
+              <th>{{ 'Arrival' | translate }}</th>
+              <th>{{ 'Departure' | translate }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of roomingGuests(); track $index) {
+              <tr>
+                <td><input type="text" [ngModel]="row.guest_name" (ngModelChange)="updateGuestRow($index, 'guest_name', $event)" [placeholder]="'Full name' | translate" /></td>
+                <td><input type="email" [ngModel]="row.guest_email" (ngModelChange)="updateGuestRow($index, 'guest_email', $event)" [placeholder]="'Optional' | translate" /></td>
+                <td>
+                  <select [ngModel]="row.room_type_id" (ngModelChange)="updateGuestRow($index, 'room_type_id', $event)">
+                    <option value="">{{ 'Select' | translate }}</option>
+                    @for (rt of roomTypes(); track rt.room_type_id) {
+                      <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
+                    }
+                  </select>
+                </td>
+                <td><input type="date" [ngModel]="row.arrival_date" (ngModelChange)="updateGuestRow($index, 'arrival_date', $event)" /></td>
+                <td><input type="date" [ngModel]="row.departure_date" (ngModelChange)="updateGuestRow($index, 'departure_date', $event)" /></td>
+                <td>
+                  @if (roomingGuests().length > 1) {
+                    <button class="btn btn-invisible btn-sm" (click)="removeGuestRow($index)" [pTooltip]="'Remove guest' | translate">
+                      <app-icon name="close" />
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <button class="btn btn-outline btn-sm" (click)="addGuestRow()">
+        <app-icon name="add" />
+        {{ 'Add Guest' | translate }}
+      </button>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="bookRoomingList()" [disabled]="actionLoading() || !canSubmitRoomingList()">
+        @if (actionLoading()) {
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+          {{ 'Booking...' | translate }}
+        } @else {
+          <app-icon name="person_add" />
+          {{ 'Book ' | translate }}{{ roomingGuests().length }}{{ ' Reservation(s)' | translate }}
+        }
+      </button>
+    </div>
+  </div>
+}
 
 <!-- Group check-in confirmation -->
 @if (confirmingCheckIn()) {
@@ -162,6 +303,45 @@
               </div>
             }
           </dl>
+        </div>
+      </div>
+
+      <!-- Room Blocks -->
+      <div class="detail-card">
+        <div class="card-header">
+          <h3 class="card-title">{{ 'Room Blocks' | translate }}</h3>
+        </div>
+        <div class="card-body">
+          @if (g.room_blocks.length === 0) {
+            <p class="text-muted">{{ 'No rooms blocked yet. Add a room block before booking the rooming list.' | translate }}</p>
+          } @else {
+            <div class="rooming-table-wrap">
+              <table class="rooming-table">
+                <thead>
+                  <tr>
+                    <th>{{ 'Date' | translate }}</th>
+                    <th>{{ 'Room Type' | translate }}</th>
+                    <th class="num">{{ 'Blocked' | translate }}</th>
+                    <th class="num">{{ 'Picked' | translate }}</th>
+                    <th class="num">{{ 'Rate' | translate }}</th>
+                    <th>{{ 'Status' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (b of g.room_blocks; track b.block_id) {
+                    <tr>
+                      <td>{{ formatDate(b.block_date) }}</td>
+                      <td>{{ b.room_type_name ?? '—' }}</td>
+                      <td class="num">{{ b.blocked_rooms }}</td>
+                      <td class="num">{{ b.picked_rooms }}</td>
+                      <td class="num">{{ b.negotiated_rate != null ? formatCurrency(b.negotiated_rate, 'USD') : '—' }}</td>
+                      <td><span class="badge" [ngClass]="blockStatusClass(b.block_status)">{{ b.block_status }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
         </div>
       </div>
 

@@ -17,10 +17,10 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { SettingsService } from "../../core/settings/settings.service";
-import { relativeTime } from "../../shared/format-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { StatCardComponent } from "../../shared/components/stat-card/stat-card";
+import { relativeTime } from "../../shared/format-utils";
 
 @Component({
 	selector: "app-dashboard",

@@ -12,6 +12,7 @@ import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { filterBySearch } from "../../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -56,12 +57,11 @@ export class BuildingsComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (query) {
-			list = list.filter(
-				(b) =>
-					b.building_name.toLowerCase().includes(query) ||
-					b.building_code.toLowerCase().includes(query) ||
-					(b.building_type?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (b) => [
+				b.building_name,
+				b.building_code,
+				b.building_type,
+			]);
 		}
 
 		return list;

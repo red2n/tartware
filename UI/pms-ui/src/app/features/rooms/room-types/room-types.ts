@@ -11,6 +11,7 @@ import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { filterBySearch } from "../../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -54,13 +55,12 @@ export class RoomTypesComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (query) {
-			list = list.filter(
-				(rt) =>
-					rt.type_name.toLowerCase().includes(query) ||
-					rt.type_code.toLowerCase().includes(query) ||
-					(rt.description?.toLowerCase().includes(query) ?? false) ||
-					(rt.category?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (rt) => [
+				rt.type_name,
+				rt.type_code,
+				rt.description,
+				rt.category,
+			]);
 		}
 
 		return list;

@@ -12,6 +12,7 @@ import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import { createSortState, getSortIcon, sortBy, toggleSort } from "../../shared/sort-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
@@ -85,13 +86,7 @@ export class UsersComponent {
 		}
 
 		if (query) {
-			items = items.filter(
-				(u) =>
-					u.username.toLowerCase().includes(query) ||
-					u.email.toLowerCase().includes(query) ||
-					u.first_name.toLowerCase().includes(query) ||
-					u.last_name.toLowerCase().includes(query),
-			);
+			items = filterBySearch(items, query, (u) => [u.username, u.email, u.first_name, u.last_name]);
 		}
 
 		return items;

@@ -11,7 +11,6 @@ import { query } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
 
 export { hashIdentifier, redactPayload };
-export type { FlowApprovalParams };
 
 /**
  * Persists an audit log entry to the shared public.audit_logs table.

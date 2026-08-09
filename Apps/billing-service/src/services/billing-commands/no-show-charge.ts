@@ -8,7 +8,7 @@ import {
   BillingCommandError,
   type CommandContext,
   resolveActorId,
-  resolveFolioId,
+  resolveOpenFolioId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -68,12 +68,14 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
 
   const currency = (command.currency ?? reservation.currency ?? "USD").toUpperCase();
 
-  // Resolve the folio for this reservation—or create a ledger entry if no folio exists
-  const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  // A penalty must land on a folio the operator can still settle. Posting to a
+  // closed folio silently succeeds at the DB level, so the charge would be
+  // invisible on the reservation — fail loudly instead.
+  const folioId = await resolveOpenFolioId(context.tenantId, command.reservation_id);
   if (!folioId) {
     throw new BillingCommandError(
       "FOLIO_NOT_FOUND",
-      `No folio found for reservation ${command.reservation_id}. Cannot post no-show charge.`,
+      `No open folio found for reservation ${command.reservation_id}. Cannot post no-show charge.`,
     );
   }
 
