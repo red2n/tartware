@@ -114,7 +114,7 @@ export const SHIFT_SUMMARY_SQL = `
     cs.reconciled,
     cs.metadata,
     COALESCE(
-      (SELECT COUNT(*) FROM charge_postings cp
+      (SELECT COUNT(cp.posting_id) FROM charge_postings cp
        WHERE cp.tenant_id = cs.tenant_id
          AND cp.property_id = cs.property_id
          AND cp.business_date = cs.business_date
@@ -130,7 +130,7 @@ export const SHIFT_SUMMARY_SQL = `
          AND cp.is_voided = false), 0
     ) AS charge_total,
     COALESCE(
-      (SELECT COUNT(*) FROM charge_postings cp
+      (SELECT COUNT(cp.posting_id) FROM charge_postings cp
        WHERE cp.tenant_id = cs.tenant_id
          AND cp.property_id = cs.property_id
          AND cp.business_date = cs.business_date

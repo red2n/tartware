@@ -45,7 +45,7 @@ export class FeedbackHydrator extends BaseHydrator<RoomRecommendationQuery, Room
       SELECT
         r.room_type_id,
         AVG(gf.overall_rating)::DECIMAL(3,2) AS avg_rating,
-        COUNT(*)::TEXT AS review_count,
+        COUNT(gf.id)::TEXT AS review_count,
         AVG(CASE WHEN gf.would_return THEN 1.0 ELSE 0.0 END)::DECIMAL(3,2) AS would_return_rate,
         AVG(gf.sentiment_score)::DECIMAL(5,2) AS avg_sentiment,
         AVG(gf.cleanliness_rating)::DECIMAL(3,2) AS avg_cleanliness,

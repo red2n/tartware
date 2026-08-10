@@ -59,7 +59,7 @@ export const generateRegistrationCard = async (
   // 2. Generate registration number: REG-YYYYMMDD-XXXX
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const { rows: countRows } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::int AS cnt FROM digital_registration_cards
+    `SELECT COUNT(registration_id)::int AS cnt FROM digital_registration_cards
      WHERE tenant_id = $1 AND property_id = $2 AND registration_date = CURRENT_DATE`,
     [tenantId, command.property_id],
   );

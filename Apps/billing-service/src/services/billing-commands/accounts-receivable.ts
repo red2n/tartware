@@ -266,7 +266,7 @@ export const ageArEntries = async (payload: unknown, context: CommandContext): P
          AND COALESCE(is_deleted, false) = false
        RETURNING ar_id
      )
-     SELECT COUNT(*)::text AS updated FROM aged`,
+     SELECT COUNT(ar_id)::text AS updated FROM aged`,
     [tenantId, command.property_id, asOfDate],
   );
 

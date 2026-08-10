@@ -83,7 +83,7 @@ export const createOutboxRepository = ({
 	const countPendingOutboxRows = async (): Promise<number> => {
 		const result = await query<{ count: string }>(
 			`
-        SELECT COUNT(*)::text AS count
+        SELECT COUNT(id)::text AS count
         FROM transactional_outbox
         WHERE status IN ('PENDING', 'FAILED')
       `,

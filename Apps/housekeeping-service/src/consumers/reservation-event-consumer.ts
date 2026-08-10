@@ -68,7 +68,7 @@ const taskAlreadyExists = async (
   taskDate: string,
 ): Promise<boolean> => {
   const { rows } = await query<{ cnt: string }>(
-    `SELECT COUNT(*) AS cnt FROM housekeeping_tasks
+    `SELECT COUNT(id) AS cnt FROM housekeeping_tasks
      WHERE tenant_id = $1::uuid
        AND room_number = (SELECT room_number FROM rooms WHERE id = $2::uuid AND tenant_id = $1::uuid LIMIT 1)
        AND task_type = 'CHECKOUT_CLEAN'

@@ -181,15 +181,15 @@ export const GUEST_RESERVATION_STATS_SQL = `
   base_stats AS (
     SELECT
       tr.guest_id,
-      COUNT(*) FILTER (
+      COUNT(tr.guest_id) FILTER (
         WHERE tr.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
           AND tr.check_in_date >= CURRENT_DATE
       ) AS upcoming_reservations,
-      COUNT(*) FILTER (
+      COUNT(tr.guest_id) FILTER (
         WHERE tr.status = 'CHECKED_OUT'
           AND tr.check_out_date < CURRENT_DATE
       ) AS past_reservations,
-      COUNT(*) FILTER (WHERE tr.status IN ('CANCELLED', 'NO_SHOW')) AS cancelled_reservations,
+      COUNT(tr.guest_id) FILTER (WHERE tr.status IN ('CANCELLED', 'NO_SHOW')) AS cancelled_reservations,
       AVG(GREATEST(1, (tr.check_out_date::date - tr.check_in_date::date))) FILTER (
         WHERE tr.status IN ('CHECKED_IN', 'CHECKED_OUT')
           AND tr.check_out_date IS NOT NULL
@@ -215,7 +215,7 @@ export const GUEST_RESERVATION_STATS_SQL = `
       FROM (
         SELECT
           tr2.room_type_name,
-          COUNT(*) AS stay_count
+          COUNT(tr2.guest_id) AS stay_count
         FROM target_reservations tr2
         WHERE tr2.guest_id = bs.guest_id
           AND tr2.room_type_name IS NOT NULL
@@ -389,7 +389,7 @@ export const GUEST_SUMMARY_STATS_SQL = `
           THEN 'MEDIUM'
         ELSE 'LOW'
       END AS segment,
-      COUNT(*) AS count,
+      COUNT(id) AS count,
       COALESCE(SUM(total_revenue), 0) AS total_revenue
     FROM active_guests
     GROUP BY 1
@@ -399,17 +399,17 @@ export const GUEST_SUMMARY_STATS_SQL = `
     FROM active_guests
     WHERE nationality IS NOT NULL AND nationality <> ''
     GROUP BY nationality
-    ORDER BY COUNT(*) DESC
+    ORDER BY COUNT(id) DESC
     LIMIT 1
   )
   SELECT
-    COUNT(*)::int AS total_guests,
-    COUNT(*) FILTER (WHERE member_since >= date_trunc('month', CURRENT_DATE))::int AS new_guests_this_month,
-    COUNT(*) FILTER (WHERE total_bookings > 1)::int AS returning_guests,
-    COUNT(*) FILTER (WHERE vip_status != 'NONE')::int AS vip_guests,
-    COUNT(*) FILTER (WHERE loyalty_tier IS NOT NULL AND loyalty_tier <> '')::int AS loyalty_members,
-    COUNT(*) FILTER (WHERE is_blacklisted = true)::int AS blacklisted_guests,
-    COUNT(*) FILTER (WHERE total_nights > 0 AND total_bookings > 0 AND (total_nights::numeric / total_bookings) >= 3)::int AS long_stay_guests,
+    COUNT(id)::int AS total_guests,
+    COUNT(id) FILTER (WHERE member_since >= date_trunc('month', CURRENT_DATE))::int AS new_guests_this_month,
+    COUNT(id) FILTER (WHERE total_bookings > 1)::int AS returning_guests,
+    COUNT(id) FILTER (WHERE vip_status != 'NONE')::int AS vip_guests,
+    COUNT(id) FILTER (WHERE loyalty_tier IS NOT NULL AND loyalty_tier <> '')::int AS loyalty_members,
+    COUNT(id) FILTER (WHERE is_blacklisted = true)::int AS blacklisted_guests,
+    COUNT(id) FILTER (WHERE total_nights > 0 AND total_bookings > 0 AND (total_nights::numeric / total_bookings) >= 3)::int AS long_stay_guests,
     COALESCE(AVG(total_revenue) FILTER (WHERE total_revenue > 0), 0)::numeric(15,2) AS average_lifetime_value,
     COALESCE(AVG(CASE WHEN total_bookings > 0 AND total_nights > 0 THEN total_nights::numeric / total_bookings END), 0)::numeric(5,1) AS average_stay_length,
     (SELECT nationality FROM top_nat) AS top_nationality,

@@ -10,7 +10,7 @@ export const ROOM_TYPES_FOR_PROPERTY_SQL = `
     rt.type_name,
     rt.base_price,
     rt.max_occupancy,
-    (SELECT COUNT(*) FROM rooms r
+    (SELECT COUNT(r.id) FROM rooms r
      WHERE r.room_type_id = rt.id
        AND r.tenant_id = rt.tenant_id
        AND r.property_id = $2::uuid

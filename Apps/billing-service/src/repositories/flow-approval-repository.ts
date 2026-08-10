@@ -42,7 +42,7 @@ const LIST_FLOW_APPROVALS_SQL = `
 `;
 
 const COUNT_FLOW_APPROVALS_SQL = `
-  SELECT COUNT(*)::int AS total
+  SELECT COUNT(id)::int AS total
   FROM public.flow_approvals
   WHERE tenant_id = $1::uuid
 `;

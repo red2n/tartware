@@ -491,7 +491,7 @@ export const getRevenueForecastReport = async (options: {
   const offset = Math.max(options.offset ?? 0, 0);
 
   const { rows: countResult } = await query<{ total: string }>(
-    `SELECT COUNT(*)::text AS total FROM revenue_forecasts
+    `SELECT COUNT(forecast_id)::text AS total FROM revenue_forecasts
      WHERE tenant_id = $1
        AND ($2::uuid IS NULL OR property_id = $2::uuid)
        AND forecast_date >= $3::date AND forecast_date <= $4::date
@@ -589,9 +589,9 @@ export const getFlashReport = async (params: {
   // Total rooms
   const roomsRes = await query<{ total: string; ooo: string; oos: string }>(
     `SELECT
-       COUNT(*) AS total,
-       COUNT(*) FILTER (WHERE status = 'OUT_OF_ORDER') AS ooo,
-       COUNT(*) FILTER (WHERE status = 'OUT_OF_SERVICE') AS oos
+       COUNT(id) AS total,
+       COUNT(id) FILTER (WHERE status = 'OUT_OF_ORDER') AS ooo,
+       COUNT(id) FILTER (WHERE status = 'OUT_OF_SERVICE') AS oos
      FROM rooms
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
     baseParams.slice(0, hasProperty ? 2 : 1),
@@ -617,42 +617,42 @@ export const getFlashReport = async (params: {
     walk_ins: string;
   }>(
     `SELECT
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE status IN ('CONFIRMED','CHECKED_IN')
            AND check_in_date <= ${dateSql} AND check_out_date > ${dateSql}
        ) AS sold,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE status IN ('CONFIRMED','CHECKED_IN')
            AND check_in_date <= ${dateSql} AND check_out_date > ${dateSql}
            AND COALESCE((metadata->>'complimentary')::boolean, false) = true
        ) AS comp,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql} AND status = 'CONFIRMED'
        ) AS due_in,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql} AND status = 'CHECKED_IN'
        ) AS checked_in,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql} AND status IN ('CONFIRMED','CHECKED_IN')
            AND COALESCE((metadata->>'vip')::boolean, false) = true
        ) AS vip_arrivals,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql} AND status IN ('CONFIRMED','CHECKED_IN')
            AND group_id IS NOT NULL
        ) AS group_arrivals,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_out_date = ${dateSql} AND status = 'CHECKED_IN'
        ) AS due_out,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_out_date = ${dateSql} AND status = 'CHECKED_OUT'
        ) AS checked_out,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE status = 'CHECKED_IN'
        ) AS in_house,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql} AND status = 'NO_SHOW'
        ) AS no_shows,
-       COUNT(*) FILTER (
+       COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql}
            AND COALESCE((metadata->>'walk_in')::boolean, false) = true
        ) AS walk_ins
@@ -685,7 +685,7 @@ export const getFlashReport = async (params: {
 
   // Late checkouts (past checkout time but still CHECKED_IN)
   const lateRes = await query<{ cnt: string }>(
-    `SELECT COUNT(*) AS cnt
+    `SELECT COUNT(id) AS cnt
      FROM reservations
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false
        AND check_out_date = ${dateSql}
@@ -703,10 +703,10 @@ export const getFlashReport = async (params: {
     in_progress: string;
   }>(
     `SELECT
-       COUNT(*) FILTER (WHERE status = 'DIRTY') AS dirty,
-       COUNT(*) FILTER (WHERE status = 'CLEAN') AS clean,
-       COUNT(*) FILTER (WHERE status = 'INSPECTED') AS inspected,
-       COUNT(*) FILTER (WHERE status = 'IN_PROGRESS') AS in_progress
+       COUNT(id) FILTER (WHERE status = 'DIRTY') AS dirty,
+       COUNT(id) FILTER (WHERE status = 'CLEAN') AS clean,
+       COUNT(id) FILTER (WHERE status = 'INSPECTED') AS inspected,
+       COUNT(id) FILTER (WHERE status = 'IN_PROGRESS') AS in_progress
      FROM housekeeping_tasks
      WHERE tenant_id = $1 ${propFilter}
        AND scheduled_date = ${dateSql}
@@ -718,9 +718,9 @@ export const getFlashReport = async (params: {
   // Maintenance
   const maintRes = await query<{ open_req: string; urgent: string; completed: string }>(
     `SELECT
-       COUNT(*) FILTER (WHERE request_status IN ('OPEN','ASSIGNED','IN_PROGRESS','ON_HOLD')) AS open_req,
-       COUNT(*) FILTER (WHERE request_status IN ('OPEN','ASSIGNED','IN_PROGRESS') AND priority IN ('URGENT','EMERGENCY')) AS urgent,
-       COUNT(*) FILTER (WHERE request_status = 'COMPLETED' AND DATE(completed_at) = ${dateSql}) AS completed
+       COUNT(request_id) FILTER (WHERE request_status IN ('OPEN','ASSIGNED','IN_PROGRESS','ON_HOLD')) AS open_req,
+       COUNT(request_id) FILTER (WHERE request_status IN ('OPEN','ASSIGNED','IN_PROGRESS') AND priority IN ('URGENT','EMERGENCY')) AS urgent,
+       COUNT(request_id) FILTER (WHERE request_status = 'COMPLETED' AND DATE(completed_at) = ${dateSql}) AS completed
      FROM maintenance_requests
      WHERE tenant_id = $1 ${propFilter} AND is_deleted = false`,
     qParams,
@@ -791,7 +791,7 @@ export const getNoShowReport = async (params: {
   const baseParams = [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate];
 
   const countResult = await query<{ total: string }>(
-    `SELECT COUNT(*)::text AS total
+    `SELECT COUNT(id)::text AS total
      FROM reservations
      WHERE tenant_id = $1::uuid AND ($2::uuid IS NULL OR property_id = $2::uuid)
        AND check_in_date >= $3::date AND check_in_date <= $4::date
@@ -868,7 +868,7 @@ export const getVipArrivalsReport = async (params: {
   const baseParams = [params.tenantId, params.propertyId ?? null, params.startDate, params.endDate];
 
   const countResult = await query<{ total: string }>(
-    `SELECT COUNT(*)::text AS total
+    `SELECT COUNT(r.id)::text AS total
      FROM reservations r
      JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
      WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
@@ -931,8 +931,8 @@ export const getGuestStatisticsReport = async (params: {
     total: string;
     vip: string;
   }>(
-    `SELECT COUNT(*)::text AS total,
-            COUNT(*) FILTER (WHERE vip_status != 'NONE')::text AS vip
+    `SELECT COUNT(id)::text AS total,
+            COUNT(id) FILTER (WHERE vip_status != 'NONE')::text AS vip
      FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false`,
     [tenantId],
   );
@@ -941,21 +941,21 @@ export const getGuestStatisticsReport = async (params: {
     `SELECT COUNT(DISTINCT guest_id)::text AS count
      FROM reservations
      WHERE tenant_id = $1::uuid AND status IN ('CHECKED_IN','CHECKED_OUT')
-     GROUP BY guest_id HAVING COUNT(*) > 1`,
+     GROUP BY guest_id HAVING COUNT(id) > 1`,
     [tenantId],
   );
 
   const nationalities = await query<{ nationality: string; count: string }>(
-    `SELECT COALESCE(nationality, 'Unknown') AS nationality, COUNT(*)::text AS count
+    `SELECT COALESCE(nationality, 'Unknown') AS nationality, COUNT(id)::text AS count
      FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false
-     GROUP BY nationality ORDER BY COUNT(*) DESC LIMIT 20`,
+     GROUP BY nationality ORDER BY COUNT(id) DESC LIMIT 20`,
     [tenantId],
   );
 
   const tiers = await query<{ tier: string; count: string }>(
-    `SELECT COALESCE(loyalty_tier, 'NONE') AS tier, COUNT(*)::text AS count
+    `SELECT COALESCE(loyalty_tier, 'NONE') AS tier, COUNT(id)::text AS count
      FROM guests WHERE tenant_id = $1::uuid AND is_deleted = false
-     GROUP BY loyalty_tier ORDER BY COUNT(*) DESC`,
+     GROUP BY loyalty_tier ORDER BY COUNT(id) DESC`,
     [tenantId],
   );
 
@@ -998,9 +998,9 @@ export const getMarketSegmentProductionReport = async (params: {
   }>(
     `SELECT
        COALESCE(ms.segment_name, 'UNCLASSIFIED') AS market_segment,
-       COUNT(*)::text AS room_nights,
+       COUNT(r.id)::text AS room_nights,
        COALESCE(SUM(r.total_amount), 0)::text AS revenue,
-       CASE WHEN COUNT(*) > 0 THEN (SUM(r.total_amount) / COUNT(*))::text ELSE '0' END AS avg_rate
+       CASE WHEN COUNT(r.id) > 0 THEN (SUM(r.total_amount) / COUNT(r.id))::text ELSE '0' END AS avg_rate
      FROM reservations r
      LEFT JOIN market_segments ms
        ON ms.segment_id = r.market_segment_id AND ms.tenant_id = r.tenant_id
@@ -1049,10 +1049,10 @@ export const getHousekeepingProductivityReport = async (params: {
     avg_minutes: string;
   }>(
     `SELECT
-       COUNT(*)::text AS total,
-       COUNT(*) FILTER (WHERE status IN ('COMPLETED', 'INSPECTED'))::text AS completed,
-       COUNT(*) FILTER (WHERE status = 'IN_PROGRESS')::text AS in_progress,
-       COUNT(*) FILTER (WHERE status IN ('PENDING', 'ASSIGNED'))::text AS pending,
+       COUNT(id)::text AS total,
+       COUNT(id) FILTER (WHERE status IN ('COMPLETED', 'INSPECTED'))::text AS completed,
+       COUNT(id) FILTER (WHERE status = 'IN_PROGRESS')::text AS in_progress,
+       COUNT(id) FILTER (WHERE status IN ('PENDING', 'ASSIGNED'))::text AS pending,
        COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)
          FILTER (WHERE completed_at IS NOT NULL AND started_at IS NOT NULL), 0)::text AS avg_minutes
      FROM housekeeping_tasks
@@ -1071,7 +1071,7 @@ export const getHousekeepingProductivityReport = async (params: {
        ht.assigned_to AS attendant_id,
        COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
                 u.username, ht.assigned_to::text) AS attendant_name,
-       COUNT(*)::text AS completed_tasks,
+       COUNT(ht.id)::text AS completed_tasks,
        COALESCE(AVG(EXTRACT(EPOCH FROM (ht.completed_at - ht.started_at)) / 60), 0)::text AS avg_dur
      FROM housekeeping_tasks ht
      LEFT JOIN users u ON u.id = ht.assigned_to AND u.tenant_id = ht.tenant_id
@@ -1080,7 +1080,7 @@ export const getHousekeepingProductivityReport = async (params: {
        AND ht.status IN ('COMPLETED', 'INSPECTED')
        AND ht.assigned_to IS NOT NULL
      GROUP BY ht.assigned_to, u.first_name, u.last_name, u.username
-     ORDER BY COUNT(*) DESC
+     ORDER BY COUNT(ht.id) DESC
      LIMIT 50`,
     qParams,
   );
@@ -1126,9 +1126,9 @@ export const getMaintenanceSlaReport = async (params: {
     avg_resolution: string;
   }>(
     `SELECT
-       COUNT(*)::text AS total,
-       COUNT(*) FILTER (WHERE request_status = 'COMPLETED')::text AS completed,
-       COUNT(*) FILTER (WHERE request_status NOT IN ('COMPLETED','CANCELLED') AND scheduled_date < CURRENT_DATE)::text AS overdue,
+       COUNT(request_id)::text AS total,
+       COUNT(request_id) FILTER (WHERE request_status = 'COMPLETED')::text AS completed,
+       COUNT(request_id) FILTER (WHERE request_status NOT IN ('COMPLETED','CANCELLED') AND scheduled_date < CURRENT_DATE)::text AS overdue,
        COALESCE(AVG(response_time_minutes) FILTER (WHERE response_time_minutes IS NOT NULL), 0)::text AS avg_response,
        COALESCE(AVG(resolution_time_hours) FILTER (WHERE resolution_time_hours IS NOT NULL), 0)::text AS avg_resolution
      FROM maintenance_requests
@@ -1146,8 +1146,8 @@ export const getMaintenanceSlaReport = async (params: {
   }>(
     `SELECT
        priority,
-       COUNT(*)::text AS count,
-       COUNT(*) FILTER (WHERE request_status = 'COMPLETED')::text AS completed,
+       COUNT(request_id)::text AS count,
+       COUNT(request_id) FILTER (WHERE request_status = 'COMPLETED')::text AS completed,
        COALESCE(AVG(resolution_time_hours) FILTER (WHERE resolution_time_hours IS NOT NULL), 0)::text AS avg_res
      FROM maintenance_requests
      WHERE tenant_id = $1::uuid AND ($2::uuid IS NULL OR property_id = $2::uuid)
@@ -1202,7 +1202,7 @@ export const getAuditTrailReport = async (params: {
   const filterSql = filters.join(" ");
 
   const countResult = await query<{ total: string }>(
-    `SELECT COUNT(*)::text AS total
+    `SELECT COUNT(id)::text AS total
      FROM command_dispatches
      WHERE tenant_id = $1::uuid
        AND created_at >= $2::date AND created_at < ($3::date + 1)

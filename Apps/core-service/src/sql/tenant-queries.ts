@@ -34,19 +34,19 @@ export const TENANT_LIST_SQL = `
     COALESCE(apc.active_properties, 0) AS active_properties
   FROM public.tenants t
   LEFT JOIN (
-    SELECT tenant_id, COUNT(*)::int AS property_count
+    SELECT tenant_id, COUNT(id)::int AS property_count
     FROM public.properties
     WHERE COALESCE(is_deleted, false) = false AND deleted_at IS NULL
     GROUP BY tenant_id
   ) pc ON pc.tenant_id = t.id
   LEFT JOIN (
-    SELECT tenant_id, COUNT(*)::int AS user_count
+    SELECT tenant_id, COUNT(id)::int AS user_count
     FROM public.user_tenant_associations
     WHERE COALESCE(is_deleted, false) = false AND deleted_at IS NULL
     GROUP BY tenant_id
   ) uc ON uc.tenant_id = t.id
   LEFT JOIN (
-    SELECT tenant_id, COUNT(*)::int AS active_properties
+    SELECT tenant_id, COUNT(id)::int AS active_properties
     FROM public.properties
     WHERE COALESCE(is_deleted, false) = false AND deleted_at IS NULL AND is_active = true
     GROUP BY tenant_id

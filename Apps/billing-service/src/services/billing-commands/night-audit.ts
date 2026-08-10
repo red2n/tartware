@@ -79,7 +79,7 @@ export const executeNightAudit = async (
     // Check 1: Open arrivals — CONFIRMED reservations with arrival today not yet checked in
     // Only block if we are NOT automatically marking no-shows.
     const { rows: openArrivals } = await query<{ cnt: string }>(
-      `SELECT COUNT(*) AS cnt FROM reservations
+      `SELECT COUNT(id) AS cnt FROM reservations
        WHERE tenant_id = $1::uuid AND property_id = $2::uuid
          AND status = 'CONFIRMED' AND check_in_date = $3::date
          AND COALESCE(is_deleted, false) = false`,
@@ -93,7 +93,7 @@ export const executeNightAudit = async (
 
     // Check 2: Open departures — all CHECKED_IN with departure today must be CHECKED_OUT
     const { rows: openDepartures } = await query<{ cnt: string }>(
-      `SELECT COUNT(*) AS cnt FROM reservations
+      `SELECT COUNT(id) AS cnt FROM reservations
        WHERE tenant_id = $1::uuid AND property_id = $2::uuid
          AND status = 'CHECKED_IN' AND check_out_date = $3::date
          AND is_deleted = false`,
@@ -107,7 +107,7 @@ export const executeNightAudit = async (
 
     // Check 3: Unbalanced folios — OPEN in-house folios with charges != payments
     const { rows: unbalancedFolios } = await query<{ cnt: string }>(
-      `SELECT COUNT(*) AS cnt FROM folios f
+      `SELECT COUNT(f.folio_id) AS cnt FROM folios f
        JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = f.tenant_id
        WHERE f.tenant_id = $1::uuid AND f.property_id = $2::uuid
          AND f.folio_status = 'OPEN' AND r.status = 'CHECKED_IN'
@@ -200,7 +200,7 @@ export const executeNightAudit = async (
       if (shouldPostCharges || shouldPostPackages || shouldPostCommissions) {
         const { rows: existingCharges } = await queryWithClient<{ cnt: string }>(
           client,
-          `SELECT COUNT(*) AS cnt
+          `SELECT COUNT(posting_id) AS cnt
            FROM charge_postings
            WHERE tenant_id = $1::uuid
              AND property_id = $2::uuid
@@ -763,7 +763,7 @@ async function postRoomChargesAndTaxes(
     // reservation on this business date from any prior audit run.
     const { rows: existing } = await queryWithClient<{ cnt: string }>(
       client,
-      `SELECT COUNT(*) AS cnt FROM charge_postings
+      `SELECT COUNT(posting_id) AS cnt FROM charge_postings
        WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
          AND business_date = $3::date AND charge_code = 'ROOM'
          AND audit_run_id IS NOT NULL
@@ -926,7 +926,7 @@ async function postPackageCharges(
     // Idempotency: skip if a package charge already exists for this reservation on this date
     const { rows: existing } = await queryWithClient<{ cnt: string }>(
       client,
-      `SELECT COUNT(*) AS cnt FROM charge_postings
+      `SELECT COUNT(posting_id) AS cnt FROM charge_postings
        WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
          AND business_date = $3::date AND charge_code = 'PACKAGE'
          AND audit_run_id IS NOT NULL

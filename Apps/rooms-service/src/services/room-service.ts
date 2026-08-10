@@ -446,7 +446,7 @@ export const searchAvailableRooms = async (options: {
        -- Pre-aggregate unassigned reservation counts per room type.
        -- Excludes the current reservation ($10) so its own vacant slot is
        -- not hidden when the room picker is opened during check-in.
-       SELECT ures.room_type_id, COUNT(*) AS unassigned_count
+       SELECT ures.room_type_id, COUNT(ures.id) AS unassigned_count
        FROM public.reservations ures
        WHERE ures.tenant_id = $1::uuid
          AND ures.property_id = $2::uuid
@@ -595,7 +595,7 @@ export const activateRoom = async (input: {
   // 2. Check that at least one active rate exists for this room type
   const { rows: rateRows } = await query<{ count: string }>(
     `
-      SELECT COUNT(*)::text AS count
+      SELECT COUNT(id)::text AS count
       FROM public.rates
       WHERE tenant_id = $1::uuid
         AND room_type_id = $2::uuid

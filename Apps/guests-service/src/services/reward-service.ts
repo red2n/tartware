@@ -59,7 +59,7 @@ export async function listRewardCatalog(params: {
   const where = conditions.join(" AND ");
 
   const countResult = await query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM reward_catalog rc WHERE ${where}`,
+    `SELECT COUNT(rc.reward_id) AS count FROM reward_catalog rc WHERE ${where}`,
     values,
   );
   const total = Number(countResult.rows[0]?.count ?? 0);
@@ -172,7 +172,7 @@ export async function redeemReward(params: {
   // Check per-guest redemption limit
   if (reward.max_redemptions_per_guest) {
     const guestCountResult = await query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM reward_redemptions
+      `SELECT COUNT(redemption_id) AS count FROM reward_redemptions
        WHERE reward_id = $1::uuid AND guest_id = $2::uuid AND tenant_id = $3::uuid
          AND redemption_status NOT IN ('cancelled', 'rejected')`,
       [params.rewardId, params.guestId, params.tenantId],
@@ -308,7 +308,7 @@ export async function listGuestRedemptions(params: {
   const offset = params.offset ?? 0;
 
   const countResult = await query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM reward_redemptions
+    `SELECT COUNT(redemption_id) AS count FROM reward_redemptions
      WHERE tenant_id = $1::uuid AND guest_id = $2::uuid`,
     [params.tenantId, params.guestId],
   );

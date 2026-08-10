@@ -400,7 +400,7 @@ export const registerArRoutes = (app: FastifyInstance): void => {
       }>(
         `SELECT
             event_type,
-            COUNT(*)                     AS actions_taken,
+            COUNT(dunning_event_id)                     AS actions_taken,
             COUNT(DISTINCT ar_account_id) AS accounts_affected
            FROM ar_dunning_events
           WHERE tenant_id = $1::uuid AND property_id = $2::uuid
@@ -480,7 +480,7 @@ export const registerArRoutes = (app: FastifyInstance): void => {
 
       // Open disputes
       const { rows: disputeRows } = await query<{ open_disputes: string }>(
-        `SELECT COUNT(*) AS open_disputes FROM ar_disputes
+        `SELECT COUNT(dispute_id) AS open_disputes FROM ar_disputes
           WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid
             AND dispute_status IN ('OPEN', 'UNDER_REVIEW')`,
         [accountId, q.tenant_id],
