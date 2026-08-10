@@ -227,6 +227,39 @@
             step="0.01"
             placeholder="0.00" />
         </div>
+
+        <div class="field-group">
+          <label class="field-label" for="companyId">{{ 'Company' | translate }}</label>
+          <select id="companyId" class="field-input" [(ngModel)]="companyId" name="companyId">
+            <option value="">{{ 'None' | translate }}</option>
+            @for (c of companies(); track c.company_id) {
+              <option [value]="c.company_id">{{ c.company_name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="complimentaryRooms">{{ 'Complimentary Rooms' | translate }}</label>
+          <input
+            id="complimentaryRooms"
+            type="number"
+            class="field-input"
+            [(ngModel)]="complimentaryRooms"
+            name="complimentaryRooms"
+            min="0"
+            step="1"
+            [placeholder]="'e.g. 1 per 20 booked' | translate" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cancellationDeadline">{{ 'Cancellation Deadline' | translate }}</label>
+          <input
+            id="cancellationDeadline"
+            type="date"
+            class="field-input"
+            [(ngModel)]="cancellationDeadline"
+            name="cancellationDeadline" />
+        </div>
       </div>
     </section>
 

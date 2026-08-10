@@ -12,6 +12,8 @@ import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { SubmitOnEnterDirective } from "../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../shared/forms/unsaved-guard.directive";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type TierRule = LoyaltyTierRules;
@@ -30,6 +32,8 @@ type Tab = "tiers" | "transactions";
 		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./loyalty.html",
 	styleUrl: "./loyalty.scss",
@@ -54,6 +58,87 @@ export class LoyaltyComponent {
 	readonly loadingTxns = signal(false);
 	readonly programIdInput = signal("");
 	readonly txnTypeFilter = signal<string>("");
+
+	/* ── Write actions ──────────────────────────────────────────────────────
+	 * The screen was read-only: the backend has enroll/earn/redeem commands but
+	 * nothing in the UI could reach them, so a member could never be enrolled or
+	 * have points moved without calling the API directly. */
+	readonly action = signal<"enroll" | "earn" | "redeem" | null>(null);
+	readonly submitting = signal(false);
+	readonly form = signal({
+		guest_id: "",
+		program_id: "",
+		program_name: "Tartware Rewards",
+		program_tier: "",
+		points: null as number | null,
+		description: "",
+	});
+
+	/** Points moves need an existing program; enrolment creates one. */
+	readonly canSubmit = computed(() => {
+		const f = this.form();
+		if (!f.guest_id.trim()) return false;
+		if (this.action() === "enroll") return f.program_name.trim().length > 0;
+		return f.program_id.trim().length > 0 && f.points != null && f.points > 0;
+	});
+
+	openAction(kind: "enroll" | "earn" | "redeem"): void {
+		this.form.set({
+			guest_id: "",
+			// Prefill from whatever the operator is already looking at.
+			program_id: kind === "enroll" ? "" : this.programIdInput(),
+			program_name: "Tartware Rewards",
+			program_tier: "",
+			points: null,
+			description: "",
+		});
+		this.action.set(kind);
+	}
+
+	cancelAction(): void {
+		this.action.set(null);
+	}
+
+	async submitAction(): Promise<void> {
+		const kind = this.action();
+		const tenantId = this.auth.tenantId();
+		if (!kind || !tenantId || !this.canSubmit() || this.submitting()) return;
+
+		const f = this.form();
+		this.submitting.set(true);
+		try {
+			if (kind === "enroll") {
+				// The command accepts a caller-supplied program_id because enrolment
+				// is async and nothing lists a guest's programs afterwards — minting
+				// it here is the only way the operator can address it later.
+				const programId = crypto.randomUUID();
+				await this.api.post(`/tenants/${tenantId}/commands/loyalty.program.enroll`, {
+					guest_id: f.guest_id.trim(),
+					program_id: programId,
+					program_name: f.program_name.trim(),
+					...(f.program_tier.trim() ? { program_tier: f.program_tier.trim() } : {}),
+				});
+				this.programIdInput.set(programId);
+				this.toast.success(`Enrolled. Program id ${programId} — kept for the ledger lookup.`);
+			} else {
+				await this.api.post(`/tenants/${tenantId}/commands/loyalty.points.${kind}`, {
+					guest_id: f.guest_id.trim(),
+					program_id: f.program_id.trim(),
+					points: f.points,
+					reference_type: kind === "earn" ? "stay" : "reward",
+					...(f.description.trim() ? { description: f.description.trim() } : {}),
+				});
+				this.toast.success(`${f.points} points ${kind === "earn" ? "credited" : "redeemed"}.`);
+			}
+			this.action.set(null);
+			// Commands are async (Kafka); give the projection a moment before reloading.
+			setTimeout(() => this.loadTransactions(), 1200);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : `Loyalty ${kind} failed`);
+		} finally {
+			this.submitting.set(false);
+		}
+	}
 
 	readonly tiersSorted = computed(() =>
 		[...this.tiers()].sort((a, b) => a.tier_rank - b.tier_rank),

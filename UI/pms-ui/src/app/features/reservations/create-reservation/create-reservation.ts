@@ -144,6 +144,8 @@ export class CreateReservationComponent implements OnInit {
 	});
 
 	readonly roomTypes = signal<RoomType[]>([]);
+	readonly marketSegments = signal<{ segment_id: string; segment_name: string }[]>([]);
+	readonly companies = signal<{ company_id: string; company_name: string }[]>([]);
 	readonly allRates = signal<RateDetail[]>([]);
 	readonly guests = signal<GuestOption[]>([]);
 	readonly calendarRates = signal<Map<string, number>>(new Map());
@@ -220,6 +222,12 @@ export class CreateReservationComponent implements OnInit {
 	source = "DIRECT";
 	reservationType = "TRANSIENT";
 	notes = "";
+	/** HH:MM; persisted to reservations.eta. */
+	eta = "";
+	/** market_segments.segment_id — drives USALI segment reporting. */
+	marketSegmentId = "";
+	/** companies.company_id — corporate account this booking belongs to. */
+	companyId = "";
 
 	readonly sources = [
 		{ value: "DIRECT", label: "Direct" },
@@ -489,11 +497,23 @@ export class CreateReservationComponent implements OnInit {
 			const propertyId = this.ctx.propertyId();
 			if (propertyId) params["property_id"] = propertyId;
 
-			const [roomTypes, guests, rates] = await Promise.all([
+			const [roomTypes, guests, rates, segments, companies] = await Promise.all([
 				this.api.get<RoomType[]>("/room-types", params),
 				this.api.get<GuestOption[]>("/guests", { tenant_id: tenantId, limit: "100" }),
 				this.api.get<RateDetail[]>("/rates", params),
+				// Optional: segment attribution is nice-to-have, so a failure here
+				// must not stop the booking form from loading.
+				this.api
+					.get<{ segment_id: string; segment_name: string }[]>("/market-segments", params)
+					.catch(() => []),
+				this.api
+					.get<{ company_id: string; company_name: string }[]>("/companies", {
+						tenant_id: tenantId,
+					})
+					.catch(() => []),
 			]);
+			this.marketSegments.set(Array.isArray(segments) ? segments : []);
+			this.companies.set(Array.isArray(companies) ? companies : []);
 			this.roomTypes.set(Array.isArray(roomTypes) ? roomTypes : []);
 			this.guests.set(
 				Array.isArray(guests) ? guests : ((guests as { data: GuestOption[] }).data ?? []),
@@ -622,6 +642,14 @@ export class CreateReservationComponent implements OnInit {
 				source: this.source,
 				reservation_type: this.reservationType,
 				notes: this.notes.trim() || undefined,
+				eta: this.eta || undefined,
+				market_segment_id: this.marketSegmentId || undefined,
+				company_id: this.companyId || undefined,
+				// The operator picked this rate from the availability list, so a
+				// fallback to BAR/RACK is an accepted outcome rather than a surprise.
+				// Without opting in, createReservation rejects the booking outright
+				// with RATE_FALLBACK_NOT_ALLOWED and the screen offers no way to retry.
+				allow_rate_fallback: true,
 			});
 			this.toast.success("Reservation created successfully.");
 			this.router.navigate(["/reservations"]);

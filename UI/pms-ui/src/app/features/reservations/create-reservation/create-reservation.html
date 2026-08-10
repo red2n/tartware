@@ -368,6 +368,31 @@
           </div>
         </div>
 
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label" for="cr-eta">{{ 'Estimated arrival time' | translate }}</label>
+            <input id="cr-eta" class="field-input" type="time" [(ngModel)]="eta" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="cr-company">{{ 'Company' | translate }}</label>
+            <select id="cr-company" class="field-input" [(ngModel)]="companyId">
+              <option value="">{{ 'None' | translate }}</option>
+              @for (c of companies(); track c.company_id) {
+                <option [value]="c.company_id">{{ c.company_name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="cr-segment">{{ 'Market segment' | translate }}</label>
+            <select id="cr-segment" class="field-input" [(ngModel)]="marketSegmentId">
+              <option value="">{{ 'Unclassified' | translate }}</option>
+              @for (s of marketSegments(); track s.segment_id) {
+                <option [value]="s.segment_id">{{ s.segment_name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
         <div class="field-group">
           <label class="field-label" for="cr-notes">{{ 'Notes' | translate }}</label>
           <textarea id="cr-notes" class="field-input" rows="2" maxlength="2000"

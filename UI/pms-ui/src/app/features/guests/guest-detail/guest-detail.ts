@@ -22,28 +22,6 @@ type GuestDetail = Omit<GuestWithStats, "version"> & { version: string };
 
 type DetailRow = { label: string; value: string; badge?: string };
 
-type PreferenceItem = {
-	id: string;
-	preference_category_display: string;
-	preference_type: string;
-	preference_value?: string;
-	priority: number;
-	is_mandatory: boolean;
-	is_active: boolean;
-	notes?: string;
-};
-
-type DocumentItem = {
-	id: string;
-	document_type_display: string;
-	document_number?: string;
-	file_name: string;
-	is_verified: boolean;
-	verification_status_display: string;
-	is_expired: boolean;
-	expiry_date?: string;
-};
-
 type CommunicationItem = {
 	id: string;
 	communication_type_display: string;
@@ -54,13 +32,7 @@ type CommunicationItem = {
 	created_at: string;
 };
 
-type DetailTab =
-	| "overview"
-	| "reservations"
-	| "preferences"
-	| "documents"
-	| "communications"
-	| "compliance";
+type DetailTab = "overview" | "reservations" | "preferences" | "communications" | "compliance";
 
 /** Reservation row as shown on the guest's stay history. */
 type GuestReservationItem = {
@@ -108,11 +80,16 @@ export class GuestDetailComponent implements OnInit {
 	readonly error = signal<string | null>(null);
 	readonly activeTab = signal<DetailTab>("overview");
 
+	/** Route param, for links back into the edit form. */
+	readonly guestId = computed(
+		() => this.guest()?.id ?? this.route.snapshot.paramMap.get("guestId") ?? "",
+	);
+
 	/**
 	 * One-line description of what each tab is for, shown above its content.
 	 *
 	 * Several of these sections look similar at a glance (preferences vs
-	 * documents vs communications are all "lists about the guest"), so the strap
+	 * preferences vs communications are both "lists about the guest"), so the strap
 	 * states what the tab is actually for and what can be done there.
 	 */
 	private static readonly TAB_OVERVIEWS: Record<DetailTab, string> = {
@@ -121,7 +98,6 @@ export class GuestDetailComponent implements OnInit {
 		reservations:
 			"Every stay this guest has booked — current and upcoming first, past stays below. Select one to open it.",
 		preferences: "Standing room, dietary and accessibility preferences honoured on every stay.",
-		documents: "Identity documents held for this guest, with verification and expiry status.",
 		communications:
 			"Messages sent to this guest — booking confirmations, pre-arrival notices and campaigns.",
 		compliance:
@@ -130,8 +106,6 @@ export class GuestDetailComponent implements OnInit {
 
 	readonly tabOverview = computed(() => GuestDetailComponent.TAB_OVERVIEWS[this.activeTab()]);
 
-	readonly preferences = signal<PreferenceItem[]>([]);
-	readonly documents = signal<DocumentItem[]>([]);
 	readonly communications = signal<CommunicationItem[]>([]);
 	readonly reservations = signal<GuestReservationItem[]>([]);
 	readonly reservationsLoaded = signal(false);
@@ -306,10 +280,6 @@ export class GuestDetailComponent implements OnInit {
 		// no reservations would otherwise re-fetch on every visit to the tab.
 		if (tab === "reservations" && !this.reservationsLoaded()) {
 			this.loadReservations();
-		} else if (tab === "preferences" && this.preferences().length === 0) {
-			this.loadPreferences();
-		} else if (tab === "documents" && this.documents().length === 0) {
-			this.loadDocuments();
 		} else if (tab === "communications" && this.communications().length === 0) {
 			this.loadCommunications();
 		} else if (tab === "compliance") {
@@ -657,43 +627,6 @@ export class GuestDetailComponent implements OnInit {
 			this.reservationsLoaded.set(true);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to load reservations");
-		} finally {
-			this.loadingTab.set(false);
-		}
-	}
-
-	async loadPreferences(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const guestId = this.route.snapshot.paramMap.get("guestId");
-		if (!tenantId || !guestId) return;
-
-		this.loadingTab.set(true);
-		try {
-			const params: Record<string, string> = {
-				tenant_id: tenantId,
-				active_only: "true",
-			};
-			const items = await this.api.get<PreferenceItem[]>(`/guests/${guestId}/preferences`, params);
-			this.preferences.set(items);
-		} catch {
-			/* preferences are supplementary — fail silently */
-		} finally {
-			this.loadingTab.set(false);
-		}
-	}
-
-	async loadDocuments(): Promise<void> {
-		const tenantId = this.auth.tenantId();
-		const guestId = this.route.snapshot.paramMap.get("guestId");
-		if (!tenantId || !guestId) return;
-
-		this.loadingTab.set(true);
-		try {
-			const params: Record<string, string> = { tenant_id: tenantId };
-			const items = await this.api.get<DocumentItem[]>(`/guests/${guestId}/documents`, params);
-			this.documents.set(items);
-		} catch {
-			/* documents are supplementary — fail silently */
 		} finally {
 			this.loadingTab.set(false);
 		}

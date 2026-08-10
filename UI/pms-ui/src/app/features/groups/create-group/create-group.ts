@@ -27,6 +27,7 @@ export class CreateGroupComponent {
 	private readonly toast = inject(ToastService);
 
 	readonly saving = signal(false);
+	readonly companies = signal<{ company_id: string; company_name: string }[]>([]);
 
 	touched: Record<string, boolean> = {};
 
@@ -51,6 +52,12 @@ export class CreateGroupComponent {
 	rateType = "";
 	negotiatedRate: number | null = null;
 	paymentMethod = "";
+	/** Rooms given free of charge against the block, per the group contract. */
+	complimentaryRooms: number | null = null;
+	/** Last date the group may cancel without penalty. */
+	cancellationDeadline = "";
+	/** companies.company_id — the corporate account the block belongs to. */
+	companyId = "";
 	depositAmount: number | null = null;
 
 	/* ── Additional ── */
@@ -132,6 +139,24 @@ export class CreateGroupComponent {
 		this.touched = { ...this.touched, [field]: true };
 	}
 
+	constructor() {
+		this.loadCompanies();
+	}
+
+	/** Optional lookup — a failure must not block creating the group. */
+	private async loadCompanies(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		try {
+			const res = await this.api.get<{ company_id: string; company_name: string }[]>("/companies", {
+				tenant_id: tenantId,
+			});
+			this.companies.set(Array.isArray(res) ? res : []);
+		} catch {
+			this.companies.set([]);
+		}
+	}
+
 	async save(): Promise<void> {
 		if (!this.isValid) return;
 
@@ -165,6 +190,15 @@ export class CreateGroupComponent {
 		if (this.paymentMethod) payload["payment_method"] = this.paymentMethod;
 		if (this.depositAmount != null && this.depositAmount > 0)
 			payload["deposit_amount"] = this.depositAmount;
+		// Night audit releases tentative blocks whose deposit deadline has passed;
+		// it reads this column, so a group created without it is never swept.
+		// Defaults to the cutoff date, which is when the block lapses anyway.
+		if (this.depositAmount != null && this.depositAmount > 0 && this.cutoffDate)
+			payload["deposit_due_date"] = this.cutoffDate;
+		if (this.companyId) payload["company_id"] = this.companyId;
+		if (this.complimentaryRooms != null && this.complimentaryRooms > 0)
+			payload["complimentary_rooms"] = this.complimentaryRooms;
+		if (this.cancellationDeadline) payload["cancellation_deadline"] = this.cancellationDeadline;
 		if (this.meetingSpaceRequired) payload["meeting_space_required"] = true;
 		if (this.cateringRequired) payload["catering_required"] = true;
 		if (this.notes.trim()) payload["notes"] = this.notes.trim();

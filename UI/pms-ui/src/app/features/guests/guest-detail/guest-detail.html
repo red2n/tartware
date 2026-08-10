@@ -105,10 +105,6 @@
         <app-icon class="tab-icon" name="tune" />
         {{ 'Preferences' | translate }}
       </button>
-      <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'documents'" [class.filter-tab-active]="activeTab() === 'documents'" (click)="setTab('documents')">
-        <app-icon class="tab-icon" name="description" />
-        {{ 'Documents' | translate }}
-      </button>
       <button class="filter-tab" [attr.aria-pressed]="activeTab() === 'communications'" [class.filter-tab-active]="activeTab() === 'communications'" (click)="setTab('communications')">
         <app-icon class="tab-icon" name="chat" />
         {{ 'Communications' | translate }}
@@ -416,118 +412,36 @@
     }
 
     @if (activeTab() === 'preferences') {
-      @if (loadingTab()) {
-      <div class="loading-state">
-        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
-        <span class="text-muted">{{ 'Loading preferences...' | translate }}</span>
-      </div>
-    } @else if (preferences().length === 0) {
-      <div class="empty-state">
-        <app-icon class="empty-icon" name="tune" />
-        <p>{{ 'No preferences recorded' | translate }}</p>
-      </div>
-    } @else {
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>{{ 'Category' | translate }}</th>
-              <th>{{ 'Type' | translate }}</th>
-              <th>{{ 'Value' | translate }}</th>
-              <th>{{ 'Priority' | translate }}</th>
-              <th>{{ 'Mandatory' | translate }}</th>
-              <th>{{ 'Status' | translate }}</th>
-              <th>{{ 'Notes' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (pref of preferences(); track pref.id) {
-              <tr>
-                <td>{{ pref.preference_category_display }}</td>
-                <td>{{ pref.preference_type }}</td>
-                <td>{{ pref.preference_value ?? '—' }}</td>
-                <td class="cell-numeric">{{ pref.priority }}</td>
-                <td>
-                  @if (pref.is_mandatory) {
-                    <span class="badge badge-warning">{{ 'Required' | translate }}</span>
-                  } @else {
-                    <span class="text-muted">{{ 'Optional' | translate }}</span>
-                  }
-                </td>
-                <td>
-                  <span class="badge" [ngClass]="pref.is_active ? 'badge-success' : 'badge-muted'">
-                    {{ pref.is_active ? ('Active' | translate) : ('Inactive' | translate) }}
-                  </span>
-                </td>
-                <td>{{ pref.notes ?? '—' }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+      @if (preferenceSummary().length === 0) {
+        <div class="empty-state">
+          <app-icon class="empty-icon" name="tune" />
+          <p>{{ 'No preferences recorded' | translate }}</p>
+          <a class="btn btn-outline btn-sm" [routerLink]="['/guests', guestId(), 'edit']">
+            <app-icon name="edit" /> {{ 'Add preferences' | translate }}
+          </a>
+        </div>
+      } @else {
+        <div class="detail-card">
+          <div class="card-header card-header-flex">
+            <h3 class="card-title">{{ 'Recorded preferences' | translate }}</h3>
+            <a class="btn btn-outline btn-sm" [routerLink]="['/guests', guestId(), 'edit']">
+              <app-icon name="edit" /> {{ 'Edit' | translate }}
+            </a>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @for (row of preferenceSummary(); track row.label) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ row.label | translate }}</dt>
+                  <dd class="detail-value">{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
     }
-  }
 
-  @if (activeTab() === 'documents') {
-    @if (loadingTab()) {
-      <div class="loading-state">
-        <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
-        <span class="text-muted">{{ 'Loading documents...' | translate }}</span>
-      </div>
-    } @else if (documents().length === 0) {
-      <div class="empty-state">
-        <app-icon class="empty-icon" name="description" />
-        <p>{{ 'No documents on file' | translate }}</p>
-      </div>
-    } @else {
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>{{ 'Type' | translate }}</th>
-              <th>{{ 'Number' | translate }}</th>
-              <th>{{ 'File' | translate }}</th>
-              <th>{{ 'Verified' | translate }}</th>
-              <th>{{ 'Expires' | translate }}</th>
-              <th>{{ 'Status' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (doc of documents(); track doc.id) {
-              <tr>
-                <td>{{ doc.document_type_display }}</td>
-                <td>{{ doc.document_number ?? '—' }}</td>
-                <td>{{ doc.file_name }}</td>
-                <td>
-                  @if (doc.is_verified) {
-                    <span class="badge badge-success">{{ 'Verified' | translate }}</span>
-                  } @else {
-                    <span class="badge badge-muted">{{ doc.verification_status_display }}</span>
-                  }
-                </td>
-                <td>
-                  @if (doc.expiry_date) {
-                    <span [ngClass]="doc.is_expired ? 'text-danger' : ''">
-                      {{ formatDate(doc.expiry_date) }}
-                    </span>
-                  } @else {
-                    <span class="text-muted">—</span>
-                  }
-                </td>
-                <td>
-                  @if (doc.is_expired) {
-                    <span class="badge badge-danger">{{ 'Expired' | translate }}</span>
-                  } @else {
-                    <span class="badge badge-success">{{ 'Valid' | translate }}</span>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  }
 
   @if (activeTab() === 'communications') {
     @if (loadingTab()) {

@@ -20,6 +20,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { filterBySearch } from "../../shared/search-utils";
 
 /** Shape returned by GET /v1/settings/catalog/:code */
 interface CategoryCatalog {
@@ -130,12 +131,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 					.sort((a, b) => a.sort_order - b.sort_order);
 
 				if (query) {
-					sectionDefs = sectionDefs.filter(
-						(d) =>
-							d.name.toLowerCase().includes(query) ||
-							d.code.toLowerCase().includes(query) ||
-							d.description?.toLowerCase().includes(query),
-					);
+					sectionDefs = filterBySearch(sectionDefs, query, (d) => [d.name, d.code, d.description]);
 				}
 
 				return { section, definitions: sectionDefs };

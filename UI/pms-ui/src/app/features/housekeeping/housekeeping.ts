@@ -19,6 +19,7 @@ import { settleCommandReadModel } from "../../shared/command-refresh";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type HkFilter = "ALL" | "DIRTY" | "IN_PROGRESS" | "CLEAN" | "INSPECTED" | "DO_NOT_DISTURB";
@@ -210,13 +211,12 @@ export class HousekeepingComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(r) =>
-					r.room_number.toLowerCase().includes(query) ||
-					(r.room_name?.toLowerCase().includes(query) ?? false) ||
-					(r.room_type_name?.toLowerCase().includes(query) ?? false) ||
-					(r.floor?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (r) => [
+				r.room_number,
+				r.room_name,
+				r.room_type_name,
+				r.floor,
+			]);
 		}
 
 		// Sort
@@ -237,12 +237,11 @@ export class HousekeepingComponent {
 	readonly filteredTasks = computed(() => {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (!query) return this.tasks();
-		return this.tasks().filter(
-			(t) =>
-				t.room_number.toLowerCase().includes(query) ||
-				t.task_type.toLowerCase().includes(query) ||
-				(t.status_display?.toLowerCase().includes(query) ?? false),
-		);
+		return filterBySearch(this.tasks(), query, (t) => [
+			t.room_number,
+			t.task_type,
+			t.status_display,
+		]);
 	});
 
 	readonly paginatedTasks = computed(() => {

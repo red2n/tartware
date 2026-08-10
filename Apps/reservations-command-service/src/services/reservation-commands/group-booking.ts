@@ -363,7 +363,12 @@ export const uploadGroupRoomingList = async (
              updated_at = NOW(), updated_by = $5
          WHERE group_booking_id = $1
            AND room_type_id = $2
-           AND block_date = $3
+           -- Every night of the stay draws from that night's block, so the range
+           -- is [arrival, departure). Matching only the arrival date left the
+           -- remaining nights showing 0 picked, under-reporting pickup on any
+           -- multi-night group.
+           AND block_date >= $3::date
+           AND block_date < $4::date
            AND picked_rooms < blocked_rooms
            AND block_status IN ('active', 'pending')`,
         [command.group_booking_id, guest.room_type_id, arrivalDate, departureDate, SYSTEM_ACTOR_ID],
