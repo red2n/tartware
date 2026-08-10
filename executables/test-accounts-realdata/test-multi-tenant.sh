@@ -202,6 +202,35 @@ assert_http() {
   if [[ "$3" =~ ^${2} ]]; then pass "$1"; else fail "$1" "expected=$2 actual=$3"; fi
 }
 
+# ─── Dead-letter queue depth ─────────────────────────────────────────────────
+# Commands are accepted with HTTP 202 long before their consumer runs, so a
+# handler that throws is invisible to every request-level assertion here: the
+# message is retried, parked on a dead-letter topic, and the test still scores a
+# PASS off the 202. Sampling DLQ depth before and after the run is what turns
+# those silent failures into a real assertion.
+#
+# Offsets are cumulative across runs (topics are retained), so only the delta is
+# meaningful. Anything else producing to these topics during the run counts too —
+# acceptable for a controlled E2E run, and a false positive here is a message
+# that genuinely failed to process.
+KAFKA_CONTAINER="${TARTWARE_KAFKA_CONTAINER:-tartware-kafka}"
+KAFKA_BROKER_INTERNAL="${TARTWARE_KAFKA_BROKER:-localhost:29092}"
+DLQ_TOPICS=(commands.primary.dlq reservations.events.dlq inventory.events.dlq)
+declare -A PRE_DLQ=()
+DLQ_TRACKED=0
+
+# dlq_available — true when the Kafka container can be reached for offset reads.
+dlq_available() {
+  command -v docker >/dev/null 2>&1 && docker exec "$KAFKA_CONTAINER" true >/dev/null 2>&1
+}
+
+# dlq_topic_depth <topic> — total messages across all partitions (0 if absent).
+dlq_topic_depth() {
+  docker exec "$KAFKA_CONTAINER" kafka-run-class kafka.tools.GetOffsetShell \
+    --broker-list "$KAFKA_BROKER_INTERNAL" --topic "$1" 2>/dev/null \
+    | awk -F: '{s+=$3} END {print s+0}'
+}
+
 # send_command <label> <command_name> <payload_json> [idempotency_key]
 send_command() {
   local label="$1" cmd="$2" payload="$3" idem="${4:-$(gen_uuid)}"
@@ -322,6 +351,19 @@ if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant A (HTTP $MOD_CODE)"
 else
   echo "  ⚠ Module enable for Tenant A: HTTP $MOD_CODE (may be pre-existing)"
+fi
+
+# DLQ baseline — compared against the post-run depth in Phase 7.
+if dlq_available; then
+  _dlq_baseline_summary=""
+  for _t in "${DLQ_TOPICS[@]}"; do
+    PRE_DLQ[$_t]=$(dlq_topic_depth "$_t")
+    _dlq_baseline_summary+=" ${_t}=${PRE_DLQ[$_t]}"
+  done
+  DLQ_TRACKED=1
+  echo "  ✓ DLQ baseline captured:${_dlq_baseline_summary}"
+else
+  echo "  ⚠ Kafka container '$KAFKA_CONTAINER' unreachable — DLQ check will be skipped"
 fi
 echo ""
 
@@ -3168,6 +3210,33 @@ printf "    %-20s  B1=%-6s  B2=%-6s\n" "charges" "$B1_POST_CH" "$B2_POST_CH"
 get "$GW/v1/billing/payments?tenant_id=$TID_B&property_id=$PID_B1&limit=100" >/dev/null; B1_POST_PAY=$(resp_count)
 get "$GW/v1/billing/payments?tenant_id=$TID_B&property_id=$PID_B2&limit=100" >/dev/null; B2_POST_PAY=$(resp_count)
 printf "    %-20s  B1=%-6s  B2=%-6s\n" "payments" "$B1_POST_PAY" "$B2_POST_PAY"
+echo ""
+
+# ─── Dead-letter queues ──────────────────────────────────────────────────────
+# Any growth here is a command or event that was accepted (202) but whose handler
+# threw — a failure no request-level assertion above can observe.
+echo "── Dead-letter queues ───────────────────────────────────────────────"
+if [[ $DLQ_TRACKED -eq 1 ]]; then
+  DLQ_DELTA=0
+  DLQ_OFFENDERS=""
+  for _t in "${DLQ_TOPICS[@]}"; do
+    _post=$(dlq_topic_depth "$_t")
+    _pre="${PRE_DLQ[$_t]:-0}"
+    _d=$((_post - _pre))
+    printf "  %-28s %5s → %5s  (Δ %+d)\n" "$_t" "$_pre" "$_post" "$_d"
+    DLQ_DELTA=$((DLQ_DELTA + _d))
+    [[ $_d -gt 0 ]] && DLQ_OFFENDERS+=" ${_t}(+${_d})"
+  done
+  echo ""
+  if [[ $DLQ_DELTA -eq 0 ]]; then
+    pass "No commands/events dead-lettered during run"
+  else
+    fail "No commands/events dead-lettered during run" \
+      "$DLQ_DELTA message(s) parked:${DLQ_OFFENDERS} — grep app.log for 'routing to DLQ'"
+  fi
+else
+  skip "DLQ depth check" "kafka container '$KAFKA_CONTAINER' unreachable"
+fi
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════
