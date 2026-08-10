@@ -361,6 +361,11 @@ export class HousekeepingComponent {
 		DIRTY: ["AVAILABLE", "OUT_OF_ORDER", "OUT_OF_SERVICE"],
 		OUT_OF_ORDER: ["AVAILABLE", "DIRTY"],
 		OUT_OF_SERVICE: ["AVAILABLE", "DIRTY"],
+		// A blocked room releases the same way as one out of service. BLOCKED is
+		// absent from occupancyActions on purpose: blocking is its own command and
+		// carries a reason and date range, so it must not be a bare status flip —
+		// but a room already in that state still needs a way out of it.
+		BLOCKED: ["AVAILABLE", "DIRTY"],
 	};
 
 	roomOccupancyActions(room: RoomItem): { value: string; label: string; icon: string }[] {

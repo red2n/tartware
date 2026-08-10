@@ -173,8 +173,8 @@ export const getRateQuote = async (options: {
       cancellation_policy_description: string | null;
     }>(
       // Rate plans live in `rates`; aliased back to the names the caller reads.
-			// cancellation_policy is JSONB, so the human description is projected out.
-			`SELECT rp.id AS rate_plan_id, rp.rate_name AS rate_plan_name,
+      // cancellation_policy is JSONB, so the human description is projected out.
+      `SELECT rp.id AS rate_plan_id, rp.rate_name AS rate_plan_name,
 			        rp.base_rate AS base_amount,
 			        rp.cancellation_policy->>'description' AS cancellation_policy_description
 			 FROM public.rates rp

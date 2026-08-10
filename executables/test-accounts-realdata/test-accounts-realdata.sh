@@ -351,6 +351,18 @@ REQUIRED_COMMANDS=(
   "billing.fiscal_period.close"
   "billing.ledger.post"
   "billing.gl_batch.export"
+  # Phase 1D — BA compliance gap commands. Without these the 1.29-1.37 blocks
+  # fail with 409 COMMAND_DISABLED before reaching any handler.
+  "billing.invoice.reopen"
+  "billing.folio.reopen"
+  "billing.folio.merge"
+  "billing.chargeback.update_status"
+  "billing.no_show.charge"
+  "billing.late_checkout.charge"
+  "billing.cancellation.penalty"
+  "billing.tax_exemption.apply"
+  "billing.comp.post"
+  "reservation.check_in"
 )
 
 echo "── Enabling required commands ────────────────────────────────────────"

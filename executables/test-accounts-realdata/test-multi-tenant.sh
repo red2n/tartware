@@ -643,31 +643,44 @@ TOKEN="$TOKEN_A"
 ALL_CMDS=$(curl -s -H "Authorization: Bearer $TOKEN_A" \
   "$GW/v1/commands/features?limit=500" \
   | jq -r '.[]? // .data[]? | .command_name' 2>/dev/null)
-CMD_COUNT=0
-UPDATES_PAYLOAD="["
-FIRST_CMD=true
+CMD_NAMES=()
 while IFS= read -r cmd_name; do
   [[ -z "$cmd_name" ]] && continue
-  if $FIRST_CMD; then FIRST_CMD=false; else UPDATES_PAYLOAD+=","; fi
-  UPDATES_PAYLOAD+="{\"command_name\":\"$cmd_name\",\"status\":\"enabled\"}"
-  CMD_COUNT=$((CMD_COUNT + 1))
+  CMD_NAMES+=("$cmd_name")
 done <<< "$ALL_CMDS"
-UPDATES_PAYLOAD+="]"
+CMD_COUNT=${#CMD_NAMES[@]}
+
+# The batch endpoint caps `updates` at 200 items (BatchUpdateCommandFeaturesRequestSchema
+# in schema/src/api/command-center.ts) and the catalog is already past that. Sending the
+# whole list in one call 400s and leaves *every* command disabled, so send it in chunks.
+BATCH_MAX=200
 
 if [[ $CMD_COUNT -eq 0 ]]; then
   echo "  ⚠ No commands found in catalog — skipping enable step"
 else
-  enable_code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X PATCH "$GW/v1/commands/features/batch" \
-    -H "Authorization: Bearer $TOKEN_A" \
-    -H "Content-Type: application/json" \
-    -d "{\"updates\":$UPDATES_PAYLOAD}")
-  if [[ "$enable_code" =~ ^2 ]]; then
-    updated=$(jq '.updated | length' "$RESP_FILE" 2>/dev/null || echo "?")
-    echo "  ✓ $updated / $CMD_COUNT commands enabled globally (HTTP $enable_code)"
+  enabled_total=0
+  failed_chunks=0
+  for ((offset = 0; offset < CMD_COUNT; offset += BATCH_MAX)); do
+    chunk_payload=$(printf '%s\n' "${CMD_NAMES[@]:offset:BATCH_MAX}" \
+      | jq -R -s 'split("\n") | map(select(length > 0) | {command_name: ., status: "enabled"})')
+    enable_code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X PATCH "$GW/v1/commands/features/batch" \
+      -H "Authorization: Bearer $TOKEN_A" \
+      -H "Content-Type: application/json" \
+      -d "{\"updates\":$chunk_payload}")
+    if [[ "$enable_code" =~ ^2 ]]; then
+      chunk_updated=$(jq '.updated | length' "$RESP_FILE" 2>/dev/null || echo 0)
+      enabled_total=$((enabled_total + chunk_updated))
+    else
+      failed_chunks=$((failed_chunks + 1))
+      echo "  ⚠ Batch enable chunk at offset $offset failed (HTTP $enable_code) — body:"
+      jq '.message // .error // .' "$RESP_FILE" 2>/dev/null | head -3
+    fi
+  done
+  if [[ $failed_chunks -eq 0 ]]; then
+    echo "  ✓ $enabled_total / $CMD_COUNT commands enabled globally"
   else
-    echo "  ⚠ Batch enable failed (HTTP $enable_code) — body:"
-    jq '.message // .error // .' "$RESP_FILE" 2>/dev/null | head -3
+    echo "  ⚠ $enabled_total / $CMD_COUNT commands enabled — $failed_chunks chunk(s) failed"
   fi
 fi
 
@@ -2932,6 +2945,56 @@ seed_housekeeping "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
 seed_housekeeping "$TOKEN_B" "$TID_B" "$PID_B2" "B2"
 echo ""
 
+# ── 6c.8b  Room block / release lifecycle ────────────────────────────────
+# rooms.inventory.block sets is_blocked AND status = 'BLOCKED' to keep one
+# source of truth. BLOCKED was added to the room_status enum on 2026-08-10;
+# before that the command wrote a label the type did not have and the update
+# failed with 22P02, so this asserts the whole path, not just the flag.
+echo "── 6c.8b Room Block / Release ───────────────────────────────────────"
+
+check_room_block() {
+  local tok="$1" tid="$2" pid="$3" lbl="$4"
+  TOKEN="$tok"
+  CUR_TID="$tid"
+
+  get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=50" >/dev/null
+  local rid
+  rid=$(jq -r '(if type=="array" then . else (.data // []) end)
+               | map(select((.is_blocked // false) == false
+                            and ((.status // "") | ascii_downcase) == "available"))
+               | .[0].room_id // .[0].id // empty' "$RESP_FILE" 2>/dev/null)
+  if [[ -z "$rid" ]]; then skip "Room block lifecycle ($lbl)" "no available room"; return; fi
+
+  send_command "CMD rooms.inventory.block ($lbl)" "rooms.inventory.block" \
+    "{\"room_id\":\"$rid\",\"action\":\"block\",\"reason\":\"Deep clean ${RUN_TAG}\",\"blocked_from\":\"$TODAY\",\"blocked_until\":\"$IN3DAYS\"}"
+  wait_kafka 6
+
+  # Read back from the collection the UI uses, so this does not depend on the
+  # shape of a single-room route.
+  get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  local st blk
+  st=$(jq -r --arg id "$rid" '(if type=="array" then . else (.data // []) end)
+              | map(select((.room_id // .id) == $id)) | .[0].status // ""' "$RESP_FILE" 2>/dev/null \
+       | tr '[:lower:]' '[:upper:]')
+  blk=$(jq -r --arg id "$rid" '(if type=="array" then . else (.data // []) end)
+               | map(select((.room_id // .id) == $id)) | .[0].is_blocked // false' "$RESP_FILE" 2>/dev/null)
+  assert_eq "Room blocked → status BLOCKED ($lbl)" "BLOCKED" "$st"
+  assert_eq "Room blocked → is_blocked true ($lbl)" "true" "$blk"
+
+  send_command "CMD rooms.inventory.block release ($lbl)" "rooms.inventory.block" \
+    "{\"room_id\":\"$rid\",\"action\":\"release\"}"
+  wait_kafka 6
+
+  get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
+  blk=$(jq -r --arg id "$rid" '(if type=="array" then . else (.data // []) end)
+               | map(select((.room_id // .id) == $id)) | .[0].is_blocked // false' "$RESP_FILE" 2>/dev/null)
+  assert_eq "Room released → is_blocked false ($lbl)" "false" "$blk"
+}
+
+check_room_block "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+check_room_block "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+echo ""
+
 # ── 6c.9  Screen-readiness roll-up ──────────────────────────────────────
 # One assertion per UI screen the user reported empty.
 echo "── 6c.9  UI Screen Readiness ────────────────────────────────────────"
@@ -2942,21 +3005,24 @@ echo "── 6c.9  UI Screen Readiness ─────────────�
 # so asserting the plain one would not prove the screen works.
 
 # ui_get <label> <token> <url> <min_rows>
+# Always returns 0: these are called as bare top-level statements under
+# `set -e`, so a non-zero return would abort the whole run on the first failing
+# screen instead of reporting the rest. Failures are recorded via fail(), the
+# same way every other assertion helper in this script behaves.
 ui_get() {
   local label="$1" tok="$2" url="$3" min="${4:-1}"
   TOKEN="$tok"
   local code; code=$(get "$url")
   if [[ ! "$code" =~ ^2 ]]; then
     fail "SCREEN $label" "HTTP=$code ← $(jq -r '.detail // .message // .error // empty' "$RESP_FILE" 2>/dev/null | head -c 140)"
-    return 1
+    return 0
   fi
   local n; n=$(resp_count)
   if [[ "$n" -ge "$min" ]]; then
     pass "SCREEN $label (rows=$n)"
-    return 0
+  else
+    fail "SCREEN $label" "rows=$n expected>=$min"
   fi
-  fail "SCREEN $label" "rows=$n expected>=$min"
-  return 1
 }
 
 # ui_support <label> <token> <url> — a call the screen makes on load that must
