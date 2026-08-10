@@ -2,9 +2,11 @@
 -- Table: webhook_deliveries
 -- Purpose: Per-attempt delivery log for webhook_subscriptions. One row per
 --          attempt, so retries are visible rather than overwriting each other.
--- Contract: Columns mirror WebhookDeliveryRow in @tartware/schemas — the
---           deliveries endpoint serialises with additionalProperties:false,
---           so any drift here silently blanks fields in the response.
+-- Contract: Columns mirror WebhookDeliveriesSchema in @tartware/schemas
+--           (schemas/06-integrations/webhook-deliveries.ts), and the subset the
+--           API returns is WebhookDeliveryRow. The deliveries endpoint
+--           serialises with additionalProperties:false, so any drift here
+--           silently blanks fields in the response.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS webhook_deliveries (

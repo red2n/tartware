@@ -205,6 +205,8 @@
 \ir 06-integrations/86_integration_mappings.sql
 \ir 06-integrations/87_api_logs.sql
 \ir 06-integrations/88_webhook_subscriptions.sql
+-- Must follow 88: webhook_deliveries.webhook_id references webhook_subscriptions.
+\ir 06-integrations/90_webhook_deliveries.sql
 \ir 06-integrations/89_data_sync_status.sql
 \ir 06-integrations/94_ai_demand_predictions.sql
 \ir 06-integrations/95_dynamic_pricing_rules_ml.sql

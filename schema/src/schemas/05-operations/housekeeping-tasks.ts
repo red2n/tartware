@@ -39,6 +39,12 @@ export const HousekeepingTasksSchema = z.object({
 	scheduled_time: z.string().optional(),
 	started_at: z.coerce.date().optional(),
 	completed_at: z.coerce.date().optional(),
+	/**
+	 * Attendant who completed the task. Paired with completed_at by
+	 * chk_housekeeping_tasks_completed_actor — a completion must be attributable,
+	 * so setting completed_at without this is rejected by the database.
+	 */
+	completed_by: uuid.optional(),
 	inspected_by: uuid.optional(),
 	inspected_at: z.coerce.date().optional(),
 	inspection_passed: z.boolean().optional(),

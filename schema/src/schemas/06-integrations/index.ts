@@ -3,7 +3,7 @@
  * Module: schemas/06-integrations/index.ts
  * Description: Integrations Schemas (Category 06)
  * Category: 06-integrations
- * Primary exports: ai-demand-predictions, ai-model-performance, api-logs, campaign-segments, channel-commission-rules, channel-mappings, channel-rate-parity, data-sync-status, demand-scenarios, dynamic-pricing-rules-ml, gds-connections, gds-message-log, gds-reservation-queue, guest-behavior-patterns, guest-interaction-events, integration-mappings, marketing-campaigns, ota-configurations, ota-inventory-sync, ota-rate-plans, ota-reservations-queue, personalized-recommendations, price-adjustments-history, pricing-experiments, promotional-codes, referral-tracking, review-response-templates, sentiment-analysis, sentiment-trends, social-media-mentions, webhook-subscriptions
+ * Primary exports: ai-demand-predictions, ai-model-performance, api-logs, campaign-segments, channel-commission-rules, channel-mappings, channel-rate-parity, data-sync-status, demand-scenarios, dynamic-pricing-rules-ml, gds-connections, gds-message-log, gds-reservation-queue, guest-behavior-patterns, guest-interaction-events, integration-mappings, marketing-campaigns, ota-configurations, ota-inventory-sync, ota-rate-plans, ota-reservations-queue, personalized-recommendations, price-adjustments-history, pricing-experiments, promotional-codes, referral-tracking, review-response-templates, sentiment-analysis, sentiment-trends, social-media-mentions, webhook-deliveries, webhook-subscriptions
  * @table n/a
  * @category 06-integrations
  * Ownership: Schema package
@@ -48,4 +48,5 @@ export * from "./review-response-templates.js";
 export * from "./sentiment-analysis.js";
 export * from "./sentiment-trends.js";
 export * from "./social-media-mentions.js";
+export * from "./webhook-deliveries.js";
 export * from "./webhook-subscriptions.js";
