@@ -55,6 +55,43 @@ IS 'Ensures version columns increment during updates and rejects stale optimisti
 -- =====================================================
 -- Attach the trigger to every table that exposes a version column
 -- =====================================================
+-- Drop version-lock triggers from tables that no longer qualify. The loop below
+-- only ever creates, so without this a table that once matched keeps a trigger
+-- forever — which is how command_templates and settings_definitions stayed
+-- un-updatable after their version columns became semantic version strings.
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT n.nspname AS table_schema,
+               c.relname AS table_name,
+               t.tgname  AS trigger_name
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE NOT t.tgisinternal
+          AND t.tgname LIKE 'trg\_%\_version\_lock'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns col
+              WHERE col.table_schema = n.nspname
+                AND col.table_name = c.relname
+                AND col.column_name = 'version'
+                AND col.data_type IN ('smallint', 'integer', 'bigint', 'numeric')
+          )
+    LOOP
+        EXECUTE format(
+            'DROP TRIGGER IF EXISTS %I ON %I.%I',
+            rec.trigger_name,
+            rec.table_schema,
+            rec.table_name
+        );
+        RAISE NOTICE 'Removed stale optimistic lock trigger from %.%', rec.table_schema, rec.table_name;
+    END LOOP;
+END;
+$$;
+
 DO $$
 DECLARE
     rec RECORD;
@@ -72,6 +109,11 @@ BEGIN
           AND c.table_schema IN ('public', 'availability')
           AND c.table_name NOT LIKE 'pg_%'
           AND c.table_name NOT LIKE 'sql_%'
+          -- Only numeric counters. Some tables use `version` for a semantic
+          -- version string (command_templates '1.0', settings_definitions), and
+          -- the function's `OLD.version + 1` raises 42883 on those — which made
+          -- the table impossible to UPDATE at all, not merely unversioned.
+          AND c.data_type IN ('smallint', 'integer', 'bigint', 'numeric')
         ORDER BY c.table_schema, c.table_name
     LOOP
         trigger_name := format('trg_%s_version_lock', rec.table_name);

@@ -12,7 +12,7 @@
  * flow registry requires.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -93,6 +93,125 @@ describe("command catalog ↔ payload validators", () => {
       missing,
       `\nCatalogued commands with no payload validator — these dispatch but always\n` +
         `fail with COMMAND_PAYLOAD_INVALID:\n${missing.map((m) => `  ✗ ${m}`).join("\n")}\n`,
+    ).toEqual([]);
+  });
+});
+
+describe("command handlers ↔ command catalog", () => {
+  /**
+   * The reverse of the flow-registry check above, and the direction nothing was
+   * asserting. A service consumer dispatches on `case "<command>":`; if that
+   * command has no catalog row the gateway answers 404 "not registered", so the
+   * handler is unreachable no matter how complete it is.
+   *
+   * Eight commands were in exactly this state — inventory.lock.room,
+   * inventory.release.room, inventory.release.bulk, rooms.key.issue,
+   * rooms.key.revoke and the three operations.maintenance.* verbs — each with a
+   * handler, a payload validator, and no way to be invoked.
+   */
+  const CONSUMERS = [
+    "availability-guard-service/src/workers/command-center-consumer.ts",
+    "housekeeping-service/src/commands/command-center-consumer.ts",
+    "rooms-service/src/commands/command-center-consumer.ts",
+    "guests-service/src/services/guest-command-service.ts",
+    "notification-service/src/services/notification-command-service.ts",
+  ];
+
+  it("seeds a catalog entry for every command a consumer handles", () => {
+    const catalog = readCatalog();
+    const missing: string[] = [];
+    let handled = 0;
+
+    for (const relative of CONSUMERS) {
+      const path = fileURLToPath(new URL(`../../${relative}`, import.meta.url));
+      const source = readFileSync(path, "utf8");
+      for (const match of source.matchAll(/case\s+"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"\s*:/g)) {
+        handled++;
+        if (!catalog.has(match[1]!)) missing.push(`[${relative.split("/")[0]}] ${match[1]}`);
+      }
+    }
+
+    // Guards against a consumer being renamed and this check going vacuous.
+    expect(handled, "no `case \"command.name\":` handlers found — consumer layout changed").toBeGreaterThan(20);
+
+    expect(
+      [...new Set(missing)].sort(),
+      `\nCommands with a handler but no catalog row — the gateway answers 404\n` +
+        `"not registered", so the handler can never run:\n` +
+        `${missing.map((m) => `  ✗ ${m}`).join("\n")}\n`,
+    ).toEqual([]);
+  });
+});
+
+describe("command catalog ↔ consumer target services", () => {
+  /**
+   * `shouldProcess` in the shared consumer utils drops any command whose
+   * envelope `targetService` does not equal the consuming service's own
+   * `targetServiceId`. So a catalog row naming a service that no consumer
+   * claims produces a command the gateway accepts and dispatches, and that
+   * every consumer then silently skips — no error, no DLQ entry.
+   *
+   * operations.maintenance.request was in this state: handler in
+   * housekeeping-service, catalog row pointing at 'operations-command-service'.
+   */
+  /**
+   * Catalogued commands that have no handler anywhere in Apps/, so there is no
+   * consumer to claim their target service yet. They are inert rather than
+   * mis-wired: the fix is to implement the handler (or drop the catalog row),
+   * which is a product decision, not a wiring correction.
+   *
+   * Do not add a command here to silence this check — an entry means "not
+   * built yet", and a command WITH a handler must never appear in this list.
+   */
+  const UNIMPLEMENTED = new Set([
+    "analytics.metric.ingest",
+    "analytics.report.schedule",
+    "operations.incident.report",
+    "operations.asset.update",
+    "operations.inventory.adjust",
+    "compliance.breach.report",
+    "compliance.breach.notify",
+  ]);
+
+  it("routes every command to a target service some consumer claims", () => {
+    const sql = readFileSync(CATALOG_SQL, "utf8");
+    const start = sql.indexOf("WITH seed_commands(");
+
+    const claimed = new Set<string>();
+    const configs = fileURLToPath(new URL("../../", import.meta.url));
+    for (const relative of [
+      "guests-service", "billing-service", "housekeeping-service", "rooms-service",
+      "revenue-service", "notification-service", "core-service",
+      "availability-guard-service", "reservations-command-service",
+    ]) {
+      const path = `${configs}${relative}/src/config.ts`;
+      if (!existsSync(path)) continue;
+      const source = readFileSync(path, "utf8");
+      for (const m of source.matchAll(/buildCommandCenterConfig\(\s*"([a-z-]+)"/g)) claimed.add(m[1]!);
+      // availability-guard-service builds the config inline rather than via the helper.
+      for (const m of source.matchAll(/targetServiceId:\s*(?:[^,]*\?\?\s*)?"([a-z-]+)"/g)) claimed.add(m[1]!);
+    }
+
+    expect(claimed.size, "no target service ids found — config layout changed").toBeGreaterThan(5);
+
+    const unclaimed = new Map<string, string[]>();
+    for (const row of sql.slice(start).matchAll(
+      /\(\s*'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'\s*,\s*'[^']*'\s*,\s*'([a-z-]+)'/g,
+    )) {
+      const [, commandName, target] = row;
+      if (!claimed.has(target!) && !UNIMPLEMENTED.has(commandName!)) {
+        unclaimed.set(target!, [...(unclaimed.get(target!) ?? []), commandName!]);
+      }
+    }
+
+    const summary = [...unclaimed.entries()]
+      .map(([svc, cmds]) => `  ✗ "${svc}" — no consumer claims it; ${cmds.length} command(s) dropped: ${cmds.join(", ")}`)
+      .join("\n");
+
+    expect(
+      [...unclaimed.keys()].sort(),
+      `\nCommands routed to a target service no consumer claims. These are\n` +
+        `accepted and dispatched, then silently discarded by shouldProcess():\n${summary}\n`,
     ).toEqual([]);
   });
 });

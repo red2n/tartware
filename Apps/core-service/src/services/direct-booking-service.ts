@@ -77,7 +77,7 @@ export const searchAvailability = async (options: {
 		   rt.amenities,
 		   rt.images,
 		   (SELECT ra.dynamic_price::text
-		    FROM public.room_availability ra
+		    FROM availability.room_availability ra
 		    WHERE ra.room_type_id = rt.id
 		      AND ra.tenant_id = $1::uuid
 		      AND ra.property_id = $2::uuid
@@ -201,7 +201,7 @@ export const getRateQuote = async (options: {
     const dateStr = cursor.toISOString().slice(0, 10);
     const { rows: dynRows } = await query<{ dynamic_price: string | null }>(
       `SELECT dynamic_price::text
-			 FROM public.room_availability
+			 FROM availability.room_availability
 			 WHERE room_type_id = $1 AND tenant_id = $2 AND property_id = $3
 			   AND availability_date = $4::date
 			 LIMIT 1`,
@@ -402,7 +402,7 @@ export const createDirectBooking = async (options: {
     await query(
       `UPDATE public.promotional_codes
 			 SET remaining_uses = GREATEST(0, COALESCE(remaining_uses, 0) - 1),
-			     total_redemptions = COALESCE(total_redemptions, 0) + 1,
+			     times_redeemed = COALESCE(times_redeemed, 0) + 1,
 			     updated_at = NOW()
 			 WHERE promo_code = $1 AND tenant_id = $2 AND has_usage_limit = true`,
       [promoCode, tenantId],

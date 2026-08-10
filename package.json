@@ -49,6 +49,8 @@
     "validate": "pnpm run check && pnpm run test && pnpm run validate:env",
     "validate:env": "node ./scripts/validate-env.mjs",
     "flow:integrity": "npx tsx scripts/flow-integrity-test.ts",
+    "sql:contracts": "npx tsx scripts/sql-contract-check.ts",
+    "sql:contracts:update": "npx tsx scripts/sql-contract-check.ts --update-baseline",
     "postinstall": "echo 'Monorepo dependencies installed successfully'",
     "bootstrap:modules": "pnpm --filter @tartware/core-service run bootstrap:modules",
     "duplo:templates": "bash ./executables/run-duplo/run-duplo.sh",

@@ -1194,13 +1194,15 @@ export const getAuditTrailReport = async (params: {
   }
   if (params.initiatedBy) {
     baseParams.push(params.initiatedBy);
-    filters.push(`AND initiated_by = $${baseParams.length}`);
+    // initiated_by is JSONB ({ userId, role }), not text — compare the
+    // extracted actor id rather than the whole document.
+    filters.push(`AND initiated_by->>'userId' = $${baseParams.length}`);
   }
   const filterSql = filters.join(" ");
 
   const countResult = await query<{ total: string }>(
     `SELECT COUNT(*)::text AS total
-     FROM command_outbox
+     FROM command_dispatches
      WHERE tenant_id = $1::uuid
        AND created_at >= $2::date AND created_at < ($3::date + 1)
        ${filterSql}`,
@@ -1218,10 +1220,10 @@ export const getAuditTrailReport = async (params: {
     status: string;
     created_at: string;
   }>(
-    `SELECT id, command_name, COALESCE(initiated_by, 'system') AS initiated_by,
+    `SELECT id, command_name, COALESCE(initiated_by->>'userId', 'system') AS initiated_by,
             COALESCE(target_service, '') AS target_service,
             status, created_at::text
-     FROM command_outbox
+     FROM command_dispatches
      WHERE tenant_id = $1::uuid
        AND created_at >= $2::date AND created_at < ($3::date + 1)
        ${filterSql}

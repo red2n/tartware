@@ -219,7 +219,7 @@ export async function redeemReward(params: {
          tenant_id, program_id, guest_id,
          transaction_type, points, balance_after,
          reference_type, reference_id, description,
-         created_by
+         performed_by
        ) VALUES (
          $1::uuid, $2::uuid, $3::uuid,
          'redeem', $4, (SELECT points_balance FROM guest_loyalty_programs WHERE program_id = $2::uuid),

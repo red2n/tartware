@@ -202,8 +202,8 @@ export const startMobileCheckin = async (
     `INSERT INTO mobile_check_ins (
        mobile_checkin_id, tenant_id, property_id, reservation_id, guest_id,
        checkin_status, access_method,
-       device_type, device_os, app_version,
-       started_at,
+       device_type, operating_system, app_version,
+       checkin_started_at,
        created_at, updated_at
      ) VALUES (
        $1, $2, $3, $4, $5,
@@ -318,12 +318,12 @@ export const completeMobileCheckin = async (
        id_document_verified = $4,
        registration_card_signed = $5,
        payment_method_verified = $6,
-       guest_signature_url = $7,
+       signature_url = $7,
        room_assigned = $8,
        digital_key_generated = $9,
        digital_key_type = $10,
        terms_accepted = $11,
-       completed_at = NOW(),
+       checkin_completed_at = NOW(),
        updated_at = NOW()
      WHERE mobile_checkin_id = $1 AND tenant_id = $2`,
     [

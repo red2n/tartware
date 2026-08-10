@@ -256,7 +256,7 @@ export const checkoutGroup = async (payload: unknown, context: CommandContext): 
     // Update group booking status
     await queryWithClient(
       client,
-      `UPDATE group_bookings SET status = 'CHECKED_OUT', updated_at = NOW()
+      `UPDATE group_bookings SET block_status = 'CHECKED_OUT', updated_at = NOW()
         WHERE group_booking_id = $1::uuid AND tenant_id = $2::uuid`,
       [command.group_booking_id, tenantId],
     );

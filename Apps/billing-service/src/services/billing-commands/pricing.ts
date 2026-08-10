@@ -100,9 +100,11 @@ export const evaluatePricingRules = async (
     }
   }
 
-  // 4. Write evaluated result to room_availability.dynamic_price
+  // 4. Write evaluated result to room_availability.dynamic_price.
+  // Schema-qualified: this table lives in the `availability` schema and no
+  // service sets a search_path, so an unqualified name does not resolve.
   await query(
-    `UPDATE room_availability
+    `UPDATE availability.room_availability
      SET dynamic_price = $4,
          updated_at = NOW()
      WHERE tenant_id = $1 AND property_id = $2
