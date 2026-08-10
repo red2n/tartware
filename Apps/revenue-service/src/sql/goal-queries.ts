@@ -345,9 +345,9 @@ export const MANAGERS_DAILY_REPORT_SQL = `
 export const MANAGERS_FORECAST_SQL = `
   SELECT
     rf.forecast_date,
-    rf.occupancy_forecast,
-    rf.adr_forecast,
-    rf.revpar_forecast,
+    rf.forecasted_occupancy_percent,
+    rf.forecasted_adr,
+    rf.forecasted_revpar,
     rf.room_revenue_forecast,
     rf.confidence_level
   FROM public.revenue_forecasts rf
@@ -355,7 +355,7 @@ export const MANAGERS_FORECAST_SQL = `
     AND rf.tenant_id = $2::uuid
     AND rf.forecast_date > $3::date
     AND rf.forecast_date <= ($3::date + $4::int)
-    AND rf.scenario_type = 'base'
+    AND rf.forecast_scenario = 'base'
     AND rf.forecast_period = 'daily'
     AND COALESCE(rf.is_deleted, false) = false
   ORDER BY rf.forecast_date

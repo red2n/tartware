@@ -517,7 +517,7 @@ export const DEEP_CLEAN_DUE_SQL = `
     r.property_id,
     p.property_name,
     r.room_number,
-    rt.room_type_name,
+    rt.type_name AS room_type_name,
     r.floor,
     r.status,
     r.housekeeping_status,

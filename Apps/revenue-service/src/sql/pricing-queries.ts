@@ -72,9 +72,9 @@ export const RATE_RECOMMENDATION_LIST_SQL = `
     rr.current_rate,
     rr.recommended_rate,
     rr.confidence_score,
-    rr.recommendation_reason,
+    rr.primary_reason,
     rr.status,
-    rr.applied_at,
+    rr.implemented_at,
     rr.created_at
   FROM public.rate_recommendations rr
   LEFT JOIN public.properties p ON rr.property_id = p.id
@@ -91,7 +91,7 @@ export const RATE_RECOMMENDATION_LIST_SQL = `
 
 export const COMPETITOR_RATE_LIST_SQL = `
   SELECT
-    cr.rate_id AS competitor_rate_id,
+    cr.rate_id AS rate_id,
     cr.tenant_id,
     cr.property_id,
     p.property_name,
@@ -117,17 +117,17 @@ export const COMPETITOR_RATE_LIST_SQL = `
 
 export const DEMAND_CALENDAR_LIST_SQL = `
   SELECT
-    dc.calendar_id,
+    dc.demand_id,
     dc.tenant_id,
     dc.property_id,
     p.property_name,
     dc.calendar_date,
     dc.day_of_week,
     dc.demand_level,
-    dc.occupancy_forecast,
+    dc.forecasted_occupancy_percent,
     dc.booking_pace,
     dc.events,
-    dc.notes,
+    dc.demand_notes,
     dc.created_at,
     dc.updated_at
   FROM public.demand_calendar dc
@@ -255,15 +255,22 @@ export const PRICING_RULE_SOFT_DELETE_SQL = `
 // ── Demand Calendar Write Queries ───────────────────
 
 export const DEMAND_CALENDAR_UPSERT_SQL = `
-  INSERT INTO public.demand_calendar (tenant_id, property_id, calendar_date, day_of_week, demand_level, notes, created_by, updated_by)
-  VALUES ($1::uuid, $2::uuid, $3::date, EXTRACT(DOW FROM $3::date)::int, $4, $5, $6::uuid, $6::uuid)
+  -- rooms_available is NOT NULL; a demand row that does not know inventory yet
+  -- takes the property's sellable room count.
+  INSERT INTO public.demand_calendar (tenant_id, property_id, calendar_date, day_of_week, demand_level,
+    rooms_available, demand_notes, created_by, updated_by)
+  VALUES ($1::uuid, $2::uuid, $3::date, EXTRACT(DOW FROM $3::date)::int, $4,
+    (SELECT COUNT(rm.id)::int FROM public.rooms rm
+      WHERE rm.tenant_id = $1::uuid AND rm.property_id = $2::uuid
+        AND COALESCE(rm.is_deleted, false) = false),
+    $5, $6::uuid, $6::uuid)
   ON CONFLICT (tenant_id, property_id, calendar_date)
   DO UPDATE SET
     demand_level = EXCLUDED.demand_level,
-    notes = COALESCE(EXCLUDED.notes, demand_calendar.notes),
+    demand_notes = COALESCE(EXCLUDED.demand_notes, demand_calendar.demand_notes),
     updated_by = EXCLUDED.updated_by,
     updated_at = CURRENT_TIMESTAMP
-  RETURNING calendar_id
+  RETURNING demand_id
 `;
 
 // ── Competitor Rate Write Queries ───────────────────
@@ -271,18 +278,18 @@ export const DEMAND_CALENDAR_UPSERT_SQL = `
 export const COMPETITOR_RATE_INSERT_SQL = `
   INSERT INTO public.competitor_rates (
     tenant_id, property_id, competitor_name, competitor_property_name,
-    room_type_category, stay_date, competitor_rate, currency, source_channel,
+    room_type_category, check_date, stay_date, competitor_rate, currency, source_channel,
     includes_breakfast, includes_parking, includes_wifi, taxes_included,
     rooms_left, estimated_occupancy_percent,
     notes, scrape_timestamp, created_by, updated_by
   ) VALUES (
     $1::uuid, $2::uuid, $3, $4,
-    $5, $6::date, $7, $8, $9,
+    $5, CURRENT_DATE, $6::date, $7, $8, $9,
     $10, $11, $12, $13,
     $14, $15,
     $16, CURRENT_TIMESTAMP, $17::uuid, $17::uuid
   )
-  RETURNING rate_id AS competitor_rate_id, created_at
+  RETURNING rate_id AS rate_id, created_at
 `;
 
 // ── Rate Restriction Read Queries ───────────────────

@@ -57,19 +57,29 @@ export const otaSyncRequest = async (
 
     // Gather current room availability for the next 30 days
     const { rows: availabilityRows } = await client.query(
-      `SELECT rt.id AS room_type_id, rt.code AS room_type_code,
-              rt.total_rooms,
+      // room_types has no total_rooms column — the room inventory is the source
+      // of truth, so the count comes from rooms. Computed in a lateral subquery
+      // rather than another LEFT JOIN, which would multiply against the
+      // reservations join and inflate the sold count.
+      `SELECT rt.id AS room_type_id, rt.type_code AS room_type_code,
+              inv.total_rooms,
               COUNT(r.id) FILTER (WHERE r.status IN ('CONFIRMED', 'CHECKED_IN')
                 AND r.check_in_date <= d.day AND r.check_out_date > d.day) AS sold,
-              rt.total_rooms - COUNT(r.id) FILTER (WHERE r.status IN ('CONFIRMED', 'CHECKED_IN')
+              inv.total_rooms - COUNT(r.id) FILTER (WHERE r.status IN ('CONFIRMED', 'CHECKED_IN')
                 AND r.check_in_date <= d.day AND r.check_out_date > d.day) AS available
        FROM room_types rt
        CROSS JOIN generate_series(CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', '1 day') AS d(day)
+       CROSS JOIN LATERAL (
+         SELECT COUNT(rm.id)::int AS total_rooms
+           FROM rooms rm
+          WHERE rm.room_type_id = rt.id AND rm.tenant_id = $1
+            AND rm.property_id = $2 AND COALESCE(rm.is_deleted, FALSE) = FALSE
+       ) inv
        LEFT JOIN reservations r ON r.room_type_id = rt.id AND r.tenant_id = $1
          AND r.property_id = $2 AND r.is_deleted = FALSE
        WHERE rt.tenant_id = $1 AND rt.property_id = $2 AND rt.is_deleted = FALSE
-       GROUP BY rt.id, rt.code, rt.total_rooms, d.day
-       ORDER BY d.day, rt.code
+       GROUP BY rt.id, rt.type_code, inv.total_rooms, d.day
+       ORDER BY d.day, rt.type_code
        LIMIT 1000`,
       [tenantId, command.property_id],
     );
@@ -77,21 +87,22 @@ export const otaSyncRequest = async (
     // Record sync attempt
     await client.query(
       `INSERT INTO ota_inventory_sync (
-        sync_id, tenant_id, property_id, ota_config_id,
+        sync_id, tenant_id, property_id, ota_config_id, channel_name,
         sync_type, sync_direction, sync_status,
         total_items, successful_items, failed_items,
         sync_started_at, sync_completed_at, created_by
       ) VALUES (
-        $1, $2, $3, $4,
-        $5, 'outbound', 'completed',
-        $6, $6, 0,
-        NOW(), NOW(), $7
+        $1, $2, $3, $4, $5,
+        $6, 'outbound', 'completed',
+        $7, $7, 0,
+        NOW(), NOW(), $8
       )`,
       [
         syncId,
         tenantId,
         command.property_id,
         otaConfig.id,
+        otaConfig.ota_name,
         syncScope,
         availabilityRows.length,
         SYSTEM_ACTOR_ID,
@@ -182,7 +193,7 @@ export const otaRatePush = async (
               orp.markup_percentage, orp.markdown_percentage,
               r.rate_name, r.base_rate, r.currency
        FROM ota_rate_plans orp
-       JOIN rates r ON r.rate_id = orp.rate_id AND r.tenant_id = $1
+       JOIN rates r ON r.id = orp.rate_id AND r.tenant_id = $1
        WHERE orp.tenant_id = $1 AND orp.property_id = $2
          AND orp.ota_configuration_id = $3
          AND orp.is_active = TRUE AND orp.is_deleted = FALSE
@@ -208,17 +219,25 @@ export const otaRatePush = async (
     // Record rate push sync
     await client.query(
       `INSERT INTO ota_inventory_sync (
-        sync_id, tenant_id, property_id, ota_config_id,
+        sync_id, tenant_id, property_id, ota_config_id, channel_name,
         sync_type, sync_direction, sync_status,
         total_items, successful_items, failed_items,
         sync_started_at, sync_completed_at, created_by
       ) VALUES (
-        $1, $2, $3, $4,
+        $1, $2, $3, $4, $5,
         'incremental', 'outbound', 'completed',
-        $5, $5, 0,
-        NOW(), NOW(), $6
+        $6, $6, 0,
+        NOW(), NOW(), $7
       )`,
-      [syncId, tenantId, command.property_id, otaConfig.id, pushedRates.length, SYSTEM_ACTOR_ID],
+      [
+        syncId,
+        tenantId,
+        command.property_id,
+        otaConfig.id,
+        otaConfig.ota_name,
+        pushedRates.length,
+        SYSTEM_ACTOR_ID,
+      ],
     );
 
     await enqueueOutboxRecordWithClient(client, {
@@ -475,29 +494,72 @@ export const processOtaReservationQueue = async (
           throw new Error(`No channel mapping for OTA room type "${entry.room_type}"`);
         }
 
+        // reservations requires a guest. The queue row carries the OTA's guest
+        // details, so match an existing guest on email within the tenant and
+        // create one otherwise — an OTA booking must not silently attach to the
+        // wrong person, so matching is by email only, never by name.
+        const guestName = entry.guest_name?.trim() || "OTA Guest";
+        const guestEmail = entry.guest_email?.trim() || null;
+
+        let guestId: string | null = null;
+        if (guestEmail) {
+          const { rows: existingGuest } = await client.query(
+            `SELECT id FROM guests
+              WHERE tenant_id = $1::uuid AND LOWER(email) = LOWER($2)
+                AND COALESCE(is_deleted, false) = false
+              LIMIT 1`,
+            [tenantId, guestEmail],
+          );
+          guestId = existingGuest[0]?.id ?? null;
+        }
+        if (!guestId) {
+          const [firstName, ...restName] = guestName.split(/\s+/);
+          const { rows: createdGuest } = await client.query(
+            `INSERT INTO guests (tenant_id, first_name, last_name, email, phone, created_by, updated_by)
+             VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid, $6::uuid)
+             RETURNING id`,
+            [
+              tenantId,
+              firstName ?? "OTA",
+              restName.join(" ") || "Guest",
+              guestEmail,
+              entry.guest_phone ?? null,
+              SYSTEM_ACTOR_ID,
+            ],
+          );
+          guestId = createdGuest[0]?.id;
+        }
+
         // Create the internal reservation
         const reservationId = uuid();
+        const confirmationNumber = `OTA-${reservationId.slice(0, 8).toUpperCase()}`;
         await client.query(
           `INSERT INTO reservations (
             id, tenant_id, property_id, room_type_id,
+            guest_id, confirmation_number, guest_name, guest_email,
             check_in_date, check_out_date, booking_date,
             status, reservation_type, source,
-            total_amount, currency_code,
-            special_requests, notes,
+            total_amount, currency, room_rate,
+            special_requests, internal_notes,
             created_by, updated_by
           ) VALUES (
             $1, $2, $3, $4,
-            $5, $6, NOW(),
+            $5, $6, $7, $8,
+            $9, $10, NOW(),
             'CONFIRMED', 'TRANSIENT', 'OTA',
-            $7, $8,
-            $9, $10,
-            $11, $11
+            $11, $12, $11 / GREATEST(1, $10::date - $9::date),
+            $13, $14,
+            $15, $15
           )`,
           [
             reservationId,
             tenantId,
             propertyId,
             roomTypeId,
+            guestId,
+            confirmationNumber,
+            guestName,
+            guestEmail,
             entry.check_in_date,
             entry.check_out_date,
             entry.total_amount ?? 0,
@@ -644,21 +706,22 @@ export const otaContentSync = async (
     // Record content sync
     await client.query(
       `INSERT INTO ota_inventory_sync (
-        sync_id, tenant_id, property_id, ota_config_id,
+        sync_id, tenant_id, property_id, ota_config_id, channel_name,
         sync_type, sync_direction, sync_status,
         total_items, successful_items, failed_items,
         sync_started_at, sync_completed_at, created_by
       ) VALUES (
-        $1, $2, $3, $4,
-        $5, 'outbound', 'completed',
-        $6, $6, 0,
-        NOW(), NOW(), $7
+        $1, $2, $3, $4, $5,
+        $6, 'outbound', 'completed',
+        $7, $7, 0,
+        NOW(), NOW(), $8
       )`,
       [
         syncId,
         tenantId,
         command.property_id,
         otaConfig.id,
+        otaConfig.ota_name,
         command.force_full_sync ? "full" : "incremental",
         totalItems,
         SYSTEM_ACTOR_ID,

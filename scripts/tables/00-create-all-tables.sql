@@ -67,6 +67,8 @@
 \ir 02-inventory/90_companies.sql
 \ir 02-inventory/91_group_bookings.sql
 \ir 02-inventory/92_packages.sql
+-- Must precede 93: travel_agent_commissions.agent_id references travel_agents.
+\ir 02-inventory/89_travel_agents.sql
 \ir 02-inventory/93_travel_agent_commissions.sql
 \ir 02-inventory/97_meeting_rooms.sql
 \ir 02-inventory/98_event_bookings.sql
@@ -188,6 +190,8 @@
 -- ============================================================================
 \echo '>>> Category 6/8: INTEGRATIONS & CHANNELS'
 \ir 06-integrations/18_channel_mappings.sql
+-- Must follow 18: channel_sync_logs.channel_mapping_id references channel_mappings.
+\ir 06-integrations/49_channel_sync_logs.sql
 \ir 06-integrations/38_ota_configurations.sql
 \ir 06-integrations/39_ota_rate_plans.sql
 \ir 06-integrations/40_ota_reservations_queue.sql

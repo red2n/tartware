@@ -87,15 +87,15 @@ export const resolveSuspenseItem = async (
       client,
       `INSERT INTO charge_postings (
           tenant_id, property_id, folio_id, reservation_id,
-          charge_code, charge_description, posting_type,
+          charge_code, charge_description, transaction_type, posting_type,
           quantity, unit_price, subtotal, total_amount, currency_code,
-          posting_date, reference_number, parent_posting_id,
+          posting_date, business_date, source_reference, original_posting_id,
           notes, created_by, updated_by
         )
         SELECT tenant_id, property_id, folio_id, reservation_id,
-               charge_code, charge_description, 'VOID'::varchar,
+               charge_code, charge_description, transaction_type, 'VOID'::varchar,
                quantity, unit_price * -1, subtotal * -1, total_amount * -1, currency_code,
-               CURRENT_DATE, $1, posting_id,
+               CURRENT_DATE, CURRENT_DATE, $1, posting_id,
                $2, $3::uuid, $3::uuid
           FROM charge_postings WHERE posting_id = $4::uuid AND tenant_id = $5::uuid`,
       [
@@ -112,15 +112,15 @@ export const resolveSuspenseItem = async (
       client,
       `INSERT INTO charge_postings (
           tenant_id, property_id, folio_id, reservation_id,
-          charge_code, charge_description, posting_type,
+          charge_code, charge_description, transaction_type, posting_type,
           quantity, unit_price, subtotal, total_amount, currency_code,
-          posting_date, reference_number, parent_posting_id,
+          posting_date, business_date, source_reference, original_posting_id,
           notes, created_by, updated_by
         )
         SELECT tenant_id, property_id, $1::uuid, reservation_id,
-               charge_code, charge_description, posting_type,
+               charge_code, charge_description, transaction_type, posting_type,
                quantity, unit_price, subtotal, total_amount, currency_code,
-               CURRENT_DATE, $2, posting_id,
+               CURRENT_DATE, CURRENT_DATE, $2, posting_id,
                $3, $4::uuid, $4::uuid
           FROM charge_postings WHERE posting_id = $5::uuid AND tenant_id = $6::uuid`,
       [
@@ -221,15 +221,15 @@ export const writeOffSuspenseItem = async (
       client,
       `INSERT INTO charge_postings (
           tenant_id, property_id, folio_id, reservation_id,
-          charge_code, charge_description, posting_type,
+          charge_code, charge_description, transaction_type, posting_type,
           quantity, unit_price, subtotal, total_amount, currency_code,
-          posting_date, reference_number, parent_posting_id,
+          posting_date, business_date, source_reference, original_posting_id,
           notes, created_by, updated_by
         )
         SELECT tenant_id, property_id, folio_id, reservation_id,
-               charge_code, charge_description, 'VOID'::varchar,
+               charge_code, charge_description, transaction_type, 'VOID'::varchar,
                quantity, unit_price * -1, subtotal * -1, total_amount * -1, currency_code,
-               CURRENT_DATE, $1, posting_id,
+               CURRENT_DATE, CURRENT_DATE, $1, posting_id,
                $2, $3::uuid, $3::uuid
           FROM charge_postings WHERE posting_id = $4::uuid AND tenant_id = $5::uuid`,
       [

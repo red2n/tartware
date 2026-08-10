@@ -74,6 +74,8 @@ export const FolioRoutingRulesSchema = z.object({
 
 	// Destination
 	destination_folio_id: uuid.optional(),
+	/** AR account a DIRECT_BILL rule routes charges to (ar_accounts.ar_account_id). */
+	target_account_id: uuid.optional(),
 	destination_folio_type: destinationFolioTypeEnum.optional(),
 
 	// Routing Criteria

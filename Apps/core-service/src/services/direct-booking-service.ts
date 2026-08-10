@@ -172,12 +172,15 @@ export const getRateQuote = async (options: {
       base_amount: string | number;
       cancellation_policy_description: string | null;
     }>(
-      `SELECT rp.rate_plan_id, rp.rate_plan_name, rp.base_amount,
-			        rp.cancellation_policy_description
-			 FROM public.rate_plans rp
+      // Rate plans live in `rates`; aliased back to the names the caller reads.
+			// cancellation_policy is JSONB, so the human description is projected out.
+			`SELECT rp.id AS rate_plan_id, rp.rate_name AS rate_plan_name,
+			        rp.base_rate AS base_amount,
+			        rp.cancellation_policy->>'description' AS cancellation_policy_description
+			 FROM public.rates rp
 			 WHERE rp.rate_code = $1 AND rp.tenant_id = $2
 			   AND rp.property_id = $3
-			   AND rp.is_active = true
+			   AND rp.status = 'ACTIVE'
 			   AND COALESCE(rp.is_deleted, false) = false
 			 LIMIT 1`,
       [rateCode, tenantId, propertyId],
@@ -336,9 +339,31 @@ export const createDirectBooking = async (options: {
     throw new Error("Room type not found");
   }
 
+  // reservations references a rate by id, so the booking's rate code is
+  // resolved to one here. An unknown code books at the room type's own rate
+  // rather than failing the booking.
+  let rateId: string | null = null;
+  if (rateCode) {
+    const { rows: rateRows } = await query<{ id: string }>(
+      `SELECT id FROM public.rates
+			 WHERE rate_code = $1 AND tenant_id = $2 AND property_id = $3
+			   AND status = 'ACTIVE' AND COALESCE(is_deleted, false) = false
+			 LIMIT 1`,
+      [rateCode, tenantId, propertyId],
+    );
+    rateId = rateRows[0]?.id ?? null;
+  }
+
   // Verify guest exists
-  const { rows: guestRows } = await query<{ id: string }>(
-    `SELECT id FROM public.guests
+  const { rows: guestRows } = await query<{
+    id: string;
+    guest_name: string;
+    email: string | null;
+  }>(
+    `SELECT id,
+		        TRIM(CONCAT_WS(' ', first_name, last_name)) AS guest_name,
+		        email
+		 FROM public.guests
 		 WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
     [guestId, tenantId],
   );
@@ -362,8 +387,9 @@ export const createDirectBooking = async (options: {
 		   check_in_date, check_out_date, booking_date,
 		   total_amount, currency, room_rate,
 		   status, source, reservation_type,
-		   confirmation_number, rate_code, promo_code,
-		   notes, eta,
+		   confirmation_number, rate_id, promo_code,
+		   internal_notes, eta,
+		   guest_name, guest_email,
 		   created_by, updated_by
 		 ) VALUES (
 		   $1, $2, $3, $4,
@@ -372,6 +398,7 @@ export const createDirectBooking = async (options: {
 		   'CONFIRMED', 'WEBSITE', 'TRANSIENT',
 		   $9, $10, $11,
 		   $12, $13,
+		   $14, $15,
 		   'DIRECT_BOOKING_ENGINE', 'DIRECT_BOOKING_ENGINE'
 		 )
 		 ON CONFLICT DO NOTHING
@@ -386,10 +413,12 @@ export const createDirectBooking = async (options: {
       totalAmount,
       currency ?? null,
       confirmationNumber,
-      rateCode ?? null,
+      rateId,
       promoCode ?? null,
       notes ?? null,
       eta ?? null,
+      guestRows[0].guest_name,
+      guestRows[0].email,
     ],
   );
 

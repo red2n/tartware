@@ -44,17 +44,23 @@ export const calculateCommission = async (
       flat_amount: number;
       company_id: string | null;
     }>(
-      `SELECT cr.commission_type, cr.default_rate, cr.room_rate,
-              COALESCE(cr.flat_amount_per_booking, 0) AS flat_amount,
+      // commission_rules has no commission_type column: the shape of the rule
+      // is implied by which amount it carries, so it is derived here rather
+      // than stored twice.
+      `SELECT CASE WHEN cr.flat_commission_amount IS NOT NULL THEN 'FLAT'
+                   ELSE 'PERCENTAGE' END AS commission_type,
+              cr.overall_commission_rate AS default_rate,
+              cr.room_commission_rate    AS room_rate,
+              COALESCE(cr.flat_commission_amount, 0) AS flat_amount,
               cr.company_id
        FROM commission_rules cr
        WHERE cr.tenant_id = $1
          AND cr.is_active = true
          AND (cr.company_id = (SELECT company_id FROM travel_agents WHERE agent_id = $2 AND tenant_id = $1 LIMIT 1)
               OR cr.apply_to_all_agents = true)
-         AND (cr.effective_start IS NULL OR cr.effective_start <= CURRENT_DATE)
-         AND (cr.effective_end IS NULL OR cr.effective_end >= CURRENT_DATE)
-       ORDER BY cr.apply_to_all_agents ASC, cr.priority DESC
+         AND (cr.effective_from IS NULL OR cr.effective_from <= CURRENT_DATE)
+         AND (cr.effective_to IS NULL OR cr.effective_to >= CURRENT_DATE)
+       ORDER BY cr.apply_to_all_agents ASC, cr.rule_priority DESC
        LIMIT 1`,
       [tenantId, command.travel_agent_id],
     );
@@ -117,15 +123,17 @@ export const calculateCommission = async (
     // Insert into travel_agent_commissions
     await queryWithClient(
       client,
+      // total_revenue is NOT NULL and is the base the commission is taken on;
+      // for a room-only commission that is the room revenue.
       `INSERT INTO travel_agent_commissions (
          commission_id, tenant_id, property_id, reservation_id,
-         agent_id, company_id, commission_type, room_revenue,
-         room_commission_rate, gross_commission_amount,
+         agent_id, company_id, commission_type, room_revenue, total_revenue,
+         room_commission_rate, gross_commission,
          currency_code, payment_status,
          created_by, updated_by
        ) VALUES (
          $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-         $5::uuid, $6::uuid, $7, $8,
+         $5::uuid, $6::uuid, $7, $8, $8,
          $9, $10,
          $11, 'PENDING',
          $12::uuid, $12::uuid
@@ -149,24 +157,32 @@ export const calculateCommission = async (
     // Insert into commission_tracking
     await queryWithClient(
       client,
+      // commission_tracking separates the commission lifecycle
+      // (commission_status) from the payment lifecycle (payment_status); this
+      // row is being created, so only the former is set. commission_number,
+      // source_id and transaction_date are NOT NULL: the number is the human
+      // reference, the source is the reservation the commission arose from.
       `INSERT INTO commission_tracking (
-         tracking_id, tenant_id, property_id, reservation_id,
+         commission_id, tenant_id, property_id, reservation_id,
+         commission_number, source_type, source_id, transaction_date,
          commission_type, beneficiary_type, beneficiary_id,
-         base_amount, commission_rate, calculated_amount,
-         final_amount, currency_code, status,
+         base_amount, commission_rate, commission_amount,
+         net_commission_amount, commission_currency, commission_status,
          created_by, updated_by
        ) VALUES (
          $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-         'booking', 'agent', $5::uuid,
-         $6, $7, $8,
-         $8, $9, 'pending',
-         $10::uuid, $10::uuid
+         $5, 'reservation', $4::uuid, CURRENT_DATE,
+         'booking', 'agent', $6::uuid,
+         $7, $8, $9,
+         $9, $10, 'pending',
+         $11::uuid, $11::uuid
        )`,
       [
         trackingId,
         tenantId,
         command.property_id,
         command.reservation_id,
+        `CT-${new Date().getFullYear()}-${trackingId.slice(0, 8).toUpperCase()}`,
         command.travel_agent_id ?? command.booking_source_id ?? null,
         command.room_revenue,
         commissionRate,
@@ -242,10 +258,10 @@ export const approveCommission = async (
   // Also update commission_tracking
   await query(
     `UPDATE commission_tracking
-     SET status = 'approved', approved_at = NOW(), approved_by = $3::uuid, updated_at = NOW()
+     SET commission_status = 'approved', approved_at = NOW(), approved_by = $3::uuid, updated_at = NOW()
      WHERE reservation_id = (
        SELECT reservation_id FROM travel_agent_commissions WHERE commission_id = $1 AND tenant_id = $2
-     ) AND tenant_id = $2 AND status = 'pending'`,
+     ) AND tenant_id = $2 AND commission_status = 'pending'`,
     [command.commission_id, tenantId, command.approved_by],
   );
 
@@ -302,10 +318,11 @@ export const markCommissionPaid = async (
   // Update commission_tracking
   await query(
     `UPDATE commission_tracking
-     SET status = 'paid', paid_at = NOW(), payment_reference = $3, updated_at = NOW()
+     SET payment_status = 'paid', commission_status = 'paid', paid_at = NOW(),
+         payment_reference = $3, updated_at = NOW()
      WHERE reservation_id = (
        SELECT reservation_id FROM travel_agent_commissions WHERE commission_id = $1 AND tenant_id = $2
-     ) AND tenant_id = $2 AND status IN ('pending', 'approved')`,
+     ) AND tenant_id = $2 AND commission_status IN ('pending', 'approved')`,
     [command.commission_id, tenantId, command.payment_reference],
   );
 
@@ -366,9 +383,10 @@ export const generateCommissionStatement = async (
   }>(
     `SELECT
        COUNT(DISTINCT tac.reservation_id) AS total_bookings,
-       COALESCE(SUM(r.nights), 0) AS total_room_nights,
+       -- reservations stores the stay as two dates; nights is derived, not stored.
+       COALESCE(SUM(r.check_out_date - r.check_in_date), 0) AS total_room_nights,
        COALESCE(SUM(tac.room_revenue), 0) AS total_revenue,
-       COALESCE(SUM(tac.gross_commission_amount), 0) AS total_gross,
+       COALESCE(SUM(tac.gross_commission), 0) AS total_gross,
        tac.company_id, tac.agent_id
      FROM travel_agent_commissions tac
      LEFT JOIN reservations r ON r.id = tac.reservation_id AND r.tenant_id = tac.tenant_id
@@ -400,18 +418,20 @@ export const generateCommissionStatement = async (
     const statementNumber = `CS-${new Date().getFullYear()}-${statementId.slice(0, 8).toUpperCase()}`;
 
     await query(
+      // A new statement is unpaid, so payment_status carries its state; the
+      // table has no separate statement_status.
       `INSERT INTO commission_statements (
          statement_id, tenant_id, property_id, company_id, agent_id,
-         statement_number, statement_date, period_start, period_end,
+         statement_number, statement_date, period_start_date, period_end_date,
          total_bookings, total_room_nights, total_revenue,
-         gross_commission, net_commission,
-         currency_code, statement_status,
+         total_gross_commission, total_net_commission,
+         currency_code, payment_status,
          created_by, updated_by
        ) VALUES (
          $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
          $6, CURRENT_DATE, $7, $8,
          $9, $10, $11, $12, $12,
-         $13, 'DRAFT',
+         $13, 'PENDING',
          $14::uuid, $14::uuid
        )`,
       [

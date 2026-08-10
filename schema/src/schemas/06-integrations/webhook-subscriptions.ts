@@ -55,6 +55,8 @@ export const WebhookSubscriptionsSchema = z.object({
 	is_deleted: z.boolean().optional(),
 	deleted_at: z.coerce.date().optional(),
 	deleted_by: uuid.optional(),
+	/** Optimistic concurrency counter. */
+	version: z.number().int().optional(),
 });
 
 export type WebhookSubscriptions = z.infer<typeof WebhookSubscriptionsSchema>;

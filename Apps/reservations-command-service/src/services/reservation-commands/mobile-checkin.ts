@@ -25,18 +25,26 @@ export const generateRegistrationCard = async (
 ): Promise<{ eventId: string; status: string }> => {
   // 1. Fetch reservation + guest data
   const { rows: resRows } = await query<Record<string, unknown>>(
+    // guests.address is a single JSONB document, so the registration card's
+    // structured address fields are projected out of it rather than stored as
+    // parallel columns. reservations has no rate_code — it references a rate,
+    // so the code is read from the joined rate.
     `SELECT r.id, r.guest_id, r.room_type_id, r.room_number,
             r.check_in_date, r.check_out_date, r.number_of_adults, r.number_of_children,
-            r.rate_code, r.status,
+            ra.rate_code, r.status,
             g.first_name, g.last_name, g.email, g.phone, g.date_of_birth,
             g.nationality, g.id_type, g.id_number, g.id_issuing_country,
             g.id_issue_date, g.id_expiry_date,
-            g.address_line1, g.address_city, g.address_state,
-            g.address_country, g.address_postal_code,
-            rt.name AS room_type_name
+            g.address->>'line1'       AS address_line1,
+            g.address->>'city'        AS address_city,
+            g.address->>'state'       AS address_state,
+            g.address->>'country'     AS address_country,
+            g.address->>'postal_code' AS address_postal_code,
+            rt.type_name AS room_type_name
      FROM reservations r
      JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
      LEFT JOIN room_types rt ON rt.id = r.room_type_id AND rt.tenant_id = r.tenant_id
+     LEFT JOIN rates ra ON ra.id = r.rate_id AND ra.tenant_id = r.tenant_id
      WHERE r.id = $1 AND r.tenant_id = $2`,
     [command.reservation_id, tenantId],
   );

@@ -736,17 +736,23 @@ export const checkOutReservation = async (
           flat_amount: number;
           company_id: string | null;
         }>(
-          `SELECT cr.commission_type, cr.default_rate, cr.room_rate,
-                  COALESCE(cr.flat_amount_per_booking, 0) AS flat_amount,
+          // commission_rules has no commission_type column: the shape of the
+          // rule is implied by which amount it carries. Aliased back to the
+          // names the caller destructures.
+          `SELECT CASE WHEN cr.flat_commission_amount IS NOT NULL THEN 'FLAT'
+                       ELSE 'PERCENTAGE' END AS commission_type,
+                  cr.overall_commission_rate AS default_rate,
+                  cr.room_commission_rate    AS room_rate,
+                  COALESCE(cr.flat_commission_amount, 0) AS flat_amount,
                   cr.company_id
            FROM commission_rules cr
            WHERE cr.tenant_id = $1
              AND cr.is_active = true
              AND (cr.company_id = (SELECT company_id FROM travel_agents WHERE agent_id = $2 AND tenant_id = $1 LIMIT 1)
                   OR cr.apply_to_all_agents = true)
-             AND (cr.effective_start IS NULL OR cr.effective_start <= CURRENT_DATE)
-             AND (cr.effective_end IS NULL OR cr.effective_end >= CURRENT_DATE)
-           ORDER BY cr.apply_to_all_agents ASC, cr.priority DESC
+             AND (cr.effective_from IS NULL OR cr.effective_from <= CURRENT_DATE)
+             AND (cr.effective_to IS NULL OR cr.effective_to >= CURRENT_DATE)
+           ORDER BY cr.apply_to_all_agents ASC, cr.rule_priority DESC
            LIMIT 1`,
           [tenantId, reservation.travel_agent_id],
         );
@@ -802,15 +808,17 @@ export const checkOutReservation = async (
         grossCommission = Math.round(grossCommission * 100) / 100;
         await withTransaction(async (client) => {
           await client.query(
+            // total_revenue is NOT NULL and is the base the commission is taken
+            // on; for a room-only commission that is the room revenue.
             `INSERT INTO travel_agent_commissions (
                tenant_id, property_id, reservation_id,
-               agent_id, company_id, commission_type, room_revenue,
-               room_commission_rate, gross_commission_amount,
+               agent_id, company_id, commission_type, room_revenue, total_revenue,
+               room_commission_rate, gross_commission,
                currency_code, payment_status,
                created_by, updated_by
              ) VALUES (
                $1::uuid, $2::uuid, $3::uuid,
-               $4::uuid, $5::uuid, $6, $7,
+               $4::uuid, $5::uuid, $6, $7, $7,
                $8, $9,
                'USD', 'PENDING',
                $10::uuid, $10::uuid
@@ -829,23 +837,29 @@ export const checkOutReservation = async (
             ],
           );
           await client.query(
+            // commission_tracking separates the commission lifecycle from the
+            // payment lifecycle; a new row only sets the former.
+            // commission_number, source_id and transaction_date are NOT NULL.
             `INSERT INTO commission_tracking (
                tenant_id, property_id, reservation_id,
+               commission_number, source_type, source_id, transaction_date,
                commission_type, beneficiary_type, beneficiary_id,
-               base_amount, commission_rate, calculated_amount,
-               final_amount, currency_code, status,
+               base_amount, commission_rate, commission_amount,
+               net_commission_amount, commission_currency, commission_status,
                created_by, updated_by
              ) VALUES (
                $1::uuid, $2::uuid, $3::uuid,
-               'booking', 'agent', $4::uuid,
-               $5, $6, $7,
-               $7, 'USD', 'pending',
-               $8::uuid, $8::uuid
+               $4, 'reservation', $3::uuid, CURRENT_DATE,
+               'booking', 'agent', $5::uuid,
+               $6, $7, $8,
+               $8, 'USD', 'pending',
+               $9::uuid, $9::uuid
              )`,
             [
               tenantId,
               reservation.property_id,
               command.reservation_id,
+              `CT-${new Date().getFullYear()}-${uuid().slice(0, 8).toUpperCase()}`,
               reservation.travel_agent_id ?? null,
               roomRevenue,
               commissionRate,

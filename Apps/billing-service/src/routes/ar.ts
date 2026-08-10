@@ -228,10 +228,10 @@ export const registerArRoutes = (app: FastifyInstance): void => {
       );
 
       const { rows: reservationRows } = await query(
-        `SELECT r.reservation_id, r.confirmation_number, r.guest_name,
+        `SELECT r.id AS reservation_id, r.confirmation_number, r.guest_name,
                 f.folio_id, f.folio_number, f.folio_status, f.balance, f.currency_code
            FROM reservations r
-           LEFT JOIN folios f ON f.reservation_id = r.reservation_id
+           LEFT JOIN folios f ON f.reservation_id = r.id
              AND f.tenant_id = r.tenant_id AND f.folio_type = 'INDIVIDUAL'
           WHERE r.tenant_id = $1::uuid AND r.group_booking_id = $2::uuid
           ORDER BY r.confirmation_number`,
@@ -283,14 +283,17 @@ export const registerArRoutes = (app: FastifyInstance): void => {
       );
       // avg daily revenue over rolling window from GL journal entries
       const { rows: revenueRows } = await query<{ avg_daily_revenue: string }>(
+        // The ledger is general_ledger_entries. It splits the amount across
+        // debit_amount/credit_amount rather than carrying a debit_credit flag,
+        // so revenue (4xxx accounts, credit balances) is the credit column.
         `SELECT COALESCE(
-            SUM(amount) / NULLIF($3::int, 0), 0
+            SUM(credit_amount) / NULLIF($3::int, 0), 0
           ) AS avg_daily_revenue
-           FROM gl_journal_entries
+           FROM general_ledger_entries
           WHERE tenant_id = $1::uuid AND property_id = $2::uuid
             AND posting_date >= CURRENT_DATE - ($3::int || ' days')::interval
-            AND account_number LIKE '4%'
-            AND debit_credit = 'CREDIT'`,
+            AND gl_account_code LIKE '4%'
+            AND COALESCE(credit_amount, 0) > 0`,
         [q.tenant_id, q.property_id, q.days],
       );
       const totalOutstanding = Number(balanceRows[0]?.total_outstanding ?? 0);

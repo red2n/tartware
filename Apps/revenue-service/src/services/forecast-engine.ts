@@ -130,7 +130,7 @@ export async function computeForecasts(params: {
        forecasted_value, confidence_level,
        room_revenue_forecast, total_revenue_forecast,
        forecasted_occupancy_percent, forecasted_adr, forecasted_revpar,
-       model_name, model_version,
+       model_algorithm, model_version,
        created_by, updated_by
      ) VALUES (
        $1::uuid, $2::uuid, $3::date, $4,

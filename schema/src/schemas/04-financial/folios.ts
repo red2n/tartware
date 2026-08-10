@@ -70,6 +70,10 @@ export const FoliosSchema = z.object({
 	reference_number: z.string().optional(),
 	opened_at: z.coerce.date(),
 	closed_at: z.coerce.date().optional(),
+	/** Why the folio was closed; pairs with closed_at. */
+	close_reason: z.string().max(200).optional(),
+	/** Group block this folio belongs to (group_bookings.group_booking_id). */
+	group_booking_id: uuid.optional(),
 	is_deleted: z.boolean().optional(),
 	deleted_at: z.coerce.date().optional(),
 	deleted_by: uuid.optional(),

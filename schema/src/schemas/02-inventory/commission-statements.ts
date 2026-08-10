@@ -32,6 +32,10 @@ export const CommissionStatementsSchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	company_id: uuid,
+	/** Individual agent the statement covers, when narrower than the company. */
+	agent_id: uuid.optional(),
+	/** ISO 4217 code the statement totals are denominated in. */
+	currency_code: z.string().length(3).optional(),
 	statement_number: z.string(),
 	statement_date: z.coerce.date(),
 	period_start_date: z.coerce.date(),

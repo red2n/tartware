@@ -458,6 +458,7 @@ export const updatePackage = async (input: UpdatePackageInput): Promise<string |
 
 const CREATE_PACKAGE_COMPONENT_SQL = `
   INSERT INTO public.package_components (
+    tenant_id,
     package_id,
     component_type,
     component_name,
@@ -474,6 +475,7 @@ const CREATE_PACKAGE_COMPONENT_SQL = `
     is_active,
     created_by
   ) VALUES (
+    (SELECT tenant_id FROM public.packages WHERE package_id = $1),
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, $14
   )
   RETURNING component_id

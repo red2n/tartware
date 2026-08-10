@@ -78,6 +78,10 @@ export const GuestSchema = z.object({
 	id_number: z.string().optional(),
 	passport_number: z.string().optional(),
 	passport_expiry: z.coerce.date().optional(),
+	/** ISO 3166-1 alpha-2 country that issued the document in id_type/id_number. */
+	id_issuing_country: z.string().length(2).optional(),
+	id_issue_date: z.coerce.date().optional(),
+	id_expiry_date: z.coerce.date().optional(),
 	company_name: z.string().optional(),
 	company_tax_id: z.string().optional(),
 	loyalty_tier: z.string().optional(),

@@ -669,11 +669,11 @@ export const getFlashReport = async (params: {
   // Revenue
   const revenueRes = await query<{ room_rev: string; total_rev: string }>(
     `SELECT
-       COALESCE(SUM(amount) FILTER (WHERE charge_code IN ('ROOM','ROOM_CHARGE','room_charge')), 0) AS room_rev,
-       COALESCE(SUM(amount), 0) AS total_rev
-     FROM charges
+       COALESCE(SUM(total_amount) FILTER (WHERE charge_code IN ('ROOM','ROOM_CHARGE','room_charge')), 0) AS room_rev,
+       COALESCE(SUM(total_amount), 0) AS total_rev
+     FROM charge_postings
      WHERE tenant_id = $1 ${propFilter}
-       AND DATE(posted_at) = ${dateSql}
+       AND DATE(posting_date) = ${dateSql}
        AND COALESCE(is_voided, false) = false
        AND COALESCE(is_deleted, false) = false`,
     qParams,
@@ -1050,9 +1050,9 @@ export const getHousekeepingProductivityReport = async (params: {
   }>(
     `SELECT
        COUNT(*)::text AS total,
-       COUNT(*) FILTER (WHERE task_status IN ('COMPLETED', 'INSPECTED'))::text AS completed,
-       COUNT(*) FILTER (WHERE task_status = 'IN_PROGRESS')::text AS in_progress,
-       COUNT(*) FILTER (WHERE task_status IN ('PENDING', 'ASSIGNED'))::text AS pending,
+       COUNT(*) FILTER (WHERE status IN ('COMPLETED', 'INSPECTED'))::text AS completed,
+       COUNT(*) FILTER (WHERE status = 'IN_PROGRESS')::text AS in_progress,
+       COUNT(*) FILTER (WHERE status IN ('PENDING', 'ASSIGNED'))::text AS pending,
        COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)
          FILTER (WHERE completed_at IS NOT NULL AND started_at IS NOT NULL), 0)::text AS avg_minutes
      FROM housekeeping_tasks
@@ -1069,16 +1069,17 @@ export const getHousekeepingProductivityReport = async (params: {
   }>(
     `SELECT
        ht.assigned_to AS attendant_id,
-       COALESCE(u.display_name, u.username, ht.assigned_to::text) AS attendant_name,
+       COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+                u.username, ht.assigned_to::text) AS attendant_name,
        COUNT(*)::text AS completed_tasks,
        COALESCE(AVG(EXTRACT(EPOCH FROM (ht.completed_at - ht.started_at)) / 60), 0)::text AS avg_dur
      FROM housekeeping_tasks ht
      LEFT JOIN users u ON u.id = ht.assigned_to AND u.tenant_id = ht.tenant_id
      WHERE ht.tenant_id = $1::uuid AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
        AND ht.scheduled_date = $3::date
-       AND ht.task_status IN ('COMPLETED', 'INSPECTED')
+       AND ht.status IN ('COMPLETED', 'INSPECTED')
        AND ht.assigned_to IS NOT NULL
-     GROUP BY ht.assigned_to, u.display_name, u.username
+     GROUP BY ht.assigned_to, u.first_name, u.last_name, u.username
      ORDER BY COUNT(*) DESC
      LIMIT 50`,
     qParams,

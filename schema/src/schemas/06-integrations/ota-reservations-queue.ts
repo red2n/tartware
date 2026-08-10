@@ -39,6 +39,8 @@ export const OtaReservationsQueueSchema = z.object({
 	processing_attempts: z.number().int().optional(),
 	max_retry_attempts: z.number().int().optional(),
 	guest_name: z.string().optional(),
+	/** Matched guest once resolved; lets privacy erasure reach queued reservations. */
+	guest_id: uuid.optional(),
 	guest_email: z.string().optional(),
 	guest_phone: z.string().optional(),
 	check_in_date: z.coerce.date().optional(),

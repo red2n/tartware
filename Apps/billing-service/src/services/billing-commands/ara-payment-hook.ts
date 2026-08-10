@@ -34,12 +34,12 @@ export const dispatchArPaymentApply = async (
 
   // Find any open city ledger entries linked to this reservation's folio
   const result = await query<{ ar_account_id: string; entry_id: string }>(
-    `SELECT cl.ar_account_id, cl.id AS entry_id
+    `SELECT cl.ar_account_id, cl.entry_id AS entry_id
      FROM public.ar_city_ledger cl
      JOIN public.folios f ON f.folio_id = cl.folio_id AND f.tenant_id = cl.tenant_id
      WHERE cl.tenant_id = $1::uuid
        AND f.reservation_id = $2::uuid
-       AND cl.status IN ('OPEN', 'PARTIAL')
+       AND cl.entry_status IN ('OPEN', 'PARTIAL')
      ORDER BY cl.due_date ASC
      LIMIT 1`,
     [tenantId, reservationId],

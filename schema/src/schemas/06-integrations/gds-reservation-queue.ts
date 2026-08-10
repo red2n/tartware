@@ -44,6 +44,8 @@ export const GdsReservationQueueSchema = z.object({
 	number_of_rooms: z.number().int().optional(),
 	number_of_guests: z.number().int().optional(),
 	guest_name: z.string().optional(),
+	/** Matched guest once resolved; lets privacy erasure reach queued reservations. */
+	guest_id: uuid.optional(),
 	guest_email: z.string().optional(),
 	guest_phone: z.string().optional(),
 	loyalty_number: z.string().optional(),

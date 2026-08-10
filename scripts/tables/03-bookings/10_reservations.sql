@@ -181,4 +181,12 @@ COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = acti
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS cancellation_policy_snapshot JSONB;
 COMMENT ON COLUMN reservations.cancellation_policy_snapshot IS 'Frozen snapshot of the rate''s cancellation_policy at booking time. Prevents later rate-plan edits from retroactively changing the guest''s cancellation terms.';
 
+-- Assigned room. The table recorded room_number (free text) only, while mobile
+-- check-in, digital key issue and availability search all reference room_id.
+-- Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS room_id UUID;
+COMMENT ON COLUMN reservations.room_id IS 'Reference to rooms.id once a specific room is assigned (NULL until assignment)';
+CREATE INDEX IF NOT EXISTS idx_reservations_room_id
+    ON reservations (room_id) WHERE room_id IS NOT NULL;
+
 \echo 'Reservations table created successfully!'

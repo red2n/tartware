@@ -23,6 +23,7 @@ export * from "./campaign-segments.js";
 export * from "./channel-commission-rules.js";
 export * from "./channel-mappings.js";
 export * from "./channel-rate-parity.js";
+export * from "./channel-sync-logs.js";
 export * from "./data-sync-status.js";
 export * from "./demand-scenarios.js";
 export * from "./dynamic-pricing-rules-ml.js";

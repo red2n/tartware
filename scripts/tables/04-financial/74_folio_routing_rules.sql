@@ -160,4 +160,12 @@ SELECT * FROM (VALUES
        destination_folio_type, priority, is_active)
 ON CONFLICT ON CONSTRAINT uq_routing_rule_code DO NOTHING;
 
+-- ─── folio routing uniqueness ───────────────────────────────────────────────
+-- group-billing relies on ON CONFLICT DO NOTHING to avoid creating a duplicate
+-- routing rule per reservation; without a matching unique index that clause
+-- raises 42P10. Partial so superseded (soft-deleted) rules do not block a new one.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_folio_routing_rule_target
+    ON folio_routing_rules (tenant_id, source_reservation_id, charge_code_pattern, destination_folio_id)
+    WHERE is_deleted = FALSE AND source_reservation_id IS NOT NULL;
+
 \echo 'folio_routing_rules table created successfully!'

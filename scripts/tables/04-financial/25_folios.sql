@@ -152,4 +152,13 @@ GRANT SELECT, INSERT, UPDATE ON folios TO tartware_app;
 \echo '  - Guest billing accounts'
 \echo '  - Split billing support'
 \echo '  - Multi-folio capability'
+-- Closure reason (closed_at records when, not why) and the group block a folio
+-- belongs to. Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE folios ADD COLUMN IF NOT EXISTS close_reason VARCHAR(200);
+ALTER TABLE folios ADD COLUMN IF NOT EXISTS group_booking_id UUID;
+COMMENT ON COLUMN folios.close_reason IS 'Why the folio was closed; pairs with closed_at';
+COMMENT ON COLUMN folios.group_booking_id IS 'Reference to group_bookings.group_booking_id for a master or member folio';
+CREATE INDEX IF NOT EXISTS idx_folios_group_booking
+    ON folios (group_booking_id) WHERE group_booking_id IS NOT NULL;
+
 \echo ''

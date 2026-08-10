@@ -64,16 +64,40 @@ const CONSTRAINT_KEYWORDS = new Set([
 ]);
 
 type Violation = {
-  kind: "missing-table" | "wrong-schema" | "missing-column";
+  kind:
+    | "missing-table"
+    | "wrong-schema"
+    | "missing-column"
+    | "invalid-enum-value"
+    | "missing-required-column";
   file: string;
   line: number;
   detail: string;
 };
 
+/**
+ * SQL keywords, operators and functions that appear where a bare column name
+ * would in a WHERE or RETURNING clause, and table aliases that are really
+ * keywords. Anything here is never treated as a column.
+ */
+const SQL_NOISE_WORDS = new Set([
+  "and", "or", "not", "is", "null", "true", "false", "in", "like", "ilike", "between",
+  "exists", "any", "all", "some", "case", "when", "then", "else", "end", "as", "asc",
+  "desc", "nulls", "first", "last", "distinct", "on", "using", "where", "returning",
+  "order", "by", "group", "having", "limit", "offset", "select", "from", "set", "values",
+  "coalesce", "nullif", "greatest", "least", "now", "current_date", "current_timestamp",
+  "cast", "uuid", "text", "int", "integer", "boolean", "date", "timestamptz", "timestamp",
+  "numeric", "decimal", "jsonb", "json", "varchar", "interval", "array", "count", "sum",
+  "avg", "min", "max", "abs", "round", "upper", "lower", "left", "right", "inner", "outer",
+  "join", "lateral", "only", "conflict", "do", "nothing", "update", "insert", "delete",
+  "into", "with", "union", "except", "intersect", "for", "share", "of", "skip", "locked",
+  "nowait", "returning", "default", "check",
+]);
+
 // ─── DDL catalog ─────────────────────────────────────────────────────────────
 
 /** table name -> { schema, columns } */
-const catalog = new Map<string, { schema: string; columns: Set<string> }>();
+const catalog = new Map<string, { schema: string; columns: Set<string>; required: Set<string> }>();
 
 /** Split a CREATE TABLE body on top-level commas, ignoring commas in parens. */
 function splitTopLevel(body: string): string[] {
@@ -111,6 +135,24 @@ function stripSqlComments(sql: string): string {
   return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
 }
 
+/** enum type name -> permitted labels */
+const enums = new Map<string, Set<string>>();
+/** "table.column" -> enum type name */
+const columnEnum = new Map<string, string>();
+
+function parseEnumTypes(sql: string): void {
+  const re = /CREATE\s+TYPE\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)\s+AS\s+ENUM\s*\(/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(sql))) {
+    const { body, end } = readBalanced(sql, re.lastIndex - 1);
+    re.lastIndex = end;
+    enums.set(
+      m[1]!.toLowerCase(),
+      new Set([...body.matchAll(/'([^']*)'/g)].map((v) => v[1]!)),
+    );
+  }
+}
+
 function parseCreateTables(sql: string): void {
   const re = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:([a-z_0-9]+)\.)?([a-z_0-9]+)\s*\(/gi;
   let m: RegExpExecArray | null;
@@ -121,13 +163,25 @@ function parseCreateTables(sql: string): void {
     re.lastIndex = end;
 
     const columns = new Set<string>(UNIVERSAL_COLUMNS);
+    const required = new Set<string>();
     for (const part of splitTopLevel(body)) {
-      const token = part.trim().split(/\s+/)[0]?.toLowerCase();
+      const tokens = part.trim().split(/\s+/);
+      const token = tokens[0]?.toLowerCase();
       if (!token || !/^[a-z_][a-z_0-9]*$/.test(token)) continue;
       if (CONSTRAINT_KEYWORDS.has(token)) continue;
       columns.add(token);
+      // NOT NULL with no DEFAULT and not a generated key: an INSERT that omits
+      // it fails with 23502 however correct its column names are.
+      const rest = part.replace(/^\s*[a-z_0-9]+/i, "");
+      if (/\bNOT\s+NULL\b/i.test(rest) && !/\bDEFAULT\b|\bGENERATED\b|\bSERIAL\b/i.test(rest)) {
+        required.add(token);
+      }
+      // Remember the declared type when it is an enum, so literals written
+      // into the column can be checked against its labels.
+      const declared = tokens[1]?.toLowerCase().replace(/[^a-z_0-9].*$/, "");
+      if (declared) columnEnum.set(`${table}.${token}`, declared);
     }
-    catalog.set(table, { schema, columns });
+    catalog.set(table, { schema, columns, required });
   }
 }
 
@@ -146,7 +200,11 @@ function buildCatalog(): void {
   const manifest = readFileSync(MANIFEST, "utf-8");
   const includes = [...manifest.matchAll(/^\\ir\s+(\S+)/gm)].map((m) => m[1]!);
 
+  const enumFile = join(ROOT, "scripts", "02-enum-types.sql");
+  if (existsSync(enumFile)) parseEnumTypes(stripSqlComments(readFileSync(enumFile, "utf-8")));
+
   const sqlFiles = includes.map((p) => join(TABLES_DIR, p)).filter(existsSync);
+  for (const file of sqlFiles) parseEnumTypes(stripSqlComments(readFileSync(file, "utf-8")));
   for (const file of sqlFiles) parseCreateTables(stripSqlComments(readFileSync(file, "utf-8")));
   // Second pass: an ALTER may target a table created by a later include.
   for (const file of sqlFiles) parseAlterAddColumn(stripSqlComments(readFileSync(file, "utf-8")));
@@ -331,6 +389,30 @@ function checkLiteral(file: string, rawSql: string, lineAt: (pos: number) => num
     }
   }
 
+  // (G) INSERT must supply every NOT NULL column that has no default. Correct
+  // column names are not enough: an omitted required column fails with 23502,
+  // and without this a statement could be renamed into passing while still
+  // being impossible to execute.
+  for (const m of sql.matchAll(
+    /INSERT\s+INTO\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)\s*\(([^)]*)\)/gi,
+  )) {
+    const table = m[1]!.toLowerCase();
+    const entry = catalog.get(table);
+    if (!entry || entry.required.size === 0) continue;
+    const raw = m[2]!;
+    if (raw.includes(SENTINEL)) continue; // interpolated column list
+    const supplied = new Set(raw.split(",").map((c) => c.trim().toLowerCase()));
+    const missing = [...entry.required].filter((c) => !supplied.has(c)).sort();
+    if (missing.length) {
+      violations.push({
+        kind: "missing-required-column",
+        file,
+        line: lineAt(m.index!),
+        detail: `${table} INSERT omits NOT NULL column(s): ${missing.join(", ")}`,
+      });
+    }
+  }
+
   // (C) UPDATE <t> SET col = ...
   for (const m of sql.matchAll(/UPDATE\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)\s+SET\s/gi)) {
     const table = m[1]!.toLowerCase();
@@ -352,6 +434,130 @@ function checkLiteral(file: string, rawSql: string, lineAt: (pos: number) => num
         });
       }
     }
+  }
+
+  // (D) alias-qualified column references anywhere in the statement.
+  // `FROM reservations res ... res.room_id` is the shape most of this codebase's
+  // SQL uses, and it covers SELECT lists, WHERE, JOIN and ORDER BY in one pass.
+  const bound = new Map<string, string>();
+  let ambiguous = false;
+  for (const m of sql.matchAll(
+    /\b(?:FROM|JOIN)\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)(?:\s+(?:AS\s+)?([a-z_][a-z_0-9]*))?/gi,
+  )) {
+    const table = m[1]!.toLowerCase();
+    const alias = m[2]?.toLowerCase();
+    if (!catalog.has(table)) {
+      // An unresolvable source (CTE, subquery, function) means a qualified name
+      // may legitimately belong to it, so stop resolving in this statement.
+      if (aliases.has(table)) ambiguous = true;
+      continue;
+    }
+    if (alias && !SQL_NOISE_WORDS.has(alias)) bound.set(alias, table);
+    bound.set(table, table);
+  }
+  if (!ambiguous) {
+    const seen = new Set<string>();
+    for (const m of sql.matchAll(/\b([a-z_][a-z_0-9]*)\.([a-z_][a-z_0-9]*)\b/gi)) {
+      const qualifier = m[1]!.toLowerCase();
+      const col = m[2]!.toLowerCase();
+      const table = bound.get(qualifier);
+      if (!table) continue;
+      const entry = catalog.get(table)!;
+      const key = `${table}.${col}`;
+      if (seen.has(key) || entry.columns.has(col)) continue;
+      seen.add(key);
+      violations.push({
+        kind: "missing-column",
+        file,
+        line: lineAt(m.index!),
+        detail: `${key} does not exist (qualified reference)`,
+      });
+    }
+  }
+
+  // (E) WHERE / RETURNING on a single-table INSERT, UPDATE or DELETE. Restricted
+  // to statements with exactly one source so a bare column is unambiguous.
+  for (const m of sql.matchAll(
+    /\b(?:UPDATE|DELETE\s+FROM|INSERT\s+INTO)\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)\b/gi,
+  )) {
+    const table = m[1]!.toLowerCase();
+    const entry = catalog.get(table);
+    if (!entry) continue;
+    const tail = sql.slice(m.index!);
+    // Bail out when the statement joins or sub-selects — a bare column could
+    // then belong to the other relation.
+    if (/\bJOIN\b|\bFROM\b\s+[a-z_]/i.test(tail.replace(/^\s*DELETE\s+FROM/i, ""))) continue;
+    for (let part of [
+      tail.match(/\bWHERE\b([\s\S]*?)(?:\bRETURNING\b|\bORDER\s+BY\b|\bLIMIT\b|$)/i)?.[1],
+      // RETURNING items may be `expr AS alias`; the alias is an output name, not
+      // a column, so only the expression before AS is checked.
+      tail
+        .match(/\bRETURNING\b([\s\S]*?)$/i)?.[1]
+        ?.split(",")
+        .map((item) => item.split(/\bAS\b/i)[0])
+        .join(","),
+    ]) {
+      if (!part) continue;
+      // `$2::payment_status` names a type, not a column.
+      part = part.replace(/::\s*[a-z_][a-z_0-9]*(\s*\[\s*\])?/gi, " ");
+      const seen = new Set<string>();
+      for (const c of part.matchAll(/\b([a-z_][a-z_0-9]*)\b(?!\s*\(|\s*\.)/gi)) {
+        const col = c[1]!.toLowerCase();
+        if (SQL_NOISE_WORDS.has(col) || seen.has(col) || entry.columns.has(col)) continue;
+        if (bound.has(col) || catalog.has(col)) continue;
+        seen.add(col);
+        violations.push({
+          kind: "missing-column",
+          file,
+          line: lineAt(m.index!),
+          detail: `${table}.${col} does not exist (WHERE/RETURNING)`,
+        });
+      }
+    }
+  }
+
+  // (F) enum literals. Renaming a column onto a real enum column only trades
+  // 42703 for 22P02 if the value written is not one of its labels.
+  const enumScope = new Map<string, string>();
+  for (const m of rawSql.matchAll(
+    /\b(?:UPDATE|INSERT\s+INTO)\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)\b/gi,
+  )) {
+    if (catalog.has(m[1]!.toLowerCase())) enumScope.set(m[1]!.toLowerCase(), m[1]!.toLowerCase());
+  }
+  const flagEnum = (table: string, col: string, value: string, at: number) => {
+    const typeName = columnEnum.get(`${table}.${col}`);
+    const labels = typeName ? enums.get(typeName) : undefined;
+    if (!labels || labels.has(value)) return;
+    violations.push({
+      kind: "invalid-enum-value",
+      file,
+      line: lineAt(at),
+      detail: `${table}.${col} = '${value}' is not a label of enum ${typeName}`,
+    });
+  };
+
+  for (const [, table] of enumScope) {
+    for (const m of rawSql.matchAll(/\b([a-z_][a-z_0-9]*)\s*=\s*'([^']*)'/gi)) {
+      flagEnum(table, m[1]!.toLowerCase(), m[2]!, m.index!);
+    }
+  }
+
+  // Positional INSERT ... VALUES: the literal is not next to its column name,
+  // so zip the column list against the value tuple.
+  for (const m of rawSql.matchAll(
+    /INSERT\s+INTO\s+(?:[a-z_0-9]+\.)?([a-z_0-9]+)\s*\(([^)]*)\)\s*VALUES\s*\(/gi,
+  )) {
+    const table = m[1]!.toLowerCase();
+    if (!catalog.has(table)) continue;
+    const cols = m[2]!.split(",").map((c) => c.trim().toLowerCase());
+    if (cols.some((c) => !/^[a-z_][a-z_0-9]*$/.test(c))) continue;
+    const { body } = readBalanced(rawSql, m.index! + m[0].length - 1);
+    const values = splitTopLevel(body).map((v) => v.trim());
+    if (values.length !== cols.length) continue;
+    cols.forEach((col, i) => {
+      const literal = values[i]!.match(/^'([^']*)'(?:::[a-z_]+)?$/i);
+      if (literal) flagEnum(table, col, literal[1]!, m.index!);
+    });
   }
 }
 

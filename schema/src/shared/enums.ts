@@ -154,6 +154,9 @@ export const RoomStatusEnum = z.enum([
 	"INSPECTED",
 	"OUT_OF_ORDER",
 	"OUT_OF_SERVICE",
+	// Held, as opposed to OUT_OF_ORDER (damaged) or OUT_OF_SERVICE
+	// (unsellable but counted). Pairs with rooms.is_blocked.
+	"BLOCKED",
 ]);
 export type RoomStatus = z.infer<typeof RoomStatusEnum>;
 
@@ -371,6 +374,9 @@ export const PaymentStatusEnum = z.enum([
 	"CANCELLED",
 	"REFUNDED",
 	"PARTIALLY_REFUNDED",
+	// A deposit consumed by a folio: distinct from COMPLETED (money received)
+	// and REFUNDED (money returned).
+	"APPLIED",
 ]);
 export type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
 
@@ -385,6 +391,10 @@ export const TransactionTypeEnum = z.enum([
 	"REFUND",
 	"PARTIAL_REFUND",
 	"VOID",
+	// Money taken before arrival against a future stay, then applied to the
+	// folio or returned.
+	"ADVANCE_DEPOSIT",
+	"DEPOSIT_REFUND",
 ]);
 export type TransactionType = z.infer<typeof TransactionTypeEnum>;
 

@@ -8,11 +8,11 @@ export const REVENUE_FORECAST_LIST_SQL = `
     rf.forecast_period,
     rf.room_revenue_forecast,
     rf.total_revenue_forecast,
-    rf.occupancy_forecast,
-    rf.adr_forecast,
-    rf.revpar_forecast,
+    rf.forecasted_occupancy_percent,
+    rf.forecasted_adr,
+    rf.forecasted_revpar,
     rf.confidence_level,
-    rf.scenario_type,
+    rf.forecast_scenario,
     rf.created_at,
     rf.updated_at
   FROM public.revenue_forecasts rf
@@ -21,7 +21,7 @@ export const REVENUE_FORECAST_LIST_SQL = `
     AND ($2::uuid IS NULL OR rf.tenant_id = $2::uuid)
     AND ($3::uuid IS NULL OR rf.property_id = $3::uuid)
     AND ($4::text IS NULL OR rf.forecast_period = LOWER($4::text))
-    AND ($5::text IS NULL OR rf.scenario_type = LOWER($5::text))
+    AND ($5::text IS NULL OR rf.forecast_scenario = LOWER($5::text))
   ORDER BY rf.forecast_date DESC
   LIMIT $1
   OFFSET $6

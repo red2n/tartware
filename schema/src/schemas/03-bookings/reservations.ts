@@ -43,6 +43,8 @@ export const ReservationsSchema = z.object({
 	actual_check_in: z.coerce.date().optional(),
 	actual_check_out: z.coerce.date().optional(),
 	room_number: z.string().nullable().optional(),
+	/** Assigned room (rooms.id); NULL until a specific room is allocated. */
+	room_id: uuid.optional(),
 	number_of_adults: z.number().int(),
 	number_of_children: z.number().int().optional(),
 	number_of_infants: z.number().int().optional(),
