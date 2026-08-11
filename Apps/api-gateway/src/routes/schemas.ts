@@ -125,6 +125,41 @@ export const tenantGuestParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/**
+ * Path params for guest routes that proxy straight to guests-service.
+ *
+ * That service scopes by `tenant_id` in the query rather than in the path, and
+ * a proxied path is forwarded verbatim — so proxied guest reads use this plus
+ * {@link tenantQuerySchema}, while command dispatches use
+ * {@link tenantGuestParamsSchema}.
+ */
+export const guestIdParamsSchema = {
+  type: "object",
+  properties: {
+    guestId: {
+      type: "string",
+      format: "uuid",
+      description: "Guest identifier.",
+    },
+  },
+  required: ["guestId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+/** Querystring schema for reads scoped by tenant alone. */
+export const tenantQuerySchema = {
+  type: "object",
+  properties: {
+    tenant_id: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+  },
+  required: ["tenant_id"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 /** Path params schema for tenant + reservation routes. */
 export const tenantReservationParamsSchema = {
   type: "object",

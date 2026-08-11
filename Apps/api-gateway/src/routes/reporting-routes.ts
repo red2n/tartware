@@ -1,11 +1,17 @@
 /**
  * Reporting proxy routes.
  *
- * Proxies all report endpoints to the core service. Includes
- * front-desk reports (arrivals, departures, in-house, no-show),
- * revenue reports (revenue summary, daily revenue), occupancy
- * and forecast reports, manager flash and STR metrics, housekeeping
- * status, and night audit summaries.
+ * Proxies report endpoints to the core service. Includes front-desk
+ * reports (arrivals, departures, in-house, no-shows), occupancy and
+ * demand forecast, the manager flash report, and housekeeping
+ * productivity.
+ *
+ * Every path declared here must be registered by core-service in
+ * `src/routes/reports.ts` — `tests/proxy-route-conformance.test.ts`
+ * enforces that, because a documented proxy with no downstream handler
+ * returns 404 while advertising a capability the system lacks. Reports
+ * core-service adds later are reachable through the catch-all below
+ * without a change here; declare one explicitly only to document it.
  *
  * All endpoints require `MANAGER` role and the `core` module.
  *
@@ -75,41 +81,13 @@ export const registerReportingRoutes = (app: FastifyInstance): void => {
   );
 
   app.get(
-    "/v1/reports/no-show",
+    "/v1/reports/no-shows",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: REPORTING_TAG,
         summary: "No-show reservations report for a business date.",
         querystring: paginationQuerySchema,
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyCore,
-  );
-
-  // ─── Revenue Reports ──────────────────────────────────────
-
-  app.get(
-    "/v1/reports/revenue-summary",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: REPORTING_TAG,
-        summary: "Revenue summary (room, F&B, other) for a date range.",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyCore,
-  );
-
-  app.get(
-    "/v1/reports/daily-revenue",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: REPORTING_TAG,
-        summary: "Daily revenue breakdown (ADR, RevPAR, total revenue).",
         response: { 200: jsonObjectSchema },
       }),
     },
@@ -132,22 +110,22 @@ export const registerReportingRoutes = (app: FastifyInstance): void => {
   );
 
   app.get(
-    "/v1/reports/forecast",
+    "/v1/reports/demand-forecast",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: REPORTING_TAG,
-        summary: "Forward-looking occupancy and revenue forecast.",
+        summary: "Forward-looking occupancy and demand forecast.",
         response: { 200: jsonObjectSchema },
       }),
     },
     proxyCore,
   );
 
-  // ─── Manager / STR Reports ──────────────────────────────────
+  // ─── Manager Reports ────────────────────────────────────────
 
   app.get(
-    "/v1/reports/manager-flash",
+    "/v1/reports/flash",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
@@ -159,43 +137,15 @@ export const registerReportingRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.get(
-    "/v1/reports/str-metrics",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: REPORTING_TAG,
-        summary: "STR-compatible performance metrics (ADR, RevPAR, occupancy).",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyCore,
-  );
-
   // ─── Housekeeping Reports ──────────────────────────────────
 
   app.get(
-    "/v1/reports/housekeeping-status",
+    "/v1/reports/housekeeping-productivity",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: REPORTING_TAG,
-        summary: "Room housekeeping status matrix.",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyCore,
-  );
-
-  // ─── Night Audit Reports ──────────────────────────────────
-
-  app.get(
-    "/v1/reports/night-audit-summary",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: REPORTING_TAG,
-        summary: "Night audit summary report (posting totals, adjustments, balance).",
+        summary: "Housekeeping productivity report (rooms cleaned, minutes per room).",
         response: { 200: jsonObjectSchema },
       }),
     },

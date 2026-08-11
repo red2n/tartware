@@ -819,6 +819,37 @@ run_billing_pipeline() {
   if [[ -n "$guest_id" ]]; then pass "Guest created ($label)"; else fail "Guest creation" "$label"; fi
   echo ""
 
+  # ── GDPR: consent ledger + subject access request ──
+  #
+  # Both of these answered 404 through the gateway while the UI called them, and
+  # the generic sweep could not see it because api_smoke treats 404 as a pass.
+  # These assertions are strict on purpose: consent that silently fails to record
+  # and a DSAR export that silently fails are the two most expensive things here
+  # to get wrong. See ui-gaps/19-gateway-proxy-mismatches.md.
+  if [[ -n "$guest_id" ]]; then
+    echo "── ${tag} — GDPR Consent & Subject Access ─────────────────────────"
+    local code
+    code=$(get "$GW/v1/guests/$guest_id/consent?tenant_id=$tid")
+    assert_http "GDPR consent ledger readable" "2" "$code"
+
+    send_command "CMD consent: opt in email, out of analytics" \
+      "guest.consent.update" \
+      "{\"guest_id\":\"$guest_id\",\"marketing_email\":true,\"analytics\":false}"
+    wait_kafka 3
+
+    get "$GW/v1/guests/$guest_id/consent?tenant_id=$tid" >/dev/null
+    assert_eq "GDPR consent: marketing_email recorded" \
+      "true" "$(jq -r '.marketing_email // empty' "$RESP_FILE" 2>/dev/null)"
+    assert_eq "GDPR consent: analytics recorded" \
+      "false" "$(jq -r '.analytics // empty' "$RESP_FILE" 2>/dev/null)"
+
+    code=$(get "$GW/v1/guests/$guest_id/gdpr-export?tenant_id=$tid")
+    assert_http "GDPR subject access export" "2" "$code"
+    assert_eq "GDPR export names the subject" \
+      "$guest_id" "$(jq -r '.subject_id // empty' "$RESP_FILE" 2>/dev/null)"
+    echo ""
+  fi
+
   # ── Tax configuration ──
   if [[ "$mode" == "full" ]]; then
     echo "── ${tag} — Tax Configuration ─────────────────────────────────────"
@@ -1015,6 +1046,17 @@ run_billing_pipeline() {
     sess_status=$(resp_field "session_status")
     if [[ -z "$sess_status" ]]; then sess_status=$(resp_field "data" | jq -r '.session_status // empty' 2>/dev/null || echo ""); fi
     assert_eq_ci "Cashier session closed ($label)" "closed" "$sess_status"
+  fi
+
+  # Shift handover summary — proxied to billing-service but implemented only in
+  # housekeeping-service until 2026-08-11, so this path 404'd behind a documented
+  # endpoint. See ui-gaps/19-gateway-proxy-mismatches.md.
+  if [[ -n "$session_id" ]]; then
+    local shift_code
+    shift_code=$(get "$GW/v1/billing/cashier-sessions/$session_id/shift-summary?tenant_id=$tid")
+    assert_http "Cashier shift summary ($label)" "2" "$shift_code"
+    assert_eq "Shift summary names the session ($label)" \
+      "$session_id" "$(jq -r '.session_id // empty' "$RESP_FILE" 2>/dev/null)"
   fi
   echo ""
 
@@ -2306,7 +2348,7 @@ if [[ "$FULL_API" == true ]]; then
   api_smoke "SYS tenants"                  "$GW/v1/tenants"
   api_smoke "SYS users"                    "$GW/v1/users"
   api_smoke "SYS user-tenant-associations" "$GW/v1/user-tenant-associations"
-  api_smoke "SYS settings"                 "$GW/v1/settings"
+  api_smoke "SYS settings values"          "$GW/v1/settings/values"
   echo ""
 
   # Endpoint inventory (read-only). Each entry = "label|/v1/path?query"
@@ -2321,9 +2363,7 @@ room-types|/v1/room-types?tenant_id={TID}&limit=10
 room-types-grid|/v1/room-types/grid?tenant_id={TID}
 rates|/v1/rates?tenant_id={TID}&limit=10
 rate-calendar|/v1/rate-calendar?tenant_id={TID}&start_date={TODAY}&end_date={IN5DAYS}
-availability|/v1/availability?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-availability-calendar|/v1/availability/calendar?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-availability-room-types|/v1/availability/room-types?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+rooms-availability|/v1/rooms/availability?tenant_id={TID}&property_id={PID}&check_in_date={TODAY}&check_out_date={IN3DAYS}
 recommendations|/v1/recommendations?tenant_id={TID}&limit=10
 guests|/v1/guests?tenant_id={TID}&limit=10
 guests-grid|/v1/guests/grid?tenant_id={TID}
@@ -2378,15 +2418,12 @@ billing-commissions|/v1/billing/reports/commissions?tenant_id={TID}&property_id=
 report-arrivals|/v1/reports/arrivals?tenant_id={TID}&property_id={PID}&business_date={TODAY}
 report-departures|/v1/reports/departures?tenant_id={TID}&property_id={PID}&business_date={TODAY}
 report-in-house|/v1/reports/in-house?tenant_id={TID}&property_id={PID}&business_date={TODAY}
-report-no-show|/v1/reports/no-show?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-no-shows|/v1/reports/no-shows?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
 report-occupancy|/v1/reports/occupancy?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-forecast|/v1/reports/forecast?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-revenue-summary|/v1/reports/revenue-summary?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-daily-revenue|/v1/reports/daily-revenue?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-manager-flash|/v1/reports/manager-flash?tenant_id={TID}&property_id={PID}&business_date={TODAY}
-report-str-metrics|/v1/reports/str-metrics?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-housekeeping|/v1/reports/housekeeping-status?tenant_id={TID}&property_id={PID}
-report-night-audit|/v1/reports/night-audit-summary?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-demand-forecast|/v1/reports/demand-forecast?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-revenue-kpis|/v1/reports/revenue-kpis?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-flash|/v1/reports/flash?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-housekeeping-productivity|/v1/reports/housekeeping-productivity?tenant_id={TID}&property_id={PID}&business_date={TODAY}
 EOF
 
   # Tenant-scoped endpoints with :tenantId in path (no query tenant_id).

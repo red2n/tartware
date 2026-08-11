@@ -24,9 +24,11 @@ import { guestGridResponse, programBalanceResponse } from "./response-schemas.js
 import {
   commandAcceptedSchema,
   GDPR_TAG,
+  guestIdParamsSchema,
   GUESTS_PROXY_TAG,
   paginationQuerySchema,
   tenantGuestParamsSchema,
+  tenantQuerySchema,
 } from "./schemas.js";
 
 /** Register guest read-proxy and command-dispatch routes on the gateway. */
@@ -263,14 +265,22 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   // GDPR / CCPA COMPLIANCE ENDPOINTS
   // -------------------------------------------------
 
+  /**
+   * Reads proxy straight through, so the path must be the one guests-service
+   * registers — `/v1/guests/:guestId/…`, tenant resolved from `tenant_id`, the
+   * same shape as every other proxied guest read here. This route was declared
+   * as `/v1/tenants/:tenantId/guests/:guestId/gdpr-export` and answered 404 for
+   * every subject access request the UI made. See ui-gaps/19-gateway-proxy-mismatches.md.
+   */
   app.get(
-    "/v1/tenants/:tenantId/guests/:guestId/gdpr-export",
+    "/v1/guests/:guestId/gdpr-export",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Subject access request — export all guest data (GDPR Art. 15 / CCPA).",
-        params: tenantGuestParamsSchema,
+        params: guestIdParamsSchema,
+        querystring: tenantQuerySchema,
         response: { 200: jsonObjectSchema },
       }),
     },
@@ -321,14 +331,16 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       }),
   );
 
+  /** Proxied read — see the gdpr-export note above on why this is not tenant-scoped by path. */
   app.get(
-    "/v1/tenants/:tenantId/guests/:guestId/consent",
+    "/v1/guests/:guestId/consent",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Get guest consent ledger (marketing, analytics, third-party sharing).",
-        params: tenantGuestParamsSchema,
+        params: guestIdParamsSchema,
+        querystring: tenantQuerySchema,
         response: { 200: jsonObjectSchema },
       }),
     },

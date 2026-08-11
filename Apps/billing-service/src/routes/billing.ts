@@ -21,6 +21,7 @@ import {
   PreAuditResponseSchema,
   RoutingRuleListItemSchema,
   RoutingRuleListQuerySchema,
+  ShiftSummaryResponseSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -31,6 +32,7 @@ import {
   getCashierSessionById,
   getFolioById,
   getPreAuditChecklist,
+  getShiftSummary,
   listBillingPayments,
   listCashierSessions,
   listChargePostings,
@@ -365,6 +367,37 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }
 
       return session;
+    },
+  );
+
+  app.get<{ Params: { sessionId: string }; Querystring: { tenant_id: string } }>(
+    "/v1/billing/cashier-sessions/:sessionId/shift-summary",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Get shift handover summary for a cashier session",
+        params: schemaFromZod(z.object({ sessionId: z.string().uuid() }), "ShiftSessionIdParam"),
+        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryShift"),
+        response: { 200: schemaFromZod(ShiftSummaryResponseSchema, "ShiftSummaryResponse") },
+      }),
+    },
+    async (request, reply) => {
+      const { sessionId } = request.params;
+      const { tenant_id } = request.query;
+
+      const summary = await getShiftSummary(sessionId, tenant_id);
+
+      if (!summary) {
+        reply.notFound("CASHIER_SESSION_NOT_FOUND");
+        return;
+      }
+
+      return ShiftSummaryResponseSchema.parse(summary);
     },
   );
 

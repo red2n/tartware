@@ -12,6 +12,7 @@ import {
   type FolioRow,
   formatEnumDisplay,
   type PreAuditCheckItem,
+  type ShiftSummaryResponse,
   toIsoString,
 } from "@tartware/schemas";
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
@@ -23,6 +24,7 @@ import {
   CHARGE_POSTING_LIST_SQL,
   FOLIO_BY_ID_SQL,
   FOLIO_LIST_SQL,
+  SHIFT_SUMMARY_SQL,
 } from "../sql/billing-queries.js";
 
 /**
@@ -621,4 +623,47 @@ export const listCashierSessions = async (options: {
 export const getCashierSessionById = async (sessionId: string, tenantId: string) => {
   const { rows } = await query(CASHIER_SESSION_BY_ID_SQL, [sessionId, tenantId]);
   return rows[0] ?? null;
+};
+
+/**
+ * Shift handover summary for a cashier session — reconciliation figures plus the
+ * posting totals behind them.
+ */
+export const getShiftSummary = async (
+  sessionId: string,
+  tenantId: string,
+): Promise<ShiftSummaryResponse | null> => {
+  const { rows } = await query<Record<string, unknown>>(SHIFT_SUMMARY_SQL, [sessionId, tenantId]);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const metadata = row.metadata as Record<string, unknown> | null;
+
+  return {
+    session_id: row.session_id as string,
+    session_number: row.session_number as string,
+    cashier_name: row.cashier_name as string,
+    terminal_id: (row.terminal_id as string) ?? null,
+    shift_type: row.shift_type as string,
+    session_status: row.session_status as string,
+    business_date: String(row.business_date).slice(0, 10),
+    opened_at: String(row.opened_at),
+    closed_at: row.closed_at ? String(row.closed_at) : null,
+    opening_float: toNumberOrFallback(row.opening_float_declared, 0),
+    closing_cash_counted:
+      row.closing_cash_counted != null ? toNumberOrFallback(row.closing_cash_counted, 0) : null,
+    cash_variance: row.cash_variance != null ? toNumberOrFallback(row.cash_variance, 0) : null,
+    has_variance: Boolean(row.has_variance),
+    reconciled: Boolean(row.reconciled),
+    total_transactions: Number(row.total_transactions ?? 0),
+    total_revenue: toNumberOrFallback(row.total_revenue, 0),
+    total_refunds: toNumberOrFallback(row.total_refunds, 0),
+    net_revenue: toNumberOrFallback(row.net_revenue, 0),
+    charge_count: Number(row.charge_count ?? 0),
+    charge_total: toNumberOrFallback(row.charge_total, 0),
+    payment_count: Number(row.payment_count ?? 0),
+    payment_total: toNumberOrFallback(row.payment_total, 0),
+    handover_notes: (metadata?.handover_notes as string) ?? null,
+  };
 };

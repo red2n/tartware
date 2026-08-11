@@ -308,11 +308,25 @@ export class GuestDetailComponent implements OnInit {
 		});
 	}
 
+	/** Command-dispatch URL — writes are tenant-scoped by path. */
 	private guestUrl(suffix: string): string | null {
 		const tenantId = this.auth.tenantId();
 		const guestId = this.guest()?.id;
 		if (!tenantId || !guestId) return null;
 		return `/tenants/${tenantId}/guests/${guestId}${suffix}`;
+	}
+
+	/**
+	 * Read URL — proxied guest reads are scoped by a `tenant_id` query param, not
+	 * by path, because the gateway forwards them to guests-service verbatim.
+	 * Using the write shape here is what made GDPR export and the consent ledger
+	 * 404 (see ui-gaps/19-gateway-proxy-mismatches.md).
+	 */
+	private guestReadUrl(suffix: string): { url: string; params: Record<string, string> } | null {
+		const tenantId = this.auth.tenantId();
+		const guestId = this.guest()?.id;
+		if (!tenantId || !guestId) return null;
+		return { url: `/guests/${guestId}${suffix}`, params: { tenant_id: tenantId } };
 	}
 
 	async submitVip(): Promise<void> {
@@ -430,11 +444,11 @@ export class GuestDetailComponent implements OnInit {
 	}
 
 	async exportGdpr(): Promise<void> {
-		const url = this.guestUrl("/gdpr-export");
-		if (!url) return;
+		const read = this.guestReadUrl("/gdpr-export");
+		if (!read) return;
 		this.processing.set("gdpr-export");
 		try {
-			const data = await this.api.get<unknown>(url);
+			const data = await this.api.get<unknown>(read.url, read.params);
 			const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
 			const link = document.createElement("a");
 			const href = URL.createObjectURL(blob);
@@ -512,10 +526,10 @@ export class GuestDetailComponent implements OnInit {
 	}
 
 	async loadConsent(): Promise<void> {
-		const url = this.guestUrl("/consent");
-		if (!url) return;
+		const read = this.guestReadUrl("/consent");
+		if (!read) return;
 		try {
-			const ledger = await this.api.get<GuestConsentLedger>(url);
+			const ledger = await this.api.get<GuestConsentLedger>(read.url, read.params);
 			this.consentLedger.set(ledger);
 			this.consentForm.set({ ...ledger });
 		} catch {
@@ -527,8 +541,11 @@ export class GuestDetailComponent implements OnInit {
 		const url = this.guestUrl("/consent");
 		if (!url) return;
 		this.processing.set("consent");
+		// `updated_at` comes back on the ledger and is seeded into the form; it is
+		// the server's record of when consent was given, never an input.
+		const { updated_at: _recordedAt, ...toggles } = this.consentForm();
 		try {
-			await this.api.post(url, this.consentForm());
+			await this.api.post(url, toggles);
 			this.toast.success("Consent preferences updated.");
 			setTimeout(() => this.loadConsent(), 800);
 		} catch (e) {

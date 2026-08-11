@@ -86,21 +86,9 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
   const proxySettings = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
 
-  app.all(
-    "/v1/settings",
-    {
-      preHandler: authenticatedOnly,
-      schema: buildRouteSchema({
-        tag: SETTINGS_PROXY_TAG,
-        summary: "Proxy settings requests to the settings service.",
-        response: {
-          200: jsonObjectSchema,
-        },
-      }),
-    },
-    proxySettings,
-  );
-
+  // core-service owns `/v1/settings/values`, `/v1/settings/properties/…` and the
+  // rest; nothing answers a bare `/v1/settings`, so declaring it only published a
+  // 404. The catch-all below carries every real settings call.
   app.all(
     "/v1/settings/*",
     {

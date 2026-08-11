@@ -395,39 +395,24 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
 
   // ─── Availability / ARI Endpoints ──────────────────────────
 
+  /**
+   * The one availability endpoint that exists downstream.
+   *
+   * `/v1/availability`, `/v1/availability/calendar` and `/v1/availability/room-types`
+   * were declared here and proxied to rooms-service, which registers none of them —
+   * three documented endpoints that always 404. Every caller (both front-ends and
+   * the E2E suite's reservation flows) already used `/v1/rooms/availability`, which
+   * reached rooms-service through the `/v1/rooms/*` catch-all undeclared. Declaring
+   * it explicitly is what the ARI tag should have pointed at all along.
+   * See ui-gaps/19-gateway-proxy-mismatches.md.
+   */
   app.get(
-    "/v1/availability",
+    "/v1/rooms/availability",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: AVAILABILITY_TAG,
-        summary: "Query room availability for a date range (ARI: availability, rates, inventory).",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyRooms,
-  );
-
-  app.get(
-    "/v1/availability/calendar",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: AVAILABILITY_TAG,
-        summary: "Room availability calendar view by room type and date.",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyRooms,
-  );
-
-  app.get(
-    "/v1/availability/room-types",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: AVAILABILITY_TAG,
-        summary: "Available room types with counts for a date range.",
+        summary: "Search available rooms for a date range (ARI: availability, rates, inventory).",
         response: { 200: jsonObjectSchema },
       }),
     },

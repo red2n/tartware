@@ -25,6 +25,7 @@ import {
   setGuestBlacklist,
   setGuestLoyalty,
   setGuestVip,
+  updateGuestConsentDecision,
   updateGuestContact,
   updateGuestPreferences,
   updateGuestProfile,
@@ -106,6 +107,14 @@ const routeCommand = async (
       break;
     case "guest.preference.update":
       await updateGuestPreferences({
+        tenantId: metadata.tenantId,
+        payload: envelope.payload,
+        correlationId: metadata.correlationId ?? metadata.requestId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      break;
+    case "guest.consent.update":
+      await updateGuestConsentDecision({
         tenantId: metadata.tenantId,
         payload: envelope.payload,
         correlationId: metadata.correlationId ?? metadata.requestId,

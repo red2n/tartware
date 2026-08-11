@@ -104,6 +104,7 @@ import {
 	GroupUploadRoomingListCommandSchema,
 } from "./events/commands/groups.js";
 import {
+	GuestConsentUpdateCommandSchema,
 	GuestGdprEraseCommandSchema,
 	GuestGdprExportCommandSchema,
 	GuestMergeCommandSchema,
@@ -600,6 +601,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"guest.preference.update",
 		(payload) => GuestPreferenceUpdateCommandSchema.parse(payload),
+	],
+	[
+		"guest.consent.update",
+		(payload) => GuestConsentUpdateCommandSchema.parse(payload),
 	],
 	[
 		"housekeeping.task.assign",

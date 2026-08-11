@@ -227,3 +227,35 @@ export const GuestPreferenceUpdateCommandSchema = z.object({
 export type GuestPreferenceUpdateCommand = z.infer<
 	typeof GuestPreferenceUpdateCommandSchema
 >;
+
+/**
+ * Record a consent decision for a guest (GDPR Art. 7).
+ *
+ * Every toggle is optional and only the ones present are recorded, so a screen
+ * can submit a single changed switch without restating the others. Consent is
+ * append-only downstream: each field written adds a `gdpr_consent_logs` row and
+ * supersedes the previous one rather than overwriting it, because the log is the
+ * evidence of what was agreed and when.
+ */
+export const GuestConsentUpdateCommandSchema = z
+	.object({
+		guest_id: z.string().uuid(),
+		marketing_email: z.boolean().optional(),
+		marketing_sms: z.boolean().optional(),
+		analytics: z.boolean().optional(),
+		third_party_sharing: z.boolean().optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine(
+		(command) =>
+			command.marketing_email !== undefined ||
+			command.marketing_sms !== undefined ||
+			command.analytics !== undefined ||
+			command.third_party_sharing !== undefined,
+		{ message: "At least one consent toggle must be provided" },
+	);
+
+export type GuestConsentUpdateCommand = z.infer<
+	typeof GuestConsentUpdateCommandSchema
+>;

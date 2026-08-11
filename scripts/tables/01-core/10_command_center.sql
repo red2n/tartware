@@ -148,6 +148,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('guest.set_blacklist', 'Update guest blacklist status', 'guests-service', ARRAY['core']),
         ('guest.gdpr.erase', 'Erase guest data for GDPR requests', 'guests-service', ARRAY['core']),
         ('guest.preference.update', 'Update guest preferences', 'guests-service', ARRAY['core']),
+        ('guest.consent.update', 'Record guest consent decisions (GDPR Art. 7)', 'guests-service', ARRAY['core']),
         ('rooms.inventory.block', 'Block rooms for maintenance', 'rooms-service', ARRAY['core']),
         ('rooms.inventory.release', 'Release a room block', 'rooms-service', ARRAY['core']),
         ('rooms.status.update', 'Update room status', 'rooms-service', ARRAY['core']),
