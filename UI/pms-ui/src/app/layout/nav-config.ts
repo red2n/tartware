@@ -395,6 +395,13 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 				screenKey: "webhooks",
 			},
 			{
+				label: "Police reports",
+				icon: "local_police",
+				route: "/compliance/police-reports",
+				screenKey: "compliance",
+				description: "Crimes reported to the police, with agency case numbers",
+			},
+			{
 				label: "Data breach register",
 				icon: "shield",
 				route: "/compliance/breach-incidents",

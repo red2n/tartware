@@ -1,0 +1,6 @@
+/* Police reports — leans on global shared.scss (page-header, filter-form, form-grid,
+   action-confirm-card, table, badge). Only the missing-case-number banner is local. */
+
+.awaiting-banner {
+  border-color: var(--color-warning, #a06000);
+}

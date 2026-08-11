@@ -2,6 +2,35 @@
 
 **Priority:** P1 | **Risk:** 🟠 MEDIUM | **Type:** Backend | **Effort:** L
 
+> ## ✅ Write mechanism decided 2026-08-11
+>
+> **The discriminator is not "audit significance" — it is cross-service reach.**
+>
+> This spec first proposed: reference data → HTTP, anything audit- or workflow-significant → commands.
+> Building COV-01 and COV-02 showed that rule misclassifies its own examples. The breach register is
+> about as audit-significant as this system gets, and it is plain HTTP on core-service
+> (`compliance.ts`) — correctly, because the write touches one table in one service with no fan-out.
+> Police reports are the same shape.
+>
+> **The rule, restated:**
+>
+> | Write has… | Mechanism | Examples |
+> |---|---|---|
+> | one owning service, one table, no fan-out | **HTTP routes on the owning service** | breach incidents, police reports, lost & found, companies, promo codes, booking sources, market segments, meeting rooms |
+> | cross-service effects, or needs idempotent replay / DLQ | **command + consumer + catalog row**, with a gateway REST wrapper for ergonomics | reservations, guest consent, housekeeping tasks, OTA sync, anything touching inventory or money |
+>
+> Audit trail is not the tiebreak: an HTTP write can call `recordAuditLog` just as a command handler
+> does. Idempotency and replay are what the command bus actually buys, and a single-table register
+> does not need them.
+>
+> **Applied so far:** COV-01 (existing HTTP write path, UI only) and COV-02 (three new HTTP routes on
+> core-service). Remaining domains in the table below inherit the rule — no per-domain re-litigation.
+>
+> **Still open:** deleting or implementing the misleading `ALL /*` gateway proxies for domains that
+> still have no writes, and the `UNIMPLEMENTED` catalog rows. Note two of those rows
+> (`compliance.breach.report` / `.notify`) are now definitively redundant: the HTTP path is the live
+> one, so they should be **deleted**, not implemented.
+
 **This is the systemic finding the coverage audit did not make.** Seven of the sixteen "no UI presence"
 domains are not UI gaps at all: **there is no way to create the data through any API.** A screen cannot
 be built over them without backend work first, and the same decision would otherwise be re-litigated

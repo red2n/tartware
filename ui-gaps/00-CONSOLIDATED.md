@@ -77,7 +77,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 01 | Data-breach register & regulator notification — **✅ shipped 2026-08-11** | [01-compliance-breach-incidents.md](01-compliance-breach-incidents.md) | UI | done |
-| 02 | Police / statutory guest reporting is read-only, no UI | [02-police-reports.md](02-police-reports.md) | Backend+UI | L |
+| 02 | Police incident register was read-only — **✅ write path + UI shipped 2026-08-11** (premise corrected: not guest-registration reporting) | [02-police-reports.md](02-police-reports.md) | Backend+UI | done |
 
 ### P0 — Unblock Direct Billing (2 gaps)
 
@@ -91,7 +91,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 05 | revenue-service: 20 endpoints + 32 commands, no front-end at all | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | XL or delete |
-| 18 | Read-only domains have no write path — systemic root cause | [18-write-path-gap.md](18-write-path-gap.md) | Backend | L |
+| 18 | Read-only domains have no write path — **✅ mechanism decided 2026-08-11**; per-domain writes remain | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
 
@@ -192,7 +192,13 @@ COV-18's police-reports slice + COV-02.
 
 **Phase 2 — Statutory**
 4. ~~COV-01: breach-incident register UI~~ — **done 2026-08-11**
-5. COV-18 (police-reports slice) + COV-02: statutory guest reporting write path and UI
+5. ~~COV-18 (police-reports slice) + COV-02~~ — **done 2026-08-11.** COV-18's mechanism decision is
+   recorded (the discriminator is cross-service reach, not audit significance) and COV-02 shipped a
+   write path plus UI. **Phase 2 complete.**
+
+**Note for Phase 3+:** COV-02's premise was wrong in the original audit read — `/v1/police-reports` is
+a police *incident* register, not statutory guest-registration reporting. The latter has no table
+anywhere and is a genuine unlogged gap if a jurisdiction requires it.
 
 **Phase 3 — Unblock direct billing**
 6. COV-03: AR account management UI — this is what left `findDirectBillRouting` untested

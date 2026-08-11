@@ -1,6 +1,51 @@
 # COV-02: Police / Statutory Guest Reporting — Read-Only Backend, No UI
 
-**Priority:** P0 | **Risk:** 🔴 HIGH (statutory) | **Type:** Backend + UI | **Effort:** L
+**Priority:** P0 | **Risk:** 🟠 MEDIUM-HIGH (liability) | **Type:** Backend + UI | **Effort:** L
+
+> ## ⚠️ This spec's premise was wrong — corrected 2026-08-11
+>
+> I wrote this assuming `/v1/police-reports` was **statutory guest-registration reporting** to police
+> or immigration (Schengen, India Form C, UAE, Thailand TM30) with deadlines in hours after check-in.
+> It is not. Reading `scripts/tables/07-analytics/75_police_reports.sql` and the row mapper shows a
+> **police incident report register**: a crime reported to the police, with `agency_name`,
+> `responding_officer_name`/`badge`, `police_case_number`, `incident_type`
+> (theft / assault / vandalism / …), suspects, victims, witnesses, stolen property and loss value.
+> It is the legal-evidence sibling of [06-incidents.md](06-incidents.md), which it links to via
+> `incident_id` — not a statutory filing on a clock.
+>
+> So the "72-hour deadline", "arrivals worklist", "passport/visa fields" and "batch generate from a
+> business date" work below **does not apply** and has not been built.
+>
+> **Guest-registration reporting remains a genuine, separate gap:** no table, no route and no schema
+> anywhere in the repo. If Tartware sells into a jurisdiction that requires it, that is new work with
+> its own spec — not this one.
+>
+> ## ✅ Shipped 2026-08-11 — what the register actually needed
+>
+> **Backend** (`Apps/core-service/src/routes/operations.ts`, `services/operations-service.ts`):
+> - `POST /v1/police-reports` — file a report. `report_number` is generated server-side as
+>   `PR-YYYYMMDD-XXXX`; it is `UNIQUE NOT NULL` and a caller-supplied value is how two reports end up
+>   fighting over one identifier.
+> - `PUT /v1/police-reports/:reportId` — correct a report. Every field optional, `COALESCE` keeps the
+>   stored value, so a screen can send only what changed.
+> - `POST /v1/police-reports/:reportId/status` — move status and record `police_case_number`,
+>   lead investigator and follow-up. `investigation_ongoing` is derived from the status rather than
+>   being a second field to keep in step.
+>
+> The suspects/victims/witnesses/evidence JSONB columns are deliberately **not** exposed yet: they
+> want a dedicated editor, and guessing a shape now would be harder to change later than adding it
+> when a screen needs it.
+>
+> **UI** — `UI/pms-ui/src/app/features/compliance/police-reports/`: list with status and type filters,
+> file/correct form, status action, and a banner counting open reports with no police case number
+> recorded (a report the force cannot trace back is the failure mode here). Route
+> `compliance/police-reports` reusing the `compliance` screen key from COV-01 — same statutory area,
+> same OWNER/ADMIN restriction — plus a nav entry.
+>
+> **Verified:** core-service typechecks; `ng build` compiles the template; the insert and status SQL
+> were run against the real `police_reports` table (rolled back) to confirm the CHECK constraints and
+> `report_status` transition. E2E assertions added for file → status → read-back.
+> **Not verified:** no run against a live stack.
 
 ## Current State (Backend ⚠️ read-only → UI ❌)
 

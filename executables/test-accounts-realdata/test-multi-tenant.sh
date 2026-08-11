@@ -1048,6 +1048,29 @@ run_billing_pipeline() {
     assert_eq_ci "Cashier session closed ($label)" "closed" "$sess_status"
   fi
 
+  # Police report register — read-only until 2026-08-11, so nothing could file a
+  # report through the API at all. See ui-gaps/02-police-reports.md.
+  echo "── ${tag} — Police Report Register ────────────────────────────────"
+  local pr_code pr_id
+  pr_code=$(post "$GW/v1/police-reports" \
+    "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"incident_date\":\"$TODAY\",\"incident_type\":\"theft\",\"incident_description\":\"Laptop reported stolen from room ($tag)\",\"agency_name\":\"Metro Police\",\"responding_officer_name\":\"Officer Reyes\",\"property_stolen\":true,\"total_loss_value\":1200}")
+  assert_http "Police report filed ($label)" "2" "$pr_code"
+  pr_id=$(jq -r '.data.report_id // empty' "$RESP_FILE" 2>/dev/null)
+
+  if [[ -n "$pr_id" ]]; then
+    pr_code=$(post "$GW/v1/police-reports/$pr_id/status" \
+      "{\"tenant_id\":\"$tid\",\"report_status\":\"under_investigation\",\"police_case_number\":\"CASE-$tag-${RUN_TAG}\"}")
+    assert_http "Police report status updated ($label)" "2" "$pr_code"
+    get "$GW/v1/police-reports/$pr_id?tenant_id=$tid" >/dev/null
+    assert_eq "Police case number persisted ($label)" \
+      "CASE-$tag-${RUN_TAG}" "$(jq -r '.data.police_case_number // empty' "$RESP_FILE" 2>/dev/null)"
+    assert_eq_ci "Police report under investigation ($label)" \
+      "under_investigation" "$(jq -r '.data.report_status // empty' "$RESP_FILE" 2>/dev/null)"
+  else
+    fail "Police report id" "$label"
+  fi
+  echo ""
+
   # Shift handover summary — proxied to billing-service but implemented only in
   # housekeeping-service until 2026-08-11, so this path 404'd behind a documented
   # endpoint. See ui-gaps/19-gateway-proxy-mismatches.md.
