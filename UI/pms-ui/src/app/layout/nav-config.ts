@@ -394,6 +394,13 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 				route: "/webhooks",
 				screenKey: "webhooks",
 			},
+			{
+				label: "Data breach register",
+				icon: "shield",
+				route: "/compliance/breach-incidents",
+				screenKey: "compliance",
+				description: "GDPR Art. 33 breach log and regulator notifications",
+			},
 		],
 	},
 ];

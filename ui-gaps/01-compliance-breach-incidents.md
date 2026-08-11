@@ -2,6 +2,27 @@
 
 **Priority:** P0 | **Risk:** 🔴 HIGH (statutory) | **Type:** UI only | **Effort:** M
 
+> ## ✅ Shipped 2026-08-11
+>
+> `UI/pms-ui/src/app/features/compliance/breach-incidents/` — list, report form, detail panel and the
+> notify action, wired to all four existing endpoints. Route `compliance/breach-incidents` behind
+> `screenGuard("compliance")`, nav entry "Data breach register", and a `compliance` screen key seeded
+> for OWNER/ADMIN only (MANAGER/STAFF/VIEWER excluded, like `settings`) in
+> `scripts/tables/01-core/22_role_screen_permissions_seed.sql`. `ng build` compiles the template and
+> the chunk is emitted; the screen key is seeded into the running dev DB.
+>
+> **The 72-hour clock is the server's.** `notification_deadline` already comes back on the list rows
+> from `data_breach_incidents`, so the UI renders and sorts against it rather than recomputing from
+> `discovered_at` — overdue incidents sort to the top, are counted in a banner above the table, and are
+> badged in the row.
+>
+> **Not verified:** no run against a live stack (services down). Worth a look when they are up: the
+> `/v1/compliance/breach-incidents` routes in `Apps/core-service/src/routes/compliance.ts` declare no
+> `withTenantScope` preHandler — tenant scoping is enforced at the gateway
+> (`operations-routes.ts:194`), unlike `guests-service/src/routes/privacy.ts`, which scopes in the
+> service too. Calling core-service directly would not be scoped. Worth confirming and, if real,
+> raising as its own item.
+
 ## Current State (Backend ✅ → UI ❌)
 
 `Apps/core-service/src/routes/compliance.ts` implements the full breach lifecycle:

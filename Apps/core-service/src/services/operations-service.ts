@@ -479,3 +479,235 @@ export const getPoliceReportById = async (
 
   return mapPoliceReportRow(rows[0]!);
 };
+
+/**
+ * Fields a caller may set when filing or correcting a police report.
+ *
+ * `report_number` is deliberately absent: it is `UNIQUE NOT NULL` and generated
+ * here, because a caller-supplied number is how you get two reports fighting over
+ * one identifier. Everything the table can hold is not exposed either — the
+ * suspects/victims/evidence JSONB columns want a dedicated editor, and guessing a
+ * shape for them now would be harder to change later than adding them once the
+ * screen needs them.
+ */
+export type PoliceReportWriteInput = {
+  propertyId: string;
+  incidentId?: string;
+  incidentDate: string;
+  incidentTime?: string;
+  reportedDate?: string;
+  incidentType?: string;
+  incidentDescription: string;
+  incidentLocation?: string;
+  roomNumber?: string;
+  agencyName: string;
+  agencyJurisdiction?: string;
+  agencyContactNumber?: string;
+  respondingOfficerName?: string;
+  respondingOfficerBadge?: string;
+  guestInvolved?: boolean;
+  staffInvolved?: boolean;
+  propertyStolen?: boolean;
+  totalLossValue?: number;
+  injuriesReported?: boolean;
+};
+
+/** `PR-YYYYMMDD-XXXX`, matching the confirmation-number style used elsewhere. */
+const buildReportNumber = (): string => {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `PR-${datePart}-${random}`;
+};
+
+/**
+ * File a police report.
+ *
+ * The register was read-only until 2026-08-11 — two GETs over a table nothing
+ * could write to, so it stayed empty and reports lived on paper. See
+ * ui-gaps/02-police-reports.md.
+ */
+export const createPoliceReport = async (
+  tenantId: string,
+  input: PoliceReportWriteInput,
+  actorId?: string,
+): Promise<PoliceReportListItem | null> => {
+  const { rows } = await query<{ report_id: string }>(
+    `
+      INSERT INTO public.police_reports (
+        tenant_id, property_id, report_number,
+        incident_id, incident_date, incident_time,
+        reported_date, incident_type, incident_description,
+        incident_location, room_number,
+        agency_name, agency_jurisdiction, agency_contact_number,
+        responding_officer_name, responding_officer_badge,
+        report_status,
+        guest_involved, staff_involved, property_stolen,
+        total_loss_value, injuries_reported,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid, $3,
+        $4::uuid, $5::date, $6::time,
+        COALESCE($7::date, CURRENT_DATE), $8, $9,
+        $10, $11,
+        $12, $13, $14,
+        $15, $16,
+        'filed',
+        COALESCE($17, false), COALESCE($18, false), COALESCE($19, false),
+        $20, COALESCE($21, false),
+        $22, $22
+      )
+      RETURNING report_id
+    `,
+    [
+      tenantId,
+      input.propertyId,
+      buildReportNumber(),
+      input.incidentId ?? null,
+      input.incidentDate,
+      input.incidentTime ?? null,
+      input.reportedDate ?? null,
+      input.incidentType ?? null,
+      input.incidentDescription,
+      input.incidentLocation ?? null,
+      input.roomNumber ?? null,
+      input.agencyName,
+      input.agencyJurisdiction ?? null,
+      input.agencyContactNumber ?? null,
+      input.respondingOfficerName ?? null,
+      input.respondingOfficerBadge ?? null,
+      input.guestInvolved ?? null,
+      input.staffInvolved ?? null,
+      input.propertyStolen ?? null,
+      input.totalLossValue ?? null,
+      input.injuriesReported ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  const reportId = rows[0]?.report_id;
+  if (!reportId) return null;
+
+  return getPoliceReportById({ reportId, tenantId });
+};
+
+/**
+ * Correct a filed report.
+ *
+ * Every field is optional and `COALESCE` keeps the stored value when one is
+ * absent, so a screen can send only what changed. `report_number` and
+ * `report_status` are not settable here — the number is immutable and the status
+ * moves through {@link updatePoliceReportStatus}, which also carries the police
+ * case number that justifies the transition.
+ */
+export const updatePoliceReport = async (
+  tenantId: string,
+  reportId: string,
+  input: Partial<PoliceReportWriteInput>,
+  actorId?: string,
+): Promise<PoliceReportListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.police_reports
+      SET
+        incident_id = COALESCE($3::uuid, incident_id),
+        incident_date = COALESCE($4::date, incident_date),
+        incident_time = COALESCE($5::time, incident_time),
+        incident_type = COALESCE($6, incident_type),
+        incident_description = COALESCE($7, incident_description),
+        incident_location = COALESCE($8, incident_location),
+        room_number = COALESCE($9, room_number),
+        agency_name = COALESCE($10, agency_name),
+        agency_jurisdiction = COALESCE($11, agency_jurisdiction),
+        agency_contact_number = COALESCE($12, agency_contact_number),
+        responding_officer_name = COALESCE($13, responding_officer_name),
+        responding_officer_badge = COALESCE($14, responding_officer_badge),
+        guest_involved = COALESCE($15, guest_involved),
+        staff_involved = COALESCE($16, staff_involved),
+        property_stolen = COALESCE($17, property_stolen),
+        total_loss_value = COALESCE($18, total_loss_value),
+        injuries_reported = COALESCE($19, injuries_reported),
+        updated_at = NOW(),
+        updated_by = $20
+      WHERE tenant_id = $1::uuid
+        AND report_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      tenantId,
+      reportId,
+      input.incidentId ?? null,
+      input.incidentDate ?? null,
+      input.incidentTime ?? null,
+      input.incidentType ?? null,
+      input.incidentDescription ?? null,
+      input.incidentLocation ?? null,
+      input.roomNumber ?? null,
+      input.agencyName ?? null,
+      input.agencyJurisdiction ?? null,
+      input.agencyContactNumber ?? null,
+      input.respondingOfficerName ?? null,
+      input.respondingOfficerBadge ?? null,
+      input.guestInvolved ?? null,
+      input.staffInvolved ?? null,
+      input.propertyStolen ?? null,
+      input.totalLossValue ?? null,
+      input.injuriesReported ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getPoliceReportById({ reportId, tenantId });
+};
+
+/**
+ * Move a report through its status, recording the police case number.
+ *
+ * The case number is what makes a report traceable back to the force's own
+ * record, so it is captured with the transition rather than as a later edit.
+ */
+export const updatePoliceReportStatus = async (
+  tenantId: string,
+  reportId: string,
+  input: {
+    reportStatus: string;
+    policeCaseNumber?: string;
+    leadInvestigatorName?: string;
+    followUpRequired?: boolean;
+    followUpDate?: string;
+  },
+  actorId?: string,
+): Promise<PoliceReportListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.police_reports
+      SET
+        report_status = $3,
+        police_case_number = COALESCE($4, police_case_number),
+        lead_investigator_name = COALESCE($5, lead_investigator_name),
+        investigation_ongoing = ($3 IN ('under_investigation', 'referred')),
+        follow_up_required = COALESCE($6, follow_up_required),
+        follow_up_date = COALESCE($7::date, follow_up_date),
+        updated_at = NOW(),
+        updated_by = $8
+      WHERE tenant_id = $1::uuid
+        AND report_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      tenantId,
+      reportId,
+      input.reportStatus,
+      input.policeCaseNumber ?? null,
+      input.leadInvestigatorName ?? null,
+      input.followUpRequired ?? null,
+      input.followUpDate ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getPoliceReportById({ reportId, tenantId });
+};

@@ -2,6 +2,21 @@
 
 **Priority:** P0 (decision) | **Risk:** 🟠 MEDIUM-HIGH | **Type:** Decision + Backend | **Effort:** M
 
+> ## ✅ Decided 2026-08-11 — `ar_accounts` is canonical (Option A)
+>
+> Decided by the repo owner on the evidence below: `ar_accounts` is empty (0 rows), so migration is
+> free today, and checkout already resolves city-ledger transfers against it.
+>
+> **Done in this pass:** the three `/v1/billing/accounts-receivable` routes are annotated as
+> deprecated in `Apps/billing-service/src/routes/accounts.ts` — kept as a read view so the existing
+> *Accounts → Receivable* screen keeps working, with `/v1/billing/ar/*` named as the replacement and
+> `aging-report` named as the replacement for `aging-summary`.
+>
+> **Still to do, as part of [03-ar-account-management.md](03-ar-account-management.md):** collapse the
+> duplicate aging computation onto `ar.aging.compute`, collapse the `billing.ar.*` / `ar.*` command
+> namespaces, and decide whether `accounts_receivable` becomes a line table under `ar_accounts` or is
+> migrated into it. COV-03 is now unblocked.
+
 ## Current State
 
 The backend carries two independent AR APIs over two different tables. The UI uses one and ignores
@@ -51,11 +66,29 @@ with a documented reconciliation. Requires naming the invariant and testing it.
 Note that checkout already depends on `ar_accounts` (`ar-event-consumer.ts:179` dispatches
 `ar.city_ledger.transfer`), which is evidence for Option A.
 
+## Evidence gathered 2026-08-11
+
+Row counts from the running dev database:
+
+| Table | Rows |
+|---|---|
+| `ar_accounts` | **0** |
+| `ar_dunning_rules` | **0** |
+| `accounts_receivable` | 3 |
+
+`ar_accounts` is empty exactly as predicted — nothing can create a row, because `ar.account.create`
+has no UI or REST trigger. **This is the cheapest moment Option A will ever have:** there is no data to
+migrate today, and every AR account created between now and the decision makes it more expensive.
+
+Combined with the fact that checkout already resolves city-ledger transfers against `ar_accounts`
+(`Apps/billing-service/src/consumers/ar-event-consumer.ts:179`), the evidence points one way:
+**adopt `ar_accounts` as canonical (Option A)**, keep `/v1/billing/accounts-receivable` as a
+deprecated read view so the existing screen keeps working, and build COV-03 on top of it.
+
 ## Work Required
 
 1. Read both tables in `schema/src/schemas/04-financial/` and write down what each row means.
-2. Check row counts in a real tenant DB — is `ar_accounts` empty everywhere? (Expected: yes, because
-   nothing can create rows. That makes Option A cheap to adopt now and expensive later.)
+2. ~~Check row counts in a real tenant DB.~~ ✅ done — see above.
 3. Record the decision in this file, then:
    - deprecate the losing routes in the OpenAPI tags,
    - collapse the duplicate aging computation,

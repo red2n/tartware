@@ -12,9 +12,11 @@
 
 **The audit's "no broken UI wiring" holds only one hop deep.** Every call `pms-ui` and `guest-portal`
 make does resolve to a gateway route — but the audit never checked whether the gateway's target
-service registers the path it forwards. It often does not. **16 gateway routes proxied to paths no
-service implements**, and two of them are called by `pms-ui` today: guest GDPR export and the guest
-consent ledger both 404 for real users. See [19-gateway-proxy-mismatches.md](19-gateway-proxy-mismatches.md).
+service registers the path it forwards. It often did not. **16 gateway routes proxied to paths no
+service implemented**, and two of them were called by `pms-ui`: guest GDPR export and the guest consent
+ledger both 404ed for real users. All 16 are fixed as of 2026-08-11 and CI now enforces the invariant —
+see [10-reports-coverage.md](10-reports-coverage.md)(a) and
+[19-gateway-proxy-mismatches.md](19-gateway-proxy-mismatches.md).
 
 Beyond that, the gap is one-directional as reported: backend surface that no screen can reach.
 
@@ -74,7 +76,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 01 | Data-breach register & regulator notification has no UI | [01-compliance-breach-incidents.md](01-compliance-breach-incidents.md) | UI | M |
+| 01 | Data-breach register & regulator notification — **✅ shipped 2026-08-11** | [01-compliance-breach-incidents.md](01-compliance-breach-incidents.md) | UI | done |
 | 02 | Police / statutory guest reporting is read-only, no UI | [02-police-reports.md](02-police-reports.md) | Backend+UI | L |
 
 ### P0 — Unblock Direct Billing (2 gaps)
@@ -82,7 +84,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 03 | AR account management — 13 `ar.*` commands, 8 read endpoints, zero UI | [03-ar-account-management.md](03-ar-account-management.md) | UI | L |
-| 04 | Two AR surfaces on two tables — pick a canonical one | [04-duplicate-ar-surface.md](04-duplicate-ar-surface.md) | Decision+Backend | M |
+| 04 | Two AR surfaces on two tables — **✅ decided: `ar_accounts` canonical**, collapse work in COV-03 | [04-duplicate-ar-surface.md](04-duplicate-ar-surface.md) | Decision+Backend | done |
 
 ### P1 — Product Decisions (2 gaps)
 
@@ -120,7 +122,7 @@ And two findings the audit did not make at all:
 |---|-----|------|------|--------|
 | 13 | Sales & catering — banquet orders, meeting rooms, event bookings | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | L |
 | 14 | Channel / distribution — OTA connections, mappings, sources, metasearch | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | L |
-| 15 | Two booking engines — `/v1/direct-booking` vs `/v1/self-service` | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | S |
+| 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — allotments, waitlist, promo codes, segments | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | M |
 
 ### P2 — Cross-Cutting (1 gap)
@@ -180,11 +182,16 @@ Doing COV-18 once unblocks them all; doing them one at a time re-litigates the s
 3. ~~COV-19 items 3–5: delete the 3 dead `/v1/availability*` routes, fix the cashier shift-summary
    target, drop the two bare-prefix registrations~~ — **done 2026-08-11**; cashiering resolved to
    billing-service and the housekeeping read duplicate deleted. Allowlist empty.
-4. COV-04: decide the canonical AR surface (decision only, no code)
-5. COV-15: decide which booking engine is canonical (decision only, no code)
+4. ~~COV-04: decide the canonical AR surface~~ — **decided 2026-08-11: `ar_accounts` is canonical.**
+   Deprecated surface annotated; the collapse work moves into COV-03.
+5. ~~COV-15: decide which booking engine is canonical~~ — **closed 2026-08-11: `/v1/direct-booking`
+   deleted.** Tracing it found an unguarded write path, not just a duplicate.
+
+**Phase 1 is complete.** Next up is Phase 2 (statutory): COV-01 breach-incident register UI, then
+COV-18's police-reports slice + COV-02.
 
 **Phase 2 — Statutory**
-4. COV-01: breach-incident register UI (backend complete, pure UI work)
+4. ~~COV-01: breach-incident register UI~~ — **done 2026-08-11**
 5. COV-18 (police-reports slice) + COV-02: statutory guest reporting write path and UI
 
 **Phase 3 — Unblock direct billing**

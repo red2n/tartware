@@ -42,7 +42,10 @@ DECLARE
         'command-management',
         'users',
         'modules',
-        'webhooks'
+        'webhooks',
+        -- Data breach register (GDPR Art. 33). Statutory filings, so it is not a
+        -- general-staff screen: OWNER/ADMIN only by default, like 'settings'.
+        'compliance'
     ];
     v_screen TEXT;
     v_role tenant_role;
@@ -59,7 +62,7 @@ BEGIN
                     -- OWNER and ADMIN see everything
                     WHEN v_role IN ('OWNER', 'ADMIN') THEN true
                     -- MANAGER sees most screens except admin-only
-                    WHEN v_role = 'MANAGER' THEN v_screen NOT IN ('settings', 'command-management', 'users', 'tax-config')
+                    WHEN v_role = 'MANAGER' THEN v_screen NOT IN ('settings', 'command-management', 'users', 'tax-config', 'compliance')
                     -- STAFF sees operational screens
                     WHEN v_role = 'STAFF' THEN v_screen IN ('dashboard', 'reservations', 'guests', 'rooms', 'housekeeping', 'rates')
                     -- VIEWER sees read-only screens

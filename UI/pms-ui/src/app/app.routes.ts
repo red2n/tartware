@@ -339,6 +339,15 @@ export const routes: Routes = [
 					import("./features/webhooks/webhooks").then((m) => m.WebhooksComponent),
 			},
 			{
+				path: "compliance/breach-incidents",
+				canActivate: [screenGuard("compliance")],
+				data: { screen: "compliance" },
+				loadComponent: () =>
+					import("./features/compliance/breach-incidents/breach-incidents").then(
+						(m) => m.BreachIncidentsComponent,
+					),
+			},
+			{
 				path: "screen-permissions",
 				canActivate: [screenGuard("users")],
 				data: { screen: "users" },

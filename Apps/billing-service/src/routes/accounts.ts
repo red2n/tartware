@@ -142,6 +142,18 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
   );
   const ArDetailJsonSchema = schemaFromZod(AccountsReceivableDetailSchema, "ArDetail");
 
+  /**
+   * DEPRECATED — transaction-level AR over the `accounts_receivable` table.
+   *
+   * `ar_accounts` is the canonical AR model as of 2026-08-11 (ui-gaps/04-duplicate-ar-surface.md):
+   * it carries the account master, credit terms, dunning, disputes and risk scoring, and checkout
+   * already resolves city-ledger transfers against it. These three routes stay as a read view so the
+   * existing *Accounts → Receivable* screen keeps working; new work belongs on `/v1/billing/ar/*`.
+   *
+   * Do not add endpoints here, and prefer `GET /v1/billing/ar/aging-report` over the
+   * `aging-summary` below — two aging computations over two tables is exactly the divergence the
+   * decision was made to end.
+   */
   app.get<{ Querystring: ArListQuery }>(
     "/v1/billing/accounts-receivable",
     {
@@ -152,7 +164,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       }),
       schema: buildRouteSchema({
         tag: ACCOUNTS_TAG,
-        summary: "List accounts receivable with optional filters",
+        summary: "List accounts receivable with optional filters (deprecated — see /v1/billing/ar/accounts)",
         querystring: ArListQueryJsonSchema,
         response: { 200: ArListResponseJsonSchema },
       }),
@@ -191,7 +203,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       }),
       schema: buildRouteSchema({
         tag: ACCOUNTS_TAG,
-        summary: "Accounts receivable aging summary by property",
+        summary: "AR aging summary by property (deprecated — see /v1/billing/ar/aging-report)",
         querystring: schemaFromZod(
           z.object({
             tenant_id: z.string().uuid(),
@@ -221,7 +233,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       }),
       schema: buildRouteSchema({
         tag: ACCOUNTS_TAG,
-        summary: "Get accounts receivable detail by ID",
+        summary: "Get AR transaction detail by ID (deprecated — see /v1/billing/ar/accounts)",
         params: schemaFromZod(z.object({ arId: z.string().uuid() }), "ArIdParam"),
         querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryAr"),
         response: { 200: ArDetailJsonSchema },
