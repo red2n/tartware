@@ -59,7 +59,7 @@ WITH audit_runs AS (
         MAX(nal.completed_at) as completed_at,
         MAX(nal.duration_seconds) as duration_seconds,
         MAX(CASE WHEN nal.step_number = 1 THEN nal.audit_status END) as audit_status,
-        COUNT(*) as total_steps,
+        COUNT(nal.audit_log_id) as total_steps,
         SUM(CASE WHEN nal.step_status = 'COMPLETED' THEN 1 ELSE 0 END) as steps_completed,
         SUM(CASE WHEN nal.step_status = 'FAILED' THEN 1 ELSE 0 END) as steps_failed,
         SUM(COALESCE(nal.error_count, 0)) as error_count,

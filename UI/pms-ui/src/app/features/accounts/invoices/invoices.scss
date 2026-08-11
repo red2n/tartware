@@ -4,19 +4,19 @@
   display: block;
 }
 
-.invoice-kpi-total > mat-icon {
+.invoice-kpi-total > app-icon {
   color: var(--fgColor-accent);
 }
 
-.invoice-kpi-balance > mat-icon {
+.invoice-kpi-balance > app-icon {
   color: var(--fgColor-attention);
 }
 
-.invoice-kpi-draft > mat-icon {
+.invoice-kpi-draft > app-icon {
   color: var(--fgColor-muted);
 }
 
-.invoice-kpi-credit > mat-icon {
+.invoice-kpi-credit > app-icon {
   color: var(--fgColor-accent);
 }
 

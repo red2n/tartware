@@ -147,9 +147,9 @@ export const closeCashierSession = async (
   // 2. Aggregate payments processed during this session
   const { rows: aggRows } = await run<Record<string, unknown>>(
     `SELECT
-       COUNT(*) AS total_transactions,
-       COUNT(*) FILTER (WHERE payment_method = 'CASH') AS cash_transactions,
-       COUNT(*) FILTER (WHERE payment_method != 'CASH') AS card_transactions,
+       COUNT(id) AS total_transactions,
+       COUNT(id) FILTER (WHERE payment_method = 'CASH') AS cash_transactions,
+       COUNT(id) FILTER (WHERE payment_method != 'CASH') AS card_transactions,
        COALESCE(SUM(amount) FILTER (WHERE payment_method = 'CASH' AND transaction_type != 'REFUND'), 0) AS total_cash_received,
        COALESCE(SUM(amount) FILTER (WHERE payment_method != 'CASH' AND transaction_type != 'REFUND'), 0) AS total_card_received,
        COALESCE(SUM(amount) FILTER (WHERE transaction_type != 'REFUND'), 0) AS total_revenue,

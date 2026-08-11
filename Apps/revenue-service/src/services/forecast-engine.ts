@@ -27,7 +27,7 @@ export async function computeForecasts(params: {
 
   // Get total rooms for occupancy calculations
   const roomCountResult = await query<{ total_rooms: string }>(
-    `SELECT COUNT(*) AS total_rooms FROM rooms
+    `SELECT COUNT(id) AS total_rooms FROM rooms
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND status NOT IN ('OUT_OF_ORDER')
        AND is_deleted = false`,
@@ -130,7 +130,7 @@ export async function computeForecasts(params: {
        forecasted_value, confidence_level,
        room_revenue_forecast, total_revenue_forecast,
        forecasted_occupancy_percent, forecasted_adr, forecasted_revpar,
-       model_name, model_version,
+       model_algorithm, model_version,
        created_by, updated_by
      ) VALUES (
        $1::uuid, $2::uuid, $3::date, $4,

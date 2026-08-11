@@ -560,8 +560,8 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
     if (command.transfer_charges) {
       await query(
         `UPDATE public.charge_postings
-         SET transfer_source = folio_id,
-             transfer_target = (
+         SET transfer_from_folio_id = folio_id,
+             transfer_to_folio_id = (
                SELECT folio_id FROM public.folios
                WHERE reservation_id = $3 AND tenant_id = $1
                  AND folio_status = 'OPEN'
@@ -571,7 +571,7 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
          WHERE tenant_id = $1
            AND reservation_id = $3
            AND is_voided = false
-           AND transfer_source IS NULL`,
+           AND transfer_from_folio_id IS NULL`,
         [context.tenantId, command.from_room_id, command.reservation_id],
       );
     }

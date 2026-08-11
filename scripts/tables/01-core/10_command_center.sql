@@ -156,6 +156,11 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('rooms.out_of_service', 'Mark a room out of service', 'rooms-service', ARRAY['core']),
         ('rooms.move', 'Move a guest between rooms', 'rooms-service', ARRAY['core']),
         ('rooms.features.update', 'Update room features and amenities', 'rooms-service', ARRAY['core']),
+        ('rooms.key.issue', 'Issue a room key for a reservation', 'rooms-service', ARRAY['core']),
+        ('rooms.key.revoke', 'Revoke an issued room key', 'rooms-service', ARRAY['core']),
+        ('inventory.lock.room', 'Lock room inventory for a reservation', 'availability-guard-service', ARRAY['core']),
+        ('inventory.release.room', 'Release a room inventory lock', 'availability-guard-service', ARRAY['core']),
+        ('inventory.release.bulk', 'Release room inventory locks in bulk', 'availability-guard-service', ARRAY['core']),
         ('housekeeping.task.assign', 'Assign housekeeping task', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('housekeeping.task.complete', 'Complete housekeeping task workflow', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('housekeeping.task.create', 'Create housekeeping task', 'housekeeping-service', ARRAY['facility-maintenance']),
@@ -183,15 +188,25 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('settings.value.approve', 'Approve a pending setting value', 'settings-service', ARRAY['core']),
         ('settings.value.revert', 'Revert a setting value', 'settings-service', ARRAY['core']),
         ('integration.ota.sync_request', 'Request an OTA sync', 'reservations-command-service', ARRAY['marketing-channel']),
+        ('integration.ota.content_sync', 'Sync property/room content to an OTA', 'reservations-command-service', ARRAY['marketing-channel']),
         ('integration.ota.rate_push', 'Push OTA rates', 'reservations-command-service', ARRAY['marketing-channel']),
         ('integration.webhook.retry', 'Retry a webhook delivery', 'reservations-command-service', ARRAY['marketing-channel']),
         ('integration.mapping.update', 'Update integration mapping', 'reservations-command-service', ARRAY['marketing-channel']),
         ('analytics.metric.ingest', 'Ingest analytics metric', 'analytics-command-service', ARRAY['analytics-bi']),
         ('analytics.report.schedule', 'Schedule analytics report', 'analytics-command-service', ARRAY['analytics-bi']),
-        ('operations.maintenance.request', 'Create maintenance request', 'operations-command-service', ARRAY['facility-maintenance']),
+        -- Target is housekeeping-service because that is where the handlers
+        -- live. No consumer claims 'operations-command-service', and a command
+        -- whose target no consumer matches is dropped by shouldProcess().
+        ('operations.maintenance.request', 'Create maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
+        ('operations.maintenance.assign', 'Assign a maintenance request to a technician', 'housekeeping-service', ARRAY['facility-maintenance']),
+        ('operations.maintenance.complete', 'Complete a maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
+        ('operations.maintenance.escalate', 'Escalate a maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('operations.incident.report', 'Report an incident', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.asset.update', 'Update asset status or location', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.inventory.adjust', 'Adjust inventory levels', 'operations-command-service', ARRAY['facility-maintenance']),
+        ('reservation.mobile_checkin.start', 'Begin mobile check-in for a reservation', 'reservations-command-service', ARRAY['core']),
+        ('reservation.mobile_checkin.complete', 'Complete mobile check-in for a reservation', 'reservations-command-service', ARRAY['core']),
+        ('reservation.generate_registration_card', 'Generate the guest registration card', 'reservations-command-service', ARRAY['core']),
         ('reservation.waitlist_offer', 'Offer a freed room to a waitlisted guest', 'reservations-command-service', ARRAY['core']),
         ('reservation.waitlist_expire_sweep', 'Sweep and expire stale waitlist offers', 'reservations-command-service', ARRAY['core']),
         ('reservation.walk_guest', 'Walk a guest to an alternate property or compensation', 'reservations-command-service', ARRAY['core']),
@@ -249,6 +264,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('operations.schedule.update', 'Update an existing staff schedule entry', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('compliance.breach.report', 'Report a data breach incident', 'core-service', ARRAY['core']),
         ('compliance.breach.notify', 'Notify authority/subjects of a data breach', 'core-service', ARRAY['core']),
+        ('loyalty.program.enroll', 'Enrol a guest into a loyalty program', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.earn', 'Earn loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.redeem', 'Redeem loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.expire_sweep', 'Sweep and expire stale loyalty points', 'guests-service', ARRAY['loyalty']),
@@ -333,7 +349,15 @@ SELECT
     sc.required_modules,
     jsonb_build_object('seeded', true)
 FROM seed_commands sc
-ON CONFLICT (command_name) DO NOTHING;
+-- Corrective, not insert-only. DO NOTHING meant that fixing a command's target
+-- service or module gating here only ever reached a freshly created database —
+-- every existing one silently kept the wrong value. Only the catalog-owned
+-- columns are refreshed; payload_schema and sample_payload are left alone.
+ON CONFLICT (command_name) DO UPDATE SET
+    description            = EXCLUDED.description,
+    default_target_service = EXCLUDED.default_target_service,
+    required_modules       = EXCLUDED.required_modules,
+    updated_at             = NOW();
 
 INSERT INTO command_routes (command_name, environment, tenant_id, service_id, topic, metadata)
 SELECT
@@ -351,6 +375,22 @@ WHERE NOT EXISTS (
       AND cr.environment = 'development'
       AND cr.tenant_id IS NULL
 );
+
+-- Re-point routes this script created at the template's current target service,
+-- so a corrected default_target_service actually takes effect. Scoped to rows
+-- tagged 'seeded': operator and tenant-specific overrides are the whole reason
+-- command_routes exists and must not be overwritten.
+UPDATE command_routes cr
+   SET service_id = ct.default_target_service,
+       topic      = ct.default_topic,
+       updated_at = NOW()
+  FROM command_templates ct
+ WHERE cr.command_name = ct.command_name
+   AND cr.environment = 'development'
+   AND cr.tenant_id IS NULL
+   AND cr.metadata->>'seeded' = 'true'
+   AND (cr.service_id IS DISTINCT FROM ct.default_target_service
+        OR cr.topic IS DISTINCT FROM ct.default_topic);
 
 INSERT INTO command_features (command_name, environment, tenant_id, status, metadata)
 SELECT

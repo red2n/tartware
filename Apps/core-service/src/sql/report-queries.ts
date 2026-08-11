@@ -1,7 +1,7 @@
 export const RESERVATION_STATUS_SUMMARY_SQL = `
   SELECT
     r.status,
-    COUNT(*) AS count
+    COUNT(r.id) AS count
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL
@@ -34,7 +34,7 @@ export const REVENUE_SUMMARY_SQL = `
 export const RESERVATION_SOURCE_SUMMARY_SQL = `
   SELECT
     r.source,
-    COUNT(*) AS reservations,
+    COUNT(r.id) AS reservations,
     COALESCE(SUM(r.total_amount), 0) AS total_amount
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
@@ -65,7 +65,7 @@ export const OCCUPANCY_REPORT_SQL = `
     SELECT generate_series($3::date, $4::date, '1 day'::interval)::date AS d
   ),
   total_rooms AS (
-    SELECT COUNT(*) AS cnt
+    SELECT COUNT(id) AS cnt
     FROM public.rooms
     WHERE COALESCE(is_deleted, false) = false
       AND deleted_at IS NULL
@@ -108,7 +108,7 @@ export const OCCUPANCY_REPORT_SQL = `
  */
 export const REVENUE_KPI_SQL = `
   WITH total_rooms AS (
-    SELECT COUNT(*) AS cnt
+    SELECT COUNT(id) AS cnt
     FROM public.rooms
     WHERE COALESCE(is_deleted, false) = false
       AND deleted_at IS NULL
@@ -210,7 +210,7 @@ export const ARRIVALS_LIST_SQL = `
 `;
 
 export const ARRIVALS_COUNT_SQL = `
-  SELECT COUNT(*) AS total
+  SELECT COUNT(r.id) AS total
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL
@@ -259,7 +259,7 @@ export const DEPARTURES_LIST_SQL = `
 `;
 
 export const DEPARTURES_COUNT_SQL = `
-  SELECT COUNT(*) AS total
+  SELECT COUNT(r.id) AS total
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL
@@ -306,7 +306,7 @@ export const IN_HOUSE_LIST_SQL = `
 `;
 
 export const IN_HOUSE_COUNT_SQL = `
-  SELECT COUNT(*) AS total
+  SELECT COUNT(r.id) AS total
   FROM public.reservations r
   WHERE COALESCE(r.is_deleted, false) = false
     AND r.deleted_at IS NULL

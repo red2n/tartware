@@ -79,6 +79,31 @@ export function reservationStatusClass(status: string): string {
 	}
 }
 
+/**
+ * Badge class for an individual room block's status.
+ *
+ * Distinct from groupBlockStatusClass: a group's block_status
+ * (DEFINITE/TENTATIVE/…) and a room block's block_status
+ * (active/pending/released/sold_out/cancelled) are different vocabularies, and
+ * mapping one through the other leaves most values unstyled.
+ */
+export function roomBlockStatusClass(status: string): string {
+	switch (status?.toUpperCase()) {
+		case "ACTIVE":
+			return "badge-success";
+		case "SOLD_OUT":
+			return "badge-accent";
+		case "PENDING":
+			return "badge-warning";
+		case "RELEASED":
+			return "badge-muted";
+		case "CANCELLED":
+			return "badge-danger";
+		default:
+			return "";
+	}
+}
+
 export function groupBlockStatusClass(status: string): string {
 	switch (status?.toUpperCase()) {
 		case "DEFINITE":

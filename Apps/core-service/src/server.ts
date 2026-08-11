@@ -19,6 +19,7 @@ import { registerComplianceRoutes } from "./routes/compliance.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerDirectBookingRoutes } from "./routes/direct-booking.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerModuleRequestRoutes } from "./routes/module-requests.js";
 import { registerModuleRoutes } from "./routes/modules.js";
 import { registerNightAuditRoutes, registerOtaRoutes } from "./routes/night-audit.js";
 import {
@@ -46,6 +47,7 @@ import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerUiPreferencesRoutes } from "./routes/ui-preferences.js";
 import { registerUserTenantAssociationRoutes } from "./routes/user-tenant-associations.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { registerWebhookRoutes } from "./routes/webhooks.js";
 
 export const buildServer = (): FastifyInstance => {
   ensureEncryptionRequirementsMet();
@@ -90,6 +92,8 @@ export const buildServer = (): FastifyInstance => {
       registerReservationRoutes(app);
       registerReportRoutes(app);
       registerModuleRoutes(app);
+      registerModuleRequestRoutes(app);
+      registerWebhookRoutes(app);
       registerBookingConfigRoutes(app);
       registerComplianceRoutes(app);
       registerNightAuditRoutes(app);

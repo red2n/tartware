@@ -99,17 +99,18 @@ export const setupGroupBilling = async (
       await queryWithClient(
         client,
         `INSERT INTO folio_routing_rules (
-            tenant_id, property_id, reservation_id,
-            charge_code_pattern, target_folio_id,
-            routing_percent, priority, is_active,
+            tenant_id, property_id, source_reservation_id, rule_name,
+            charge_code_pattern, destination_folio_id,
+            routing_percentage, priority, is_active,
             created_by, updated_by
           ) VALUES (
-            $1::uuid, $2::uuid, $3::uuid,
+            $1::uuid, $2::uuid, $3::uuid, 'Group master — room charges',
             'ROOM%', $4::uuid,
             $5, 10, TRUE,
             $6::uuid, $6::uuid
           )
-          ON CONFLICT (tenant_id, reservation_id, charge_code_pattern, target_folio_id) DO NOTHING`,
+          ON CONFLICT (tenant_id, source_reservation_id, charge_code_pattern, destination_folio_id)
+            WHERE is_deleted = FALSE AND source_reservation_id IS NOT NULL DO NOTHING`,
         [
           tenantId,
           command.property_id,
@@ -125,17 +126,18 @@ export const setupGroupBilling = async (
         await queryWithClient(
           client,
           `INSERT INTO folio_routing_rules (
-              tenant_id, property_id, reservation_id,
-              charge_code_pattern, target_folio_id,
-              routing_percent, priority, is_active,
+              tenant_id, property_id, source_reservation_id, rule_name,
+              charge_code_pattern, destination_folio_id,
+              routing_percentage, priority, is_active,
               created_by, updated_by
             ) VALUES (
-              $1::uuid, $2::uuid, $3::uuid,
+              $1::uuid, $2::uuid, $3::uuid, 'Group master — incidentals',
               '%', $4::uuid,
               100, 20, TRUE,
               $5::uuid, $5::uuid
             )
-            ON CONFLICT (tenant_id, reservation_id, charge_code_pattern, target_folio_id) DO NOTHING`,
+            ON CONFLICT (tenant_id, source_reservation_id, charge_code_pattern, destination_folio_id)
+            WHERE is_deleted = FALSE AND source_reservation_id IS NOT NULL DO NOTHING`,
           [tenantId, command.property_id, res.id, masterFolioId, actorId],
         );
       }
@@ -256,7 +258,7 @@ export const checkoutGroup = async (payload: unknown, context: CommandContext): 
     // Update group booking status
     await queryWithClient(
       client,
-      `UPDATE group_bookings SET status = 'CHECKED_OUT', updated_at = NOW()
+      `UPDATE group_bookings SET block_status = 'CHECKED_OUT', updated_at = NOW()
         WHERE group_booking_id = $1::uuid AND tenant_id = $2::uuid`,
       [command.group_booking_id, tenantId],
     );
@@ -302,17 +304,18 @@ export const addReservationToGroup = async (
 
   await query(
     `INSERT INTO folio_routing_rules (
-        tenant_id, property_id, reservation_id,
-        charge_code_pattern, target_folio_id,
-        routing_percent, priority, is_active,
+        tenant_id, property_id, source_reservation_id, rule_name,
+        charge_code_pattern, destination_folio_id,
+        routing_percentage, priority, is_active,
         created_by, updated_by
       ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid,
+        $1::uuid, $2::uuid, $3::uuid, 'Group master — room charges',
         'ROOM%', $4::uuid,
         100, 10, TRUE,
         $5::uuid, $5::uuid
       )
-      ON CONFLICT (tenant_id, reservation_id, charge_code_pattern, target_folio_id) DO NOTHING`,
+      ON CONFLICT (tenant_id, source_reservation_id, charge_code_pattern, destination_folio_id)
+            WHERE is_deleted = FALSE AND source_reservation_id IS NOT NULL DO NOTHING`,
     [tenantId, command.property_id, command.reservation_id, masterFolioId, actorId],
   );
 

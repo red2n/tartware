@@ -16,6 +16,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { filterBySearch } from "../../shared/search-utils";
 
 type ServiceTab = "all" | string;
 
@@ -67,13 +68,12 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 		}
 
 		if (query) {
-			items = items.filter(
-				(c) =>
-					c.command_name.toLowerCase().includes(query) ||
-					c.label.toLowerCase().includes(query) ||
-					c.description.toLowerCase().includes(query) ||
-					c.default_target_service.toLowerCase().includes(query),
-			);
+			items = filterBySearch(items, query, (c) => [
+				c.command_name,
+				c.label,
+				c.description,
+				c.default_target_service,
+			]);
 		}
 
 		return items;

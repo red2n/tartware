@@ -202,7 +202,7 @@ export const defaultNightAuditSteps: NightAuditStep[] = [
     name: "validate_open_business_date",
     run: async (ctx, client) => {
       const { rows } = await client.query<{ count: string }>(
-        `SELECT COUNT(*)::text AS count
+        `SELECT COUNT(id)::text AS count
          FROM reservations
          WHERE tenant_id = $1::uuid
            AND property_id = $2::uuid
@@ -296,7 +296,7 @@ export const defaultNightAuditSteps: NightAuditStep[] = [
         `SELECT
            COALESCE(SUM(debit_amount),  0)::numeric AS total_debit,
            COALESCE(SUM(credit_amount), 0)::numeric AS total_credit,
-           COUNT(*)::text                           AS entry_count
+           COUNT(gl_entry_id)::text                           AS entry_count
          FROM public.general_ledger_entries
          WHERE gl_batch_id = $1::uuid
            AND status NOT IN ('VOIDED')

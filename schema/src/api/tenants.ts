@@ -226,6 +226,13 @@ export const MODULE_IDS = [
 	"analytics-bi",
 	"marketing-channel",
 	"enterprise-api",
+	// Gated commands already reference these three (revenue-management: 32
+	// commands, loyalty: 4, distribution: 3). Without them here no tenant can
+	// enable the module, so every one of those commands answers 403
+	// COMMAND_MODULES_NOT_ENABLED and is permanently undispatchable.
+	"revenue-management",
+	"loyalty",
+	"distribution",
 ] as const;
 
 /** A valid module identifier. */
@@ -245,4 +252,62 @@ export interface ModuleDefinition {
 export interface TenantModulesResponse {
 	tenantId: string;
 	modules: ModuleId[];
+}
+
+// =====================================================
+// MODULE ACCESS REQUESTS
+// =====================================================
+
+/** Lifecycle of a staff request to have a module switched on. */
+export const MODULE_REQUEST_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
+
+export const ModuleRequestStatusSchema = z.enum(MODULE_REQUEST_STATUSES);
+
+export type ModuleRequestStatus = (typeof MODULE_REQUEST_STATUSES)[number];
+
+/** Body for POST /v1/tenants/:tenantId/module-requests. */
+export const CreateModuleRequestSchema = z.object({
+	moduleId: z.enum(MODULE_IDS),
+	/** Screen key the requester was blocked on — context for the reviewing admin. */
+	requestedScreen: z.string().max(100).optional(),
+	propertyId: z.string().uuid().optional(),
+	reason: z.string().max(1000).optional(),
+});
+
+export type CreateModuleRequest = z.infer<typeof CreateModuleRequestSchema>;
+
+/** Body for the approve/reject endpoints. */
+export const ReviewModuleRequestSchema = z.object({
+	notes: z.string().max(1000).optional(),
+});
+
+export type ReviewModuleRequest = z.infer<typeof ReviewModuleRequestSchema>;
+
+/**
+ * A request as the UI renders it. Names are resolved server-side so neither
+ * the requester's panel nor the admin's queue has to join users or hold a copy
+ * of the module registry.
+ */
+export interface ModuleAccessRequest {
+	id: string;
+	tenantId: string;
+	propertyId: string | null;
+	moduleId: ModuleId;
+	/** Display name from the module registry, e.g. "Analytics & BI". */
+	moduleName: string;
+	requestedBy: string;
+	requestedByName: string;
+	requestedScreen: string | null;
+	reason: string | null;
+	status: ModuleRequestStatus;
+	reviewedBy: string | null;
+	reviewedByName: string | null;
+	reviewedAt: string | null;
+	reviewNotes: string | null;
+	createdAt: string;
+}
+
+/** Response payload for the module request list endpoints. */
+export interface ModuleAccessRequestListResponse {
+	requests: ModuleAccessRequest[];
 }

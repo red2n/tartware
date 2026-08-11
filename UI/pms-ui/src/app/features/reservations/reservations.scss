@@ -9,10 +9,10 @@
 }
 
 /* ── Reservation Pipeline — icon colors per section ── */
-.res-section-arrivals .overview-label mat-icon { color: var(--fgColor-accent); }
-.res-section-inhouse .overview-label mat-icon { color: var(--fgColor-success); }
-.res-section-departures .overview-label mat-icon { color: var(--fgColor-attention); }
-.res-section-revenue .overview-label mat-icon { color: var(--fgColor-done); }
+.res-section-arrivals .overview-label app-icon { color: var(--fgColor-accent); }
+.res-section-inhouse .overview-label app-icon { color: var(--fgColor-success); }
+.res-section-departures .overview-label app-icon { color: var(--fgColor-attention); }
+.res-section-revenue .overview-label app-icon { color: var(--fgColor-done); }
 
 .confirmation-number {
   font-weight: var(--base-text-weight-semibold);
@@ -33,18 +33,9 @@
   flex-shrink: 0;
 }
 
-.guest-cell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-2);
-}
 
 .guest-name {
   font-weight: var(--base-text-weight-medium);
-}
-
-.text-center {
-  text-align: center;
 }
 
 

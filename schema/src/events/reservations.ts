@@ -74,6 +74,20 @@ const ReservationCreatePayloadSchema = z.object({
 	total_amount: z.coerce.number().nonnegative(),
 	currency: ReservationsSchema.shape.currency.optional(),
 	notes: ReservationsSchema.shape.internal_notes.optional(),
+	/** Estimated time of arrival, HH:MM (persisted to reservations.eta). */
+	eta: z
+		.string()
+		.regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format")
+		.optional(),
+	/** Corporate account this booking belongs to (companies.id). */
+	company_id: z.string().uuid().optional(),
+	/** Travel agent that produced this booking (travel_agents.id). */
+	travel_agent_id: z.string().uuid().optional(),
+	/**
+	 * USALI market segment attribution captured at booking time
+	 * (market_segments.segment_id). Null/absent = unclassified.
+	 */
+	market_segment_id: z.string().uuid().optional(),
 	/**
 	 * Snapshot of the rate plan's cancellation_policy captured at booking time.
 	 * Frozen so subsequent rate-plan edits don't retroactively change the

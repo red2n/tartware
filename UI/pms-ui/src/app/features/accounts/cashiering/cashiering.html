@@ -1,6 +1,6 @@
 <div class="cashiering-page">
   <app-page-header title="Cashiering" description="Cashier sessions, shift management, and float reconciliation">
-    <button class="btn btn-primary btn-sm" (click)="toggleOpenForm()" [pTooltip]="'Open new cashier session' | translate">
+    <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleOpenForm()" [pTooltip]="'Open new cashier session' | translate">
       <app-icon name="add" /> {{ 'Open Session' | translate }}
     </button>
     <button class="btn btn-invisible" (click)="loadSessions()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh cashier sessions' | translate">
@@ -10,7 +10,7 @@
 
   <!-- ═══ OPEN SESSION FORM ═══ -->
   @if (showOpenForm()) {
-    <div class="action-form">
+    <div class="action-form" appUnsavedGuard appSubmitOnEnter>
       <h3>{{ 'Open Cashier Session' | translate }}</h3>
       <div class="form-grid">
         <div class="form-field">
@@ -43,7 +43,7 @@
           @if (openingSession()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
           {{ 'Open Session' | translate }}
         </button>
-        <button class="btn btn-outline btn-sm" (click)="toggleOpenForm()">{{ 'Cancel' | translate }}</button>
+        <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleOpenForm()">{{ 'Cancel' | translate }}</button>
       </div>
     </div>
   }
@@ -60,7 +60,9 @@
         @if ($index < 3) { <div class="overview-divider"></div> }
       }
     </div>
-  } @else if (sessions().length > 0) {
+  } @else {
+    <!-- Rendered even with no data: the summary reduces to zeros, and a KPI
+         strip that vanishes reads as a broken page rather than an empty set. -->
     <div class="kpi-grid">
       <div class="kpi-card cashier-kpi-total">
         <app-icon name="point_of_sale" />
@@ -175,7 +177,7 @@
             @if (selectedSessionId() === session.session_id) {
               <tr class="close-form-row">
                 <td colspan="10">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Session Details' | translate }} — {{ session.session_number }}</span>
                     @if (loadingSessionDetail()) {
                       <div class="loading-state">
@@ -355,7 +357,7 @@
             @if (closingSessionId() === session.session_id) {
               <tr class="close-form-row">
                 <td colspan="10">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Close session' | translate }} {{ session.session_number }}</span>
                     <div class="form-inline-fields">
                       <div class="form-field">
@@ -389,7 +391,7 @@
             @if (handoveringSessionId() === session.session_id) {
               <tr class="close-form-row">
                 <td colspan="10">
-                  <div class="inline-close-form">
+                  <div class="inline-close-form" appUnsavedGuard>
                     <span class="form-label">{{ 'Shift Handover' | translate }} — {{ session.session_number }}</span>
                     <p class="form-hint">{{ 'Close outgoing session and open incoming session atomically.' | translate }}</p>
                     <div class="form-section-title">{{ 'Outgoing Reconciliation' | translate }}</div>

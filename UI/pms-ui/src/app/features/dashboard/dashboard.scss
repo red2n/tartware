@@ -1,45 +1,14 @@
 @use 'mixins' as *;
 
 /* Dashboard — component-specific overrides.
- * Reusable patterns (stat-grid, detail-card, badges, etc.) live in styles/shared.scss. */
+ * Reusable patterns (overview-bar, detail-card, stat rows, policy flags,
+ * timeline, skeletons, badges) all live in styles/shared.scss. */
 
 .dashboard-page {
   max-width: 1600px;
 }
 
-/* ── Property meta strip (check-in/out times + feature flags) ── */
-.dashboard-meta-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--base-size-8);
-  align-items: center;
-  margin-top: var(--base-size-16);
-  margin-bottom: var(--base-size-16);
-}
-
-.dashboard-meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--control-small-gap);
-  font-size: var(--text-body-size-small);
-  color: var(--fgColor-muted);
-  background: var(--bgColor-muted);
-  border: 1px solid var(--borderColor-muted);
-  border-radius: var(--borderRadius-full);
-  padding: var(--control-small-paddingBlock) var(--control-small-paddingInline-normal);
-
-  mat-icon {
-    @include icon-size(14px);
-  }
-}
-
-.dashboard-meta-active {
-  background: var(--bgColor-success-muted);
-  border-color: var(--borderColor-success-muted);
-  color: var(--fgColor-success);
-}
-
-/* ── KPI icon colors ── */
+/* ── KPI icon colors — one hue per metric, reused by the overview bar ── */
 .kpi-icon {
   @include icon-size(20px);
   color: var(--fgColor-accent);
@@ -83,10 +52,12 @@
 
 .kpi-sub {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--base-size-8);
+  min-height: var(--base-size-20); // keeps tiles aligned when a badge is absent
 }
 
-/* ── Activity Sparkline ── */
+/* ── Booking activity sparkline ── */
 .sparkline-svg {
   width: 120px;
   height: var(--control-small-size);
@@ -121,51 +92,25 @@
   flex-direction: column;
   gap: var(--base-size-8);
   align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
-/* ── Dashboard two-column layout (main grid + activity row below) ── */
-
+/* ── Layout: operational card grid, then the activity/tasks row ── */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--base-size-16);
-  margin-top: var(--base-size-16);
+  align-items: start;
 }
 
-/* Activity + Tasks side-by-side row below the grid */
+/* Card chrome — header, clickable/panel behaviour — lives in app-stat-card. */
 .dashboard-activity-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--base-size-16);
   margin-top: var(--base-size-16);
   align-items: start;
-
-  > .detail-card,
-  > .changelog-panel {
-    min-height: 240px;
-    max-height: 520px;
-    overflow-y: auto;
-  }
-}
-
-/* Card title with icon — shared between grid cards and changelog headers */
-.dashboard-grid .card-title,
-.changelog-header .card-title {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-
-  mat-icon {
-    @include icon-size(18px);
-    color: var(--fgColor-muted);
-  }
-}
-
-/* Changelog header — title left, refresh button right */
-.changelog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .changelog-refresh-btn {
@@ -174,25 +119,10 @@
   padding: var(--base-size-2);
   color: var(--fgColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(16px);
   }
-
-  mat-spinner {
-    display: inline-flex;
-  }
 }
-
-.changelog-title-icon {
-  @include icon-size(18px);
-  color: var(--fgColor-muted);
-}
-
-.changelog-body {
-  padding-top: var(--base-size-4); // small breathing room between header and first item
-}
-
-// Timeline, skeleton, and changelog styles live in styles/shared.scss.
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {

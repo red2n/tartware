@@ -1,0 +1,44 @@
+@use 'mixins' as *;
+
+/* The host adds no box, so .detail-card is the grid/flex item in whatever
+   layout the feature drops the card into. */
+:host {
+  display: contents;
+}
+
+/* Title left, affordance + actions right — the shared .card-header-flex uses
+   space-between, which would spread three children apart. */
+.stat-card-header {
+  justify-content: flex-start;
+}
+
+.stat-card-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin-left: auto;
+  /* Lifts header controls above the stretched title link on clickable cards,
+     so a card that navigates can still carry its own buttons. */
+  position: relative;
+  z-index: 1;
+}
+
+/* Decorative title icon — muted, matched to the title's cap height. */
+.card-title app-icon {
+  @include icon-size(18px);
+  color: var(--fgColor-muted);
+}
+
+/* ── Panel variant — fixed height with an internally scrolling body ── */
+.stat-card-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  max-height: 520px;
+}
+
+.stat-card-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: var(--base-size-4); // breathing room between header and first item
+}

@@ -112,7 +112,7 @@ export const GROUP_EVALUATE_SQL = `
       AND r.check_out_date <= bd.block_end
   ),
   denied_demand AS (
-    SELECT COUNT(*) AS denied_bookings
+    SELECT COUNT(r.id) AS denied_bookings
     FROM reservations r, block_dates bd
     WHERE r.tenant_id = $1::uuid
       AND r.property_id = $2::uuid

@@ -128,8 +128,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
 
       // Get total rooms for occupancy calculation
       const roomsQuery = effectivePropertyId
-        ? `SELECT COUNT(*) as total_rooms FROM rooms WHERE tenant_id = $1 AND property_id = $2 AND is_deleted = false`
-        : `SELECT COUNT(*) as total_rooms FROM rooms WHERE tenant_id = $1 AND is_deleted = false`;
+        ? `SELECT COUNT(id) as total_rooms FROM rooms WHERE tenant_id = $1 AND property_id = $2 AND is_deleted = false`
+        : `SELECT COUNT(id) as total_rooms FROM rooms WHERE tenant_id = $1 AND is_deleted = false`;
       const roomsParams = effectivePropertyId ? [tenant_id, effectivePropertyId] : [tenant_id];
       const roomsResult = await query<{ total_rooms: string }>(roomsQuery, roomsParams);
       const totalRooms = parseInt(roomsResult.rows[0]?.total_rooms || "0", 10);
@@ -184,8 +184,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       // pending = still awaiting check-in (CONFIRMED + PENDING)
       const checkInsQuery = effectivePropertyId
         ? `SELECT
-             COUNT(*) as total,
-             COUNT(*) FILTER (WHERE status IN ('CONFIRMED', 'PENDING')) as pending
+             COUNT(id) as total,
+             COUNT(id) FILTER (WHERE status IN ('CONFIRMED', 'PENDING')) as pending
            FROM reservations
            WHERE tenant_id = $1
            AND property_id = $2
@@ -193,8 +193,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            AND status IN ('CONFIRMED', 'PENDING', 'CHECKED_IN')
            AND is_deleted = false`
         : `SELECT
-             COUNT(*) as total,
-             COUNT(*) FILTER (WHERE status IN ('CONFIRMED', 'PENDING')) as pending
+             COUNT(id) as total,
+             COUNT(id) FILTER (WHERE status IN ('CONFIRMED', 'PENDING')) as pending
            FROM reservations
            WHERE tenant_id = $1
            AND check_in_date = CURRENT_DATE
@@ -214,8 +214,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
       // pending = still awaiting check-out (CHECKED_IN)
       const checkOutsQuery = effectivePropertyId
         ? `SELECT
-             COUNT(*) as total,
-             COUNT(*) FILTER (WHERE status = 'CHECKED_IN') as pending
+             COUNT(id) as total,
+             COUNT(id) FILTER (WHERE status = 'CHECKED_IN') as pending
            FROM reservations
            WHERE tenant_id = $1
            AND property_id = $2
@@ -223,8 +223,8 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
            AND status IN ('CHECKED_IN', 'CHECKED_OUT')
            AND is_deleted = false`
         : `SELECT
-             COUNT(*) as total,
-             COUNT(*) FILTER (WHERE status = 'CHECKED_IN') as pending
+             COUNT(id) as total,
+             COUNT(id) FILTER (WHERE status = 'CHECKED_IN') as pending
            FROM reservations
            WHERE tenant_id = $1
            AND check_out_date = CURRENT_DATE
@@ -474,7 +474,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
 
       const countQuery = `
         WITH activity AS (
-          SELECT r.id::text FROM reservations r
+          SELECT r.id::text AS activity_id FROM reservations r
           WHERE r.tenant_id = $1::uuid AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
             AND r.is_deleted = false
             AND (r.created_at > NOW() - INTERVAL '48 hours'
@@ -510,7 +510,7 @@ export const registerDashboardRoutes = (app: FastifyInstance): void => {
           WHERE ht.tenant_id = $1::uuid AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
             AND ht.status IN ('CLEAN', 'INSPECTED', 'IN_PROGRESS')
             AND COALESCE(ht.completed_at, ht.updated_at, ht.created_at) > NOW() - INTERVAL '48 hours'
-        ) SELECT COUNT(*)::int AS total FROM activity`;
+        ) SELECT COUNT(activity_id)::int AS total FROM activity`;
 
       const [activityResult, countResult] = await Promise.all([
         query(activityQuery, [tenant_id, propertyFilter, limit, offset]),

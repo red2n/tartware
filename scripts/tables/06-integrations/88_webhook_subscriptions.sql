@@ -77,4 +77,9 @@ COMMENT ON COLUMN webhook_subscriptions.last_failure_at IS 'Timestamp of the mos
 COMMENT ON COLUMN webhook_subscriptions.success_count IS 'Total number of successful webhook deliveries';
 COMMENT ON COLUMN webhook_subscriptions.failure_count IS 'Total number of failed webhook deliveries';
 
+-- Optimistic concurrency counter. INTEGER so the shared enforce_version_lock()
+-- trigger applies. Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE webhook_subscriptions ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+COMMENT ON COLUMN webhook_subscriptions.version IS 'Optimistic concurrency counter';
+
 \echo 'webhook_subscriptions table created successfully!'

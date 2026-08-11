@@ -15,7 +15,12 @@ import type {
   ReservationWalkInCheckInCommand,
 } from "../../schemas/reservation-command.js";
 import { resolveRatePlan } from "../../services/rate-plan-service.js";
-import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
+import {
+  hashIdentifier,
+  recordAuditLog,
+  recordFlowApproval,
+  redactPayload,
+} from "../../utils/audit.js";
 import {
   type CreateReservationResult,
   DEFAULT_CURRENCY,
@@ -37,7 +42,7 @@ import {
 export const checkInReservation = async (
   tenantId: string,
   command: ReservationCheckInCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and status allows check-in
   const resResult = await query(
@@ -67,12 +72,64 @@ export const checkInReservation = async (
     );
   }
 
+  // A guest marked NO_SHOW who then turns up is a routine front-desk situation,
+  // so force=true reinstates them. It deliberately does not extend to CHECKED_IN
+  // (already in-house), CHECKED_OUT (stay is over) or CANCELLED (needs an
+  // explicit reinstatement, not a side effect of check-in).
   const allowedStatuses = ["PENDING", "CONFIRMED"];
-  if (!allowedStatuses.includes(reservation.status)) {
+  const forceReinstatableStatuses = ["NO_SHOW"];
+  const isForcedReinstatement =
+    Boolean(command.force) && forceReinstatableStatuses.includes(reservation.status);
+
+  if (!allowedStatuses.includes(reservation.status) && !isForcedReinstatement) {
+    const permitted = command.force ? "PENDING, CONFIRMED or NO_SHOW" : "PENDING or CONFIRMED";
     throw new ReservationCommandError(
       "INVALID_STATUS_FOR_CHECKIN",
-      `Cannot check in reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
+      `Cannot check in reservation with status ${reservation.status}; must be ${permitted}`,
     );
+  }
+
+  if (isForcedReinstatement) {
+    // Overriding a lifecycle guard is a financial/operational control bypass —
+    // log it the same way the deposit gate below does.
+    await recordFlowApproval({
+      tenantId,
+      propertyId: reservation.property_id ?? null,
+      flowName: "check_in",
+      gateName: "reservation_status_check",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      approvedBy: options.actorId ?? null,
+      roleAtApproval: "FORCE_OVERRIDE",
+      reasonCode: "FORCE_CHECK_IN_REINSTATE",
+      reasonNotes:
+        command.notes ??
+        `Check-in forced from status ${reservation.status}; reservation reinstated`,
+      correlationId: options.correlationId ?? null,
+    });
+
+    // Clear the no-show marks set by reservation.no_show, otherwise the
+    // reservation ends up CHECKED_IN while still flagged is_no_show with a
+    // penalty date. no_show_fee is left intact on purpose: the penalty charge
+    // may already be posted to the folio, and reversing money is a separate
+    // decision (charge void), not a side effect of the guest arriving.
+    // Best-effort, matching how no_show sets these columns.
+    try {
+      await query(
+        `UPDATE reservations
+            SET is_no_show = false,
+                no_show_date = NULL,
+                version = version + 1,
+                updated_at = NOW()
+          WHERE id = $1 AND tenant_id = $2`,
+        [command.reservation_id, tenantId],
+      );
+    } catch (err) {
+      reservationsLogger.warn(
+        { reservationId: command.reservation_id, error: err },
+        "Failed to clear no-show flags on forced check-in reinstatement",
+      );
+    }
   }
 
   // 2. Validate room is available and clean if room_id provided.
@@ -142,7 +199,24 @@ export const checkInReservation = async (
     }
   }
 
-  // 3. S26: Enforce blocking deposit schedules before check-in
+  // 3. S26: Enforce blocking deposit schedules before check-in.
+  // force=true is an operator override of a financial control, so it is logged
+  // to flow_approvals the same way night audit logs skip_preconditions.
+  if (command.force) {
+    await recordFlowApproval({
+      tenantId,
+      propertyId: reservation?.property_id ?? null,
+      flowName: "check_in",
+      gateName: "deposit_required_check",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      approvedBy: options.actorId ?? null,
+      roleAtApproval: "FORCE_OVERRIDE",
+      reasonCode: "FORCE_CHECK_IN",
+      reasonNotes: command.notes ?? "Check-in forced with force=true; deposit gate bypassed",
+      correlationId: options.correlationId ?? null,
+    });
+  }
   if (!command.force) {
     try {
       const blockingDeposits = await query<{
@@ -350,7 +424,7 @@ export const checkInReservation = async (
 export const checkOutReservation = async (
   tenantId: string,
   command: ReservationCheckOutCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and is CHECKED_IN
   const resResult = await query(
@@ -428,6 +502,23 @@ export const checkOutReservation = async (
           );
         }
       } else if (command.force) {
+        // Forcing check-out over an unsettled balance is an override of a
+        // financial control — record it before moving the money to AR.
+        await recordFlowApproval({
+          tenantId,
+          propertyId: reservation.property_id,
+          flowName: "check_out",
+          gateName: "folio_settlement_check",
+          entityType: "reservation",
+          entityId: command.reservation_id,
+          approvedBy: options.actorId ?? null,
+          roleAtApproval: "FORCE_OVERRIDE",
+          reasonCode: "FORCE_CHECK_OUT",
+          reasonNotes:
+            command.notes ??
+            `Check-out forced with unsettled balance ${folio.balance}; transferred to city-ledger AR`,
+          correlationId: options.correlationId ?? null,
+        });
         // Auto-transfer unsettled balance to city-ledger AR
         try {
           const arNumber = `CL-${command.reservation_id.slice(0, 8)}-${Date.now()}`;
@@ -697,17 +788,23 @@ export const checkOutReservation = async (
           flat_amount: number;
           company_id: string | null;
         }>(
-          `SELECT cr.commission_type, cr.default_rate, cr.room_rate,
-                  COALESCE(cr.flat_amount_per_booking, 0) AS flat_amount,
+          // commission_rules has no commission_type column: the shape of the
+          // rule is implied by which amount it carries. Aliased back to the
+          // names the caller destructures.
+          `SELECT CASE WHEN cr.flat_commission_amount IS NOT NULL THEN 'FLAT'
+                       ELSE 'PERCENTAGE' END AS commission_type,
+                  cr.overall_commission_rate AS default_rate,
+                  cr.room_commission_rate    AS room_rate,
+                  COALESCE(cr.flat_commission_amount, 0) AS flat_amount,
                   cr.company_id
            FROM commission_rules cr
            WHERE cr.tenant_id = $1
              AND cr.is_active = true
              AND (cr.company_id = (SELECT company_id FROM travel_agents WHERE agent_id = $2 AND tenant_id = $1 LIMIT 1)
                   OR cr.apply_to_all_agents = true)
-             AND (cr.effective_start IS NULL OR cr.effective_start <= CURRENT_DATE)
-             AND (cr.effective_end IS NULL OR cr.effective_end >= CURRENT_DATE)
-           ORDER BY cr.apply_to_all_agents ASC, cr.priority DESC
+             AND (cr.effective_from IS NULL OR cr.effective_from <= CURRENT_DATE)
+             AND (cr.effective_to IS NULL OR cr.effective_to >= CURRENT_DATE)
+           ORDER BY cr.apply_to_all_agents ASC, cr.rule_priority DESC
            LIMIT 1`,
           [tenantId, reservation.travel_agent_id],
         );
@@ -763,15 +860,17 @@ export const checkOutReservation = async (
         grossCommission = Math.round(grossCommission * 100) / 100;
         await withTransaction(async (client) => {
           await client.query(
+            // total_revenue is NOT NULL and is the base the commission is taken
+            // on; for a room-only commission that is the room revenue.
             `INSERT INTO travel_agent_commissions (
                tenant_id, property_id, reservation_id,
-               agent_id, company_id, commission_type, room_revenue,
-               room_commission_rate, gross_commission_amount,
+               agent_id, company_id, commission_type, room_revenue, total_revenue,
+               room_commission_rate, gross_commission,
                currency_code, payment_status,
                created_by, updated_by
              ) VALUES (
                $1::uuid, $2::uuid, $3::uuid,
-               $4::uuid, $5::uuid, $6, $7,
+               $4::uuid, $5::uuid, $6, $7, $7,
                $8, $9,
                'USD', 'PENDING',
                $10::uuid, $10::uuid
@@ -790,23 +889,29 @@ export const checkOutReservation = async (
             ],
           );
           await client.query(
+            // commission_tracking separates the commission lifecycle from the
+            // payment lifecycle; a new row only sets the former.
+            // commission_number, source_id and transaction_date are NOT NULL.
             `INSERT INTO commission_tracking (
                tenant_id, property_id, reservation_id,
+               commission_number, source_type, source_id, transaction_date,
                commission_type, beneficiary_type, beneficiary_id,
-               base_amount, commission_rate, calculated_amount,
-               final_amount, currency_code, status,
+               base_amount, commission_rate, commission_amount,
+               net_commission_amount, commission_currency, commission_status,
                created_by, updated_by
              ) VALUES (
                $1::uuid, $2::uuid, $3::uuid,
-               'booking', 'agent', $4::uuid,
-               $5, $6, $7,
-               $7, 'USD', 'pending',
-               $8::uuid, $8::uuid
+               $4, 'reservation', $3::uuid, CURRENT_DATE,
+               'booking', 'agent', $5::uuid,
+               $6, $7, $8,
+               $8, 'USD', 'pending',
+               $9::uuid, $9::uuid
              )`,
             [
               tenantId,
               reservation.property_id,
               command.reservation_id,
+              `CT-${new Date().getFullYear()}-${uuid().slice(0, 8).toUpperCase()}`,
               reservation.travel_agent_id ?? null,
               roomRevenue,
               commissionRate,
@@ -848,7 +953,7 @@ export const checkOutReservation = async (
 export const walkInCheckIn = async (
   tenantId: string,
   command: ReservationWalkInCheckInCommand,
-  options: { correlationId?: string } = {},
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const reservationId = uuid();
@@ -1029,7 +1134,7 @@ export const walkInCheckIn = async (
       await recordAuditLog({
         tenantId,
         propertyId: command.property_id,
-        actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+        actorId: options.actorId ?? SYSTEM_ACTOR_ID,
         action: "reservation.walkin_checkin",
         eventType: "CREATE",
         entityType: "reservation",

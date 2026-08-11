@@ -1,9 +1,4 @@
-<h2 class="dialog-title">
-	<app-icon class="dialog-title-icon" name="card_giftcard" />
-	{{ 'Create Package' | translate }}
-</h2>
-
-<div class="dialog-content">
+<app-dialog-shell icon="card_giftcard" heading="Create Package">
 	@if (error()) {
 		<div class="error-banner">{{ error() }}</div>
 	}
@@ -182,15 +177,15 @@
 			</div>
 		</div>
 	</div>
-</div>
 
-<div class="dialog-actions">
-	<button class="btn btn-text" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
-	<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
-		@if (saving()) {
-			<p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
-		} @else {
-			{{ 'Create Package' | translate }}
-		}
-	</button>
-</div>
+	<div class="dialog-actions" dialogFooter>
+		<button class="btn btn-invisible" unsavedClose (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
+		<button class="btn btn-primary" (click)="save()" [disabled]="!canSave || saving()">
+			@if (saving()) {
+				<p-progressSpinner [style]="{ width: '18px', height: '18px' }" />
+			} @else {
+				{{ 'Create Package' | translate }}
+			}
+		</button>
+	</div>
+</app-dialog-shell>

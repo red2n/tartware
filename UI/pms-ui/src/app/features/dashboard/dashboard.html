@@ -14,10 +14,55 @@
     </div>
   }
 
-  <!-- ── KPI Overview Bar — @defer until statsReady() ── -->
+  <!-- Property times & feature flags — settings-driven, always available.
+       Sits under the header like every other view's policy strip. -->
+  <div class="hk-policy-flags">
+    <span class="hk-policy-flag hk-policy-flag-muted">
+      <app-icon name="login" />
+      {{ 'Check-in' | translate }}: <strong>{{ checkInTime() }}</strong>
+    </span>
+    <span class="hk-policy-flag hk-policy-flag-muted">
+      <app-icon name="logout" />
+      {{ 'Check-out' | translate }}: <strong>{{ checkOutTime() }}</strong>
+    </span>
+    @if (timezone()) {
+      <span class="hk-policy-flag hk-policy-flag-muted">
+        <app-icon name="schedule" />
+        {{ timezone() }}
+      </span>
+    }
+    @if (starRating()) {
+      <span class="hk-policy-flag hk-policy-flag-muted">
+        <app-icon name="star" />
+        <span aria-hidden="true">{{ starRatingStars() }}</span>
+        <span class="sr-only">{{ starRating() }} {{ 'star property' | translate }}</span>
+      </span>
+    }
+    @if (mobileCheckinEnabled()) {
+      <span class="hk-policy-flag hk-policy-flag-success">
+        <app-icon name="smartphone" />
+        {{ 'Mobile Check-In' | translate }}
+      </span>
+    }
+    @if (revenueForecastEnabled()) {
+      <span class="hk-policy-flag hk-policy-flag-success">
+        <app-icon name="auto_graph" />
+        {{ 'Revenue Forecast' | translate }}
+      </span>
+    }
+    @if (dynamicPricingEnabled()) {
+      <span class="hk-policy-flag hk-policy-flag-success">
+        <app-icon name="dynamic_feed" />
+        {{ 'Dynamic Pricing' | translate }}
+      </span>
+    }
+  </div>
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- KPI OVERVIEW BAR                             -->
+  <!-- ═════════════════════════════════════════════ -->
   @defer (when statsReady()) {
     @if (stats(); as s) {
-      <!-- KPI Overview -->
       <div class="overview-bar">
         <!-- Occupancy -->
         <div class="overview-section">
@@ -48,344 +93,109 @@
         <div class="overview-divider"></div>
 
         <!-- Check-ins -->
-        <div class="overview-section clickable" (click)="navigateToReservations()">
+        <a class="overview-section clickable" routerLink="/reservations">
           <div class="overview-label">
             <app-icon class="kpi-icon kpi-icon-checkin" name="flight_land" />
             <span>{{ 'Arrivals Today' | translate }}</span>
+            <span class="overview-link-icon"><app-icon name="open_in_new" /></span>
           </div>
           <div class="overview-value">{{ s.checkIns.total }}</div>
           <div class="kpi-sub">
-            <span class="badge badge-warning">{{ s.checkIns.pending }} {{ 'pending' | translate }}</span>
+            @if (s.checkIns.pending) {
+              <span class="badge badge-warning">{{ s.checkIns.pending }} {{ 'pending' | translate }}</span>
+            }
             @if (s.checkIns.completed) {
               <span class="badge badge-success">{{ s.checkIns.completed }} {{ 'done' | translate }}</span>
             }
           </div>
-        </div>
+          <span class="sr-only">{{ 'View reservations' | translate }}</span>
+        </a>
         <div class="overview-divider"></div>
 
         <!-- Check-outs -->
-        <div class="overview-section clickable" (click)="navigateToReservations()">
+        <a class="overview-section clickable" routerLink="/reservations">
           <div class="overview-label">
             <app-icon class="kpi-icon kpi-icon-checkout" name="flight_takeoff" />
             <span>{{ 'Departures Today' | translate }}</span>
+            <span class="overview-link-icon"><app-icon name="open_in_new" /></span>
           </div>
           <div class="overview-value">{{ s.checkOuts.total }}</div>
           <div class="kpi-sub">
-            <span class="badge badge-warning">{{ s.checkOuts.pending }} {{ 'pending' | translate }}</span>
+            @if (s.checkOuts.pending) {
+              <span class="badge badge-warning">{{ s.checkOuts.pending }} {{ 'pending' | translate }}</span>
+            }
             @if (s.checkOuts.completed) {
               <span class="badge badge-success">{{ s.checkOuts.completed }} {{ 'done' | translate }}</span>
             }
           </div>
-        </div>
+          <span class="sr-only">{{ 'View reservations' | translate }}</span>
+        </a>
       </div>
     }
-  } @placeholder {
-    <!-- KPI skeleton — 4 pill placeholders matching the real bar layout -->
-    <div class="overview-bar">
+  } @placeholder (minimum 300ms) {
+    <div class="overview-bar-sk">
       @for (_ of [1,2,3,4]; track $index) {
-        <div class="overview-section">
-          <div class="kpi-sk kpi-sk-label"></div>
-          <div class="kpi-sk kpi-sk-value"></div>
-          <div class="kpi-sk kpi-sk-trend"></div>
+        <div class="overview-sk-section">
+          <div class="overview-sk-label"></div>
+          <div class="overview-sk-value"></div>
+          <div class="overview-sk-sub"></div>
         </div>
-        @if ($index < 3) { <div class="overview-divider"></div> }
-      }
-    </div>
-  } @loading (minimum 200ms) {
-    <div class="overview-bar">
-      @for (_ of [1,2,3,4]; track $index) {
-        <div class="overview-section">
-          <div class="kpi-sk kpi-sk-label kpi-sk--pulse"></div>
-          <div class="kpi-sk kpi-sk-value kpi-sk--pulse"></div>
-          <div class="kpi-sk kpi-sk-trend kpi-sk--pulse"></div>
-        </div>
-        @if ($index < 3) { <div class="overview-divider"></div> }
       }
     </div>
   }
-
-  <!-- Property times & feature flags strip — driven by settings, always available -->
-  <div class="dashboard-meta-strip">
-    <span class="dashboard-meta-item">
-      <app-icon name="login" />
-      {{ 'Check-in' | translate }}: <strong>{{ checkInTime() }}</strong>
-    </span>
-    <span class="dashboard-meta-item">
-      <app-icon name="logout" />
-      {{ 'Check-out' | translate }}: <strong>{{ checkOutTime() }}</strong>
-    </span>
-    @if (timezone()) {
-      <span class="dashboard-meta-item">
-        <app-icon name="schedule" />
-        {{ timezone() }}
-      </span>
-    }
-    @if (starRating()) {
-      <span class="dashboard-meta-item">
-        <app-icon name="star" />
-        {{ '★'.repeat(starRating()) }}
-      </span>
-    }
-    @if (mobileCheckinEnabled()) {
-      <span class="dashboard-meta-item dashboard-meta-active">
-        <app-icon name="smartphone" />
-        {{ 'Mobile Check-In' | translate }}
-      </span>
-    }
-    @if (revenueForecastEnabled()) {
-      <span class="dashboard-meta-item dashboard-meta-active">
-        <app-icon name="auto_graph" />
-        {{ 'Revenue Forecast' | translate }}
-      </span>
-    }
-    @if (dynamicPricingEnabled()) {
-      <span class="dashboard-meta-item dashboard-meta-active">
-        <app-icon name="dynamic_feed" />
-        {{ 'Dynamic Pricing' | translate }}
-      </span>
-    }
-  </div>
-
-  <!-- ═════════════════════════════════════════════ -->
-  <!-- ACTIVITY + TASKS ROW (side by side)          -->
-  <!-- ═════════════════════════════════════════════ -->
-  <div class="dashboard-activity-row">
-
-    <!-- Recent Activity — @defer shows skeleton while loadActivity() runs -->
-    <div class="detail-card changelog-panel">
-      <div class="card-header changelog-header">
-        <h2 class="card-title">
-          <app-icon class="changelog-title-icon" name="bolt" />
-          {{ 'Recent Activity' | translate }}
-        </h2>
-        <button class="btn btn-invisible btn-sm changelog-refresh-btn"
-          (click)="refreshActivity()"
-          [disabled]="refreshingActivity()"
-          [pTooltip]="'Refresh activity' | translate"
-          [attr.aria-label]="'Refresh activity' | translate">
-          @if (refreshingActivity()) {
-            <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
-          } @else {
-            <app-icon name="refresh" />
-          }
-        </button>
-      </div>
-
-      @defer (when activityReady()) {
-        <div class="card-body changelog-body">
-          @if (activity().length === 0) {
-            <p class="text-muted empty-hint">{{ 'No recent activity' | translate }}</p>
-          } @else {
-            <!-- Timeline -->
-            <ul class="tl-list">
-              @for (item of groupedActivity(); track item.id; let last = $last) {
-                <li class="tl-event">
-                  <div class="tl-spine">
-                    <span class="tl-dot tl-dot--{{ item.type }}"></span>
-                    @if (!last || item.children?.length) { <span class="tl-line"></span> }
-                  </div>
-                  <div class="tl-body">
-                    <div class="tl-meta">
-                      <app-icon class="tl-icon" [name]="item.icon" />
-                      <span class="tl-type tl-type--{{ item.type }}">{{ activityTypeLabel(item.type) }}</span>
-                      @if (item.urgent) {
-                        <span class="badge badge-danger badge-sm">!</span>
-                      }
-                      <time class="tl-time">{{ relativeTime(item.timestamp) }}</time>
-                    </div>
-                    <p class="tl-title">{{ item.title }}</p>
-                    <p class="tl-desc">{{ item.description }}</p>
-                  </div>
-                </li>
-                <!-- Child activities indented under parent reservation -->
-                @if (item.children?.length) {
-                  @for (child of item.children; track child.id; let childLast = $last) {
-                    <li class="tl-event tl-event--child">
-                      <div class="tl-spine">
-                        <span class="tl-dot tl-dot--{{ child.type }} tl-dot--child"></span>
-                        @if (!childLast || !last) { <span class="tl-line"></span> }
-                      </div>
-                      <div class="tl-body">
-                        <div class="tl-meta">
-                          <app-icon class="tl-icon" [name]="child.icon" />
-                          <span class="tl-type tl-type--{{ child.type }}">{{ activityTypeLabel(child.type) }}</span>
-                          @if (child.urgent) {
-                            <span class="badge badge-danger badge-sm">!</span>
-                          }
-                          <time class="tl-time">{{ relativeTime(child.timestamp) }}</time>
-                        </div>
-                        <p class="tl-title">{{ child.title }}</p>
-                        <p class="tl-desc">{{ child.description }}</p>
-                      </div>
-                    </li>
-                  }
-                }
-              }
-            </ul>
-          }
-        </div>
-      } @placeholder {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4,5]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      } @loading (minimum 300ms) {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4,5]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      <div class="tl-footer">
-        <button class="btn btn-invisible btn-sm tl-view-all" (click)="navigateToActivityLog()">
-          <app-icon name="open_in_new" />
-          {{ 'View all activity' | translate }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Upcoming Tasks — @defer shows skeleton while loadTasks() runs -->
-    <div class="detail-card changelog-panel">
-      <div class="card-header changelog-header">
-        <h2 class="card-title">
-          <app-icon class="changelog-title-icon" name="task_alt" />
-          {{ 'Upcoming Tasks' | translate }}
-        </h2>
-      </div>
-      @defer (when tasksReady()) {
-        <div class="card-body changelog-body">
-          @if (tasks().length === 0) {
-            <p class="text-muted empty-hint">{{ 'No upcoming tasks' | translate }}</p>
-          } @else {
-            <ul class="changelog-list">
-              @for (task of tasks(); track task.id) {
-                <li class="changelog-item">
-                  <div class="changelog-meta">
-                    <span class="changelog-tag changelog-tag--priority-{{ task.priority }}">{{ task.priority }}</span>
-                    <time class="changelog-time text-muted">{{ relativeTime(task.due_time) }}</time>
-                  </div>
-                  <p class="changelog-title">{{ task.title }}</p>
-                  <p class="changelog-desc text-muted">{{ task.description }}</p>
-                </li>
-              }
-            </ul>
-          }
-        </div>
-      } @placeholder {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      } @loading (minimum 300ms) {
-        <div class="card-body changelog-body tl-skeleton">
-          @for (_ of [1,2,3,4]; track $index) {
-            <div class="tl-skeleton-row">
-              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
-              <div class="tl-skeleton-lines">
-                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
-                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
-              </div>
-            </div>
-          }
-        </div>
-      }
-    </div>
-
-  </div><!-- /dashboard-activity-row -->
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- OPERATIONAL CARDS GRID                       -->
   <!-- ═════════════════════════════════════════════ -->
   <div class="dashboard-grid">
 
-    <!-- ── Room Availability — @defer until roomsReady() ── -->
+    <!-- ── Room Availability ── -->
     @defer (when roomsReady()) {
       @if (roomSummary(); as rm) {
-        <div class="detail-card clickable" (click)="navigateToRooms()">
-          <div class="card-header">
-            <h2 class="card-title">
-              <app-icon name="meeting_room" />
-              {{ 'Room Availability' | translate }}
-            </h2>
+        <app-stat-card icon="meeting_room" title="Room Availability" link="/rooms">
+          <div class="stat-row stat-row-primary">
+            <span class="stat-row-label">{{ 'Total Rooms' | translate }}</span>
+            <span class="stat-row-value">{{ rm.total }}</span>
           </div>
-          <div class="card-body">
-            <div class="stat-row stat-row-primary">
-              <span class="stat-row-label">{{ 'Total Rooms' | translate }}</span>
-              <span class="stat-row-value">{{ rm.total }}</span>
-            </div>
+          <div class="stat-row">
+            <span class="stat-row-label">
+              <span class="stat-dot stat-dot-success"></span>
+              {{ 'Available' | translate }}
+            </span>
+            <span class="stat-row-value">{{ rm.available }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-row-label">
+              <span class="stat-dot stat-dot-accent"></span>
+              {{ 'Occupied' | translate }}
+            </span>
+            <span class="stat-row-value">{{ rm.occupied }}</span>
+          </div>
+          @if (rm.blocked > 0) {
             <div class="stat-row">
               <span class="stat-row-label">
-                <span class="stat-dot stat-dot-success"></span>
-                {{ 'Available' | translate }}
+                <span class="stat-dot stat-dot-attention"></span>
+                {{ 'Blocked' | translate }}
               </span>
-              <span class="stat-row-value">{{ rm.available }}</span>
+              <span class="stat-row-value">{{ rm.blocked }}</span>
             </div>
+          }
+          @if (rm.ooo > 0) {
             <div class="stat-row">
               <span class="stat-row-label">
-                <span class="stat-dot stat-dot-accent"></span>
-                {{ 'Occupied' | translate }}
+                <span class="stat-dot stat-dot-danger"></span>
+                {{ 'Out of Order' | translate }}
               </span>
-              <span class="stat-row-value">{{ rm.occupied }}</span>
+              <span class="stat-row-value">{{ rm.ooo }}</span>
             </div>
-            @if (rm.blocked > 0) {
-              <div class="stat-row">
-                <span class="stat-row-label">
-                  <span class="stat-dot stat-dot-attention"></span>
-                  {{ 'Blocked' | translate }}
-                </span>
-                <span class="stat-row-value">{{ rm.blocked }}</span>
-              </div>
-            }
-            @if (rm.ooo > 0) {
-              <div class="stat-row">
-                <span class="stat-row-label">
-                  <span class="stat-dot stat-dot-danger"></span>
-                  {{ 'Out of Order' | translate }}
-                </span>
-                <span class="stat-row-value">{{ rm.ooo }}</span>
-              </div>
-            }
-            <div class="stat-bar">
-              <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.occupancyPct"></div>
-            </div>
-            <div class="stat-row-hint text-muted">{{ rm.occupancyPct }}% {{ 'occupancy' | translate }}</div>
+          }
+          <div class="stat-bar">
+            <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.occupancyPct"></div>
           </div>
-        </div>
+          <div class="stat-row-hint text-muted">{{ rm.occupancyPct }}% {{ 'occupancy' | translate }}</div>
+        </app-stat-card>
       }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row"></div> }
-          <div class="card-sk-bar"></div>
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
+    } @placeholder (minimum 300ms) {
       <div class="detail-card">
         <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
         <div class="card-body">
@@ -395,67 +205,51 @@
       </div>
     }
 
-    <!-- ── Housekeeping Status — @defer until roomsReady() ── -->
+    <!-- ── Housekeeping Status ── -->
     @defer (when roomsReady()) {
       @if (roomSummary(); as rm) {
-        <div class="detail-card clickable" (click)="navigateToHousekeeping()">
-          <div class="card-header">
-            <h2 class="card-title">
-              <app-icon name="cleaning_services" />
-              {{ 'Housekeeping' | translate }}
-            </h2>
+        <app-stat-card icon="cleaning_services" title="Housekeeping" link="/housekeeping">
+          <div class="stat-row stat-row-primary">
+            <span class="stat-row-label">{{ 'Rooms Ready' | translate }}</span>
+            <span class="stat-row-value">{{ rm.clean }}</span>
           </div>
-          <div class="card-body">
-            <div class="stat-row stat-row-primary">
-              <span class="stat-row-label">{{ 'Rooms Ready' | translate }}</span>
-              <span class="stat-row-value">{{ rm.clean }}</span>
-            </div>
+          <div class="stat-row">
+            <span class="stat-row-label">
+              <span class="stat-dot stat-dot-danger"></span>
+              {{ 'Dirty' | translate }}
+            </span>
+            <span class="stat-row-value">{{ rm.dirty }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-row-label">
+              <span class="stat-dot stat-dot-attention"></span>
+              {{ 'In Progress' | translate }}
+            </span>
+            <span class="stat-row-value">{{ rm.inProgress }}</span>
+          </div>
+          @if (hkSummary(); as hk) {
+            <div class="stat-divider"></div>
             <div class="stat-row">
-              <span class="stat-row-label">
-                <span class="stat-dot stat-dot-danger"></span>
-                {{ 'Dirty' | translate }}
-              </span>
-              <span class="stat-row-value">{{ rm.dirty }}</span>
+              <span class="stat-row-label">{{ 'Today\'s Tasks' | translate }}</span>
+              <span class="stat-row-value">{{ hk.total }}</span>
             </div>
-            <div class="stat-row">
-              <span class="stat-row-label">
-                <span class="stat-dot stat-dot-attention"></span>
-                {{ 'In Progress' | translate }}
-              </span>
-              <span class="stat-row-value">{{ rm.inProgress }}</span>
-            </div>
-            @if (hkSummary(); as hk) {
-              <div class="stat-divider"></div>
+            @if (hk.urgent > 0) {
               <div class="stat-row">
-                <span class="stat-row-label">{{ 'Today\'s Tasks' | translate }}</span>
-                <span class="stat-row-value">{{ hk.total }}</span>
+                <span class="stat-row-label">
+                  <span class="stat-dot stat-dot-danger"></span>
+                  {{ 'Urgent / High' | translate }}
+                </span>
+                <span class="stat-row-value">{{ hk.urgent }}</span>
               </div>
-              @if (hk.urgent > 0) {
-                <div class="stat-row">
-                  <span class="stat-row-label">
-                    <span class="stat-dot stat-dot-danger"></span>
-                    {{ 'Urgent / High' | translate }}
-                  </span>
-                  <span class="stat-row-value">{{ hk.urgent }}</span>
-                </div>
-              }
             }
-            <div class="stat-bar">
-              <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="rm.total > 0 ? (rm.clean / rm.total * 100) : 0"></div>
-            </div>
-            <div class="stat-row-hint text-muted">{{ rm.total > 0 ? (rm.clean / rm.total * 100 | number:'1.0-0') : 0 }}% {{ 'rooms ready' | translate }}</div>
+          }
+          <div class="stat-bar">
+            <div class="stat-bar-fill stat-bar-fill-success" [style.width.%]="roomsReadyPct()"></div>
           </div>
-        </div>
+          <div class="stat-row-hint text-muted">{{ roomsReadyPct() | number:'1.0-0' }}% {{ 'rooms ready' | translate }}</div>
+        </app-stat-card>
       }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4,5]; track $index) { <div class="card-sk-row"></div> }
-          <div class="card-sk-bar"></div>
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
+    } @placeholder (minimum 300ms) {
       <div class="detail-card">
         <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
         <div class="card-body">
@@ -465,61 +259,46 @@
       </div>
     }
 
-    <!-- ── Rate Intelligence — @defer until ratesReady() ── -->
+    <!-- ── Rate Intelligence ── -->
     @defer (when ratesReady()) {
       @if (rateSummary(); as rt) {
-        <div class="detail-card clickable" (click)="navigateToRates()">
-          <div class="card-header">
-            <h2 class="card-title">
-              <app-icon name="sell" />
-              {{ 'Rate Plans' | translate }}
-            </h2>
+        <app-stat-card icon="sell" title="Rate Plans" link="/rates">
+          <div class="stat-row stat-row-primary">
+            <span class="stat-row-label">{{ 'Active Rates' | translate }}</span>
+            <span class="stat-row-value">{{ rt.active }} <span class="text-muted">/ {{ rt.total }}</span></span>
           </div>
-          <div class="card-body">
-            <div class="stat-row stat-row-primary">
-              <span class="stat-row-label">{{ 'Active Rates' | translate }}</span>
-              <span class="stat-row-value">{{ rt.active }} <span class="text-muted">/ {{ rt.total }}</span></span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">{{ 'Lowest Rate' | translate }}</span>
-              <span class="stat-row-value">{{ formatCurrency(rt.minRate) }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">{{ 'Highest Rate' | translate }}</span>
-              <span class="stat-row-value">{{ formatCurrency(rt.maxRate) }}</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-row-label">{{ 'Average Rate' | translate }}</span>
-              <span class="stat-row-value stat-value-highlight">{{ formatCurrency(rt.avgRate) }}</span>
-            </div>
-            @if (rt.mealPlanCount > 0) {
-              <div class="stat-divider"></div>
-              <div class="stat-row">
-                <span class="stat-row-label">
-                  <app-icon class="stat-inline-icon" name="restaurant" />
-                  {{ 'With Meal Plan' | translate }}
-                </span>
-                <span class="stat-row-value">{{ rt.mealPlanCount }}</span>
-              </div>
-            }
-            @if (rt.strategies.length > 0) {
-              <div class="stat-chips">
-                @for (s of rt.strategies; track s) {
-                  <span class="badge badge-muted">{{ s }}</span>
-                }
-              </div>
-            }
+          <div class="stat-row">
+            <span class="stat-row-label">{{ 'Lowest Rate' | translate }}</span>
+            <span class="stat-row-value">{{ formatCurrency(rt.minRate) }}</span>
           </div>
-        </div>
+          <div class="stat-row">
+            <span class="stat-row-label">{{ 'Highest Rate' | translate }}</span>
+            <span class="stat-row-value">{{ formatCurrency(rt.maxRate) }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-row-label">{{ 'Average Rate' | translate }}</span>
+            <span class="stat-row-value stat-value-highlight">{{ formatCurrency(rt.avgRate) }}</span>
+          </div>
+          @if (rt.mealPlanCount > 0) {
+            <div class="stat-divider"></div>
+            <div class="stat-row">
+              <span class="stat-row-label">
+                <app-icon class="stat-inline-icon" name="restaurant" />
+                {{ 'With Meal Plan' | translate }}
+              </span>
+              <span class="stat-row-value">{{ rt.mealPlanCount }}</span>
+            </div>
+          }
+          @if (rt.strategies.length > 0) {
+            <div class="stat-chips">
+              @for (s of rt.strategies; track s) {
+                <span class="badge badge-muted">{{ s }}</span>
+              }
+            </div>
+          }
+        </app-stat-card>
       }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body">
-          @for (_ of [1,2,3,4]; track $index) { <div class="card-sk-row"></div> }
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
+    } @placeholder (minimum 300ms) {
       <div class="detail-card">
         <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
         <div class="card-body">
@@ -528,33 +307,25 @@
       </div>
     }
 
-    <!-- ── Booking Sparkline — @defer until statsReady() ── -->
+    <!-- ── Booking Sparkline ── -->
     @defer (when statsReady()) {
       @if (sparkline(); as spark) {
-        <div class="detail-card">
-          <div class="card-header">
-            <h2 class="card-title">
-              <app-icon name="show_chart" />
-              {{ 'Booking Activity' | translate }}
-            </h2>
-          </div>
-          <div class="card-body dashboard-sparkline-card">
-            <svg [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height" class="sparkline-svg sparkline-lg" aria-hidden="true">
+        <app-stat-card icon="show_chart" title="Booking Activity">
+          <div class="dashboard-sparkline-card">
+            <svg
+              [attr.viewBox]="'0 0 ' + spark.width + ' ' + spark.height"
+              preserveAspectRatio="none"
+              class="sparkline-svg sparkline-lg"
+              role="img"
+              [attr.aria-label]="sparklineSummary()">
               <path [attr.d]="spark.area" class="sparkline-area" />
-              <path [attr.d]="spark.line" class="sparkline-line" />
+              <path [attr.d]="spark.line" class="sparkline-line" vector-effect="non-scaling-stroke" />
             </svg>
-            <span class="sparkline-label text-muted">{{ 'Reservations · last 12 weeks' | translate }}</span>
+            <span class="sparkline-label text-muted" aria-hidden="true">{{ 'Reservations · last 12 weeks' | translate }}</span>
           </div>
-        </div>
+        </app-stat-card>
       }
-    } @placeholder {
-      <div class="detail-card">
-        <div class="card-header"><div class="card-sk-title"></div></div>
-        <div class="card-body dashboard-sparkline-card">
-          <div class="card-sk-sparkline"></div>
-        </div>
-      </div>
-    } @loading (minimum 200ms) {
+    } @placeholder (minimum 300ms) {
       <div class="detail-card">
         <div class="card-header"><div class="card-sk-title card-sk--pulse"></div></div>
         <div class="card-body dashboard-sparkline-card">
@@ -564,4 +335,137 @@
     }
 
   </div><!-- /dashboard-grid -->
+
+  <!-- ═════════════════════════════════════════════ -->
+  <!-- ACTIVITY + TASKS ROW (side by side)          -->
+  <!-- ═════════════════════════════════════════════ -->
+  <div class="dashboard-activity-row">
+
+    <!-- Recent Activity -->
+    <app-stat-card icon="bolt" title="Recent Activity" [panel]="true">
+      <button card-actions class="btn btn-invisible btn-sm changelog-refresh-btn"
+        (click)="refreshActivity()"
+        [disabled]="refreshingActivity()"
+        [pTooltip]="'Refresh activity' | translate"
+        [attr.aria-label]="'Refresh activity' | translate">
+        @if (refreshingActivity()) {
+          <p-progressSpinner [style]="{ width: '14px', height: '14px' }" />
+        } @else {
+          <app-icon name="refresh" />
+        }
+      </button>
+
+      @defer (when activityReady()) {
+        @if (activity().length === 0) {
+          <p class="text-muted empty-hint">{{ 'No recent activity' | translate }}</p>
+        } @else {
+          <ul class="tl-list">
+            @for (item of groupedActivity(); track item.id; let last = $last) {
+              <li class="tl-event">
+                <div class="tl-spine">
+                  <span class="tl-dot tl-dot--{{ item.type }}"></span>
+                  @if (!last || item.children?.length) { <span class="tl-line"></span> }
+                </div>
+                <div class="tl-body">
+                  <div class="tl-meta">
+                    <app-icon class="tl-icon" [name]="item.icon" />
+                    <span class="tl-type tl-type--{{ item.type }}">{{ activityTypeLabel(item.type) }}</span>
+                    @if (item.urgent) {
+                      <span class="badge badge-danger badge-sm" [attr.aria-label]="'Urgent' | translate">!</span>
+                    }
+                    <time class="tl-time">{{ relativeTime(item.timestamp) }}</time>
+                  </div>
+                  <p class="tl-title">{{ item.title }}</p>
+                  <p class="tl-desc">{{ item.description }}</p>
+                </div>
+              </li>
+              <!-- Child activities indented under parent reservation -->
+              @if (item.children?.length) {
+                @for (child of item.children; track child.id; let childLast = $last) {
+                  <li class="tl-event tl-event--child">
+                    <div class="tl-spine">
+                      <span class="tl-dot tl-dot--{{ child.type }} tl-dot--child"></span>
+                      @if (!childLast || !last) { <span class="tl-line"></span> }
+                    </div>
+                    <div class="tl-body">
+                      <div class="tl-meta">
+                        <app-icon class="tl-icon" [name]="child.icon" />
+                        <span class="tl-type tl-type--{{ child.type }}">{{ activityTypeLabel(child.type) }}</span>
+                        @if (child.urgent) {
+                          <span class="badge badge-danger badge-sm" [attr.aria-label]="'Urgent' | translate">!</span>
+                        }
+                        <time class="tl-time">{{ relativeTime(child.timestamp) }}</time>
+                      </div>
+                      <p class="tl-title">{{ child.title }}</p>
+                      <p class="tl-desc">{{ child.description }}</p>
+                    </div>
+                  </li>
+                }
+              }
+            }
+          </ul>
+        }
+      } @placeholder (minimum 300ms) {
+        <div class="tl-skeleton">
+          @for (_ of [1,2,3,4,5]; track $index) {
+            <div class="tl-skeleton-row">
+              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
+              <div class="tl-skeleton-lines">
+                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <div card-footer class="tl-footer">
+        <a class="btn btn-invisible btn-sm tl-view-all" routerLink="/dashboard/activity">
+          <app-icon name="open_in_new" />
+          {{ 'View all activity' | translate }}
+        </a>
+      </div>
+    </app-stat-card>
+
+    <!-- Upcoming Tasks -->
+    <app-stat-card icon="task_alt" title="Upcoming Tasks" [panel]="true">
+      @if (tasks().length) {
+        <span card-actions class="counter">{{ tasks().length }}</span>
+      }
+
+      @defer (when tasksReady()) {
+        @if (tasks().length === 0) {
+          <p class="text-muted empty-hint">{{ 'No upcoming tasks' | translate }}</p>
+        } @else {
+          <ul class="changelog-list">
+            @for (task of tasks(); track task.id) {
+              <li class="changelog-item">
+                <div class="changelog-meta">
+                  <span class="changelog-tag changelog-tag--priority-{{ task.priority }}">{{ task.priority }}</span>
+                  <time class="changelog-time text-muted">{{ relativeTime(task.due_time) }}</time>
+                </div>
+                <p class="changelog-title">{{ task.title }}</p>
+                <p class="changelog-desc text-muted">{{ task.description }}</p>
+              </li>
+            }
+          </ul>
+        }
+      } @placeholder (minimum 300ms) {
+        <div class="tl-skeleton">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="tl-skeleton-row">
+              <div class="tl-skeleton-dot tl-skeleton-dot--pulse"></div>
+              <div class="tl-skeleton-lines">
+                <div class="tl-skeleton-line tl-skeleton-line--short"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--long"></div>
+                <div class="tl-skeleton-line tl-skeleton-line--mid"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </app-stat-card>
+
+  </div><!-- /dashboard-activity-row -->
 </div>

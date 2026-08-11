@@ -123,9 +123,9 @@ export const assignMaintenanceRequest = async (
            ELSE request_status
          END,
          notes = CASE
-           WHEN $9 IS NULL THEN notes
-           WHEN notes IS NULL THEN $9
-           ELSE CONCAT_WS(E'\\n', notes, $9)
+           WHEN $9::text IS NULL THEN notes
+           WHEN notes IS NULL THEN $9::text
+           ELSE CONCAT_WS(E'\\n', notes, $9::text)
          END,
          response_time_minutes = EXTRACT(EPOCH FROM (NOW() - reported_at))::int / 60,
          updated_at = NOW(),

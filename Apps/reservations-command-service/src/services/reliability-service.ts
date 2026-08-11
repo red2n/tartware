@@ -44,8 +44,8 @@ const fetchConsumerStats = async (): Promise<ConsumerStats> => {
   }>(
     `
       SELECT
-        COUNT(*)::text AS partitions,
-        COUNT(*) FILTER (
+        COUNT(id)::text AS partitions,
+        COUNT(id) FILTER (
           WHERE processed_at < NOW() - ($2::int * interval '1 second')
         )::text AS stale_partitions,
         MAX(EXTRACT(EPOCH FROM (NOW() - processed_at))) AS max_seconds_since_commit
@@ -74,7 +74,7 @@ const fetchLifecycleStats = async (): Promise<LifecycleStats> => {
   }>(
     `
       SELECT
-        COUNT(*) FILTER (
+        COUNT(event_id) FILTER (
           WHERE current_state NOT IN ('APPLIED', 'DLQ')
             AND updated_at < NOW() - ($1::int * interval '1 second')
         )::text AS stalled_commands,
@@ -84,7 +84,7 @@ const fetchLifecycleStats = async (): Promise<LifecycleStats> => {
           WHERE current_state NOT IN ('APPLIED', 'DLQ')
             AND updated_at < NOW() - ($1::int * interval '1 second')
         ) AS oldest_stuck_seconds,
-        COUNT(*) FILTER (
+        COUNT(event_id) FILTER (
           WHERE current_state = 'DLQ'
         )::text AS dlq_total
       FROM reservation_command_lifecycle

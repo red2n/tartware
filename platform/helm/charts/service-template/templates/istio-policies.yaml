@@ -1,0 +1,66 @@
+{{- if .Values.istio.injection }}
+# =====================================================================
+# Per-workload mesh policy.
+#
+# The namespace-wide rules in platform/kubernetes/istio/ are the primary
+# control. What ships here is:
+#
+#   1. A workload-scoped STRICT PeerAuthentication, so this service keeps
+#      refusing plaintext even if the namespace default is later relaxed
+#      or deleted.
+#   2. An additive AuthorizationPolicy, rendered only when the service
+#      declares east-west callers beyond api-gateway.
+#
+# Istio ALLOW policies are a union, so (2) can only widen access — it can
+# never be used to grant something the namespace deny-all was relied on to
+# block. Every entry in `istio.authorizedCallers` is therefore a
+# deliberate exception to "everything goes through the gateway".
+# =====================================================================
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "service.fullname" . }}
+  labels:
+    {{- include "service.labels" . | nindent 4 }}
+    policy-type: mtls
+spec:
+  selector:
+    matchLabels:
+      {{- include "service.selectorLabels" . | nindent 6 }}
+  mtls:
+    mode: STRICT
+
+{{- if .Values.istio.authorizedCallers }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "service.fullname" . }}-east-west
+  labels:
+    {{- include "service.labels" . | nindent 4 }}
+    policy-type: authz
+  annotations:
+    tartware.io/exception-reason: >-
+      Sanctioned service-to-service call that does not traverse api-gateway.
+spec:
+  selector:
+    matchLabels:
+      {{- include "service.selectorLabels" . | nindent 6 }}
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              {{- range .Values.istio.authorizedCallers }}
+              - {{ . | quote }}
+              {{- end }}
+      {{- with .Values.istio.extraAuthorizedPorts }}
+      to:
+        - operation:
+            ports:
+              {{- range . }}
+              - {{ . | quote }}
+              {{- end }}
+      {{- end }}
+{{- end }}
+{{- end }}

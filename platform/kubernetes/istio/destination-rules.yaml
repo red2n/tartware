@@ -1,0 +1,93 @@
+# =====================================================================
+# destination-rules.yaml — CLIENT-SIDE mTLS
+#
+# PeerAuthentication (peer-authentication.yaml) hardens the *server* side:
+# a sidecar refuses plaintext. This file hardens the *client* side: it
+# pins every outbound call to a Tartware service to ISTIO_MUTUAL, so the
+# caller always presents its own workload certificate and validates the
+# callee's.
+#
+# ISTIO_MUTUAL (rather than MUTUAL) tells Envoy to use the certificates
+# istiod already rotates for the workload, so there are no key files to
+# mount, distribute, or expire.
+# =====================================================================
+
+---
+# ---------------------------------------------------------------------
+# All in-namespace service-to-service traffic uses mesh mTLS.
+#
+# Scope note: this deliberately matches only *.tartware-system, not "*".
+# Postgres, Redis, Redpanda and the observability stack run in namespaces
+# without sidecar injection; a mesh-wide ISTIO_MUTUAL rule would make
+# Envoy offer a client certificate those servers cannot validate and
+# every data-plane connection would fail. Those destinations are handled
+# by `enableAutoMtls` (istiod.yaml), which negotiates plaintext when the
+# destination provably has no sidecar.
+# ---------------------------------------------------------------------
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: tartware-services-require-mtls
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: mtls
+spec:
+  host: "*.tartware-system.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+
+---
+# ---------------------------------------------------------------------
+# The gateway → api-gateway hop, stated explicitly.
+#
+# This is the hop that carries every externally-originated request after
+# public TLS is terminated, so it gets its own rule rather than relying
+# on the wildcard above being present.
+# ---------------------------------------------------------------------
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: api-gateway-require-mtls
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: mtls
+spec:
+  host: api-gateway.tartware-system.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 4096
+      http:
+        http2MaxRequests: 8192
+        maxRequestsPerConnection: 0
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+---
+# ---------------------------------------------------------------------
+# availability-guard-service exposes gRPC on 4400 and is called directly
+# by reservations-command-service (the one sanctioned east-west hop that
+# does not traverse api-gateway). It is pinned to mTLS explicitly so the
+# exception is auditable.
+# ---------------------------------------------------------------------
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: availability-guard-require-mtls
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: mtls
+spec:
+  host: availability-guard-service.tartware-system.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

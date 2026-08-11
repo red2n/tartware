@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
 import type { PackageListItem } from "@tartware/schemas";
-import { DialogService, DynamicDialogModule } from "primeng/dynamicdialog";
+import { DynamicDialogModule } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -13,7 +13,9 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -49,7 +51,7 @@ export class PackagesComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -98,13 +100,12 @@ export class PackagesComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(p) =>
-					p.package_name.toLowerCase().includes(query) ||
-					p.package_code.toLowerCase().includes(query) ||
-					(p.short_description?.toLowerCase().includes(query) ?? false) ||
-					p.package_type_display.toLowerCase().includes(query),
-			);
+			list = filterBySearch(list, query, (p) => [
+				p.package_name,
+				p.package_code,
+				p.short_description,
+				p.package_type_display,
+			]);
 		}
 
 		return list;
@@ -233,11 +234,8 @@ export class PackagesComponent {
 		const { CreatePackageDialogComponent } = await import(
 			"./create-package-dialog/create-package-dialog"
 		);
-		const ref = this.dialog.open(CreatePackageDialogComponent, {
-			width: "640px",
-			closable: false,
-		});
-		ref!.onClose.subscribe((created) => {
+		const ref = this.dialog.open(CreatePackageDialogComponent);
+		ref?.onClose.subscribe((created) => {
 			if (created) {
 				this.toast.success("Package created successfully");
 				this.loadPackages();

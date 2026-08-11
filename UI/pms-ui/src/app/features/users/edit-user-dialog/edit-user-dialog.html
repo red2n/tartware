@@ -1,9 +1,4 @@
-<h2 class="dialog-title">
-  <app-icon class="dialog-title-icon" name="manage_accounts" />
-  {{ 'Edit User' | translate }}
-</h2>
-
-<div class="dialog-content">
+<app-dialog-shell icon="manage_accounts" heading="Edit User">
   <div class="form-fields">
     <!-- User info (read-only) -->
     <section class="form-section">
@@ -77,16 +72,16 @@
       </div>
     </section>
   </div>
-</div>
 
-<div class="dialog-actions">
-  <button class="btn btn-outline" (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
-  <button class="btn btn-primary" (click)="save()" [disabled]="!hasChanges || saving()">
-    @if (saving()) {
-      <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
-    } @else {
-      <app-icon name="save" />
-    }
-    {{ 'Save Changes' | translate }}
-  </button>
-</div>
+  <div class="dialog-actions" dialogFooter>
+    <button class="btn btn-outline" unsavedClose (click)="cancel()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
+    <button class="btn btn-primary" (click)="save()" [disabled]="!hasChanges || saving()">
+      @if (saving()) {
+        <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+      } @else {
+        <app-icon name="save" />
+      }
+      {{ 'Save Changes' | translate }}
+    </button>
+  </div>
+</app-dialog-shell>

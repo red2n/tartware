@@ -85,6 +85,8 @@ export const ChargePostingsSchema = z.object({
 	reconciliation_batch: z.string().optional(),
 	created_by: uuid.optional(),
 	updated_by: uuid.optional(),
+	/** Row creation timestamp; the table previously tracked updated_at only. */
+	created_at: z.coerce.date().optional(),
 	is_deleted: z.boolean().optional(),
 	deleted_at: z.coerce.date().optional(),
 	deleted_by: uuid.optional(),

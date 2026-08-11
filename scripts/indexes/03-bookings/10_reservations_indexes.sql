@@ -14,6 +14,7 @@ CREATE INDEX IF NOT EXISTS idx_reservations_tenant_id ON reservations(tenant_id)
 CREATE INDEX IF NOT EXISTS idx_reservations_property_id ON reservations(property_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_guest_id ON reservations(guest_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_room_type_id ON reservations(room_type_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reservations_market_segment ON reservations(market_segment_id) WHERE market_segment_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_rate_id ON reservations(rate_id) WHERE deleted_at IS NULL;
 
 -- Confirmation number lookup (critical for guest queries)

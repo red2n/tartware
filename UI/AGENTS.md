@@ -15,3 +15,4 @@
 - Use `@defer (on idle)` for heavy table/list rendering.
 - Route all API requests through `ApiService` → API Gateway (port 8080) — never call backend services directly.
 - Lazy-load feature components via `loadComponent` in `app.routes.ts`.
+- Open modals with `AppDialogService` (never PrimeNG's `DialogService` directly) and wrap the dialog template in `<app-dialog-shell>` — the service owns the sizing and the shell owns the pinned title/footer rows.

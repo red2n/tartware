@@ -1,0 +1,296 @@
+# =====================================================================
+# authorization-policies.yaml — WHO MAY CALL WHOM
+#
+# mTLS alone proves *that* a peer holds a valid mesh certificate. It does
+# not say the peer is allowed to make the call. Without authorization
+# policy, any workload in the mesh — including a compromised low-value
+# service — can call billing-service directly and skip every check the
+# api-gateway performs.
+#
+# These policies close that gap by pinning each hop to a specific SPIFFE
+# principal derived from the caller's ServiceAccount:
+#
+#   spiffe://cluster.local/ns/<namespace>/sa/<serviceaccount>
+#
+# The principal is taken from the verified client certificate, so it
+# cannot be forged by setting a header or spoofing a source IP.
+#
+# TRAFFIC CONTRACT ENFORCED HERE
+#   internet            → istio-ingressgateway   (TLS terminated)
+#   istio-ingressgateway→ api-gateway            (mTLS, sole caller)
+#   api-gateway         → domain services        (mTLS, sole caller)
+#   reservations-command→ availability-guard:4400 (mTLS, sanctioned exception)
+#   everything else                              → DENIED
+# =====================================================================
+
+---
+# ---------------------------------------------------------------------
+# 1. DEFAULT DENY for the entire application namespace.
+#
+# An ALLOW policy with no `rules` matches nothing, and because at least
+# one ALLOW policy now applies to every workload in the namespace, any
+# request not explicitly permitted by a later policy is denied.
+#
+# This is the keystone resource. Deleting it silently re-opens the mesh.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all-by-default
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec: {}
+
+---
+# ---------------------------------------------------------------------
+# 2. api-gateway accepts traffic ONLY from the Istio ingress gateway.
+#
+# This is what makes api-gateway the single entry point in the strong
+# sense: even another Tartware service cannot call it, and nothing in
+# the cluster can reach it except the one gateway workload whose
+# certificate says it is the ingress gateway.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: api-gateway-allow-ingressgateway-only
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway
+      to:
+        - operation:
+            ports: ["8080"]
+
+---
+# ---------------------------------------------------------------------
+# 3. Domain services accept traffic ONLY from api-gateway.
+#
+# Selector is `tier: domain-service`, a label the Helm chart applies to
+# every backend workload (see charts/service-template/values.yaml).
+#
+# Two principals are listed because the platform has two deployment
+# paths that name the ServiceAccount differently:
+#   * platform/helm         → <release>-api-gateway  (release is "tartware")
+#   * platform/kubernetes   → api-gateway            (raw manifests)
+# Both resolve to the same workload; listing both keeps either path
+# working without weakening the rule to a namespace-level match.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: domain-services-allow-api-gateway-only
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      tier: domain-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/tartware-system/sa/api-gateway
+              - cluster.local/ns/tartware-system/sa/tartware-api-gateway
+
+---
+# ---------------------------------------------------------------------
+# 4. SANCTIONED EAST-WEST EXCEPTION.
+#
+# reservations-command-service calls availability-guard-service over
+# gRPC on 4400 for inventory checks — the one hop that legitimately
+# bypasses api-gateway. It is scoped to that single port so the
+# exception cannot be reused for the service's HTTP surface.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: availability-guard-allow-reservations-grpc
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      app: availability-guard-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/tartware-system/sa/reservations-command-service
+              - cluster.local/ns/tartware-system/sa/tartware-reservations-command-service
+      to:
+        - operation:
+            ports: ["4400"]
+
+---
+# ---------------------------------------------------------------------
+# 4b. THE REST OF THE SANCTIONED EAST-WEST GRAPH.
+#
+# "Everything goes through the gateway" describes north-south traffic. It
+# is not true of this codebase's internal calls, which were audited from
+# the source rather than assumed:
+#
+#   guests-service  → core-service   src/lib/internal-api.ts (service login
+#                                    at /v1/auth/login, then authenticated
+#                                    GETs), src/services/checkin-service.ts
+#   guests-service  → rooms-service  src/services/booking-service.ts
+#   guests-service  → guests-service src/services/booking-service.ts
+#   billing-service → core-service   src/services/business-calendar-settings-service.ts
+#                                    (/v1/settings/values)
+#   every service   → service-registry
+#                                    Apps/fastify-server/src/registry-client.ts
+#                                    registers on boot and heartbeats while
+#                                    REGISTRY_URL is set
+#   core-service    → service-registry
+#                                    src/routes/service-status.ts
+#
+# Without these rules the namespace deny-all silently breaks guest
+# check-in, booking, billing's business-calendar load and the service
+# dashboard. Istio ALLOW policies are a union, so each entry below widens
+# access for one specific caller/callee pair only.
+#
+# Adding a new cross-service call means adding it here. If you do not, it
+# fails at runtime with "RBAC: access denied", not at deploy time.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: core-service-allow-internal-callers
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      app: core-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/tartware-system/sa/guests-service
+              - cluster.local/ns/tartware-system/sa/tartware-guests-service
+              - cluster.local/ns/tartware-system/sa/billing-service
+              - cluster.local/ns/tartware-system/sa/tartware-billing-service
+
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: rooms-service-allow-internal-callers
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      app: rooms-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/tartware-system/sa/guests-service
+              - cluster.local/ns/tartware-system/sa/tartware-guests-service
+
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: guests-service-allow-internal-callers
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      app: guests-service
+  action: ALLOW
+  rules:
+    # guests-service calls its own HTTP API from booking-service.ts.
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/tartware-system/sa/guests-service
+              - cluster.local/ns/tartware-system/sa/tartware-guests-service
+
+---
+# service-registry accepts registration and heartbeats from every service,
+# so this one is scoped by namespace rather than by naming all of them.
+# Still an authenticated, in-mesh-only rule: `namespaces` is matched
+# against the peer's verified certificate, not its IP.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: service-registry-allow-mesh-registration
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: authz
+spec:
+  selector:
+    matchLabels:
+      app: service-registry
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["tartware-system"]
+
+---
+# ---------------------------------------------------------------------
+# 5. METRICS.
+#
+# Prometheus runs in the `observability` namespace without a sidecar, so
+# it holds no mesh identity and STRICT mTLS would reject a direct scrape
+# of the application port.
+#
+# The supported path is Istio metrics merging: the sidecar scrapes the
+# app's /metrics locally, merges it with Envoy's own stats, and serves
+# the result on port 15020, which is exempt from both PeerAuthentication
+# and AuthorizationPolicy. base-config.yaml's PodMonitor is pointed at
+# 15020 for exactly this reason — do not point it back at the app port.
+#
+# This policy additionally permits an in-mesh scraper (one running with a
+# sidecar) to read /metrics directly, which is how the load-test and
+# debug tooling collects raw application metrics.
+# ---------------------------------------------------------------------
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-in-mesh-metrics-scrape
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: monitoring
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["observability"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/metrics"]

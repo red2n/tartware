@@ -34,7 +34,7 @@ import {
   listCommandFeatures,
   updateCommandFeatureStatus,
 } from "../command-center/sql/command-features.js";
-import { extractBearerToken, verifyAccessToken } from "../lib/jwt.js";
+import { extractBearerToken, verifyAccessToken, verifySystemAdminToken } from "../lib/jwt.js";
 import { submitCommand } from "../utils/command-publisher.js";
 
 import { commandAcceptedSchema } from "./schemas.js";
@@ -89,7 +89,9 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         if (!token) {
           return reply.unauthorized("Authorization token required.");
         }
-        const payload = verifyAccessToken(token);
+        // System-admin tokens use a distinct issuer/audience, so fall back to
+        // that verifier when the token is not a tenant access token.
+        const payload = verifyAccessToken(token) ?? verifySystemAdminToken(token);
         if (!payload) {
           return reply.unauthorized("Invalid authorization token.");
         }

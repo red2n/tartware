@@ -238,6 +238,36 @@ export const GROUP_BOOKING_BY_ID_SQL = `
     AND COALESCE(gb.is_deleted, false) = false
 `;
 
+/**
+ * Room blocks held against a single group booking.
+ *
+ * Kept separate from GROUP_BOOKING_BY_ID_SQL rather than joined into it: a
+ * booking has many blocks (one per room type per night), so joining would
+ * duplicate every booking column across the result set and force the caller
+ * to de-duplicate. Two focused queries keep each row shape flat.
+ */
+export const GROUP_ROOM_BLOCKS_BY_BOOKING_SQL = `
+  SELECT
+    grb.block_id,
+    grb.room_type_id,
+    rt.type_name AS room_type_name,
+    grb.block_date,
+    grb.blocked_rooms,
+    grb.picked_rooms,
+    grb.confirmed_rooms,
+    grb.negotiated_rate,
+    grb.rack_rate,
+    grb.discount_percentage,
+    grb.block_status
+  FROM public.group_room_blocks grb
+  LEFT JOIN public.room_types rt
+    ON rt.id = grb.room_type_id AND rt.tenant_id = grb.tenant_id
+  WHERE grb.group_booking_id = $1
+    AND grb.tenant_id = $2
+    AND COALESCE(grb.is_deleted, false) = false
+  ORDER BY grb.block_date, rt.type_name
+`;
+
 // =====================================================
 // PROMOTIONAL CODE QUERIES
 // =====================================================

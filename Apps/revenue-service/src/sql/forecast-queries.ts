@@ -25,7 +25,7 @@ export const FORECAST_EVALUATE_SQL = `
       AND r.check_out_date > $3::date
   ),
   room_count AS (
-    SELECT COUNT(*) AS total_rooms
+    SELECT COUNT(id) AS total_rooms
     FROM rooms
     WHERE tenant_id = $1::uuid
       AND property_id = $2::uuid
@@ -87,14 +87,14 @@ export const FORECAST_ACCURACY_LIST_SQL = `
     -- Compute actuals from the stored accuracy fields
     CASE WHEN actual_value IS NOT NULL THEN
       ROUND(actual_value / NULLIF(
-        (SELECT COUNT(*) FROM rooms
+        (SELECT COUNT(id) FROM rooms
          WHERE tenant_id = rf.tenant_id AND property_id = rf.property_id
            AND status NOT IN ('OUT_OF_ORDER') AND is_deleted = false
         ), 0) * 100 / NULLIF(forecasted_revpar, 0) * forecasted_occupancy_percent / 100, 2)
     ELSE NULL END AS actual_occupancy,
     CASE WHEN actual_value IS NOT NULL AND forecasted_occupancy_percent > 0 THEN
       ROUND(actual_value / (
-        (SELECT COUNT(*) FROM rooms
+        (SELECT COUNT(id) FROM rooms
          WHERE tenant_id = rf.tenant_id AND property_id = rf.property_id
            AND status NOT IN ('OUT_OF_ORDER') AND is_deleted = false
         ) * forecasted_occupancy_percent / 100
@@ -102,7 +102,7 @@ export const FORECAST_ACCURACY_LIST_SQL = `
     ELSE NULL END AS actual_adr,
     CASE WHEN actual_value IS NOT NULL THEN
       ROUND(actual_value / NULLIF(
-        (SELECT COUNT(*) FROM rooms
+        (SELECT COUNT(id) FROM rooms
          WHERE tenant_id = rf.tenant_id AND property_id = rf.property_id
            AND status NOT IN ('OUT_OF_ORDER') AND is_deleted = false
         ), 0), 2)

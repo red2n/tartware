@@ -1,0 +1,46 @@
+/* Three fixed regions: title and footer stay put, only .dialog-body scrolls.
+ * The flex chain from .p-dialog down to this host lives in primeng-theme.scss. */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dialog-title {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin: 0;
+  padding: var(--base-size-20) var(--base-size-24) var(--base-size-16);
+  border-bottom: 1px solid var(--borderColor-muted);
+  font-size: var(--base-text-size-lg);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+}
+
+.dialog-title-icon {
+  color: var(--bgColor-accent-emphasis);
+  font-size: var(--base-text-size-lg);
+}
+
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--base-size-20) var(--base-size-24);
+}
+
+.dialog-footer {
+  flex: 0 0 auto;
+  padding: var(--base-size-16) var(--base-size-24) var(--base-size-20);
+  border-top: 1px solid var(--borderColor-muted);
+}
+
+.is-hidden {
+  display: none;
+}
+
+/* The unsaved-changes prompt itself lives in DiscardConfirmComponent, which
+ * carries its own warning colours — it simply replaces the action row here. */

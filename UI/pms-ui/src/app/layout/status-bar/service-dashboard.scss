@@ -93,7 +93,7 @@
   font-size: var(--base-text-size-sm);
   border-bottom: 1px solid var(--borderColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(16px);
   }
 }
@@ -229,7 +229,10 @@
   }
 }
 
+/* The dot carries meaning by colour alone, so it hosts an .sr-only label.
+   position:relative anchors that absolutely-positioned text. */
 .service-status-dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;

@@ -25,19 +25,19 @@
   letter-spacing: 0.04em;
   cursor: default;
 
-  mat-icon {
+  app-icon {
     @include icon-size(14px);
   }
 }
 
 /* ── Housekeeping KPI — icon/value accent colors ── */
-.hk-section-ready .overview-label mat-icon { color: var(--fgColor-success); }
+.hk-section-ready .overview-label app-icon { color: var(--fgColor-success); }
 .hk-section-ready .overview-value { color: var(--fgColor-success); }
-.hk-section-dirty .overview-label mat-icon { color: var(--fgColor-danger); }
+.hk-section-dirty .overview-label app-icon { color: var(--fgColor-danger); }
 .hk-section-dirty .overview-value { color: var(--fgColor-danger); }
-.hk-section-progress .overview-label mat-icon { color: var(--fgColor-attention); }
-.hk-section-clean .overview-label mat-icon { color: var(--fgColor-success); }
-.hk-section-dnd .overview-label mat-icon { color: var(--fgColor-muted); }
+.hk-section-progress .overview-label app-icon { color: var(--fgColor-attention); }
+.hk-section-clean .overview-label app-icon { color: var(--fgColor-success); }
+.hk-section-dnd .overview-label app-icon { color: var(--fgColor-muted); }
 
 /* ── Room table overrides ── */
 .data-table {

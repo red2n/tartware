@@ -79,7 +79,7 @@ export const executeNightAudit = async (
     // Check 1: Open arrivals — CONFIRMED reservations with arrival today not yet checked in
     // Only block if we are NOT automatically marking no-shows.
     const { rows: openArrivals } = await query<{ cnt: string }>(
-      `SELECT COUNT(*) AS cnt FROM reservations
+      `SELECT COUNT(id) AS cnt FROM reservations
        WHERE tenant_id = $1::uuid AND property_id = $2::uuid
          AND status = 'CONFIRMED' AND check_in_date = $3::date
          AND COALESCE(is_deleted, false) = false`,
@@ -93,7 +93,7 @@ export const executeNightAudit = async (
 
     // Check 2: Open departures — all CHECKED_IN with departure today must be CHECKED_OUT
     const { rows: openDepartures } = await query<{ cnt: string }>(
-      `SELECT COUNT(*) AS cnt FROM reservations
+      `SELECT COUNT(id) AS cnt FROM reservations
        WHERE tenant_id = $1::uuid AND property_id = $2::uuid
          AND status = 'CHECKED_IN' AND check_out_date = $3::date
          AND is_deleted = false`,
@@ -107,7 +107,7 @@ export const executeNightAudit = async (
 
     // Check 3: Unbalanced folios — OPEN in-house folios with charges != payments
     const { rows: unbalancedFolios } = await query<{ cnt: string }>(
-      `SELECT COUNT(*) AS cnt FROM folios f
+      `SELECT COUNT(f.folio_id) AS cnt FROM folios f
        JOIN reservations r ON r.id = f.reservation_id AND r.tenant_id = f.tenant_id
        WHERE f.tenant_id = $1::uuid AND f.property_id = $2::uuid
          AND f.folio_status = 'OPEN' AND r.status = 'CHECKED_IN'
@@ -200,7 +200,7 @@ export const executeNightAudit = async (
       if (shouldPostCharges || shouldPostPackages || shouldPostCommissions) {
         const { rows: existingCharges } = await queryWithClient<{ cnt: string }>(
           client,
-          `SELECT COUNT(*) AS cnt
+          `SELECT COUNT(posting_id) AS cnt
            FROM charge_postings
            WHERE tenant_id = $1::uuid
              AND property_id = $2::uuid
@@ -613,15 +613,20 @@ export const executeNightAudit = async (
     "Night audit completed",
   );
 
-  // ─── Post-audit step: Auto-cancel TENTATIVE reservations past deposit deadline ─
-  // Reservations that remain TENTATIVE past their deposit deadline are cancelled.
+  // ─── Post-audit step: Auto-cancel tentative group blocks past deposit deadline ─
+  // Group blocks held as `tentative` past their deposit deadline are released.
+  // Note this targets group_bookings, not reservations: deposit_due_date and the
+  // tentative status both live on the group block, and a reservation has neither.
   // This runs outside the main transaction — it dispatches individual cancel events.
   if (shouldAutoCancelTentatives) {
     try {
-      const { rows: staleTentatives } = await query<{ id: string; version: number }>(
-        `SELECT id, version FROM reservations
+      const { rows: staleTentatives } = await query<{
+        group_booking_id: string;
+        version: number;
+      }>(
+        `SELECT group_booking_id, version FROM group_bookings
          WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-           AND status = 'TENTATIVE'
+           AND block_status = 'tentative'
            AND deposit_due_date IS NOT NULL
            AND deposit_due_date < $3::date
            AND is_deleted = false`,
@@ -629,20 +634,22 @@ export const executeNightAudit = async (
       );
       for (const row of staleTentatives) {
         await query(
-          `UPDATE reservations
-           SET status = 'CANCELLED',
-               cancellation_reason = 'AUTO_DEPOSIT_DEADLINE',
-               cancelled_at = NOW(),
+          `UPDATE group_bookings
+           SET block_status = 'cancelled',
+               internal_notes = CONCAT_WS(
+                 E'\\n', internal_notes, 'AUTO_DEPOSIT_DEADLINE: cancelled by night audit'
+               ),
                version = version + 1, updated_at = NOW()
-           WHERE id = $1::uuid AND tenant_id = $2::uuid AND status = 'TENTATIVE' AND version = $3`,
-          [row.id, context.tenantId, row.version],
+           WHERE group_booking_id = $1::uuid AND tenant_id = $2::uuid
+             AND block_status = 'tentative' AND version = $3`,
+          [row.group_booking_id, context.tenantId, row.version],
         );
       }
       tentativesCancelled = staleTentatives.length;
       if (tentativesCancelled > 0) {
         appLogger.info(
           { tentativesCancelled, auditDate, auditRunId },
-          "Night audit: auto-cancelled TENTATIVE reservations past deposit deadline",
+          "Night audit: auto-cancelled tentative group blocks past deposit deadline",
         );
       }
     } catch (cancelErr) {
@@ -756,7 +763,7 @@ async function postRoomChargesAndTaxes(
     // reservation on this business date from any prior audit run.
     const { rows: existing } = await queryWithClient<{ cnt: string }>(
       client,
-      `SELECT COUNT(*) AS cnt FROM charge_postings
+      `SELECT COUNT(posting_id) AS cnt FROM charge_postings
        WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
          AND business_date = $3::date AND charge_code = 'ROOM'
          AND audit_run_id IS NOT NULL
@@ -919,7 +926,7 @@ async function postPackageCharges(
     // Idempotency: skip if a package charge already exists for this reservation on this date
     const { rows: existing } = await queryWithClient<{ cnt: string }>(
       client,
-      `SELECT COUNT(*) AS cnt FROM charge_postings
+      `SELECT COUNT(posting_id) AS cnt FROM charge_postings
        WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
          AND business_date = $3::date AND charge_code = 'PACKAGE'
          AND audit_run_id IS NOT NULL

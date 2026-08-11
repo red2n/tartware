@@ -14,7 +14,7 @@ import { parseNumberEnv, parseNumberList } from "./kafka.js";
  * if a value ever leaks past the env layer.
  */
 const DEV_JWT_SECRET = "dev-secret-minimum-32-chars-change-me!";
-const DEV_DEFAULT_PASSWORD = "TempPass123";
+const DEV_DEFAULT_PASSWORD = "TempPass1234";
 
 /** Throw with a consistent, actionable error when a required prod secret is missing. */
 function requireInProduction(name: string): never {
@@ -93,14 +93,26 @@ export function buildAuthConfig() {
   };
 }
 
-/** Build command-center Kafka consumer config from env vars. */
+/**
+ * Build command-center Kafka consumer config from env vars.
+ *
+ * `consumerGroupId` and `targetServiceId` identify *this* consumer, so they are read
+ * from service-scoped env vars (`<SERVICE_ID>_COMMAND_CENTER_*`) rather than a shared
+ * `COMMAND_CENTER_*` one. A global override cannot be correct: every service loads the
+ * same root .env, and one process may host several command-center identities
+ * (billing-service also runs the accounts-service and finance-admin-service consumers).
+ * Sharing them collapses all services into one consumer group and makes every consumer
+ * reject commands addressed to anyone else — commands are accepted, then silently dropped.
+ */
 export function buildCommandCenterConfig(serviceId: string) {
   const shortName = serviceId.replace(/-service$/, "");
+  const envPrefix = serviceId.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
   return {
     topic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
     consumerGroupId:
-      process.env.COMMAND_CENTER_CONSUMER_GROUP ?? `${shortName}-command-center-consumer`,
-    targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? serviceId,
+      process.env[`${envPrefix}_COMMAND_CENTER_CONSUMER_GROUP`] ??
+      `${shortName}-command-center-consumer`,
+    targetServiceId: process.env[`${envPrefix}_COMMAND_CENTER_TARGET_SERVICE_ID`] ?? serviceId,
     maxBatchBytes: parseNumberEnv(process.env.KAFKA_MAX_BATCH_BYTES, 1048576),
     dlqTopic: process.env.COMMAND_CENTER_DLQ_TOPIC ?? "commands.primary.dlq",
     maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),

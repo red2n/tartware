@@ -24,6 +24,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { TabStrapComponent } from "../../../shared/components/tab-strap/tab-strap";
 import {
 	createSortState,
 	getAriaSort,
@@ -47,6 +48,7 @@ type AuditTab = "status" | "trial-balance" | "pre-audit" | "bucket-check" | "rep
 		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
+		TabStrapComponent,
 	],
 	templateUrl: "./night-audit.html",
 	styleUrl: "./night-audit.scss",
@@ -72,6 +74,26 @@ export class NightAuditComponent {
 
 	// ── Tab state ──
 	readonly activeTab = signal<AuditTab>("status");
+
+	/**
+	 * What each audit section is for. Night audit is the least self-explanatory
+	 * screen in the product — "Bucket check" and "Pre-audit" mean nothing until
+	 * someone has run one — so each tab states its job and what blocks the close.
+	 */
+	private static readonly TAB_OVERVIEWS: Record<AuditTab, string> = {
+		status:
+			"Readiness for the current business date — occupancy, revenue and the checks standing between you and closing the day.",
+		"trial-balance":
+			"Debits against credits for the business date. These must balance before the audit can be closed.",
+		"pre-audit":
+			"Issues to clear before running the audit — unposted charges, open folios and arrivals still due in.",
+		"bucket-check":
+			"Reconciles folio buckets against the ledger to catch postings that landed in the wrong account.",
+		reports: "End-of-day reports produced by the audit, ready to review, export or file.",
+		history: "Previous audit runs with their status, variance and who ran them.",
+	};
+
+	readonly tabOverview = computed(() => NightAuditComponent.TAB_OVERVIEWS[this.activeTab()]);
 
 	// ── Business Date Status (BC-1) ──
 	readonly businessDateStatus = signal<BusinessDateStatusResponse | null>(null);

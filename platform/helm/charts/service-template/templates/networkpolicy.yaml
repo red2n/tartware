@@ -1,0 +1,118 @@
+{{- if .Values.networkPolicy.enabled }}
+# =====================================================================
+# Per-service NetworkPolicy — L3/L4 backstop for the mesh policy.
+#
+# Istio AuthorizationPolicy is enforced by the Envoy sidecar. If the
+# sidecar is missing (injection disabled, an initContainer race, a pod
+# scheduled before the webhook was ready) that enforcement disappears with
+# it. NetworkPolicy is enforced by the CNI and has no such dependency, so
+# the two together fail closed rather than open.
+#
+# Requires a NetworkPolicy-capable CNI (Calico, Cilium). On a cluster
+# without one these objects are accepted and silently ignored — verify
+# with `kubectl get networkpolicy` plus an actual connection test, not by
+# the resource existing.
+# =====================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "service.fullname" . }}
+  labels:
+    {{- include "service.labels" . | nindent 4 }}
+    policy-type: network-boundary
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "service.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # The gateway is the only workload permitted to open a connection.
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+        {{- range .Values.istio.extraAuthorizedPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+
+    {{- with .Values.networkPolicy.additionalIngressPods }}
+    # Sanctioned east-west callers, mirroring istio.authorizedCallers.
+    - from:
+        {{- range . }}
+        - podSelector:
+            matchLabels:
+              app: {{ . | quote }}
+        {{- end }}
+      {{- if $.Values.istio.extraAuthorizedPorts }}
+      ports:
+        {{- range $.Values.istio.extraAuthorizedPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+      {{- else }}
+      # No extra ports declared — restrict to the service's own HTTP port
+      # rather than emitting an empty `ports` list, which Kubernetes reads
+      # as "every port".
+      ports:
+        - protocol: TCP
+          port: {{ $.Values.service.targetPort }}
+      {{- end }}
+    {{- end }}
+
+    # Envoy's merged metrics + health endpoints. These live on the sidecar,
+    # not the app, and are exempt from mesh authorization by design.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 15020
+        - protocol: TCP
+          port: 15090
+
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # istiod: certificate signing and xDS. Without this the sidecar cannot
+    # obtain a workload certificate and every mTLS connection fails.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 15012
+        - protocol: TCP
+          port: 15010
+        - protocol: TCP
+          port: 15014
+
+    # Sibling services in this namespace.
+    - to:
+        - podSelector: {}
+
+    # Managed infrastructure.
+    {{- range .Values.networkPolicy.egressNamespaces }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . | quote }}
+    {{- end }}
+{{- end }}

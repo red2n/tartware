@@ -1,17 +1,88 @@
-<app-page-header
-  title="Loyalty programs"
-  description="Tier rules and points ledger." />
+<!-- The sub-sidebar owns tab selection, so the header names the open one. -->
+@if (activeTab() === 'tiers') {
+  <app-page-header title="Tier rules" description="Earn rates and tier thresholds." />
+} @else {
+  <app-page-header title="Transactions" description="Points ledger across all members.">
+    <button class="btn btn-outline btn-sm" (click)="openAction('enroll')" [disabled]="submitting()">
+      <app-icon name="person_add" /> {{ 'Enrol member' | translate }}
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="openAction('earn')" [disabled]="submitting()">
+      <app-icon name="add_circle" /> {{ 'Award points' | translate }}
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="openAction('redeem')" [disabled]="submitting()">
+      <app-icon name="redeem" /> {{ 'Redeem points' | translate }}
+    </button>
+  </app-page-header>
+}
 
-<div class="filter-bar detail-tabs">
-  <nav class="filter-tabs">
-    <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'tiers'" (click)="setTab('tiers')">
-      <app-icon class="tab-icon" name="emoji_events" /> {{ 'Tier rules' | translate }}
-    </button>
-    <button class="filter-tab" [class.filter-tab-active]="activeTab() === 'transactions'" (click)="setTab('transactions')">
-      <app-icon class="tab-icon" name="receipt_long" /> {{ 'Transactions' | translate }}
-    </button>
-  </nav>
-</div>
+@if (action(); as kind) {
+  <div class="action-confirm-card" appUnsavedGuard appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="loyalty" />
+      <h3 class="confirm-title">
+        @switch (kind) {
+          @case ('enroll') { {{ 'Enrol member' | translate }} }
+          @case ('earn') { {{ 'Award points' | translate }} }
+          @default { {{ 'Redeem points' | translate }} }
+        }
+      </h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="ly-guest">{{ 'Guest ID' | translate }}</label>
+          <input id="ly-guest" type="text" [ngModel]="form().guest_id"
+                 (ngModelChange)="form.set({ ...form(), guest_id: $event ?? '' })"
+                 [placeholder]="'Guest UUID' | translate" />
+        </div>
+
+        @if (kind === 'enroll') {
+          <div class="form-field">
+            <label for="ly-prog">{{ 'Program name' | translate }}</label>
+            <input id="ly-prog" type="text" [ngModel]="form().program_name"
+                   (ngModelChange)="form.set({ ...form(), program_name: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label for="ly-tier">{{ 'Starting tier' | translate }}</label>
+            <input id="ly-tier" type="text" [ngModel]="form().program_tier"
+                   (ngModelChange)="form.set({ ...form(), program_tier: $event ?? '' })"
+                   [placeholder]="'e.g. bronze' | translate" />
+          </div>
+        } @else {
+          <div class="form-field">
+            <label for="ly-pid">{{ 'Program ID' | translate }}</label>
+            <input id="ly-pid" type="text" [ngModel]="form().program_id"
+                   (ngModelChange)="form.set({ ...form(), program_id: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label for="ly-points">{{ 'Points' | translate }}</label>
+            <input id="ly-points" type="number" min="1" [ngModel]="form().points"
+                   (ngModelChange)="form.set({ ...form(), points: $event })" />
+          </div>
+          <div class="form-field">
+            <label for="ly-desc">{{ 'Description' | translate }}</label>
+            <input id="ly-desc" type="text" [ngModel]="form().description"
+                   (ngModelChange)="form.set({ ...form(), description: $event ?? '' })"
+                   [placeholder]="'Optional' | translate" />
+          </div>
+        }
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="submitting()">
+        {{ 'Cancel' | translate }}
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="submitAction()" [disabled]="submitting() || !canSubmit()">
+        @if (submitting()) {
+          <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+          {{ 'Submitting…' | translate }}
+        } @else {
+          {{ 'Confirm' | translate }}
+        }
+      </button>
+    </div>
+  </div>
+}
 
 @if (activeTab() === 'tiers') {
   @if (loadingTiers()) {

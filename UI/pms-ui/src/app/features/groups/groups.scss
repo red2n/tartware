@@ -40,10 +40,10 @@
 .grp-card-rooms .grp-overview-accent { background: var(--bgColor-attention-emphasis); }
 .grp-card-pickup .grp-overview-accent { background: var(--bgColor-done-emphasis); }
 
-.grp-card-total .grp-overview-label mat-icon { color: var(--fgColor-accent); }
-.grp-card-active .grp-overview-label mat-icon { color: var(--fgColor-success); }
-.grp-card-rooms .grp-overview-label mat-icon { color: var(--fgColor-attention); }
-.grp-card-pickup .grp-overview-label mat-icon { color: var(--fgColor-done); }
+.grp-card-total .grp-overview-label app-icon { color: var(--fgColor-accent); }
+.grp-card-active .grp-overview-label app-icon { color: var(--fgColor-success); }
+.grp-card-rooms .grp-overview-label app-icon { color: var(--fgColor-attention); }
+.grp-card-pickup .grp-overview-label app-icon { color: var(--fgColor-done); }
 
 .grp-overview-body {
   padding: var(--base-size-12) var(--base-size-16);
@@ -60,7 +60,7 @@
   font-weight: var(--base-text-weight-medium);
   color: var(--fgColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(16px);
   }
 }
@@ -103,9 +103,6 @@
   font-weight: var(--base-text-weight-medium);
 }
 
-.text-center {
-  text-align: center;
-}
 
 .rooms-fraction {
   font-family: var(--fontStack-monospace);

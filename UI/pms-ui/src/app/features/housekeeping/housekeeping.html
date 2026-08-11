@@ -1,5 +1,8 @@
 <div class="housekeeping-page">
-  <app-page-header title="Housekeeping" description="Room cleaning schedules, task assignments, and inspections">
+  <!-- The sub-sidebar owns view selection, so the header names the open one. -->
+  <app-page-header
+    [title]="activeView() === 'tasks' ? 'Housekeeping tasks' : 'Room board'"
+    [description]="activeView() === 'tasks' ? 'Cleaning assignments and inspections' : 'Room status board with housekeeping and occupancy state'">
     <button class="btn btn-invisible" (click)="refresh()" [pTooltip]="'Refresh' | translate" [attr.aria-label]="'Refresh' | translate">
       <app-icon name="refresh" />
     </button>
@@ -61,7 +64,9 @@
       <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
       <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
     </div>
-  } @else if (rooms().length > 0) {
+  } @else {
+    <!-- Rendered even with no data: the summary reduces to zeros, and a KPI
+         strip that vanishes reads as a broken page rather than an empty set. -->
     <div class="overview-bar">
       <div class="overview-section hk-section-ready">
         <div class="overview-label">
@@ -72,7 +77,9 @@
         <div class="overview-sub text-muted">{{ summary().clean + summary().inspected }} {{ 'of' | translate }} {{ summary().total }}</div>
       </div>
       <div class="overview-divider"></div>
-      <div class="overview-section hk-section-dirty clickable" (click)="setView('rooms'); setFilter('DIRTY')">
+      <div class="overview-section hk-section-dirty clickable" role="button" tabindex="0" (click)="setView('rooms'); setFilter('DIRTY')"
+           (keydown.enter)="setView('rooms'); setFilter('DIRTY')"
+           (keydown.space)="$event.preventDefault(); setView('rooms'); setFilter('DIRTY')">
         <div class="overview-label">
           <app-icon name="warning" />
           <span>{{ 'Dirty' | translate }}</span>
@@ -81,7 +88,9 @@
         <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       <div class="overview-divider"></div>
-      <div class="overview-section hk-section-progress clickable" (click)="setView('rooms'); setFilter('IN_PROGRESS')">
+      <div class="overview-section hk-section-progress clickable" role="button" tabindex="0" (click)="setView('rooms'); setFilter('IN_PROGRESS')"
+           (keydown.enter)="setView('rooms'); setFilter('IN_PROGRESS')"
+           (keydown.space)="$event.preventDefault(); setView('rooms'); setFilter('IN_PROGRESS')">
         <div class="overview-label">
           <app-icon name="cleaning_services" />
           <span>{{ 'In Progress' | translate }}</span>
@@ -90,7 +99,9 @@
         <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       <div class="overview-divider"></div>
-      <div class="overview-section hk-section-clean clickable" (click)="setView('rooms'); setFilter('CLEAN')">
+      <div class="overview-section hk-section-clean clickable" role="button" tabindex="0" (click)="setView('rooms'); setFilter('CLEAN')"
+           (keydown.enter)="setView('rooms'); setFilter('CLEAN')"
+           (keydown.space)="$event.preventDefault(); setView('rooms'); setFilter('CLEAN')">
         <div class="overview-label">
           <app-icon name="check_circle" />
           <span>{{ 'Clean' | translate }}</span>
@@ -99,7 +110,9 @@
         <div class="overview-sub text-muted">{{ 'rooms' | translate }}</div>
       </div>
       <div class="overview-divider"></div>
-      <div class="overview-section clickable" (click)="setView('rooms'); setFilter('INSPECTED')">
+      <div class="overview-section clickable" role="button" tabindex="0" (click)="setView('rooms'); setFilter('INSPECTED')"
+           (keydown.enter)="setView('rooms'); setFilter('INSPECTED')"
+           (keydown.space)="$event.preventDefault(); setView('rooms'); setFilter('INSPECTED')">
         <div class="overview-label">
           <app-icon name="verified" />
           <span>{{ 'Inspected' | translate }}</span>
@@ -109,7 +122,9 @@
       </div>
       @if (summary().dnd > 0) {
         <div class="overview-divider"></div>
-        <div class="overview-section hk-section-dnd clickable" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')">
+        <div class="overview-section hk-section-dnd clickable" role="button" tabindex="0" (click)="setView('rooms'); setFilter('DO_NOT_DISTURB')"
+           (keydown.enter)="setView('rooms'); setFilter('DO_NOT_DISTURB')"
+           (keydown.space)="$event.preventDefault(); setView('rooms'); setFilter('DO_NOT_DISTURB')">
           <div class="overview-label">
             <app-icon name="do_not_disturb" />
             <span>{{ 'DND' | translate }}</span>
@@ -120,29 +135,6 @@
       }
     </div>
   }
-
-  <!-- ═════════════════════════════════════════════ -->
-  <!-- VIEW TABS                                    -->
-  <!-- ═════════════════════════════════════════════ -->
-  <div class="view-tabs">
-    <button
-      class="view-tab"
-      [class.view-tab-active]="activeView() === 'rooms'"
-      (click)="setView('rooms')">
-      <app-icon name="hotel" />
-      {{ 'Room Board' | translate }}
-    </button>
-    <button
-      class="view-tab"
-      [class.view-tab-active]="activeView() === 'tasks'"
-      (click)="setView('tasks')">
-      <app-icon name="task_alt" />
-      {{ 'Tasks' | translate }}
-      @if (tasks().length > 0) {
-        <span class="counter">{{ tasks().length }}</span>
-      }
-    </button>
-  </div>
 
   <!-- ═════════════════════════════════════════════ -->
   <!-- ROOM BOARD VIEW (data table)                 -->

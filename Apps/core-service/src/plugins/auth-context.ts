@@ -166,7 +166,16 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
           },
           "tenant access denied: required modules missing",
         );
-        reply.forbidden("TENANT_MODULE_NOT_ENABLED");
+        // Name the missing modules in the response, not just the log — otherwise
+        // an admin sees an identical 403 for every feature and cannot tell which
+        // entitlement to switch on.
+        reply.code(403).send({
+          statusCode: 403,
+          error: "Forbidden",
+          code: "TENANT_MODULE_NOT_ENABLED",
+          message: "TENANT_MODULE_NOT_ENABLED",
+          missingModules: missing,
+        });
         return reply;
       }
     }

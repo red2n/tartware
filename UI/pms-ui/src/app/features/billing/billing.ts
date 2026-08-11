@@ -11,9 +11,11 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { SubmitOnEnterDirective } from "../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import { createSortState, sortBy, toggleSort } from "../../shared/sort-utils";
-
 import {
 	type BillingView,
 	CHARGE_CODE_OPTIONS,
@@ -63,6 +65,9 @@ import {
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
+
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./billing.html",
 	styleUrl: "./billing.scss",
@@ -110,13 +115,12 @@ export class BillingComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((p) => p.status === status);
 		if (query) {
-			list = list.filter(
-				(p) =>
-					p.payment_reference.toLowerCase().includes(query) ||
-					(p.guest_name?.toLowerCase().includes(query) ?? false) ||
-					(p.confirmation_number?.toLowerCase().includes(query) ?? false) ||
-					p.payment_method_display.toLowerCase().includes(query),
-			);
+			list = filterBySearch(list, query, (p) => [
+				p.payment_reference,
+				p.guest_name,
+				p.confirmation_number,
+				p.payment_method_display,
+			]);
 		}
 		return list;
 	});
@@ -156,12 +160,11 @@ export class BillingComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((i) => i.status === status);
 		if (query) {
-			list = list.filter(
-				(i) =>
-					(i.invoice_number?.toLowerCase().includes(query) ?? false) ||
-					(i.guest_name?.toLowerCase().includes(query) ?? false) ||
-					(i.confirmation_number?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (i) => [
+				i.invoice_number,
+				i.guest_name,
+				i.confirmation_number,
+			]);
 		}
 		return list;
 	});
@@ -198,13 +201,12 @@ export class BillingComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (status !== "ALL") list = list.filter((f) => f.folio_status === status);
 		if (query) {
-			list = list.filter(
-				(f) =>
-					f.folio_number.toLowerCase().includes(query) ||
-					(f.guest_name?.toLowerCase().includes(query) ?? false) ||
-					(f.confirmation_number?.toLowerCase().includes(query) ?? false) ||
-					(f.company_name?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (f) => [
+				f.folio_number,
+				f.guest_name,
+				f.confirmation_number,
+				f.company_name,
+			]);
 		}
 		return list;
 	});
@@ -240,13 +242,12 @@ export class BillingComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (type !== "ALL") list = list.filter((c) => c.transaction_type === type);
 		if (query) {
-			list = list.filter(
-				(c) =>
-					c.charge_code.toLowerCase().includes(query) ||
-					c.charge_description.toLowerCase().includes(query) ||
-					(c.guest_name?.toLowerCase().includes(query) ?? false) ||
-					(c.folio_number?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (c) => [
+				c.charge_code,
+				c.charge_description,
+				c.guest_name,
+				c.folio_number,
+			]);
 		}
 		return list;
 	});
@@ -279,12 +280,11 @@ export class BillingComponent {
 		let list = [...this.routingRules(), ...this.routingTemplates()];
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (query) {
-			list = list.filter(
-				(rule) =>
-					rule.rule_name.toLowerCase().includes(query) ||
-					(rule.rule_code?.toLowerCase().includes(query) ?? false) ||
-					(rule.charge_code_pattern?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (rule) => [
+				rule.rule_name,
+				rule.rule_code,
+				rule.charge_code_pattern,
+			]);
 		}
 		return list;
 	});

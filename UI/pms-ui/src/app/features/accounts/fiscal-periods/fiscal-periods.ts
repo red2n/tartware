@@ -12,6 +12,8 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type StatusFilter = "ALL" | "FUTURE" | "OPEN" | "SOFT_CLOSE" | "CLOSED" | "LOCKED";
@@ -27,6 +29,9 @@ type StatusFilter = "ALL" | "FUTURE" | "OPEN" | "SOFT_CLOSE" | "CLOSED" | "LOCKE
 		TooltipModule,
 		PageHeaderComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
+
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./fiscal-periods.html",
 	styleUrl: "./fiscal-periods.scss",

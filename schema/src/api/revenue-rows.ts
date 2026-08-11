@@ -58,14 +58,10 @@ export type PricingRuleRow = {
 	effective_to: string | Date | null;
 	applies_to_room_types: string[] | null;
 	applies_to_rate_plans: string[] | null;
-	condition_type: string | null;
-	condition_value: unknown;
-	condition_operator?: string | null;
 	adjustment_type: string | null;
 	adjustment_value: number | string | null;
 	min_rate: number | string | null;
 	max_rate: number | string | null;
-	compound_with?: string[] | null;
 	metadata?: Record<string, unknown> | null;
 	created_at: string | Date;
 	updated_at: string | Date | null;

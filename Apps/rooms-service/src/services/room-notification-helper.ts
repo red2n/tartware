@@ -72,7 +72,7 @@ export const findArrivingReservation = async (
        r.guest_id,
        r.property_id,
        r.confirmation_number,
-       COALESCE(rt.name, '') AS room_type_name,
+       COALESCE(rt.type_name, '') AS room_type_name,
        COALESCE(g.first_name || ' ' || g.last_name, 'Guest') AS guest_name,
        g.email AS guest_email,
        r.check_in_date::text AS check_in_date,

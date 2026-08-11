@@ -1,4 +1,15 @@
 {{- if .Values.monitoring.serviceMonitor.enabled }}
+# Scrapes the Envoy sidecar's merged-metrics endpoint, not the application
+# port.
+#
+# Under STRICT mTLS the application port only accepts connections presenting a
+# mesh certificate. Prometheus runs in the un-injected `observability`
+# namespace and has none, so the previous `port: http` + `/metrics` endpoint
+# would fail every scrape with a TLS handshake error once mTLS was enforced.
+#
+# pilot-agent serves port 15020 outside the mTLS and authorization path, and
+# merges the application's own /metrics into its output — so this loses no
+# application metrics and adds Envoy's.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -10,8 +21,8 @@ spec:
     matchLabels:
       {{- include "service.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: http
-      path: /metrics
+    - port: istio-metrics
+      path: /stats/prometheus
       interval: 30s
       scrapeTimeout: 10s
 {{- end }}

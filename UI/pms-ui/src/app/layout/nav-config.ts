@@ -1,4 +1,5 @@
-import type { TenantRole } from "@tartware/schemas";
+import { REPORTS } from "../features/reports/report-defs";
+import { anyTermMatches, labelMatchRank, matchesSearch } from "../shared/search-utils";
 
 export type NavItem = {
 	label: string;
@@ -9,20 +10,6 @@ export type NavItem = {
 	screenKey?: string;
 	children?: NavItem[];
 };
-
-/** Maps roles to numeric priority for comparison. Higher = more access. */
-const ROLE_PRIORITY: Record<TenantRole, number> = {
-	VIEWER: 100,
-	STAFF: 200,
-	MANAGER: 300,
-	ADMIN: 400,
-	OWNER: 500,
-};
-
-/** Returns true if the user's role meets or exceeds the required minimum role. */
-export function hasMinRole(userRole: TenantRole, minRole: TenantRole): boolean {
-	return ROLE_PRIORITY[userRole] >= ROLE_PRIORITY[minRole];
-}
 
 /** Filter nav items the user can access based on their allowed screen keys. */
 export function filterNavByAllowedScreens(
@@ -83,16 +70,50 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Guests",
 		icon: "people",
-		route: "/guests",
 		screenKey: "guests",
 		description: "Guest profiles, preferences, and loyalty history",
+		// Nested under /segment so these never collide with /guests/:guestId.
+		children: [
+			{
+				label: "All guests",
+				icon: "people",
+				route: "/guests/segment/all",
+				description: "Every guest profile",
+			},
+			{ label: "VIP", icon: "star", route: "/guests/segment/vip", description: "VIP guests" },
+			{
+				label: "Loyalty",
+				icon: "loyalty",
+				route: "/guests/segment/loyalty",
+				description: "Guests enrolled in the loyalty programme",
+			},
+			{
+				label: "Blacklisted",
+				icon: "block",
+				route: "/guests/segment/blacklisted",
+				description: "Guests flagged as blacklisted",
+			},
+		],
 	},
 	{
 		label: "Loyalty",
 		icon: "emoji_events",
-		route: "/loyalty",
 		screenKey: "loyalty",
 		description: "Loyalty tier rules and points transactions",
+		children: [
+			{
+				label: "Tier rules",
+				icon: "emoji_events",
+				route: "/loyalty/tiers",
+				description: "Earn rates and tier thresholds",
+			},
+			{
+				label: "Transactions",
+				icon: "receipt_long",
+				route: "/loyalty/transactions",
+				description: "Points ledger across all members",
+			},
+		],
 	},
 	{
 		label: "Availability",
@@ -155,9 +176,22 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Housekeeping",
 		icon: "cleaning_services",
-		route: "/housekeeping",
 		screenKey: "housekeeping",
 		description: "Room cleaning schedules, task assignments, and inspections",
+		children: [
+			{
+				label: "Room Board",
+				icon: "hotel",
+				route: "/housekeeping/rooms",
+				description: "Room status board with housekeeping and occupancy state",
+			},
+			{
+				label: "Tasks",
+				icon: "task_alt",
+				route: "/housekeeping/tasks",
+				description: "Cleaning assignments and inspections",
+			},
+		],
 	},
 	{
 		label: "Accounts",
@@ -250,9 +284,15 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 	{
 		label: "Reports",
 		icon: "assessment",
-		route: "/reports",
 		screenKey: "reports",
 		description: "Operational reports, analytics, and data exports",
+		// Derived from the report catalogue so adding a report adds its nav entry.
+		children: REPORTS.map((report) => ({
+			label: report.label,
+			icon: report.icon,
+			route: `/reports/${report.key}`,
+			description: report.description,
+		})),
 	},
 	{
 		label: "Settings",
@@ -370,21 +410,6 @@ export function findActiveParent(url: string): NavItem | null {
 	return null;
 }
 
-/** Find the NavItem (parent or direct) whose route or child route matches the URL. */
-export function findActiveNavItem(url: string): NavItem | null {
-	for (const items of [PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS]) {
-		for (const item of items) {
-			if (item.children?.some((child) => child.route && url.startsWith(child.route))) {
-				return item;
-			}
-			if (item.route && url.startsWith(item.route)) {
-				return item;
-			}
-		}
-	}
-	return null;
-}
-
 /**
  * Find the first route the user is allowed to access based on their screen permissions.
  * Walks PRIMARY then SECONDARY nav items, returning the first matching route.
@@ -411,4 +436,91 @@ export function findFirstAllowedRoute(allowedScreens: ReadonlySet<string>): stri
 		}
 	}
 	return "/dashboard";
+}
+
+/** A screen the search can offer to navigate to. */
+export type ScreenMatch = {
+	label: string;
+	icon: string;
+	route: string;
+	description?: string;
+	/** Parent nav section, shown as context in the results list. */
+	section?: string;
+};
+
+/** Every routable screen the user is allowed to open, parents and children alike. */
+export function listScreens(
+	allowedScreens: ReadonlySet<string>,
+	permissionsLoaded: boolean,
+): ScreenMatch[] {
+	const visible = filterNavByAllowedScreens(
+		[...PRIMARY_NAV_ITEMS, ...SECONDARY_NAV_ITEMS],
+		allowedScreens,
+		permissionsLoaded,
+	);
+
+	const screens: ScreenMatch[] = [];
+	for (const item of visible) {
+		if (item.route) {
+			screens.push({
+				label: item.label,
+				icon: item.icon,
+				route: item.route,
+				description: item.description,
+			});
+		}
+		for (const child of item.children ?? []) {
+			if (!child.route) continue;
+			screens.push({
+				label: child.label,
+				icon: child.icon,
+				route: child.route,
+				description: child.description,
+				section: item.label,
+			});
+		}
+	}
+	return screens;
+}
+
+/**
+ * Screens matching a search term, best match first: an exact label beats a
+ * label that starts with the term, which beats one that merely contains it,
+ * then the parent section, then the description. Searching "reservation" finds
+ * Reservations before Arrivals-under-Reservations before anything that only
+ * mentions reservations in its description.
+ */
+export function searchScreens(
+	query: string,
+	allowedScreens: ReadonlySet<string>,
+	permissionsLoaded: boolean,
+	limit = 8,
+): ScreenMatch[] {
+	const term = query.trim().toLowerCase();
+	if (!term) return [];
+
+	const ranked: { rank: number; screen: ScreenMatch }[] = [];
+	for (const screen of listScreens(allowedScreens, permissionsLoaded)) {
+		// Term-by-term so a multi-word query still reaches a screen: "king room"
+		// must find Rooms (and Settings, whose description mentions rooms) rather
+		// than nothing, which is what testing the whole string as one substring
+		// did. Label matches outrank section, which outranks description.
+		const labelRank = labelMatchRank(term, screen.label);
+		const rank =
+			labelRank >= 0
+				? labelRank
+				: matchesSearch(term, screen.section)
+					? 3
+					: matchesSearch(term, screen.description)
+						? 4
+						: // Relaxed tier, mirroring the grids: a query carrying an extra
+							// word ("king room") must still reach Rooms rather than nothing.
+							anyTermMatches(term, screen.label, screen.section, screen.description)
+							? 5
+							: -1;
+		if (rank >= 0) ranked.push({ rank, screen });
+	}
+
+	ranked.sort((a, b) => a.rank - b.rank || a.screen.label.localeCompare(b.screen.label));
+	return ranked.slice(0, limit).map((entry) => entry.screen);
 }

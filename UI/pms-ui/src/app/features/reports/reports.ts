@@ -1,136 +1,21 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 
-import { ApiService } from "../../core/api/api.service";
+import { ApiService, ModuleNotEnabledError } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { CalloutComponent } from "../../shared/components/callout/callout";
 import { IconComponent } from "../../shared/components/icon/icon";
+import { ModuleLockedComponent } from "../../shared/components/module-locked/module-locked";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
-
-interface ReportDef {
-	readonly key: string;
-	readonly label: string;
-	readonly description: string;
-	readonly path: string;
-	readonly needsDate: boolean;
-	readonly needsRange: boolean;
-	readonly icon: string;
-}
-
-const REPORTS: readonly ReportDef[] = [
-	{
-		key: "arrivals",
-		label: "Arrivals",
-		description: "Expected arrivals for the business date.",
-		path: "/reports/arrivals",
-		needsDate: true,
-		needsRange: false,
-		icon: "flight_land",
-	},
-	{
-		key: "departures",
-		label: "Departures",
-		description: "Expected departures for the business date.",
-		path: "/reports/departures",
-		needsDate: true,
-		needsRange: false,
-		icon: "flight_takeoff",
-	},
-	{
-		key: "in-house",
-		label: "In-House",
-		description: "Currently in-house guests.",
-		path: "/reports/in-house",
-		needsDate: false,
-		needsRange: false,
-		icon: "hotel",
-	},
-	{
-		key: "no-show",
-		label: "No-Show",
-		description: "No-show reservations for the business date.",
-		path: "/reports/no-show",
-		needsDate: true,
-		needsRange: false,
-		icon: "person_off",
-	},
-	{
-		key: "occupancy",
-		label: "Occupancy",
-		description: "Occupancy statistics for the date range.",
-		path: "/reports/occupancy",
-		needsDate: false,
-		needsRange: true,
-		icon: "meeting_room",
-	},
-	{
-		key: "revenue-summary",
-		label: "Revenue Summary",
-		description: "Revenue summary (rooms, F&B, other) for the date range.",
-		path: "/reports/revenue-summary",
-		needsDate: false,
-		needsRange: true,
-		icon: "payments",
-	},
-	{
-		key: "daily-revenue",
-		label: "Daily Revenue",
-		description: "Daily revenue with ADR and RevPAR.",
-		path: "/reports/daily-revenue",
-		needsDate: false,
-		needsRange: true,
-		icon: "trending_up",
-	},
-	{
-		key: "manager-flash",
-		label: "Manager Flash",
-		description: "Key daily metrics snapshot for management.",
-		path: "/reports/manager-flash",
-		needsDate: true,
-		needsRange: false,
-		icon: "flash_on",
-	},
-	{
-		key: "forecast",
-		label: "Forecast",
-		description: "Forward-looking occupancy and revenue forecast.",
-		path: "/reports/forecast",
-		needsDate: false,
-		needsRange: true,
-		icon: "insights",
-	},
-	{
-		key: "str-metrics",
-		label: "STR Metrics",
-		description: "STR-compatible performance metrics (ADR, RevPAR, Occupancy).",
-		path: "/reports/str-metrics",
-		needsDate: false,
-		needsRange: true,
-		icon: "leaderboard",
-	},
-	{
-		key: "night-audit-summary",
-		label: "Night Audit Summary",
-		description: "Night audit posting totals, adjustments, and balance.",
-		path: "/reports/night-audit-summary",
-		needsDate: true,
-		needsRange: false,
-		icon: "receipt_long",
-	},
-	{
-		key: "housekeeping-status",
-		label: "Housekeeping Status",
-		description: "Room housekeeping status matrix.",
-		path: "/reports/housekeeping-status",
-		needsDate: false,
-		needsRange: false,
-		icon: "cleaning_services",
-	},
-];
+import { REPORTS, type ReportDef } from "./report-defs";
 
 type ReportRow = Record<string, unknown>;
 
@@ -138,8 +23,10 @@ type ReportRow = Record<string, unknown>;
 	selector: "app-reports",
 	standalone: true,
 	imports: [
+		CalloutComponent,
 		FormsModule,
 		IconComponent,
+		ModuleLockedComponent,
 		ProgressSpinnerModule,
 		TooltipModule,
 		PageHeaderComponent,
@@ -154,8 +41,17 @@ export class ReportsComponent {
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
 
-	readonly reports = REPORTS;
-	readonly activeKey = signal<string>(REPORTS[0].key);
+	private readonly route = inject(ActivatedRoute);
+
+	/**
+	 * Which report is open comes from the URL, so the sub-sidebar link is the
+	 * only thing that selects one. An unknown key falls back to the first report
+	 * rather than rendering an empty screen.
+	 */
+	readonly activeKey = toSignal(
+		this.route.paramMap.pipe(map((p) => p.get("reportKey") ?? REPORTS[0].key)),
+		{ initialValue: REPORTS[0].key },
+	);
 	readonly active = computed(() => REPORTS.find((r) => r.key === this.activeKey()) ?? REPORTS[0]);
 
 	readonly businessDate = signal(this.todayString());
@@ -167,6 +63,11 @@ export class ReportsComponent {
 	readonly dataReady = signal(false);
 	readonly loading = signal(false);
 	readonly error = signal<string | null>(null);
+	/**
+	 * Kept apart from `error` because a switched-off module is not a failure —
+	 * it gets the "here is how to turn this on" callout, not the red one.
+	 */
+	readonly moduleLocked = signal<ModuleNotEnabledError | null>(null);
 
 	readonly columns = computed<string[]>(() => {
 		const items = this.rows();
@@ -174,6 +75,15 @@ export class ReportsComponent {
 		const first = items[0];
 		return Object.keys(first);
 	});
+
+	/**
+	 * Skeleton geometry. Column count follows the previous run's table so a
+	 * refresh reserves the same width; first load falls back to six.
+	 */
+	readonly skeletonRows = Array.from({ length: 8 });
+	readonly skeletonCols = computed(() =>
+		Array.from({ length: Math.min(Math.max(this.columns().length || 6, 3), 8) }),
+	);
 
 	constructor() {
 		effect(() => {
@@ -184,8 +94,46 @@ export class ReportsComponent {
 		});
 	}
 
-	setActive(key: string): void {
-		this.activeKey.set(key);
+	/** True when the active report is driven by a single business date. */
+	readonly needsBusinessDate = computed(() => this.active().query === "business-date");
+
+	/** True when the active report is driven by a start/end date range. */
+	readonly needsRange = computed(() => this.active().query.startsWith("range"));
+
+	/**
+	 * Builds the querystring for a report, sending only the keys its route
+	 * declares. `start_date`/`end_date` are required by every ranged route, so
+	 * they are always sent rather than conditionally omitted.
+	 */
+	private buildParams(
+		def: ReportDef,
+		tenantId: string,
+		propertyId: string,
+	): Record<string, string> {
+		const params: Record<string, string> = {
+			tenant_id: tenantId,
+			property_id: propertyId,
+		};
+
+		switch (def.query) {
+			case "range-paged":
+				params["start_date"] = this.startDate();
+				params["end_date"] = this.endDate();
+				params["limit"] = "500";
+				break;
+			case "range":
+				params["start_date"] = this.startDate();
+				params["end_date"] = this.endDate();
+				break;
+			case "business-date":
+				params["business_date"] = this.businessDate();
+				break;
+			case "paged":
+				params["limit"] = "500";
+				break;
+		}
+
+		return params;
 	}
 
 	async loadReport(): Promise<void> {
@@ -197,29 +145,26 @@ export class ReportsComponent {
 		this.loading.set(true);
 		this.dataReady.set(false);
 		this.error.set(null);
+		this.moduleLocked.set(null);
 		try {
-			const params: Record<string, string> = {
-				tenant_id: tenantId,
-				property_id: propertyId,
-				limit: "500",
-			};
-			if (def.needsDate && this.businessDate()) {
-				params["business_date"] = this.businessDate();
-				params["date"] = this.businessDate();
-			}
-			if (def.needsRange) {
-				if (this.startDate()) params["start_date"] = this.startDate();
-				if (this.endDate()) params["end_date"] = this.endDate();
-			}
-			const res = await this.api.get<unknown>(def.path, params);
+			const res = await this.api.get<unknown>(
+				def.path,
+				this.buildParams(def, tenantId, propertyId),
+			);
 			this.raw.set(res);
 			this.rows.set(this.extractRows(res));
 		} catch (e) {
 			this.rows.set([]);
 			this.raw.set(null);
-			this.error.set(
-				e instanceof Error ? e.message : `Report endpoint ${def.path} is not currently available.`,
-			);
+			if (e instanceof ModuleNotEnabledError) {
+				this.moduleLocked.set(e);
+			} else {
+				this.error.set(
+					e instanceof Error
+						? e.message
+						: `Report endpoint ${def.path} is not currently available.`,
+				);
+			}
 		} finally {
 			this.loading.set(false);
 			this.dataReady.set(true);

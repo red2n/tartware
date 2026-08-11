@@ -22,7 +22,7 @@ Content-Type: application/json
 
 {
   "username": "setup.admin",
-  "password": "TempPass123"
+  "password": "TempPass1234"
 }
 
 ### Extract token

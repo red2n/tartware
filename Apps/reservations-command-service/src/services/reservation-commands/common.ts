@@ -11,9 +11,28 @@ import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit
 
 export class ReservationCommandError extends Error {
   code: string;
-  constructor(code: string, message: string) {
+  /**
+   * When true the command consumer will retry this error rather than routing
+   * immediately to the DLQ. Set to true only for transient failures (e.g.
+   * unexpected DB write failures) that may succeed on a subsequent attempt.
+   * Business-logic validation errors (wrong status, missing FK) should leave
+   * this false — retrying them wastes attempts and delays DLQ diagnosis.
+   *
+   * These commands are consumed in partition order, so a retried error also
+   * stalls every command queued behind it for the length of the backoff
+   * ladder. Defaulting to false keeps a deterministic rejection from blocking
+   * unrelated work.
+   */
+  retryable: boolean;
+
+  constructor(code: string, message: string, retryable = false) {
     super(message);
     this.code = code;
+    this.retryable = retryable;
+  }
+
+  toJSON() {
+    return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
   }
 }
 
@@ -25,12 +44,66 @@ export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
 
 export type ReservationUpdatePayload = ReservationUpdatedEvent["payload"];
 
+/**
+ * Fill in the reservation identity fields that downstream consumers need but
+ * that individual commands rarely bother to set.
+ *
+ * Lifecycle commands (no-show, cancel, check-in/out) build a minimal payload —
+ * usually just id/tenant_id/status/metadata. Consumers such as the notification
+ * service key off property_id, guest_id, guest_name and guest_email, and an
+ * absent property_id used to reach them as an empty string, which then failed
+ * the uuid cast on insert and parked the event in the DLQ. Hydrating here keeps
+ * every publish site consistent instead of patching each command.
+ */
+const hydrateReservationIdentity = async (
+  tenantId: string,
+  payload: ReservationUpdatePayload,
+): Promise<ReservationUpdatePayload> => {
+  const needs = (value: unknown): boolean =>
+    value === undefined || value === null || (typeof value === "string" && value.trim() === "");
+
+  if (
+    !needs(payload.property_id) &&
+    !needs(payload.guest_id) &&
+    !needs(payload.guest_name) &&
+    !needs(payload.guest_email)
+  ) {
+    return payload;
+  }
+
+  const { rows } = await query<{
+    property_id: string | null;
+    guest_id: string | null;
+    guest_name: string | null;
+    guest_email: string | null;
+  }>(
+    `SELECT property_id, guest_id, guest_name, guest_email
+       FROM reservations
+      WHERE id = $1 AND tenant_id = $2
+      LIMIT 1`,
+    [payload.id, tenantId],
+  );
+  const row = rows[0];
+  if (!row) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    property_id: needs(payload.property_id) ? (row.property_id ?? undefined) : payload.property_id,
+    guest_id: needs(payload.guest_id) ? (row.guest_id ?? undefined) : payload.guest_id,
+    guest_name: needs(payload.guest_name) ? (row.guest_name ?? undefined) : payload.guest_name,
+    guest_email: needs(payload.guest_email) ? (row.guest_email ?? undefined) : payload.guest_email,
+  } as ReservationUpdatePayload;
+};
+
 export const enqueueReservationUpdate = async (
   tenantId: string,
   commandName: string,
-  payload: ReservationUpdatePayload,
-  options: { correlationId?: string } = {},
+  rawPayload: ReservationUpdatePayload,
+  options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  const payload = await hydrateReservationIdentity(tenantId, rawPayload);
   const eventId = uuid();
   const updateEvent = ReservationUpdatedEventSchema.parse({
     metadata: {
@@ -70,7 +143,7 @@ export const enqueueReservationUpdate = async (
     await recordAuditLog({
       tenantId,
       propertyId: payload.property_id || null,
-      actorId: options.correlationId ? null : SYSTEM_ACTOR_ID,
+      actorId: options.actorId ?? SYSTEM_ACTOR_ID,
       action: commandName,
       eventType: "UPDATE",
       entityType: "reservation",
@@ -216,6 +289,9 @@ export const buildReservationUpdatePayload = (
   }
   if (command.notes) {
     payload.internal_notes = command.notes;
+  }
+  if (command.market_segment_id) {
+    payload.market_segment_id = command.market_segment_id;
   }
   if (rateCode) {
     payload.rate_code = rateCode;

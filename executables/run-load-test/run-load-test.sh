@@ -37,6 +37,39 @@ check_k6() {
     log_info "k6 found: $(k6 version)"
 }
 
+# Fail fast when the target is unreachable. Without this the suite happily runs
+# its full 21-minute ramp against a host that does not resolve, reporting a
+# flattering p(95)=0s because no request ever left the machine.
+check_target() {
+    local host port scheme
+    scheme="${API_BASE_URL%%://*}"
+    host="${API_BASE_URL#*://}"
+    host="${host%%/*}"
+    port="${host##*:}"
+    if [ "$port" = "$host" ]; then
+        [ "$scheme" = "https" ] && port=443 || port=80
+    fi
+    host="${host%%:*}"
+
+    log_info "Target: ${API_BASE_URL}"
+
+    if ! getent hosts "$host" >/dev/null 2>&1 && [ "$host" != "localhost" ]; then
+        log_error "Cannot resolve '${host}' — nothing will be sent."
+        log_info "Point the run at a reachable API, e.g.:"
+        log_info "  API_BASE_URL=http://localhost:8080 MAX_VUS=10 DURATION=30s $0"
+        exit 1
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        if ! curl -sS -o /dev/null --max-time 5 "${API_BASE_URL}/health" 2>/dev/null; then
+            log_warn "No response from ${API_BASE_URL}/health — are the services up (docker up)?"
+            log_info "Continuing anyway; expect 100% failures if the API is down."
+        else
+            log_info "Target responded on /health"
+        fi
+    fi
+}
+
 create_k6_script() {
     log_info "Creating k6 test script..."
 
@@ -44,6 +77,9 @@ create_k6_script() {
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Rate, Trend, Counter } from 'k6/metrics';
+// handleSummary() below renders with textSummary; without this import it throws
+// ReferenceError and the run ends with no summary.
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // Custom metrics
 const errorRate = new Rate('errors');
@@ -207,9 +243,14 @@ run_load_test() {
     if [ -n "${K6_CLOUD_TOKEN:-}" ]; then
         k6 cloud --env API_BASE_URL="${API_BASE_URL}" /tmp/tartware-load-test.js
     else
+        # InfluxDB output is opt-in: when nothing is listening, k6 floods the
+        # console with "connection refused" errors for the whole run.
+        k6_outputs=(--out json=/tmp/k6-results.json)
+        if [ -n "${K6_INFLUXDB_URL:-}" ]; then
+            k6_outputs+=(--out "influxdb=${K6_INFLUXDB_URL}")
+        fi
         k6 run --env API_BASE_URL="${API_BASE_URL}" \
-            --out json=/tmp/k6-results.json \
-            --out influxdb=http://localhost:8086/k6 \
+            "${k6_outputs[@]}" \
             /tmp/tartware-load-test.js
     fi
 
@@ -272,6 +313,7 @@ main() {
     log_info "Tartware Load Testing"
 
     check_k6
+    check_target
     create_k6_script
 
     PS3="Select test type: "

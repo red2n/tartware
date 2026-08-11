@@ -1,9 +1,4 @@
-<h2 class="dialog-title">
-  <app-icon class="dialog-title-icon" name="hotel" />
-  {{ 'New Room' | translate }}
-</h2>
-
-<div class="dialog-content">
+<app-dialog-shell icon="hotel" heading="New Room">
   <div class="form-fields">
     <!-- Room Details -->
     <section class="form-section">
@@ -103,12 +98,13 @@
       </div>
     </section>
   </div>
-</div>
 
-<app-dialog-actions
-  [saving]="saving()"
-  [valid]="isValid"
-  saveLabel="Create room"
-  savingLabel="Creating…"
-  (cancel)="cancel()"
-  (save)="save()" />
+  <app-dialog-actions
+    dialogFooter
+    [saving]="saving()"
+    [valid]="isValid"
+    saveLabel="Create room"
+    savingLabel="Creating…"
+    (cancel)="cancel()"
+    (save)="save()" />
+</app-dialog-shell>

@@ -1,1 +1,64 @@
 /* Modules — relies on global shared.scss utilities (page-header, filter-form, table, badge). No component-specific styles. */
+
+/* ── Pending module requests ──
+   Rides on the shared .callout-* chrome; only the list of rows inside it is
+   specific to this screen. */
+.module-requests {
+  margin-bottom: var(--base-size-16);
+}
+
+.request-list {
+  list-style: none;
+  margin: var(--base-size-12) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+}
+
+.request-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--base-size-12);
+  padding: var(--base-size-12);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-small);
+}
+
+.request-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-2);
+  min-width: 0;
+}
+
+.request-meta {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+}
+
+/* The requester's own words — quoted, so it reads as theirs and not as UI copy. */
+.request-reason {
+  font-size: var(--base-text-size-sm);
+  font-style: italic;
+  color: var(--fgColor-default);
+}
+
+.request-buttons {
+  display: flex;
+  gap: var(--base-size-8);
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .request-row {
+    flex-direction: column;
+  }
+
+  .request-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

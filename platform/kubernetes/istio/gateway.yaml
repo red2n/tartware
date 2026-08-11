@@ -1,0 +1,127 @@
+# =====================================================================
+# gateway.yaml — THE SINGLE EXTERNAL ENTRY POINT
+#
+# This replaces the per-service Kubernetes Ingress model. There is exactly
+# one Gateway, it terminates public TLS, and its only route destination is
+# api-gateway. No VirtualService in this platform may name a domain
+# service as its destination — that is the rule that keeps the backend
+# unreachable from outside the cluster.
+#
+# Adding a Kubernetes Ingress for a backend service would bypass all of
+# this, which is why charts/service-template/templates/ingress.yaml now
+# refuses to render one for anything but the gateway.
+# =====================================================================
+
+---
+# ---------------------------------------------------------------------
+# Public serving certificate, issued by cert-manager.
+#
+# Istio reads gateway credentials from Secrets in the gateway's own
+# namespace, so this Certificate must be created in istio-system even
+# though the workload it fronts lives in tartware-system.
+# ---------------------------------------------------------------------
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-gateway-tls
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+spec:
+  secretName: api-gateway-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: api.tartware.local
+  dnsNames:
+    - api.tartware.local
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+
+---
+# ---------------------------------------------------------------------
+# The Gateway. Binds the public listeners on the ingress gateway pods.
+# ---------------------------------------------------------------------
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: tartware-public-gateway
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    # Plain HTTP exists only to bounce clients to HTTPS.
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - api.tartware.local
+      tls:
+        httpsRedirect: true
+
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - api.tartware.local
+      tls:
+        mode: SIMPLE
+        credentialName: api-gateway-tls
+        minProtocolVersion: TLSV1_3
+
+---
+# ---------------------------------------------------------------------
+# The only route. Everything the outside world can reach is forwarded to
+# api-gateway; the hop itself is mTLS (see destination-rules.yaml).
+#
+# Operational endpoints are explicitly blocked here as well as by
+# authorization policy, so an accidental route change cannot expose
+# them: /metrics carries internal cardinality, and the Swagger UI and
+# the duplo dashboard are developer tooling.
+# ---------------------------------------------------------------------
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: tartware-api-gateway
+  namespace: tartware-system
+  labels:
+    app.kubernetes.io/part-of: tartware
+    policy-type: network-boundary
+spec:
+  hosts:
+    - api.tartware.local
+  gateways:
+    - tartware-public-gateway
+  http:
+    - name: block-operational-endpoints
+      match:
+        - uri:
+            prefix: /metrics
+        - uri:
+            prefix: /internal
+      directResponse:
+        status: 404
+        body:
+          string: "not found"
+
+    - name: api-gateway
+      route:
+        - destination:
+            host: api-gateway.tartware-system.svc.cluster.local
+            port:
+              number: 8080
+      timeout: 30s
+      retries:
+        attempts: 2
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream

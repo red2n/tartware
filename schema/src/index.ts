@@ -38,6 +38,8 @@ export * from "./shared/base-schemas.js";
 
 // Re-export all ENUMs
 export * from "./shared/enums.js";
+// SSRF-resistant validation for customer-supplied outbound targets
+export * from "./shared/outbound-url.js";
 export * from "./shared/validators.js";
 
 /**

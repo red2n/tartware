@@ -1,0 +1,5 @@
+{
+  "$comment": "Known SQL contract violations, recorded so the check can be adopted incrementally. Entries are 'file<TAB>kind<TAB>detail'. Fix them and run with --update-baseline to prune; never add an entry to silence a new violation.",
+  "generated": "2026-08-10",
+  "violations": []
+}

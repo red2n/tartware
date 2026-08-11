@@ -3,7 +3,7 @@
  * Module: schemas/01-core/index.ts
  * Description: Core Foundation Schemas (Category 01)
  * Category: 01-core
- * Primary exports: command-center, guests, properties, property-settings, room-settings, setting-categories, setting-definitions, system-admin-audit-log, system-admin-break-glass-codes, system-administrators, tenant-settings, tenants, transactional-outbox, user-settings, user-tenant-associations, users
+ * Primary exports: command-center, guests, module-access-requests, properties, property-settings, room-settings, setting-categories, setting-definitions, system-admin-audit-log, system-admin-break-glass-codes, system-administrators, tenant-settings, tenants, transactional-outbox, user-settings, user-tenant-associations, users
  * @table n/a
  * @category 01-core
  * Ownership: Schema package
@@ -36,6 +36,7 @@ export * from "./field-configurations.js";
 export * from "./guests.js";
 export * from "./import-export-jobs.js";
 export * from "./meal-periods.js";
+export * from "./module-access-requests.js";
 export * from "./outlets.js";
 export * from "./properties.js";
 export * from "./property-events.js";

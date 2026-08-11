@@ -151,6 +151,7 @@ const mapRowToFolio = (row: FolioRow): FolioListItem => {
     total_charges: toNumberOrFallback(row.total_charges),
     total_payments: toNumberOrFallback(row.total_payments),
     total_credits: toNumberOrFallback(row.total_credits),
+    credit_balance: toNumberOrFallback(row.credit_balance),
     currency: row.currency ?? "USD",
     opened_at: toIsoString(row.opened_at) ?? "",
     closed_at: toIsoString(row.closed_at),
@@ -347,7 +348,7 @@ export const getPreAuditChecklist = async (options: {
 
   // 3. Open cashier sessions — all should be closed
   const { rows: openSessions } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM cashier_sessions
+    `SELECT COUNT(session_id)::text AS cnt FROM cashier_sessions
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND session_status = 'open'
        AND COALESCE(deleted_at, '9999-12-31'::timestamp) > NOW()`,
@@ -362,7 +363,7 @@ export const getPreAuditChecklist = async (options: {
 
   // 4. Pending arrivals — expected today that haven't checked in
   const { rows: pendingArrivals } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(id)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND check_in_date = $3::date AND status = 'CONFIRMED'
        AND COALESCE(is_deleted, false) = false`,
@@ -380,7 +381,7 @@ export const getPreAuditChecklist = async (options: {
 
   // 5. Pending departures — expected today that haven't checked out
   const { rows: pendingDepartures } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(id)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND check_out_date = $3::date AND status = 'CHECKED_IN'
        AND COALESCE(is_deleted, false) = false`,
@@ -398,7 +399,7 @@ export const getPreAuditChecklist = async (options: {
 
   // 6. Unbalanced folios — open folios with unsettled charges
   const { rows: unbalancedFolios } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM folios
+    `SELECT COUNT(folio_id)::text AS cnt FROM folios
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND folio_status = 'OPEN' AND COALESCE(balance, 0) != 0
        AND COALESCE(is_deleted, false) = false`,
@@ -474,7 +475,7 @@ export const getBucketCheck = async (options: {
 
   // 1. Total sellable rooms
   const { rows: totalRooms } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM rooms
+    `SELECT COUNT(id)::text AS cnt FROM rooms
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND is_out_of_order = false AND COALESCE(is_deleted, false) = false`,
     [tenantId, propertyId],
@@ -495,7 +496,7 @@ export const getBucketCheck = async (options: {
 
   // 3. Reservation-based stayovers (checked in, not departing today)
   const { rows: stayovers } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(id)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND status = 'CHECKED_IN' AND check_out_date > $3::date
        AND COALESCE(is_deleted, false) = false`,
@@ -505,7 +506,7 @@ export const getBucketCheck = async (options: {
 
   // 4. Due-outs (checked in, departing today)
   const { rows: dueOuts } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(id)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND status = 'CHECKED_IN' AND check_out_date = $3::date
        AND COALESCE(is_deleted, false) = false`,
@@ -515,7 +516,7 @@ export const getBucketCheck = async (options: {
 
   // 5. Expected arrivals (confirmed, arriving today)
   const { rows: arrivals } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(id)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND check_in_date = $3::date AND status = 'CONFIRMED'
        AND COALESCE(is_deleted, false) = false`,
@@ -525,7 +526,7 @@ export const getBucketCheck = async (options: {
 
   // 6. Already checked-in today
   const { rows: checkedInToday } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::text AS cnt FROM reservations
+    `SELECT COUNT(id)::text AS cnt FROM reservations
      WHERE tenant_id = $1::uuid AND property_id = $2::uuid
        AND check_in_date = $3::date AND status = 'CHECKED_IN'
        AND COALESCE(is_deleted, false) = false`,

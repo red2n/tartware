@@ -208,15 +208,15 @@ export const addGroupRooms = async (
     for (const block of command.blocks) {
       await client.query(
         `INSERT INTO group_room_blocks (
-          block_id, group_booking_id, room_type_id, block_date,
+          block_id, tenant_id, group_booking_id, room_type_id, block_date,
           blocked_rooms, negotiated_rate, rack_rate, discount_percentage,
           block_status, created_by, updated_by
         ) VALUES (
-          uuid_generate_v4(), $1, $2, $3,
+          uuid_generate_v4(), $9::uuid, $1, $2, $3,
           $4, $5, $6, $7,
           'active', $8, $8
         )
-        ON CONFLICT (group_booking_id, room_type_id, block_date)
+        ON CONFLICT (tenant_id, group_booking_id, room_type_id, block_date)
         DO UPDATE SET
           blocked_rooms = EXCLUDED.blocked_rooms,
           negotiated_rate = EXCLUDED.negotiated_rate,
@@ -233,6 +233,7 @@ export const addGroupRooms = async (
           block.rack_rate ?? null,
           block.discount_percentage ?? null,
           SYSTEM_ACTOR_ID,
+          tenantId,
         ],
       );
     }
@@ -362,7 +363,12 @@ export const uploadGroupRoomingList = async (
              updated_at = NOW(), updated_by = $5
          WHERE group_booking_id = $1
            AND room_type_id = $2
-           AND block_date = $3
+           -- Every night of the stay draws from that night's block, so the range
+           -- is [arrival, departure). Matching only the arrival date left the
+           -- remaining nights showing 0 picked, under-reporting pickup on any
+           -- multi-night group.
+           AND block_date >= $3::date
+           AND block_date < $4::date
            AND picked_rooms < blocked_rooms
            AND block_status IN ('active', 'pending')`,
         [command.group_booking_id, guest.room_type_id, arrivalDate, departureDate, SYSTEM_ACTOR_ID],

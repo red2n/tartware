@@ -1,7 +1,53 @@
-# Istio control plane overrides for dev
+# Istio control plane overrides for dev.
+#
+# SECURITY BASELINE — this file, together with
+# platform/kubernetes/istio/*.yaml, implements the zero-trust contract:
+#   * every pod-to-pod hop inside the mesh is mTLS (STRICT PeerAuthentication)
+#   * workload identity comes from the SPIFFE ID minted per ServiceAccount
+#   * the only permitted ingress path is istio-ingressgateway → api-gateway
+#
+# Do not relax `enableAutoMtls` or `holdApplicationUntilProxyStarts` without
+# re-reading docs/ZERO_TRUST_MTLS.md — both are load-bearing.
 meshConfig:
   accessLogFile: /dev/stdout
   enableTracing: true
+
+  # SPIFFE trust domain. Every workload certificate Istio issues is
+  #   spiffe://<trustDomain>/ns/<namespace>/sa/<serviceaccount>
+  # AuthorizationPolicy `principals` entries are matched against this, so the
+  # value must stay in lockstep with platform/kubernetes/istio/*.yaml.
+  trustDomain: cluster.local
+
+  # Automatically negotiate mTLS to any destination that has a sidecar, and
+  # fall back to plaintext only for destinations that provably have none
+  # (Postgres, Redis, Redpanda — they live in non-injected namespaces).
+  # STRICT PeerAuthentication is what makes the *server* side refuse plaintext;
+  # this makes the *client* side offer mTLS in the first place.
+  enableAutoMtls: true
+
+  # Deny egress to anything not in the mesh registry. Without this, a
+  # compromised workload can open an arbitrary outbound connection and
+  # exfiltrate data — the network boundary would only be one-directional.
+  # External dependencies must be declared explicitly as ServiceEntry
+  # resources; see platform/kubernetes/istio/service-entries.yaml.
+  outboundTrafficPolicy:
+    mode: REGISTRY_ONLY
+
+  defaultConfig:
+    # Block the application container until the Envoy sidecar is serving.
+    # Without this, traffic issued during the startup race bypasses the
+    # sidecar entirely and therefore bypasses mTLS and authorization.
+    holdApplicationUntilProxyStarts: true
+    # Drain briefly on SIGTERM so in-flight mTLS connections finish cleanly.
+    terminationDrainDuration: 20s
+    proxyMetadata:
+      # Reject plaintext probes/traffic that arrive on the inbound listener.
+      ISTIO_META_DNS_CAPTURE: "true"
+
 pilot:
   autoscaleEnabled: false
   traceSampling: 50
+  env:
+    # Fail closed: if a workload's authorization policy cannot be computed,
+    # deny rather than allow.
+    PILOT_ENABLE_ANALYSIS: "true"

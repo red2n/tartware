@@ -8,7 +8,7 @@ import {
   BillingCommandError,
   type CommandContext,
   resolveActorId,
-  resolveFolioId,
+  resolveOpenFolioId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -149,11 +149,14 @@ export const chargeCancellationPenalty = async (
 
   const currency = (command.currency ?? reservation.currency_code ?? "USD").toUpperCase();
 
-  const folioId = await resolveFolioId(context.tenantId, command.reservation_id);
+  // Must be an open folio: a penalty posted to a settled folio succeeds at the
+  // DB level but never surfaces on the reservation, so the operator sees a
+  // successful command and no charge.
+  const folioId = await resolveOpenFolioId(context.tenantId, command.reservation_id);
   if (!folioId) {
     throw new BillingCommandError(
       "FOLIO_NOT_FOUND",
-      `No folio found for reservation ${command.reservation_id}.`,
+      `No open folio found for reservation ${command.reservation_id}.`,
     );
   }
 

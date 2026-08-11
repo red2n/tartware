@@ -350,4 +350,9 @@ COMMENT ON COLUMN travel_agent_commissions.net_commission IS 'Final commission a
 
 COMMENT ON COLUMN commission_rules.tier_structure IS 'JSON structure defining commission tiers for graduated/tiered commissions';
 
+-- commission_statements carries five monetary totals with no currency.
+-- Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE commission_statements ADD COLUMN IF NOT EXISTS currency_code VARCHAR(3);
+COMMENT ON COLUMN commission_statements.currency_code IS 'ISO 4217 code the statement totals are denominated in';
+
 \echo 'travel_agent_commissions table created successfully!'

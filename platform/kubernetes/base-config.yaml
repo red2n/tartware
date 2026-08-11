@@ -41,8 +41,14 @@ kind: Namespace
 metadata:
   name: tartware-system
   labels:
+    # Sidecar injection. Every workload here must be in the mesh — a pod
+    # without a sidecar holds no identity and, under STRICT mTLS, can
+    # neither call nor be called by anything else in the namespace.
     istio-injection: enabled
     monitoring: enabled
+    # Duplicates the automatic `kubernetes.io/metadata.name` label so that
+    # policies written against either convention select correctly.
+    name: tartware-system
 
 ---
 # Resource Quotas
@@ -91,41 +97,23 @@ spec:
       type: Pod
 
 ---
-# Network Policy - Allow internal communication
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: tartware-allow-internal
-  namespace: tartware-system
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: tartware-system
-        - namespaceSelector:
-            matchLabels:
-              name: istio-system
-        - namespaceSelector:
-            matchLabels:
-              name: observability
-  egress:
-    - to:
-        - namespaceSelector: {}
-    - to:
-        - podSelector: {}
-    # Allow DNS
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              name: kube-system
-      ports:
-        - protocol: UDP
-          port: 53
+# NETWORK POLICY — intentionally not defined here.
+#
+# This file used to carry a `tartware-allow-internal` policy whose egress
+# section was `to: [namespaceSelector: {}]` — i.e. every pod may reach every
+# namespace in the cluster. NetworkPolicy rules are additive (a connection is
+# permitted if ANY policy allows it), so that single rule overrode every
+# restriction in network-policies.yaml and left egress wide open.
+#
+# Its ingress section was broken in the opposite direction: it selected
+# namespaces by a `name:` label that none of these namespaces actually carry
+# (Kubernetes sets `kubernetes.io/metadata.name`, not `name`), so it matched
+# nothing and contributed no access at all.
+#
+# All network policy for this namespace now lives in one place:
+#   platform/kubernetes/network-policies.yaml
+# Do not reintroduce a broad allow rule here — it cannot be scoped down by a
+# stricter policy elsewhere.
 
 ---
 # ConfigMap for Database Configuration
@@ -213,6 +201,15 @@ spec:
     matchLabels:
       app.kubernetes.io/part-of: tartware
   podMetricsEndpoints:
-    - port: http
-      path: /metrics
+    # Scrape the sidecar's merged-metrics endpoint, NOT the application
+    # port. Under STRICT mTLS the app port only accepts connections that
+    # present a mesh certificate, and Prometheus (in the un-injected
+    # `observability` namespace) has none — scraping `port: http` would
+    # fail every time with a TLS handshake error.
+    #
+    # pilot-agent serves this port outside the mTLS and authorization
+    # path, and merges the application's own /metrics into the output, so
+    # no application metrics are lost.
+    - targetPort: 15020
+      path: /stats/prometheus
       interval: 15s

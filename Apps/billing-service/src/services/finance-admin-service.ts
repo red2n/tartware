@@ -371,7 +371,7 @@ export const getDepartmentalRevenue = async (options: {
   }>(
     `SELECT
        COALESCE(cc.department_name, 'UNCATEGORIZED') AS department,
-       COUNT(*)::text AS charge_count,
+       COUNT(cp.posting_id)::text AS charge_count,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0)::text AS gross_revenue,
        COALESCE(SUM(CASE WHEN cp.posting_type = 'CREDIT' THEN cp.total_amount ELSE 0 END), 0)::text AS adjustments,
        (COALESCE(SUM(CASE WHEN cp.posting_type = 'DEBIT' THEN cp.total_amount ELSE 0 END), 0)
@@ -434,7 +434,7 @@ export const getTaxSummary = async (options: {
        COALESCE(tc.jurisdiction_level, 'N/A')::text AS jurisdiction,
        COALESCE(SUM(cp.subtotal), 0)::text AS taxable_amount,
        COALESCE(SUM(cp.tax_amount), 0)::text AS tax_collected,
-       COUNT(*)::text AS tx_count
+       COUNT(cp.posting_id)::text AS tx_count
      FROM charge_postings cp
      LEFT JOIN tax_configurations tc ON tc.tax_code = cp.tax_code AND tc.tenant_id = cp.tenant_id
      WHERE cp.tenant_id = $1::uuid
@@ -812,7 +812,7 @@ export const listChargebacks = async (options: {
        r.created_at::text
      FROM public.refunds r
      LEFT JOIN public.payments p ON p.id = r.original_payment_id
-     LEFT JOIN public.guests g ON g.guest_id = r.guest_id
+     LEFT JOIN public.guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
      LEFT JOIN public.reservations res ON res.id = r.reservation_id
      WHERE r.tenant_id = $1::uuid
        AND r.is_chargeback = TRUE

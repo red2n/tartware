@@ -89,6 +89,21 @@ releases:
     chart: istio/cni
     version: 1.22.0
 
+  # The single north-south entry point for the whole platform. Every external
+  # request terminates TLS here and is then forwarded over mTLS to the
+  # api-gateway workload. Its ServiceAccount identity
+  # (cluster.local/ns/istio-system/sa/istio-ingressgateway) is the *only*
+  # principal permitted to call api-gateway — see
+  # platform/kubernetes/istio/authorization-policies.yaml.
+  - name: istio-ingressgateway
+    namespace: istio-system
+    chart: istio/gateway
+    version: 1.22.0
+    needs:
+      - istio-system/istio-controlplane
+    values:
+      - values/{{ .Environment.Name }}/istio-ingressgateway.yaml
+
   - name: consul
     namespace: consul
     chart: hashicorp/consul

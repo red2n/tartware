@@ -260,10 +260,10 @@ if [ "$DEPLOY_MODE" == "docker" ]; then
 
     if [ -f "$RESET_PASSWORD_SCRIPT" ]; then
         if DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=tartware \
-            AUTH_DEFAULT_PASSWORD=TempPass123 NODE_ENV=development \
+            AUTH_DEFAULT_PASSWORD=TempPass1234 NODE_ENV=development \
             npx --yes tsx --tsconfig "$REPO_ROOT/Apps/core-service/tsconfig.json" \
             "$RESET_PASSWORD_SCRIPT"; then
-            echo -e "${GREEN}✓ Default passwords reset to TempPass123${NC}"
+            echo -e "${GREEN}✓ Default passwords reset to TempPass1234${NC}"
         else
             echo -e "${YELLOW}⚠  Failed to reset default passwords using $RESET_PASSWORD_SCRIPT${NC}"
         fi
@@ -808,7 +808,7 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
 
     # Reset passwords to match AUTH_DEFAULT_PASSWORD
     RESET_PASSWORD_SCRIPT="$REPO_ROOT/Apps/core-service/scripts/reset-default-password.ts"
-    DEFAULT_PASSWORD="${AUTH_DEFAULT_PASSWORD:-TempPass123}"
+    DEFAULT_PASSWORD="${AUTH_DEFAULT_PASSWORD:-TempPass1234}"
     if [ -f "$RESET_PASSWORD_SCRIPT" ]; then
         reset_ok=false
         if command -v npx >/dev/null 2>&1; then

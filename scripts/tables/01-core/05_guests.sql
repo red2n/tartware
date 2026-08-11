@@ -175,4 +175,14 @@ UPDATE guests SET member_since = created_at WHERE member_since IS NULL;
 ALTER TABLE guests ALTER COLUMN member_since SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE guests ALTER COLUMN member_since SET NOT NULL;
 
+-- Identity document detail for the digital registration card. id_type/id_number
+-- are generic, so passport_expiry cannot carry expiry for a national ID or
+-- licence. Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS id_issuing_country VARCHAR(2);
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS id_issue_date DATE;
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS id_expiry_date DATE;
+COMMENT ON COLUMN guests.id_issuing_country IS 'ISO 3166-1 alpha-2 country that issued the identity document';
+COMMENT ON COLUMN guests.id_issue_date IS 'Issue date of the document in id_type/id_number';
+COMMENT ON COLUMN guests.id_expiry_date IS 'Expiry date of the document in id_type/id_number';
+
 \echo 'Guests table created successfully!'

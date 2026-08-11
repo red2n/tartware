@@ -1,45 +1,86 @@
-<div class="login-page">
-  <!-- ── Left: Brand hero panel ── -->
-  <div class="login-hero">
-    <div class="hero-content">
-      <div class="hero-logo">
-        <img src="assets/logo.png" class="hero-logo-img" alt="Tartware" />
-        <span class="hero-logo-text">tartware</span>
+<div class="login-scene"
+     #scene
+     (pointermove)="onPointerMove($event)"
+     (pointerleave)="onPointerLeave()">
+
+  <!-- ── Background: suite floor plan ──────────────────────────────
+       Rendered twice from one template: a dim watermark pass, and a
+       brass "lit" pass masked to a circle that follows the cursor, so
+       amenities glow as the pointer sweeps across the room.
+  -->
+  <div class="scene-rules" aria-hidden="true"></div>
+
+  <div class="scene-plan" aria-hidden="true">
+    <ng-container *ngTemplateOutlet="roomPlanTpl" />
+  </div>
+
+  <div class="scene-plan scene-plan--lit" aria-hidden="true">
+    <ng-container *ngTemplateOutlet="roomPlanTpl" />
+  </div>
+
+  <div class="scene-spotlight" aria-hidden="true"></div>
+  <div class="scene-vignette" aria-hidden="true"></div>
+
+  <ng-template #roomPlanTpl>
+    @for (zone of roomPlan; track zone.label) {
+      <section class="plan-zone">
+        <header class="plan-zone-label">{{ zone.label | translate }}</header>
+        <div class="plan-zone-grid">
+          @for (icon of zone.icons; track icon) {
+            <span class="plan-mark"><app-icon [name]="icon" /></span>
+          }
+        </div>
+      </section>
+    }
+  </ng-template>
+
+  <!-- ── Left: brand plate ── -->
+  <div class="login-brand">
+    <div class="brand-lockup">
+      <img src="assets/logo.png" class="brand-logo" alt="Tartware" />
+      <span class="brand-wordmark">tartware</span>
+    </div>
+
+    <p class="brand-eyebrow">{{ 'Property Management Suite' | translate }}</p>
+
+    <h1 class="brand-headline">
+      {{ 'Every room,' | translate }}<br />
+      <em>{{ 'perfectly kept.' | translate }}</em>
+    </h1>
+
+    <p class="brand-tagline">
+      {{ 'Front desk, reservations, housekeeping, and billing — arranged on one calm, command-driven floor.' | translate }}
+    </p>
+
+    <div class="brand-marks">
+      <div class="brand-mark">
+        <app-icon name="speed" />
+        <span>{{ '20K ops/sec throughput' | translate }}</span>
       </div>
-
-      <h1 class="hero-headline">{{ 'Property Management,' | translate }}<br />{{ 'Reimagined.' | translate }}</h1>
-      <p class="hero-tagline">
-        {{ 'A modern PMS built for speed, clarity, and scale — powering front desk, reservations, billing, and operations from a single command-driven platform.' | translate }}
-      </p>
-
-      <div class="hero-features">
-        <div class="hero-feature">
-          <app-icon name="speed" />
-          <span>{{ '20K ops/sec throughput' | translate }}</span>
-        </div>
-        <div class="hero-feature">
-          <app-icon name="domain" />
-          <span>{{ 'Multi-property support' | translate }}</span>
-        </div>
-        <div class="hero-feature">
-          <app-icon name="shield" />
-          <span>{{ 'Enterprise-grade security' | translate }}</span>
-        </div>
+      <div class="brand-mark">
+        <app-icon name="domain" />
+        <span>{{ 'Multi-property support' | translate }}</span>
+      </div>
+      <div class="brand-mark">
+        <app-icon name="shield" />
+        <span>{{ 'Enterprise-grade security' | translate }}</span>
       </div>
     </div>
 
-    <span class="hero-copyright">&copy; 2026 Tartware Inc.</span>
+    <span class="brand-copyright">&copy; 2026 Tartware Inc.</span>
   </div>
 
-  <!-- ── Right: Login form panel ── -->
-  <div class="login-panel">
-    <div class="login-panel-inner">
-      <!-- Mobile logo (visible only on small screens) -->
+  <!-- ── Right: login card ── -->
+  <div class="login-dock">
+    <div class="login-card" #card>
+      <span class="card-sheen" aria-hidden="true"></span>
+
       <div class="mobile-logo">
         <img src="assets/logo.png" class="mobile-logo-img" alt="Tartware" />
         <span class="mobile-logo-text">tartware</span>
       </div>
 
+      <p class="card-eyebrow">{{ 'Front Desk Access' | translate }}</p>
       <h2 class="login-heading">{{ 'Welcome back' | translate }}</h2>
       <p class="login-subheading">{{ 'Sign in to your account to continue' | translate }}</p>
 
@@ -52,31 +93,37 @@
 
       <form (ngSubmit)="onSubmit()" method="post" class="login-form">
         <div class="form-field-outline">
-          <label class="form-label">{{ 'Username' | translate }}</label>
-          <app-icon class="field-icon" name="person_outline" />
-          <input pInputText
-                 [(ngModel)]="username"
-                 name="username"
-                 autocomplete="username"
-                 required />
+          <label class="form-label" for="login-username">{{ 'Username' | translate }}</label>
+          <div class="field-shell">
+            <app-icon class="field-icon" name="person_outline" />
+            <input pInputText
+                   id="login-username"
+                   [(ngModel)]="username"
+                   name="username"
+                   autocomplete="username"
+                   required />
+          </div>
         </div>
 
         <div class="form-field-outline">
-          <label class="form-label">{{ 'Password' | translate }}</label>
-          <app-icon class="field-icon" name="lock_outline" />
-          <input pInputText
-                 [type]="hidePassword() ? 'password' : 'text'"
-                 [(ngModel)]="password"
-                 name="password"
-                 autocomplete="current-password"
-                 required
-                 #passwordInput />
-          <button class="btn btn-invisible btn-xs"
-                  type="button"
-                  (click)="togglePasswordVisibility()"
-                  [attr.aria-label]="'Toggle password visibility' | translate">
-            <app-icon [name]="hidePassword() ? 'visibility' : 'visibility_off'" />
-          </button>
+          <label class="form-label" for="login-password">{{ 'Password' | translate }}</label>
+          <div class="field-shell">
+            <app-icon class="field-icon" name="lock_outline" />
+            <input pInputText
+                   id="login-password"
+                   [type]="hidePassword() ? 'password' : 'text'"
+                   [(ngModel)]="password"
+                   name="password"
+                   autocomplete="current-password"
+                   required
+                   #passwordInput />
+            <button class="btn btn-invisible btn-xs field-toggle"
+                    type="button"
+                    (click)="togglePasswordVisibility()"
+                    [attr.aria-label]="'Toggle password visibility' | translate">
+              <app-icon [name]="hidePassword() ? 'visibility' : 'visibility_off'" />
+            </button>
+          </div>
         </div>
 
         <div class="remember-me-row">

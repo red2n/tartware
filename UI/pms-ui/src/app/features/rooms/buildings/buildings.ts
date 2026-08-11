@@ -2,7 +2,6 @@ import { NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { BuildingGridItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -11,7 +10,9 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { filterBySearch } from "../../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -40,7 +41,7 @@ export class BuildingsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -56,12 +57,11 @@ export class BuildingsComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (query) {
-			list = list.filter(
-				(b) =>
-					b.building_name.toLowerCase().includes(query) ||
-					b.building_code.toLowerCase().includes(query) ||
-					(b.building_type?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (b) => [
+				b.building_name,
+				b.building_code,
+				b.building_type,
+			]);
 		}
 
 		return list;
@@ -137,11 +137,8 @@ export class BuildingsComponent {
 	openCreateDialog(): void {
 		import("./create-building-dialog/create-building-dialog").then(
 			({ CreateBuildingDialogComponent }) => {
-				const ref = this.dialog.open(CreateBuildingDialogComponent, {
-					width: "580px",
-					closable: false,
-				});
-				ref!.onClose.subscribe((created: boolean) => {
+				const ref = this.dialog.open(CreateBuildingDialogComponent);
+				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
 						this.toast.success("Building created successfully.");
 						this.loadBuildings();
@@ -155,11 +152,9 @@ export class BuildingsComponent {
 		import("./create-building-dialog/create-building-dialog").then(
 			({ CreateBuildingDialogComponent }) => {
 				const ref = this.dialog.open(CreateBuildingDialogComponent, {
-					width: "580px",
-					closable: false,
 					data: building,
 				});
-				ref!.onClose.subscribe((saved: boolean) => {
+				ref?.onClose.subscribe((saved: boolean) => {
 					if (saved) {
 						this.toast.success("Building updated successfully.");
 						this.loadBuildings();

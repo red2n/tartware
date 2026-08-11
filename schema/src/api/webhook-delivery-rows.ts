@@ -15,5 +15,6 @@ export type WebhookDeliveryRow = {
 	http_status_code?: number | null;
 	attempt?: number | null;
 	error_message?: string | null;
+	duration_ms?: number | null;
 	created_at?: string | null;
 };

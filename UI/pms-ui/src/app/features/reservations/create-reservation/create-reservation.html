@@ -1,5 +1,5 @@
 <div class="page-header">
-  <div class="flex items-center gap-3">
+  <div class="page-header-lead">
     <button class="btn btn-outline btn-sm" (click)="cancel()">
       <app-icon name="arrow_back" />
     </button>
@@ -39,13 +39,13 @@
   <!-- ═══ STEP 1: Stay Details ═══ -->
   @if (currentStep === 0) {
     <div class="card-header">
-      <h2 class="card-title flex items-center gap-2">
+      <h2 class="card-title">
         <app-icon name="calendar_month" />
         {{ 'When is the guest staying?' | translate }}
       </h2>
     </div>
     <div class="card-body">
-      <div class="field-row mb-4">
+      <div class="field-row">
         <div class="field-group field-required" [class.field-error]="touched['checkInDate'] && !checkInDate">
           <label class="field-label" for="cr-checkin">{{ 'Check-in' | translate }}</label>
           <input id="cr-checkin" type="date" class="field-input"
@@ -154,7 +154,7 @@
     <!-- ═══ STEP 2: Select Rate ═══ -->
     @if (currentStep === 1) {
     <div class="card-header">
-      <h2 class="card-title flex items-center gap-2">
+      <h2 class="card-title">
         <app-icon name="payments" />
         {{ 'Choose a rate plan' | translate }}
       </h2>
@@ -240,7 +240,7 @@
   <!-- ═══ STEP 3: Guest & Details ═══ -->
   @if (currentStep === 2) {
     <div class="card-header">
-      <h2 class="card-title flex items-center gap-2">
+      <h2 class="card-title">
         <app-icon name="person_search" />
         {{ 'Select guest' | translate }}
       </h2>
@@ -272,7 +272,7 @@
         </div>
       }
 
-      <div class="field-group mb-3">
+      <div class="field-group">
         <input type="text" class="field-input"
                [placeholder]="'Search by name or email…' | translate"
                [(ngModel)]="guestSearch" (ngModelChange)="onGuestSearch()" />
@@ -349,7 +349,7 @@
       @if (guestId) {
         <h3 class="section-header mt-6">{{ 'Booking details' | translate }}</h3>
 
-        <div class="field-row mb-3">
+        <div class="field-row">
           <div class="field-group">
             <label class="field-label" for="cr-source">{{ 'Source' | translate }}</label>
             <select id="cr-source" class="field-input" [(ngModel)]="source">
@@ -363,6 +363,31 @@
             <select id="cr-type" class="field-input" [(ngModel)]="reservationType">
               @for (t of reservationTypes; track t.value) {
                 <option [value]="t.value">{{ t.label | translate }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label" for="cr-eta">{{ 'Estimated arrival time' | translate }}</label>
+            <input id="cr-eta" class="field-input" type="time" [(ngModel)]="eta" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="cr-company">{{ 'Company' | translate }}</label>
+            <select id="cr-company" class="field-input" [(ngModel)]="companyId">
+              <option value="">{{ 'None' | translate }}</option>
+              @for (c of companies(); track c.company_id) {
+                <option [value]="c.company_id">{{ c.company_name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="cr-segment">{{ 'Market segment' | translate }}</label>
+            <select id="cr-segment" class="field-input" [(ngModel)]="marketSegmentId">
+              <option value="">{{ 'Unclassified' | translate }}</option>
+              @for (s of marketSegments(); track s.segment_id) {
+                <option [value]="s.segment_id">{{ s.segment_name }}</option>
               }
             </select>
           </div>
@@ -390,7 +415,7 @@
   <!-- ═══ STEP 4: Confirm ═══ -->
   @if (currentStep === 3) {
     <div class="card-header">
-      <h2 class="card-title flex items-center gap-2">
+      <h2 class="card-title">
         <app-icon name="fact_check" />
         {{ 'Review &amp; Confirm' | translate }}
       </h2>

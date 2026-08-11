@@ -20,6 +20,7 @@ import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { filterBySearch } from "../../shared/search-utils";
 
 /** Shape returned by GET /v1/settings/catalog/:code */
 interface CategoryCatalog {
@@ -86,6 +87,7 @@ interface JsonFieldGroup {
 		TranslatePipe,
 	],
 	templateUrl: "./settings.html",
+	styleUrl: "./settings.scss",
 })
 export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
@@ -110,6 +112,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	readonly loadingCatalog = signal(false);
 	readonly error = signal<string | null>(null);
 
+	/** Fixed-length arrays used only to render skeleton placeholders. */
+	readonly skeletonCategories = Array.from({ length: 4 });
+	readonly skeletonSettings = Array.from({ length: 6 });
+
 	/** Definitions grouped by section_id for display */
 	readonly sectionDefinitions = computed(() => {
 		const defs = this.definitions();
@@ -125,12 +131,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 					.sort((a, b) => a.sort_order - b.sort_order);
 
 				if (query) {
-					sectionDefs = sectionDefs.filter(
-						(d) =>
-							d.name.toLowerCase().includes(query) ||
-							d.code.toLowerCase().includes(query) ||
-							d.description?.toLowerCase().includes(query),
-					);
+					sectionDefs = filterBySearch(sectionDefs, query, (d) => [d.name, d.code, d.description]);
 				}
 
 				return { section, definitions: sectionDefs };
@@ -299,6 +300,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
 	isDateValue(def: SettingsDefinition): boolean {
 		return def.control_type === "DATE_PICKER" || def.data_type === "DATE";
+	}
+
+	/**
+	 * Time-of-day settings (check-in/out, night audit run time, housekeeping
+	 * shift start, booking cutoff). Without this they fell through to a free
+	 * text input, so "9am" was accepted where the backend expects "09:00".
+	 */
+	isTimeValue(def: SettingsDefinition): boolean {
+		return def.control_type === "TIME_PICKER" || def.data_type === "TIME";
 	}
 
 	isTextAreaValue(def: SettingsDefinition): boolean {

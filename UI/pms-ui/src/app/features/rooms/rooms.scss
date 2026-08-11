@@ -34,7 +34,7 @@
   font-weight: var(--base-text-weight-semibold);
   color: var(--fgColor-default);
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
     color: var(--fgColor-muted);
   }
@@ -217,7 +217,7 @@
   white-space: nowrap;
   margin-left: auto;
 
-  mat-icon {
+  app-icon {
     @include icon-size(12px);
   }
 }

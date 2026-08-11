@@ -103,6 +103,48 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       "Email/SMS marketing tools",
     ],
   },
+  "revenue-management": {
+    id: "revenue-management",
+    name: "Revenue Management",
+    tier: "add-on",
+    category: "Growth",
+    description:
+      "Dynamic pricing, forecasting, and yield tooling for maximising RevPAR across the portfolio.",
+    features: [
+      "Dynamic pricing rules & yield management",
+      "Demand forecasting & pace reports",
+      "Competitor rate shopping",
+      "Hurdle rates & length-of-stay controls",
+      "Rate recommendations",
+    ],
+  },
+  loyalty: {
+    id: "loyalty",
+    name: "Loyalty & Rewards",
+    tier: "add-on",
+    category: "Growth",
+    description:
+      "Guest loyalty programmes with tier qualification, a points ledger, and rewards redemption.",
+    features: [
+      "Tier rules & qualification thresholds",
+      "Points earn, redeem, and expiry",
+      "Member enrolment & balances",
+      "Welcome bonuses & multipliers",
+    ],
+  },
+  distribution: {
+    id: "distribution",
+    name: "Distribution & Metasearch",
+    tier: "add-on",
+    category: "Growth",
+    description:
+      "Metasearch placement and distribution configuration beyond direct OTA channel sync.",
+    features: [
+      "Metasearch platform configuration",
+      "Placement performance tracking",
+      "Bid management",
+    ],
+  },
   "enterprise-api": {
     id: "enterprise-api",
     name: "Enterprise & API",

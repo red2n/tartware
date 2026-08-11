@@ -106,7 +106,7 @@
       </div>
     } @else if (filtered().length === 0) {
       <div class="empty-state">
-        <app-icon name="request_quote" />
+        <app-icon class="empty-icon" name="request_quote" />
         <p>{{ 'No accounts receivable entries found' | translate }}</p>
       </div>
     } @else {
@@ -139,7 +139,7 @@
           </thead>
           <tbody>
             @for (ar of paginated(); track ar.ar_id) {
-              <tr [class.overdue]="ar.is_overdue" (click)="selectAr(ar)">
+              <tr [class.overdue]="ar.is_overdue" (click)="selectAr(ar)" tabindex="0" (keydown.enter)="$event.preventDefault(); selectAr(ar)" (keydown.space)="$event.preventDefault(); selectAr(ar)">
                 <td class="mono">{{ ar.ar_number }}</td>
                 <td>
                   <div class="cell-primary">
@@ -210,11 +210,11 @@
 
   <!-- ═══ DETAIL PANEL ═══ -->
   @if (selectedAr(); as detail) {
-    <div class="detail-overlay" (click)="closeDetail()">
+    <div class="detail-overlay" unsavedClose (click)="closeDetail()">
       <div class="detail-panel" (click)="$event.stopPropagation()">
         <div class="detail-header">
           <h2>{{ detail.ar_number }}</h2>
-          <button class="btn btn-invisible btn-sm" (click)="closeDetail()"><app-icon name="close" /></button>
+          <button class="btn btn-invisible btn-sm" unsavedClose (click)="closeDetail()"><app-icon name="close" /></button>
         </div>
 
         <div class="detail-grid">
@@ -320,16 +320,16 @@
         <!-- ═══ AR ACTIONS ═══ -->
         @if (detail.ar_status !== 'paid' && detail.ar_status !== 'written_off' && detail.ar_status !== 'cancelled') {
           <div class="detail-actions">
-            <button class="btn btn-primary btn-sm" (click)="togglePaymentForm()">
+            <button class="btn btn-primary btn-sm" unsavedClose (click)="togglePaymentForm()">
               <app-icon name="payment" /> {{ 'Apply Payment' | translate }}
             </button>
-            <button class="btn btn-outline btn-sm" (click)="toggleWriteOffForm()">
+            <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleWriteOffForm()">
               <app-icon name="delete_sweep" /> {{ 'Write Off' | translate }}
             </button>
           </div>
 
           @if (showPaymentForm()) {
-            <div class="action-form">
+            <div class="action-form" appUnsavedGuard appSubmitOnEnter>
               <h4>{{ 'Apply Payment' | translate }}</h4>
               <div class="form-grid">
                 <div class="form-field">
@@ -364,13 +364,13 @@
                   @if (applyingPayment()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Apply Payment' | translate }}
                 </button>
-                <button class="btn btn-outline btn-sm" (click)="togglePaymentForm()">{{ 'Cancel' | translate }}</button>
+                <button class="btn btn-outline btn-sm" unsavedClose (click)="togglePaymentForm()">{{ 'Cancel' | translate }}</button>
               </div>
             </div>
           }
 
           @if (showWriteOffForm()) {
-            <div class="action-form">
+            <div class="action-form" appUnsavedGuard appSubmitOnEnter>
               <h4>{{ 'Write Off AR' | translate }}</h4>
               <div class="form-grid">
                 <div class="form-field">
@@ -389,7 +389,7 @@
                   @if (writingOff()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Write Off' | translate }}
                 </button>
-                <button class="btn btn-outline btn-sm" (click)="toggleWriteOffForm()">{{ 'Cancel' | translate }}</button>
+                <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleWriteOffForm()">{{ 'Cancel' | translate }}</button>
               </div>
             </div>
           }

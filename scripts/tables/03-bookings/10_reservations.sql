@@ -100,6 +100,9 @@ CREATE TABLE IF NOT EXISTS reservations (
     company_id UUID,
     travel_agent_id UUID,
 
+    -- Revenue Attribution (USALI market segmentation)
+    market_segment_id UUID,
+
     -- Quote Lifecycle (INQUIRY → QUOTED → PENDING)
     quoted_at TIMESTAMPTZ,
     quote_expires_at TIMESTAMPTZ,
@@ -155,6 +158,7 @@ COMMENT ON COLUMN reservations.property_id IS 'Reference to properties.id';
 COMMENT ON COLUMN reservations.guest_id IS 'Reference to guests.id';
 COMMENT ON COLUMN reservations.room_type_id IS 'Reference to room_types.id';
 COMMENT ON COLUMN reservations.rate_id IS 'Reference to rates.id (NULL if custom rate)';
+COMMENT ON COLUMN reservations.market_segment_id IS 'Reference to market_segments.segment_id (USALI segment attribution; NULL = unclassified)';
 COMMENT ON COLUMN reservations.confirmation_number IS 'Human-readable confirmation number (e.g., CNF123456)';
 COMMENT ON COLUMN reservations.room_number IS 'Assigned room number (NULL until assigned)';
 COMMENT ON COLUMN reservations.actual_check_in IS 'Actual check-in timestamp (NULL until checked in)';
@@ -176,5 +180,13 @@ COMMENT ON COLUMN reservations.deleted_at IS 'Soft delete timestamp (NULL = acti
 -- Idempotent backfill for already-deployed databases (canonical CREATE above is the source of truth).
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS cancellation_policy_snapshot JSONB;
 COMMENT ON COLUMN reservations.cancellation_policy_snapshot IS 'Frozen snapshot of the rate''s cancellation_policy at booking time. Prevents later rate-plan edits from retroactively changing the guest''s cancellation terms.';
+
+-- Assigned room. The table recorded room_number (free text) only, while mobile
+-- check-in, digital key issue and availability search all reference room_id.
+-- Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS room_id UUID;
+COMMENT ON COLUMN reservations.room_id IS 'Reference to rooms.id once a specific room is assigned (NULL until assignment)';
+CREATE INDEX IF NOT EXISTS idx_reservations_room_id
+    ON reservations (room_id) WHERE room_id IS NOT NULL;
 
 \echo 'Reservations table created successfully!'

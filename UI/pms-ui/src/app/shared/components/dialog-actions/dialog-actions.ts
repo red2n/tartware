@@ -9,7 +9,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 	imports: [ProgressSpinnerModule, TranslatePipe],
 	template: `
     <div class="dialog-actions">
-      <button class="btn btn-outline" (click)="cancel.emit()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-outline" unsavedClose (click)="cancel.emit()" [disabled]="saving()">{{ 'Cancel' | translate }}</button>
       <button
         class="btn btn-primary"
         [disabled]="!valid() || saving()"

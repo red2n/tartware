@@ -114,12 +114,12 @@ export const SHIFT_SUMMARY_SQL = `
     cs.reconciled,
     cs.metadata,
     COALESCE(
-      (SELECT COUNT(*) FROM charge_postings cp
+      (SELECT COUNT(cp.posting_id) FROM charge_postings cp
        WHERE cp.tenant_id = cs.tenant_id
          AND cp.property_id = cs.property_id
          AND cp.business_date = cs.business_date
          AND cp.posting_type = 'CHARGE'
-         AND cp.voided = false), 0
+         AND cp.is_voided = false), 0
     )::int AS charge_count,
     COALESCE(
       (SELECT SUM(cp.total_amount) FROM charge_postings cp
@@ -127,15 +127,15 @@ export const SHIFT_SUMMARY_SQL = `
          AND cp.property_id = cs.property_id
          AND cp.business_date = cs.business_date
          AND cp.posting_type = 'CHARGE'
-         AND cp.voided = false), 0
+         AND cp.is_voided = false), 0
     ) AS charge_total,
     COALESCE(
-      (SELECT COUNT(*) FROM charge_postings cp
+      (SELECT COUNT(cp.posting_id) FROM charge_postings cp
        WHERE cp.tenant_id = cs.tenant_id
          AND cp.property_id = cs.property_id
          AND cp.business_date = cs.business_date
          AND cp.posting_type = 'PAYMENT'
-         AND cp.voided = false), 0
+         AND cp.is_voided = false), 0
     )::int AS payment_count,
     COALESCE(
       (SELECT SUM(ABS(cp.total_amount)) FROM charge_postings cp
@@ -143,7 +143,7 @@ export const SHIFT_SUMMARY_SQL = `
          AND cp.property_id = cs.property_id
          AND cp.business_date = cs.business_date
          AND cp.posting_type = 'PAYMENT'
-         AND cp.voided = false), 0
+         AND cp.is_voided = false), 0
     ) AS payment_total
   FROM cashier_sessions cs
   WHERE cs.session_id = $1::uuid

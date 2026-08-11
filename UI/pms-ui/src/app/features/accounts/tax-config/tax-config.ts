@@ -13,7 +13,10 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
+import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
+import { filterBySearch } from "../../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -44,6 +47,9 @@ type ActiveFilter = "ALL" | "active" | "inactive";
 		PaginationComponent,
 		PageHeaderComponent,
 		TranslatePipe,
+		UnsavedGuardDirective,
+
+		SubmitOnEnterDirective,
 	],
 	templateUrl: "./tax-config.html",
 	styleUrl: "./tax-config.scss",
@@ -94,13 +100,12 @@ export class TaxConfigComponent {
 		if (status !== "ALL")
 			list = list.filter((t) => (status === "active" ? t.is_active : !t.is_active));
 		if (query) {
-			list = list.filter(
-				(t) =>
-					t.tax_name.toLowerCase().includes(query) ||
-					t.tax_code.toLowerCase().includes(query) ||
-					(t.jurisdiction_name?.toLowerCase().includes(query) ?? false) ||
-					(t.tax_description?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (t) => [
+				t.tax_name,
+				t.tax_code,
+				t.jurisdiction_name,
+				t.tax_description,
+			]);
 		}
 		return list;
 	});

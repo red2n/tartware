@@ -63,22 +63,27 @@ api-gateway:
     type: ClusterIP
     port: 3000
 
+  istio:
+    injection: true
+    # `gateway`, not `domain-service`. The domain-service tier is selected
+    # by the policy that only admits the api-gateway identity — labelling
+    # the gateway with it would restrict the gateway to calling itself.
+    tier: gateway
+
+  # No Kubernetes Ingress. External traffic reaches this Service only via
+  # the Istio Gateway + VirtualService in
+  # platform/kubernetes/istio/gateway.yaml, which terminates public TLS
+  # and forwards over mTLS. That is also where the serving certificate is
+  # requested from cert-manager (the `api-gateway-tls` secret now lives in
+  # istio-system, since Istio reads gateway credentials from the gateway's
+  # own namespace).
+  #
+  # Rate limiting moved with it: the nginx annotations below applied to an
+  # ingress controller that is no longer in the request path. The gateway
+  # already enforces limits in-process via @fastify/rate-limit.
   ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-      nginx.ingress.kubernetes.io/rate-limit: "1000"
-      nginx.ingress.kubernetes.io/limit-rps: "200"
-    hosts:
-      - host: api.tartware.local
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: api-gateway-tls
-        hosts:
-          - api.tartware.local
+    enabled: false
+    allowExternalExposure: false
 
   resources:
     requests:
@@ -321,6 +326,26 @@ availability-guard-service:
     prometheus.io/path: "/metrics"
   podLabels:
     shadow-mode.tartware.io/enabled: "true"
+
+  # SANCTIONED EAST-WEST EXCEPTION.
+  # reservations-command-service calls this service's gRPC port directly
+  # for inventory checks — the one hop that does not go through
+  # api-gateway. Scoped to port 4400 so the exception cannot be reused
+  # against the HTTP surface. Mirrors the AuthorizationPolicy and
+  # NetworkPolicy of the same name in platform/kubernetes/.
+  istio:
+    injection: true
+    tier: domain-service
+    authorizedCallers:
+      - cluster.local/ns/tartware-system/sa/reservations-command-service
+      - cluster.local/ns/tartware-system/sa/tartware-reservations-command-service
+    extraAuthorizedPorts:
+      - 4400
+  networkPolicy:
+    enabled: true
+    additionalIngressPods:
+      - reservations-command-service
+
   resources:
     requests:
       cpu: 200m

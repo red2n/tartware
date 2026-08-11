@@ -154,6 +154,7 @@ export const BOOKING_PACE_SNAPSHOT_SQL = `
   )
   INSERT INTO demand_calendar (
     tenant_id, property_id, calendar_date, day_of_week,
+    demand_level, rooms_available,
     rooms_reserved, pickup_last_7_days, pickup_last_30_days,
     pace_vs_last_year,
     booking_pace,
@@ -164,6 +165,10 @@ export const BOOKING_PACE_SNAPSHOT_SQL = `
     $2::uuid,
     d.calendar_date,
     EXTRACT(DOW FROM d.calendar_date)::int,
+    'medium',
+    (SELECT COUNT(rm.id)::int FROM rooms rm
+      WHERE rm.tenant_id = $1::uuid AND rm.property_id = $2::uuid
+        AND COALESCE(rm.is_deleted, false) = false),
     COALESCE(o.otb_rooms, 0),
     COALESCE(p7.cnt, 0),
     COALESCE(p30.cnt, 0),

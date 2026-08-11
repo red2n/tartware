@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-import { authConfig } from "../config.js";
+import { authConfig, systemAdminAuthConfig } from "../config.js";
 
 type AccessTokenPayload = jwt.JwtPayload & {
   sub: string;
@@ -23,6 +23,23 @@ export const verifyAccessToken = (token: string): AccessTokenPayload | null => {
     const payload = jwt.verify(token, authConfig.jwt.secret, {
       audience: authConfig.jwt.audience,
       issuer: authConfig.jwt.issuer,
+    });
+    return payload as AccessTokenPayload;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Verifies a token minted by core-service's system-admin signer. Those tokens
+ * carry a different issuer/audience than tenant access tokens, so they must be
+ * checked against systemAdminAuthConfig rather than authConfig.
+ */
+export const verifySystemAdminToken = (token: string): AccessTokenPayload | null => {
+  try {
+    const payload = jwt.verify(token, systemAdminAuthConfig.jwt.secret, {
+      audience: systemAdminAuthConfig.jwt.audience,
+      issuer: systemAdminAuthConfig.jwt.issuer,
     });
     return payload as AccessTokenPayload;
   } catch {

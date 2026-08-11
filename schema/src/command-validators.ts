@@ -141,6 +141,7 @@ import {
 } from "./events/commands/inventory.js";
 import {
 	LoyaltyPointsEarnCommandSchema,
+	LoyaltyProgramEnrollCommandSchema,
 	LoyaltyPointsExpireSweepCommandSchema,
 	LoyaltyPointsRedeemCommandSchema,
 } from "./events/commands/loyalty.js";
@@ -715,6 +716,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"compliance.breach.notify",
 		(payload) => ComplianceBreachNotifyCommandSchema.parse(payload),
+	],
+	[
+		"loyalty.program.enroll",
+		(payload) => LoyaltyProgramEnrollCommandSchema.parse(payload),
 	],
 	[
 		"loyalty.points.earn",

@@ -1,12 +1,19 @@
+import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import type { ModuleDefinition, ModuleId, TenantModulesResponse } from "@tartware/schemas";
+import type {
+	ModuleAccessRequest,
+	ModuleDefinition,
+	ModuleId,
+	TenantModulesResponse,
+} from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
+import { ModuleRequestService } from "../../core/modules/module-request.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { ToastService } from "../../shared/toast/toast.service";
@@ -19,6 +26,7 @@ type CatalogResponse =
 	selector: "app-modules",
 	standalone: true,
 	imports: [
+		DatePipe,
 		FormsModule,
 		IconComponent,
 		ProgressSpinnerModule,
@@ -33,6 +41,12 @@ export class ModulesComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
+	private readonly requests = inject(ModuleRequestService);
+
+	/** Requests waiting on this admin. */
+	readonly pendingRequests = this.requests.pending;
+	/** Id of the request currently being decided, so its row's buttons disable. */
+	readonly deciding = signal<string | null>(null);
 
 	readonly catalog = signal<ModuleDefinition[]>([]);
 	readonly enabled = signal<Set<ModuleId | string>>(new Set());
@@ -85,10 +99,48 @@ export class ModulesComponent {
 			const set = new Set<ModuleId | string>(enabledList);
 			this.enabled.set(set);
 			this.originalEnabled.set(new Set(set));
+
+			// Secondary to the catalog: a failure here costs the requests panel,
+			// not the screen, so it must not take the module list down with it.
+			await this.requests.load().catch(() => {
+				this.toast.error("Could not load pending module requests.");
+			});
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to load modules");
 		} finally {
 			this.loading.set(false);
+		}
+	}
+
+	async approve(request: ModuleAccessRequest): Promise<void> {
+		await this.decide(request, "approve");
+	}
+
+	async reject(request: ModuleAccessRequest): Promise<void> {
+		await this.decide(request, "reject");
+	}
+
+	private async decide(request: ModuleAccessRequest, verb: "approve" | "reject"): Promise<void> {
+		if (this.deciding()) return;
+		this.deciding.set(request.id);
+		try {
+			if (verb === "approve") {
+				await this.requests.approve(request.id);
+				this.toast.success(`${request.moduleName} switched on.`);
+				// The server enabled it; re-read so the catalog's checkboxes agree
+				// rather than showing it still off until the next visit.
+				await this.load();
+			} else {
+				await this.requests.reject(request.id);
+				this.toast.success("Request rejected.");
+			}
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Could not update the request.");
+			// A conflict means someone else decided it first — re-read the queue so
+			// the stale row disappears instead of inviting another failed click.
+			await this.requests.load().catch(() => undefined);
+		} finally {
+			this.deciding.set(null);
 		}
 	}
 

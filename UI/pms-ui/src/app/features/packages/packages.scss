@@ -27,7 +27,7 @@
     box-shadow: var(--shadow-resting-small);
   }
 
-  > mat-icon {
+  > app-icon {
     @include icon-size(22px);
     flex-shrink: 0;
   }
@@ -36,25 +36,25 @@
 .pkg-stat-active {
   background: var(--bgColor-success-muted);
 
-  > mat-icon { color: var(--fgColor-success); }
+  > app-icon { color: var(--fgColor-success); }
 }
 
 .pkg-stat-featured {
   background: var(--bgColor-attention-muted);
 
-  > mat-icon { color: var(--fgColor-attention); }
+  > app-icon { color: var(--fgColor-attention); }
 }
 
 .pkg-stat-bookings {
   background: var(--bgColor-accent-muted);
 
-  > mat-icon { color: var(--fgColor-accent); }
+  > app-icon { color: var(--fgColor-accent); }
 }
 
 .pkg-stat-price {
   background: var(--bgColor-muted);
 
-  > mat-icon { color: var(--fgColor-muted); }
+  > app-icon { color: var(--fgColor-muted); }
 }
 
 .pkg-stat-content {
@@ -83,10 +83,6 @@
 
 .pkg-name {
   font-size: var(--base-text-size-xs);
-}
-
-.col-right {
-  text-align: right;
 }
 
 

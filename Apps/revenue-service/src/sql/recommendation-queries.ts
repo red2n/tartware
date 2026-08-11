@@ -8,9 +8,9 @@ export const ROOM_TYPES_FOR_PROPERTY_SQL = `
   SELECT
     rt.id AS room_type_id,
     rt.type_name,
-    rt.base_rate,
+    rt.base_price,
     rt.max_occupancy,
-    (SELECT COUNT(*) FROM rooms r
+    (SELECT COUNT(r.id) FROM rooms r
      WHERE r.room_type_id = rt.id
        AND r.tenant_id = rt.tenant_id
        AND r.property_id = $2::uuid
@@ -57,7 +57,7 @@ export const DEMAND_CALENDAR_RANGE_SQL = `
   SELECT
     dc.calendar_date,
     dc.demand_level,
-    dc.occupancy_forecast,
+    dc.forecasted_occupancy_percent,
     dc.booking_pace,
     dc.pickup_last_7_days,
     dc.pace_vs_last_year,
@@ -76,19 +76,19 @@ export const DEMAND_CALENDAR_RANGE_SQL = `
  */
 export const COMPETITOR_AVG_RATE_SQL = `
   SELECT
-    cr.rate_date,
-    AVG(cr.rate_amount) AS avg_rate,
-    MIN(cr.rate_amount) AS min_rate,
-    MAX(cr.rate_amount) AS max_rate,
+    cr.stay_date,
+    AVG(cr.competitor_rate) AS avg_rate,
+    MIN(cr.competitor_rate) AS min_rate,
+    MAX(cr.competitor_rate) AS max_rate,
     COUNT(DISTINCT cr.competitor_name) AS competitor_count
   FROM public.competitor_rates cr
   WHERE cr.tenant_id = $1::uuid
     AND cr.property_id = $2::uuid
-    AND cr.rate_date >= $3::date
-    AND cr.rate_date <= $4::date
+    AND cr.stay_date >= $3::date
+    AND cr.stay_date <= $4::date
     AND COALESCE(cr.is_deleted, false) = false
-  GROUP BY cr.rate_date
-  ORDER BY cr.rate_date
+  GROUP BY cr.stay_date
+  ORDER BY cr.stay_date
 `;
 
 /**
@@ -106,14 +106,14 @@ export const ACTIVE_PRICING_RULES_SQL = `
     pr.conditions,
     pr.applies_to_room_types,
     pr.effective_from,
-    pr.effective_to
+    pr.effective_until AS effective_to
   FROM public.pricing_rules pr
   WHERE pr.tenant_id = $1::uuid
     AND pr.property_id = $2::uuid
     AND pr.is_active = true
     AND COALESCE(pr.is_deleted, false) = false
     AND (pr.effective_from IS NULL OR pr.effective_from <= $4::date)
-    AND (pr.effective_to IS NULL OR pr.effective_to >= $3::date)
+    AND (pr.effective_until IS NULL OR pr.effective_until >= $3::date)
   ORDER BY pr.priority ASC
 `;
 

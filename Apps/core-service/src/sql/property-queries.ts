@@ -42,7 +42,7 @@ export const PROPERTY_OPERATIONAL_STATS_SQL = `
   room_data AS (
     SELECT
       r.property_id,
-      COUNT(*) AS room_count
+      COUNT(r.id) AS room_count
     FROM public.rooms r
     WHERE COALESCE(r.is_deleted, false) = false
       AND r.deleted_at IS NULL
@@ -64,11 +64,11 @@ export const PROPERTY_OPERATIONAL_STATS_SQL = `
           AND r.check_in_date <= CURRENT_DATE
           AND r.check_out_date >= CURRENT_DATE
       ) AS current_guests,
-      COUNT(*) FILTER (
+      COUNT(r.id) FILTER (
         WHERE r.status IN ('CONFIRMED', 'CHECKED_IN')
           AND r.check_in_date = CURRENT_DATE
       ) AS todays_arrivals,
-      COUNT(*) FILTER (
+      COUNT(r.id) FILTER (
         WHERE r.status IN ('CHECKED_IN', 'CHECKED_OUT')
           AND r.check_out_date = CURRENT_DATE
       ) AS todays_departures

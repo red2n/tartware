@@ -26,11 +26,55 @@ const hopByHopHeaders = new Set([
   "host",
 ]);
 
+/**
+ * Prefix reserved for headers the gateway asserts on a caller's behalf.
+ *
+ * Downstream services treat anything under this prefix as already verified,
+ * so a client-supplied value must never survive the proxy hop. Stripping is
+ * unconditional and happens before the gateway sets its own values.
+ */
+const INTERNAL_HEADER_PREFIX = "x-tartware-";
+
+/**
+ * Headers that convey identity established by infrastructure rather than by
+ * the caller. `x-forwarded-client-cert` carries the peer's mTLS identity and
+ * is set by the Envoy sidecar; Envoy sanitises it on ingress, but the gateway
+ * strips it too so the guarantee does not depend on sidecar configuration
+ * staying correct.
+ */
+const spoofableIdentityHeaders = new Set(["x-forwarded-client-cert", "x-tartware-caller"]);
+
+/**
+ * Returns true for a header a client must not be able to set on an upstream
+ * request, regardless of the value it carries.
+ */
+const isClientForgeableTrustHeader = (name: string): boolean =>
+  name.startsWith(INTERNAL_HEADER_PREFIX) || spoofableIdentityHeaders.has(name);
+
 const buildHeaders = (request: FastifyRequest): Headers => {
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers)) {
     if (value === undefined || value === null) continue;
-    if (hopByHopHeaders.has(key.toLowerCase())) continue;
+
+    const name = key.toLowerCase();
+    if (hopByHopHeaders.has(name)) continue;
+
+    // Drop caller-supplied trust headers before anything is forwarded.
+    //
+    // Previously every inbound header was copied through and the tenant
+    // header was only *overwritten* when exactly one tenant was authorized.
+    // A request whose auth context resolved to zero or several tenants
+    // therefore forwarded the client's own `x-tartware-tenant-id` untouched,
+    // and downstream services — which are told to trust that header in place
+    // of the query parameter — would act on it. That is a cross-tenant read
+    // and write primitive available to any authenticated user.
+    if (isClientForgeableTrustHeader(name)) {
+      request.log.warn(
+        { header: name, method: request.method, url: request.url },
+        "stripped client-supplied internal trust header",
+      );
+      continue;
+    }
 
     if (Array.isArray(value)) {
       for (const item of value) {
@@ -45,6 +89,11 @@ const buildHeaders = (request: FastifyRequest): Headers => {
   // `authorizedTenantIds` is populated exclusively by `withTenantScope` after
   // successful JWT membership verification, so downstream services can rely on
   // this header rather than trusting the client-supplied query param.
+  //
+  // When the caller is scoped to several tenants the gateway cannot say which
+  // one the request is for, so it asserts nothing and the header is simply
+  // absent — downstream must then fall back to its own scoping rules rather
+  // than inheriting an unverified value.
   const authorizedTenantIds = request.auth?.authorizedTenantIds;
   if (authorizedTenantIds?.size === 1) {
     headers.set("x-tartware-tenant-id", [...authorizedTenantIds][0]);

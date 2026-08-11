@@ -11,5 +11,15 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.istio.injection }}
+    # Envoy's merged application+proxy metrics. Exposed as a Service port so
+    # the ServiceMonitor can target it; it is served by pilot-agent outside
+    # the mTLS and authorization path, which is the only way Prometheus (no
+    # sidecar) can scrape a STRICT-mTLS workload.
+    - port: 15020
+      targetPort: 15020
+      protocol: TCP
+      name: istio-metrics
+    {{- end }}
   selector:
     {{- include "service.selectorLabels" . | nindent 4 }}

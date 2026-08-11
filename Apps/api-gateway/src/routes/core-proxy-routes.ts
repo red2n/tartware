@@ -180,6 +180,100 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  // Module access requests. Like PUT modules above, these must NOT require any
+  // module: the requester is by definition blocked by the one they are asking
+  // for, so gating the ask on it would make the whole flow unreachable.
+  const moduleRequestParamsSchema = {
+    type: "object",
+    properties: {
+      tenantId: { type: "string", format: "uuid" },
+      requestId: { type: "string", format: "uuid" },
+    },
+    required: ["tenantId"],
+  } as const;
+
+  const moduleRequestMemberScope = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "VIEWER",
+  });
+
+  const moduleRequestAdminScope = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "ADMIN",
+  });
+
+  app.post(
+    "/v1/tenants/:tenantId/module-requests",
+    {
+      preHandler: moduleRequestMemberScope,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Ask an administrator to switch a module on.",
+        params: moduleRequestParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          201: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/module-requests/mine",
+    {
+      preHandler: moduleRequestMemberScope,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "List the module requests the caller has raised.",
+        params: moduleRequestParamsSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/module-requests",
+    {
+      preHandler: moduleRequestAdminScope,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "List module requests awaiting review.",
+        params: moduleRequestParamsSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyCore,
+  );
+
+  for (const verb of ["approve", "reject"] as const) {
+    app.post(
+      `/v1/tenants/:tenantId/module-requests/:requestId/${verb}`,
+      {
+        preHandler: moduleRequestAdminScope,
+        schema: buildRouteSchema({
+          tag: CORE_PROXY_TAG,
+          summary:
+            verb === "approve"
+              ? "Approve a module request and switch the module on."
+              : "Reject a module request.",
+          params: moduleRequestParamsSchema,
+          // Notes are optional, so a bodyless approve must pass the gateway too.
+          body: { type: ["object", "null"], additionalProperties: true },
+          response: {
+            200: jsonObjectSchema,
+          },
+        }),
+      },
+      proxyCore,
+    );
+  }
+
   // Auth routes — stricter rate limit to mitigate brute-force
   const authRateLimit = {
     config: {

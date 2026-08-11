@@ -23,7 +23,7 @@
   border-radius: var(--borderRadius-small);
   font-size: var(--base-text-size-sm);
 
-  mat-icon {
+  app-icon {
     @include icon-size(16px);
   }
 }
@@ -51,7 +51,7 @@
   font-weight: var(--base-text-weight-normal);
 }
 
-.rate-section-bar .overview-label mat-icon {
+.rate-section-bar .overview-label app-icon {
   color: var(--fgColor-attention);
 }
 
@@ -88,10 +88,6 @@
 
 .rate-name {
   font-size: var(--base-text-size-xs);
-}
-
-.col-right {
-  text-align: right;
 }
 
 

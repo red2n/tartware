@@ -144,7 +144,7 @@ log_header "1. AUTHENTICATION"
 log_info "Logging in as setup.admin..."
 LOGIN_RESPONSE=$(curl -sS -X POST "$BASE_URL/v1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"setup.admin","password":"TempPass123"}')
+  -d '{"username":"setup.admin","password":"TempPass1234"}')
 
 TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 

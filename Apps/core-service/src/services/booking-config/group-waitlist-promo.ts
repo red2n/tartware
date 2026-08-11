@@ -2,9 +2,13 @@ import {
   type GetGroupBookingInput,
   type GetPromotionalCodeInput,
   type GetWaitlistEntryInput,
+  type GroupBookingDetail,
   type GroupBookingListItem,
   GroupBookingListItemSchema,
   type GroupBookingRow,
+  type GroupRoomBlock,
+  type GroupRoomBlockRow,
+  GroupRoomBlockSchema,
   type ListGroupBookingsInput,
   type ListPromotionalCodesInput,
   type ListWaitlistEntriesInput,
@@ -21,6 +25,7 @@ import { query } from "../../lib/db.js";
 import {
   GROUP_BOOKING_BY_ID_SQL,
   GROUP_BOOKING_LIST_SQL,
+  GROUP_ROOM_BLOCKS_BY_BOOKING_SQL,
   PROMOTIONAL_CODE_BY_CODE_SQL,
   PROMOTIONAL_CODE_BY_ID_SQL,
   PROMOTIONAL_CODE_LIST_SQL,
@@ -28,7 +33,7 @@ import {
   WAITLIST_ENTRY_LIST_SQL,
 } from "../../sql/booking-config/group-waitlist-promo.js";
 
-import { formatDisplayLabel, toIsoString } from "./common.js";
+import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
 
 // =====================================================
 // WAITLIST ENTRY SERVICE
@@ -185,6 +190,51 @@ export const getGroupBookingById = async (
     return null;
   }
   return mapGroupBookingRow(row);
+};
+
+const mapGroupRoomBlockRow = (row: GroupRoomBlockRow): GroupRoomBlock =>
+  GroupRoomBlockSchema.parse({
+    block_id: row.block_id,
+    room_type_id: row.room_type_id,
+    room_type_name: row.room_type_name ?? undefined,
+    block_date: (toIsoString(row.block_date) ?? "").split("T")[0],
+    blocked_rooms: row.blocked_rooms ?? 0,
+    picked_rooms: row.picked_rooms ?? 0,
+    confirmed_rooms: row.confirmed_rooms ?? 0,
+    negotiated_rate: toNumber(row.negotiated_rate),
+    rack_rate: toNumber(row.rack_rate),
+    discount_percentage: toNumber(row.discount_percentage),
+    block_status: row.block_status,
+  });
+
+/**
+ * Room blocks held against a group booking, ordered by date then room type.
+ */
+export const listGroupRoomBlocks = async (
+  options: GetGroupBookingInput,
+): Promise<GroupRoomBlock[]> => {
+  const { rows } = await query<GroupRoomBlockRow>(GROUP_ROOM_BLOCKS_BY_BOOKING_SQL, [
+    options.groupBookingId,
+    options.tenantId,
+  ]);
+  return rows.map(mapGroupRoomBlockRow);
+};
+
+/**
+ * Group booking detail — the booking plus the room blocks held against it.
+ *
+ * Composed from the two single-purpose readers above rather than a joined
+ * query, so each keeps a flat row shape and either can be reused alone.
+ */
+export const getGroupBookingDetail = async (
+  options: GetGroupBookingInput,
+): Promise<GroupBookingDetail | null> => {
+  const booking = await getGroupBookingById(options);
+  if (!booking) {
+    return null;
+  }
+  const roomBlocks = await listGroupRoomBlocks(options);
+  return { ...booking, room_blocks: roomBlocks };
 };
 
 // =====================================================

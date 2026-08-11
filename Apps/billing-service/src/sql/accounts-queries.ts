@@ -224,7 +224,7 @@ export const AR_AGING_SUMMARY_SQL = `
     COALESCE(SUM(CASE WHEN ar.aging_bucket = '91_120_days' THEN ar.outstanding_balance END), 0) AS days_91_120,
     COALESCE(SUM(CASE WHEN ar.aging_bucket = 'over_120_days' THEN ar.outstanding_balance END), 0) AS over_120,
     COALESCE(SUM(ar.outstanding_balance), 0) AS total_outstanding,
-    COUNT(*) AS total_accounts,
+    COUNT(ar.ar_id) AS total_accounts,
     COALESCE(MIN(ar.currency), 'USD') AS currency
   FROM public.accounts_receivable ar
   LEFT JOIN public.properties p ON ar.property_id = p.id

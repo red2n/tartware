@@ -9,7 +9,7 @@
 # - Run 'npm run dev' to start all services
 # - Ensure migrations are applied (scripts/2026-01-28-*.sql, scripts/2026-01-29-*.sql)
 #
-# Default tenant credentials: setup.admin / TempPass123
+# Default tenant credentials: setup.admin / TempPass1234
 ###############################################################################
 
 # Base URL for API Gateway
@@ -17,7 +17,7 @@
 
 # Authentication
 @username = setup.admin
-@password = TempPass123
+@password = TempPass1234
 
 # --- Known Sample IDs (from seed data) ---
 

@@ -80,7 +80,7 @@
     </div>
   } @else if (filtered().length === 0) {
     <div class="empty-state">
-      <app-icon name="account_balance" />
+      <app-icon class="empty-icon" name="account_balance" />
       <span>{{ 'No GL batches found for the selected filters.' | translate }}</span>
     </div>
   } @else {
@@ -152,7 +152,7 @@
                     </div>
                   } @else if (entries().length === 0) {
                     <div class="empty-state">
-                      <app-icon name="receipt_long" />
+                      <app-icon class="empty-icon" name="receipt_long" />
                       <span>{{ 'No entries in this batch.' | translate }}</span>
                     </div>
                   } @else {
@@ -187,7 +187,7 @@
                           }
                         </tbody>
                         <tfoot>
-                          <tr class="font-semibold">
+                          <tr class="row-total">
                             <td colspan="6" class="text-right">{{ 'Totals' | translate }}</td>
                             <td class="text-right">{{ formatCurrency(entryTotals().totalDebit, entries()[0]?.currency_code ?? 'USD') }}</td>
                             <td class="text-right">{{ formatCurrency(entryTotals().totalCredit, entries()[0]?.currency_code ?? 'USD') }}</td>

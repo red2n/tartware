@@ -101,6 +101,7 @@ export type FolioRow = {
 	total_charges: number | string;
 	total_payments: number | string;
 	total_credits: number | string;
+	credit_balance: number | string;
 	currency: string | null;
 	opened_at: string | Date;
 	closed_at: string | Date | null;

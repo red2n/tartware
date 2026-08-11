@@ -17,8 +17,19 @@ spec:
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- if .Values.istio.injection }}
+        # Explicit opt-in, so injection does not depend solely on the
+        # namespace label staying in place.
+        sidecar.istio.io/inject: "true"
+        # Hold the app container until Envoy is serving. Without this the
+        # service can issue requests during startup that never traverse the
+        # sidecar, and therefore carry no mTLS identity.
+        proxy.istio.io/config: |
+          holdApplicationUntilProxyStarts: true
+        {{- end }}
       labels:
         {{- include "service.selectorLabels" . | nindent 8 }}
+        {{- include "service.meshLabels" . | nindent 8 }}
         version: {{ .Chart.AppVersion | quote }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}

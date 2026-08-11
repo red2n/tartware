@@ -16,7 +16,7 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
-import { IconComponent } from "../../../shared/components/icon/icon";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 import { ToastService } from "../../../shared/toast/toast.service";
 import { loadGooglePlaces, parsePlaceResult } from "./google-places.js";
 import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./reference-data.js";
@@ -26,10 +26,10 @@ import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./referen
 	imports: [
 		FormsModule,
 		DynamicDialogModule,
-		IconComponent,
 		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
+		DialogShellComponent,
 	],
 	templateUrl: "./create-property-dialog.html",
 	styleUrl: "./create-property-dialog.scss",

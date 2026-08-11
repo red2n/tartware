@@ -25,18 +25,26 @@ export const generateRegistrationCard = async (
 ): Promise<{ eventId: string; status: string }> => {
   // 1. Fetch reservation + guest data
   const { rows: resRows } = await query<Record<string, unknown>>(
+    // guests.address is a single JSONB document, so the registration card's
+    // structured address fields are projected out of it rather than stored as
+    // parallel columns. reservations has no rate_code — it references a rate,
+    // so the code is read from the joined rate.
     `SELECT r.id, r.guest_id, r.room_type_id, r.room_number,
             r.check_in_date, r.check_out_date, r.number_of_adults, r.number_of_children,
-            r.rate_code, r.status,
+            ra.rate_code, r.status,
             g.first_name, g.last_name, g.email, g.phone, g.date_of_birth,
             g.nationality, g.id_type, g.id_number, g.id_issuing_country,
             g.id_issue_date, g.id_expiry_date,
-            g.address_line1, g.address_city, g.address_state,
-            g.address_country, g.address_postal_code,
-            rt.name AS room_type_name
+            g.address->>'line1'       AS address_line1,
+            g.address->>'city'        AS address_city,
+            g.address->>'state'       AS address_state,
+            g.address->>'country'     AS address_country,
+            g.address->>'postal_code' AS address_postal_code,
+            rt.type_name AS room_type_name
      FROM reservations r
      JOIN guests g ON g.id = r.guest_id AND g.tenant_id = r.tenant_id
      LEFT JOIN room_types rt ON rt.id = r.room_type_id AND rt.tenant_id = r.tenant_id
+     LEFT JOIN rates ra ON ra.id = r.rate_id AND ra.tenant_id = r.tenant_id
      WHERE r.id = $1 AND r.tenant_id = $2`,
     [command.reservation_id, tenantId],
   );
@@ -51,7 +59,7 @@ export const generateRegistrationCard = async (
   // 2. Generate registration number: REG-YYYYMMDD-XXXX
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const { rows: countRows } = await query<{ cnt: string }>(
-    `SELECT COUNT(*)::int AS cnt FROM digital_registration_cards
+    `SELECT COUNT(registration_id)::int AS cnt FROM digital_registration_cards
      WHERE tenant_id = $1 AND property_id = $2 AND registration_date = CURRENT_DATE`,
     [tenantId, command.property_id],
   );
@@ -202,8 +210,8 @@ export const startMobileCheckin = async (
     `INSERT INTO mobile_check_ins (
        mobile_checkin_id, tenant_id, property_id, reservation_id, guest_id,
        checkin_status, access_method,
-       device_type, device_os, app_version,
-       started_at,
+       device_type, operating_system, app_version,
+       checkin_started_at,
        created_at, updated_at
      ) VALUES (
        $1, $2, $3, $4, $5,
@@ -318,12 +326,12 @@ export const completeMobileCheckin = async (
        id_document_verified = $4,
        registration_card_signed = $5,
        payment_method_verified = $6,
-       guest_signature_url = $7,
+       signature_url = $7,
        room_assigned = $8,
        digital_key_generated = $9,
        digital_key_type = $10,
        terms_accepted = $11,
-       completed_at = NOW(),
+       checkin_completed_at = NOW(),
        updated_at = NOW()
      WHERE mobile_checkin_id = $1 AND tenant_id = $2`,
     [

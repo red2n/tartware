@@ -413,14 +413,37 @@ kubectl exec -it <pod> -n tartware-system -- \
 
 ## 🔐 Security
 
+**Full design and rollout procedure: [`docs/ZERO_TRUST_MTLS.md`](../docs/ZERO_TRUST_MTLS.md).**
+
 ### Implemented Security Features
 
-- ✅ mTLS between services (Istio)
-- ✅ Network policies for pod isolation
-- ✅ Pod security policies enforced
+- ✅ **STRICT mTLS between services** — `platform/kubernetes/istio/peer-authentication.yaml`.
+  Installing Istio alone did *not* provide this: the default mode is
+  PERMISSIVE, which accepts plaintext. A `PeerAuthentication` resource is
+  required and, until now, none existed.
+- ✅ **Identity-based authorization** — namespace-wide default-deny plus
+  allow-rules pinned to SPIFFE principals, so mTLS proves *who* the caller is
+  and policy decides whether it may make the call.
+- ✅ **Single ingress path** — internet → `istio-ingressgateway` →
+  `api-gateway`. No backend service has an Ingress or a non-ClusterIP Service,
+  and the Helm chart refuses to render one.
+- ✅ **Network policies for pod isolation** — default-deny on both ingress and
+  egress. (These previously selected labels no Helm-deployed pod carried and
+  so matched zero pods; the chart now applies them via `service.meshLabels`.)
+- ✅ **Egress confinement** — `REGISTRY_ONLY`; external hosts must be declared
+  as `ServiceEntry` resources.
+- ✅ **Application-level caller verification** — services independently check
+  the peer's mTLS identity, so enforcement survives a pod losing its sidecar.
+- ✅ Pod security contexts enforced (non-root, read-only rootfs, all caps dropped)
 - ✅ Secrets management with Vault
 - ✅ RBAC configured
 - ✅ TLS certificates automated (cert-manager)
+
+### Not covered
+
+- Hops to Postgres / Redis / Redpanda are **not** mesh mTLS — those namespaces
+  are not sidecar-injected. They are restricted by NetworkPolicy only.
+- `docker-compose.yml` (local development) runs plaintext by design.
 
 ## 📝 License
 

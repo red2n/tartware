@@ -35,7 +35,7 @@
     "lint": "echo 'lint skipped'",
     "biome": "echo 'biome skipped'",
     "knip": "echo 'knip skipped'",
-    "test": "echo 'test skipped'",
+    "test": "npx vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

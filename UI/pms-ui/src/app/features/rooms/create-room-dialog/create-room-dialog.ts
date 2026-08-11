@@ -7,26 +7,25 @@ import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
-import { IconComponent } from "../../../shared/components/icon/icon";
 import { ToastService } from "../../../shared/toast/toast.service";
 
 type RoomType = Pick<RoomTypeItem, "room_type_id" | "type_name">;
 type Building = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
 	selector: "app-create-room-dialog",
 	standalone: true,
 	imports: [
 		FormsModule,
 		DynamicDialogModule,
-		IconComponent,
 		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
+		DialogShellComponent,
 	],
 	templateUrl: "./create-room-dialog.html",
-	styleUrl: "./create-room-dialog.scss",
 })
 export class CreateRoomDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);

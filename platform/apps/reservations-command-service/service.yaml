@@ -11,4 +11,8 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    # Sidecar merged-metrics port, targeted by servicemonitor.yaml.
+    - name: istio-metrics
+      port: 15020
+      targetPort: 15020
   type: ClusterIP

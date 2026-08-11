@@ -41,6 +41,7 @@
 \ir 01-core/21_role_screen_permissions.sql
 \ir 01-core/22_role_screen_permissions_seed.sql
 \ir 01-core/23_flow_approvals.sql
+\ir 01-core/24_module_access_requests.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -66,6 +67,8 @@
 \ir 02-inventory/90_companies.sql
 \ir 02-inventory/91_group_bookings.sql
 \ir 02-inventory/92_packages.sql
+-- Must precede 93: travel_agent_commissions.agent_id references travel_agents.
+\ir 02-inventory/89_travel_agents.sql
 \ir 02-inventory/93_travel_agent_commissions.sql
 \ir 02-inventory/97_meeting_rooms.sql
 \ir 02-inventory/98_event_bookings.sql
@@ -187,6 +190,8 @@
 -- ============================================================================
 \echo '>>> Category 6/8: INTEGRATIONS & CHANNELS'
 \ir 06-integrations/18_channel_mappings.sql
+-- Must follow 18: channel_sync_logs.channel_mapping_id references channel_mappings.
+\ir 06-integrations/49_channel_sync_logs.sql
 \ir 06-integrations/38_ota_configurations.sql
 \ir 06-integrations/39_ota_rate_plans.sql
 \ir 06-integrations/40_ota_reservations_queue.sql
@@ -204,6 +209,8 @@
 \ir 06-integrations/86_integration_mappings.sql
 \ir 06-integrations/87_api_logs.sql
 \ir 06-integrations/88_webhook_subscriptions.sql
+-- Must follow 88: webhook_deliveries.webhook_id references webhook_subscriptions.
+\ir 06-integrations/90_webhook_deliveries.sql
 \ir 06-integrations/89_data_sync_status.sql
 \ir 06-integrations/94_ai_demand_predictions.sql
 \ir 06-integrations/95_dynamic_pricing_rules_ml.sql

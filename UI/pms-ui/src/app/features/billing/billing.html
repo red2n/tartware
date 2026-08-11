@@ -15,7 +15,9 @@
       <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
       <div class="overview-sk-section"><div class="overview-sk-label"></div><div class="overview-sk-value"></div><div class="overview-sk-sub"></div></div>
     </div>
-  } @else if (payments().length > 0 || invoices().length > 0 || folios().length > 0) {
+  } @else {
+    <!-- Rendered even with no data: summary() reduces to zeros, and a KPI strip
+         that vanishes reads as a broken page rather than an empty property. -->
     <div class="overview-bar">
       <div class="overview-section bill-section-received">
         <div class="overview-label">
@@ -95,14 +97,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCapturePaymentForm()" [pTooltip]="'Capture a payment' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCapturePaymentForm()" [pTooltip]="'Capture a payment' | translate">
         <app-icon name="add" /> {{ 'Capture Payment' | translate }}
       </button>
     </div>
 
     <!-- Capture Payment Form -->
     @if (showCapturePaymentForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Capture Payment' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -146,7 +148,7 @@
             @if (capturingPayment()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Capture Payment' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCapturePaymentForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCapturePaymentForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -211,7 +213,7 @@
                 @if (voidingPaymentId() === pay.id) {
                   <tr class="action-row-form">
                     <td colspan="8">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Void payment' | translate }} {{ pay.payment_reference }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -235,7 +237,7 @@
                 @if (refundingPaymentId() === pay.id) {
                   <tr class="action-row-form">
                     <td colspan="8">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Refund payment' | translate }} {{ pay.payment_reference }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -322,14 +324,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateInvoiceForm()" [pTooltip]="'Create a new invoice' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateInvoiceForm()" [pTooltip]="'Create a new invoice' | translate">
         <app-icon name="add" /> {{ 'New Invoice' | translate }}
       </button>
     </div>
 
     <!-- Create Invoice Form -->
     @if (showCreateInvoiceForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Create Invoice' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -384,7 +386,7 @@
             @if (creatingInvoice()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Invoice' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCreateInvoiceForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateInvoiceForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -463,7 +465,7 @@
                 @if (voidInvoiceId() === inv.id) {
                   <tr class="action-row-form">
                     <td colspan="9">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Void invoice' | translate }} {{ inv.invoice_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -487,7 +489,7 @@
                 @if (creditNoteInvoiceId() === inv.id) {
                   <tr class="action-row-form">
                     <td colspan="9">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Credit note for' | translate }} {{ inv.invoice_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -516,7 +518,7 @@
                 @if (reopenInvoiceId() === inv.id) {
                   <tr class="action-row-form">
                     <td colspan="9">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Reopen invoice' | translate }} {{ inv.invoice_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -563,14 +565,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateFolioForm()" [pTooltip]="'Create standalone folio' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateFolioForm()" [pTooltip]="'Create standalone folio' | translate">
         <app-icon name="add" /> {{ 'New Folio' | translate }}
       </button>
     </div>
 
     <!-- Create Folio Form -->
     @if (showCreateFolioForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Create Standalone Folio' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -597,7 +599,7 @@
             @if (creatingFolio()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Folio' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCreateFolioForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateFolioForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -632,7 +634,7 @@
             </thead>
             <tbody>
               @for (fol of paginatedFolios(); track fol.id) {
-                <tr class="clickable-row" [class.row-selected]="selectedFolioId() === fol.id" (click)="selectFolio(fol)">
+                <tr class="clickable-row" [class.row-selected]="selectedFolioId() === fol.id" (click)="selectFolio(fol)" tabindex="0" (keydown.enter)="$event.preventDefault(); selectFolio(fol)" (keydown.space)="$event.preventDefault(); selectFolio(fol)">
                   <td class="cell-primary">
                     <span class="ref-code">{{ fol.folio_number }}</span>
                     @if (fol.confirmation_number) {
@@ -771,7 +773,7 @@
                                 @if (splittingChargeId() === chg.id) {
                                   <tr class="action-row-form">
                                     <td colspan="6">
-                                      <div class="inline-action-form">
+                                      <div class="inline-action-form" appUnsavedGuard>
                                         <span class="form-label">{{ 'Split charge' | translate }} {{ chg.charge_code }}</span>
                                         <div class="form-inline-fields">
                                           <div class="form-field">
@@ -821,7 +823,7 @@
                 @if (closingFolioId() === fol.id) {
                   <tr class="action-row-form">
                     <td colspan="10">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Close folio' | translate }} {{ fol.folio_number }}
                           @if (fol.balance > 0) { — <span class="text-danger">{{ 'Outstanding balance:' | translate }} {{ formatCurrency(fol.balance, fol.currency) }}</span> }
                         </span>
@@ -855,7 +857,7 @@
                 @if (reopeningFolioId() === fol.id) {
                   <tr class="action-row-form">
                     <td colspan="10">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Reopen folio' | translate }} {{ fol.folio_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -879,7 +881,7 @@
                 @if (mergingFolioId() === fol.id) {
                   <tr class="action-row-form">
                     <td colspan="10">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Merge folio' | translate }} {{ fol.folio_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -914,7 +916,7 @@
                 @if (creatingWindowFolioId() === fol.id) {
                   <tr class="action-row-form">
                     <td colspan="10">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Create folio window' | translate }} {{ fol.folio_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -960,7 +962,7 @@
                 @if (taxExemptionFolioId() === fol.id) {
                   <tr class="action-row-form">
                     <td colspan="10">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Apply tax exemption' | translate }} {{ fol.folio_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -1000,7 +1002,7 @@
                 @if (compPostingFolioId() === fol.id) {
                   <tr class="action-row-form">
                     <td colspan="10">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Comp post' | translate }} {{ fol.folio_number }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -1099,14 +1101,14 @@
           </button>
         }
       </nav>
-      <button class="btn btn-primary btn-sm" (click)="togglePostChargeForm()" [pTooltip]="'Post a charge to a folio' | translate">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="togglePostChargeForm()" [pTooltip]="'Post a charge to a folio' | translate">
         <app-icon name="add" /> {{ 'Post Charge' | translate }}
       </button>
     </div>
 
     <!-- Post Charge Form -->
     @if (showPostChargeForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Post Charge' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -1155,7 +1157,7 @@
             @if (postingCharge()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Post Charge' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="togglePostChargeForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="togglePostChargeForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -1213,7 +1215,7 @@
                 @if (voidingChargeId() === chg.id) {
                   <tr class="action-row-form">
                     <td colspan="8">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Void charge' | translate }} {{ chg.charge_code }} — {{ formatCurrency(chg.total_amount, chg.currency) }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -1237,7 +1239,7 @@
                 @if (transferringChargeId() === chg.id) {
                   <tr class="action-row-form">
                     <td colspan="8">
-                      <div class="inline-action-form">
+                      <div class="inline-action-form" appUnsavedGuard>
                         <span class="form-label">{{ 'Transfer charge' | translate }} {{ chg.charge_code }} — {{ formatCurrency(chg.total_amount, chg.currency) }}</span>
                         <div class="form-inline-fields">
                           <div class="form-field">
@@ -1323,13 +1325,13 @@
   @if (activeView() === 'routing') {
     <div class="filter-bar filter-bar-with-action">
       <div class="text-subtle">{{ 'Active rules and reusable templates for folio routing.' | translate }}</div>
-      <button class="btn btn-primary btn-sm" (click)="toggleCreateRoutingRuleForm()">
+      <button class="btn btn-primary btn-sm" unsavedClose (click)="toggleCreateRoutingRuleForm()">
         <app-icon name="add" /> {{ 'New Routing Rule' | translate }}
       </button>
     </div>
 
     @if (showCreateRoutingRuleForm()) {
-      <div class="action-form">
+      <div class="action-form" appUnsavedGuard appSubmitOnEnter>
         <h3>{{ 'Create Routing Rule' | translate }}</h3>
         <div class="form-grid">
           <div class="form-field">
@@ -1427,7 +1429,7 @@
             @if (creatingRoutingRule()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
             {{ 'Create Rule' | translate }}
           </button>
-          <button class="btn btn-outline btn-sm" (click)="toggleCreateRoutingRuleForm()">{{ 'Cancel' | translate }}</button>
+          <button class="btn btn-outline btn-sm" unsavedClose (click)="toggleCreateRoutingRuleForm()">{{ 'Cancel' | translate }}</button>
         </div>
       </div>
     }
@@ -1504,7 +1506,7 @@
               @if (editingRoutingRuleId() === rule.rule_id) {
                 <tr class="action-row-form">
                   <td colspan="8">
-                    <div class="inline-action-form">
+                    <div class="inline-action-form" appUnsavedGuard>
                       <span class="form-label">{{ 'Edit routing rule' | translate }} {{ rule.rule_name }}</span>
                       <div class="form-inline-fields">
                         <div class="form-field">
@@ -1547,7 +1549,7 @@
               @if (deletingRoutingRuleId() === rule.rule_id) {
                 <tr class="action-row-form">
                   <td colspan="8">
-                    <div class="inline-action-form">
+                    <div class="inline-action-form" appUnsavedGuard>
                       <span class="form-label">{{ 'Delete routing rule?' | translate }} {{ rule.rule_name }}</span>
                       <div class="form-actions">
                         <button class="btn btn-danger btn-sm" (click)="deleteRoutingRule(rule)" [disabled]="deletingRoutingRule()">
@@ -1563,7 +1565,7 @@
               @if (cloningTemplateId() === rule.rule_id) {
                 <tr class="action-row-form">
                   <td colspan="8">
-                    <div class="inline-action-form">
+                    <div class="inline-action-form" appUnsavedGuard>
                       <span class="form-label">{{ 'Clone template' | translate }} {{ rule.rule_name }}</span>
                       <div class="form-inline-fields">
                         <div class="form-field">

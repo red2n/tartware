@@ -7,11 +7,11 @@
 }
 
 /* ── Guest overview — icon colors per section ── */
-.guest-section-new .overview-label mat-icon { color: var(--fgColor-success); }
-.guest-section-vip .overview-label mat-icon { color: var(--fgColor-attention); }
-.guest-section-loyalty .overview-label mat-icon { color: var(--fgColor-done); }
-.guest-section-stay .overview-label mat-icon { color: var(--fgColor-accent); }
-.guest-section-revenue .overview-label mat-icon { color: var(--fgColor-success); }
+.guest-section-new .overview-label app-icon { color: var(--fgColor-success); }
+.guest-section-vip .overview-label app-icon { color: var(--fgColor-attention); }
+.guest-section-loyalty .overview-label app-icon { color: var(--fgColor-done); }
+.guest-section-stay .overview-label app-icon { color: var(--fgColor-accent); }
+.guest-section-revenue .overview-label app-icon { color: var(--fgColor-success); }
 
 /* ── Activity Sparkline (GitHub-style) ── */
 .guest-sparkline {

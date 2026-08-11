@@ -76,7 +76,7 @@ const DISPLACEMENT_HURDLE_SQL = `
   total_rooms AS (
     SELECT
       room_type_id,
-      COUNT(*) AS room_count
+      COUNT(id) AS room_count
     FROM rooms
     WHERE tenant_id = $1::uuid
       AND property_id = $2::uuid

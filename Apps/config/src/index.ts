@@ -73,7 +73,9 @@ export const coreAuthSchema = z.object({
   AUTH_JWT_ISSUER: z.string().default("tartware-core-service"),
   AUTH_JWT_AUDIENCE: z.string().optional(),
   AUTH_JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().default(3600),
-  AUTH_DEFAULT_PASSWORD: z.string().min(8),
+  // Matches the PCI DSS 4.0 (8.3.6) floor enforced by password-policy-service,
+  // so a short default fails at boot rather than at first user creation.
+  AUTH_DEFAULT_PASSWORD: z.string().min(12),
   SYSTEM_ADMIN_JWT_SECRET: z.string().min(32).optional(),
   SYSTEM_ADMIN_JWT_ISSUER: z.string().optional(),
   SYSTEM_ADMIN_JWT_AUDIENCE: z.string().optional(),
@@ -133,8 +135,10 @@ const INSECURE_PATTERNS = [
  */
 const INSECURE_LITERALS = new Set<string>([
   "dev-secret-minimum-32-chars-change-me!",
+  // Retired dev defaults stay listed — production must never accept them again.
   "TempPass123",
   "TempPass123!",
+  "TempPass1234",
   "local-dev-guest-key",
   "local-dev-billing-key",
 ]);

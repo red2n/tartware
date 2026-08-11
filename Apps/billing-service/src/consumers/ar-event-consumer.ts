@@ -52,19 +52,34 @@ const findDirectBillRouting = async (
     property_id: string;
     balance: string;
   }>(
+    // Direct bill = an applied (non-template) routing rule that sends this
+    // folio's charges to the city ledger. The rule itself carries no AR account
+    // column; the account is resolved through the company the rule bills to.
     `SELECT
-       frr.target_account_id AS ar_account_id,
+       a.ar_account_id,
        f.folio_id,
        f.property_id,
        COALESCE(f.balance, 0) AS balance
-     FROM public.folio_routing_rules frr
-     JOIN public.folios f ON f.folio_id = frr.source_folio_id AND f.tenant_id = $1::uuid
-     WHERE frr.tenant_id = $1::uuid
-       AND frr.routing_type = 'DIRECT_BILL'
-       AND frr.target_account_id IS NOT NULL
+     FROM public.folios f
+     JOIN public.folio_routing_rules frr
+       ON frr.tenant_id = f.tenant_id
+      AND (frr.source_folio_id = f.folio_id OR frr.source_reservation_id = f.reservation_id)
+     JOIN public.ar_accounts a
+       ON a.tenant_id = frr.tenant_id
+      AND a.company_id = frr.company_id
+      AND a.account_status = 'ACTIVE'
+      AND COALESCE(a.is_deleted, false) = false
+     WHERE f.tenant_id = $1::uuid
        AND f.reservation_id = $2::uuid
        AND COALESCE(f.is_deleted, false) = false
        AND COALESCE(f.balance, 0) > 0
+       AND COALESCE(frr.is_template, false) = false
+       AND frr.is_active = true
+       AND COALESCE(frr.is_deleted, false) = false
+       AND frr.destination_folio_type = 'CITY_LEDGER'
+       AND (frr.effective_from IS NULL OR frr.effective_from <= CURRENT_DATE)
+       AND (frr.effective_until IS NULL OR frr.effective_until >= CURRENT_DATE)
+     ORDER BY frr.priority ASC
      LIMIT 1`,
     [tenantId, reservationId],
   );

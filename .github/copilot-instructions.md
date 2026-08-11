@@ -211,7 +211,7 @@ pnpm run dev                    # Start all services (concurrently)
 - **Always route requests through `localhost:8080`** — never call services directly on ports 3000–3065.
 - Use `http_test/*.http` files or `curl` against the gateway.
 - Auth: `TOKEN=$(./http_test/get-token.sh)` then `curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/v1/...`
-- Default credentials: `setup.admin` / `TempPass123`.
+- Default credentials: `setup.admin` / `TempPass1234`.
 
 ### Quality commands
 ```bash

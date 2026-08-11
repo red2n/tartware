@@ -13,6 +13,10 @@ import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
 import { pool, query } from "../lib/db.js";
 import { emitMembershipCacheInvalidation } from "../services/membership-cache-hooks.js";
+import {
+  assertPasswordMeetsPolicy,
+  PasswordPolicyError,
+} from "../services/password-policy-service.js";
 import { resetTenantLoginState } from "../services/tenant-auth-security-service.js";
 import { listUsers } from "../services/user-service.js";
 import { TENANT_AUTH_UPDATE_PASSWORD_SQL } from "../sql/tenant-auth-queries.js";
@@ -94,6 +98,24 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
 
       const data = CreateTenantUserSchema.parse(request.body);
       const passwordToSet = data.password ?? config.auth.defaultPassword;
+
+      // Enforce the tenant's password policy server-side. The client checks the
+      // same rules for feedback, but that is bypassed by calling this directly.
+      //
+      // Only caller-supplied passwords are checked. Falling back to the system
+      // default issues a first-use temporary credential, which login already
+      // flags via `mustChangePassword` and which cannot be re-set as a real
+      // password — the carve-out PCI DSS 4.0 (8.3.5) allows for first-use.
+      if (data.password) {
+        try {
+          await assertPasswordMeetsPolicy(data.tenant_id, data.password);
+        } catch (error) {
+          if (error instanceof PasswordPolicyError) {
+            throw request.server.httpErrors.badRequest(error.message);
+          }
+          throw error;
+        }
+      }
 
       const client = await pool.connect();
       try {
@@ -260,7 +282,21 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
         throw request.server.httpErrors.notFound("USER_TENANT_ASSOCIATION_NOT_FOUND");
       }
 
-      const passwordHash = await hashPassword(data.new_password ?? config.auth.defaultPassword);
+      // As above: an admin-supplied password must meet policy; omitting it
+      // resets the account to the first-use temporary credential.
+      const newPassword = data.new_password ?? config.auth.defaultPassword;
+      if (data.new_password) {
+        try {
+          await assertPasswordMeetsPolicy(data.tenant_id, data.new_password);
+        } catch (error) {
+          if (error instanceof PasswordPolicyError) {
+            throw request.server.httpErrors.badRequest(error.message);
+          }
+          throw error;
+        }
+      }
+
+      const passwordHash = await hashPassword(newPassword);
       const updateResult = await query(TENANT_AUTH_UPDATE_PASSWORD_SQL, [
         passwordHash,
         data.user_id,

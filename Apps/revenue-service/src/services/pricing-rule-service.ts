@@ -35,7 +35,6 @@ const mapRowToPricingRule = (row: PricingRuleRow): PricingRuleListItem => ({
   effective_to: toDateString(row.effective_to),
   applies_to_room_types: row.applies_to_room_types ?? undefined,
   applies_to_rate_plans: row.applies_to_rate_plans ?? undefined,
-  condition_type: row.condition_type ?? undefined,
   adjustment_type: row.adjustment_type ?? undefined,
   adjustment_value: row.adjustment_value != null ? toNumber(row.adjustment_value) : undefined,
   min_rate: row.min_rate != null ? toNumber(row.min_rate) : undefined,

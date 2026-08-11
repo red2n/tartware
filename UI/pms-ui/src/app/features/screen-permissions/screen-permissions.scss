@@ -71,7 +71,7 @@
     width: var(--control-small-size);
     height: var(--control-small-size);
 
-    mat-icon {
+    app-icon {
       @include icon-size(16px);
     }
   }

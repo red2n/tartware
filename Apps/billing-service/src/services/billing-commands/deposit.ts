@@ -59,14 +59,14 @@ export const recordDeposit = async (payload: unknown, context: CommandContext): 
       `INSERT INTO payments (
           tenant_id, property_id, reservation_id, guest_id,
           payment_reference, payment_method, transaction_type,
-          amount, currency_code, payment_status,
+          amount, currency, status,
           notes, created_by, updated_by
         ) VALUES (
           $1::uuid, $2::uuid, $3::uuid, $4,
           $5, $6, 'ADVANCE_DEPOSIT',
           $7, UPPER($8), 'COMPLETED',
           $9, $10::uuid, $10::uuid
-        ) RETURNING payment_id`,
+        ) RETURNING id AS payment_id`,
       [
         tenantId,
         res.property_id,
@@ -170,7 +170,7 @@ export const transferDeposit = async (
   const { tenantId } = context;
 
   // Load deposits to transfer
-  const depositFilter = command.deposit_ids ? `AND payment_id = ANY($3::uuid[])` : ``;
+  const depositFilter = command.deposit_ids ? `AND id = ANY($3::uuid[])` : ``;
   const depositParams: unknown[] = [tenantId, command.reservation_id];
   if (command.deposit_ids) {
     depositParams.push(command.deposit_ids);
@@ -182,12 +182,12 @@ export const transferDeposit = async (
     currency_code: string;
     property_id: string;
   }>(
-    `SELECT payment_id, amount, currency_code, property_id
+    `SELECT id AS payment_id, amount, currency AS currency_code, property_id
        FROM payments
       WHERE tenant_id = $1::uuid
         AND reservation_id = $2::uuid
         AND transaction_type = 'ADVANCE_DEPOSIT'
-        AND payment_status = 'COMPLETED' ${depositFilter}`,
+        AND status = 'COMPLETED' ${depositFilter}`,
     depositParams,
   );
 
@@ -215,15 +215,15 @@ export const transferDeposit = async (
         client,
         `INSERT INTO charge_postings (
             tenant_id, property_id, folio_id, reservation_id,
-            charge_code, charge_description, posting_type,
+            charge_code, charge_description, transaction_type, posting_type,
             quantity, unit_price, subtotal, total_amount, currency_code,
-            posting_date, reference_number,
+            posting_date, business_date, source_reference,
             notes, created_by, updated_by
           ) VALUES (
             $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-            'DEPOSIT_APPLIED', 'Advance Deposit Applied', 'CREDIT',
+            'DEPOSIT_APPLIED', 'Advance Deposit Applied', 'CREDIT', 'CREDIT',
             1, $5, $5, $5, UPPER($6),
-            $7::date, $8,
+            $7::date, $7::date, $8,
             $9, $10::uuid, $10::uuid
           )`,
         [
@@ -262,8 +262,8 @@ export const transferDeposit = async (
       // Mark payment as applied
       await queryWithClient(
         client,
-        `UPDATE payments SET payment_status = 'APPLIED', updated_at = NOW(), updated_by = $1::uuid
-          WHERE payment_id = $2::uuid AND tenant_id = $3::uuid`,
+        `UPDATE payments SET status = 'APPLIED', updated_at = NOW(), updated_by = $1::uuid
+          WHERE id = $2::uuid AND tenant_id = $3::uuid`,
         [actorId, deposit.payment_id, tenantId],
       );
     }
@@ -298,12 +298,12 @@ export const refundDeposit = async (payload: unknown, context: CommandContext): 
     property_id: string;
     reservation_id: string;
   }>(
-    `SELECT payment_id, amount, currency_code, property_id, reservation_id
+    `SELECT id AS payment_id, amount, currency AS currency_code, property_id, reservation_id
        FROM payments
       WHERE tenant_id = $1::uuid
-        AND (payment_id = $2::uuid OR $2 IS NULL)
+        AND (id = $2::uuid OR $2 IS NULL)
         AND ($2 IS NOT NULL OR reservation_id = $3::uuid)
-        AND transaction_type = 'ADVANCE_DEPOSIT' AND payment_status = 'COMPLETED'
+        AND transaction_type = 'ADVANCE_DEPOSIT' AND status = 'COMPLETED'
       ORDER BY created_at DESC LIMIT 1`,
     [tenantId, command.deposit_id ?? null, command.reservation_id],
   );
@@ -323,16 +323,21 @@ export const refundDeposit = async (payload: unknown, context: CommandContext): 
     // Insert refund record
     await queryWithClient(
       client,
+      // guest_id is NOT NULL and is taken from the reservation the deposit was
+      // held against; reason_category classifies the free-text reason.
       `INSERT INTO refunds (
-          tenant_id, property_id, payment_id, reservation_id,
-          refund_reference, refund_method, refund_type,
+          tenant_id, property_id, original_payment_id, reservation_id, guest_id,
+          refund_number, refund_method, refund_type,
           refund_amount, currency_code, refund_status,
-          reason, notes, created_by, updated_by
+          reason_category, reason_description, requested_by,
+          notes, created_by, updated_by
         ) VALUES (
           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+          (SELECT guest_id FROM reservations WHERE id = $4::uuid AND tenant_id = $1::uuid),
           $5, 'ORIGINAL_PAYMENT', 'DEPOSIT_REFUND',
           $6, UPPER($7), 'COMPLETED',
-          $8, NULL, $9::uuid, $9::uuid
+          'DEPOSIT_REFUND', $8, $9::uuid,
+          NULL, $9::uuid, $9::uuid
         )`,
       [
         tenantId,
@@ -350,8 +355,8 @@ export const refundDeposit = async (payload: unknown, context: CommandContext): 
     // Mark original deposit as refunded
     await queryWithClient(
       client,
-      `UPDATE payments SET payment_status = 'REFUNDED', updated_at = NOW(), updated_by = $1::uuid
-        WHERE payment_id = $2::uuid AND tenant_id = $3::uuid`,
+      `UPDATE payments SET status = 'REFUNDED', updated_at = NOW(), updated_by = $1::uuid
+        WHERE id = $2::uuid AND tenant_id = $3::uuid`,
       [actorId, dep.payment_id, tenantId],
     );
 

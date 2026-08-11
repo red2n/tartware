@@ -45,8 +45,8 @@ const LIST_SQL = `
 
 const COUNT_SQL = `
   SELECT
-    COUNT(*)::int AS total,
-    COUNT(*) FILTER (WHERE
+    COUNT(n.notification_id)::int AS total,
+    COUNT(n.notification_id) FILTER (WHERE
       CASE
         WHEN n.user_id IS NOT NULL THEN n.is_read = FALSE
         ELSE nrr.receipt_id IS NULL
@@ -63,7 +63,7 @@ const COUNT_SQL = `
 `;
 
 const UNREAD_COUNT_SQL = `
-  SELECT COUNT(*)::int AS unread
+  SELECT COUNT(n.notification_id)::int AS unread
   FROM in_app_notifications n
   LEFT JOIN notification_read_receipts nrr
     ON n.notification_id = nrr.notification_id

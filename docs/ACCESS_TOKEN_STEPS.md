@@ -14,7 +14,7 @@ These steps document how a local access token was obtained for core-service usin
 
 3) **Set a known password hash and valid MFA secret**
    - Update the `setup.admin` user in Postgres so:
-     - `password_hash` is a known bcrypt hash for `TempPass123`
+     - `password_hash` is a known bcrypt hash for `TempPass1234`
      - `mfa_secret` is a 16+ char string (required by auth schema)
      - `version` increments (optimistic locking)
 
@@ -25,7 +25,7 @@ These steps document how a local access token was obtained for core-service usin
    - Endpoint: `POST /v1/auth/login`
    - Body:
      - `username`: `setup.admin`
-     - `password`: `TempPass123`
+     - `password`: `TempPass1234`
    - Response includes `access_token`.
 
 6) **Use the token to call a DB-backed endpoint**

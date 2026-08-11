@@ -43,7 +43,7 @@
   align-items: center;
   gap: var(--base-size-8);
 
-  > mat-icon { color: var(--fgColor-muted); @include icon-size(20px); }
+  > app-icon { color: var(--fgColor-muted); @include icon-size(20px); }
 }
 
 .status-date {
@@ -137,12 +137,12 @@
 }
 
 /* ── KPI color modifiers ── */
-.audit-kpi-debits > mat-icon { color: var(--fgColor-danger); }
-.audit-kpi-credits > mat-icon { color: var(--fgColor-success); }
-.audit-kpi-payments > mat-icon { color: var(--fgColor-accent); }
-.audit-kpi-balanced > mat-icon { color: var(--fgColor-success); }
+.audit-kpi-debits > app-icon { color: var(--fgColor-danger); }
+.audit-kpi-credits > app-icon { color: var(--fgColor-success); }
+.audit-kpi-payments > app-icon { color: var(--fgColor-accent); }
+.audit-kpi-balanced > app-icon { color: var(--fgColor-success); }
 .audit-kpi-balanced .kpi-value { color: var(--fgColor-success); }
-.audit-kpi-unbalanced > mat-icon { color: var(--fgColor-danger); }
+.audit-kpi-unbalanced > app-icon { color: var(--fgColor-danger); }
 .audit-kpi-unbalanced .kpi-value { color: var(--fgColor-danger); }
 
 /* ── Trial Balance heading ── */

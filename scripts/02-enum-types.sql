@@ -107,7 +107,10 @@ CREATE TYPE room_status AS ENUM (
     'CLEAN',           -- Cleaned and ready
     'INSPECTED',       -- Quality checked
     'OUT_OF_ORDER',    -- Maintenance required
-    'OUT_OF_SERVICE'   -- Long-term unavailable
+    'OUT_OF_SERVICE',   -- Long-term unavailable
+-- BLOCKED: held, as opposed to OUT_OF_ORDER (damaged) or OUT_OF_SERVICE
+-- (unsellable but counted). Pairs with rooms.is_blocked.
+    'BLOCKED'
 );
 
 -- Room Category (Room Type Classification)
@@ -284,7 +287,10 @@ CREATE TYPE payment_status AS ENUM (
     'FAILED',              -- Payment failed
     'CANCELLED',           -- Cancelled by user
     'REFUNDED',            -- Full refund
-    'PARTIALLY_REFUNDED'   -- Partial refund
+    'PARTIALLY_REFUNDED',   -- Partial refund
+-- APPLIED: a deposit consumed by a folio; distinct from COMPLETED (received)
+-- and REFUNDED (returned). See migration 2026-08-10-002.
+    'APPLIED'
 );
 
 -- Transaction Type (Payment Operation)
@@ -295,7 +301,11 @@ CREATE TYPE transaction_type AS ENUM (
     'CAPTURE',          -- Capture authorized amount
     'REFUND',           -- Full refund
     'PARTIAL_REFUND',   -- Partial refund
-    'VOID'              -- Void transaction
+    'VOID',              -- Void transaction
+-- ADVANCE_DEPOSIT/DEPOSIT_REFUND: money taken before arrival against a future
+-- stay, then applied to the folio or returned. See migration 2026-08-10-002.
+    'ADVANCE_DEPOSIT',
+    'DEPOSIT_REFUND'
 );
 
 -- =====================================================

@@ -1,10 +1,11 @@
 import { DecimalPipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { Router, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { GuestGridItem, GuestGridResponse, GuestSummaryStats } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
@@ -14,6 +15,7 @@ import { loyaltyTierClass, vipStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -47,7 +49,6 @@ export class GuestsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(DialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
@@ -56,7 +57,23 @@ export class GuestsComponent {
 	readonly guestStats = signal<GuestSummaryStats | null>(null);
 	readonly dataReady = signal(false);
 	readonly error = signal<string | null>(null);
-	readonly activeFilter = signal<GuestFilter>("ALL");
+	private readonly route = inject(ActivatedRoute);
+
+	/**
+	 * The active segment comes from the URL, so the sub-sidebar link selects it
+	 * and each segment is deep-linkable. Unknown segments fall back to ALL.
+	 */
+	readonly activeFilter = toSignal(
+		this.route.paramMap.pipe(
+			map((p) => {
+				const segment = (p.get("segment") ?? "all").toUpperCase();
+				return (
+					["ALL", "VIP", "LOYALTY", "BLACKLISTED"].includes(segment) ? segment : "ALL"
+				) as GuestFilter;
+			}),
+		),
+		{ initialValue: "ALL" as GuestFilter },
+	);
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
@@ -86,15 +103,18 @@ export class GuestsComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(g) =>
-					g.first_name.toLowerCase().includes(query) ||
-					g.last_name.toLowerCase().includes(query) ||
-					`${g.first_name} ${g.last_name}`.toLowerCase().includes(query) ||
-					(g.email?.toLowerCase().includes(query) ?? false) ||
-					(g.phone?.includes(query) ?? false) ||
-					(g.company_name?.toLowerCase().includes(query) ?? false),
-			);
+			// The old predicate also tested "first last" concatenated, to catch a
+			// full-name search. Term-by-term matching across fields covers that
+			// case on its own, so the extra disjunct is gone.
+			list = filterBySearch(list, query, (g) => [
+				g.first_name,
+				g.last_name,
+				g.email,
+				g.phone,
+				g.company_name,
+				g.loyalty_tier,
+				g.vip_status,
+			]);
 		}
 
 		return list;
@@ -108,6 +128,15 @@ export class GuestsComponent {
 		);
 		const start = (this.currentPage() - 1) * this.pageSize;
 		return sorted.slice(start, start + this.pageSize);
+	});
+
+	/** Header text for the open segment — the sub-sidebar no longer carries counts. */
+	readonly segmentTitle = computed(
+		() => this.guestFilters.find((f) => f.key === this.activeFilter())?.label ?? "All",
+	);
+	readonly segmentSummary = computed(() => {
+		const count = this.filterCounts()[this.activeFilter()] ?? 0;
+		return `${count} ${count === 1 ? "guest" : "guests"} in this segment`;
 	});
 
 	readonly filterCounts = computed(() => {
@@ -163,6 +192,15 @@ export class GuestsComponent {
 			this.loadGuestStats();
 		});
 
+		// Switching segment starts at page 1, however the segment was entered
+		effect(
+			() => {
+				this.activeFilter();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
+
 		// Clamp currentPage when filtered list shrinks
 		effect(
 			() => {
@@ -176,8 +214,7 @@ export class GuestsComponent {
 	}
 
 	setFilter(filter: GuestFilter): void {
-		this.activeFilter.set(filter);
-		this.currentPage.set(1);
+		void this.router.navigate(["/guests/segment", filter.toLowerCase()]);
 	}
 
 	onSort(column: string): void {
@@ -251,23 +288,13 @@ export class GuestsComponent {
 		}
 	}
 
+	/**
+	 * Guest creation is a full page rather than a dialog: the profile spans
+	 * identity, contact, address, company, loyalty and preferences, which does
+	 * not fit a modal without scrolling the operator through it blind.
+	 */
 	openCreateDialog(): void {
-		import("./create-guest-dialog/create-guest-dialog").then(({ CreateGuestDialogComponent }) => {
-			const ref = this.dialog.open(CreateGuestDialogComponent, {
-				width: "600px",
-				closable: false,
-			});
-			ref!.onClose.subscribe((created: boolean) => {
-				if (created) {
-					this.toast.success("Guest registration submitted. It may take a moment to appear.");
-					// Kafka consumer processes async — delay refresh
-					setTimeout(() => {
-						this.loadGuests();
-						this.loadGuestStats();
-					}, 1500);
-				}
-			});
-		});
+		this.router.navigate(["/guests/new"]);
 	}
 
 	private async loadGuestStats(): Promise<void> {

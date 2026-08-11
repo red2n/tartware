@@ -1,13 +1,3 @@
-.dialog-title {
-	display: flex;
-	align-items: center;
-	gap: var(--base-size-32);
-}
-
-.dialog-title-icon {
-	color: var(--bgColor-accent-emphasis);
-}
-
 .error-banner {
 	background: var(--bgColor-danger-muted);
 	color: var(--fgColor-danger);

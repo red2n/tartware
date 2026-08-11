@@ -20,6 +20,7 @@
 import { z } from "zod";
 
 import { uuid } from "../../shared/base-schemas.js";
+import { outboundWebhookUrl } from "../../shared/outbound-url.js";
 
 /**
  * Complete WebhookSubscriptions schema
@@ -29,7 +30,10 @@ export const WebhookSubscriptionsSchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	webhook_name: z.string(),
-	webhook_url: z.string(),
+	// Customer-supplied and later dialled by core-service, so it is validated
+	// against private/loopback/link-local/cluster-internal hosts rather than
+	// being a bare string. See shared/outbound-url.ts for the reasoning.
+	webhook_url: outboundWebhookUrl,
 	event_types: z.array(z.string()),
 	is_active: z.boolean().optional(),
 	http_method: z.string().optional(),
@@ -51,6 +55,8 @@ export const WebhookSubscriptionsSchema = z.object({
 	is_deleted: z.boolean().optional(),
 	deleted_at: z.coerce.date().optional(),
 	deleted_by: uuid.optional(),
+	/** Optimistic concurrency counter. */
+	version: z.number().int().optional(),
 });
 
 export type WebhookSubscriptions = z.infer<typeof WebhookSubscriptionsSchema>;

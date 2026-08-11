@@ -2,7 +2,6 @@ import { NgClass } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { PackageComponentListItem, PackageListItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
@@ -21,6 +20,7 @@ type InclusionKey =
 	| "includes_airport_transfer";
 
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 @Component({
 	selector: "app-package-detail",
 	standalone: true,
@@ -38,7 +38,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 export class PackageDetailComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
@@ -271,11 +271,10 @@ export class PackageDetailComponent {
 		);
 
 		const ref = this.dialog.open(AddComponentDialogComponent, {
-			width: "560px",
 			data: { packageId: p.package_id },
 		});
 
-		ref!.onClose.subscribe((created) => {
+		ref?.onClose.subscribe((created) => {
 			if (created) {
 				this.toast.success("Component added to package.");
 				this.loadDetail();

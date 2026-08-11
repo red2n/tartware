@@ -256,12 +256,12 @@ export const MANAGERS_DAILY_REPORT_SQL = `
   -- Section 3: Arrivals / Departures counts
   movements AS (
     SELECT
-      COUNT(*) FILTER (WHERE r.check_in_date = $3::date AND r.status IN ('PENDING', 'CONFIRMED')) AS expected_arrivals,
-      COUNT(*) FILTER (WHERE r.check_in_date = $3::date AND r.status = 'CHECKED_IN') AS actual_arrivals,
-      COUNT(*) FILTER (WHERE r.check_out_date = $3::date AND r.status = 'CHECKED_IN') AS expected_departures,
-      COUNT(*) FILTER (WHERE r.check_out_date = $3::date AND r.status = 'CHECKED_OUT') AS actual_departures,
-      COUNT(*) FILTER (WHERE r.status = 'CHECKED_IN') AS in_house_guests,
-      COUNT(*) FILTER (WHERE r.status = 'NO_SHOW' AND r.no_show_date = $3::date) AS no_shows
+      COUNT(r.id) FILTER (WHERE r.check_in_date = $3::date AND r.status IN ('PENDING', 'CONFIRMED')) AS expected_arrivals,
+      COUNT(r.id) FILTER (WHERE r.check_in_date = $3::date AND r.status = 'CHECKED_IN') AS actual_arrivals,
+      COUNT(r.id) FILTER (WHERE r.check_out_date = $3::date AND r.status = 'CHECKED_IN') AS expected_departures,
+      COUNT(r.id) FILTER (WHERE r.check_out_date = $3::date AND r.status = 'CHECKED_OUT') AS actual_departures,
+      COUNT(r.id) FILTER (WHERE r.status = 'CHECKED_IN') AS in_house_guests,
+      COUNT(r.id) FILTER (WHERE r.status = 'NO_SHOW' AND r.no_show_date = $3::date) AS no_shows
     FROM public.reservations r
     WHERE r.property_id = $1::uuid
       AND r.tenant_id = $2::uuid
@@ -271,7 +271,7 @@ export const MANAGERS_DAILY_REPORT_SQL = `
   segment_mix AS (
     SELECT
       r.reservation_type AS segment,
-      COUNT(*) AS reservations,
+      COUNT(r.id) AS reservations,
       COALESCE(SUM(cp.total_amount), 0) AS segment_revenue
     FROM public.reservations r
     LEFT JOIN public.charge_postings cp
@@ -345,9 +345,9 @@ export const MANAGERS_DAILY_REPORT_SQL = `
 export const MANAGERS_FORECAST_SQL = `
   SELECT
     rf.forecast_date,
-    rf.occupancy_forecast,
-    rf.adr_forecast,
-    rf.revpar_forecast,
+    rf.forecasted_occupancy_percent,
+    rf.forecasted_adr,
+    rf.forecasted_revpar,
     rf.room_revenue_forecast,
     rf.confidence_level
   FROM public.revenue_forecasts rf
@@ -355,7 +355,7 @@ export const MANAGERS_FORECAST_SQL = `
     AND rf.tenant_id = $2::uuid
     AND rf.forecast_date > $3::date
     AND rf.forecast_date <= ($3::date + $4::int)
-    AND rf.scenario_type = 'base'
+    AND rf.forecast_scenario = 'base'
     AND rf.forecast_period = 'daily'
     AND COALESCE(rf.is_deleted, false) = false
   ORDER BY rf.forecast_date

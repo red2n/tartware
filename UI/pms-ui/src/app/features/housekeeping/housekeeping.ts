@@ -1,11 +1,13 @@
 import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
-import { Router, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import type { HousekeepingTaskListItem, RoomItem, UserWithTenants } from "@tartware/schemas";
 import { PopoverModule } from "primeng/popover";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
@@ -17,6 +19,7 @@ import { settleCommandReadModel } from "../../shared/command-refresh";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import { ToastService } from "../../shared/toast/toast.service";
 
 type HkFilter = "ALL" | "DIRTY" | "IN_PROGRESS" | "CLEAN" | "INSPECTED" | "DO_NOT_DISTURB";
@@ -92,7 +95,15 @@ export class HousekeepingComponent {
 	);
 
 	// ── View state ──
-	readonly activeView = signal<ViewTab>("rooms");
+	private readonly route = inject(ActivatedRoute);
+
+	/** Board vs Tasks comes from the URL — the sub-sidebar link is what selects it. */
+	readonly activeView = toSignal(
+		this.route.paramMap.pipe(
+			map((p) => (p.get("view") === "tasks" ? "tasks" : "rooms") as ViewTab),
+		),
+		{ initialValue: "rooms" as ViewTab },
+	);
 	readonly activeFilter = signal<HkFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 30;
@@ -200,13 +211,12 @@ export class HousekeepingComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(r) =>
-					r.room_number.toLowerCase().includes(query) ||
-					(r.room_name?.toLowerCase().includes(query) ?? false) ||
-					(r.room_type_name?.toLowerCase().includes(query) ?? false) ||
-					(r.floor?.toLowerCase().includes(query) ?? false),
-			);
+			list = filterBySearch(list, query, (r) => [
+				r.room_number,
+				r.room_name,
+				r.room_type_name,
+				r.floor,
+			]);
 		}
 
 		// Sort
@@ -227,12 +237,11 @@ export class HousekeepingComponent {
 	readonly filteredTasks = computed(() => {
 		const query = this.globalSearch.query().toLowerCase().trim();
 		if (!query) return this.tasks();
-		return this.tasks().filter(
-			(t) =>
-				t.room_number.toLowerCase().includes(query) ||
-				t.task_type.toLowerCase().includes(query) ||
-				(t.status_display?.toLowerCase().includes(query) ?? false),
-		);
+		return filterBySearch(this.tasks(), query, (t) => [
+			t.room_number,
+			t.task_type,
+			t.status_display,
+		]);
 	});
 
 	readonly paginatedTasks = computed(() => {
@@ -260,14 +269,21 @@ export class HousekeepingComponent {
 			},
 			{ allowSignalWrites: true },
 		);
+
+		// Switching board/tasks starts at page 1, however the view was entered.
+		effect(
+			() => {
+				this.activeView();
+				this.currentPage.set(1);
+			},
+			{ allowSignalWrites: true },
+		);
 	}
 
 	// ── View / filter ──
 
 	setView(view: ViewTab): void {
-		this.activeView.set(view);
-		this.currentPage.set(1);
-		this.globalSearch.clear();
+		void this.router.navigate(["/housekeeping", view]);
 	}
 
 	setFilter(filter: HkFilter): void {
@@ -345,6 +361,11 @@ export class HousekeepingComponent {
 		DIRTY: ["AVAILABLE", "OUT_OF_ORDER", "OUT_OF_SERVICE"],
 		OUT_OF_ORDER: ["AVAILABLE", "DIRTY"],
 		OUT_OF_SERVICE: ["AVAILABLE", "DIRTY"],
+		// A blocked room releases the same way as one out of service. BLOCKED is
+		// absent from occupancyActions on purpose: blocking is its own command and
+		// carries a reason and date range, so it must not be a bare status flip —
+		// but a room already in that state still needs a way out of it.
+		BLOCKED: ["AVAILABLE", "DIRTY"],
 	};
 
 	roomOccupancyActions(room: RoomItem): { value: string; label: string; icon: string }[] {

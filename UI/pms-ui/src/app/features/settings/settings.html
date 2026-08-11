@@ -6,9 +6,10 @@
   </app-page-header>
 
   @if (loadingCategories()) {
-    <div class="loading-state">
-      <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
-      <span class="text-muted">{{ 'Loading settings...' | translate }}</span>
+    <div class="skeleton-stack" aria-busy="true" [attr.aria-label]="'Loading settings' | translate">
+      @for (s of skeletonCategories; track $index) {
+        <span class="skeleton skeleton-block" aria-hidden="true"></span>
+      }
     </div>
   } @else if (error() && categories().length === 0) {
     <div class="error-state">
@@ -30,9 +31,10 @@
 
       @defer (on idle) {
         @if (loadingCatalog()) {
-          <div class="loading-state">
-            <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
-            <span class="text-muted">{{ 'Loading...' | translate }}</span>
+          <div class="skeleton-stack" aria-busy="true" [attr.aria-label]="'Loading settings' | translate">
+            @for (s of skeletonSettings; track $index) {
+              <span class="skeleton skeleton-block" aria-hidden="true"></span>
+            }
           </div>
         } @else if (error()) {
           <div class="error-state">
@@ -360,6 +362,12 @@
                           } @else if (isDateValue(def)) {
                             <input
                               type="date"
+                              class="field-input settings-edit-input"
+                              [ngModel]="getEditState(def.id).editValue"
+                              (ngModelChange)="onEditValueChange(def.id, $event)" />
+                          } @else if (isTimeValue(def)) {
+                            <input
+                              type="time"
                               class="field-input settings-edit-input"
                               [ngModel]="getEditState(def.id).editValue"
                               (ngModelChange)="onEditValueChange(def.id, $event)" />

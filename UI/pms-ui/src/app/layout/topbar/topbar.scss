@@ -6,6 +6,8 @@
 
 /* ── VS Code-style Title Bar ── */
 .title-bar {
+  /* Containing block for the watermark band — see topbar-motif.scss. */
+  position: relative;
   height: var(--topbar-height);
   background: var(--color-header-bg);
   border-bottom: 1px solid var(--color-header-border);
@@ -17,7 +19,10 @@
   user-select: none;
 }
 
+/* Positioned (z-index deliberately left auto) so the clusters paint over the
+   watermark band without opening a stacking context around the panels. */
 .title-bar-left {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--base-size-4);
@@ -120,10 +125,108 @@
 
 /* ── Center: Search widget ── */
 .title-bar-center {
+  position: relative;
   flex: 1;
   display: flex;
   justify-content: center;
   min-width: 0;
+}
+
+/* Wraps the input so the results panel can anchor to it. */
+.search-shell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + var(--base-size-4));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 460px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--base-size-4);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--overlay-bgColor, var(--bgColor-default));
+  box-shadow: var(--shadow-floating-medium);
+}
+
+.search-results-heading {
+  padding: var(--base-size-8) var(--base-size-8) var(--base-size-4);
+  font-size: var(--base-text-size-xs);
+  font-weight: var(--base-text-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fgColor-muted);
+}
+
+.search-results-empty {
+  padding: var(--base-size-12) var(--base-size-8);
+  font-size: var(--base-text-size-sm);
+  color: var(--fgColor-muted);
+}
+
+.search-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: var(--base-size-8);
+  border: 0;
+  border-radius: var(--borderRadius-medium);
+  background: transparent;
+  color: var(--fgColor-default);
+  text-align: left;
+  cursor: pointer;
+
+  &.is-highlighted {
+    background: var(--bgColor-accent-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fgColor-accent);
+    outline-offset: -2px;
+  }
+}
+
+.search-result-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--fgColor-accent);
+  font-size: var(--base-text-size-md);
+}
+
+.search-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.search-result-label {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-medium);
+}
+
+.search-result-section {
+  color: var(--fgColor-muted);
+  font-weight: var(--base-text-weight-normal);
+}
+
+.search-result-description {
+  font-size: var(--base-text-size-xs);
+  color: var(--fgColor-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-widget {
@@ -181,7 +284,7 @@
   padding: 0;
   color: var(--fgColor-muted);
 
-  mat-icon {
+  app-icon {
     @include icon-size(14px);
   }
 
@@ -192,7 +295,10 @@
 
 .search-kbd {
   font-size: var(--base-text-size-xs);
-  font-family: var(--fontStack-sansSerif);
+  /* Monospace is the convention for <kbd>, and unlike Primer's
+     --fontStack-sansSerif it does not lead with "Mona Sans VF", a GitHub face
+     this app never loads — that silently fell through to the system font. */
+  font-family: var(--fontStack-monospace);
   padding: var(--base-size-2) var(--base-size-6);
   border: 1px solid var(--borderColor-default);
   border-radius: var(--borderRadius-small);
@@ -203,6 +309,7 @@
 
 /* ── Right controls ── */
 .title-bar-right {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--base-size-4);
@@ -223,7 +330,7 @@
   cursor: pointer;
   transition: background var(--base-duration-100);
 
-  mat-icon {
+  app-icon {
     @include icon-size(18px);
   }
 

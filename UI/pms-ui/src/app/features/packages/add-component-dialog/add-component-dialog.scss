@@ -1,16 +1,5 @@
 @use 'mixins' as *;
 
-.dialog-title {
-	display: flex;
-	align-items: center;
-	gap: var(--base-size-8);
-	font-size: var(--base-text-size-lg);
-}
-
-.dialog-title-icon {
-	color: var(--bgColor-accent-emphasis);
-}
-
 .error-banner {
 	background: var(--bgColor-danger-muted);
 	color: var(--fgColor-danger);
@@ -40,7 +29,7 @@
 	cursor: pointer;
 	transition: all var(--base-duration-100);
 
-	mat-icon {
+	app-icon {
 		@include icon-size(16px);
 	}
 

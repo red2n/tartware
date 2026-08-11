@@ -46,3 +46,4 @@ export * from "./room-availability.js";
 export * from "./room-types.js";
 export * from "./rooms.js";
 export * from "./travel-agent-commissions.js";
+export * from "./travel-agents.js";

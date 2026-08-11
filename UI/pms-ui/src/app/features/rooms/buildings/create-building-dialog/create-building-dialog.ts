@@ -8,7 +8,7 @@ import { AuthService } from "../../../../core/auth/auth.service";
 import { TenantContextService } from "../../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../../core/i18n/translate.pipe";
 import { DialogActionsComponent } from "../../../../shared/components/dialog-actions/dialog-actions";
-import { IconComponent } from "../../../../shared/components/icon/icon";
+import { DialogShellComponent } from "../../../../shared/components/dialog-shell/dialog-shell";
 import { ToastService } from "../../../../shared/toast/toast.service";
 
 const BUILDING_TYPES = [
@@ -33,11 +33,11 @@ const BUILDING_STATUSES = ["OPERATIONAL", "RENOVATION", "CLOSED", "SEASONAL"];
 	imports: [
 		FormsModule,
 		DynamicDialogModule,
-		IconComponent,
 		ProgressSpinnerModule,
 		DialogActionsComponent,
 		TranslatePipe,
 		TranslatePipe,
+		DialogShellComponent,
 	],
 	templateUrl: "./create-building-dialog.html",
 	styleUrl: "./create-building-dialog.scss",

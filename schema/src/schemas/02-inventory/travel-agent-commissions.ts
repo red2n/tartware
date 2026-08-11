@@ -29,6 +29,8 @@ export const TravelAgentCommissionsSchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid.optional(),
 	company_id: uuid,
+	/** Individual agent the commission is attributed to (travel_agents.agent_id). */
+	agent_id: uuid.optional(),
 	reservation_id: uuid,
 	commission_period: z.string().optional(),
 	period_start_date: z.coerce.date().optional(),

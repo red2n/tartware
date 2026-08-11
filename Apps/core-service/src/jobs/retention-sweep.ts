@@ -49,7 +49,8 @@ async function purgeAuditLogs(policy: RetentionPolicy): Promise<number> {
     `
       DELETE FROM public.audit_logs
       WHERE tenant_id = $1::uuid
-        AND created_at < NOW() - ($2 || ' days')::interval
+        -- audit_logs timestamps rows in audit_timestamp, not created_at.
+        AND audit_timestamp < NOW() - ($2 || ' days')::interval
     `,
     [policy.tenant_id, policy.retention_days.toString()],
   );

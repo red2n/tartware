@@ -48,7 +48,7 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
         LIMIT 20
       ),
       amenity_counts AS (
-        SELECT amenity, COUNT(*) as cnt
+        SELECT amenity, COUNT(amenity) as cnt
         FROM (
           SELECT jsonb_array_elements_text(COALESCE(rt.amenities, '[]'::jsonb)) AS amenity
           FROM guest_reservations gr
@@ -59,7 +59,7 @@ export class GuestHistoryHydrator extends BaseQueryHydrator<RoomRecommendationQu
         LIMIT 5
       )
       SELECT
-        COALESCE(COUNT(*)::int, 0) AS total_bookings,
+        COALESCE(COUNT(reservation_id)::int, 0) AS total_bookings,
         COALESCE(ARRAY_AGG(DISTINCT room_type_id::text) FILTER (WHERE room_type_id IS NOT NULL), ARRAY[]::text[]) AS previous_room_types,
         COALESCE(ARRAY_AGG(DISTINCT property_id::text) FILTER (WHERE property_id IS NOT NULL), ARRAY[]::text[]) AS previous_properties,
         COALESCE(AVG(nightly_rate), 100) AS average_rate,

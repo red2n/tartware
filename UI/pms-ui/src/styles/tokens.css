@@ -14,10 +14,6 @@
 	--color-sidebar-bg: var(--bgColor-muted);
 	--color-sidebar-border: var(--borderColor-default);
 
-	/* ── Activity Bar ── */
-	--color-activity-bar-bg: var(--bgColor-inset);
-	--color-activity-bar-border: var(--borderColor-default);
-
 	/* ── Status Bar ── */
 	--color-statusbar-bg: var(--bgColor-inset);
 	--color-statusbar-text: var(--fgColor-muted);
@@ -29,12 +25,23 @@
 	--color-header-text-muted: var(--fgColor-muted);
 	--color-header-border: var(--borderColor-default);
 	--color-header-logo: var(--fgColor-accent);
-	--color-header-search-bg: var(--bgColor-muted);
+	/* Matches .field-input in the content area — the search box reads as the same
+	   control wherever it appears, rather than a muted variant in the topbar. */
+	--color-header-search-bg: var(--bgColor-default);
 	--color-header-search-border: var(--borderColor-default);
 
 	/* ── Topbar ── */
 	--color-topbar-bg: var(--color-header-bg);
 	--color-topbar-border: var(--color-header-border);
+	/* Watermark scene printed behind the title bar — kept faint enough that the
+	   bar's own controls stay the only thing you read. Ink is the brass of the
+	   near plane; haze is the cooler, weaker wash the distance is drawn in, so
+	   the planes separate by colour temperature as well as by strength. */
+	--topbar-motif-ink: rgba(169, 138, 82, 0.28);
+	--topbar-motif-haze: rgba(118, 126, 140, 0.24);
+	/* Sun over the ridge, and the warm haze pooling on the land. */
+	--topbar-motif-glow: rgba(217, 180, 113, 0.12);
+	--topbar-motif-bloom: rgba(169, 138, 82, 0.07);
 
 	/* ── Login hero — dark navy gradient matching OpenSea ── */
 	--color-hero-bg-start: #0b0e1a;
@@ -44,6 +51,39 @@
 	--color-hero-text-muted: #8b929e;
 	--color-hero-text-subtle: #c9d1d9;
 	--color-hero-text-faint: #2a3060;
+
+	/* ── Brand accent — brass ──
+	 * The hospitality signature. Used by the login scene and, sparingly,
+	 * as the empty-state watermark wash across the app. Not a general
+	 * purpose accent: --fgColor-accent stays the app's interactive blue.
+	 */
+	--brand-brass: #d9b471;
+	--brand-brass-soft: #a98a52;
+	/* Watermark wash — theme-aware, see the dark block below */
+	--brand-watermark: rgba(169, 138, 82, 0.22);
+	--brand-watermark-bloom: rgba(169, 138, 82, 0.1);
+	/* Sweep highlight on skeleton placeholders */
+	--skeleton-sheen: rgba(217, 180, 113, 0.22);
+
+	/* ── Login scene — warm "boutique hotel suite" palette ──
+	 * Deep espresso room tones lit by brass. Deliberately theme-independent:
+	 * the login screen forces LIGHT mode (ThemeService.setLoginDefault) but the
+	 * scene behind the card is always the dark suite.
+	 */
+	--login-room-bg-start: #17130f;
+	--login-room-bg-mid: #221b15;
+	--login-room-bg-end: #0f0c0a;
+	--login-linen: #f6f1e8;
+	--login-rule: rgba(217, 180, 113, 0.13);
+	--login-watermark: rgba(246, 241, 232, 0.07);
+	--login-text: #f6f1e8;
+	--login-text-muted: rgba(246, 241, 232, 0.62);
+	--login-text-faint: rgba(246, 241, 232, 0.34);
+	--login-card-bg: rgba(255, 255, 255, 0.94);
+
+	/* ── Display typography (login scene) ── */
+	--fontStack-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+	--fontStack-accent: "Jost", "Inter", -apple-system, sans-serif;
 
 	/* ── Typography extensions (Primer base has no bold token) ── */
 	--base-text-weight-bold: 700;
@@ -58,16 +98,23 @@
 	--sidebar-width: 240px;
 	--sidebar-collapsed-width: 64px;
 	--sub-sidebar-width: 220px;
-	--activity-bar-width: 48px;
 	--topbar-height: 48px;
 }
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-	--color-activity-bar-bg: #070912;
 	--color-sidebar-bg: #10142a;
 	--color-header-bg: #070912;
 	--color-statusbar-bg: #070912;
+
+	/* Brass reads brighter on dark, so the wash is dialled back */
+	--brand-watermark: rgba(217, 180, 113, 0.16);
+	--brand-watermark-bloom: rgba(217, 180, 113, 0.08);
+	--skeleton-sheen: rgba(217, 180, 113, 0.12);
+	--topbar-motif-ink: rgba(217, 180, 113, 0.2);
+	--topbar-motif-haze: rgba(166, 184, 208, 0.2);
+	--topbar-motif-glow: rgba(217, 180, 113, 0.07);
+	--topbar-motif-bloom: rgba(217, 180, 113, 0.05);
 
 	/* ── Login hero ── */
 	--color-hero-bg-start: #070912;

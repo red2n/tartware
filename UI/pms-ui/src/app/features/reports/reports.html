@@ -1,5 +1,6 @@
 <div class="reports-page">
-  <app-page-header title="Reports" description="Operational reports, analytics, and CSV exports">
+  <!-- The sub-sidebar owns report selection, so the header names the open one. -->
+  <app-page-header [title]="active().label" [description]="active().description">
     <button class="btn btn-invisible" (click)="loadReport()" [pTooltip]="'Refresh' | translate">
       <app-icon name="refresh" />
     </button>
@@ -8,28 +9,14 @@
     </button>
   </app-page-header>
 
-  <div class="filter-bar">
-    <nav class="filter-tabs" [attr.aria-label]="'Report selector' | translate">
-      @for (r of reports; track r.key) {
-        <button
-          class="filter-tab"
-          [class.filter-tab-active]="activeKey() === r.key"
-          (click)="setActive(r.key)"
-          [pTooltip]="r.description">
-          <app-icon [name]="r.icon" /> {{ r.label | translate }}
-        </button>
-      }
-    </nav>
-  </div>
-
   <div class="filter-form">
-    @if (active().needsDate) {
+    @if (needsBusinessDate()) {
       <div class="form-group">
         <label class="field-label">{{ 'Business Date' | translate }}</label>
         <input type="date" class="field-input field-sm" [ngModel]="businessDate()" (ngModelChange)="businessDate.set($event)" />
       </div>
     }
-    @if (active().needsRange) {
+    @if (needsRange()) {
       <div class="form-group">
         <label class="field-label">{{ 'From' | translate }}</label>
         <input type="date" class="field-input field-sm" [ngModel]="startDate()" (ngModelChange)="startDate.set($event)" />
@@ -45,18 +32,39 @@
   </div>
 
   @if (loading()) {
-    <div class="empty-state">
-      <p-progressSpinner styleClass="spinner-sm" />
-      <span>{{ 'Loading…' | translate }}</span>
+    <div class="table-container" aria-busy="true" [attr.aria-label]="'Loading report' | translate">
+      <div class="skeleton-table" [style.--skeleton-cols]="skeletonCols().length" aria-hidden="true">
+        <div class="skeleton-row skeleton-row-head">
+          @for (c of skeletonCols(); track $index) {
+            <span class="skeleton skeleton-text"></span>
+          }
+        </div>
+        @for (r of skeletonRows; track $index) {
+          <div class="skeleton-row">
+            @for (c of skeletonCols(); track $index) {
+              <span class="skeleton skeleton-text"></span>
+            }
+          </div>
+        }
+      </div>
     </div>
+  } @else if (moduleLocked(); as locked) {
+    <!-- Not a failure: the property simply hasn't bought this yet. The shared
+         panel works out what this particular user can do about it. -->
+    <app-module-locked [error]="locked" screen="reports" />
   } @else if (error(); as err) {
-    <div class="empty-state">
-      <app-icon name="error_outline" />
-      <span>{{ err }}</span>
-    </div>
+    <app-callout
+      variant="danger"
+      [block]="true"
+      [title]="'This report could not be loaded' | translate">
+      <p>{{ err }}</p>
+      <button callout-actions type="button" class="btn btn-sm" (click)="loadReport()">
+        <app-icon name="refresh" /> {{ 'Try again' | translate }}
+      </button>
+    </app-callout>
   } @else if (rows().length === 0) {
     <div class="empty-state">
-      <app-icon [name]="active().icon" />
+      <app-icon class="empty-icon" [name]="active().icon" />
       <span>{{ 'No data returned for the current filters.' | translate }}</span>
     </div>
   } @else {

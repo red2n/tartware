@@ -3,7 +3,6 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router, RouterLink } from "@angular/router";
 import type { RoomGridItem } from "@tartware/schemas";
-import { DialogService } from "primeng/dynamicdialog";
 import { InputTextModule } from "primeng/inputtext";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
@@ -14,7 +13,9 @@ import { GlobalSearchService } from "../../core/search/global-search.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { PaginationComponent } from "../../shared/pagination/pagination";
+import { filterBySearch } from "../../shared/search-utils";
 import {
 	createSortState,
 	getAriaSort,
@@ -49,7 +50,7 @@ export class RoomsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
-	private readonly dialog = inject(DialogService);
+	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 
@@ -95,14 +96,14 @@ export class RoomsComponent {
 		}
 
 		if (query) {
-			list = list.filter(
-				(r) =>
-					r.room_number.toLowerCase().includes(query) ||
-					(r.room_name?.toLowerCase().includes(query) ?? false) ||
-					(r.room_type_name?.toLowerCase().includes(query) ?? false) ||
-					(r.floor?.toLowerCase().includes(query) ?? false) ||
-					(r.amenities?.some((a) => a.toLowerCase().includes(query)) ?? false),
-			);
+			list = filterBySearch(list, query, (r) => [
+				r.room_number,
+				r.room_name,
+				r.room_type_name,
+				r.floor,
+				r.amenities,
+				r.status,
+			]);
 		}
 
 		return list;
@@ -228,11 +229,8 @@ export class RoomsComponent {
 
 	openCreateDialog(): void {
 		import("./create-room-dialog/create-room-dialog").then(({ CreateRoomDialogComponent }) => {
-			const ref = this.dialog.open(CreateRoomDialogComponent, {
-				width: "520px",
-				closable: false,
-			});
-			ref!.onClose.subscribe((created: boolean) => {
+			const ref = this.dialog.open(CreateRoomDialogComponent);
+			ref?.onClose.subscribe((created: boolean) => {
 				if (created) {
 					this.toast.success("Room created successfully.");
 					this.loadRooms();

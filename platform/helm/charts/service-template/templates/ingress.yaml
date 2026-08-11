@@ -1,4 +1,7 @@
 {{- if .Values.ingress.enabled -}}
+{{- if not .Values.ingress.allowExternalExposure -}}
+{{- fail (printf "\n\nREFUSING TO RENDER INGRESS for %q.\n\nBackend services must not be reachable from outside the cluster. All external\ntraffic enters through istio-ingressgateway and is routed to api-gateway only\n(see platform/kubernetes/istio/gateway.yaml).\n\nAn Ingress here would bypass the gateway's authentication, rate limiting and\ntenant scoping, and would defeat the AuthorizationPolicy that restricts this\nworkload to the api-gateway identity.\n\nIf this service genuinely must be exposed, set BOTH:\n  ingress.enabled: true\n  ingress.allowExternalExposure: true\nand get the change reviewed against docs/ZERO_TRUST_MTLS.md.\n" (include "service.fullname" .)) -}}
+{{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

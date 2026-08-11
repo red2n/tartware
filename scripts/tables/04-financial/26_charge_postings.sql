@@ -242,4 +242,9 @@ ALTER TABLE charge_postings SET (
 \echo '  - All folio transactions'
 \echo '  - POS integration support'
 \echo '  - Void/reversal capability'
+-- Row creation timestamp; the table tracked updated_at only.
+-- Kept in lockstep with migration 2026-08-10-001.
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+COMMENT ON COLUMN charge_postings.created_at IS 'Row creation timestamp; backfilled from posting_date for rows predating this column';
+
 \echo ''

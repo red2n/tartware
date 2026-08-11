@@ -37,7 +37,8 @@ const commandCenter = {
   topic: kafka.commandTopic,
   consumerGroupId:
     process.env.AVAILABILITY_GUARD_COMMAND_CONSUMER_GROUP ?? `${kafka.consumerGroupId}-commands`,
-  targetServiceId: process.env.COMMAND_CENTER_TARGET_SERVICE_ID ?? "availability-guard-service",
+  targetServiceId:
+    process.env.AVAILABILITY_GUARD_COMMAND_TARGET_SERVICE_ID ?? "availability-guard-service",
   maxBatchBytes: kafka.maxBatchBytes,
 };
 
