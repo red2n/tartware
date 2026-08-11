@@ -2,6 +2,40 @@
 
 **Priority:** P1 | **Risk:** 🟠 MEDIUM | **Type:** UI | **Effort:** M
 
+> ## ✅ Approvals + flow-guard bypasses shipped 2026-08-11
+>
+> `UI/pms-ui/src/app/features/accounts/approvals/`, route `/approvals`, nav entry "Approvals", reusing
+> the `billing` screen key (matches the endpoints' `MANAGER` minimum role, so no new seed).
+>
+> - **Pending queue** — operation, entity, requester, age, expiry countdown, required role. Requests
+>   expiring within the hour are counted in a banner and marked in the row: a lapsed request has to be
+>   raised again from scratch.
+> - **Approve / reject / cancel**, with the operation payload rendered verbatim in the confirm step —
+>   an approval given on a summary is not an approval of what will run.
+> - **Reject requires a reason** (the API enforces a non-empty one); approve takes an optional note.
+> - **Four-eyes mirrored in the UI.** I expected to find this unenforced and it is not:
+>   `approval-service.ts` rejects a self-approval with `SELF_APPROVAL_FORBIDDEN`. The UI disables
+>   Approve/Reject on your own request and offers Cancel instead, so the rule is visible rather than
+>   discovered through an error.
+> - **Flow-guard bypass log** — the `force`-override audit trail. **`flow_approvals` has 22 rows in the
+>   dev database that nothing could read**, which is exactly the failure this spec described.
+>
+> **Corrected while building:** I first wrote the bypass table against guessed column names
+> (`flow_id`, `justification`, `created_at`). The real shape from `flow-approval-repository.ts` is
+> `flow_name`, `gate_name`, `reason_code`, `reason_notes`, `approved_at`, `role_at_approval` — a log
+> rendering blanks because a field name was assumed would have been worse than no log. Fixed before
+> the build.
+>
+> **Deferred:** the nav badge with a pending count. This spec argued a queue without one "is not
+> checked", and that still holds — but it needs a shell-level poller rather than page-local state, so
+> it is its own change. The count is on the page as a KPI tile meanwhile.
+> Also deferred: the inline "settlement check bypassed by X" badge on the affected folio/reservation,
+> which means touching those screens.
+>
+> **Verified:** `ng build` clean; E2E assertions added for both endpoints. **Not verified:** no
+> live-stack run, and `approval_requests` is empty in dev (0 rows) so the queue has only been exercised
+> against an empty list — the decision actions are untested against real data.
+
 Billing is the best-covered area of the product, so what remains is specific rather than systemic.
 Several of these are the **UI half of work already delivered on the backend** by recent PRs
 (`#309` GL journal entries, `#310` gateway webhooks, `#311` flow guard).

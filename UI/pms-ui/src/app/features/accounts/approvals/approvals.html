@@ -1,0 +1,201 @@
+<app-page-header
+  title="Approvals"
+  description="Four-eyes approval queue for high-risk billing operations, and the flow-guard bypass log.">
+  <button class="btn btn-outline btn-sm" (click)="load(); loadBypasses()" [disabled]="loading()">
+    <app-icon name="refresh" /> Refresh
+  </button>
+</app-page-header>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <app-icon name="pending_actions" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ pending().length }}</div>
+      <div class="kpi-label">Awaiting decision</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="timer" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ expiringSoon().length }}</div>
+      <div class="kpi-label">Expiring within the hour</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="lock_open" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ bypasses().length }}</div>
+      <div class="kpi-label">Guard bypasses recorded</div>
+    </div>
+  </div>
+</div>
+
+<!-- A pending request that expires has to be raised again from scratch, so the ones
+     about to lapse are named rather than left to be spotted in the expiry column. -->
+@if (expiringSoon().length > 0) {
+  <div class="action-confirm-card expiring-banner">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="timer" />
+      <h3 class="confirm-title">
+        {{ expiringSoon().length }} request{{ expiringSoon().length === 1 ? '' : 's' }} expiring within
+        the hour
+      </h3>
+    </div>
+  </div>
+}
+
+@if (decision(); as d) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon"
+                [name]="d.kind === 'approve' ? 'verified' : d.kind === 'reject' ? 'block' : 'undo'" />
+      <h3 class="confirm-title">
+        {{ d.kind === 'approve' ? 'Approve' : d.kind === 'reject' ? 'Reject' : 'Cancel' }}
+        — {{ labelFor(d.request.operation_type) }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        Requested by {{ d.request.requested_by_name || d.request.requested_by }} on
+        {{ d.request.entity_type }} {{ d.request.entity_id }}.
+        @if (d.request.description) {
+          {{ d.request.description }}
+        }
+      </p>
+      @if (payloadText(d.request); as payload) {
+        <!-- What is actually being approved, verbatim — an approval on a summary is
+             not an approval. -->
+        <pre class="payload-block">{{ payload }}</pre>
+      }
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label for="ap-reason">
+            {{ d.kind === 'reject' ? 'Reason (required)' : 'Note (optional)' }}
+          </label>
+          <textarea id="ap-reason" rows="3" [ngModel]="reason()"
+                    (ngModelChange)="reason.set($event ?? '')"
+                    placeholder="Recorded against the decision"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelDecision()" [disabled]="submitting()">Back</button>
+      <button class="btn btn-primary btn-sm" (click)="submitDecision()"
+              [disabled]="submitting() || !canSubmitDecision()">
+        {{ submitting() ? 'Recording…' : 'Confirm' }}
+      </button>
+    </div>
+  </div>
+}
+
+<h3 class="ap-section-title">Pending</h3>
+
+@if (loading()) {
+  <div class="loading-state">Loading…</div>
+} @else if (pending().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="task_alt" />
+    <h3>Nothing awaiting approval</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Entity</th>
+          <th>Requested by</th>
+          <th>Requested</th>
+          <th>Expires in</th>
+          <th>Required role</th>
+          <th class="cell-actions">Decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of pending(); track r.approval_id) {
+          <tr [class.row-expiring]="hoursToExpiry(r) <= 1">
+            <td class="cell-primary"><strong>{{ labelFor(r.operation_type) }}</strong></td>
+            <td>
+              {{ r.entity_type }}
+              <span class="cell-sub">{{ r.entity_id }}</span>
+            </td>
+            <td>{{ r.requested_by_name || r.requested_by }}</td>
+            <td>{{ r.created_at | date: 'short' }}</td>
+            <td>
+              @if (hoursToExpiry(r) <= 1) {
+                <span class="badge badge-warning badge-sm">{{ expiryLabel(r) }}</span>
+              } @else {
+                {{ expiryLabel(r) }}
+              }
+            </td>
+            <td>{{ labelFor(r.required_role) }}</td>
+            <td class="cell-actions">
+              @if (isOwnRequest(r)) {
+                <!-- Four-eyes: billing-service rejects self-approval outright. -->
+                <span class="badge badge-muted badge-sm">Your request</span>
+                <button class="btn btn-outline btn-sm" (click)="open('cancel', r)">Cancel</button>
+              } @else {
+                <button class="btn btn-primary btn-sm" (click)="open('approve', r)">Approve</button>
+                <button class="btn btn-outline btn-sm" (click)="open('reject', r)">Reject</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<h3 class="ap-section-title">Flow-guard bypasses</h3>
+<p class="ap-section-note">
+  Recorded whenever a flow gate was overridden with <code>force</code>. These rows were being written
+  with nothing able to read them.
+</p>
+
+@if (loadingBypasses()) {
+  <div class="loading-state">Loading…</div>
+} @else if (bypasses().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="shield" />
+    <h3>No guard bypasses recorded</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table table-compact">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Flow / gate</th>
+          <th>Entity</th>
+          <th>Approved by</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (b of bypasses(); track bypassKey(b)) {
+          <tr>
+            <td>{{ b.approved_at | date: 'short' }}</td>
+            <td class="cell-primary">
+              {{ labelFor(b.gate_name) }}
+              <span class="cell-sub">{{ labelFor(b.flow_name) }}</span>
+            </td>
+            <td>
+              {{ b.entity_type }}
+              <span class="cell-sub">{{ b.entity_id }}</span>
+            </td>
+            <td>
+              {{ b.approved_by }}
+              <span class="cell-sub">{{ labelFor(b.role_at_approval) }}</span>
+            </td>
+            <td>
+              {{ labelFor(b.reason_code) }}
+              @if (b.reason_notes) {
+                <span class="cell-sub">{{ b.reason_notes }}</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

@@ -105,7 +105,7 @@ And two findings the audit did not make at all:
 |---|-----|------|------|--------|
 | 10 | Reports: 8 of 17 core reports unwired (**8 gateway 404s ✅ fixed**) | [10-reports-coverage.md](10-reports-coverage.md) | Bug+UI | S–M |
 | 11 | Guest portal uses 5 of 14 self-service endpoints | [11-self-service-coverage.md](11-self-service-coverage.md) | UI | M |
-| 12 | Billing partials — approvals, flow-approvals, suspense, GL, audit trail | [12-billing-partials.md](12-billing-partials.md) | UI | M |
+| 12 | Billing partials — **✅ approvals + flow-guard bypass log shipped 2026-08-11**; suspense/GL/audit trail owned by `accounts-gaps` | [12-billing-partials.md](12-billing-partials.md) | UI | part |
 
 ### P1 — Operations Domains (4 gaps)
 
@@ -205,7 +205,8 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
    their terms changed through the product, so `ar_accounts` is no longer structurally empty.
    Surfaced: `/v1/companies` is read-only, so COV-16's company CRUD is now a prerequisite for
    onboarding a corporate client.
-7. COV-12: approvals + flow-approvals UI (backend already shipped by the flow-guard work)
+7. ~~COV-12: approvals + flow-approvals UI~~ — **done 2026-08-11.** Found 22 unread `flow_approvals`
+   rows in dev. **Phase 3 complete.**
 
 **Phase 4 — Cheap coverage wins**
 8. COV-10b: 8 missing entries in `report-defs.ts`

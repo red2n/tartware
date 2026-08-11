@@ -1048,6 +1048,17 @@ run_billing_pipeline() {
     assert_eq_ci "Cashier session closed ($label)" "closed" "$sess_status"
   fi
 
+  # Approvals queue + flow-guard bypass log — the ACCT-08 backend shipped without a
+  # screen, so these endpoints had no caller. See ui-gaps/12-billing-partials.md.
+  if [[ "$mode" == "full" ]]; then
+    echo "── ${tag} — Approvals & Guard Bypasses ────────────────────────────"
+    code=$(get "$GW/v1/billing/approvals/pending?tenant_id=$tid&property_id=$pid&limit=10")
+    assert_http "Approvals queue readable ($label)" "2" "$code"
+    code=$(get "$GW/v1/billing/flow-approvals?tenant_id=$tid&limit=10")
+    assert_http "Flow-guard bypass log readable ($label)" "2" "$code"
+    echo ""
+  fi
+
   # AR account management — ar.account.create had no dispatcher until 2026-08-11, so
   # ar_accounts was empty everywhere and city-ledger transfer at checkout had no
   # account to resolve. See ui-gaps/03-ar-account-management.md.

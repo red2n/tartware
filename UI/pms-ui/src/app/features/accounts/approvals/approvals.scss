@@ -1,0 +1,35 @@
+/* Approvals — leans on global shared.scss (page-header, kpi-grid, form-grid,
+   action-confirm-card, table, badge). Local rules cover expiry emphasis and the
+   verbatim payload block. */
+
+.expiring-banner {
+  border-color: var(--color-warning, #a06000);
+}
+
+.row-expiring {
+  background: var(--color-warning-soft, rgba(160, 96, 0, 0.08));
+}
+
+.payload-block {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  max-height: 14rem;
+  overflow: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  background: var(--color-surface-sunk, rgba(0, 0, 0, 0.04));
+  border-radius: 4px;
+}
+
+.ap-section-title {
+  margin: 1.5rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.ap-section-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}

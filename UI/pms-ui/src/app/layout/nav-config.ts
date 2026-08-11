@@ -214,6 +214,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "City ledger, direct billing, and AR aging management",
 			},
 			{
+				label: "Approvals",
+				icon: "verified",
+				route: "/approvals",
+				screenKey: "billing",
+				description: "Four-eyes approval queue and flow-guard bypass log",
+			},
+			{
 				label: "AR Accounts",
 				icon: "account_balance",
 				route: "/ar-accounts",
