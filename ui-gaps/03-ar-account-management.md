@@ -2,6 +2,38 @@
 
 **Priority:** P0 | **Risk:** 🔴 HIGH | **Type:** UI | **Effort:** L
 
+> ## ✅ Core slice shipped 2026-08-11 — direct billing is unblocked
+>
+> `UI/pms-ui/src/app/features/accounts/ar-accounts/`, route `/ar-accounts`, nav entry "AR Accounts",
+> reusing the existing `accounts-receivable` screen key (no new permission seed needed).
+>
+> **Shipped:**
+> - Account list with status filter, credit limit / outstanding / available credit, dunning level
+> - **`ar.account.create`** and **`ar.account.update_terms`** dispatched directly via
+>   `/tenants/:id/commands/<name>` — the pattern the billing and loyalty screens already use, so no
+>   gateway wrapper was needed. These two were the actual blocker: nothing dispatched them, so
+>   `ar_accounts` was empty in every environment.
+> - City-ledger statement per account
+> - Aging table from `ar/aging-report`, and DSO / collection-rate / uncollected KPI tiles
+> - Over-limit accounts (negative available credit) counted in a banner and marked in the row — that
+>   is the state a folio should stop routing against
+>
+> **Dependency surfaced while building:** `ar.account.create` requires a `company_id`, and
+> `/v1/companies` is **read-only** (COV-16). So an account can only be opened against a company that
+> already exists, and the form says so plainly when the tenant has none. Company CRUD is now a hard
+> prerequisite for onboarding a new corporate client, not a nice-to-have — worth pulling forward in
+> COV-16.
+>
+> **Deliberately deferred** (each needs the statement UI to hang actions off, and none blocks direct
+> billing): dunning rules admin (plain HTTP CRUD, cheap), disputes raise/resolve/escalate, payment
+> apply/unapply, city-ledger transfer/write-off, dunning suppress/escalate, risk score panel. That is
+> 9 of the 13 `ar.*` commands still unreachable — [17-command-reachability.md](17-command-reachability.md)
+> should count 4 as discharged, not 13.
+>
+> **Verified:** UI typecheck and `ng build` clean. E2E assertions added for create → update terms →
+> read back → statement. **Not verified:** no run against a live stack, and because the writes are
+> async commands the E2E waits on Kafka rather than asserting synchronously.
+
 ## Current State (Backend ✅ → UI ❌)
 
 The `ar_accounts` surface is complete on the backend and unreachable from the product.

@@ -214,6 +214,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "City ledger, direct billing, and AR aging management",
 			},
 			{
+				label: "AR Accounts",
+				icon: "account_balance",
+				route: "/ar-accounts",
+				screenKey: "accounts-receivable",
+				description: "Corporate accounts, credit terms, statements and aging",
+			},
+			{
 				label: "Cashiering",
 				icon: "point_of_sale",
 				route: "/cashiering",

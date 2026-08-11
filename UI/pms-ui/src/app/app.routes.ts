@@ -198,6 +198,15 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/billing/billing").then((m) => m.BillingComponent),
 			},
 			{
+				path: "ar-accounts",
+				canActivate: [propertyGuard, screenGuard("accounts-receivable")],
+				data: { screen: "accounts-receivable" },
+				loadComponent: () =>
+					import("./features/accounts/ar-accounts/ar-accounts").then(
+						(m) => m.ArAccountsComponent,
+					),
+			},
+			{
 				path: "accounts-receivable",
 				canActivate: [propertyGuard, screenGuard("accounts-receivable")],
 				data: { screen: "accounts-receivable" },

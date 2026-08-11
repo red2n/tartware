@@ -83,7 +83,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 03 | AR account management — 13 `ar.*` commands, 8 read endpoints, zero UI | [03-ar-account-management.md](03-ar-account-management.md) | UI | L |
+| 03 | AR account management — **✅ core slice shipped 2026-08-11** (create + terms + statement + aging); 9 `ar.*` actions deferred | [03-ar-account-management.md](03-ar-account-management.md) | UI | part |
 | 04 | Two AR surfaces on two tables — **✅ decided: `ar_accounts` canonical**, collapse work in COV-03 | [04-duplicate-ar-surface.md](04-duplicate-ar-surface.md) | Decision+Backend | done |
 
 ### P1 — Product Decisions (2 gaps)
@@ -201,7 +201,10 @@ a police *incident* register, not statutory guest-registration reporting. The la
 anywhere and is a genuine unlogged gap if a jurisdiction requires it.
 
 **Phase 3 — Unblock direct billing**
-6. COV-03: AR account management UI — this is what left `findDirectBillRouting` untested
+6. ~~COV-03: AR account management UI~~ — **core slice done 2026-08-11.** Accounts can be opened and
+   their terms changed through the product, so `ar_accounts` is no longer structurally empty.
+   Surfaced: `/v1/companies` is read-only, so COV-16's company CRUD is now a prerequisite for
+   onboarding a corporate client.
 7. COV-12: approvals + flow-approvals UI (backend already shipped by the flow-guard work)
 
 **Phase 4 — Cheap coverage wins**

@@ -1,0 +1,23 @@
+/* AR accounts — leans on global shared.scss (page-header, kpi-grid, filter-form,
+   form-grid, action-confirm-card, table, badge). Local rules cover the two things
+   shared styles do not: right-aligned money columns and over-limit emphasis. */
+
+.cell-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.over-limit-banner {
+  border-color: var(--color-danger, #b3261e);
+}
+
+.row-over-limit {
+  background: var(--color-danger-soft, rgba(179, 38, 30, 0.08));
+}
+
+.ar-section-title {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 650;
+}

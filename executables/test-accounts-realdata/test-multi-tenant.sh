@@ -1048,6 +1048,42 @@ run_billing_pipeline() {
     assert_eq_ci "Cashier session closed ($label)" "closed" "$sess_status"
   fi
 
+  # AR account management — ar.account.create had no dispatcher until 2026-08-11, so
+  # ar_accounts was empty everywhere and city-ledger transfer at checkout had no
+  # account to resolve. See ui-gaps/03-ar-account-management.md.
+  if [[ "$mode" == "full" ]]; then
+    echo "── ${tag} — AR Account Management ─────────────────────────────────"
+    get "$GW/v1/companies?tenant_id=$tid&limit=1" >/dev/null
+    local company_id
+    company_id=$(resp_first "id")
+    if [[ -n "$company_id" ]]; then
+      send_command "CMD ar: open account" \
+        "ar.account.create" \
+        "{\"property_id\":\"$pid\",\"company_id\":\"$company_id\",\"company_name\":\"ACME Corp $tag\",\"credit_limit\":25000,\"payment_terms\":\"NET30\",\"currency\":\"USD\"}"
+      wait_kafka 5
+      get "$GW/v1/billing/ar/accounts?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
+      local ar_acct_id
+      ar_acct_id=$(resp_first "ar_account_id")
+      if [[ -n "$ar_acct_id" ]]; then
+        pass "AR account created ($label)"
+        send_command "CMD ar: raise credit limit" \
+          "ar.account.update_terms" \
+          "{\"ar_account_id\":\"$ar_acct_id\",\"property_id\":\"$pid\",\"credit_limit\":40000,\"payment_terms\":\"NET45\"}"
+        wait_kafka 5
+        get "$GW/v1/billing/ar/accounts?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
+        assert_eq_ci "AR credit terms updated ($label)" \
+          "net45" "$(jq -r '.data[0].payment_terms // empty' "$RESP_FILE" 2>/dev/null)"
+        code=$(get "$GW/v1/billing/ar/accounts/$ar_acct_id/statement?tenant_id=$tid")
+        assert_http "AR statement readable ($label)" "2" "$code"
+      else
+        fail "AR account created" "$label — no ar_account_id after command"
+      fi
+    else
+      skip "AR account management" "$label — no company record to attach to"
+    fi
+    echo ""
+  fi
+
   # Police report register — read-only until 2026-08-11, so nothing could file a
   # report through the API at all. See ui-gaps/02-police-reports.md.
   echo "── ${tag} — Police Report Register ────────────────────────────────"
