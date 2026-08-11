@@ -1444,3 +1444,245 @@ export const UpsertBusinessDateBodySchema = z.object({
 });
 
 export type UpsertBusinessDateBody = z.infer<typeof UpsertBusinessDateBodySchema>;
+
+// -----------------------------------------------------------------------------
+// Company write contracts
+//
+// Values are lowercase because that is what the `companies` CHECK constraints
+// allow and what the reads return. `CompanyTypeEnum` in shared/enums.ts is
+// UPPERCASE and cannot be used against this table — a mismatch worth resolving,
+// but not by silently diverging here.
+// -----------------------------------------------------------------------------
+
+export const CompanyTypeWriteEnum = z.enum([
+	"corporate",
+	"travel_agency",
+	"wholesaler",
+	"ota",
+	"event_planner",
+	"airline",
+	"government",
+	"educational",
+	"consortium",
+	"partner",
+]);
+
+export const CompanyPaymentTermsEnum = z.enum([
+	"due_on_receipt",
+	"net_15",
+	"net_30",
+	"net_45",
+	"net_60",
+	"net_90",
+	"custom",
+]);
+
+export const CompanyCreditStatusWriteEnum = z.enum([
+	"pending",
+	"active",
+	"suspended",
+	"blocked",
+	"under_review",
+	"expired",
+	"revoked",
+	"cancelled",
+]);
+
+export const CompanyCommissionTypeEnum = z.enum([
+	"percentage",
+	"flat_rate",
+	"tiered",
+	"net_rate",
+	"none",
+]);
+
+/**
+ * Create a company. The write surface is deliberately the contract-and-contact
+ * information a person types — `company_id`, `current_balance` and the booking
+ * statistics on that table are generated or machine-maintained.
+ */
+export const CompanyWriteBodySchema = z.object({
+	tenant_id: uuid,
+	company_name: z.string().min(1).max(255),
+	company_type: CompanyTypeWriteEnum,
+	legal_name: z.string().max(255).optional(),
+	company_code: z.string().max(50).optional(),
+	primary_contact_name: z.string().max(255).optional(),
+	primary_contact_email: z.string().email().max(255).optional(),
+	primary_contact_phone: z.string().max(50).optional(),
+	billing_contact_name: z.string().max(255).optional(),
+	billing_contact_email: z.string().email().max(255).optional(),
+	address_line1: z.string().max(255).optional(),
+	city: z.string().max(100).optional(),
+	state_province: z.string().max(100).optional(),
+	postal_code: z.string().max(20).optional(),
+	country: z.string().max(100).optional(),
+	credit_limit: z.coerce.number().nonnegative().optional(),
+	payment_terms_type: CompanyPaymentTermsEnum.optional(),
+	credit_status: CompanyCreditStatusWriteEnum.optional(),
+	commission_rate: z.coerce.number().min(0).max(100).optional(),
+	commission_type: CompanyCommissionTypeEnum.optional(),
+	is_active: z.boolean().optional(),
+});
+
+export type CompanyWriteBody = z.infer<typeof CompanyWriteBodySchema>;
+
+/** Update a company. Absent fields keep their stored value. */
+export const CompanyUpdateBodySchema = CompanyWriteBodySchema.partial().extend({
+	tenant_id: uuid,
+});
+
+export type CompanyUpdateBody = z.infer<typeof CompanyUpdateBodySchema>;
+
+// -----------------------------------------------------------------------------
+// Police report write contracts
+// -----------------------------------------------------------------------------
+
+export const PoliceIncidentTypeEnum = z.enum([
+	"theft",
+	"assault",
+	"vandalism",
+	"trespassing",
+	"fraud",
+	"suspicious_activity",
+	"missing_person",
+	"death",
+	"drug_related",
+	"domestic_disturbance",
+	"noise_complaint",
+	"vehicle_incident",
+	"other",
+]);
+
+/**
+ * Status values the `police_reports` CHECK constraint actually allows.
+ *
+ * Distinct from {@link PoliceReportStatusEnum} above, which is UPPERCASE
+ * (`FILED`, `RESOLVED`, `ARCHIVED`) and does not match the table — writing any of
+ * those would be rejected by Postgres. The two want reconciling; until then the
+ * write path must use this one.
+ */
+export const PoliceReportStatusWriteEnum = z.enum([
+	"filed",
+	"under_investigation",
+	"closed",
+	"charges_filed",
+	"no_action",
+	"referred",
+	"pending",
+]);
+
+/**
+ * File a police report. `report_number` is absent on purpose: it is UNIQUE NOT
+ * NULL and generated server-side, because a caller-supplied number is how two
+ * reports end up fighting over one identifier.
+ */
+export const PoliceReportWriteBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	incident_id: uuid.optional(),
+	incident_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	incident_time: z.string().min(4).max(8).optional(),
+	reported_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	incident_type: PoliceIncidentTypeEnum.optional(),
+	incident_description: z.string().min(1).max(5000),
+	incident_location: z.string().max(255).optional(),
+	room_number: z.string().max(50).optional(),
+	agency_name: z.string().min(1).max(255),
+	agency_jurisdiction: z.string().max(255).optional(),
+	agency_contact_number: z.string().max(50).optional(),
+	responding_officer_name: z.string().max(255).optional(),
+	responding_officer_badge: z.string().max(100).optional(),
+	guest_involved: z.boolean().optional(),
+	staff_involved: z.boolean().optional(),
+	property_stolen: z.boolean().optional(),
+	total_loss_value: z.coerce.number().nonnegative().optional(),
+	injuries_reported: z.boolean().optional(),
+});
+
+export type PoliceReportWriteBody = z.infer<typeof PoliceReportWriteBodySchema>;
+
+export const PoliceReportUpdateBodySchema = PoliceReportWriteBodySchema.partial().extend({
+	tenant_id: uuid,
+});
+
+export type PoliceReportUpdateBody = z.infer<typeof PoliceReportUpdateBodySchema>;
+
+/**
+ * Move a report through its status. The police case number is captured with the
+ * transition rather than as a later edit — it is what makes the report traceable
+ * back to the force's own record.
+ */
+export const PoliceReportStatusBodySchema = z.object({
+	tenant_id: uuid,
+	report_status: PoliceReportStatusWriteEnum,
+	police_case_number: z.string().max(100).optional(),
+	lead_investigator_name: z.string().max(255).optional(),
+	follow_up_required: z.boolean().optional(),
+	follow_up_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export type PoliceReportStatusBody = z.infer<typeof PoliceReportStatusBodySchema>;
+
+/**
+ * Service-layer input for a company write. Camel-cased counterpart of
+ * {@link CompanyWriteBodySchema}; lives here because AGENTS.md requires
+ * service-layer shapes in the schema package, not in a service file.
+ */
+export type CompanyWriteInput = {
+	companyName: string;
+	companyType: CompanyWriteBody["company_type"];
+	legalName?: string;
+	companyCode?: string;
+	primaryContactName?: string;
+	primaryContactEmail?: string;
+	primaryContactPhone?: string;
+	billingContactName?: string;
+	billingContactEmail?: string;
+	addressLine1?: string;
+	city?: string;
+	stateProvince?: string;
+	postalCode?: string;
+	country?: string;
+	creditLimit?: number;
+	paymentTermsType?: CompanyWriteBody["payment_terms_type"];
+	creditStatus?: CompanyWriteBody["credit_status"];
+	commissionRate?: number;
+	commissionType?: CompanyWriteBody["commission_type"];
+	isActive?: boolean;
+};
+
+/**
+ * Service-layer input for filing or correcting a police report. `reportNumber` is
+ * absent deliberately — it is generated server-side.
+ */
+export type PoliceReportWriteInput = {
+	propertyId: string;
+	incidentId?: string;
+	incidentDate: string;
+	incidentTime?: string;
+	reportedDate?: string;
+	incidentType?: PoliceReportWriteBody["incident_type"];
+	incidentDescription: string;
+	incidentLocation?: string;
+	roomNumber?: string;
+	agencyName: string;
+	agencyJurisdiction?: string;
+	agencyContactNumber?: string;
+	respondingOfficerName?: string;
+	respondingOfficerBadge?: string;
+	guestInvolved?: boolean;
+	staffInvolved?: boolean;
+	propertyStolen?: boolean;
+	totalLossValue?: number;
+	injuriesReported?: boolean;
+};
+
+/** Service-layer input for a police report status transition. */
+export type PoliceReportStatusInput = {
+	reportStatus: PoliceReportStatusBody["report_status"];
+	policeCaseNumber?: string;
+	leadInvestigatorName?: string;
+	followUpRequired?: boolean;
+	followUpDate?: string;
+};

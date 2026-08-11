@@ -4,6 +4,17 @@
  *          banquet orders, guest feedback, and police reports
  */
 
+import { schemaFromZod } from "@tartware/openapi";
+import {
+  PoliceReportStatusBodySchema,
+  PoliceReportUpdateBodySchema,
+  PoliceReportWriteBodySchema,
+} from "@tartware/schemas";
+import type {
+  PoliceReportStatusBody,
+  PoliceReportUpdateBody,
+  PoliceReportWriteBody,
+} from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
@@ -818,68 +829,7 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
   // write path anywhere, so nothing could file a report through the product.
   // See ui-gaps/02-police-reports.md.
   // ---------------------------------------------------
-  const policeReportWriteProperties = {
-    incident_id: { type: "string", format: "uuid" },
-    incident_date: { type: "string", format: "date" },
-    incident_time: { type: "string" },
-    reported_date: { type: "string", format: "date" },
-    incident_type: {
-      type: "string",
-      enum: [
-                "theft",
-                "assault",
-                "vandalism",
-                "trespassing",
-                "fraud",
-                "suspicious_activity",
-                "missing_person",
-                "death",
-                "drug_related",
-                "domestic_disturbance",
-                "noise_complaint",
-                "vehicle_incident",
-                "other",
-      ],
-    },
-    incident_description: { type: "string", minLength: 1, maxLength: 5000 },
-    incident_location: { type: "string", maxLength: 255 },
-    room_number: { type: "string", maxLength: 50 },
-    agency_name: { type: "string", minLength: 1, maxLength: 255 },
-    agency_jurisdiction: { type: "string", maxLength: 255 },
-    agency_contact_number: { type: "string", maxLength: 50 },
-    responding_officer_name: { type: "string", maxLength: 255 },
-    responding_officer_badge: { type: "string", maxLength: 100 },
-    guest_involved: { type: "boolean" },
-    staff_involved: { type: "boolean" },
-    property_stolen: { type: "boolean" },
-    total_loss_value: { type: "number", minimum: 0 },
-    injuries_reported: { type: "boolean" },
-  } as const;
-
-  type PoliceReportWriteBody = {
-    tenant_id: string;
-    property_id?: string;
-    incident_id?: string;
-    incident_date?: string;
-    incident_time?: string;
-    reported_date?: string;
-    incident_type?: string;
-    incident_description?: string;
-    incident_location?: string;
-    room_number?: string;
-    agency_name?: string;
-    agency_jurisdiction?: string;
-    agency_contact_number?: string;
-    responding_officer_name?: string;
-    responding_officer_badge?: string;
-    guest_involved?: boolean;
-    staff_involved?: boolean;
-    property_stolen?: boolean;
-    total_loss_value?: number;
-    injuries_reported?: boolean;
-  };
-
-  const toWriteInput = (body: PoliceReportWriteBody) => ({
+  const toWriteInput = (body: PoliceReportUpdateBody) => ({
     incidentId: body.incident_id,
     incidentDate: body.incident_date as string,
     incidentTime: body.incident_time,
@@ -906,21 +856,7 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
       schema: {
         summary: "File a police report",
         tags: ["Police Reports"],
-        body: {
-          type: "object",
-          required: [
-            "tenant_id",
-            "property_id",
-            "incident_date",
-            "incident_description",
-            "agency_name",
-          ],
-          properties: {
-            tenant_id: { type: "string", format: "uuid" },
-            property_id: { type: "string", format: "uuid" },
-            ...policeReportWriteProperties,
-          },
-        },
+        body: schemaFromZod(PoliceReportWriteBodySchema, "PoliceReportWriteBody"),
       },
     },
     async (request: FastifyRequest<{ Body: PoliceReportWriteBody }>, reply: FastifyReply) => {
@@ -952,14 +888,7 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
           required: ["reportId"],
           properties: { reportId: { type: "string", format: "uuid" } },
         },
-        body: {
-          type: "object",
-          required: ["tenant_id"],
-          properties: {
-            tenant_id: { type: "string", format: "uuid" },
-            ...policeReportWriteProperties,
-          },
-        },
+        body: schemaFromZod(PoliceReportUpdateBodySchema, "PoliceReportUpdateBody"),
       },
     },
     async (
@@ -995,42 +924,13 @@ export function registerPoliceReportRoutes(fastify: FastifyInstance): void {
           required: ["reportId"],
           properties: { reportId: { type: "string", format: "uuid" } },
         },
-        body: {
-          type: "object",
-          required: ["tenant_id", "report_status"],
-          properties: {
-            tenant_id: { type: "string", format: "uuid" },
-            report_status: {
-              type: "string",
-              enum: [
-                "filed",
-                "under_investigation",
-                "closed",
-                "charges_filed",
-                "no_action",
-                "referred",
-                "pending",
-              ],
-            },
-            police_case_number: { type: "string", maxLength: 100 },
-            lead_investigator_name: { type: "string", maxLength: 255 },
-            follow_up_required: { type: "boolean" },
-            follow_up_date: { type: "string", format: "date" },
-          },
-        },
+        body: schemaFromZod(PoliceReportStatusBodySchema, "PoliceReportStatusBody"),
       },
     },
     async (
       request: FastifyRequest<{
         Params: { reportId: string };
-        Body: {
-          tenant_id: string;
-          report_status: string;
-          police_case_number?: string;
-          lead_investigator_name?: string;
-          follow_up_required?: boolean;
-          follow_up_date?: string;
-        };
+        Body: PoliceReportStatusBody;
       }>,
       reply: FastifyReply,
     ) => {

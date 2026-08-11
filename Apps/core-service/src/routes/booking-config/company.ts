@@ -1,5 +1,12 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { CompanyListItemSchema, CompanyTypeEnum, CreditStatusEnum } from "@tartware/schemas";
+import {
+  CompanyListItemSchema,
+  CompanyTypeEnum,
+  CompanyUpdateBodySchema,
+  CompanyWriteBodySchema,
+  CreditStatusEnum,
+} from "@tartware/schemas";
+import type { CompanyUpdateBody, CompanyWriteBody } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -125,74 +132,15 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
    * management unusable — `ar.account.create` needs a `company_id` and nothing
    * could create one. See ui-gaps/16-booking-reference-data.md.
    *
-   * The enum values here are lowercase because that is what the table's CHECK
-   * constraints allow and what the reads return. Note `CompanyTypeEnum` in
-   * @tartware/schemas is UPPERCASE and therefore cannot be used for a write
-   * against this table — a mismatch worth resolving separately.
+   * Request contracts live in @tartware/schemas (api/events.ts) — schemas do not
+   * belong in a route file.
    */
-  const CompanyWriteBodySchema = z.object({
-    tenant_id: z.string().uuid(),
-    company_name: z.string().min(1).max(255),
-    company_type: z.enum([
-      "corporate",
-      "travel_agency",
-      "wholesaler",
-      "ota",
-      "event_planner",
-      "airline",
-      "government",
-      "educational",
-      "consortium",
-      "partner",
-    ]),
-    legal_name: z.string().max(255).optional(),
-    company_code: z.string().max(50).optional(),
-    primary_contact_name: z.string().max(255).optional(),
-    primary_contact_email: z.string().email().max(255).optional(),
-    primary_contact_phone: z.string().max(50).optional(),
-    billing_contact_name: z.string().max(255).optional(),
-    billing_contact_email: z.string().email().max(255).optional(),
-    address_line1: z.string().max(255).optional(),
-    city: z.string().max(100).optional(),
-    state_province: z.string().max(100).optional(),
-    postal_code: z.string().max(20).optional(),
-    country: z.string().max(100).optional(),
-    credit_limit: z.coerce.number().nonnegative().optional(),
-    payment_terms_type: z
-      .enum(["due_on_receipt", "net_15", "net_30", "net_45", "net_60", "net_90", "custom"])
-      .optional(),
-    credit_status: z
-      .enum([
-        "pending",
-        "active",
-        "suspended",
-        "blocked",
-        "under_review",
-        "expired",
-        "revoked",
-        "cancelled",
-      ])
-      .optional(),
-    commission_rate: z.coerce.number().min(0).max(100).optional(),
-    commission_type: z
-      .enum(["percentage", "flat_rate", "tiered", "net_rate", "none"])
-      .optional(),
-    is_active: z.boolean().optional(),
-  });
-
-  const CompanyUpdateBodySchema = CompanyWriteBodySchema.partial().extend({
-    tenant_id: z.string().uuid(),
-  });
-
   const CompanyWriteBodyJsonSchema = schemaFromZod(CompanyWriteBodySchema, "CompanyWriteBody");
   const CompanyUpdateBodyJsonSchema = schemaFromZod(CompanyUpdateBodySchema, "CompanyUpdateBody");
 
-  type CompanyWriteBody = z.infer<typeof CompanyWriteBodySchema>;
-  type CompanyUpdateBody = z.infer<typeof CompanyUpdateBodySchema>;
-
   const toWriteInput = (body: CompanyUpdateBody) => ({
     companyName: body.company_name as string,
-    companyType: body.company_type as string,
+    companyType: body.company_type,
     legalName: body.legal_name,
     companyCode: body.company_code,
     primaryContactName: body.primary_contact_name,
@@ -235,7 +183,7 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       const body = CompanyWriteBodySchema.parse(request.body);
       const company = await createCompany(
         body.tenant_id,
-        toWriteInput(body),
+        { ...toWriteInput(body), companyType: body.company_type },
         (request as { userId?: string }).userId,
       );
       if (!company) {

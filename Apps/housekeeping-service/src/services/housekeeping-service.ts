@@ -14,6 +14,8 @@ import {
   MaintenanceRequestListItemSchema,
   type MaintenanceRequestRow,
 } from "@tartware/schemas";
+import type { IncidentStatusInput, IncidentWriteInput } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import {
   DEEP_CLEAN_DUE_SQL,
@@ -473,28 +475,6 @@ export const getIncidentReportById = async (options: {
 // implemented. See ui-gaps/06-incidents.md.
 // =====================================================
 
-/** Fields a caller may set when reporting or correcting an incident. */
-export type IncidentWriteInput = {
-  propertyId: string;
-  incidentTitle: string;
-  incidentType: string;
-  severity: string;
-  incidentDate: string;
-  incidentTime: string;
-  incidentLocation: string;
-  incidentDescription: string;
-  immediateActionsTaken: string;
-  incidentCategory?: string;
-  roomNumber?: string;
-  areaName?: string;
-  guestInvolved?: boolean;
-  staffInvolved?: boolean;
-  injurySeverity?: string;
-  policeNotified?: boolean;
-  severityScore?: number;
-  discoveredByName?: string;
-};
-
 /** `INC-YYYYMMDD-XXXX`, matching the police-report and folio numbering style. */
 const buildIncidentNumber = (): string => {
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -634,7 +614,7 @@ export const updateIncidentReport = async (
 export const updateIncidentStatus = async (
   tenantId: string,
   incidentId: string,
-  input: { incidentStatus: string; closureNotes?: string },
+  input: IncidentStatusInput,
   actorId: string,
 ): Promise<IncidentReportListItem | null> => {
   const { rowCount } = await query(

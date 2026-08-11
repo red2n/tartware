@@ -247,10 +247,39 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     proxyHousekeeping,
   );
 
+  /**
+   * Filing an incident POSTs to the bare path, and `/v1/incidents/*` does not
+   * match it. Writes also carry `tenant_id` in the body, which a query-only
+   * resolver cannot see — `withTenantScope` then rejects the request with
+   * TENANT_ID_REQUIRED. Same trap as police-report filing.
+   * See ui-gaps/06-incidents.md.
+   */
+  const tenantScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "housekeeping",
+  });
+
+  app.post(
+    "/v1/incidents",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Report an incident.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
   app.all(
     "/v1/incidents/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy incident requests to the housekeeping service.",

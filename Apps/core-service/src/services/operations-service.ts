@@ -37,6 +37,8 @@ import {
   type ShiftHandoverRow,
 } from "@tartware/schemas";
 
+import type { PoliceReportStatusInput, PoliceReportWriteInput } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import {
   BANQUET_ORDER_BY_ID_SQL,
@@ -480,38 +482,6 @@ export const getPoliceReportById = async (
   return mapPoliceReportRow(rows[0]!);
 };
 
-/**
- * Fields a caller may set when filing or correcting a police report.
- *
- * `report_number` is deliberately absent: it is `UNIQUE NOT NULL` and generated
- * here, because a caller-supplied number is how you get two reports fighting over
- * one identifier. Everything the table can hold is not exposed either — the
- * suspects/victims/evidence JSONB columns want a dedicated editor, and guessing a
- * shape for them now would be harder to change later than adding them once the
- * screen needs them.
- */
-export type PoliceReportWriteInput = {
-  propertyId: string;
-  incidentId?: string;
-  incidentDate: string;
-  incidentTime?: string;
-  reportedDate?: string;
-  incidentType?: string;
-  incidentDescription: string;
-  incidentLocation?: string;
-  roomNumber?: string;
-  agencyName: string;
-  agencyJurisdiction?: string;
-  agencyContactNumber?: string;
-  respondingOfficerName?: string;
-  respondingOfficerBadge?: string;
-  guestInvolved?: boolean;
-  staffInvolved?: boolean;
-  propertyStolen?: boolean;
-  totalLossValue?: number;
-  injuriesReported?: boolean;
-};
-
 /** `PR-YYYYMMDD-XXXX`, matching the confirmation-number style used elsewhere. */
 const buildReportNumber = (): string => {
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -670,13 +640,7 @@ export const updatePoliceReport = async (
 export const updatePoliceReportStatus = async (
   tenantId: string,
   reportId: string,
-  input: {
-    reportStatus: string;
-    policeCaseNumber?: string;
-    leadInvestigatorName?: string;
-    followUpRequired?: boolean;
-    followUpDate?: string;
-  },
+  input: PoliceReportStatusInput,
   actorId?: string,
 ): Promise<PoliceReportListItem | null> => {
   const { rowCount } = await query(
