@@ -82,9 +82,7 @@ export const checkInReservation = async (
     Boolean(command.force) && forceReinstatableStatuses.includes(reservation.status);
 
   if (!allowedStatuses.includes(reservation.status) && !isForcedReinstatement) {
-    const permitted = command.force
-      ? "PENDING, CONFIRMED or NO_SHOW"
-      : "PENDING or CONFIRMED";
+    const permitted = command.force ? "PENDING, CONFIRMED or NO_SHOW" : "PENDING or CONFIRMED";
     throw new ReservationCommandError(
       "INVALID_STATUS_FOR_CHECKIN",
       `Cannot check in reservation with status ${reservation.status}; must be ${permitted}`,
