@@ -638,7 +638,7 @@ export const getFlashReport = async (params: {
        ) AS vip_arrivals,
        COUNT(id) FILTER (
          WHERE check_in_date = ${dateSql} AND status IN ('CONFIRMED','CHECKED_IN')
-           AND group_id IS NOT NULL
+           AND group_booking_id IS NOT NULL
        ) AS group_arrivals,
        COUNT(id) FILTER (
          WHERE check_out_date = ${dateSql} AND status = 'CHECKED_IN'
@@ -1049,10 +1049,15 @@ export const getHousekeepingProductivityReport = async (params: {
     avg_minutes: string;
   }>(
     `SELECT
+       -- housekeeping_tasks.status is the housekeeping_status enum
+       -- (CLEAN, DIRTY, INSPECTED, IN_PROGRESS, DO_NOT_DISTURB). 'COMPLETED',
+       -- 'PENDING' and 'ASSIGNED' are not members, so Postgres rejected the
+       -- literal and this report 500'd. The lifecycle vocabulary is the one
+       -- housekeeping-command-service.ts uses: CLEAN/INSPECTED mean done.
        COUNT(id)::text AS total,
-       COUNT(id) FILTER (WHERE status IN ('COMPLETED', 'INSPECTED'))::text AS completed,
+       COUNT(id) FILTER (WHERE status IN ('CLEAN', 'INSPECTED'))::text AS completed,
        COUNT(id) FILTER (WHERE status = 'IN_PROGRESS')::text AS in_progress,
-       COUNT(id) FILTER (WHERE status IN ('PENDING', 'ASSIGNED'))::text AS pending,
+       COUNT(id) FILTER (WHERE status IN ('DIRTY', 'DO_NOT_DISTURB'))::text AS pending,
        COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)
          FILTER (WHERE completed_at IS NOT NULL AND started_at IS NOT NULL), 0)::text AS avg_minutes
      FROM housekeeping_tasks
@@ -1077,7 +1082,7 @@ export const getHousekeepingProductivityReport = async (params: {
      LEFT JOIN users u ON u.id = ht.assigned_to AND u.tenant_id = ht.tenant_id
      WHERE ht.tenant_id = $1::uuid AND ($2::uuid IS NULL OR ht.property_id = $2::uuid)
        AND ht.scheduled_date = $3::date
-       AND ht.status IN ('COMPLETED', 'INSPECTED')
+       AND ht.status IN ('CLEAN', 'INSPECTED')
        AND ht.assigned_to IS NOT NULL
      GROUP BY ht.assigned_to, u.first_name, u.last_name, u.username
      ORDER BY COUNT(ht.id) DESC

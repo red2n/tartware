@@ -103,8 +103,8 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 10 | Reports: 8 of 17 core reports unwired (**8 gateway 404s ✅ fixed**) | [10-reports-coverage.md](10-reports-coverage.md) | Bug+UI | S–M |
-| 11 | Guest portal uses 5 of 14 self-service endpoints | [11-self-service-coverage.md](11-self-service-coverage.md) | UI | M |
+| 10 | Reports — **✅ 8 gateway 404s fixed + 7 reports wired 2026-08-11**; `audit-trail` left to ACCT-23 | [10-reports-coverage.md](10-reports-coverage.md) | Bug+UI | done |
+| 11 | Guest portal — **✅ all 14 self-service endpoints wired 2026-08-11** (checkout, keys, rewards, reg card, resume) | [11-self-service-coverage.md](11-self-service-coverage.md) | UI | done |
 | 12 | Billing partials — **✅ approvals + flow-guard bypass log shipped 2026-08-11**; suspense/GL/audit trail owned by `accounts-gaps` | [12-billing-partials.md](12-billing-partials.md) | UI | part |
 
 ### P1 — Operations Domains (4 gaps)
@@ -209,8 +209,8 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
    rows in dev. **Phase 3 complete.**
 
 **Phase 4 — Cheap coverage wins**
-8. COV-10b: 8 missing entries in `report-defs.ts`
-9. COV-11: guest-portal check-out, keys, rewards, registration card
+8. ~~COV-10b: missing entries in `report-defs.ts`~~ — **7 added 2026-08-11**
+9. ~~COV-11: guest-portal check-out, keys, rewards, registration card~~ — **done 2026-08-11.** **Phase 4 complete.**
 
 **Phase 5 — The revenue decision**
 10. COV-05: build a front-end or retire the service. 32 commands and 20 endpoints hang on this.

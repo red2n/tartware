@@ -1,12 +1,3 @@
-/* Breach register — leans on global shared.scss (page-header, filter-form, form-grid,
-   action-confirm-card, table, badge, detail-list). Only the overdue emphasis is local:
-   a missed 72-hour filing has to be visible at a glance, which the shared badge
-   palette alone does not achieve at row level. */
-
-.overdue-banner {
-  border-color: var(--color-danger, #b3261e);
-}
-
-.row-overdue {
-  background: var(--color-danger-soft, rgba(179, 38, 30, 0.08));
-}
+/* Breach register — no component styles. shared.scss provides page-header,
+   filter-form, form-grid/full-width, action-confirm-card, table, badge,
+   notice/notice-error, detail-list and the `overdue` row tint. */

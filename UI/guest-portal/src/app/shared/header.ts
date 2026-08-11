@@ -23,6 +23,14 @@ import { RouterLink } from "@angular/router";
 				<mat-icon>smartphone</mat-icon>
 				Check In
 			</a>
+			<a mat-button routerLink="/checkout">
+				<mat-icon>logout</mat-icon>
+				Check Out
+			</a>
+			<a mat-button routerLink="/rewards">
+				<mat-icon>redeem</mat-icon>
+				Rewards
+			</a>
 		</mat-toolbar>
 	`,
 	styles: `

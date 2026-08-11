@@ -117,6 +117,14 @@ import {
 								@if (cr.keyCode) {
 									<p>Digital key code: <strong>{{ cr.keyCode }}</strong></p>
 								}
+								<!-- The HTML registration card is what a guest reviews and signs; it is
+								     opened rather than fetched, so the browser renders it directly. -->
+								@if (registrationCardHref(); as href) {
+									<a mat-stroked-button color="primary" [href]="href" target="_blank" rel="noopener">
+										<mat-icon>description</mat-icon>
+										Registration card
+									</a>
+								}
 								<button mat-flat-button color="primary" (click)="finish()">Done</button>
 							</div>
 						}
@@ -174,6 +182,36 @@ export class CheckinPage {
 			this.loading.set(false);
 		}
 	}
+
+	/**
+	 * URL of the signable registration card for the checked-in reservation.
+	 *
+	 * `reservation.generate_registration_card` is a separate command with no UI
+	 * trigger, so if the card has not been generated this link may come back empty —
+	 * the button is offered, not promised.
+	 */
+	registrationCardHref(): string | null {
+		const reservationId = this.startResult()?.reservationId;
+		if (!reservationId) return null;
+		return this.api.registrationCardUrl(reservationId, portalConfig.tenantId);
+	}
+
+	/**
+	 * Re-read a check-in that was started earlier.
+	 *
+	 * The flow started and completed a check-in without ever reading its state, so a
+	 * refresh lost the session entirely. See ui-gaps/11-self-service-coverage.md.
+	 */
+	async resume(checkinId: string): Promise<void> {
+		try {
+			const status = await this.api.getCheckin(checkinId, portalConfig.tenantId);
+			if (status?.status) this.resumedStatus.set(status.status);
+		} catch {
+			/* nothing to resume — the guest simply starts again */
+		}
+	}
+
+	readonly resumedStatus = signal<string | null>(null);
 
 	async completeCheckin(stepper: { next: () => void }) {
 		const sr = this.startResult();

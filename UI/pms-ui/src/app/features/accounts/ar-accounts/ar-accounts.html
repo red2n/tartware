@@ -46,14 +46,10 @@
 <!-- Over-limit accounts are the ones a folio should stop routing against, so they
      are named before the table rather than left to be read off a column. -->
 @if (overLimit().length > 0) {
-  <div class="action-confirm-card over-limit-banner">
-    <div class="confirm-header">
-      <app-icon class="confirm-icon" name="credit_card_off" />
-      <h3 class="confirm-title">
-        {{ overLimit().length }} account{{ overLimit().length === 1 ? '' : 's' }} over the credit limit
-      </h3>
-    </div>
-  </div>
+  <p class="notice notice-error">
+    <app-icon class="notice-icon" name="credit_card_off" />
+    {{ overLimit().length }} account{{ overLimit().length === 1 ? '' : 's' }} over the credit limit
+  </p>
 }
 
 @if (creating()) {
@@ -63,12 +59,52 @@
       <h3 class="confirm-title">Open an AR account</h3>
     </div>
     <div class="confirm-body">
-      @if (companies().length === 0) {
-        <!-- /v1/companies is read-only, so there is no way to add one from here yet. -->
+      @if (companies().length === 0 && !addingCompany()) {
         <p class="confirm-note">
-          No companies found for this tenant. An AR account must belong to a company, and company
-          records cannot be created through the product yet (tracked as COV-16).
+          No companies found for this tenant. An AR account belongs to a company — create one to
+          continue.
         </p>
+      }
+
+      @if (addingCompany()) {
+        <div class="form-section">
+          <div class="form-section-title">New company</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="co-name">Company name</label>
+              <input id="co-name" type="text" [ngModel]="companyForm().company_name"
+                     (ngModelChange)="companyForm.set({ ...companyForm(), company_name: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label for="co-type">Type</label>
+              <select id="co-type" [ngModel]="companyForm().company_type"
+                      (ngModelChange)="companyForm.set({ ...companyForm(), company_type: $event })">
+                @for (t of companyTypes; track t) {
+                  <option [value]="t">{{ labelFor(t) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="co-contact">Contact name</label>
+              <input id="co-contact" type="text" [ngModel]="companyForm().primary_contact_name"
+                     (ngModelChange)="companyForm.set({ ...companyForm(), primary_contact_name: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label for="co-email">Contact email</label>
+              <input id="co-email" type="email" [ngModel]="companyForm().primary_contact_email"
+                     (ngModelChange)="companyForm.set({ ...companyForm(), primary_contact_email: $event ?? '' })" />
+            </div>
+          </div>
+          <div class="confirm-actions">
+            <button class="btn btn-outline btn-sm" (click)="cancelAddCompany()" [disabled]="submitting()">
+              Cancel
+            </button>
+            <button class="btn btn-primary btn-sm" (click)="submitCompany()"
+                    [disabled]="submitting() || !canSubmitCompany()">
+              {{ submitting() ? 'Creating…' : 'Create company' }}
+            </button>
+          </div>
+        </div>
       }
       <div class="form-grid">
         <div class="form-field">
@@ -76,10 +112,15 @@
           <select id="ar-company" [ngModel]="createForm().company_id"
                   (ngModelChange)="onCompanyPicked($event ?? '')">
             <option value="">Select a company…</option>
-            @for (c of companies(); track c.id) {
-              <option [value]="c.id">{{ companyLabel(c) }}</option>
+            @for (c of companies(); track c.company_id) {
+              <option [value]="c.company_id">{{ companyLabel(c) }}</option>
             }
           </select>
+          @if (!addingCompany()) {
+            <button class="btn btn-link btn-sm" (click)="openAddCompany()" [disabled]="submitting()">
+              + New company
+            </button>
+          }
         </div>
         <div class="form-field">
           <label for="ar-name">Account name</label>
@@ -223,9 +264,9 @@
           <th>Account</th>
           <th>Company</th>
           <th>Terms</th>
-          <th class="cell-numeric">Credit limit</th>
-          <th class="cell-numeric">Outstanding</th>
-          <th class="cell-numeric">Available</th>
+          <th class="right mono">Credit limit</th>
+          <th class="right mono">Outstanding</th>
+          <th class="right mono">Available</th>
           <th>Dunning</th>
           <th>Status</th>
           <th class="cell-actions">Actions</th>
@@ -233,7 +274,7 @@
       </thead>
       <tbody>
         @for (a of accounts(); track a.ar_account_id) {
-          <tr [class.row-over-limit]="num(a.available_credit) < 0">
+          <tr [class.overdue]="num(a.available_credit) < 0">
             <td class="cell-primary"><strong>{{ a.account_number }}</strong></td>
             <td>
               {{ a.company_name }}
@@ -242,9 +283,9 @@
               }
             </td>
             <td>{{ labelFor(a.payment_terms) }}</td>
-            <td class="cell-numeric">{{ num(a.credit_limit) | number: '1.2-2' }} {{ a.currency }}</td>
-            <td class="cell-numeric">{{ num(a.outstanding_balance) | number: '1.2-2' }}</td>
-            <td class="cell-numeric">
+            <td class="right mono">{{ num(a.credit_limit) | number: '1.2-2' }} {{ a.currency }}</td>
+            <td class="right mono">{{ num(a.outstanding_balance) | number: '1.2-2' }}</td>
+            <td class="right mono">
               @if (num(a.available_credit) < 0) {
                 <span class="badge badge-danger badge-sm">{{ num(a.available_credit) | number: '1.2-2' }}</span>
               } @else {
@@ -283,8 +324,8 @@
                 <th>Entry</th>
                 <th>Transferred</th>
                 <th>Due</th>
-                <th class="cell-numeric">Original</th>
-                <th class="cell-numeric">Outstanding</th>
+                <th class="right mono">Original</th>
+                <th class="right mono">Outstanding</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -294,8 +335,8 @@
                   <td>{{ e.entry_number }}</td>
                   <td>{{ e.transfer_date }}</td>
                   <td>{{ e.due_date }}</td>
-                  <td class="cell-numeric">{{ num(e.original_amount) | number: '1.2-2' }}</td>
-                  <td class="cell-numeric">{{ num(e.outstanding_balance) | number: '1.2-2' }}</td>
+                  <td class="right mono">{{ num(e.original_amount) | number: '1.2-2' }}</td>
+                  <td class="right mono">{{ num(e.outstanding_balance) | number: '1.2-2' }}</td>
                   <td>{{ labelFor(e.entry_status) }}</td>
                 </tr>
               }
@@ -311,32 +352,32 @@
 }
 
 @if (aging().length > 0) {
-  <h3 class="ar-section-title">Aging</h3>
+  <h3 class="section-header">Aging</h3>
   <div class="table-container">
     <table class="table data-table table-compact">
       <thead>
         <tr>
           <th>Account</th>
-          <th class="cell-numeric">Current</th>
-          <th class="cell-numeric">1–30</th>
-          <th class="cell-numeric">31–60</th>
-          <th class="cell-numeric">61–90</th>
-          <th class="cell-numeric">91–120</th>
-          <th class="cell-numeric">120+</th>
-          <th class="cell-numeric">Total</th>
+          <th class="right mono">Current</th>
+          <th class="right mono">1–30</th>
+          <th class="right mono">31–60</th>
+          <th class="right mono">61–90</th>
+          <th class="right mono">91–120</th>
+          <th class="right mono">120+</th>
+          <th class="right mono">Total</th>
         </tr>
       </thead>
       <tbody>
         @for (row of aging(); track row.ar_account_id) {
           <tr>
             <td class="cell-primary">{{ row.company_name }}</td>
-            <td class="cell-numeric">{{ num(row.current_amount) | number: '1.2-2' }}</td>
-            <td class="cell-numeric">{{ num(row.bucket_1_30) | number: '1.2-2' }}</td>
-            <td class="cell-numeric">{{ num(row.bucket_31_60) | number: '1.2-2' }}</td>
-            <td class="cell-numeric">{{ num(row.bucket_61_90) | number: '1.2-2' }}</td>
-            <td class="cell-numeric">{{ num(row.bucket_91_120) | number: '1.2-2' }}</td>
-            <td class="cell-numeric">{{ num(row.bucket_over_120) | number: '1.2-2' }}</td>
-            <td class="cell-numeric"><strong>{{ num(row.total_outstanding) | number: '1.2-2' }}</strong></td>
+            <td class="right mono">{{ num(row.current_amount) | number: '1.2-2' }}</td>
+            <td class="right mono">{{ num(row.bucket_1_30) | number: '1.2-2' }}</td>
+            <td class="right mono">{{ num(row.bucket_31_60) | number: '1.2-2' }}</td>
+            <td class="right mono">{{ num(row.bucket_61_90) | number: '1.2-2' }}</td>
+            <td class="right mono">{{ num(row.bucket_91_120) | number: '1.2-2' }}</td>
+            <td class="right mono">{{ num(row.bucket_over_120) | number: '1.2-2' }}</td>
+            <td class="right mono"><strong>{{ num(row.total_outstanding) | number: '1.2-2' }}</strong></td>
           </tr>
         }
       </tbody>

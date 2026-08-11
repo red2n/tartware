@@ -23,6 +23,14 @@ export const routes: Routes = [
 		loadComponent: () => import("./pages/checkin/checkin").then((m) => m.CheckinPage),
 	},
 	{
+		path: "checkout",
+		loadComponent: () => import("./pages/checkout/checkout").then((m) => m.CheckoutPage),
+	},
+	{
+		path: "rewards",
+		loadComponent: () => import("./pages/rewards/rewards").then((m) => m.RewardsPage),
+	},
+	{
 		path: "**",
 		redirectTo: "",
 	},

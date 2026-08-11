@@ -8,9 +8,34 @@ coverage win in the backlog.
 **Status: (a) fixed 2026-08-11.** Four paths aligned with core-service, four unimplemented routes
 removed, E2E sweep corrected, and `Apps/api-gateway/tests/proxy-route-conformance.test.ts` added so
 the class of bug cannot recur. That test found 8 more mismatches elsewhere in the gateway, two of them
-live user-facing 404s — see [19-gateway-proxy-mismatches.md](19-gateway-proxy-mismatches.md). (b) is
-still open.
+live user-facing 404s — see [19-gateway-proxy-mismatches.md](19-gateway-proxy-mismatches.md). **(b) done 2026-08-11** — 7 of the 8 unwired
+core reports added to `report-defs.ts`: vip-arrivals, pace, market-segment-production,
+guest-statistics, maintenance-sla, performance, revenue-forecast. Each query contract was read off the
+route's Fastify schema rather than assumed (`performance` and `revenue-forecast` take a date range,
+`guest-statistics` takes none). `audit-trail` is deliberately left out — `accounts-gaps/23-ui-audit-log-viewer.md`
+specs a proper viewer, and a generic table would pre-empt it. The 4 unwired `/v1/billing/reports/*`
+entries remain, gated on the finance-role question in [12-billing-partials.md](12-billing-partials.md).
 
+
+> ### What the renames then exposed (2026-08-11 live runs)
+>
+> Making these paths resolve turned two of them from 404 into **500**, in SQL that had never executed:
+>
+> - **`/v1/reports/flash`** — `column "group_id" does not exist`; the reservations column is
+>   `group_booking_id`.
+> - **`/v1/reports/housekeeping-productivity`** — `invalid input value for enum housekeeping_status:
+>   "COMPLETED"`. `housekeeping_tasks.status` is the room-cleanliness enum
+>   (`CLEAN, DIRTY, INSPECTED, IN_PROGRESS, DO_NOT_DISTURB`); the report filtered on `COMPLETED`,
+>   `PENDING` and `ASSIGNED`, none of which are members. Corrected to the vocabulary the writer uses —
+>   `housekeeping-command-service.ts:116` treats CLEAN/INSPECTED as done.
+>
+> **The 500s also took out six unrelated endpoints.** Repeated failures tripped the gateway's circuit
+> breaker (`circuit open — rejecting proxy request`), so properties, reservations, reservations-list,
+> reservations-grid, modules and webhooks all returned 503. One bad report query looked like a
+> platform outage — worth knowing when triaging a wall of 503s.
+>
+> Both fixed. Counting the DSAR export and the police-report by-id query, that is **four** endpoints
+> where a reachability fix revealed a wrong column or enum name underneath.
 ---
 
 ## (a) BUG — 8 gateway report endpoints proxy to core-service paths that do not exist

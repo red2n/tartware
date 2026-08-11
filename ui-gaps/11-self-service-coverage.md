@@ -2,6 +2,36 @@
 
 **Priority:** P1 | **Risk:** 🟡 LOW-MEDIUM | **Type:** UI | **Effort:** M
 
+> ## ✅ Shipped 2026-08-11 — all 9 endpoints now have a client
+>
+> `GuestApiService` gained methods for every previously unwired endpoint, and three surfaces use them:
+>
+> - **`pages/checkout/`** (new, route `/checkout`, header link) — folio preview then commit. The preview
+>   is not skippable: a guest asked to confirm checkout without seeing the bill cannot dispute a charge
+>   before it settles, which is why that endpoint exists. Keys are read alongside so the confirmation
+>   can say they were released. **The portal does not take payment** — an outstanding balance is stated
+>   and pointed at reception, because no self-service settlement path exists.
+> - **`pages/rewards/`** (new, route `/rewards`, header link) — catalogue, redeem, history.
+> - **`pages/checkin/`** — registration-card link on the Done step (the `/html` variant, opened rather
+>   than fetched, since it is what a guest reads and signs) and `getCheckin()` for resume-after-refresh.
+>
+> **Constraint found while building, worth its own decision:** redemption requires a `guest_id`, and
+> the portal has **no session** — a guest arrives with a confirmation code, not a login. The form asks
+> for the guest id, which is honest but poor. `portalConfig` also hard-codes tenant and property. A real
+> guest account model would replace both; until then the rewards flow is usable but not something to
+> put in front of a paying guest.
+>
+> **Response shapes are read defensively.** Every display field on the new types is optional and each
+> envelope is unwrapped (`data` / bare array), because these nine endpoints have never been exercised by
+> a browser — the exact payloads are unverified.
+>
+> **Verified:** `ng build` clean for the portal on each step. **Not verified:** none of these calls has
+> been made against a running service. The E2E suite covers `pms-ui`-side APIs, not the portal, so this
+> needs a manual pass once the stack is up.
+>
+> Still deferred: staff-side `rooms.key.issue` / `.revoke` (COV-17) — a guest-visible key with no staff
+> revoke path is a security gap, and shipping the guest half first makes that more pressing, not less.
+
 ## Current State (Backend ✅ → UI partial)
 
 `Apps/guests-service` implements 14 `/v1/self-service` endpoints. `UI/guest-portal` calls 5, all

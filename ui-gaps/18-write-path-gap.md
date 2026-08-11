@@ -31,6 +31,30 @@
 > (`compliance.breach.report` / `.notify`) are now definitively redundant: the HTTP path is the live
 > one, so they should be **deleted**, not implemented.
 
+> ### Related defect found 2026-08-11: `SELECT x.*` in every `*_BY_ID_SQL`
+>
+> While fixing COV-02 I hit a 400 from `getPoliceReportById`: `POLICE_REPORT_BY_ID_SQL` used
+> `SELECT pr.*`, which does not carry the computed `INITCAP(REPLACE(...)) as x_display` labels that its
+> row mapper's schema **requires**. The query returned rows its own parser rejected.
+>
+> The same pattern held in **five more** by-id queries in
+> `Apps/core-service/src/sql/operations-queries.ts` — `cs.*`, `sh.*`, `lf.*`, `beo.*`, `gf.*`. Each
+> `*_LIST_SQL` lists columns explicitly and computes the display labels; each `*_BY_ID_SQL` starred
+> them and omitted the labels. So these five detail endpoints throw on any real row:
+>
+> - `GET /v1/cashier-sessions/:sessionId` (core-service)
+> - `GET /v1/shift-handovers/:handoverId` — [08](08-shift-handovers.md)
+> - `GET /v1/lost-and-found/:itemId` (core-service copy) — [07](07-lost-and-found.md)
+> - `GET /v1/banquet-orders/:beoId` — [13](13-sales-catering.md)
+> - `GET /v1/guest-feedback/:feedbackId` — [09](09-guest-feedback.md)
+>
+> All six now reuse their list query's explicit column set, keeping each by-id's own WHERE clause.
+> **This is the same root cause as the write-path gap:** an endpoint nothing calls is an endpoint whose
+> defects nobody sees. Every domain in the table below has a by-id read that has never returned a row,
+> so assume the same class of breakage until each is exercised with data.
+>
+> A star select is also against the convention in that file — every other query there lists columns.
+
 **This is the systemic finding the coverage audit did not make.** Seven of the sixteen "no UI presence"
 domains are not UI gaps at all: **there is no way to create the data through any API.** A screen cannot
 be built over them without backend work first, and the same decision would otherwise be re-litigated

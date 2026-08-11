@@ -52,10 +52,29 @@ type StatementEntry = {
 	entry_status?: string;
 };
 
-type Company = { id: string; company_name?: string; name?: string };
+/**
+ * Row of GET /v1/companies. The list returns `company_id` — not `id` — and
+ * binding a picker to `id` silently produced empty option values, so no company
+ * could be chosen even when some existed.
+ */
+type Company = { company_id: string; company_name: string; company_type?: string };
 
 const PAYMENT_TERMS = ["NET30", "NET45", "NET60", "DUE_ON_RECEIPT"] as const;
 const ACCOUNT_STATUSES = ["ACTIVE", "SUSPENDED", "COLLECTIONS"] as const;
+
+/** Lowercase to match the `companies.company_type` CHECK constraint. */
+const COMPANY_TYPES = [
+	"corporate",
+	"travel_agency",
+	"wholesaler",
+	"ota",
+	"event_planner",
+	"airline",
+	"government",
+	"educational",
+	"consortium",
+	"partner",
+] as const;
 
 /**
  * AR account management — the missing link for direct billing.
@@ -296,11 +315,11 @@ export class ArAccountsComponent {
 	}
 
 	companyLabel(company: Company): string {
-		return company.company_name ?? company.name ?? company.id;
+		return company.company_name || company.company_id;
 	}
 
 	onCompanyPicked(companyId: string): void {
-		const company = this.companies().find((candidate) => candidate.id === companyId);
+		const company = this.companies().find((candidate) => candidate.company_id === companyId);
 		this.createForm.set({
 			...this.createForm(),
 			company_id: companyId,
@@ -311,6 +330,66 @@ export class ArAccountsComponent {
 
 	cancelCreate(): void {
 		this.creating.set(false);
+		this.addingCompany.set(false);
+	}
+
+	/* ── Inline company creation ───────────────────────────────────────────────
+	 * `/v1/companies` was read-only, so an AR account could only be opened against
+	 * a company that already existed — and nothing could create one. The write path
+	 * now exists (ui-gaps/16-booking-reference-data.md); offering it here means
+	 * onboarding a new corporate client is one flow rather than a DB insert. */
+	readonly addingCompany = signal(false);
+	readonly companyTypes = COMPANY_TYPES;
+	readonly companyForm = signal({
+		company_name: "",
+		company_type: "corporate" as string,
+		primary_contact_name: "",
+		primary_contact_email: "",
+	});
+
+	readonly canSubmitCompany = computed(() => this.companyForm().company_name.trim().length > 0);
+
+	openAddCompany(): void {
+		this.companyForm.set({
+			company_name: "",
+			company_type: "corporate",
+			primary_contact_name: "",
+			primary_contact_email: "",
+		});
+		this.addingCompany.set(true);
+	}
+
+	cancelAddCompany(): void {
+		this.addingCompany.set(false);
+	}
+
+	async submitCompany(): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId || !this.canSubmitCompany() || this.submitting()) return;
+		const f = this.companyForm();
+		this.submitting.set(true);
+		try {
+			const created = await this.api.post<Company>("/companies", {
+				tenant_id: tenantId,
+				company_name: f.company_name.trim(),
+				company_type: f.company_type,
+				...(f.primary_contact_name.trim()
+					? { primary_contact_name: f.primary_contact_name.trim() }
+					: {}),
+				...(f.primary_contact_email.trim()
+					? { primary_contact_email: f.primary_contact_email.trim() }
+					: {}),
+			});
+			this.toast.success("Company created.");
+			this.addingCompany.set(false);
+			await this.loadCompanies();
+			// Select it straight away — the operator created it to use it.
+			if (created?.company_id) this.onCompanyPicked(created.company_id);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to create company");
+		} finally {
+			this.submitting.set(false);
+		}
 	}
 
 	async submitCreate(): Promise<void> {

@@ -36,6 +36,19 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /**
+   * Reads scope by query, writes by body. `withTenantScope` rejects any request it
+   * cannot scope, so a query-only resolver refuses every body-shaped write before
+   * it reaches core-service — the same defect fixed in operations-routes.ts.
+   */
+  const tenantScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
   app.get(
     "/v1/allotments",
     {
@@ -153,10 +166,29 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  /**
+   * Creating a company POSTs to the bare path, which `/v1/companies/*` does not
+   * match — Fastify's wildcard needs a further segment. Without this every
+   * create would 404 at the gateway, exactly as police-report filing did.
+   */
+  app.post(
+    "/v1/companies",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create a company (corporate account, travel agency, OTA).",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/companies/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy company operations to core service.",

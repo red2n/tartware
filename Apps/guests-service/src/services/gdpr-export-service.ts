@@ -35,8 +35,8 @@ export async function exportGuestData(params: {
   const { rows: reservations } = await query<Record<string, unknown>>(
     `SELECT id, property_id, room_type_id, room_id,
             check_in_date, check_out_date, status,
-            adults, children, total_amount, currency,
-            booking_source, reservation_type, special_requests,
+            number_of_adults, number_of_children, total_amount, currency,
+            source AS booking_source, reservation_type, special_requests,
             created_at, updated_at
      FROM public.reservations
      WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
@@ -60,14 +60,16 @@ export async function exportGuestData(params: {
     `SELECT consent_type, consent_status, consent_date,
             ip_address, consent_source, withdrawal_date
      FROM public.gdpr_consent_logs
-     WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
+     -- The consent log keys on subject_id (a guest is one kind of data subject),
+     -- not guest_id. Every other table in this export uses guest_id.
+     WHERE tenant_id = $1::uuid AND subject_id = $2::uuid
      ORDER BY consent_date DESC`,
     [tenantId, guestId],
   );
 
   // 5. Loyalty transactions
   const { rows: loyaltyTxns } = await query<Record<string, unknown>>(
-    `SELECT id, transaction_type, points, balance_after,
+    `SELECT transaction_id AS id, transaction_type, points, balance_after,
             reference_type, reference_id, description,
             expires_at, created_at
      FROM public.loyalty_point_transactions
@@ -76,9 +78,13 @@ export async function exportGuestData(params: {
     [tenantId, guestId],
   );
 
-  // 6. In-app notifications (communications sent)
+  // 6. In-app notifications (communications sent).
+  // This table has no channel/subject/status/sent_at columns — it stores
+  // notification_id, category, title and a read flag. Aliased so the export's
+  // field names stay stable for anything already consuming them.
   const { rows: notifications } = await query<Record<string, unknown>>(
-    `SELECT id, channel, subject, status, sent_at, created_at
+    `SELECT notification_id AS id, category AS channel, title AS subject,
+            is_read, read_at, created_at
      FROM public.in_app_notifications
      WHERE tenant_id = $1::uuid
        AND source_type = 'guest'

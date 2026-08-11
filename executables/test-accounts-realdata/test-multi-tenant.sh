@@ -838,10 +838,12 @@ run_billing_pipeline() {
     wait_kafka 3
 
     get "$GW/v1/guests/$guest_id/consent?tenant_id=$tid" >/dev/null
+    # jq's `//` treats `false` as absent, so a correctly-stored `false` reads as
+    # empty. Select the key explicitly instead — this cost a false failure once.
     assert_eq "GDPR consent: marketing_email recorded" \
-      "true" "$(jq -r '.marketing_email // empty' "$RESP_FILE" 2>/dev/null)"
+      "true" "$(jq -r 'if has("marketing_email") then .marketing_email else "" end' "$RESP_FILE" 2>/dev/null)"
     assert_eq "GDPR consent: analytics recorded" \
-      "false" "$(jq -r '.analytics // empty' "$RESP_FILE" 2>/dev/null)"
+      "false" "$(jq -r 'if has("analytics") then .analytics else "" end' "$RESP_FILE" 2>/dev/null)"
 
     code=$(get "$GW/v1/guests/$guest_id/gdpr-export?tenant_id=$tid")
     assert_http "GDPR subject access export" "2" "$code"
@@ -2626,9 +2628,12 @@ seed_packages() {
       n=$((n+1))
       pkg_id=$(jq -r '.package_id // .id // .data.package_id // .data.id // empty' "$RESP_FILE" 2>/dev/null)
       # Components make the package detail screen meaningful, not just the list.
+      # component_type must be one of the package_components CHECK values
+      # (service, amenity, meal, activity, transportation, upgrade, credit,
+      # voucher, other) — 'food_beverage' silently 400'd and halved the count.
       if [[ -n "$pkg_id" ]]; then
         comp_code=$(post "$GW/v1/packages/$pkg_id/components" \
-          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"food_beverage\",\"quantity\":2,\"pricing_type\":\"included\",\"unit_price\":35.00,\"is_included\":true}")
+          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"meal\",\"quantity\":2,\"pricing_type\":\"included\",\"unit_price\":35.00,\"is_included\":true}")
         [[ "$comp_code" =~ ^2 ]] && comps=$((comps+1))
         comp_code=$(post "$GW/v1/packages/$pkg_id/components" \
           "{\"tenant_id\":\"$tid\",\"component_name\":\"Welcome Amenity\",\"component_type\":\"amenity\",\"quantity\":1,\"pricing_type\":\"included\",\"unit_price\":25.00,\"is_included\":true}")

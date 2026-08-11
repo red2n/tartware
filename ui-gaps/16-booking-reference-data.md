@@ -1,6 +1,39 @@
 # COV-16: Booking Reference Data — Allotments, Waitlist, Promo Codes, Companies
 
-**Priority:** P2 | **Risk:** 🟡 MEDIUM | **Type:** Backend + UI | **Effort:** M
+**Priority:** P2, **except companies — promoted to P0-blocking** | **Risk:** 🟡 MEDIUM | **Type:** Backend + UI | **Effort:** M
+
+> ## ✅ Company CRUD shipped 2026-08-11
+>
+> **Why it jumped the queue:** COV-03's AR account management shipped, then the E2E run proved it
+> unusable — `AR account management SKIP — no company record to attach to`. `ar.account.create`
+> requires a `company_id` and nothing could create a company. A shipped feature was inert.
+>
+> Per [18-write-path-gap.md](18-write-path-gap.md)'s rule this is one service, one table, no fan-out →
+> plain HTTP:
+> - `POST /v1/companies`, `PUT /v1/companies/:companyId` in `routes/booking-config/company.ts`, with
+>   `createCompany` / `updateCompany` in the matching service.
+> - Gateway: a **bare `POST /v1/companies`**, because `ALL /v1/companies/*` does not match the bare
+>   path — the identical trap that made police-report filing 404 — plus the query-or-body tenant
+>   resolver, since `withTenantScope` refuses any request it cannot scope and creates carry `tenant_id`
+>   in the body.
+> - UI: inline **"+ New company"** inside the AR account form, which auto-selects the new company. That
+>   is where the gap bites, so onboarding a corporate client is one flow instead of a DB insert.
+>
+> **Two bugs found while building:**
+>
+> 1. **`CompanyTypeEnum` in `@tartware/schemas` is UPPERCASE** (`CORPORATE`) while the table's CHECK
+>    requires lowercase (`corporate`). Using the shared enum for writes would violate the constraint on
+>    every insert. The request schema follows the DB; the mismatch is flagged in code and still wants
+>    resolving.
+> 2. **COV-03's company picker was bound to `c.id`, but the list returns `company_id`** — every option
+>    value would have been empty, so no company was selectable even once they existed. Fixed. The E2E
+>    suite has the same bug (`resp_first "id"`) and is queued for the same fix.
+>
+> **Deliberately not exposed:** the suspects/evidence-style wide columns on `companies`
+> (contract dates, tier pricing, statistics) are machine-maintained or want their own editor. The write
+> surface is the contract-and-contact information a person actually types.
+>
+> **Not yet verified live** — needs the run in flight to finish first.
 
 ## Current State (Backend ⚠️ read-only → UI ❌)
 

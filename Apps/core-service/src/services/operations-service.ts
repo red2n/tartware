@@ -683,10 +683,12 @@ export const updatePoliceReportStatus = async (
     `
       UPDATE public.police_reports
       SET
-        report_status = $3,
+        report_status = $3::text,
         police_case_number = COALESCE($4, police_case_number),
         lead_investigator_name = COALESCE($5, lead_investigator_name),
-        investigation_ongoing = ($3 IN ('under_investigation', 'referred')),
+        -- Both uses of $3 need the same cast, or Postgres deduces two types for
+        -- one parameter and rejects the statement outright.
+        investigation_ongoing = ($3::text IN ('under_investigation', 'referred')),
         follow_up_required = COALESCE($6, follow_up_required),
         follow_up_date = COALESCE($7::date, follow_up_date),
         updated_at = NOW(),

@@ -7,15 +7,11 @@
 </app-page-header>
 
 @if (awaitingCaseNumber().length > 0) {
-  <div class="action-confirm-card awaiting-banner">
-    <div class="confirm-header">
-      <app-icon class="confirm-icon" name="pending_actions" />
-      <h3 class="confirm-title">
-        {{ awaitingCaseNumber().length }} open report{{ awaitingCaseNumber().length === 1 ? '' : 's' }}
-        with no police case number recorded
-      </h3>
-    </div>
-  </div>
+  <p class="notice">
+    <app-icon class="notice-icon" name="pending_actions" />
+    {{ awaitingCaseNumber().length }} open report{{ awaitingCaseNumber().length === 1 ? '' : 's' }} with
+    no police case number recorded
+  </p>
 }
 
 @if (filing()) {

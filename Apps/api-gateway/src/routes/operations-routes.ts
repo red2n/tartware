@@ -27,6 +27,22 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /**
+   * Reads here carry `tenant_id` in the query; writes carry it in the body. A
+   * query-only resolver returns undefined for a write, and `withTenantScope`
+   * rejects a request it cannot scope — so every body-shaped write through these
+   * proxies was refused before reaching core-service. Checking both is what makes
+   * one registration serve a domain's reads and writes.
+   * See ui-gaps/02-police-reports.md.
+   */
+  const tenantScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
   // Cashier Sessions
   app.get(
     "/v1/cashier-sessions",
@@ -71,7 +87,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/shift-handovers/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy shift handover operations to core service.",
@@ -125,7 +141,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/banquet-orders/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy banquet order operations to core service.",
@@ -152,7 +168,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/guest-feedback/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy guest feedback operations to core service.",
@@ -176,10 +192,31 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  /**
+   * Filing a report POSTs to the bare path, and `/v1/police-reports/*` does not
+   * match it — Fastify's wildcard needs at least one more segment. Without this
+   * registration every `POST /v1/police-reports` 404'd at the gateway while
+   * core-service had a working handler. Tenant comes from the body on writes.
+   * See ui-gaps/02-police-reports.md.
+   */
+  app.post(
+    "/v1/police-reports",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: OPERATIONS_TAG,
+        summary: "File a police report.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/police-reports/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy police report operations to core service.",
@@ -193,7 +230,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/compliance/breach-incidents",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "List or report data breach incidents.",
@@ -206,7 +243,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/compliance/breach-incidents/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: OPERATIONS_TAG,
         summary: "Proxy breach incident operations to core service.",

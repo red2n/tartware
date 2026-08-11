@@ -7,8 +7,42 @@ Found by the conformance test added for [10-reports-coverage.md](10-reports-cove
 routes, not just reports. Eight were found; the remainder are held in that test's
 `KNOWN_MISMATCHES` allowlist. **The allowlist must only shrink** — remove an entry as it is fixed.
 
-**Status: closed 2026-08-11.** All eight fixed; `KNOWN_MISMATCHES` is empty and the conformance test
-now asserts that all 127 proxied gateway routes resolve to a registered downstream path.
+**Status: closed 2026-08-11**, but only after a live run. All eight path mismatches fixed;
+`KNOWN_MISMATCHES` is empty and the conformance test asserts all 127 proxied routes resolve
+downstream.
+
+> ### ⚠️ Static verification was not enough — what the E2E run then found
+>
+> The conformance test proves a path *resolves*. It cannot prove the handler *works*. Making these
+> routes reachable exposed four bugs in code that had never executed:
+>
+> 1. **`gdpr-export` returned 500, and always would have.** Four wrong column references in
+>    `gdpr-export-service.ts`: `adults`/`children` (real: `number_of_adults`/`number_of_children`),
+>    `booking_source` (real: `source`), `gdpr_consent_logs.guest_id` (real: `subject_id`), and
+>    `loyalty_point_transactions.id` plus `in_app_notifications.id/channel/subject/status/sent_at` —
+>    that table has none of those. **The 404 this spec fixed was masking a 500.** The DSAR export had
+>    never worked in any environment.
+> 2. **`POST /v1/police-reports` 404'd at the gateway.** `ALL /v1/police-reports/*` does not match the
+>    bare path — Fastify's wildcard requires a further segment. A working core-service handler was
+>    unreachable. Fixed by declaring the bare `POST`.
+> 3. **Body-scoped writes were rejected outright.** These proxies resolved the tenant from the query
+>    only, and `withTenantScope` refuses any request it cannot scope, so every write carrying
+>    `tenant_id` in the body was refused before reaching core-service — **including COV-01's
+>    breach-incident POST, which this backlog had already recorded as shipped.** Fixed with one shared
+>    query-or-body resolver in `operations-routes.ts`.
+> 4. **`getPoliceReportById` returned rows its own schema rejected** — `SELECT pr.*` omits the computed
+>    `report_status_display` the row mapper requires. Invisible while the table was empty.
+>
+> Plus a Postgres type-inference error: `report_status = $3` alongside `$3 IN (…)` deduces two types for
+> one parameter and rejects the statement. Both uses now cast `::text`.
+>
+> **Verified live after the fixes:** DSAR export 200 with real data (1 reservation, 9 payment
+> transactions); consent round-trip 202 → `{"marketing_email":true,"analytics":false}`; police report
+> POST 201 and status POST 200 with case number and derived `investigation_ongoing`.
+>
+> **The lesson for the rest of this backlog:** "typechecks + builds + a conformance test" is not
+> evidence a path works. Every remaining spec that says *verified* on that basis should be treated as
+> unproven until it has been exercised against a running stack.
 
 ## This corrects the audit's headline
 

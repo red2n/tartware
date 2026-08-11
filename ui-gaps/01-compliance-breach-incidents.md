@@ -16,6 +16,13 @@
 > `discovered_at` — overdue incidents sort to the top, are counted in a banner above the table, and are
 > badged in the row.
 >
+> **Correction 2026-08-11 (after the live run):** the breach-report POST **did not work** as first
+> shipped. The gateway's `ALL /v1/compliance/breach-incidents` resolved the tenant from the query only,
+> and this screen sends `tenant_id` in the body, so `withTenantScope` refused the request before
+> core-service saw it. Fixed by the shared query-or-body resolver — see
+> [19-gateway-proxy-mismatches.md](19-gateway-proxy-mismatches.md). The original "shipped" note below
+> was based on typecheck + build alone, which could not have caught this.
+>
 > **Not verified:** no run against a live stack (services down). Worth a look when they are up: the
 > `/v1/compliance/breach-incidents` routes in `Apps/core-service/src/routes/compliance.ts` declare no
 > `withTenantScope` preHandler — tenant scoping is enforced at the gateway

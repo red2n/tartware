@@ -33,15 +33,11 @@
 <!-- A pending request that expires has to be raised again from scratch, so the ones
      about to lapse are named rather than left to be spotted in the expiry column. -->
 @if (expiringSoon().length > 0) {
-  <div class="action-confirm-card expiring-banner">
-    <div class="confirm-header">
-      <app-icon class="confirm-icon" name="timer" />
-      <h3 class="confirm-title">
-        {{ expiringSoon().length }} request{{ expiringSoon().length === 1 ? '' : 's' }} expiring within
-        the hour
-      </h3>
-    </div>
-  </div>
+  <p class="notice">
+    <app-icon class="notice-icon" name="timer" />
+    {{ expiringSoon().length }} request{{ expiringSoon().length === 1 ? '' : 's' }} expiring within the
+    hour
+  </p>
 }
 
 @if (decision(); as d) {
@@ -88,7 +84,7 @@
   </div>
 }
 
-<h3 class="ap-section-title">Pending</h3>
+<h3 class="section-header">Pending</h3>
 
 @if (loading()) {
   <div class="loading-state">Loading…</div>
@@ -113,7 +109,7 @@
       </thead>
       <tbody>
         @for (r of pending(); track r.approval_id) {
-          <tr [class.row-expiring]="hoursToExpiry(r) <= 1">
+          <tr>
             <td class="cell-primary"><strong>{{ labelFor(r.operation_type) }}</strong></td>
             <td>
               {{ r.entity_type }}
@@ -146,8 +142,8 @@
   </div>
 }
 
-<h3 class="ap-section-title">Flow-guard bypasses</h3>
-<p class="ap-section-note">
+<h3 class="section-header">Flow-guard bypasses</h3>
+<p class="text-subtle">
   Recorded whenever a flow gate was overridden with <code>force</code>. These rows were being written
   with nothing able to read them.
 </p>
