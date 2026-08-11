@@ -368,6 +368,23 @@ const toReservationEvent = (envelope: z.infer<typeof ReservationEventSchema>): R
  * 3. Create an in-app notification for staff if configured.
  */
 const processReservationEvent = async (event: ReservationEvent): Promise<void> => {
+  // propertyId and guestId land in uuid columns. If the producer omitted them
+  // they arrive here as "", which fails the cast mid-insert and parks an
+  // otherwise-valid event in the DLQ. Nothing downstream can recover a missing
+  // identity, so drop the notification with a diagnosable warning instead.
+  if (!event.propertyId || !event.guestId) {
+    logger.warn(
+      {
+        eventType: event.eventType,
+        reservationId: event.reservationId,
+        hasPropertyId: Boolean(event.propertyId),
+        hasGuestId: Boolean(event.guestId),
+      },
+      "Reservation event missing property_id/guest_id; skipping notification",
+    );
+    return;
+  }
+
   const context: Record<string, string | number | boolean | null> = {
     guest_name: event.guestName ?? "Guest",
     confirmation_number: event.confirmationNumber ?? "",

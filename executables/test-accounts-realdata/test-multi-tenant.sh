@@ -2504,7 +2504,7 @@ echo "── 6c.2  Packages ─────────────────�
 seed_packages() {
   local tok="$1" tid="$2" pid="$3" lbl="$4"
   TOKEN="$tok"
-  local n=0 code pkg_id
+  local n=0 comps=0 code pkg_id comp_code
   local -a specs=(
     "ROMANCE|Romance Escape|romance|449.00|2|true|false"
     "FAMILY|Family Fun Package|family|629.00|3|true|true"
@@ -2520,16 +2520,21 @@ seed_packages() {
       pkg_id=$(jq -r '.package_id // .id // .data.package_id // .data.id // empty' "$RESP_FILE" 2>/dev/null)
       # Components make the package detail screen meaningful, not just the list.
       if [[ -n "$pkg_id" ]]; then
-        post "$GW/v1/packages/$pkg_id/components" \
-          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"food_beverage\",\"quantity\":2,\"unit_price\":35.00,\"is_included\":true}" >/dev/null
-        post "$GW/v1/packages/$pkg_id/components" \
-          "{\"tenant_id\":\"$tid\",\"component_name\":\"Welcome Amenity\",\"component_type\":\"amenity\",\"quantity\":1,\"unit_price\":25.00,\"is_included\":true}" >/dev/null
+        comp_code=$(post "$GW/v1/packages/$pkg_id/components" \
+          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"food_beverage\",\"quantity\":2,\"pricing_type\":\"included\",\"unit_price\":35.00,\"is_included\":true}")
+        [[ "$comp_code" =~ ^2 ]] && comps=$((comps+1))
+        comp_code=$(post "$GW/v1/packages/$pkg_id/components" \
+          "{\"tenant_id\":\"$tid\",\"component_name\":\"Welcome Amenity\",\"component_type\":\"amenity\",\"quantity\":1,\"pricing_type\":\"included\",\"unit_price\":25.00,\"is_included\":true}")
+        [[ "$comp_code" =~ ^2 ]] && comps=$((comps+1))
       fi
     fi
   done
   local total
   total=$(poll_count "$GW/v1/packages?tenant_id=$tid&property_id=$pid&limit=50" 3 30)
   assert_gte "Packages seeded ($lbl)" "$total" 3
+  # Assert components too — they were silently dropped for a long time because
+  # only the package count was checked.
+  assert_gte "Package components seeded ($lbl)" "$comps" $((n * 2))
 }
 
 seed_packages "$TOKEN_A" "$TID_A" "$PID_A1" "A1"

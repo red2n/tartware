@@ -44,12 +44,66 @@ export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
 
 export type ReservationUpdatePayload = ReservationUpdatedEvent["payload"];
 
+/**
+ * Fill in the reservation identity fields that downstream consumers need but
+ * that individual commands rarely bother to set.
+ *
+ * Lifecycle commands (no-show, cancel, check-in/out) build a minimal payload —
+ * usually just id/tenant_id/status/metadata. Consumers such as the notification
+ * service key off property_id, guest_id, guest_name and guest_email, and an
+ * absent property_id used to reach them as an empty string, which then failed
+ * the uuid cast on insert and parked the event in the DLQ. Hydrating here keeps
+ * every publish site consistent instead of patching each command.
+ */
+const hydrateReservationIdentity = async (
+  tenantId: string,
+  payload: ReservationUpdatePayload,
+): Promise<ReservationUpdatePayload> => {
+  const needs = (value: unknown): boolean =>
+    value === undefined || value === null || (typeof value === "string" && value.trim() === "");
+
+  if (
+    !needs(payload.property_id) &&
+    !needs(payload.guest_id) &&
+    !needs(payload.guest_name) &&
+    !needs(payload.guest_email)
+  ) {
+    return payload;
+  }
+
+  const { rows } = await query<{
+    property_id: string | null;
+    guest_id: string | null;
+    guest_name: string | null;
+    guest_email: string | null;
+  }>(
+    `SELECT property_id, guest_id, guest_name, guest_email
+       FROM reservations
+      WHERE id = $1 AND tenant_id = $2
+      LIMIT 1`,
+    [payload.id, tenantId],
+  );
+  const row = rows[0];
+  if (!row) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    property_id: needs(payload.property_id) ? (row.property_id ?? undefined) : payload.property_id,
+    guest_id: needs(payload.guest_id) ? (row.guest_id ?? undefined) : payload.guest_id,
+    guest_name: needs(payload.guest_name) ? (row.guest_name ?? undefined) : payload.guest_name,
+    guest_email: needs(payload.guest_email) ? (row.guest_email ?? undefined) : payload.guest_email,
+  } as ReservationUpdatePayload;
+};
+
 export const enqueueReservationUpdate = async (
   tenantId: string,
   commandName: string,
-  payload: ReservationUpdatePayload,
+  rawPayload: ReservationUpdatePayload,
   options: { correlationId?: string; actorId?: string } = {},
 ): Promise<CreateReservationResult> => {
+  const payload = await hydrateReservationIdentity(tenantId, rawPayload);
   const eventId = uuid();
   const updateEvent = ReservationUpdatedEventSchema.parse({
     metadata: {

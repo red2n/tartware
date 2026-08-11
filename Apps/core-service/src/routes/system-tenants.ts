@@ -16,6 +16,7 @@ import {
   PasswordPolicyError,
 } from "../services/password-policy-service.js";
 import { logSystemAdminEvent } from "../services/system-admin-service.js";
+import { copyReferenceDataForTenant } from "../services/tenant-reference-data.js";
 import { listTenants } from "../services/tenant-service.js";
 import { hashPassword } from "../utils/password.js";
 import { sanitizeForJson } from "../utils/sanitize.js";
@@ -179,7 +180,21 @@ export const registerSystemTenantRoutes = (app: FastifyInstance): void => {
           throw new Error("Failed to create property");
         }
 
+        // Without this the tenant starts with no charge codes and no GL
+        // mappings, so every posting it makes silently loses its double-entry
+        // pair at GL batch build time.
+        const referenceData = await copyReferenceDataForTenant(client, {
+          newTenantId,
+          newPropertyId: property.id,
+          actorId: adminContext.adminId,
+        });
+
         await client.query("COMMIT");
+
+        request.log.info(
+          { tenantId: tenant.id, ...referenceData },
+          "Seeded reference data for bootstrapped tenant",
+        );
 
         await logSystemAdminEvent({
           adminId: adminContext.adminId,

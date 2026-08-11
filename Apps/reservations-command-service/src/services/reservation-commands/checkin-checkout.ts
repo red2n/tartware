@@ -72,12 +72,66 @@ export const checkInReservation = async (
     );
   }
 
+  // A guest marked NO_SHOW who then turns up is a routine front-desk situation,
+  // so force=true reinstates them. It deliberately does not extend to CHECKED_IN
+  // (already in-house), CHECKED_OUT (stay is over) or CANCELLED (needs an
+  // explicit reinstatement, not a side effect of check-in).
   const allowedStatuses = ["PENDING", "CONFIRMED"];
-  if (!allowedStatuses.includes(reservation.status)) {
+  const forceReinstatableStatuses = ["NO_SHOW"];
+  const isForcedReinstatement =
+    Boolean(command.force) && forceReinstatableStatuses.includes(reservation.status);
+
+  if (!allowedStatuses.includes(reservation.status) && !isForcedReinstatement) {
+    const permitted = command.force
+      ? "PENDING, CONFIRMED or NO_SHOW"
+      : "PENDING or CONFIRMED";
     throw new ReservationCommandError(
       "INVALID_STATUS_FOR_CHECKIN",
-      `Cannot check in reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
+      `Cannot check in reservation with status ${reservation.status}; must be ${permitted}`,
     );
+  }
+
+  if (isForcedReinstatement) {
+    // Overriding a lifecycle guard is a financial/operational control bypass —
+    // log it the same way the deposit gate below does.
+    await recordFlowApproval({
+      tenantId,
+      propertyId: reservation.property_id ?? null,
+      flowName: "check_in",
+      gateName: "reservation_status_check",
+      entityType: "reservation",
+      entityId: command.reservation_id,
+      approvedBy: options.actorId ?? null,
+      roleAtApproval: "FORCE_OVERRIDE",
+      reasonCode: "FORCE_CHECK_IN_REINSTATE",
+      reasonNotes:
+        command.notes ??
+        `Check-in forced from status ${reservation.status}; reservation reinstated`,
+      correlationId: options.correlationId ?? null,
+    });
+
+    // Clear the no-show marks set by reservation.no_show, otherwise the
+    // reservation ends up CHECKED_IN while still flagged is_no_show with a
+    // penalty date. no_show_fee is left intact on purpose: the penalty charge
+    // may already be posted to the folio, and reversing money is a separate
+    // decision (charge void), not a side effect of the guest arriving.
+    // Best-effort, matching how no_show sets these columns.
+    try {
+      await query(
+        `UPDATE reservations
+            SET is_no_show = false,
+                no_show_date = NULL,
+                version = version + 1,
+                updated_at = NOW()
+          WHERE id = $1 AND tenant_id = $2`,
+        [command.reservation_id, tenantId],
+      );
+    } catch (err) {
+      reservationsLogger.warn(
+        { reservationId: command.reservation_id, error: err },
+        "Failed to clear no-show flags on forced check-in reinstatement",
+      );
+    }
   }
 
   // 2. Validate room is available and clean if room_id provided.
