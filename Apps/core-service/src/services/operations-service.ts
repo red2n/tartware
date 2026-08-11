@@ -4,6 +4,7 @@
  *          banquet orders, guest feedback, and police reports
  */
 
+import type { PoliceReportStatusInput, PoliceReportWriteInput } from "@tartware/schemas";
 import {
   type BanquetOrderListItem,
   BanquetOrderListItemSchema,
@@ -36,8 +37,6 @@ import {
   ShiftHandoverListItemSchema,
   type ShiftHandoverRow,
 } from "@tartware/schemas";
-
-import type { PoliceReportStatusInput, PoliceReportWriteInput } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {
@@ -135,7 +134,7 @@ export const getCashierSessionById = async (
     return null;
   }
 
-  return mapCashierSessionRow(rows[0]!);
+  return mapCashierSessionRow(rows[0] as NonNullable<(typeof rows)[0]>);
 };
 
 // =====================================================
@@ -203,7 +202,7 @@ export const getShiftHandoverById = async (
     return null;
   }
 
-  return mapShiftHandoverRow(rows[0]!);
+  return mapShiftHandoverRow(rows[0] as NonNullable<(typeof rows)[0]>);
 };
 
 // =====================================================
@@ -270,7 +269,7 @@ export const getLostFoundItemById = async (
     return null;
   }
 
-  return mapLostFoundRow(rows[0]!);
+  return mapLostFoundRow(rows[0] as NonNullable<(typeof rows)[0]>);
 };
 
 // =====================================================
@@ -343,7 +342,7 @@ export const getBanquetOrderById = async (
     return null;
   }
 
-  return mapBanquetOrderRow(rows[0]!);
+  return mapBanquetOrderRow(rows[0] as NonNullable<(typeof rows)[0]>);
 };
 
 // =====================================================
@@ -409,7 +408,7 @@ export const getGuestFeedbackById = async (
     return null;
   }
 
-  return mapGuestFeedbackRow(rows[0]!);
+  return mapGuestFeedbackRow(rows[0] as NonNullable<(typeof rows)[0]>);
 };
 
 // =====================================================
@@ -479,7 +478,7 @@ export const getPoliceReportById = async (
     return null;
   }
 
-  return mapPoliceReportRow(rows[0]!);
+  return mapPoliceReportRow(rows[0] as NonNullable<(typeof rows)[0]>);
 };
 
 /** `PR-YYYYMMDD-XXXX`, matching the confirmation-number style used elsewhere. */

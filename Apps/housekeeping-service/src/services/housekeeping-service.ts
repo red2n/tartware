@@ -1,4 +1,5 @@
 import { toNumberOrFallback } from "@tartware/config";
+import type { IncidentStatusInput, IncidentWriteInput } from "@tartware/schemas";
 import {
   type DeepCleanDueItem,
   DeepCleanDueItemSchema,
@@ -14,7 +15,6 @@ import {
   MaintenanceRequestListItemSchema,
   type MaintenanceRequestRow,
 } from "@tartware/schemas";
-import type { IncidentStatusInput, IncidentWriteInput } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 import {

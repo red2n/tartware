@@ -1,17 +1,13 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import type { IncidentStatusBody, IncidentUpdateBody, IncidentWriteBody } from "@tartware/schemas";
 import {
-  IncidentStatusBodySchema,
-  IncidentUpdateBodySchema,
-  IncidentWriteBodySchema,
   IncidentReportListItemSchema,
   IncidentSeverityEnum,
+  IncidentStatusBodySchema,
   IncidentStatusEnum,
   IncidentTypeEnum,
-} from "@tartware/schemas";
-import type {
-  IncidentStatusBody,
-  IncidentUpdateBody,
-  IncidentWriteBody,
+  IncidentUpdateBodySchema,
+  IncidentWriteBodySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

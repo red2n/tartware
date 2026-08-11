@@ -20,9 +20,9 @@ import {
   GuestUpdateContactCommandSchema,
   GuestUpdateProfileCommandSchema,
 } from "../schemas/guest-commands.js";
-import { updateGuestConsent } from "./privacy-service.js";
 import { hashIdentifier, recordAuditLog, redactPayload } from "../utils/audit.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
+import { updateGuestConsent } from "./privacy-service.js";
 
 const guestCommandLogger = appLogger.child({
   module: "guest-command-service",

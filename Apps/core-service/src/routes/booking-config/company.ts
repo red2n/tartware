@@ -1,4 +1,5 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
+import type { CompanyUpdateBody, CompanyWriteBody } from "@tartware/schemas";
 import {
   CompanyListItemSchema,
   CompanyTypeEnum,
@@ -6,7 +7,6 @@ import {
   CompanyWriteBodySchema,
   CreditStatusEnum,
 } from "@tartware/schemas";
-import type { CompanyUpdateBody, CompanyWriteBody } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 

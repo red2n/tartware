@@ -164,7 +164,8 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       }),
       schema: buildRouteSchema({
         tag: ACCOUNTS_TAG,
-        summary: "List accounts receivable with optional filters (deprecated — see /v1/billing/ar/accounts)",
+        summary:
+          "List accounts receivable with optional filters (deprecated — see /v1/billing/ar/accounts)",
         querystring: ArListQueryJsonSchema,
         response: { 200: ArListResponseJsonSchema },
       }),

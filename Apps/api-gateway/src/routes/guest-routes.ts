@@ -24,8 +24,8 @@ import { guestGridResponse, programBalanceResponse } from "./response-schemas.js
 import {
   commandAcceptedSchema,
   GDPR_TAG,
-  guestIdParamsSchema,
   GUESTS_PROXY_TAG,
+  guestIdParamsSchema,
   paginationQuerySchema,
   tenantGuestParamsSchema,
   tenantQuerySchema,
@@ -35,12 +35,6 @@ import {
 export const registerGuestRoutes = (app: FastifyInstance): void => {
   const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestsServiceUrl);
-
-  const tenantScopeFromParams = app.withTenantScope({
-    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "STAFF",
-    requiredModules: "core",
-  });
 
   /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
   const tenantWriteScopeFromParams = app.withTenantScope({

@@ -1,3 +1,4 @@
+import type { CompanyWriteInput } from "@tartware/schemas";
 import {
   type CompanyListItem,
   CompanyListItemSchema,
@@ -5,8 +6,6 @@ import {
   type GetCompanyInput,
   type ListCompaniesInput,
 } from "@tartware/schemas";
-
-import type { CompanyWriteInput } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
 import { COMPANY_BY_ID_SQL, COMPANY_LIST_SQL } from "../../sql/booking-config/company.js";
@@ -95,7 +94,6 @@ export const getCompanyById = async (options: GetCompanyInput): Promise<CompanyL
   }
   return mapCompanyRow(row);
 };
-
 
 /**
  * Create a company.

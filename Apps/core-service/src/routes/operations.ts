@@ -5,15 +5,15 @@
  */
 
 import { schemaFromZod } from "@tartware/openapi";
-import {
-  PoliceReportStatusBodySchema,
-  PoliceReportUpdateBodySchema,
-  PoliceReportWriteBodySchema,
-} from "@tartware/schemas";
 import type {
   PoliceReportStatusBody,
   PoliceReportUpdateBody,
   PoliceReportWriteBody,
+} from "@tartware/schemas";
+import {
+  PoliceReportStatusBodySchema,
+  PoliceReportUpdateBodySchema,
+  PoliceReportWriteBodySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 

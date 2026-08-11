@@ -169,7 +169,11 @@ export async function getGuestConsentLedger(params: {
        AND is_active = true
        AND COALESCE(is_deleted, false) = false
      ORDER BY consent_type, consent_date DESC`,
-    [params.guestId, params.tenantId, CONSENT_LEDGER_KEYS.map((k) => CONSENT_TYPE_BY_LEDGER_KEY[k])],
+    [
+      params.guestId,
+      params.tenantId,
+      CONSENT_LEDGER_KEYS.map((k) => CONSENT_TYPE_BY_LEDGER_KEY[k]),
+    ],
   );
 
   const ledger: GuestConsentLedger = {};

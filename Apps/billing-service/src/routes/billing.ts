@@ -382,7 +382,10 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         tag: BILLING_TAG,
         summary: "Get shift handover summary for a cashier session",
         params: schemaFromZod(z.object({ sessionId: z.string().uuid() }), "ShiftSessionIdParam"),
-        querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantIdQueryShift"),
+        querystring: schemaFromZod(
+          z.object({ tenant_id: z.string().uuid() }),
+          "TenantIdQueryShift",
+        ),
         response: { 200: schemaFromZod(ShiftSummaryResponseSchema, "ShiftSummaryResponse") },
       }),
     },
