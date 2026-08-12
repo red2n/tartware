@@ -11,6 +11,13 @@
 #   ./executables/test-accounts-realdata/test-accounts-realdata.sh --skip-seed
 #   ./executables/test-accounts-realdata/test-accounts-realdata.sh --clean
 #
+#   # Run the whole suite denominated in a single non-USD currency:
+#   ./executables/test-accounts-realdata/test-accounts-realdata.sh --currency=EUR
+#
+#   # Add Phase 2C — multi-currency properties in multiple countries:
+#   ./executables/test-accounts-realdata/test-accounts-realdata.sh --multi-currency
+#   ./executables/test-accounts-realdata/test-accounts-realdata.sh --currencies=USD,INR,JPY
+#
 # Prerequisites:
 #   - All services running (pnpm run dev)
 #   - jq, bc, curl — installed automatically by ensure-deps.sh if missing
@@ -41,11 +48,45 @@ PASS=0; FAIL=0; TOTAL=0; SKIP=0
 SKIP_SEED=false
 CLEAN=false
 
+# ─── Currency configuration ──────────────────────────────────────────────────
+# CURRENCY denominates the single-property phases (1 through 2B). It defaults to
+# USD so an unflagged run behaves exactly as it always has.
+CURRENCY="${CURRENCY:-USD}"
+
+# Phase 2C provisions one property per currency, each in a different country, and
+# exercises the FX + minor-unit paths across them. Off unless asked for.
+MULTI_CURRENCY=false
+
+# Deliberately spans all three ISO 4217 minor-unit classes: JPY has 0 decimals
+# and KWD has 3, so the 2-decimal rounding assumptions baked into the money paths
+# actually get exercised rather than five interchangeable 2-decimal currencies.
+CURRENCY_MATRIX=(USD INR EUR JPY CNY KWD)
+
 for arg in "$@"; do
   case "$arg" in
-    --skip-seed) SKIP_SEED=true ;;
-    --clean)     CLEAN=true ;;
+    --skip-seed)      SKIP_SEED=true ;;
+    --clean)          CLEAN=true ;;
+    --multi-currency) MULTI_CURRENCY=true ;;
+    --currency=*)     CURRENCY="${arg#*=}" ;;
+    --currencies=*)
+      MULTI_CURRENCY=true
+      IFS=',' read -r -a CURRENCY_MATRIX <<< "${arg#*=}"
+      ;;
+    -h|--help)
+      sed -n '2,30p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
   esac
+done
+
+CURRENCY="${CURRENCY^^}"
+if [[ ! "$CURRENCY" =~ ^[A-Z]{3}$ ]]; then
+  echo "FATAL: --currency must be a 3-letter ISO 4217 code (got '$CURRENCY')"; exit 1
+fi
+for _ccy in "${CURRENCY_MATRIX[@]}"; do
+  if [[ ! "${_ccy^^}" =~ ^[A-Z]{3}$ ]]; then
+    echo "FATAL: --currencies entry '$_ccy' is not a 3-letter ISO 4217 code"; exit 1
+  fi
 done
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -268,6 +309,76 @@ poll_delta() {
   skip "$label" "Δ=$delta after $((max_retries + 1)) checks"
 }
 
+# ─── Currency reference data ─────────────────────────────────────────────────
+# One record per supported currency, pipe-delimited:
+#
+#   minor_units | city | country_code | timezone | language | rate_to_usd | charge_amount | payment_amount
+#
+# `minor_units` is the ISO 4217 exponent — the number of decimal places the
+# currency is actually denominated in. `rate_to_usd` is a fixed plausible rate
+# (1 unit of this currency = N USD); the suite seeds it through the FX API so the
+# conversion is deterministic rather than dependent on a live feed.
+#
+# `charge_amount` / `payment_amount` are stated in whole units of the currency and
+# are deliberately sized to look native (¥15,000 not ¥199) so a rounding bug shows
+# up as a visible discrepancy rather than a sub-cent one.
+currency_profile() {
+  case "${1^^}" in
+    USD) echo "2|New York|US|America/New_York|en|1.000000|199.00|300.00" ;;
+    INR) echo "2|Mumbai|IN|Asia/Kolkata|en|0.012000|16500.00|20000.00" ;;
+    EUR) echo "2|Paris|FR|Europe/Paris|fr|1.090000|185.00|250.00" ;;
+    JPY) echo "0|Tokyo|JP|Asia/Tokyo|ja|0.006700|29000|35000" ;;
+    CNY) echo "2|Shanghai|CN|Asia/Shanghai|zh|0.140000|1400.00|1800.00" ;;
+    KWD) echo "3|Kuwait City|KW|Asia/Kuwait|ar|3.260000|61.500|75.250" ;;
+    GBP) echo "2|London|GB|Europe/London|en|1.270000|160.00|220.00" ;;
+    AED) echo "2|Dubai|AE|Asia/Dubai|ar|0.272000|730.00|900.00" ;;
+    CHF) echo "2|Zurich|CH|Europe/Zurich|de|1.130000|180.00|240.00" ;;
+    BHD) echo "3|Manama|BH|Asia/Bahrain|ar|2.650000|75.000|92.000" ;;
+    # Unknown code — assume the 2-decimal majority and a 1:1 rate so the suite
+    # still runs, but the property/city labels make the fallback obvious.
+    *)   echo "2|Unknown City|XX|UTC|en|1.000000|100.00|150.00" ;;
+  esac
+}
+
+# Field accessor: ccy_field <currency> <1-based field index>
+ccy_field() { currency_profile "$1" | cut -d'|' -f"$2"; }
+
+ccy_minor_units()    { ccy_field "$1" 1; }
+ccy_city()           { ccy_field "$1" 2; }
+ccy_country()        { ccy_field "$1" 3; }
+ccy_timezone()       { ccy_field "$1" 4; }
+ccy_language()       { ccy_field "$1" 5; }
+ccy_rate_to_usd()    { ccy_field "$1" 6; }
+ccy_charge_amount()  { ccy_field "$1" 7; }
+ccy_payment_amount() { ccy_field "$1" 8; }
+
+# Round a value to a currency's own precision — what a correct implementation
+# should store. ¥1234.56 is not a representable amount; 1235 is.
+round_to_currency() {
+  local amount="$1" units
+  units=$(ccy_minor_units "$2")
+  printf "%.*f" "$units" "$amount"
+}
+
+# Format a number for embedding in a JSON body at fx_rates' DECIMAL(12,6) scale.
+#
+# `bc` prints values below 1 without a leading zero (".917431"), which is not
+# valid JSON and would be rejected before ever reaching the FX handler.
+fx_scale() { printf "%.6f" "$1"; }
+
+# Reciprocal of an FX rate at the same scale the column stores, so the expected
+# value and the seeded value are always derived identically.
+fx_reciprocal() {
+  fx_scale "$(echo "scale=8; 1 / $1" | bc -l 2>/dev/null || echo "1")"
+}
+
+# Multiply an amount by an FX rate and round to the *target* currency precision.
+convert_amount() {
+  local amount="$1" rate="$2" target_ccy="$3" raw
+  raw=$(echo "$amount * $rate" | bc -l 2>/dev/null || echo "0")
+  round_to_currency "$raw" "$target_ccy"
+}
+
 # ─── Preflight ───────────────────────────────────────────────────────────────
 
 preflight() {
@@ -310,6 +421,10 @@ echo "║  Property:  $PID       ║"
 echo "║  Date:      $TODAY                                         ║"
 if $SKIP_SEED; then MODE="READ-ONLY (skip-seed)"; else MODE="FULL (seed + validate)"; fi
 echo "║  Mode:      $(printf '%-51s' "$MODE")  ║"
+echo "║  Currency:  $(printf '%-51s' "$CURRENCY ($(ccy_minor_units "$CURRENCY")dp)")  ║"
+if $MULTI_CURRENCY; then
+  echo "║  Phase 2C:  $(printf '%-51s' "${CURRENCY_MATRIX[*]}")  ║"
+fi
 echo "╚═══════════════════════════════════════════════════════════════════════╝"
 
 preflight
@@ -408,6 +523,26 @@ else
   fi
 fi
 echo ""
+
+# ─── Base FX rate for a non-USD run ──────────────────────────────────────────
+# The primary property is USD-based. Running the suite in another currency posts
+# foreign-currency folios against it, and without a rate on file every one of
+# those postings silently locks at 1.0. Seed the pair up front so the conversion
+# is real rather than fail-open.
+
+if [[ "$CURRENCY" != "USD" ]]; then
+  echo "── Seeding base FX rate for $CURRENCY ────────────────────────────────"
+  BASE_RATE=$(ccy_rate_to_usd "$CURRENCY")
+  FX_SEED_CODE=$(post "$GW/v1/billing/fx-rates" \
+    "{\"tenant_id\":\"$TID\",\"from_currency\":\"$CURRENCY\",\"to_currency\":\"USD\",\"rate\":$BASE_RATE,\"rate_date\":\"$TODAY\",\"rate_source\":\"QA_FIXTURE\"}")
+  if [[ "$FX_SEED_CODE" =~ ^2 ]]; then
+    printf "    ✓ %s→USD = %s (HTTP %s)\n" "$CURRENCY" "$BASE_RATE" "$FX_SEED_CODE"
+  else
+    printf "    ⚠ %s→USD rate seed failed (HTTP %s) — postings will fall back to 1.0\n" \
+           "$CURRENCY" "$FX_SEED_CODE"
+  fi
+  echo ""
+fi
 
 # ─── Pre-test row counts ────────────────────────────────────────────────────
 
@@ -1162,7 +1297,7 @@ CANARY_PRE=$(resp_count)
 
 send_command "CMD canary: folio.create warm-up" \
   "billing.folio.create" \
-  "{\"property_id\":\"$PID\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Canary warm-up\",\"currency\":\"USD\",\"notes\":\"Consumer readiness probe\",\"idempotency_key\":\"$CANARY_IDEM\"}"
+  "{\"property_id\":\"$PID\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Canary warm-up\",\"currency\":\"$CURRENCY\",\"notes\":\"Consumer readiness probe\",\"idempotency_key\":\"$CANARY_IDEM\"}"
 
 CONSUMER_READY=false
 for i in $(seq 1 6); do
@@ -1284,7 +1419,7 @@ echo "  Scenario: Create standalone house account folio for incidentals"
 HOUSE_ACCT_IDEM="HOUSE-${UNIQUE}-001"
 send_command "CMD folio.create: HOUSE_ACCOUNT" \
   "billing.folio.create" \
-  "{\"property_id\":\"$PID\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Test House Account — Industry QA\",\"currency\":\"USD\",\"notes\":\"Standalone folio for charge transfer tests\",\"idempotency_key\":\"$HOUSE_ACCT_IDEM\"}"
+  "{\"property_id\":\"$PID\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Test House Account — Industry QA\",\"currency\":\"$CURRENCY\",\"notes\":\"Standalone folio for charge transfer tests\",\"idempotency_key\":\"$HOUSE_ACCT_IDEM\"}"
 
 wait_kafka 5
 
@@ -1425,7 +1560,7 @@ if [[ -n "$INV1_ID" ]]; then
   echo "  Scenario: Post-checkout correction — issue credit note"
   send_command "CMD credit_note: \$100 against finalized invoice" \
     "billing.credit_note.create" \
-    "{\"original_invoice_id\":\"$INV1_ID\",\"property_id\":\"$PID\",\"credit_amount\":100.00,\"reason\":\"Service quality issue — partial refund per manager\",\"currency\":\"USD\"}"
+    "{\"original_invoice_id\":\"$INV1_ID\",\"property_id\":\"$PID\",\"credit_amount\":100.00,\"reason\":\"Service quality issue — partial refund per manager\",\"currency\":\"$CURRENCY\"}"
 
   wait_kafka 5
 
@@ -1929,7 +2064,7 @@ if [[ -n "${RES1_ID:-}" && -n "${FOLIO1_ID:-}" ]]; then
   MERGE_IDEM="MERGE-SRC-${UNIQUE}-001"
   send_command "CMD folio.create: merge source" \
     "billing.folio.create" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge Source $UNIQUE\",\"currency\":\"USD\",\"idempotency_key\":\"$MERGE_IDEM\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"folio_type\":\"GUEST\",\"folio_name\":\"Merge Source $UNIQUE\",\"currency\":\"$CURRENCY\",\"idempotency_key\":\"$MERGE_IDEM\"}"
   wait_kafka 10
 
   MERGE_SRC_ID=""
@@ -2008,7 +2143,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
 
   send_command "CMD no_show.charge: 1 night penalty" \
     "billing.no_show.charge" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"charge_amount\":199.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"charge_amount\":199.00,\"currency\":\"$CURRENCY\",\"reason_code\":\"NO_SHOW_POLICY\"}"
 
   wait_kafka 8
 
@@ -2048,7 +2183,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
 
     send_command "CMD late_checkout.charge: 3h overdue" \
       "billing.late_checkout.charge" \
-      "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"actual_checkout_time\":\"$LATE_CHECKOUT_ISO\",\"standard_checkout_time\":\"12:00\",\"currency\":\"USD\"}"
+      "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"actual_checkout_time\":\"$LATE_CHECKOUT_ISO\",\"standard_checkout_time\":\"12:00\",\"currency\":\"$CURRENCY\"}"
 
     wait_kafka 8
     poll_delta "DB: late checkout charge posted" \
@@ -2072,7 +2207,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
 
   send_command "CMD cancellation.penalty: \$99.50" \
     "billing.cancellation.penalty" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Cancellation within 24h of arrival — QA test\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"penalty_amount_override\":99.50,\"currency\":\"$CURRENCY\",\"reason\":\"Cancellation within 24h of arrival — QA test\"}"
 
   wait_kafka 8
 
@@ -2124,7 +2259,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
 
   send_command "CMD comp.post: F&B \$45" \
     "billing.comp.post" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":45.00,\"currency\":\"USD\",\"charge_code\":\"RESTAURANT\",\"description\":\"Complimentary dinner — VIP guest — QA test\"}"
+    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"guest_id\":\"$GUEST1_ID\",\"comp_type\":\"FOOD_BEVERAGE\",\"amount\":45.00,\"currency\":\"$CURRENCY\",\"charge_code\":\"RESTAURANT\",\"description\":\"Complimentary dinner — VIP guest — QA test\"}"
 
   wait_kafka 8
 
@@ -2754,6 +2889,483 @@ else
   skip "Multi-mode payment" "only $METHOD_COUNT method(s) found"
 fi
 echo ""
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 2C — MULTI-CURRENCY & MULTI-LOCATION
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Provisions one property per currency in the matrix, each in a different country
+# and timezone, then drives the money paths that are currency-sensitive:
+#
+#   2C.1  Property provisioning        — per-country property with its own base currency
+#   2C.2  FX reference rates           — seeded through POST /v1/billing/fx-rates
+#   2C.3  Local-currency posting       — charge in the property's own currency (rate must be 1.0)
+#   2C.4  Cross-currency posting       — foreign charge onto a USD-base folio (real FX lock)
+#   2C.5  Minor-unit precision         — JPY has 0 decimals, KWD has 3, not everything is 2
+#   2C.6  Local-currency payment       — capture + folio balance in the local currency
+#   2C.7  Cross-property isolation     — one property's postings stay out of another's ledger
+#
+# 2C.5 is the section expected to surface failures on an unfixed system: the money
+# paths hard-code 2 decimal places, so a JPY base amount comes back as ¥14925.00
+# and a KWD amount loses its third decimal. Those assertions state the correct
+# ISO 4217 behaviour deliberately — a red result there is the finding, not a bug
+# in the test.
+
+if $MULTI_CURRENCY; then
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 2C: MULTI-CURRENCY & MULTI-LOCATION"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Currencies: ${CURRENCY_MATRIX[*]}"
+echo ""
+
+declare -A MC_PID MC_FOLIO MC_RATE MC_UNITS MC_CITY
+MC_UNIQUE="${UNIQUE:-$(date +%s)}"
+
+# ── 2C.1  Property Provisioning (one country per currency) ──
+echo "── 2C.1  Property Provisioning ──────────────────────────────────────"
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  MC_UNITS[$ccy]=$(ccy_minor_units "$ccy")
+  MC_RATE[$ccy]=$(ccy_rate_to_usd "$ccy")
+  MC_CITY[$ccy]=$(ccy_city "$ccy")
+
+  prop_code="MC-${ccy}"
+  prop_city="${MC_CITY[$ccy]}"
+  prop_country=$(ccy_country "$ccy")
+  prop_tz=$(ccy_timezone "$ccy")
+  prop_lang=$(ccy_language "$ccy")
+
+  # Stable property_code so repeat runs reuse the same property instead of
+  # accumulating one per execution.
+  get "$GW/v1/properties?tenant_id=$TID&limit=100" >/dev/null
+  existing_pid=$(resp_ffirst ".property_code == \"$prop_code\"" "id")
+
+  if [[ -n "$existing_pid" ]]; then
+    MC_PID[$ccy]="$existing_pid"
+    pass "Property $prop_code exists — $prop_city (${existing_pid:0:8}…)"
+  else
+    code=$(post "$GW/v1/properties" \
+      "{\"tenant_id\":\"$TID\",\"property_name\":\"Tartware $prop_city\",\"property_code\":\"$prop_code\",\"property_type\":\"HOTEL\",\"star_rating\":4,\"total_rooms\":40,\"email\":\"mc.${ccy,,}@tartware.test\",\"address\":{\"city\":\"$prop_city\",\"country\":\"$prop_country\"},\"currency\":\"$ccy\",\"timezone\":\"$prop_tz\",\"default_language\":\"$prop_lang\"}")
+    if [[ "$code" =~ ^2 ]]; then
+      new_pid=$(jq -r '.id // .data.id // empty' "$RESP_FILE" 2>/dev/null)
+      if [[ -z "$new_pid" ]]; then
+        get "$GW/v1/properties?tenant_id=$TID&limit=100" >/dev/null
+        new_pid=$(resp_ffirst ".property_code == \"$prop_code\"" "id")
+      fi
+      MC_PID[$ccy]="$new_pid"
+      if [[ -n "$new_pid" ]]; then
+        pass "Property $prop_code created — $prop_city, $prop_country ($code)"
+      else
+        fail "Property $prop_code" "created ($code) but no id resolved"
+      fi
+    else
+      fail "Property $prop_code" "HTTP $code"
+    fi
+  fi
+
+  # The property's stored base currency is what every FX lookup keys off, so
+  # verify it round-tripped rather than trusting the create response.
+  if [[ -n "${MC_PID[$ccy]:-}" ]]; then
+    get "$GW/v1/properties?tenant_id=$TID&limit=100" >/dev/null
+    stored_ccy=$(resp_ffirst ".property_code == \"$prop_code\"" "currency")
+    stored_tz=$(resp_ffirst ".property_code == \"$prop_code\"" "timezone")
+    assert_eq "DB: $prop_code base currency = $ccy" "$ccy" "$stored_ccy"
+    assert_eq "DB: $prop_code timezone = $prop_tz" "$prop_tz" "$stored_tz"
+  fi
+done
+echo ""
+
+# ── 2C.2  FX Reference Rates ──
+echo "── 2C.2  FX Reference Rates (POST /v1/billing/fx-rates) ─────────────"
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  [[ "$ccy" == "USD" ]] && continue   # same-currency pair is rejected by design
+
+  rate="${MC_RATE[$ccy]}"
+  inverse=$(fx_reciprocal "$rate")
+
+  code=$(post "$GW/v1/billing/fx-rates" \
+    "{\"tenant_id\":\"$TID\",\"from_currency\":\"$ccy\",\"to_currency\":\"USD\",\"rate\":$rate,\"rate_date\":\"$TODAY\",\"rate_source\":\"QA_FIXTURE\"}")
+  if [[ "$code" == "201" || "$code" == "200" ]]; then
+    pass "FX rate $ccy→USD = $rate seeded ($code)"
+  else
+    fail "FX rate $ccy→USD" "HTTP $code $(jq -r '.detail // .message // .error // empty' "$RESP_FILE" 2>/dev/null | head -c 60)"
+  fi
+
+  code=$(post "$GW/v1/billing/fx-rates" \
+    "{\"tenant_id\":\"$TID\",\"from_currency\":\"USD\",\"to_currency\":\"$ccy\",\"rate\":$inverse,\"rate_date\":\"$TODAY\",\"rate_source\":\"QA_FIXTURE\"}")
+  if [[ "$code" == "201" || "$code" == "200" ]]; then
+    pass "FX rate USD→$ccy = $inverse seeded ($code)"
+  else
+    fail "FX rate USD→$ccy" "HTTP $code"
+  fi
+
+  # Read it back — a rate that does not persist at full precision silently
+  # skews every posting that locks against it.
+  get "$GW/v1/billing/fx-rates?tenant_id=$TID&from_currency=$ccy&to_currency=USD&rate_date=$TODAY" >/dev/null
+  stored_rate=$(resp_first "rate")
+  assert_eq_num "DB: fx_rates $ccy→USD round-trips at $rate" "$rate" "$stored_rate"
+done
+
+# Negative validation — a malformed code poisons every lookup for that pair, so
+# the API has to reject it rather than storing it.
+code=$(post "$GW/v1/billing/fx-rates" \
+  "{\"tenant_id\":\"$TID\",\"from_currency\":\"US\",\"to_currency\":\"EUR\",\"rate\":1.1,\"rate_date\":\"$TODAY\"}")
+assert_http "FX: 2-letter currency code rejected" "400" "$code"
+
+code=$(post "$GW/v1/billing/fx-rates" \
+  "{\"tenant_id\":\"$TID\",\"from_currency\":\"USD\",\"to_currency\":\"USD\",\"rate\":1.0,\"rate_date\":\"$TODAY\"}")
+assert_http "FX: identical from/to rejected" "400" "$code"
+
+code=$(post "$GW/v1/billing/fx-rates" \
+  "{\"tenant_id\":\"$TID\",\"from_currency\":\"EUR\",\"to_currency\":\"USD\",\"rate\":0,\"rate_date\":\"$TODAY\"}")
+assert_http "FX: non-positive rate rejected" "400" "$code"
+
+# Same-day correction: re-posting a pair must update in place (200, not a second
+# row), because a rate published wrong in the morning gets fixed by lunchtime.
+CORRECTION_CCY=""
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  [[ "${raw_ccy^^}" != "USD" ]] && { CORRECTION_CCY="${raw_ccy^^}"; break; }
+done
+
+if [[ -n "$CORRECTION_CCY" ]]; then
+  orig_rate="${MC_RATE[$CORRECTION_CCY]}"
+  bumped=$(fx_scale "$(echo "$orig_rate * 1.1" | bc -l 2>/dev/null || echo "$orig_rate")")
+  code=$(post "$GW/v1/billing/fx-rates" \
+    "{\"tenant_id\":\"$TID\",\"from_currency\":\"$CORRECTION_CCY\",\"to_currency\":\"USD\",\"rate\":$bumped,\"rate_date\":\"$TODAY\",\"rate_source\":\"QA_CORRECTION\"}")
+  assert_http "FX: same-day correction updates in place" "200" "$code"
+
+  get "$GW/v1/billing/fx-rates?tenant_id=$TID&from_currency=$CORRECTION_CCY&to_currency=USD&rate_date=$TODAY" >/dev/null
+  assert_eq "FX: correction did not create a duplicate row" "1" "$(resp_count)"
+  assert_eq_num "FX: corrected rate is readable" "$bumped" "$(resp_first "rate")"
+
+  # Restore the fixture rate so the posting assertions below stay deterministic.
+  post "$GW/v1/billing/fx-rates" \
+    "{\"tenant_id\":\"$TID\",\"from_currency\":\"$CORRECTION_CCY\",\"to_currency\":\"USD\",\"rate\":$orig_rate,\"rate_date\":\"$TODAY\",\"rate_source\":\"QA_FIXTURE\"}" >/dev/null
+fi
+echo ""
+
+# ── 2C.3  Local-Currency Posting ──
+echo "── 2C.3  Local-Currency Folio + Charge ──────────────────────────────"
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  pid="${MC_PID[$ccy]:-}"
+  if [[ -z "$pid" ]]; then
+    skip "Local posting $ccy" "no property provisioned"
+    continue
+  fi
+
+  folio_idem=$(gen_uuid)
+  send_command "CMD folio.create: $ccy house account (${MC_CITY[$ccy]})" \
+    "billing.folio.create" \
+    "{\"property_id\":\"$pid\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"MC $ccy $MC_UNIQUE\",\"currency\":\"$ccy\",\"notes\":\"Multi-currency QA folio\",\"idempotency_key\":\"$folio_idem\"}"
+done
+
+wait_kafka 6
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  pid="${MC_PID[$ccy]:-}"
+  [[ -z "$pid" ]] && continue
+
+  get "$GW/v1/billing/folios?tenant_id=$TID&property_id=$pid&folio_type=HOUSE_ACCOUNT&limit=200" >/dev/null
+  folio_id=$(resp_first "id")
+  MC_FOLIO[$ccy]="$folio_id"
+
+  if [[ -z "$folio_id" ]]; then
+    fail "DB: $ccy house folio" "no HOUSE_ACCOUNT folio at ${pid:0:8}…"
+    continue
+  fi
+  pass "DB: $ccy house folio created (${folio_id:0:8}…)"
+
+  folio_ccy=$(resp_first "currency")
+  assert_eq "DB: $ccy folio currency = $ccy" "$ccy" "$folio_ccy"
+
+  # A charge in the property's own currency: FX must be a strict no-op.
+  amount=$(ccy_charge_amount "$ccy")
+  seed_rest "POST charge: $amount $ccy at ${MC_CITY[$ccy]}" \
+    "$GW/v1/tenants/$TID/billing/charges" \
+    "{\"property_id\":\"$pid\",\"folio_id\":\"$folio_id\",\"amount\":$amount,\"currency\":\"$ccy\",\"charge_code\":\"ROOM\",\"posting_type\":\"DEBIT\",\"quantity\":1,\"description\":\"Room charge — ${MC_CITY[$ccy]}\"}"
+done
+
+wait_kafka 6
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  folio_id="${MC_FOLIO[$ccy]:-}"
+  [[ -z "$folio_id" ]] && continue
+
+  amount=$(ccy_charge_amount "$ccy")
+  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$folio_id&limit=200" >/dev/null
+  posted_ccy=$(resp_first "currency")
+  posted_amt=$(resp_first "total_amount")
+  posted_rate=$(resp_first "exchange_rate")
+  posted_base=$(resp_first "base_amount")
+  posted_base_ccy=$(resp_first "base_currency")
+
+  assert_eq_ci "DB: $ccy charge currency_code = $ccy" "$ccy" "$posted_ccy"
+  assert_eq_num "DB: $ccy charge amount = $amount" "$amount" "$posted_amt"
+  assert_eq_num "DB: $ccy same-currency FX rate = 1.0" "1" "${posted_rate:-0}"
+  assert_eq_num "DB: $ccy base_amount = charge amount" "$amount" "${posted_base:-0}"
+  assert_eq_ci "DB: $ccy base_currency = $ccy" "$ccy" "${posted_base_ccy:-}"
+done
+echo ""
+
+# ── 2C.4  Cross-Currency Posting (foreign charge → USD-base folio) ──
+echo "── 2C.4  Cross-Currency Posting ─────────────────────────────────────"
+echo "  Scenario: a guest is billed in their home currency at a USD property."
+echo "  The rate seeded in 2C.2 must be locked onto the posting."
+
+USD_FOLIO="${MC_FOLIO[USD]:-}"
+if [[ -z "$USD_FOLIO" ]]; then
+  # Fall back to the primary property's house account when USD is not in the matrix.
+  get "$GW/v1/billing/folios?tenant_id=$TID&property_id=$PID&folio_type=HOUSE_ACCOUNT&limit=200" >/dev/null
+  USD_FOLIO=$(resp_first "id")
+  USD_FOLIO_PID="$PID"
+else
+  USD_FOLIO_PID="${MC_PID[USD]}"
+fi
+
+# The FX lock converts into the *property's* base currency, not the folio's, so
+# read it rather than assuming the fallback property is USD-based.
+get "$GW/v1/properties?tenant_id=$TID&limit=100" >/dev/null
+XC_BASE_CCY=$(resp_ffirst ".id == \"$USD_FOLIO_PID\"" "currency")
+XC_BASE_CCY="${XC_BASE_CCY:-USD}"
+
+if [[ -z "$USD_FOLIO" ]]; then
+  skip "Cross-currency posting" "no USD-base house folio available"
+elif [[ "$XC_BASE_CCY" != "USD" ]]; then
+  # Only the ccy→USD leg is seeded in 2C.2; against a non-USD-base property the
+  # expectations below would be checked against a rate that was never published.
+  skip "Cross-currency posting" "target property is $XC_BASE_CCY-based, not USD — include USD in --currencies"
+else
+  declare -A XC_AMOUNT
+  for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+    ccy="${raw_ccy^^}"
+    [[ "$ccy" == "USD" ]] && continue
+
+    amount=$(ccy_charge_amount "$ccy")
+    XC_AMOUNT[$ccy]="$amount"
+    seed_rest "POST cross-currency charge: $amount $ccy → USD folio" \
+      "$GW/v1/tenants/$TID/billing/charges" \
+      "{\"property_id\":\"$USD_FOLIO_PID\",\"folio_id\":\"$USD_FOLIO\",\"amount\":$amount,\"currency\":\"$ccy\",\"charge_code\":\"MISC\",\"posting_type\":\"DEBIT\",\"quantity\":1,\"description\":\"Cross-currency QA charge in $ccy\"}"
+  done
+
+  wait_kafka 6
+
+  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$USD_FOLIO&limit=200" >/dev/null
+  cp "$RESP_FILE" "${RESP_FILE}.xc"
+
+  for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+    ccy="${raw_ccy^^}"
+    [[ "$ccy" == "USD" ]] && continue
+
+    amount="${XC_AMOUNT[$ccy]}"
+    rate="${MC_RATE[$ccy]}"
+    expected_base=$(convert_amount "$amount" "$rate" "USD")
+
+    cp "${RESP_FILE}.xc" "$RESP_FILE"
+    actual_rate=$(resp_ffirst ".currency == \"$ccy\"" "exchange_rate")
+    actual_base=$(resp_ffirst ".currency == \"$ccy\"" "base_amount")
+    actual_base_ccy=$(resp_ffirst ".currency == \"$ccy\"" "base_currency")
+
+    if [[ -z "$actual_rate" ]]; then
+      fail "FX lock: $ccy charge on USD folio" "no posting found in $ccy"
+      continue
+    fi
+
+    # The pre-ACCT-13-write-API behaviour was a silent 1.0 fallback: a ¥29,000
+    # charge recorded as 29,000 USD. Asserting the rate is not 1.0 is what
+    # catches a regression back into fail-open.
+    assert_eq_num "FX lock: $ccy→USD rate = $rate (not fail-open 1.0)" "$rate" "$actual_rate"
+    assert_eq_num "FX lock: $amount $ccy → $expected_base USD base_amount" "$expected_base" "$actual_base"
+    assert_eq_ci "FX lock: base_currency = USD" "USD" "${actual_base_ccy:-}"
+  done
+  rm -f "${RESP_FILE}.xc"
+fi
+echo ""
+
+# ── 2C.5  Minor-Unit Precision (ISO 4217 exponent) ──
+echo "── 2C.5  Minor-Unit Precision ───────────────────────────────────────"
+echo "  Scenario: a USD charge posted at a non-USD property converts INTO that"
+echo "  property's currency, which must be rounded to that currency's own"
+echo "  exponent — 0 decimals for JPY, 3 for KWD, not a blanket 2."
+
+USD_SAMPLE="100.00"
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  [[ "$ccy" == "USD" ]] && continue
+
+  folio_id="${MC_FOLIO[$ccy]:-}"
+  pid="${MC_PID[$ccy]:-}"
+  if [[ -z "$folio_id" || -z "$pid" ]]; then
+    skip "Minor units $ccy" "no folio at ${MC_CITY[$ccy]}"
+    continue
+  fi
+
+  seed_rest "POST $USD_SAMPLE USD charge at ${MC_CITY[$ccy]} ($ccy base)" \
+    "$GW/v1/tenants/$TID/billing/charges" \
+    "{\"property_id\":\"$pid\",\"folio_id\":\"$folio_id\",\"amount\":$USD_SAMPLE,\"currency\":\"USD\",\"charge_code\":\"MISC\",\"posting_type\":\"DEBIT\",\"quantity\":1,\"description\":\"Minor-unit probe — USD billed at $ccy property\"}"
+done
+
+wait_kafka 6
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  [[ "$ccy" == "USD" ]] && continue
+  folio_id="${MC_FOLIO[$ccy]:-}"
+  [[ -z "$folio_id" ]] && continue
+
+  units="${MC_UNITS[$ccy]}"
+  rate="${MC_RATE[$ccy]}"
+  # Same scale=6 reciprocal that was seeded in 2C.2 — fx_rates.rate is
+  # DECIMAL(12,6), so computing the expectation at a finer scale would compare
+  # against a rate the service never saw.
+  usd_to_local=$(fx_reciprocal "$rate")
+  expected_local=$(convert_amount "$USD_SAMPLE" "$usd_to_local" "$ccy")
+
+  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$folio_id&limit=200" >/dev/null
+  actual_base=$(resp_ffirst ".currency == \"USD\"" "base_amount")
+
+  if [[ -z "$actual_base" ]]; then
+    skip "Minor units $ccy (${units}dp)" "no USD-denominated posting found"
+    continue
+  fi
+
+  # Two distinct claims: the value is right, and it is expressible in the
+  # currency. A 3-decimal KWD amount truncated to 2 fails the first; a JPY
+  # amount carrying ".00" that should be a whole yen fails the second.
+  assert_eq_num "Minor units: $USD_SAMPLE USD → $expected_local $ccy (${units}dp)" \
+    "$expected_local" "$actual_base"
+
+  decimals_used=$(echo "$actual_base" | awk -F. '{ if (NF < 2) print 0; else { sub(/0+$/, "", $2); print length($2) } }')
+  if [[ "$decimals_used" -le "$units" ]]; then
+    pass "Minor units: $ccy base_amount uses ≤ ${units} decimals ($actual_base)"
+  else
+    fail "Minor units: $ccy base_amount decimals" \
+      "$actual_base has $decimals_used decimals, $ccy allows $units"
+  fi
+done
+echo ""
+
+# ── 2C.6  Local-Currency Payment ──
+echo "── 2C.6  Local-Currency Payment ─────────────────────────────────────"
+
+declare -A MC_PAYREF
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  folio_id="${MC_FOLIO[$ccy]:-}"
+  pid="${MC_PID[$ccy]:-}"
+  if [[ -z "$folio_id" || -z "$pid" ]]; then
+    skip "Payment $ccy" "no folio at ${MC_CITY[$ccy]}"
+    continue
+  fi
+
+  payref="MC-${ccy}-${MC_UNIQUE}"
+  MC_PAYREF[$ccy]="$payref"
+  amount=$(ccy_payment_amount "$ccy")
+
+  seed_rest "POST payment: $amount $ccy at ${MC_CITY[$ccy]}" \
+    "$GW/v1/tenants/$TID/billing/payments/capture" \
+    "{\"payment_reference\":\"$payref\",\"property_id\":\"$pid\",\"folio_id\":\"$folio_id\",\"amount\":$amount,\"currency\":\"$ccy\",\"payment_method\":\"CREDIT_CARD\"}"
+done
+
+wait_kafka 6
+
+get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
+cp "$RESP_FILE" "${RESP_FILE}.pay"
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  payref="${MC_PAYREF[$ccy]:-}"
+  [[ -z "$payref" ]] && continue
+
+  amount=$(ccy_payment_amount "$ccy")
+  cp "${RESP_FILE}.pay" "$RESP_FILE"
+
+  found=$(resp_fcount ".payment_reference == \"$payref\"")
+  assert_eq "DB: payment $payref recorded" "1" "$found"
+
+  if [[ "$found" == "1" ]]; then
+    pay_ccy=$(resp_ffirst ".payment_reference == \"$payref\"" "currency")
+    pay_amt=$(resp_ffirst ".payment_reference == \"$payref\"" "amount")
+    pay_rate=$(resp_ffirst ".payment_reference == \"$payref\"" "exchange_rate")
+    assert_eq_ci "DB: payment $ccy currency stored" "$ccy" "$pay_ccy"
+    assert_eq_num "DB: payment $ccy amount = $amount" "$amount" "$pay_amt"
+    # Paid in the property's own currency — no conversion should be applied.
+    assert_eq_num "DB: payment $ccy FX rate = 1.0 (local tender)" "1" "${pay_rate:-0}"
+  fi
+done
+rm -f "${RESP_FILE}.pay"
+echo ""
+
+# ── 2C.7  Cross-Property Isolation ──
+echo "── 2C.7  Cross-Property Isolation ───────────────────────────────────"
+echo "  Scenario: multi-location tenants must not see one property's postings"
+echo "  in another property's ledger."
+
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  pid="${MC_PID[$ccy]:-}"
+  [[ -z "$pid" ]] && continue
+
+  get "$GW/v1/billing/charges?tenant_id=$TID&property_id=$pid&limit=200" >/dev/null
+  total=$(resp_count)
+  foreign=$(resp_fcount ".property_id != \"$pid\"")
+
+  if [[ "$total" -eq 0 ]]; then
+    skip "Isolation: ${MC_CITY[$ccy]} ($ccy)" "no postings at this property"
+  else
+    assert_eq "Isolation: ${MC_CITY[$ccy]} ledger has 0 foreign postings ($total rows)" "0" "$foreign"
+  fi
+done
+
+# Folio-currency isolation: every folio at a property should carry that
+# property's base currency, otherwise the property ledger cannot be totalled.
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  pid="${MC_PID[$ccy]:-}"
+  [[ -z "$pid" ]] && continue
+
+  get "$GW/v1/billing/folios?tenant_id=$TID&property_id=$pid&limit=200" >/dev/null
+  folio_total=$(resp_count)
+  wrong_ccy=$(resp_fcount ".currency != \"$ccy\"")
+
+  if [[ "$folio_total" -eq 0 ]]; then
+    skip "Isolation: $ccy folio currency" "no folios at this property"
+  else
+    assert_eq "Isolation: all $folio_total folios at ${MC_CITY[$ccy]} are $ccy" "0" "$wrong_ccy"
+  fi
+done
+echo ""
+
+# ── 2C.8  Multi-Currency Summary ──
+echo "── 2C.8  Multi-Currency Summary ─────────────────────────────────────"
+printf "  %-5s %-14s %-4s %-12s %-10s %s\n" "CCY" "LOCATION" "DP" "RATE→USD" "PROPERTY" "FOLIO"
+for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
+  ccy="${raw_ccy^^}"
+  # Unset entries are expected when provisioning failed for a currency; under
+  # `set -u` they have to be defaulted before slicing.
+  summary_pid="${MC_PID[$ccy]:-}"
+  summary_folio="${MC_FOLIO[$ccy]:-}"
+  printf "  %-5s %-14s %-4s %-12s %-10s %s\n" \
+    "$ccy" "${MC_CITY[$ccy]}" "${MC_UNITS[$ccy]}" "${MC_RATE[$ccy]}" \
+    "${summary_pid:0:8}" "${summary_folio:0:8}"
+done
+echo ""
+
+else
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  PHASE 2C: MULTI-CURRENCY & MULTI-LOCATION — not requested"
+  echo "  Re-run with --multi-currency (or --currencies=USD,INR,EUR,JPY,CNY,KWD)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 3 — POST-TEST DB SNAPSHOT

@@ -22,6 +22,8 @@ import {
 } from "./command-helpers.js";
 import {
   chargebackListResponse,
+  fxRateListResponse,
+  fxRateUpsertResponse,
   glBatchEntriesResponse,
   glBatchListResponse,
   invoiceListResponse,
@@ -73,6 +75,13 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   const financeTenantScopeFromQuery = app.withTenantScope({
     resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "ADMIN",
+    requiredModules: "finance-automation",
+  });
+
+  /** FX rates are finance config — writes require MANAGER, tenant comes from the body. */
+  const fxRateWriteScopeFromBody = app.withTenantScope({
+    resolveTenantId: (request) => (request.body as { tenant_id?: string }).tenant_id,
+    minRole: "MANAGER",
     requiredModules: "finance-automation",
   });
 
@@ -781,6 +790,37 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }),
     },
     proxyFinanceAdmin,
+  );
+
+  // ============================================================================
+  // FX REFERENCE RATES (ACCT-13 multi-currency rate locking)
+  // ============================================================================
+
+  app.get(
+    "/v1/billing/fx-rates",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy FX reference rate list to the billing service.",
+        response: { 200: fxRateListResponse },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.post(
+    "/v1/billing/fx-rates",
+    {
+      preHandler: fxRateWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Set or correct an FX reference rate via the billing service.",
+        body: jsonObjectSchema,
+        response: { 200: fxRateUpsertResponse, 201: fxRateUpsertResponse },
+      }),
+    },
+    proxyBilling,
   );
 
   // ============================================================================

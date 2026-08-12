@@ -71,13 +71,13 @@
           <div class="form-section-title">New company</div>
           <div class="form-grid">
             <div class="form-field">
-              <label for="co-name">Company name</label>
-              <input id="co-name" type="text" [ngModel]="companyForm().company_name"
+              <label class="field-label" for="co-name">Company name</label>
+              <input class="field-input" id="co-name" type="text" [ngModel]="companyForm().company_name"
                      (ngModelChange)="companyForm.set({ ...companyForm(), company_name: $event ?? '' })" />
             </div>
             <div class="form-field">
-              <label for="co-type">Type</label>
-              <select id="co-type" [ngModel]="companyForm().company_type"
+              <label class="field-label" for="co-type">Type</label>
+              <select class="field-input" id="co-type" [ngModel]="companyForm().company_type"
                       (ngModelChange)="companyForm.set({ ...companyForm(), company_type: $event })">
                 @for (t of companyTypes; track t) {
                   <option [value]="t">{{ labelFor(t) }}</option>
@@ -85,13 +85,13 @@
               </select>
             </div>
             <div class="form-field">
-              <label for="co-contact">Contact name</label>
-              <input id="co-contact" type="text" [ngModel]="companyForm().primary_contact_name"
+              <label class="field-label" for="co-contact">Contact name</label>
+              <input class="field-input" id="co-contact" type="text" [ngModel]="companyForm().primary_contact_name"
                      (ngModelChange)="companyForm.set({ ...companyForm(), primary_contact_name: $event ?? '' })" />
             </div>
             <div class="form-field">
-              <label for="co-email">Contact email</label>
-              <input id="co-email" type="email" [ngModel]="companyForm().primary_contact_email"
+              <label class="field-label" for="co-email">Contact email</label>
+              <input class="field-input" id="co-email" type="email" [ngModel]="companyForm().primary_contact_email"
                      (ngModelChange)="companyForm.set({ ...companyForm(), primary_contact_email: $event ?? '' })" />
             </div>
           </div>
@@ -108,8 +108,8 @@
       }
       <div class="form-grid">
         <div class="form-field">
-          <label for="ar-company">Company</label>
-          <select id="ar-company" [ngModel]="createForm().company_id"
+          <label class="field-label" for="ar-company">Company</label>
+          <select class="field-input" id="ar-company" [ngModel]="createForm().company_id"
                   (ngModelChange)="onCompanyPicked($event ?? '')">
             <option value="">Select a company…</option>
             @for (c of companies(); track c.company_id) {
@@ -123,19 +123,19 @@
           }
         </div>
         <div class="form-field">
-          <label for="ar-name">Account name</label>
-          <input id="ar-name" type="text" [ngModel]="createForm().company_name"
+          <label class="field-label" for="ar-name">Account name</label>
+          <input class="field-input" id="ar-name" type="text" [ngModel]="createForm().company_name"
                  (ngModelChange)="createForm.set({ ...createForm(), company_name: $event ?? '' })"
                  placeholder="As it should appear on statements" />
         </div>
         <div class="form-field">
-          <label for="ar-limit">Credit limit</label>
-          <input id="ar-limit" type="number" min="0" step="0.01" [ngModel]="createForm().credit_limit"
+          <label class="field-label" for="ar-limit">Credit limit</label>
+          <input class="field-input" id="ar-limit" type="number" min="0" step="0.01" [ngModel]="createForm().credit_limit"
                  (ngModelChange)="createForm.set({ ...createForm(), credit_limit: $event })" />
         </div>
         <div class="form-field">
-          <label for="ar-terms">Payment terms</label>
-          <select id="ar-terms" [ngModel]="createForm().payment_terms"
+          <label class="field-label" for="ar-terms">Payment terms</label>
+          <select class="field-input" id="ar-terms" [ngModel]="createForm().payment_terms"
                   (ngModelChange)="createForm.set({ ...createForm(), payment_terms: $event })">
             @for (t of paymentTerms; track t) {
               <option [value]="t">{{ labelFor(t) }}</option>
@@ -143,28 +143,28 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="ar-currency">Currency</label>
-          <input id="ar-currency" type="text" maxlength="3" [ngModel]="createForm().currency"
+          <label class="field-label" for="ar-currency">Currency</label>
+          <input class="field-input" id="ar-currency" type="text" maxlength="3" [ngModel]="createForm().currency"
                  (ngModelChange)="createForm.set({ ...createForm(), currency: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="ar-contact">Contact name</label>
-          <input id="ar-contact" type="text" [ngModel]="createForm().contact_name"
+          <label class="field-label" for="ar-contact">Contact name</label>
+          <input class="field-input" id="ar-contact" type="text" [ngModel]="createForm().contact_name"
                  (ngModelChange)="createForm.set({ ...createForm(), contact_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="ar-email">Contact email</label>
-          <input id="ar-email" type="email" [ngModel]="createForm().contact_email"
+          <label class="field-label" for="ar-email">Contact email</label>
+          <input class="field-input" id="ar-email" type="email" [ngModel]="createForm().contact_email"
                  (ngModelChange)="createForm.set({ ...createForm(), contact_email: $event ?? '' })" />
         </div>
         <div class="form-field full-width">
-          <label for="ar-address">Billing address</label>
-          <textarea id="ar-address" rows="2" [ngModel]="createForm().billing_address"
+          <label class="field-label" for="ar-address">Billing address</label>
+          <textarea class="field-input" id="ar-address" rows="2" [ngModel]="createForm().billing_address"
                     (ngModelChange)="createForm.set({ ...createForm(), billing_address: $event ?? '' })"></textarea>
         </div>
         <div class="form-field full-width">
-          <label for="ar-notes">Notes</label>
-          <textarea id="ar-notes" rows="2" [ngModel]="createForm().notes"
+          <label class="field-label" for="ar-notes">Notes</label>
+          <textarea class="field-input" id="ar-notes" rows="2" [ngModel]="createForm().notes"
                     (ngModelChange)="createForm.set({ ...createForm(), notes: $event ?? '' })"></textarea>
         </div>
       </div>
@@ -193,13 +193,13 @@
       </p>
       <div class="form-grid">
         <div class="form-field">
-          <label for="ar-t-limit">New credit limit</label>
-          <input id="ar-t-limit" type="number" min="0" step="0.01" [ngModel]="termsForm().credit_limit"
+          <label class="field-label" for="ar-t-limit">New credit limit</label>
+          <input class="field-input" id="ar-t-limit" type="number" min="0" step="0.01" [ngModel]="termsForm().credit_limit"
                  (ngModelChange)="termsForm.set({ ...termsForm(), credit_limit: $event })" />
         </div>
         <div class="form-field">
-          <label for="ar-t-terms">New payment terms</label>
-          <select id="ar-t-terms" [ngModel]="termsForm().payment_terms"
+          <label class="field-label" for="ar-t-terms">New payment terms</label>
+          <select class="field-input" id="ar-t-terms" [ngModel]="termsForm().payment_terms"
                   (ngModelChange)="termsForm.set({ ...termsForm(), payment_terms: $event })">
             <option value="">Unchanged</option>
             @for (t of paymentTerms; track t) {
@@ -208,8 +208,8 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="ar-t-status">New status</label>
-          <select id="ar-t-status" [ngModel]="termsForm().status"
+          <label class="field-label" for="ar-t-status">New status</label>
+          <select class="field-input" id="ar-t-status" [ngModel]="termsForm().status"
                   (ngModelChange)="termsForm.set({ ...termsForm(), status: $event })">
             <option value="">Unchanged</option>
             @for (s of accountStatuses; track s) {
@@ -218,8 +218,8 @@
           </select>
         </div>
         <div class="form-field full-width">
-          <label for="ar-t-notes">Reason</label>
-          <textarea id="ar-t-notes" rows="2" [ngModel]="termsForm().notes"
+          <label class="field-label" for="ar-t-notes">Reason</label>
+          <textarea class="field-input" id="ar-t-notes" rows="2" [ngModel]="termsForm().notes"
                     (ngModelChange)="termsForm.set({ ...termsForm(), notes: $event ?? '' })"
                     placeholder="Why the terms are changing"></textarea>
         </div>
@@ -237,8 +237,8 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label for="ar-f-status">Status</label>
-    <select id="ar-f-status" [ngModel]="statusFilter()"
+    <label class="field-label" for="ar-f-status">Status</label>
+    <select class="field-input" id="ar-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
       <option value="">All</option>
       @for (s of accountStatuses; track s) {

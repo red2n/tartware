@@ -25,14 +25,14 @@
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label for="bi-title">Title</label>
-          <input id="bi-title" type="text" [ngModel]="reportForm().incident_title"
+          <label class="field-label" for="bi-title">Title</label>
+          <input class="field-input" id="bi-title" type="text" [ngModel]="reportForm().incident_title"
                  (ngModelChange)="reportForm.set({ ...reportForm(), incident_title: $event ?? '' })"
                  placeholder="Short description of what happened" />
         </div>
         <div class="form-field">
-          <label for="bi-severity">Severity</label>
-          <select id="bi-severity" [ngModel]="reportForm().severity"
+          <label class="field-label" for="bi-severity">Severity</label>
+          <select class="field-input" id="bi-severity" [ngModel]="reportForm().severity"
                   (ngModelChange)="reportForm.set({ ...reportForm(), severity: $event })">
             @for (s of severities; track s) {
               <option [value]="s">{{ labelFor(s) }}</option>
@@ -40,8 +40,8 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="bi-type">Breach type</label>
-          <select id="bi-type" [ngModel]="reportForm().breach_type"
+          <label class="field-label" for="bi-type">Breach type</label>
+          <select class="field-input" id="bi-type" [ngModel]="reportForm().breach_type"
                   (ngModelChange)="reportForm.set({ ...reportForm(), breach_type: $event })">
             @for (t of breachTypes; track t) {
               <option [value]="t">{{ labelFor(t) }}</option>
@@ -49,37 +49,37 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="bi-discovered">Discovered at</label>
+          <label class="field-label" for="bi-discovered">Discovered at</label>
           <!-- The 72-hour clock runs from this moment, not from when the breach occurred. -->
-          <input id="bi-discovered" type="datetime-local" [ngModel]="reportForm().discovered_at"
+          <input class="field-input" id="bi-discovered" type="datetime-local" [ngModel]="reportForm().discovered_at"
                  (ngModelChange)="reportForm.set({ ...reportForm(), discovered_at: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="bi-occurred">Occurred at (optional)</label>
-          <input id="bi-occurred" type="datetime-local" [ngModel]="reportForm().occurred_at"
+          <label class="field-label" for="bi-occurred">Occurred at (optional)</label>
+          <input class="field-input" id="bi-occurred" type="datetime-local" [ngModel]="reportForm().occurred_at"
                  (ngModelChange)="reportForm.set({ ...reportForm(), occurred_at: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="bi-subjects">Data subjects affected</label>
-          <input id="bi-subjects" type="number" min="0" [ngModel]="reportForm().subjects_affected_count"
+          <label class="field-label" for="bi-subjects">Data subjects affected</label>
+          <input class="field-input" id="bi-subjects" type="number" min="0" [ngModel]="reportForm().subjects_affected_count"
                  (ngModelChange)="reportForm.set({ ...reportForm(), subjects_affected_count: $event })"
                  placeholder="Estimate if not yet known" />
         </div>
         <div class="form-field">
-          <label for="bi-categories">Data categories affected</label>
-          <input id="bi-categories" type="text" [ngModel]="reportForm().data_categories_affected"
+          <label class="field-label" for="bi-categories">Data categories affected</label>
+          <input class="field-input" id="bi-categories" type="text" [ngModel]="reportForm().data_categories_affected"
                  (ngModelChange)="reportForm.set({ ...reportForm(), data_categories_affected: $event ?? '' })"
                  placeholder="Comma separated, e.g. name, email, payment card" />
         </div>
         <div class="form-field">
-          <label for="bi-systems">Systems affected</label>
-          <input id="bi-systems" type="text" [ngModel]="reportForm().systems_affected"
+          <label class="field-label" for="bi-systems">Systems affected</label>
+          <input class="field-input" id="bi-systems" type="text" [ngModel]="reportForm().systems_affected"
                  (ngModelChange)="reportForm.set({ ...reportForm(), systems_affected: $event ?? '' })"
                  placeholder="Comma separated" />
         </div>
         <div class="form-field full-width">
-          <label for="bi-desc">What happened</label>
-          <textarea id="bi-desc" rows="4" [ngModel]="reportForm().incident_description"
+          <label class="field-label" for="bi-desc">What happened</label>
+          <textarea class="field-input" id="bi-desc" rows="4" [ngModel]="reportForm().incident_description"
                     (ngModelChange)="reportForm.set({ ...reportForm(), incident_description: $event ?? '' })"
                     placeholder="Facts known so far, how it was detected, immediate containment"></textarea>
         </div>
@@ -109,22 +109,22 @@
       </p>
       <div class="form-grid">
         <div class="form-field">
-          <label for="bi-ref">Authority reference</label>
-          <input id="bi-ref" type="text" [ngModel]="notifyForm().authority_reference"
+          <label class="field-label" for="bi-ref">Authority reference</label>
+          <input class="field-input" id="bi-ref" type="text" [ngModel]="notifyForm().authority_reference"
                  (ngModelChange)="notifyForm.set({ ...notifyForm(), authority_reference: $event ?? '' })"
                  placeholder="Reference issued by the regulator" />
         </div>
         <div class="form-field">
-          <label for="bi-subj">Data subjects also notified</label>
-          <select id="bi-subj" [ngModel]="notifyForm().notify_subjects"
+          <label class="field-label" for="bi-subj">Data subjects also notified</label>
+          <select class="field-input" id="bi-subj" [ngModel]="notifyForm().notify_subjects"
                   (ngModelChange)="notifyForm.set({ ...notifyForm(), notify_subjects: $event })">
             <option [ngValue]="false">No</option>
             <option [ngValue]="true">Yes</option>
           </select>
         </div>
         <div class="form-field full-width">
-          <label for="bi-notes">Notes</label>
-          <textarea id="bi-notes" rows="3" [ngModel]="notifyForm().notification_notes"
+          <label class="field-label" for="bi-notes">Notes</label>
+          <textarea class="field-input" id="bi-notes" rows="3" [ngModel]="notifyForm().notification_notes"
                     (ngModelChange)="notifyForm.set({ ...notifyForm(), notification_notes: $event ?? '' })"
                     placeholder="Channel used, who filed it, anything the regulator asked for"></textarea>
         </div>
@@ -142,8 +142,8 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label for="bi-f-sev">Severity</label>
-    <select id="bi-f-sev" [ngModel]="severityFilter()"
+    <label class="field-label" for="bi-f-sev">Severity</label>
+    <select class="field-input" id="bi-f-sev" [ngModel]="severityFilter()"
             (ngModelChange)="severityFilter.set($event ?? ''); load()">
       <option value="">All</option>
       @for (s of severities; track s) {
@@ -152,8 +152,8 @@
     </select>
   </div>
   <div class="form-field">
-    <label for="bi-f-status">Status</label>
-    <select id="bi-f-status" [ngModel]="statusFilter()"
+    <label class="field-label" for="bi-f-status">Status</label>
+    <select class="field-input" id="bi-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
       <option value="">All</option>
       @for (s of statuses; track s) {
@@ -162,8 +162,8 @@
     </select>
   </div>
   <div class="form-field">
-    <label for="bi-f-unnotified">Notification</label>
-    <select id="bi-f-unnotified" [ngModel]="unnotifiedOnly()"
+    <label class="field-label" for="bi-f-unnotified">Notification</label>
+    <select class="field-input" id="bi-f-unnotified" [ngModel]="unnotifiedOnly()"
             (ngModelChange)="unnotifiedOnly.set($event)">
       <option [ngValue]="false">All incidents</option>
       <option [ngValue]="true">Not yet notified</option>

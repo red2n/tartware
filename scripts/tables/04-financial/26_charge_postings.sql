@@ -178,8 +178,16 @@ CREATE INDEX IF NOT EXISTS idx_charge_postings_audit_run_id
 -- base_amount:   total_amount converted to the property base currency at the locked rate
 -- base_currency: the property base currency (e.g., USD) for this posting
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS exchange_rate DECIMAL(12,6) DEFAULT 1.000000;
-ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_amount DECIMAL(15,2);
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_amount DECIMAL(19,4);
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_currency CHAR(3) DEFAULT 'USD';
+
+-- ACCT-13 (minor units): base_amount must hold the widest ISO 4217 exponent in
+-- use, not a blanket 2 decimal places. KWD/BHD/OMR are denominated in
+-- thousandths and CLF in ten-thousandths, so a scale of 2 truncates a real,
+-- spendable unit on every conversion into those currencies. Widening is
+-- lossless for existing 2-decimal rows. Re-runnable: ALTER TYPE to the same
+-- type is a no-op in PostgreSQL.
+ALTER TABLE charge_postings ALTER COLUMN base_amount TYPE DECIMAL(19,4);
 
 -- Add constraint with idempotent error handling (IF NOT EXISTS not supported on ADD CONSTRAINT)
 DO $$ BEGIN
@@ -189,7 +197,7 @@ EXCEPTION WHEN duplicate_object THEN
 END $$;
 
 COMMENT ON COLUMN charge_postings.exchange_rate IS 'FX rate locked at posting time (transaction_currency/base_currency). 1.0 when same currency.';
-COMMENT ON COLUMN charge_postings.base_amount IS 'total_amount converted to property base currency at the locked exchange_rate.';
+COMMENT ON COLUMN charge_postings.base_amount IS 'total_amount converted to property base currency at the locked exchange_rate, stored at scale 4 to hold 3- and 4-decimal ISO 4217 currencies (KWD, BHD, OMR, CLF).';
 COMMENT ON COLUMN charge_postings.base_currency IS 'Property base currency for FX conversion (ISO 4217, e.g. USD).';
 
 -- Partial index for fast idempotency check: "does a non-voided room charge already

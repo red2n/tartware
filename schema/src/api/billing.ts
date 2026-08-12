@@ -38,6 +38,11 @@ export const BillingPaymentListItemSchema = z.object({
 	status_display: z.string(),
 	amount: z.number(),
 	currency: z.string(),
+	/** ACCT-13: rate locked at capture time (payment currency → base currency). */
+	exchange_rate: z.number().optional(),
+	/** `amount` expressed in the property's base currency at `exchange_rate`. */
+	base_amount: z.number().optional(),
+	base_currency: z.string().optional(),
 	processed_at: z.string().optional(),
 	created_at: z.string(),
 	updated_at: z.string().optional(),
@@ -187,6 +192,11 @@ export const ChargePostingListItemSchema = z.object({
 	discount_amount: z.number(),
 	total_amount: z.number(),
 	currency: z.string(),
+	/** ACCT-13: rate locked at posting time (transaction currency → base currency). */
+	exchange_rate: z.number().optional(),
+	/** `total_amount` expressed in the property's base currency at `exchange_rate`. */
+	base_amount: z.number().optional(),
+	base_currency: z.string().optional(),
 	payment_method: z.string().optional(),
 	source_system: z.string().optional(),
 	outlet: z.string().optional(),
@@ -1654,3 +1664,81 @@ export const GlTrialBalanceQuerySchema = z.object({
 });
 
 export type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;
+
+// ============================================================================
+// FX RATES (ACCT-13 multi-currency rate locking)
+// ============================================================================
+
+/**
+ * ISO 4217 alphabetic currency code.
+ *
+ * The `fx_rates` table stores `CHAR(3)` without validation, so the API layer
+ * is where a malformed code (`"zzz"`, `"US"`, `"usd "`) has to be rejected —
+ * a bad code silently poisons every rate lookup for that pair.
+ */
+export const CurrencyCodeSchema = z
+	.string()
+	.length(3)
+	.regex(/^[A-Z]{3}$/, "Currency must be a 3-letter uppercase ISO 4217 code");
+
+export const FxRateUpsertRequestSchema = z
+	.object({
+		tenant_id: z.string().uuid(),
+		from_currency: CurrencyCodeSchema,
+		to_currency: CurrencyCodeSchema,
+		rate: z.coerce.number().positive(),
+		rate_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+		rate_source: z.string().max(60).default("MANUAL"),
+		rate_source_ref: z.string().max(200).optional(),
+	})
+	.refine((input) => input.from_currency !== input.to_currency, {
+		message: "from_currency and to_currency must differ",
+		path: ["to_currency"],
+	});
+
+export type FxRateUpsertRequest = z.infer<typeof FxRateUpsertRequestSchema>;
+
+export const FxRateItemSchema = z.object({
+	rate_id: uuid,
+	tenant_id: uuid.nullable(),
+	from_currency: z.string(),
+	to_currency: z.string(),
+	rate: z.number(),
+	rate_date: z.string(),
+	rate_source: z.string(),
+	rate_source_ref: z.string().nullable().optional(),
+	created_at: z.string().optional(),
+});
+
+export type FxRateItem = z.infer<typeof FxRateItemSchema>;
+
+export const FxRateListResponseSchema = z.object({
+	data: z.array(FxRateItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type FxRateListResponse = z.infer<typeof FxRateListResponseSchema>;
+
+export const FxRateUpsertResponseSchema = z.object({
+	rate_id: uuid,
+	created: z.boolean(),
+	message: z.string(),
+});
+
+export type FxRateUpsertResponse = z.infer<typeof FxRateUpsertResponseSchema>;
+
+export const FxRateListQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	from_currency: CurrencyCodeSchema.optional(),
+	to_currency: CurrencyCodeSchema.optional(),
+	rate_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	/** Include global (tenant_id IS NULL) rates alongside tenant-specific ones. */
+	include_global: z.coerce.boolean().default(true),
+	limit: z.coerce.number().int().positive().max(500).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type FxRateListQuery = z.infer<typeof FxRateListQuerySchema>;

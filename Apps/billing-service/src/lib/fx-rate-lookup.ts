@@ -13,6 +13,7 @@
  * and the posting INSERT share the same snapshot.
  */
 
+import { roundToCurrency } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { queryWithClient } from "./db.js";
@@ -22,7 +23,7 @@ import { appLogger } from "./logger.js";
 interface FxLockResult {
   /** The exchange rate: 1 unit of `fromCurrency` = `rate` units of `toCurrency`. */
   rate: number;
-  /** `amount * rate`, rounded to 2 decimal places. */
+  /** `amount * rate`, rounded to `toCurrency`'s ISO 4217 exponent. */
   baseAmount: number;
   /** Indicates the rate was the same-currency no-op (rate=1.0, fromCurrency=toCurrency). */
   isSameCurrency: boolean;
@@ -59,16 +60,20 @@ export const lockFxRate = async (
     `
       SELECT rate::text, rate_date::text
       FROM public.fx_rates
-      WHERE from_currency = UPPER($3)
-        AND to_currency   = UPPER($4)
+      WHERE from_currency = UPPER($2)
+        AND to_currency   = UPPER($3)
         AND rate_date     BETWEEN CURRENT_DATE - INTERVAL '7 days' AND CURRENT_DATE
         AND (tenant_id = $1::uuid OR tenant_id IS NULL)
       ORDER BY
         rate_date DESC,                   -- most recent first
-        (tenant_id = $1::uuid) DESC       -- tenant-specific preferred over global
+        -- Tenant-specific preferred over global. Testing "tenant_id IS NOT NULL"
+        -- rather than "tenant_id = $1" matters: the equality is NULL for global
+        -- rows, and DESC sorts NULLs first in Postgres, which would have ranked
+        -- global rates *above* the tenant's own.
+        (tenant_id IS NOT NULL) DESC
       LIMIT 1
     `,
-    [tenantId, null, fromCurrency.toUpperCase(), toCurrency.toUpperCase()],
+    [tenantId, fromCurrency.toUpperCase(), toCurrency.toUpperCase()],
   );
 
   if (!rows[0]) {
@@ -80,7 +85,9 @@ export const lockFxRate = async (
   }
 
   const rate = Number.parseFloat(rows[0].rate);
-  const baseAmount = Math.round(amount * rate * 100) / 100;
+  // Round to the *target* currency's own precision — a JPY base amount has no
+  // fractional yen, and a KWD one keeps its third decimal.
+  const baseAmount = roundToCurrency(amount * rate, toCurrency);
 
   appLogger.debug(
     { tenantId, fromCurrency, toCurrency, rate, rateDate: rows[0].rate_date, baseAmount },

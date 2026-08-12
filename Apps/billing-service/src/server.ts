@@ -33,6 +33,7 @@ import { registerYieldRoutes } from "./routes/calculations/yield.js";
 import { registerDunningRuleRoutes } from "./routes/dunning-rules.js";
 import { registerFinanceAdminRoutes } from "./routes/finance-admin.js";
 import { registerFlowApprovalRoutes } from "./routes/flow-approvals.js";
+import { registerFxRateRoutes } from "./routes/fx-rates.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerNightAuditRoutes } from "./routes/night-audit.js";
 import { registerPosChargeRoutes } from "./routes/pos.js";
@@ -68,6 +69,8 @@ export const buildServer = (): FastifyInstance => {
       registerFlowApprovalRoutes(app);
       // AR dunning escalation rules
       registerDunningRuleRoutes(app);
+      // FX reference rates for multi-currency posting (ACCT-13)
+      registerFxRateRoutes(app);
       // HTNG POS charge endpoint (ACCT-05)
       registerPosChargeRoutes(app);
       // Payment gateway webhook endpoint (P0-2, PCI-DSS v4.0 Req 10)

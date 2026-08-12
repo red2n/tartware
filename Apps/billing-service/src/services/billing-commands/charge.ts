@@ -578,7 +578,9 @@ const applyChargePost = async (
           decision.ruleId,
           actorId,
           fxLock.rate, // $15
-          Math.round(routedSubtotal * fxLock.rate * 100) / 100, // $16 — routed portion in base currency
+          // $16 — routed portion in base currency, at that currency's ISO 4217
+          // exponent rather than a fixed 2dp.
+          roundToCurrency(routedSubtotal * fxLock.rate, baseCurrency),
           baseCurrency, // $17
         ],
       );

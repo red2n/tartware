@@ -232,13 +232,13 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   );
 
   // Incidents routes - proxy to housekeeping service
-  app.all(
+  app.get(
     "/v1/incidents",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
-        summary: "Proxy incident requests to the housekeeping service.",
+        summary: "List incidents.",
         response: {
           200: jsonObjectSchema,
         },

@@ -12,6 +12,10 @@ export const BILLING_PAYMENT_LIST_SQL = `
     p.payment_method,
     p.amount,
     p.currency,
+    -- ACCT-13: rate locked at capture time + the base-currency equivalent.
+    p.exchange_rate,
+    p.base_amount,
+    p.base_currency,
     p.status,
     p.gateway_name,
     p.gateway_reference,
@@ -166,6 +170,12 @@ export const CHARGE_POSTING_LIST_SQL = `
     c.discount_amount,
     c.total_amount,
     c.currency_code AS currency,
+    -- ACCT-13: the rate locked at posting time and the base-currency equivalent.
+    -- Exposed so multi-currency callers can reconcile a foreign-currency charge
+    -- against the property's base ledger without a direct DB read.
+    c.exchange_rate,
+    c.base_amount,
+    c.base_currency,
     c.payment_method,
     c.source_system,
     c.outlet,

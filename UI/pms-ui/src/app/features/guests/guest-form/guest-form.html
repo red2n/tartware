@@ -33,8 +33,8 @@
       </div>
       <div class="field-grid">
         <div class="form-field span-2">
-          <label for="gf-title">{{ 'Title' | translate }}</label>
-          <select id="gf-title" name="title" [(ngModel)]="title">
+          <label class="field-label" for="gf-title">{{ 'Title' | translate }}</label>
+          <select class="field-input" id="gf-title" name="title" [(ngModel)]="title">
             <option value="">{{ 'None' | translate }}</option>
             <option value="Mr">Mr</option>
             <option value="Mrs">Mrs</option>
@@ -44,29 +44,29 @@
           </select>
         </div>
         <div class="form-field span-5">
-          <label for="gf-first">{{ 'First name' | translate }} <span class="req">*</span></label>
-          <input id="gf-first" name="firstName" type="text" [(ngModel)]="firstName" (blur)="markTouched('firstName')" [class.invalid]="touched['firstName'] && !firstName.trim()" />
+          <label class="field-label" for="gf-first">{{ 'First name' | translate }} <span class="req">*</span></label>
+          <input class="field-input" id="gf-first" name="firstName" type="text" [(ngModel)]="firstName" (blur)="markTouched('firstName')" [class.invalid]="touched['firstName'] && !firstName.trim()" />
           @if (touched['firstName'] && !firstName.trim()) {
             <span class="field-error">{{ 'First name is required' | translate }}</span>
           }
         </div>
         <div class="form-field span-5">
-          <label for="gf-last">{{ 'Last name' | translate }} <span class="req">*</span></label>
-          <input id="gf-last" name="lastName" type="text" [(ngModel)]="lastName" (blur)="markTouched('lastName')" [class.invalid]="touched['lastName'] && !lastName.trim()" />
+          <label class="field-label" for="gf-last">{{ 'Last name' | translate }} <span class="req">*</span></label>
+          <input class="field-input" id="gf-last" name="lastName" type="text" [(ngModel)]="lastName" (blur)="markTouched('lastName')" [class.invalid]="touched['lastName'] && !lastName.trim()" />
           @if (touched['lastName'] && !lastName.trim()) {
             <span class="field-error">{{ 'Last name is required' | translate }}</span>
           }
         </div>
         <div class="form-field span-4">
-          <label for="gf-dob">{{ 'Date of birth' | translate }}</label>
-          <input id="gf-dob" name="dateOfBirth" type="date" [(ngModel)]="dateOfBirth" />
+          <label class="field-label" for="gf-dob">{{ 'Date of birth' | translate }}</label>
+          <input class="field-input" id="gf-dob" name="dateOfBirth" type="date" [(ngModel)]="dateOfBirth" />
           @if (fieldErrors()['date_of_birth']; as err) {
             <span class="field-error">{{ err }}</span>
           }
         </div>
         <div class="form-field span-4">
-          <label for="gf-gender">{{ 'Gender' | translate }}</label>
-          <select id="gf-gender" name="gender" [(ngModel)]="gender">
+          <label class="field-label" for="gf-gender">{{ 'Gender' | translate }}</label>
+          <select class="field-input" id="gf-gender" name="gender" [(ngModel)]="gender">
             <option value="">{{ 'Prefer not to say' | translate }}</option>
             <option value="MALE">{{ 'Male' | translate }}</option>
             <option value="FEMALE">{{ 'Female' | translate }}</option>
@@ -74,8 +74,8 @@
           </select>
         </div>
         <div class="form-field span-4">
-          <label for="gf-nat">{{ 'Nationality' | translate }}</label>
-          <input id="gf-nat" name="nationality" type="text" [(ngModel)]="nationality" placeholder="US" maxlength="2" />
+          <label class="field-label" for="gf-nat">{{ 'Nationality' | translate }}</label>
+          <input class="field-input" id="gf-nat" name="nationality" type="text" [(ngModel)]="nationality" placeholder="US" maxlength="2" />
         </div>
       </div>
     </section>
@@ -91,15 +91,15 @@
       </div>
       <div class="field-grid">
         <div class="form-field span-6">
-          <label for="gf-email">{{ 'Email address' | translate }}</label>
-          <input id="gf-email" name="email" type="email" [(ngModel)]="email" (blur)="markTouched('email')" [class.invalid]="touched['email'] && emailError" />
+          <label class="field-label" for="gf-email">{{ 'Email address' | translate }}</label>
+          <input class="field-input" id="gf-email" name="email" type="email" [(ngModel)]="email" (blur)="markTouched('email')" [class.invalid]="touched['email'] && emailError" />
           @if (touched['email'] && emailError; as err) {
             <span class="field-error">{{ err }}</span>
           }
         </div>
         <div class="form-field span-6">
-          <label for="gf-phone">{{ 'Phone number' | translate }}</label>
-          <input id="gf-phone" name="phone" type="tel" [(ngModel)]="phone" (blur)="markTouched('phone')" [class.invalid]="touched['phone'] && phoneError" />
+          <label class="field-label" for="gf-phone">{{ 'Phone number' | translate }}</label>
+          <input class="field-input" id="gf-phone" name="phone" type="tel" [(ngModel)]="phone" (blur)="markTouched('phone')" [class.invalid]="touched['phone'] && phoneError" />
           @if (touched['phone'] && phoneError; as err) {
             <span class="field-error">{{ err }}</span>
           }
@@ -118,24 +118,24 @@
       </div>
       <div class="field-grid">
         <div class="form-field span-12">
-          <label for="gf-street">{{ 'Street' | translate }}</label>
-          <input id="gf-street" name="street" type="text" [(ngModel)]="street" />
+          <label class="field-label" for="gf-street">{{ 'Street' | translate }}</label>
+          <input class="field-input" id="gf-street" name="street" type="text" [(ngModel)]="street" />
         </div>
         <div class="form-field span-4">
-          <label for="gf-city">{{ 'City' | translate }}</label>
-          <input id="gf-city" name="city" type="text" [(ngModel)]="city" />
+          <label class="field-label" for="gf-city">{{ 'City' | translate }}</label>
+          <input class="field-input" id="gf-city" name="city" type="text" [(ngModel)]="city" />
         </div>
         <div class="form-field span-3">
-          <label for="gf-state">{{ 'State / Region' | translate }}</label>
-          <input id="gf-state" name="state" type="text" [(ngModel)]="state" />
+          <label class="field-label" for="gf-state">{{ 'State / Region' | translate }}</label>
+          <input class="field-input" id="gf-state" name="state" type="text" [(ngModel)]="state" />
         </div>
         <div class="form-field span-2">
-          <label for="gf-zip">{{ 'Postal code' | translate }}</label>
-          <input id="gf-zip" name="postalCode" type="text" [(ngModel)]="postalCode" />
+          <label class="field-label" for="gf-zip">{{ 'Postal code' | translate }}</label>
+          <input class="field-input" id="gf-zip" name="postalCode" type="text" [(ngModel)]="postalCode" />
         </div>
         <div class="form-field span-3">
-          <label for="gf-country">{{ 'Country' | translate }}</label>
-          <input id="gf-country" name="country" type="text" [(ngModel)]="country" />
+          <label class="field-label" for="gf-country">{{ 'Country' | translate }}</label>
+          <input class="field-input" id="gf-country" name="country" type="text" [(ngModel)]="country" />
         </div>
       </div>
     </section>
@@ -151,12 +151,12 @@
       </div>
       <div class="field-grid">
         <div class="form-field span-6">
-          <label for="gf-company">{{ 'Company name' | translate }}</label>
-          <input id="gf-company" name="companyName" type="text" [(ngModel)]="companyName" placeholder="Acme Corp" />
+          <label class="field-label" for="gf-company">{{ 'Company name' | translate }}</label>
+          <input class="field-input" id="gf-company" name="companyName" type="text" [(ngModel)]="companyName" placeholder="Acme Corp" />
         </div>
         <div class="form-field span-3">
-          <label for="gf-tier">{{ 'Loyalty tier' | translate }}</label>
-          <select id="gf-tier" name="loyaltyTier" [(ngModel)]="loyaltyTier">
+          <label class="field-label" for="gf-tier">{{ 'Loyalty tier' | translate }}</label>
+          <select class="field-input" id="gf-tier" name="loyaltyTier" [(ngModel)]="loyaltyTier">
             <option value="">{{ 'None' | translate }}</option>
             <option value="bronze">Bronze</option>
             <option value="silver">Silver</option>
@@ -166,8 +166,8 @@
           </select>
         </div>
         <div class="form-field span-3">
-          <label for="gf-vip">{{ 'VIP status' | translate }}</label>
-          <select id="gf-vip" name="vipStatus" [(ngModel)]="vipStatus">
+          <label class="field-label" for="gf-vip">{{ 'VIP status' | translate }}</label>
+          <select class="field-input" id="gf-vip" name="vipStatus" [(ngModel)]="vipStatus">
             <option value="">{{ 'None' | translate }}</option>
             <option value="VIP">VIP</option>
             <option value="VVIP">VVIP</option>
@@ -188,29 +188,29 @@
       </div>
       <div class="field-grid">
         <div class="form-field span-3">
-          <label for="gf-roomtype">{{ 'Room type' | translate }}</label>
-          <input id="gf-roomtype" name="prefRoomType" type="text" [(ngModel)]="prefRoomType" placeholder="Deluxe King" />
+          <label class="field-label" for="gf-roomtype">{{ 'Room type' | translate }}</label>
+          <input class="field-input" id="gf-roomtype" name="prefRoomType" type="text" [(ngModel)]="prefRoomType" placeholder="Deluxe King" />
         </div>
         <div class="form-field span-3">
-          <label for="gf-bed">{{ 'Bed type' | translate }}</label>
-          <input id="gf-bed" name="prefBedType" type="text" [(ngModel)]="prefBedType" placeholder="King" />
+          <label class="field-label" for="gf-bed">{{ 'Bed type' | translate }}</label>
+          <input class="field-input" id="gf-bed" name="prefBedType" type="text" [(ngModel)]="prefBedType" placeholder="King" />
         </div>
         <div class="form-field span-3">
-          <label for="gf-floor">{{ 'Floor' | translate }}</label>
-          <input id="gf-floor" name="prefFloor" type="text" [(ngModel)]="prefFloor" placeholder="High floor" />
+          <label class="field-label" for="gf-floor">{{ 'Floor' | translate }}</label>
+          <input class="field-input" id="gf-floor" name="prefFloor" type="text" [(ngModel)]="prefFloor" placeholder="High floor" />
         </div>
         <div class="form-field span-3">
-          <label for="gf-lang">{{ 'Language' | translate }}</label>
-          <input id="gf-lang" name="prefLanguage" type="text" [(ngModel)]="prefLanguage" placeholder="EN" maxlength="5" />
+          <label class="field-label" for="gf-lang">{{ 'Language' | translate }}</label>
+          <input class="field-input" id="gf-lang" name="prefLanguage" type="text" [(ngModel)]="prefLanguage" placeholder="EN" maxlength="5" />
         </div>
         <div class="form-field span-6">
-          <label for="gf-diet">{{ 'Dietary restrictions' | translate }}</label>
-          <input id="gf-diet" name="prefDietary" type="text" [(ngModel)]="prefDietary" [placeholder]="'Comma separated' | translate" />
+          <label class="field-label" for="gf-diet">{{ 'Dietary restrictions' | translate }}</label>
+          <input class="field-input" id="gf-diet" name="prefDietary" type="text" [(ngModel)]="prefDietary" [placeholder]="'Comma separated' | translate" />
           <span class="field-hint">{{ 'e.g. vegetarian, no nuts' | translate }}</span>
         </div>
         <div class="form-field span-6">
-          <label for="gf-req">{{ 'Special requests' | translate }}</label>
-          <input id="gf-req" name="prefSpecialRequests" type="text" [(ngModel)]="prefSpecialRequests" [placeholder]="'Comma separated' | translate" />
+          <label class="field-label" for="gf-req">{{ 'Special requests' | translate }}</label>
+          <input class="field-input" id="gf-req" name="prefSpecialRequests" type="text" [(ngModel)]="prefSpecialRequests" [placeholder]="'Comma separated' | translate" />
           <span class="field-hint">{{ 'e.g. early check-in, extra pillows' | translate }}</span>
         </div>
         <div class="form-field span-12">

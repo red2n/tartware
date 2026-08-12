@@ -25,18 +25,18 @@
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label for="pr-date">Incident date</label>
-          <input id="pr-date" type="date" [ngModel]="form().incident_date"
+          <label class="field-label" for="pr-date">Incident date</label>
+          <input class="field-input" id="pr-date" type="date" [ngModel]="form().incident_date"
                  (ngModelChange)="form.set({ ...form(), incident_date: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-time">Incident time</label>
-          <input id="pr-time" type="time" [ngModel]="form().incident_time"
+          <label class="field-label" for="pr-time">Incident time</label>
+          <input class="field-input" id="pr-time" type="time" [ngModel]="form().incident_time"
                  (ngModelChange)="form.set({ ...form(), incident_time: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-type">Incident type</label>
-          <select id="pr-type" [ngModel]="form().incident_type"
+          <label class="field-label" for="pr-type">Incident type</label>
+          <select class="field-input" id="pr-type" [ngModel]="form().incident_type"
                   (ngModelChange)="form.set({ ...form(), incident_type: $event })">
             @for (t of incidentTypes; track t) {
               <option [value]="t">{{ labelFor(t) }}</option>
@@ -44,82 +44,82 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="pr-location">Location</label>
-          <input id="pr-location" type="text" [ngModel]="form().incident_location"
+          <label class="field-label" for="pr-location">Location</label>
+          <input class="field-input" id="pr-location" type="text" [ngModel]="form().incident_location"
                  (ngModelChange)="form.set({ ...form(), incident_location: $event ?? '' })"
                  placeholder="e.g. Lobby, Car park level 2" />
         </div>
         <div class="form-field">
-          <label for="pr-room">Room number</label>
-          <input id="pr-room" type="text" [ngModel]="form().room_number"
+          <label class="field-label" for="pr-room">Room number</label>
+          <input class="field-input" id="pr-room" type="text" [ngModel]="form().room_number"
                  (ngModelChange)="form.set({ ...form(), room_number: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-agency">Police agency</label>
-          <input id="pr-agency" type="text" [ngModel]="form().agency_name"
+          <label class="field-label" for="pr-agency">Police agency</label>
+          <input class="field-input" id="pr-agency" type="text" [ngModel]="form().agency_name"
                  (ngModelChange)="form.set({ ...form(), agency_name: $event ?? '' })"
                  placeholder="Force the report was made to" />
         </div>
         <div class="form-field">
-          <label for="pr-jurisdiction">Jurisdiction</label>
-          <input id="pr-jurisdiction" type="text" [ngModel]="form().agency_jurisdiction"
+          <label class="field-label" for="pr-jurisdiction">Jurisdiction</label>
+          <input class="field-input" id="pr-jurisdiction" type="text" [ngModel]="form().agency_jurisdiction"
                  (ngModelChange)="form.set({ ...form(), agency_jurisdiction: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-agency-tel">Agency contact</label>
-          <input id="pr-agency-tel" type="text" [ngModel]="form().agency_contact_number"
+          <label class="field-label" for="pr-agency-tel">Agency contact</label>
+          <input class="field-input" id="pr-agency-tel" type="text" [ngModel]="form().agency_contact_number"
                  (ngModelChange)="form.set({ ...form(), agency_contact_number: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-officer">Responding officer</label>
-          <input id="pr-officer" type="text" [ngModel]="form().responding_officer_name"
+          <label class="field-label" for="pr-officer">Responding officer</label>
+          <input class="field-input" id="pr-officer" type="text" [ngModel]="form().responding_officer_name"
                  (ngModelChange)="form.set({ ...form(), responding_officer_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-badge">Officer badge</label>
-          <input id="pr-badge" type="text" [ngModel]="form().responding_officer_badge"
+          <label class="field-label" for="pr-badge">Officer badge</label>
+          <input class="field-input" id="pr-badge" type="text" [ngModel]="form().responding_officer_badge"
                  (ngModelChange)="form.set({ ...form(), responding_officer_badge: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-loss">Total loss value</label>
-          <input id="pr-loss" type="number" min="0" step="0.01" [ngModel]="form().total_loss_value"
+          <label class="field-label" for="pr-loss">Total loss value</label>
+          <input class="field-input" id="pr-loss" type="number" min="0" step="0.01" [ngModel]="form().total_loss_value"
                  (ngModelChange)="form.set({ ...form(), total_loss_value: $event })" />
         </div>
         <div class="form-field">
-          <label for="pr-guest">Guest involved</label>
-          <select id="pr-guest" [ngModel]="form().guest_involved"
+          <label class="field-label" for="pr-guest">Guest involved</label>
+          <select class="field-input" id="pr-guest" [ngModel]="form().guest_involved"
                   (ngModelChange)="form.set({ ...form(), guest_involved: $event })">
             <option [ngValue]="false">No</option>
             <option [ngValue]="true">Yes</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="pr-staff">Staff involved</label>
-          <select id="pr-staff" [ngModel]="form().staff_involved"
+          <label class="field-label" for="pr-staff">Staff involved</label>
+          <select class="field-input" id="pr-staff" [ngModel]="form().staff_involved"
                   (ngModelChange)="form.set({ ...form(), staff_involved: $event })">
             <option [ngValue]="false">No</option>
             <option [ngValue]="true">Yes</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="pr-stolen">Property stolen</label>
-          <select id="pr-stolen" [ngModel]="form().property_stolen"
+          <label class="field-label" for="pr-stolen">Property stolen</label>
+          <select class="field-input" id="pr-stolen" [ngModel]="form().property_stolen"
                   (ngModelChange)="form.set({ ...form(), property_stolen: $event })">
             <option [ngValue]="false">No</option>
             <option [ngValue]="true">Yes</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="pr-injuries">Injuries reported</label>
-          <select id="pr-injuries" [ngModel]="form().injuries_reported"
+          <label class="field-label" for="pr-injuries">Injuries reported</label>
+          <select class="field-input" id="pr-injuries" [ngModel]="form().injuries_reported"
                   (ngModelChange)="form.set({ ...form(), injuries_reported: $event })">
             <option [ngValue]="false">No</option>
             <option [ngValue]="true">Yes</option>
           </select>
         </div>
         <div class="form-field full-width">
-          <label for="pr-desc">What happened</label>
-          <textarea id="pr-desc" rows="4" [ngModel]="form().incident_description"
+          <label class="field-label" for="pr-desc">What happened</label>
+          <textarea class="field-input" id="pr-desc" rows="4" [ngModel]="form().incident_description"
                     (ngModelChange)="form.set({ ...form(), incident_description: $event ?? '' })"
                     placeholder="Facts as reported, in the words used to the police"></textarea>
         </div>
@@ -144,8 +144,8 @@
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label for="pr-status">Status</label>
-          <select id="pr-status" [ngModel]="statusForm().report_status"
+          <label class="field-label" for="pr-status">Status</label>
+          <select class="field-input" id="pr-status" [ngModel]="statusForm().report_status"
                   (ngModelChange)="statusForm.set({ ...statusForm(), report_status: $event })">
             @for (s of reportStatuses; track s) {
               <option [value]="s">{{ labelFor(s) }}</option>
@@ -153,27 +153,27 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="pr-case">Police case number</label>
-          <input id="pr-case" type="text" [ngModel]="statusForm().police_case_number"
+          <label class="field-label" for="pr-case">Police case number</label>
+          <input class="field-input" id="pr-case" type="text" [ngModel]="statusForm().police_case_number"
                  (ngModelChange)="statusForm.set({ ...statusForm(), police_case_number: $event ?? '' })"
                  placeholder="Reference the force issued" />
         </div>
         <div class="form-field">
-          <label for="pr-investigator">Lead investigator</label>
-          <input id="pr-investigator" type="text" [ngModel]="statusForm().lead_investigator_name"
+          <label class="field-label" for="pr-investigator">Lead investigator</label>
+          <input class="field-input" id="pr-investigator" type="text" [ngModel]="statusForm().lead_investigator_name"
                  (ngModelChange)="statusForm.set({ ...statusForm(), lead_investigator_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label for="pr-follow">Follow-up required</label>
-          <select id="pr-follow" [ngModel]="statusForm().follow_up_required"
+          <label class="field-label" for="pr-follow">Follow-up required</label>
+          <select class="field-input" id="pr-follow" [ngModel]="statusForm().follow_up_required"
                   (ngModelChange)="statusForm.set({ ...statusForm(), follow_up_required: $event })">
             <option [ngValue]="false">No</option>
             <option [ngValue]="true">Yes</option>
           </select>
         </div>
         <div class="form-field">
-          <label for="pr-follow-date">Follow-up date</label>
-          <input id="pr-follow-date" type="date" [ngModel]="statusForm().follow_up_date"
+          <label class="field-label" for="pr-follow-date">Follow-up date</label>
+          <input class="field-input" id="pr-follow-date" type="date" [ngModel]="statusForm().follow_up_date"
                  (ngModelChange)="statusForm.set({ ...statusForm(), follow_up_date: $event ?? '' })" />
         </div>
       </div>
@@ -190,8 +190,8 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label for="pr-f-status">Status</label>
-    <select id="pr-f-status" [ngModel]="statusFilter()"
+    <label class="field-label" for="pr-f-status">Status</label>
+    <select class="field-input" id="pr-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
       <option value="">All</option>
       @for (s of reportStatuses; track s) {
@@ -200,8 +200,8 @@
     </select>
   </div>
   <div class="form-field">
-    <label for="pr-f-type">Incident type</label>
-    <select id="pr-f-type" [ngModel]="typeFilter()"
+    <label class="field-label" for="pr-f-type">Incident type</label>
+    <select class="field-input" id="pr-f-type" [ngModel]="typeFilter()"
             (ngModelChange)="typeFilter.set($event ?? ''); load()">
       <option value="">All</option>
       @for (t of incidentTypes; track t) {

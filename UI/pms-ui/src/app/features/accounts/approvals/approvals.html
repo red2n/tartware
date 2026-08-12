@@ -65,10 +65,10 @@
       }
       <div class="form-grid">
         <div class="form-field full-width">
-          <label for="ap-reason">
+          <label class="field-label" for="ap-reason">
             {{ d.kind === 'reject' ? 'Reason (required)' : 'Note (optional)' }}
           </label>
-          <textarea id="ap-reason" rows="3" [ngModel]="reason()"
+          <textarea class="field-input" id="ap-reason" rows="3" [ngModel]="reason()"
                     (ngModelChange)="reason.set($event ?? '')"
                     placeholder="Recorded against the decision"></textarea>
         </div>

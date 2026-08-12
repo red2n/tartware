@@ -70,6 +70,10 @@ export type BillingPaymentRow = {
 	payment_method: string | null;
 	amount: number | string | null;
 	currency: string | null;
+	/** ACCT-13 FX lock — rate applied at capture time (DECIMAL, returned as string). */
+	exchange_rate: number | string | null;
+	base_amount: number | string | null;
+	base_currency: string | null;
 	status: string | null;
 	gateway_name: string | null;
 	gateway_reference: string | null;
@@ -138,6 +142,10 @@ export type ChargePostingRow = {
 	discount_amount: number | string | null;
 	total_amount: number | string;
 	currency: string | null;
+	/** ACCT-13 FX lock — rate applied at posting time (DECIMAL, returned as string). */
+	exchange_rate: number | string | null;
+	base_amount: number | string | null;
+	base_currency: string | null;
 	payment_method: string | null;
 	source_system: string | null;
 	outlet: string | null;
@@ -425,6 +433,25 @@ export type ArDunningRuleRow = {
   updated_at: string | Date;
   created_by: string | null;
   updated_by: string | null;
+};
+
+// =====================================================
+// FX RATE ROW
+// =====================================================
+
+/** Raw row shape from fx_rates table (ACCT-13 daily rate snapshots). */
+export type FxRateRow = {
+	rate_id: string;
+	tenant_id: string | null;
+	from_currency: string;
+	to_currency: string;
+	/** DECIMAL(12,6) — pg returns numerics as strings. */
+	rate: string | number;
+	rate_date: string | Date;
+	rate_source: string;
+	rate_source_ref: string | null;
+	created_at: string | Date;
+	created_by: string | null;
 };
 
 // =====================================================

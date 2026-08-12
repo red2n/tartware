@@ -40,13 +40,15 @@ CREATE TABLE IF NOT EXISTS payments (
     -- Foreign key constraint for payment_token_id will be added in 00-create-all-constraints.sql after payment_tokens table exists
 
     -- Amount
-    amount DECIMAL(15,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'USD',
+    -- Scale 4, not 2: ISO 4217 exponents range from 0 (JPY) to 4 (CLF), and
+    -- 3-decimal Gulf currencies (KWD, BHD, OMR) lose a spendable unit at scale 2.
+    amount DECIMAL(19,4) NOT NULL, -- Tendered amount in `currency`, at that currency's minor-unit scale
+    currency VARCHAR(3) DEFAULT 'USD', -- ISO 4217 code the guest actually paid in
 
     -- Exchange Rate (for foreign currency)
-    exchange_rate DECIMAL(15,6) DEFAULT 1.0,
-    base_amount DECIMAL(15,2),
-    base_currency VARCHAR(3) DEFAULT 'USD',
+    exchange_rate DECIMAL(15,6) DEFAULT 1.0, -- Rate locked at capture time (currency → base_currency)
+    base_amount DECIMAL(19,4), -- `amount` converted to base_currency at the locked rate
+    base_currency VARCHAR(3) DEFAULT 'USD', -- Property base currency for the ledger
 
     -- Payment Status
     status payment_status NOT NULL DEFAULT 'PENDING',
@@ -142,5 +144,12 @@ END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_tenant_payment_reference
   ON payments (tenant_id, payment_reference);
+
+-- ACCT-13 (minor units): widen the monetary columns on databases created before
+-- multi-currency support. CREATE TABLE IF NOT EXISTS leaves an existing table
+-- untouched, so the scale change has to be applied explicitly. Widening scale is
+-- lossless, and ALTER TYPE to the current type is a no-op, so this is re-runnable.
+ALTER TABLE payments ALTER COLUMN amount      TYPE DECIMAL(19,4);
+ALTER TABLE payments ALTER COLUMN base_amount TYPE DECIMAL(19,4);
 
 \echo 'Payments table created successfully!'

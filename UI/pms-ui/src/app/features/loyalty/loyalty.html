@@ -30,38 +30,38 @@
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label for="ly-guest">{{ 'Guest ID' | translate }}</label>
-          <input id="ly-guest" type="text" [ngModel]="form().guest_id"
+          <label class="field-label" for="ly-guest">{{ 'Guest ID' | translate }}</label>
+          <input class="field-input" id="ly-guest" type="text" [ngModel]="form().guest_id"
                  (ngModelChange)="form.set({ ...form(), guest_id: $event ?? '' })"
                  [placeholder]="'Guest UUID' | translate" />
         </div>
 
         @if (kind === 'enroll') {
           <div class="form-field">
-            <label for="ly-prog">{{ 'Program name' | translate }}</label>
-            <input id="ly-prog" type="text" [ngModel]="form().program_name"
+            <label class="field-label" for="ly-prog">{{ 'Program name' | translate }}</label>
+            <input class="field-input" id="ly-prog" type="text" [ngModel]="form().program_name"
                    (ngModelChange)="form.set({ ...form(), program_name: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label for="ly-tier">{{ 'Starting tier' | translate }}</label>
-            <input id="ly-tier" type="text" [ngModel]="form().program_tier"
+            <label class="field-label" for="ly-tier">{{ 'Starting tier' | translate }}</label>
+            <input class="field-input" id="ly-tier" type="text" [ngModel]="form().program_tier"
                    (ngModelChange)="form.set({ ...form(), program_tier: $event ?? '' })"
                    [placeholder]="'e.g. bronze' | translate" />
           </div>
         } @else {
           <div class="form-field">
-            <label for="ly-pid">{{ 'Program ID' | translate }}</label>
-            <input id="ly-pid" type="text" [ngModel]="form().program_id"
+            <label class="field-label" for="ly-pid">{{ 'Program ID' | translate }}</label>
+            <input class="field-input" id="ly-pid" type="text" [ngModel]="form().program_id"
                    (ngModelChange)="form.set({ ...form(), program_id: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label for="ly-points">{{ 'Points' | translate }}</label>
-            <input id="ly-points" type="number" min="1" [ngModel]="form().points"
+            <label class="field-label" for="ly-points">{{ 'Points' | translate }}</label>
+            <input class="field-input" id="ly-points" type="number" min="1" [ngModel]="form().points"
                    (ngModelChange)="form.set({ ...form(), points: $event })" />
           </div>
           <div class="form-field">
-            <label for="ly-desc">{{ 'Description' | translate }}</label>
-            <input id="ly-desc" type="text" [ngModel]="form().description"
+            <label class="field-label" for="ly-desc">{{ 'Description' | translate }}</label>
+            <input class="field-input" id="ly-desc" type="text" [ngModel]="form().description"
                    (ngModelChange)="form.set({ ...form(), description: $event ?? '' })"
                    [placeholder]="'Optional' | translate" />
           </div>

@@ -17,6 +17,27 @@
   box-sizing: border-box;
 }
 
+/* ── Native widget chrome ──
+   Load-bearing: the browser paints the parts of a control it owns — the open
+   <select> popup list, the date picker panel, autofill fills, spinner arrows —
+   from its own colour scheme, not from our tokens. Without this a control we
+   have themed still drops a light-mode panel over the dark palette the moment
+   it opens. */
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Checkbox and radio glyphs are drawn by the browser; accent-color is the only
+   hook into them, so it is set globally rather than per-component. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--fgColor-accent);
+}
+
 html,
 body {
   margin: 0;

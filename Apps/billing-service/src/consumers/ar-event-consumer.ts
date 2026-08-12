@@ -275,13 +275,16 @@ export const startArEventConsumer = async (): Promise<void> => {
               );
             },
             isRetryable: (err: unknown) => {
-              const code = String(err.code || "");
+              // Postgres driver errors carry `code`/`message`; narrow once rather
+              // than typing the parameter as `any`.
+              const e = err as { code?: string; message?: string };
+              const code = String(e.code || "");
               return (
                 code.startsWith("08") ||
                 code === "40001" ||
                 code === "57P01" ||
-                err.message?.includes("deadlock") ||
-                err.message?.includes("ECONNREFUSED")
+                e.message?.includes("deadlock") === true ||
+                e.message?.includes("ECONNREFUSED") === true
               );
             },
           });
