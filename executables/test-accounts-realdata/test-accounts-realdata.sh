@@ -895,7 +895,9 @@ if [[ -n "$CASHIER_ID" ]]; then
     pass "DB: cashier session opened (${SESSION_ID:0:8}…)"
 
     SESSION_FLOAT=$(resp_first "opening_float_declared")
-    assert_eq "DB: opening_float = 500" "500.00" "$SESSION_FLOAT"
+    # Numeric compare, not string: the column is DECIMAL(19,4), so the API can
+    # legitimately return 500, 500.00 or 500.0000 for the same amount.
+    assert_eq_num "DB: opening_float = 500" "500.00" "$SESSION_FLOAT"
 
     SESSION_STATUS=$(resp_first "session_status")
     assert_eq_ci "DB: session_status = open" "open" "$SESSION_STATUS"
@@ -2905,11 +2907,11 @@ echo ""
 #   2C.6  Local-currency payment       — capture + folio balance in the local currency
 #   2C.7  Cross-property isolation     — one property's postings stay out of another's ledger
 #
-# 2C.5 is the section expected to surface failures on an unfixed system: the money
-# paths hard-code 2 decimal places, so a JPY base amount comes back as ¥14925.00
-# and a KWD amount loses its third decimal. Those assertions state the correct
-# ISO 4217 behaviour deliberately — a red result there is the finding, not a bug
-# in the test.
+# 2C.5 asserts ISO 4217 minor units end to end: a JPY base amount must be whole
+# yen and a KWD amount must keep its third decimal. Money is rounded through
+# `roundToCurrency` and stored at DECIMAL(19,4), so these are live assertions —
+# a failure here means a money path regressed to fixed 2dp rounding, or a
+# monetary column was provisioned at too narrow a scale.
 
 if $MULTI_CURRENCY; then
 

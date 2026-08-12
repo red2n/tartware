@@ -48,12 +48,12 @@ CREATE TABLE IF NOT EXISTS invoices (
     billing_to DATE,
 
     -- Amounts
-    subtotal DECIMAL(15,2) NOT NULL DEFAULT 0.00,
-    tax_amount DECIMAL(15,2) DEFAULT 0.00,
-    discount_amount DECIMAL(15,2) DEFAULT 0.00,
-    total_amount DECIMAL(15,2) NOT NULL DEFAULT 0.00,
-    paid_amount DECIMAL(15,2) DEFAULT 0.00,
-    balance_due DECIMAL(15,2) GENERATED ALWAYS AS (total_amount - paid_amount) STORED,
+    subtotal DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    tax_amount DECIMAL(19,4) DEFAULT 0.00,
+    discount_amount DECIMAL(19,4) DEFAULT 0.00,
+    total_amount DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    paid_amount DECIMAL(19,4) DEFAULT 0.00,
+    balance_due DECIMAL(19,4) GENERATED ALWAYS AS (total_amount - paid_amount) STORED,
     currency VARCHAR(3) DEFAULT 'USD',
 
     -- Tax Details
@@ -180,5 +180,7 @@ ALTER TABLE invoices ALTER COLUMN invoice_number DROP NOT NULL;
 
 -- revision_number tracks correction iterations (BA §5.2 reopen workflow)
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS revision_number INTEGER DEFAULT 0;
+
+
 
 \echo 'Invoices table created successfully!'

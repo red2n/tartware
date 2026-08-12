@@ -219,6 +219,9 @@ export const CASHIER_SESSION_LIST_SQL = `
     business_date,
     shift_type,
     opening_float_declared,
+    -- The currency the drawer is counted in. Without it a list of sessions from
+    -- properties in different countries reads as a single pile of numbers.
+    base_currency,
     closing_cash_declared,
     closing_cash_counted,
     total_transactions,

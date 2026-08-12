@@ -265,6 +265,15 @@ export const routes: Routes = [
 					import("./features/accounts/tax-config/tax-config").then((m) => m.TaxConfigComponent),
 			},
 			{
+				path: "currency-config",
+				canActivate: [propertyGuard, screenGuard("currency-config")],
+				data: { screen: "currency-config" },
+				loadComponent: () =>
+					import("./features/accounts/currency-config/currency-config").then(
+						(m) => m.CurrencyConfigComponent,
+					),
+			},
+			{
 				path: "invoices",
 				canActivate: [propertyGuard, screenGuard("invoices")],
 				data: { screen: "invoices" },

@@ -15,6 +15,8 @@ import {
 	TransactionTypeEnum,
 } from "../shared/enums.js";
 
+import { CurrencyCodeSchema } from "./currency.js";
+
 /**
  * Billing payment list item schema for API responses.
  * Includes display fields derived from enum values.
@@ -1669,17 +1671,8 @@ export type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;
 // FX RATES (ACCT-13 multi-currency rate locking)
 // ============================================================================
 
-/**
- * ISO 4217 alphabetic currency code.
- *
- * The `fx_rates` table stores `CHAR(3)` without validation, so the API layer
- * is where a malformed code (`"zzz"`, `"US"`, `"usd "`) has to be rejected —
- * a bad code silently poisons every rate lookup for that pair.
- */
-export const CurrencyCodeSchema = z
-	.string()
-	.length(3)
-	.regex(/^[A-Z]{3}$/, "Currency must be a 3-letter uppercase ISO 4217 code");
+// `CurrencyCodeSchema` lives in ./currency.ts alongside the ISO 4217 exponent
+// table, so code validation and minor-unit handling stay in one place.
 
 export const FxRateUpsertRequestSchema = z
 	.object({

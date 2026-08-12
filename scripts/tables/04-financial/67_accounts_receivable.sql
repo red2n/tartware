@@ -58,9 +58,9 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
     due_date DATE NOT NULL,
 
     -- Amount
-    original_amount DECIMAL(12,2) NOT NULL,
-    outstanding_balance DECIMAL(12,2) NOT NULL,
-    paid_amount DECIMAL(12,2) DEFAULT 0.00,
+    original_amount DECIMAL(19,4) NOT NULL,
+    outstanding_balance DECIMAL(19,4) NOT NULL,
+    paid_amount DECIMAL(19,4) DEFAULT 0.00,
 
     currency VARCHAR(3) DEFAULT 'USD',
 
@@ -92,31 +92,31 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
     early_payment_discount_days INTEGER,
     discount_deadline DATE,
 
-    discount_amount DECIMAL(10,2),
+    discount_amount DECIMAL(19,4),
     discount_applied BOOLEAN DEFAULT FALSE,
 
     -- Late Fees
     late_fee_applicable BOOLEAN DEFAULT FALSE,
     late_fee_percent DECIMAL(5,2),
-    late_fee_fixed_amount DECIMAL(10,2),
-    late_fees_charged DECIMAL(10,2) DEFAULT 0.00,
+    late_fee_fixed_amount DECIMAL(19,4),
+    late_fees_charged DECIMAL(19,4) DEFAULT 0.00,
 
     -- Interest
     interest_applicable BOOLEAN DEFAULT FALSE,
     interest_rate_percent DECIMAL(5,2),
-    interest_accrued DECIMAL(10,2) DEFAULT 0.00,
+    interest_accrued DECIMAL(19,4) DEFAULT 0.00,
     last_interest_calculation_date DATE,
 
     -- Payment History
     payment_count INTEGER DEFAULT 0,
     last_payment_date DATE,
-    last_payment_amount DECIMAL(12,2),
+    last_payment_amount DECIMAL(19,4),
 
     payments JSONB, -- [{date, amount, method, reference}]
 
     -- Partial Payments
     allows_partial_payment BOOLEAN DEFAULT TRUE,
-    minimum_payment_amount DECIMAL(10,2),
+    minimum_payment_amount DECIMAL(19,4),
 
     -- Collection
     in_collection BOOLEAN DEFAULT FALSE,
@@ -140,14 +140,14 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
     -- Dispute
     disputed BOOLEAN DEFAULT FALSE,
     dispute_reason TEXT,
-    dispute_amount DECIMAL(10,2),
+    dispute_amount DECIMAL(19,4),
     dispute_filed_date DATE,
     dispute_resolved BOOLEAN DEFAULT FALSE,
     dispute_resolution TEXT,
 
     -- Write-Off
     written_off BOOLEAN DEFAULT FALSE,
-    write_off_amount DECIMAL(12,2),
+    write_off_amount DECIMAL(19,4),
     write_off_reason TEXT,
     write_off_date DATE,
     written_off_by UUID,
@@ -155,30 +155,30 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
 
     -- Bad Debt
     is_bad_debt BOOLEAN DEFAULT FALSE,
-    bad_debt_reserve DECIMAL(10,2),
+    bad_debt_reserve DECIMAL(19,4),
 
     -- Adjustment
     has_adjustments BOOLEAN DEFAULT FALSE,
-    adjustment_amount DECIMAL(12,2) DEFAULT 0.00,
+    adjustment_amount DECIMAL(19,4) DEFAULT 0.00,
     adjustments JSONB, -- [{date, amount, reason, approved_by}]
 
     -- Credit Memo
     credit_memo_applied BOOLEAN DEFAULT FALSE,
-    credit_memo_amount DECIMAL(10,2),
+    credit_memo_amount DECIMAL(19,4),
     credit_memo_ids UUID[],
 
     -- Payment Plan
     has_payment_plan BOOLEAN DEFAULT FALSE,
     payment_plan_id UUID,
     installment_count INTEGER,
-    installment_amount DECIMAL(10,2),
+    installment_amount DECIMAL(19,4),
     next_installment_due_date DATE,
 
     -- Guarantor
     has_guarantor BOOLEAN DEFAULT FALSE,
     guarantor_name VARCHAR(255),
     guarantor_contact VARCHAR(255),
-    guarantor_liable_amount DECIMAL(12,2),
+    guarantor_liable_amount DECIMAL(19,4),
 
     -- Legal Action
     legal_action_taken BOOLEAN DEFAULT FALSE,
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
 
     -- Settlement
     settlement_offered BOOLEAN DEFAULT FALSE,
-    settlement_amount DECIMAL(12,2),
+    settlement_amount DECIMAL(19,4),
     settlement_accepted BOOLEAN DEFAULT FALSE,
     settlement_date DATE,
 
@@ -241,5 +241,7 @@ COMMENT ON TABLE accounts_receivable IS 'Manages accounts receivable, aging, col
 COMMENT ON COLUMN accounts_receivable.aging_bucket IS 'Aging category: current, 1_30_days, 31_60_days, 61_90_days, 91_120_days, over_120_days';
 COMMENT ON COLUMN accounts_receivable.payments IS 'JSON array of payment history: [{date, amount, method, reference}]';
 COMMENT ON COLUMN accounts_receivable.write_off_amount IS 'Amount written off as bad debt';
+
+
 
 \echo 'accounts_receivable table created successfully!'

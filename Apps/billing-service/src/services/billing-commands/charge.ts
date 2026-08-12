@@ -1,7 +1,13 @@
+import { convertCurrency, roundToCurrency } from "@tartware/schemas";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
-import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
+import {
+  getPropertyBaseCurrency,
+  getPropertyBaseCurrencyFromPool,
+  lockFxRate,
+} from "../../lib/fx-rate-lookup.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -467,7 +473,23 @@ const applyChargePost = async (
 ): Promise<string> => {
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
-  const currency = command.currency ?? "USD";
+
+  // An amount posted without a currency is denominated in the property's own
+  // money — an unqualified 29,000 at a Tokyo hotel is yen. Defaulting to "USD"
+  // both mislabelled the tender and skipped conversion, so the folio total was
+  // wrong by the whole exchange rate.
+  const propertyCurrency = await getPropertyBaseCurrencyFromPool(
+    context.tenantId,
+    command.property_id,
+  );
+  const currency = (command.currency ?? propertyCurrency).toUpperCase();
+
+  // Normalise the tender to the currency's smallest unit before it reaches the
+  // ledger, exactly as payment.capture does. ¥29,000.75 and 61.5006 KWD describe
+  // amounts that cannot be tendered; storing them verbatim leaves a folio that
+  // cannot be reconciled against cash.
+  const unitAmount = roundToCurrency(command.amount, currency);
+  const chargeTotal = roundToCurrency(unitAmount * command.quantity, currency);
 
   // Resolve folio: prefer explicit folio_id, fall back to reservation lookup
   let folioId = command.folio_id ?? null;
@@ -489,7 +511,7 @@ const applyChargePost = async (
     chargeCode: command.charge_code,
     transactionType: command.posting_type,
     chargeCategory: command.metadata?.charge_category as string | undefined,
-    amount: command.amount * command.quantity,
+    amount: chargeTotal,
   });
 
   const postingId = await withTransaction(async (client) => {
@@ -505,13 +527,7 @@ const applyChargePost = async (
       context.tenantId,
       command.property_id,
     );
-    const fxLock = await lockFxRate(
-      client,
-      context.tenantId,
-      currency,
-      baseCurrency,
-      command.amount * command.quantity,
-    );
+    const fxLock = await lockFxRate(client, context.tenantId, currency, baseCurrency, chargeTotal);
 
     // Resolve GL accounts once per transaction; cached in-process across calls.
     // A missing mapping is logged but does NOT fail the charge — operations
@@ -578,9 +594,11 @@ const applyChargePost = async (
           decision.ruleId,
           actorId,
           fxLock.rate, // $15
-          // $16 — routed portion in base currency, at that currency's ISO 4217
-          // exponent rather than a fixed 2dp.
-          roundToCurrency(routedSubtotal * fxLock.rate, baseCurrency),
+          // $16 — routed portion in base currency. Converted from the locked
+          // rate's exact decimal string at the base currency's ISO 4217
+          // exponent, so neither a float product nor a fixed 2dp can shift the
+          // posted amount by a minor unit.
+          convertCurrency(routedSubtotal, fxLock.rateText, baseCurrency),
           baseCurrency, // $17
         ],
       );
@@ -646,10 +664,9 @@ const applyChargePost = async (
     const remainderAmount = routing.remainderAmount;
 
     if (remainderAmount > 0 || routing.decisions.length === 0) {
-      const unitPrice = routing.decisions.length === 0 ? command.amount : remainderAmount;
+      const unitPrice = routing.decisions.length === 0 ? unitAmount : remainderAmount;
       const qty = routing.decisions.length === 0 ? command.quantity : 1;
-      const subtotal =
-        routing.decisions.length === 0 ? command.amount * command.quantity : remainderAmount;
+      const subtotal = routing.decisions.length === 0 ? chargeTotal : remainderAmount;
 
       const result = await queryWithClient<{ posting_id: string }>(
         client,
@@ -744,12 +761,13 @@ const applyChargePost = async (
     action: "CHARGE_POST",
     entityType: "charge_posting",
     entityId: postingId,
-    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${command.amount} on folio ${folioId}`,
+    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${unitAmount} ${currency} on folio ${folioId}`,
     newValues: {
       posting_id: postingId,
       folio_id: folioId,
       charge_code: command.charge_code,
-      amount: command.amount * command.quantity,
+      amount: chargeTotal,
+      currency,
       posting_type: command.posting_type,
       reservation_id: command.reservation_id,
     },

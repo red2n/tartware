@@ -17,7 +17,7 @@
   <div class="kpi-card">
     <app-icon name="payments" />
     <div class="kpi-body">
-      <div class="kpi-value">{{ totalOutstanding() | number: '1.2-2' }}</div>
+      <div class="kpi-value">{{ totalOutstanding() | number: settings.amountDigits() }}</div>
       <div class="kpi-label">Outstanding</div>
     </div>
   </div>
@@ -38,7 +38,7 @@
   <div class="kpi-card">
     <app-icon name="running_with_errors" />
     <div class="kpi-body">
-      <div class="kpi-value">{{ uncollected() | number: '1.2-2' }}</div>
+      <div class="kpi-value">{{ uncollected() | number: settings.amountDigits() }}</div>
       <div class="kpi-label">Uncollected</div>
     </div>
   </div>
@@ -187,7 +187,7 @@
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        Currently {{ labelFor(account.payment_terms) }}, limit {{ num(account.credit_limit) | number: '1.2-2' }}
+        Currently {{ labelFor(account.payment_terms) }}, limit {{ num(account.credit_limit) | number: settings.amountDigits() }}
         {{ account.currency }}, status {{ labelFor(account.account_status) }}. Leave a field blank to
         keep it as it is.
       </p>
@@ -283,13 +283,13 @@
               }
             </td>
             <td>{{ labelFor(a.payment_terms) }}</td>
-            <td class="right mono">{{ num(a.credit_limit) | number: '1.2-2' }} {{ a.currency }}</td>
-            <td class="right mono">{{ num(a.outstanding_balance) | number: '1.2-2' }}</td>
+            <td class="right mono">{{ num(a.credit_limit) | number: settings.amountDigits() }} {{ a.currency }}</td>
+            <td class="right mono">{{ num(a.outstanding_balance) | number: settings.amountDigits() }}</td>
             <td class="right mono">
               @if (num(a.available_credit) < 0) {
-                <span class="badge badge-danger badge-sm">{{ num(a.available_credit) | number: '1.2-2' }}</span>
+                <span class="badge badge-danger badge-sm">{{ num(a.available_credit) | number: settings.amountDigits() }}</span>
               } @else {
-                {{ num(a.available_credit) | number: '1.2-2' }}
+                {{ num(a.available_credit) | number: settings.amountDigits() }}
               }
             </td>
             <td>{{ a.dunning_level ?? 0 }}</td>
@@ -335,8 +335,8 @@
                   <td>{{ e.entry_number }}</td>
                   <td>{{ e.transfer_date }}</td>
                   <td>{{ e.due_date }}</td>
-                  <td class="right mono">{{ num(e.original_amount) | number: '1.2-2' }}</td>
-                  <td class="right mono">{{ num(e.outstanding_balance) | number: '1.2-2' }}</td>
+                  <td class="right mono">{{ num(e.original_amount) | number: settings.amountDigits() }}</td>
+                  <td class="right mono">{{ num(e.outstanding_balance) | number: settings.amountDigits() }}</td>
                   <td>{{ labelFor(e.entry_status) }}</td>
                 </tr>
               }
@@ -371,13 +371,13 @@
         @for (row of aging(); track row.ar_account_id) {
           <tr>
             <td class="cell-primary">{{ row.company_name }}</td>
-            <td class="right mono">{{ num(row.current_amount) | number: '1.2-2' }}</td>
-            <td class="right mono">{{ num(row.bucket_1_30) | number: '1.2-2' }}</td>
-            <td class="right mono">{{ num(row.bucket_31_60) | number: '1.2-2' }}</td>
-            <td class="right mono">{{ num(row.bucket_61_90) | number: '1.2-2' }}</td>
-            <td class="right mono">{{ num(row.bucket_91_120) | number: '1.2-2' }}</td>
-            <td class="right mono">{{ num(row.bucket_over_120) | number: '1.2-2' }}</td>
-            <td class="right mono"><strong>{{ num(row.total_outstanding) | number: '1.2-2' }}</strong></td>
+            <td class="right mono">{{ num(row.current_amount) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_1_30) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_31_60) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_61_90) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_91_120) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_over_120) | number: settings.amountDigits() }}</td>
+            <td class="right mono"><strong>{{ num(row.total_outstanding) | number: settings.amountDigits() }}</strong></td>
           </tr>
         }
       </tbody>

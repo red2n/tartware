@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS general_ledger_batches (
     currency CHAR(3) DEFAULT 'USD',
 
     -- Totals
-    debit_total DECIMAL(15,2) NOT NULL DEFAULT 0,
-    credit_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+    debit_total DECIMAL(19,4) NOT NULL DEFAULT 0,
+    credit_total DECIMAL(19,4) NOT NULL DEFAULT 0,
     entry_count INTEGER NOT NULL DEFAULT 0,
-    variance DECIMAL(15,2) GENERATED ALWAYS AS (debit_total - credit_total) STORED,
+    variance DECIMAL(19,4) GENERATED ALWAYS AS (debit_total - credit_total) STORED,
 
     -- Status
     batch_status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (batch_status IN ('OPEN', 'REVIEW', 'POSTED', 'ERROR')),
@@ -56,5 +56,7 @@ CREATE TABLE IF NOT EXISTS general_ledger_batches (
 COMMENT ON TABLE general_ledger_batches IS 'GL export batches for posting to accounting systems.';
 COMMENT ON COLUMN general_ledger_batches.batch_status IS 'Workflow status for GL batch.';
 COMMENT ON COLUMN general_ledger_batches.export_format IS 'Format type: USALI, CSV, XML, API.';
+
+
 
 \echo '✓ Table created: general_ledger_batches'

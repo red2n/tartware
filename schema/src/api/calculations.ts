@@ -1,3 +1,6 @@
+import { z } from "zod";
+
+import { currencyCode } from "../shared/base-schemas.js";
 /**
  * DEV DOC
  * Module: api/calculations.ts
@@ -8,7 +11,6 @@
  * All formulas reference CORE.md sections.
  */
 
-import { z } from "zod";
 
 // =====================================================
 // SHARED PRIMITIVES
@@ -28,6 +30,10 @@ const posInt = z.number().int().nonnegative().describe("Non-negative integer");
 // =====================================================
 
 export const TaxableAmountInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	amount: posAmt,
 	quantity: posInt,
 	negate: z
@@ -45,6 +51,10 @@ export const TaxableAmountOutputSchema = z.object({
 export type TaxableAmountOutput = z.infer<typeof TaxableAmountOutputSchema>;
 
 export const ReverseTaxInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	taxable_amount: posAmt,
 	quantity: posInt.min(1),
 	exempted_tax_amount: posAmt.default(0),
@@ -66,6 +76,10 @@ export const TaxRuleInputSchema = z.object({
 });
 
 export const InclusiveTaxExtractInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	gross_amount: posAmt,
 	tax_rules: z.array(TaxRuleInputSchema).min(1),
 });
@@ -90,6 +104,10 @@ export const BulkTaxLineItemSchema = z.object({
 });
 
 export const BulkTaxInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	line_items: z.array(BulkTaxLineItemSchema).min(1),
 	tax_rules: z.array(TaxRuleInputSchema).min(1),
 });
@@ -254,6 +272,10 @@ export const FolioLineItemInputSchema = z.object({
 });
 
 export const FolioBalanceInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	line_items: z.array(FolioLineItemInputSchema).min(1),
 });
 export type FolioBalanceInput = z.infer<typeof FolioBalanceInputSchema>;
@@ -265,6 +287,10 @@ export const FolioBalanceOutputSchema = z.object({
 export type FolioBalanceOutput = z.infer<typeof FolioBalanceOutputSchema>;
 
 export const CreditRemainingInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	credit_limit: posAmt,
 	account_balance: posAmt,
 });
@@ -277,6 +303,10 @@ export const CreditRemainingOutputSchema = z.object({
 export type CreditRemainingOutput = z.infer<typeof CreditRemainingOutputSchema>;
 
 export const ArBreakdownInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	aging_buckets: z.array(posAmt),
 	account_balance_total: posAmt,
 	deposit_balance: posAmt.default(0),
@@ -294,6 +324,10 @@ export const ArBreakdownOutputSchema = z.object({
 export type ArBreakdownOutput = z.infer<typeof ArBreakdownOutputSchema>;
 
 export const EstimatedCheckoutInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	posted_charges: posAmt,
 	future_charges: posAmt,
 	posted_taxes: posAmt,
@@ -321,6 +355,10 @@ export type EstimatedCheckoutOutput = z.infer<
 // =====================================================
 
 export const SplitByReservationInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	total: posAmt,
 	reservation_count: posInt.min(2),
 });
@@ -338,6 +376,10 @@ export type SplitByReservationOutput = z.infer<
 >;
 
 export const SplitByGuestInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	total: posAmt,
 	overall_guest_count: posInt.min(1),
 	my_guests: posInt.min(1),
@@ -352,6 +394,10 @@ export const SplitByGuestOutputSchema = z.object({
 export type SplitByGuestOutput = z.infer<typeof SplitByGuestOutputSchema>;
 
 export const SplitComponentInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	component_rate: posAmt,
 	divisor: posInt.min(2),
 	is_primary: z.boolean(),
@@ -369,6 +415,10 @@ export type SplitComponentOutput = z.infer<typeof SplitComponentOutputSchema>;
 // =====================================================
 
 export const DepositEntireStayInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	percentage_of_stay: pct,
 	total_reservation_charge: posAmt,
 });
@@ -384,6 +434,10 @@ export type DepositEntireStayOutput = z.infer<
 >;
 
 export const DepositPerGuestInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	per_adult_rate: posAmt,
 	num_adults: posInt,
 	per_child_rate: posAmt.default(0),
@@ -397,6 +451,10 @@ export const DepositPerGuestOutputSchema = z.object({
 export type DepositPerGuestOutput = z.infer<typeof DepositPerGuestOutputSchema>;
 
 export const DepositCapInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	cumulative_schedule_total: posAmt,
 	total_reservation_charge: posAmt,
 	due_amount: posAmt,
@@ -487,6 +545,10 @@ export const CancellationPolicyTypeEnum = z.enum([
 ]);
 
 export const CancellationFeeInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	policy_type: CancellationPolicyTypeEnum,
 	nightly_rates: z.array(posAmt).min(1),
 	percentage: pct.optional(),
@@ -557,6 +619,10 @@ export type ForexConvertOutput = z.infer<typeof ForexConvertOutputSchema>;
 // =====================================================
 
 export const ProrationInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	daily_rate: posAmt,
 	hours: z.number().min(0).max(24).describe("Hours to prorate (0-24)"),
 	rounding: z.enum(["HALF_UP", "HALF_EVEN"]).default("HALF_UP"),
@@ -576,6 +642,10 @@ export const LosTierSchema = z.object({
 });
 
 export const LosTieredInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	tiers: z.array(LosTierSchema).min(1),
 	nights: posInt.min(1),
 });
@@ -589,6 +659,10 @@ export const LosTieredOutputSchema = z.object({
 export type LosTieredOutput = z.infer<typeof LosTieredOutputSchema>;
 
 export const DerivedRateInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	parent_rate: posAmt,
 	discount_percent: pct,
 });
@@ -605,6 +679,10 @@ export type DerivedRateOutput = z.infer<typeof DerivedRateOutputSchema>;
 // =====================================================
 
 export const AllowanceTrackInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	total_allowance: posAmt,
 	charges: z
 		.array(posAmt)
@@ -627,6 +705,10 @@ export const AllowanceTrackOutputSchema = z.object({
 export type AllowanceTrackOutput = z.infer<typeof AllowanceTrackOutputSchema>;
 
 export const EnhancementItemInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	default_price: posAmt,
 	quantity: posInt.min(1),
 	number_of_dates: posInt.min(1),
@@ -645,6 +727,10 @@ export const PackageAllocationComponentSchema = z.object({
 });
 
 export const PackageAllocationInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	package_rate: posAmt,
 	components: z.array(PackageAllocationComponentSchema).min(1),
 });
@@ -673,6 +759,10 @@ export type PackageAllocationOutput = z.infer<
 export const CompDiscountTypeEnum = z.enum(["PERCENTAGE", "AMOUNT"]);
 
 export const CompOfferInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	applicable_rate: posAmt,
 	discount_type: CompDiscountTypeEnum,
 	discount_value: z.number().nonnegative(),
@@ -686,6 +776,10 @@ export const CompOfferOutputSchema = z.object({
 export type CompOfferOutput = z.infer<typeof CompOfferOutputSchema>;
 
 export const CompBalanceInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	current_balance: posAmt,
 	comp_amount: posAmt,
 });
@@ -698,6 +792,10 @@ export const CompBalanceOutputSchema = z.object({
 export type CompBalanceOutput = z.infer<typeof CompBalanceOutputSchema>;
 
 export const CompRecalcInputSchema = z.object({
+	/** ISO 4217 code the amounts are denominated in. Drives the rounding
+	 * precision of every monetary field in the result — omit for the
+	 * 2-decimal default. */
+	currency: currencyCode.optional(),
 	old_amount_per_stay: posAmt,
 	old_balance: posAmt,
 	new_amount_per_stay: posAmt,

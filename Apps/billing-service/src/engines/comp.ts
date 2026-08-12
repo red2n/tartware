@@ -16,6 +16,7 @@ import type {
   CompRecalcInput,
   CompRecalcOutput,
 } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -25,6 +26,8 @@ import Decimal from "decimal.js";
  * compRate = max(applicableRate - discountAmount, 0)
  */
 export function calculateCompOffer(input: CompOfferInput): CompOfferOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const rate = new Decimal(input.applicable_rate);
   let discount: Decimal;
 
@@ -36,8 +39,8 @@ export function calculateCompOffer(input: CompOfferInput): CompOfferOutput {
 
   const compRate = Decimal.max(rate.minus(discount), 0);
   return {
-    comp_rate: compRate.toDecimalPlaces(2).toNumber(),
-    discount_amount: discount.toDecimalPlaces(2).toNumber(),
+    comp_rate: compRate.toDecimalPlaces(dp).toNumber(),
+    discount_amount: discount.toDecimalPlaces(dp).toNumber(),
   };
 }
 
@@ -46,9 +49,11 @@ export function calculateCompOffer(input: CompOfferInput): CompOfferOutput {
  * newBalance = currentBalance - compAmount.
  */
 export function updateCompBalance(input: CompBalanceInput): CompBalanceOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const newBalance = new Decimal(input.current_balance).minus(input.comp_amount);
   return {
-    new_balance: Decimal.max(newBalance, 0).toDecimalPlaces(2).toNumber(),
+    new_balance: Decimal.max(newBalance, 0).toDecimalPlaces(dp).toNumber(),
     fully_consumed: newBalance.lte(0),
   };
 }
@@ -59,10 +64,12 @@ export function updateCompBalance(input: CompBalanceInput): CompBalanceOutput {
  * newBalance = max(newAmountPerStay - redeemed, 0)
  */
 export function recalculateCompBalance(input: CompRecalcInput): CompRecalcOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const redeemed = new Decimal(input.old_amount_per_stay).minus(input.old_balance);
   const newBalance = Decimal.max(new Decimal(input.new_amount_per_stay).minus(redeemed), 0);
   return {
-    redeemed: redeemed.toDecimalPlaces(2).toNumber(),
-    new_balance: newBalance.toDecimalPlaces(2).toNumber(),
+    redeemed: redeemed.toDecimalPlaces(dp).toNumber(),
+    new_balance: newBalance.toDecimalPlaces(dp).toNumber(),
   };
 }

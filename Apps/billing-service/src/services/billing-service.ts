@@ -623,12 +623,36 @@ export const listCashierSessions = async (options: {
     shiftType,
   ]);
 
-  return rows;
+  return rows.map(normalizeCashierSessionRow);
+};
+
+/**
+ * Convert the NUMERIC columns of a raw cashier-session row to JS numbers.
+ *
+ * `pg` returns NUMERIC as a string that preserves the column's declared scale,
+ * so a DECIMAL(19,4) float reads as "500.0000". Passing that straight to a
+ * client leaks the storage scale into the API: the UI renders four decimals on
+ * a two-decimal currency, and any consumer comparing values as strings breaks.
+ *
+ * Money is emitted as a number and formatted per-currency at the edge, the same
+ * way every other billing list endpoint behaves.
+ */
+const normalizeCashierSessionRow = <T extends Record<string, unknown>>(row: T): T => {
+  const out: Record<string, unknown> = { ...row };
+  for (const [key, value] of Object.entries(out)) {
+    // pg only stringifies NUMERIC/DECIMAL; a numeric-looking string on any other
+    // column (session_number, terminal_id) would not round-trip, so restrict the
+    // coercion to values that are exactly a decimal literal.
+    if (typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value)) {
+      out[key] = Number(value);
+    }
+  }
+  return out as T;
 };
 
 export const getCashierSessionById = async (sessionId: string, tenantId: string) => {
   const { rows } = await query(CASHIER_SESSION_BY_ID_SQL, [sessionId, tenantId]);
-  return rows[0] ?? null;
+  return rows[0] ? normalizeCashierSessionRow(rows[0]) : null;
 };
 
 /**

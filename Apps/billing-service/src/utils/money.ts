@@ -17,8 +17,7 @@ import { getCurrencyExponent, roundToCurrency } from "@tartware/schemas";
 /** Optional ISO 4217 code; `undefined` means "assume the 2-decimal default". */
 type CurrencyCode = string | null | undefined;
 
-const minorUnitMultiplier = (currency: CurrencyCode): number =>
-  10 ** getCurrencyExponent(currency);
+const minorUnitMultiplier = (currency: CurrencyCode): number => 10 ** getCurrencyExponent(currency);
 
 /**
  * Convert a major-unit amount to whole minor units (cents, fils, yen).

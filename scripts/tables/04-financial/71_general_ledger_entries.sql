@@ -30,12 +30,12 @@ CREATE TABLE IF NOT EXISTS general_ledger_entries (
     description VARCHAR(255),
 
     -- Amounts
-    debit_amount DECIMAL(15,2) DEFAULT 0,
-    credit_amount DECIMAL(15,2) DEFAULT 0,
+    debit_amount DECIMAL(19,4) DEFAULT 0,
+    credit_amount DECIMAL(19,4) DEFAULT 0,
     currency CHAR(3) DEFAULT 'USD',
     exchange_rate DECIMAL(12,6) DEFAULT 1.0,
     base_currency CHAR(3) DEFAULT 'USD',
-    base_amount DECIMAL(15,2),
+    base_amount DECIMAL(19,4),
 
     -- Source Traceability
     source_table VARCHAR(50) CHECK (source_table IN ('charge_postings', 'payments', 'spa_appointments', 'banquet_event_orders', 'manual_adjustment', 'accounts_receivable', 'other')),
@@ -90,5 +90,7 @@ BEGIN
             )
         );
 END $$;
+
+
 
 \echo '✓ Table created: general_ledger_entries'

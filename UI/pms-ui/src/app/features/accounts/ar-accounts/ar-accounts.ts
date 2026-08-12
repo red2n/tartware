@@ -4,6 +4,7 @@ import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -99,6 +100,9 @@ export class ArAccountsComponent {
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
+	/** Public: templates bind `settings.amountDigits()` so money columns follow
+	 * the active property's ISO 4217 minor unit instead of a fixed 2 decimals. */
+	readonly settings = inject(SettingsService);
 
 	readonly paymentTerms = PAYMENT_TERMS;
 	readonly accountStatuses = ACCOUNT_STATUSES;
@@ -152,7 +156,9 @@ export class ArAccountsComponent {
 
 	readonly canSubmitCreate = computed(() => {
 		const f = this.createForm();
-		return f.company_id.trim().length > 0 && f.company_name.trim().length > 0 && f.credit_limit != null;
+		return (
+			f.company_id.trim().length > 0 && f.company_name.trim().length > 0 && f.credit_limit != null
+		);
 	});
 
 	/** update_terms takes only what changed; an empty form would be a no-op command. */

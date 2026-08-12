@@ -270,6 +270,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "Tax rules, jurisdictions, and rate configuration",
 			},
 			{
+				label: "Currency Config",
+				icon: "currency_exchange",
+				route: "/currency-config",
+				screenKey: "currency-config",
+				description: "Property base currencies and daily FX rates",
+			},
+			{
 				label: "Invoices",
 				icon: "description",
 				route: "/invoices",

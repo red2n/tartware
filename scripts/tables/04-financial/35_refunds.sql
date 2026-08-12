@@ -46,10 +46,10 @@ CREATE TABLE refunds (
     original_posting_id UUID, -- Charge being reversed
 
     -- Amounts
-    refund_amount DECIMAL(12, 2) NOT NULL,
-    original_payment_amount DECIMAL(12, 2),
-    processing_fee DECIMAL(10, 2) DEFAULT 0.00,
-    net_refund_amount DECIMAL(12, 2), -- After fees
+    refund_amount DECIMAL(19,4) NOT NULL,
+    original_payment_amount DECIMAL(19,4),
+    processing_fee DECIMAL(19,4) DEFAULT 0.00,
+    net_refund_amount DECIMAL(19,4), -- After fees
     currency_code CHAR(3) DEFAULT 'USD',
 
     -- Original Payment Details
@@ -140,7 +140,7 @@ CREATE TABLE refunds (
     is_full_refund BOOLEAN, -- TRUE if 100% refund
     refund_percentage DECIMAL(5, 2),
     is_taxable BOOLEAN DEFAULT FALSE,
-    tax_refunded DECIMAL(10, 2),
+    tax_refunded DECIMAL(19,4),
 
     -- Quality/Risk Flags
     is_disputed BOOLEAN DEFAULT FALSE,
@@ -252,4 +252,6 @@ GRANT SELECT, INSERT, UPDATE ON refunds TO tartware_app;
 \echo '  - Refund management'
 \echo '  - Approval workflow'
 \echo '  - Chargeback tracking'
+
+
 \echo ''

@@ -7,6 +7,7 @@ import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
@@ -37,6 +38,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 })
 export class RoomTypesComponent {
 	private readonly api = inject(ApiService);
+	readonly settings = inject(SettingsService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(AppDialogService);
@@ -182,6 +184,8 @@ export class RoomTypesComponent {
 	}
 
 	currencyLabel(amount: number, currency?: string): string {
-		return `${currency ?? "USD"} ${amount.toFixed(2)}`;
+		// Intl applies the currency's own ISO 4217 exponent, so a JPY rate reads
+		// ¥12,000 rather than "JPY 12000.00" and a KWD rate keeps three decimals.
+		return this.settings.formatCurrency(amount, currency);
 	}
 }

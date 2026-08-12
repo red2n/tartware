@@ -985,6 +985,132 @@ END;
 
 
 -- ═════════════════════════════════════════════════════════════
+-- PHASE 12: MULTI-CURRENCY READINESS (ACCT-13)
+-- ═════════════════════════════════════════════════════════════
+RAISE NOTICE '';
+RAISE NOTICE '═══ PHASE 12: MULTI-CURRENCY READINESS ═══';
+
+-- Monetary columns must hold the widest ISO 4217 exponent in use. Scale 2 is
+-- correct for most currencies but silently truncates the 3-decimal Gulf
+-- currencies (KWD, BHD, OMR) and 4-decimal funds currencies (CLF), so a
+-- narrow column is a data-loss defect rather than a style issue.
+--
+-- Percentages, tax rates and day-counts are excluded — they are not money.
+DECLARE
+    v_narrow INT;
+    v_detail TEXT;
+BEGIN
+    SELECT COUNT(*), COALESCE(string_agg(table_name || '.' || column_name, ', ' ORDER BY table_name, column_name), '')
+      INTO v_narrow, v_detail
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      -- Scale 1-3 identifies a decimal column too narrow for a 3- or 4-decimal
+      -- currency. Scale 0 is excluded on purpose: those are integer counters
+      -- (transaction counts, day terms), not money.
+      AND numeric_scale BETWEEN 1 AND 3
+      AND table_name IN (
+          'charge_postings', 'folios', 'invoices', 'accounts_receivable', 'refunds',
+          'payments', 'cashier_sessions', 'general_ledger_entries', 'general_ledger_batches',
+          'ar_city_ledger', 'credit_limits', 'folio_routing_rules'
+      )
+      -- Percentages, tax rates, quantities, scores and day-averages are not money.
+      AND column_name !~ '(_percent|_percentage|_rate$|rate_percent|threshold|quantity|_score|days_to_pay)';
+
+    IF v_narrow = 0 THEN
+        RAISE NOTICE '  ✓ All ledger money columns are DECIMAL(_,4) — 3- and 4-decimal currencies safe';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ % money column(s) below scale 4 — KWD/BHD/OMR amounts will truncate: %', v_narrow, left(v_detail, 400);
+        v_fail := v_fail + 1;
+    END IF;
+END;
+
+-- The FX rate table is what stops cross-currency postings falling back to a
+-- rate of 1.0, which records a foreign amount in the base ledger unconverted.
+DECLARE
+    v_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'fx_rates'
+    ) INTO v_exists;
+
+    IF v_exists THEN
+        RAISE NOTICE '  ✓ fx_rates table present';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ fx_rates table missing — cross-currency postings will not convert';
+        v_fail := v_fail + 1;
+    END IF;
+END;
+
+-- The unique constraint is what makes a same-day rate correction an update
+-- rather than a second, conflicting row for the same pair.
+DECLARE
+    v_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'uq_fx_rates_date_pair' AND conrelid = 'public.fx_rates'::regclass
+    ) INTO v_exists;
+
+    IF v_exists THEN
+        RAISE NOTICE '  ✓ fx_rates unique constraint (tenant, date, pair) present';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ uq_fx_rates_date_pair missing — rate corrections would duplicate rows';
+        v_fail := v_fail + 1;
+    END IF;
+EXCEPTION WHEN undefined_table THEN
+    RAISE WARNING '  ✗ fx_rates table missing — cannot check rate uniqueness';
+    v_fail := v_fail + 1;
+END;
+
+-- FX locking columns on the posting tables. Without these a posting cannot
+-- record which rate it was converted at, and the conversion is unauditable.
+DECLARE
+    v_missing TEXT := '';
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='charge_postings'
+                     AND column_name IN ('exchange_rate','base_amount','base_currency')
+                   GROUP BY table_name HAVING COUNT(*) = 3)
+    THEN v_missing := v_missing || 'charge_postings '; END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='payments'
+                     AND column_name IN ('exchange_rate','base_amount','base_currency')
+                   GROUP BY table_name HAVING COUNT(*) = 3)
+    THEN v_missing := v_missing || 'payments '; END IF;
+
+    IF v_missing = '' THEN
+        RAISE NOTICE '  ✓ FX lock columns (exchange_rate, base_amount, base_currency) present on postings and payments';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ FX lock columns missing on: %', v_missing;
+        v_fail := v_fail + 1;
+    END IF;
+END;
+
+-- Properties carry the base currency every conversion targets.
+DECLARE
+    v_bad INT;
+BEGIN
+    SELECT COUNT(*) INTO v_bad
+    FROM public.properties
+    WHERE currency IS NULL OR currency !~ '^[A-Z]{3}$';
+
+    IF v_bad = 0 THEN
+        RAISE NOTICE '  ✓ All properties carry a valid ISO 4217 base currency';
+        v_pass := v_pass + 1;
+    ELSE
+        RAISE WARNING '  ✗ % propert(ies) have a missing or malformed base currency', v_bad;
+        v_fail := v_fail + 1;
+    END IF;
+END;
+
+
+-- ═════════════════════════════════════════════════════════════
 -- FINAL REPORT
 -- ═════════════════════════════════════════════════════════════
 RAISE NOTICE '';

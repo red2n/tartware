@@ -1,6 +1,8 @@
+import { roundToCurrency } from "@tartware/schemas";
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
+
 import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
 import { debitAccountForPaymentMethod, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
@@ -123,17 +125,24 @@ const capturePayment = async (
 
     // ACCT-13: Lock FX rate at payment capture time.
     const paymentCurrency = currency.toUpperCase();
+    // Normalise the tendered amount to the currency's smallest unit before it
+    // reaches the ledger. A caller sending 30.6754 KWD or ¥100.50 is describing
+    // an amount that cannot be tendered; storing it verbatim would make the
+    // folio irreconcilable against cash.
+    const tenderedAmount = roundToCurrency(command.amount, paymentCurrency);
     const baseCurrency = await getPropertyBaseCurrency(
       client,
       context.tenantId,
       command.property_id,
     );
+    // Convert the normalised amount, not the raw input, so the base-currency
+    // figure reconciles exactly against what was recorded as tendered.
     const fxLock = await lockFxRate(
       client,
       context.tenantId,
       paymentCurrency,
       baseCurrency,
-      command.amount,
+      tenderedAmount,
     );
 
     const result = await queryWithClient<{ id: string }>(
@@ -211,7 +220,7 @@ const capturePayment = async (
         command.guest_id ?? null,
         command.payment_reference,
         command.payment_method,
-        command.amount,
+        tenderedAmount,
         paymentCurrency,
         command.gateway?.name ?? null,
         command.gateway?.reference ?? null,

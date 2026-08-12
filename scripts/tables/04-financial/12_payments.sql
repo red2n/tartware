@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS payments (
     processed_by VARCHAR(100),
 
     -- Refund Information
-    refund_amount DECIMAL(15,2) DEFAULT 0.00,
+    refund_amount DECIMAL(19,4) DEFAULT 0.00,
     refund_date TIMESTAMP,
     refund_reason TEXT,
     refunded_by VARCHAR(100),
@@ -145,11 +145,5 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_tenant_payment_reference
   ON payments (tenant_id, payment_reference);
 
--- ACCT-13 (minor units): widen the monetary columns on databases created before
--- multi-currency support. CREATE TABLE IF NOT EXISTS leaves an existing table
--- untouched, so the scale change has to be applied explicitly. Widening scale is
--- lossless, and ALTER TYPE to the current type is a no-op, so this is re-runnable.
-ALTER TABLE payments ALTER COLUMN amount      TYPE DECIMAL(19,4);
-ALTER TABLE payments ALTER COLUMN base_amount TYPE DECIMAL(19,4);
 
 \echo 'Payments table created successfully!'

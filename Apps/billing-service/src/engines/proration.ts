@@ -16,6 +16,7 @@ import type {
   ProrationInput,
   ProrationOutput,
 } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -23,9 +24,11 @@ import Decimal from "decimal.js";
  * fraction = hours / 24; prorated = dailyRate × fraction.
  */
 export function prorateDaily(input: ProrationInput): ProrationOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const fraction = new Decimal(input.hours).div(24);
   const rounding = input.rounding === "HALF_EVEN" ? Decimal.ROUND_HALF_EVEN : Decimal.ROUND_HALF_UP;
-  const prorated = new Decimal(input.daily_rate).times(fraction).toDecimalPlaces(2, rounding);
+  const prorated = new Decimal(input.daily_rate).times(fraction).toDecimalPlaces(dp, rounding);
   return {
     prorated_amount: prorated.toNumber(),
     fraction: fraction.toDecimalPlaces(6).toNumber(),
@@ -38,6 +41,8 @@ export function prorateDaily(input: ProrationInput): ProrationOutput {
  * Industry standard: Day 1-2: $X, Day 3+: $Y pattern.
  */
 export function calculateLosTiered(input: LosTieredInput): LosTieredOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const amounts: number[] = [];
   for (let night = 1; night <= input.nights; night++) {
     const tier = input.tiers.find(
@@ -45,13 +50,13 @@ export function calculateLosTiered(input: LosTieredInput): LosTieredOutput {
     );
     const lastTier = input.tiers[input.tiers.length - 1];
     const rate = tier ? new Decimal(tier.rate) : new Decimal(lastTier?.rate ?? 0);
-    amounts.push(rate.toDecimalPlaces(2).toNumber());
+    amounts.push(rate.toDecimalPlaces(dp).toNumber());
   }
   const total = amounts.reduce((sum, a) => sum.plus(a), new Decimal(0));
-  const avg = total.div(input.nights).toDecimalPlaces(2).toNumber();
+  const avg = total.div(input.nights).toDecimalPlaces(dp).toNumber();
   return {
     nightly_amounts: amounts,
-    total: total.toDecimalPlaces(2).toNumber(),
+    total: total.toDecimalPlaces(dp).toNumber(),
     average_nightly: avg,
   };
 }
@@ -61,10 +66,12 @@ export function calculateLosTiered(input: LosTieredInput): LosTieredOutput {
  * Industry standard: Member rate = BAR - 10%.
  */
 export function calculateDerivedRate(input: DerivedRateInput): DerivedRateOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const discount = new Decimal(input.parent_rate).times(input.discount_percent).div(100);
   const derived = new Decimal(input.parent_rate).minus(discount);
   return {
-    derived_rate: derived.toDecimalPlaces(2).toNumber(),
-    discount_amount: discount.toDecimalPlaces(2).toNumber(),
+    derived_rate: derived.toDecimalPlaces(dp).toNumber(),
+    discount_amount: discount.toDecimalPlaces(dp).toNumber(),
   };
 }

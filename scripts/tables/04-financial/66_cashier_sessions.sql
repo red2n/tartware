@@ -46,9 +46,9 @@ CREATE TABLE IF NOT EXISTS cashier_sessions (
     shift_type VARCHAR(50) CHECK (shift_type IN ('morning', 'afternoon', 'evening', 'night', 'full_day', 'custom')),
 
     -- Opening Float
-    opening_float_declared DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    opening_float_counted DECIMAL(12,2),
-    opening_float_variance DECIMAL(10,2),
+    opening_float_declared DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    opening_float_counted DECIMAL(19,4),
+    opening_float_variance DECIMAL(19,4),
 
     -- Currency
     base_currency VARCHAR(3) DEFAULT 'USD',
@@ -64,67 +64,67 @@ CREATE TABLE IF NOT EXISTS cashier_sessions (
     void_transactions INTEGER DEFAULT 0,
 
     -- Revenue by Payment Method
-    total_cash_received DECIMAL(12,2) DEFAULT 0.00,
-    total_card_received DECIMAL(12,2) DEFAULT 0.00,
-    total_bank_transfer DECIMAL(12,2) DEFAULT 0.00,
-    total_mobile_payment DECIMAL(12,2) DEFAULT 0.00,
-    total_other_payments DECIMAL(12,2) DEFAULT 0.00,
+    total_cash_received DECIMAL(19,4) DEFAULT 0.00,
+    total_card_received DECIMAL(19,4) DEFAULT 0.00,
+    total_bank_transfer DECIMAL(19,4) DEFAULT 0.00,
+    total_mobile_payment DECIMAL(19,4) DEFAULT 0.00,
+    total_other_payments DECIMAL(19,4) DEFAULT 0.00,
 
     -- Total Revenue
-    total_revenue DECIMAL(12,2) DEFAULT 0.00,
+    total_revenue DECIMAL(19,4) DEFAULT 0.00,
 
     -- Refunds/Returns
-    total_refunds DECIMAL(12,2) DEFAULT 0.00,
-    cash_refunds DECIMAL(12,2) DEFAULT 0.00,
-    card_refunds DECIMAL(12,2) DEFAULT 0.00,
+    total_refunds DECIMAL(19,4) DEFAULT 0.00,
+    cash_refunds DECIMAL(19,4) DEFAULT 0.00,
+    card_refunds DECIMAL(19,4) DEFAULT 0.00,
 
     -- Voids/Corrections
-    total_voids DECIMAL(12,2) DEFAULT 0.00,
+    total_voids DECIMAL(19,4) DEFAULT 0.00,
     void_count INTEGER DEFAULT 0,
 
     -- Net Revenue
-    net_revenue DECIMAL(12,2) DEFAULT 0.00,
+    net_revenue DECIMAL(19,4) DEFAULT 0.00,
 
     -- Cash Management
-    cash_in DECIMAL(12,2) DEFAULT 0.00,
-    cash_out DECIMAL(12,2) DEFAULT 0.00,
+    cash_in DECIMAL(19,4) DEFAULT 0.00,
+    cash_out DECIMAL(19,4) DEFAULT 0.00,
 
     cash_deposits INTEGER DEFAULT 0,
-    cash_deposits_amount DECIMAL(12,2) DEFAULT 0.00,
+    cash_deposits_amount DECIMAL(19,4) DEFAULT 0.00,
 
     cash_withdrawals INTEGER DEFAULT 0,
-    cash_withdrawals_amount DECIMAL(12,2) DEFAULT 0.00,
+    cash_withdrawals_amount DECIMAL(19,4) DEFAULT 0.00,
 
     -- Expected Closing Balance
-    expected_cash_balance DECIMAL(12,2),
-    expected_total_balance DECIMAL(12,2),
+    expected_cash_balance DECIMAL(19,4),
+    expected_total_balance DECIMAL(19,4),
 
     -- Actual Closing Count
-    closing_cash_declared DECIMAL(12,2),
-    closing_cash_counted DECIMAL(12,2),
-    closing_total_counted DECIMAL(12,2),
+    closing_cash_declared DECIMAL(19,4),
+    closing_cash_counted DECIMAL(19,4),
+    closing_total_counted DECIMAL(19,4),
 
     -- Cash Breakdown (Denominations)
     cash_breakdown JSONB, -- [{denomination, count, amount}]
 
     -- Variance
-    cash_variance DECIMAL(12,2),
+    cash_variance DECIMAL(19,4),
     cash_variance_percent DECIMAL(5,2),
 
-    total_variance DECIMAL(12,2),
+    total_variance DECIMAL(19,4),
     variance_reason TEXT,
 
     has_variance BOOLEAN DEFAULT FALSE,
     has_material_variance BOOLEAN DEFAULT FALSE,
-    variance_threshold DECIMAL(10,2) DEFAULT 10.00,
+    variance_threshold DECIMAL(19,4) DEFAULT 10.00,
 
     -- Card Payments Detail
     card_payment_breakdown JSONB, -- [{card_type, count, amount, fees}]
-    card_processing_fees DECIMAL(10,2) DEFAULT 0.00,
+    card_processing_fees DECIMAL(19,4) DEFAULT 0.00,
 
     -- Bank Deposit
     bank_deposit_prepared BOOLEAN DEFAULT FALSE,
-    bank_deposit_amount DECIMAL(12,2),
+    bank_deposit_amount DECIMAL(19,4),
     bank_deposit_date DATE,
     bank_deposit_slip_number VARCHAR(100),
     bank_deposited BOOLEAN DEFAULT FALSE,
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS cashier_sessions (
     -- Adjustments
     has_adjustments BOOLEAN DEFAULT FALSE,
     adjustment_count INTEGER DEFAULT 0,
-    adjustment_amount DECIMAL(12,2) DEFAULT 0.00,
+    adjustment_amount DECIMAL(19,4) DEFAULT 0.00,
     adjustments JSONB, -- [{type, amount, reason, authorized_by}]
 
     -- Exceptions
@@ -182,31 +182,31 @@ CREATE TABLE IF NOT EXISTS cashier_sessions (
 
     -- Petty Cash
     petty_cash_transactions INTEGER DEFAULT 0,
-    petty_cash_out DECIMAL(10,2) DEFAULT 0.00,
+    petty_cash_out DECIMAL(19,4) DEFAULT 0.00,
 
     -- Tips
-    tips_collected DECIMAL(10,2) DEFAULT 0.00,
-    tips_distributed DECIMAL(10,2) DEFAULT 0.00,
-    tips_outstanding DECIMAL(10,2) DEFAULT 0.00,
+    tips_collected DECIMAL(19,4) DEFAULT 0.00,
+    tips_distributed DECIMAL(19,4) DEFAULT 0.00,
+    tips_outstanding DECIMAL(19,4) DEFAULT 0.00,
 
     -- Coupons/Vouchers
     vouchers_redeemed INTEGER DEFAULT 0,
-    vouchers_amount DECIMAL(10,2) DEFAULT 0.00,
+    vouchers_amount DECIMAL(19,4) DEFAULT 0.00,
 
     -- Gift Cards
     gift_cards_sold INTEGER DEFAULT 0,
-    gift_cards_sold_amount DECIMAL(10,2) DEFAULT 0.00,
+    gift_cards_sold_amount DECIMAL(19,4) DEFAULT 0.00,
     gift_cards_redeemed INTEGER DEFAULT 0,
-    gift_cards_redeemed_amount DECIMAL(10,2) DEFAULT 0.00,
+    gift_cards_redeemed_amount DECIMAL(19,4) DEFAULT 0.00,
 
     -- Revenue Categories
-    room_revenue DECIMAL(12,2) DEFAULT 0.00,
-    food_beverage_revenue DECIMAL(12,2) DEFAULT 0.00,
-    service_revenue DECIMAL(12,2) DEFAULT 0.00,
-    other_revenue DECIMAL(12,2) DEFAULT 0.00,
+    room_revenue DECIMAL(19,4) DEFAULT 0.00,
+    food_beverage_revenue DECIMAL(19,4) DEFAULT 0.00,
+    service_revenue DECIMAL(19,4) DEFAULT 0.00,
+    other_revenue DECIMAL(19,4) DEFAULT 0.00,
 
     -- Taxes Collected
-    taxes_collected DECIMAL(12,2) DEFAULT 0.00,
+    taxes_collected DECIMAL(19,4) DEFAULT 0.00,
 
     -- Reports
     reports_generated BOOLEAN DEFAULT FALSE,
@@ -240,5 +240,7 @@ COMMENT ON TABLE cashier_sessions IS 'Manages cashier/till sessions with cash ha
 COMMENT ON COLUMN cashier_sessions.cash_breakdown IS 'JSON array of cash denominations: [{denomination, count, amount}]';
 COMMENT ON COLUMN cashier_sessions.payment_methods_summary IS 'JSON summary of all payment methods: [{method, count, amount, fees}]';
 COMMENT ON COLUMN cashier_sessions.has_material_variance IS 'Whether variance exceeds threshold requiring investigation';
+
+
 
 \echo 'cashier_sessions table created successfully!'

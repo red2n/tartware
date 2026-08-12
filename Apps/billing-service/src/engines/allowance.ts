@@ -16,6 +16,7 @@ import type {
   PackageAllocationInput,
   PackageAllocationOutput,
 } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -24,6 +25,8 @@ import Decimal from "decimal.js";
  * breakage = unused portion of allowance.
  */
 export function trackAllowance(input: AllowanceTrackInput): AllowanceTrackOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   let remaining = new Decimal(input.total_allowance);
   const chargeDetails: { covered: number; excess: number }[] = [];
 
@@ -35,7 +38,7 @@ export function trackAllowance(input: AllowanceTrackInput): AllowanceTrackOutput
     } else {
       chargeDetails.push({
         covered: remaining.toNumber(),
-        excess: chargeAmt.minus(remaining).toDecimalPlaces(2).toNumber(),
+        excess: chargeAmt.minus(remaining).toDecimalPlaces(dp).toNumber(),
       });
       remaining = new Decimal(0);
     }
@@ -43,9 +46,9 @@ export function trackAllowance(input: AllowanceTrackInput): AllowanceTrackOutput
 
   const spent = new Decimal(input.total_allowance).minus(remaining);
   return {
-    remaining: remaining.toDecimalPlaces(2).toNumber(),
-    spent: spent.toDecimalPlaces(2).toNumber(),
-    breakage: remaining.toDecimalPlaces(2).toNumber(),
+    remaining: remaining.toDecimalPlaces(dp).toNumber(),
+    spent: spent.toDecimalPlaces(dp).toNumber(),
+    breakage: remaining.toDecimalPlaces(dp).toNumber(),
     charges: chargeDetails,
   };
 }
@@ -55,11 +58,13 @@ export function trackAllowance(input: AllowanceTrackInput): AllowanceTrackOutput
  * perDateTotal = defaultPrice × quantity; grandTotal = perDateTotal × numberOfDates.
  */
 export function calculateEnhancementItem(input: EnhancementItemInput): EnhancementItemOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const perDate = new Decimal(input.default_price).times(input.quantity);
   const grand = perDate.times(input.number_of_dates);
   return {
-    per_date_total: perDate.toDecimalPlaces(2).toNumber(),
-    grand_total: grand.toDecimalPlaces(2).toNumber(),
+    per_date_total: perDate.toDecimalPlaces(dp).toNumber(),
+    grand_total: grand.toDecimalPlaces(dp).toNumber(),
   };
 }
 
@@ -68,6 +73,8 @@ export function calculateEnhancementItem(input: EnhancementItemInput): Enhanceme
  * Each component gets its share as a percentage of the total component value.
  */
 export function allocatePackageRevenue(input: PackageAllocationInput): PackageAllocationOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const componentTotal = input.components.reduce((sum, c) => sum.plus(c.amount), new Decimal(0));
 
   const allocations = input.components.map((comp) => {
@@ -79,8 +86,8 @@ export function allocatePackageRevenue(input: PackageAllocationInput): PackageAl
       : new Decimal(input.package_rate).times(comp.amount).div(componentTotal);
     return {
       name: comp.name,
-      amount: allocated.toDecimalPlaces(2).toNumber(),
-      percentage: pct.toDecimalPlaces(2).toNumber(),
+      amount: allocated.toDecimalPlaces(dp).toNumber(),
+      percentage: pct.toDecimalPlaces(dp).toNumber(),
     };
   });
 

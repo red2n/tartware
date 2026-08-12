@@ -79,6 +79,7 @@ export const COMMON_CURRENCIES: ReadonlyArray<{ code: string; name: string; symb
 	{ code: "INR", name: "Indian Rupee", symbol: "₹" },
 	{ code: "THB", name: "Thai Baht", symbol: "฿" },
 	{ code: "IDR", name: "Indonesian Rupiah", symbol: "Rp" },
+	{ code: "VND", name: "Vietnamese Dong", symbol: "₫" },
 	{ code: "MYR", name: "Malaysian Ringgit", symbol: "RM" },
 	{ code: "PHP", name: "Philippine Peso", symbol: "₱" },
 	{ code: "TWD", name: "Taiwan Dollar", symbol: "NT$" },
@@ -90,6 +91,13 @@ export const COMMON_CURRENCIES: ReadonlyArray<{ code: string; name: string; symb
 	{ code: "AED", name: "UAE Dirham", symbol: "د.إ" },
 	{ code: "SAR", name: "Saudi Riyal", symbol: "﷼" },
 	{ code: "QAR", name: "Qatari Riyal", symbol: "ر.ق" },
+	// Three-decimal currencies (1000 fils to the dinar). Their presence is the
+	// reason money is never formatted at a fixed 2 decimal places.
+	{ code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك" },
+	{ code: "BHD", name: "Bahraini Dinar", symbol: ".د.ب" },
+	{ code: "OMR", name: "Omani Rial", symbol: "ر.ع." },
+	{ code: "JOD", name: "Jordanian Dinar", symbol: "د.ا" },
+	{ code: "TND", name: "Tunisian Dinar", symbol: "د.ت" },
 	{ code: "ZAR", name: "South African Rand", symbol: "R" },
 	{ code: "EGP", name: "Egyptian Pound", symbol: "E£" },
 	{ code: "KES", name: "Kenyan Shilling", symbol: "KSh" },

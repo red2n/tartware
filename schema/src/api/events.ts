@@ -1137,6 +1137,8 @@ export const CashierSessionListItemSchema = z.object({
 	business_date: z.string(),
 	shift_type: z.string().optional(),
 	opening_float_declared: z.string(),
+	/** Property base currency the drawer is counted in (ISO 4217). */
+	base_currency: z.string().optional(),
 	total_transactions: z.number().int().optional(),
 	total_revenue: z.string().optional(),
 	total_refunds: z.string().optional(),

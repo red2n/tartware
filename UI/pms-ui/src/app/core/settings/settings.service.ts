@@ -1,9 +1,11 @@
-import { computed, effect, Injectable, signal } from "@angular/core";
+import { computed, effect, Injectable, inject, signal } from "@angular/core";
 
 import type { SettingsCatalogResponse, SettingsValuesResponse } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 
 import { ApiService } from "../api/api.service";
 import { AuthService } from "../auth/auth.service";
+import { TenantContextService } from "../context/tenant-context.service";
 
 /**
  * Provides reactive access to all tenant settings with automatic default fallback.
@@ -17,6 +19,8 @@ export class SettingsService {
 	private readonly _loaded = signal(false);
 
 	readonly loaded = this._loaded.asReadonly();
+
+	private readonly ctx = inject(TenantContextService);
 
 	constructor(
 		private readonly api: ApiService,
@@ -41,7 +45,10 @@ export class SettingsService {
 		this._map.set(new Map());
 		try {
 			const [catalog, values] = await Promise.all([
-				this.api.get<SettingsCatalogResponse>("/settings/catalog"),
+				// tenant_id is mandatory here, not optional: the server refuses to
+				// guess when the caller holds more than one active membership, so a
+				// multi-tenant user 400s without it.
+				this.api.get<SettingsCatalogResponse>("/settings/catalog", { tenant_id: tenantId }),
 				this.api.get<SettingsValuesResponse>("/settings/values", { tenant_id: tenantId }),
 			]);
 
@@ -84,8 +91,31 @@ export class SettingsService {
 	}
 
 	// ── Convenience signals ───────────────────────────────────────────────────
-	/** ISO 4217 currency code for the tenant (e.g. "USD"). */
-	readonly baseCurrency = computed(() => this.getString("property.base_currency", "USD"));
+	/**
+	 * ISO 4217 currency the money on screen is denominated in.
+	 *
+	 * Currency is a property attribute, not a tenant one: a group operating a
+	 * Tokyo and a Mumbai hotel has one tenant and two base currencies. The active
+	 * property therefore wins, and the tenant-level `property.base_currency`
+	 * setting is only the fallback for screens viewed before a property is
+	 * selected.
+	 */
+	readonly baseCurrency = computed(
+		() => this.ctx.activeProperty()?.currency || this.getString("property.base_currency", "USD"),
+	);
+
+	/**
+	 * Decimal places the active currency is denominated in (ISO 4217 exponent).
+	 * Exposed so templates can bind numeric formats instead of hardcoding `1.2-2`,
+	 * which renders ¥1,234.00 and truncates KWD to two of its three decimals.
+	 */
+	readonly currencyExponent = computed(() => getCurrencyExponent(this.baseCurrency()));
+
+	/** Angular `number` pipe digitsInfo for the active currency, e.g. "1.0-0" for JPY. */
+	readonly amountDigits = computed(() => {
+		const dp = this.currencyExponent();
+		return `1.${dp}-${dp}`;
+	});
 	/** BCP 47 locale for number/date display (e.g. "en-US"). */
 	readonly locale = computed(() => this.getString("property.locale", "en-US"));
 	/** Date format token: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD". */
@@ -205,10 +235,22 @@ export class SettingsService {
 	 * Falls back to USD if no currency is configured.
 	 */
 	formatCurrency(amount: number, currencyOverride?: string): string {
-		const currency = currencyOverride ?? this.baseCurrency();
+		const currency = currencyOverride || this.baseCurrency();
+		// `style: "currency"` makes Intl apply the currency's own ISO 4217
+		// exponent, so JPY renders as ¥1,235 and KWD keeps three decimals without
+		// any per-currency handling here. Do not pass explicit fraction digits.
 		return new Intl.NumberFormat(this.locale() || "en-US", {
 			style: "currency",
 			currency: currency || "USD",
 		}).format(amount);
+	}
+
+	/**
+	 * Digits format for a specific currency, for templates rendering a bare
+	 * number (no symbol) in a column that is already currency-labelled.
+	 */
+	digitsFor(currency?: string): string {
+		const dp = getCurrencyExponent(currency || this.baseCurrency());
+		return `1.${dp}-${dp}`;
 	}
 }
