@@ -2686,6 +2686,21 @@ echo ""
 # Reservations per property (screen 10 asks for at least 20).
 RES_PER_PROPERTY="${RES_PER_PROPERTY:-20}"
 
+# Per-screen seeders live in seeds/, one file per screen, so adding a screen is
+# a new file plus a call below rather than an edit inside this script. They are
+# sourced here — after the helpers above are defined — because each seeder is a
+# plain function that uses post/get/pass/skip/poll_count from this shell.
+# See seeds/README.md for the contract.
+SEEDS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/seeds"
+if [[ -d "$SEEDS_DIR" ]]; then
+  for _seed_file in "$SEEDS_DIR"/*.sh; do
+    [[ -e "$_seed_file" ]] || continue
+    # shellcheck source=/dev/null
+    source "$_seed_file"
+  done
+  unset _seed_file
+fi
+
 # ── 6c.1  Buildings (Availability → Buildings) ──────────────────────────
 # PROPERTY_SETUP tier — must precede rate/reservation seeding.
 echo "── 6c.1  Buildings ──────────────────────────────────────────────────"
@@ -3279,6 +3294,34 @@ check_room_block "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
 check_room_block "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
 echo ""
 
+# ── 6c.10  Registers & operational logs (seeds/) ────────────────────────
+# Screens that had no seeding at all and so always rendered empty: waitlist,
+# guest feedback, promo codes, lost & found, incidents, shift handovers and
+# accounts approvals. Each seeder lives in its own file under seeds/.
+echo "── 6c.10 Registers & Operational Logs ───────────────────────────────"
+
+seed_waitlist        "$TOKEN_A" "$TID_A" "$PID_A1" "$RTID_A1" "A1"
+seed_waitlist        "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "B1"
+
+seed_guest_feedback  "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_guest_feedback  "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_promo_codes     "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_promo_codes     "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_lost_and_found  "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_lost_and_found  "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_incidents       "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_incidents       "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_shift_handovers "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_shift_handovers "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_approvals       "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_approvals       "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+echo ""
+
 # ── 6c.9  Screen-readiness roll-up ──────────────────────────────────────
 # One assertion per UI screen the user reported empty.
 echo "── 6c.9  UI Screen Readiness ────────────────────────────────────────"
@@ -3375,6 +3418,20 @@ ui_get "10. Reservations A1"    "$TOKEN_A" "$GW/v1/reservations/grid?tenant_id=$
 ui_get "10. Reservations A2"    "$TOKEN_A" "$GW/v1/reservations/grid?tenant_id=$TID_A&limit=200&property_id=$PID_A2" "$RES_PER_PROPERTY"
 ui_get "10. Reservations B1"    "$TOKEN_B" "$GW/v1/reservations/grid?tenant_id=$TID_B&limit=200&property_id=$PID_B1" "$RES_PER_PROPERTY"
 ui_get "10. Reservations B2"    "$TOKEN_B" "$GW/v1/reservations/grid?tenant_id=$TID_B&limit=200&property_id=$PID_B2" "$RES_PER_PROPERTY"
+
+# 11-17. Registers and operational logs seeded by 6c.10. These rendered empty
+# because nothing ever wrote to them, not because the screens were mis-wired.
+ui_get "11. Reservations → Waitlist"   "$TOKEN_A" "$GW/v1/waitlist?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
+ui_get "12. Guests → Feedback"         "$TOKEN_A" "$GW/v1/guest-feedback?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 4
+ui_get "13. Revenue → Promo Codes"     "$TOKEN_A" "$GW/v1/promo-codes?tenant_id=$TID_A&limit=200" 3
+ui_get "14. Housekeeping → Lost&Found" "$TOKEN_A" "$GW/v1/lost-and-found?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 4
+ui_get "15. Housekeeping → Incidents"  "$TOKEN_A" "$GW/v1/incidents?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
+ui_get "16. Housekeeping → Handovers"  "$TOKEN_A" "$GW/v1/shift-handovers?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
+ui_get "17. Accounts → Approvals"      "$TOKEN_A" "$GW/v1/billing/approvals?tenant_id=$TID_A&limit=200" 3
+
+# 18. Accounts → AR Accounts. Unlike the above this table is already written by
+# the AR commands in Phase 1, so it is a read-path check only.
+ui_get "18. Accounts → AR Accounts"    "$TOKEN_A" "$GW/v1/billing/ar/accounts?tenant_id=$TID_A&limit=200" 3
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════

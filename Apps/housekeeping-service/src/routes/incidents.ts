@@ -228,8 +228,14 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
    * `incident_reports.created_by` is NOT NULL: an incident record whose author is
    * unknown is not worth having, so a request without an authenticated user is
    * refused rather than attributed to a placeholder.
+   *
+   * The actor lives on `request.auth.userId` — that is what the shared auth
+   * plugin decorates. This previously read a bare `request.userId`, which no
+   * plugin sets, so every write refused with "An authenticated user is
+   * required" no matter who called it and the register stayed empty.
    */
-  const requireActor = (request: { userId?: string }): string | null => request.userId ?? null;
+  const requireActor = (request: { auth?: { userId?: string | null } }): string | null =>
+    request.auth?.userId ?? null;
 
   app.post<{ Body: IncidentWriteBody }>(
     "/v1/incidents",
@@ -248,7 +254,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = IncidentWriteBodySchema.parse(request.body);
-      const actorId = requireActor(request as { userId?: string });
+      const actorId = requireActor(request);
       if (!actorId) {
         return reply.badRequest("An authenticated user is required to file an incident.");
       }
@@ -279,7 +285,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = IncidentUpdateBodySchema.parse(request.body);
-      const actorId = requireActor(request as { userId?: string });
+      const actorId = requireActor(request);
       if (!actorId) {
         return reply.badRequest("An authenticated user is required to amend an incident.");
       }
@@ -313,7 +319,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = IncidentStatusBodySchema.parse(request.body);
-      const actorId = requireActor(request as { userId?: string });
+      const actorId = requireActor(request);
       if (!actorId) {
         return reply.badRequest("An authenticated user is required to change incident status.");
       }

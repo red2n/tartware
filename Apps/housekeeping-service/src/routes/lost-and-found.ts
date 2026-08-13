@@ -1,4 +1,4 @@
-import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
+import { buildRouteSchema, jsonArraySchema, schemaFromZod } from "@tartware/openapi";
 import {
   ClaimLostAndFoundBodySchema,
   CreateLostAndFoundBodySchema,
@@ -61,6 +61,11 @@ export const registerLostAndFoundRoutes = (app: FastifyInstance): void => {
         description:
           "Retrieve lost & found items with filtering by status, category, and date range",
         querystring: ListQueryJsonSchema,
+        // A list route must declare its 200 explicitly: buildRouteSchema falls
+        // back to a plain object schema, and serialising an array against that
+        // yields {"0":{...},"1":{...}} instead of a JSON array — which every
+        // client, this suite included, reads as zero rows.
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -121,7 +126,7 @@ export const registerLostAndFoundRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = CreateLostAndFoundBodySchema.parse(request.body);
-      const userId = (request as { userId?: string }).userId;
+      const userId = request.auth.userId ?? undefined;
 
       const result = await createLostAndFoundItem({
         tenantId: body.tenant_id,
@@ -175,7 +180,7 @@ export const registerLostAndFoundRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const { itemId } = ItemParamsSchema.parse(request.params);
       const body = UpdateLostAndFoundBodySchema.parse(request.body);
-      const userId = (request as { userId?: string }).userId;
+      const userId = request.auth.userId ?? undefined;
       const { tenant_id, ...updates } = body;
 
       const item = await updateLostAndFoundItem({
@@ -209,7 +214,7 @@ export const registerLostAndFoundRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const { itemId } = ItemParamsSchema.parse(request.params);
       const body = ClaimLostAndFoundBodySchema.parse(request.body);
-      const userId = (request as { userId?: string }).userId;
+      const userId = request.auth.userId ?? undefined;
 
       const item = await claimLostAndFoundItem({
         itemId,
@@ -244,7 +249,7 @@ export const registerLostAndFoundRoutes = (app: FastifyInstance): void => {
     async (request, reply) => {
       const { itemId } = ItemParamsSchema.parse(request.params);
       const body = ReturnLostAndFoundBodySchema.parse(request.body);
-      const userId = (request as { userId?: string }).userId;
+      const userId = request.auth.userId ?? undefined;
 
       const item = await returnLostAndFoundItem({
         itemId,
