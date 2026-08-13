@@ -646,17 +646,17 @@ export type CreditStatus = z.infer<typeof CreditStatusEnum>;
  * @database group_booking_type
  */
 export const GroupBookingTypeEnum = z.enum([
-	"CONFERENCE",
-	"WEDDING",
-	"CORPORATE",
-	"TOUR_GROUP",
-	"SPORTS_TEAM",
-	"REUNION",
-	"CONVENTION",
-	"GOVERNMENT",
-	"AIRLINE_CREW",
-	"EDUCATIONAL",
-	"OTHER",
+	"conference",
+	"wedding",
+	"corporate",
+	"tour_group",
+	"sports_team",
+	"reunion",
+	"convention",
+	"government",
+	"airline_crew",
+	"educational",
+	"other",
 ]);
 export type GroupBookingType = z.infer<typeof GroupBookingTypeEnum>;
 
@@ -665,27 +665,27 @@ export type GroupBookingType = z.infer<typeof GroupBookingTypeEnum>;
  * @database group_block_status
  */
 export const GroupBlockStatusEnum = z.enum([
-	"INQUIRY",
-	"PROSPECT",
-	"TENTATIVE",
-	"DEFINITE",
-	"CONFIRMED",
-	"CANCELLED",
-	"TURNDOWN",
-	"COMPLETED",
+	"inquiry",
+	"prospect",
+	"tentative",
+	"definite",
+	"confirmed",
+	"cancelled",
+	"turndown",
+	"completed",
 ]);
 export type GroupBlockStatus = z.infer<typeof GroupBlockStatusEnum>;
 
 /** Human-readable descriptions for each group block status — intended for UI tooltips / help text. */
 export const GroupBlockStatusDescriptions: Record<GroupBlockStatus, string> = {
-	INQUIRY: "Initial contact — guest or planner is asking about availability.",
-	PROSPECT: "Qualified lead — sales team is actively working the deal.",
-	TENTATIVE: "Space held with a cutoff date, pending a signed contract.",
-	DEFINITE: "Contract signed — the group booking is confirmed.",
-	CONFIRMED: "Rooms have been picked and assigned to the group.",
-	CANCELLED: "Group booking was cancelled by the guest or planner.",
-	TURNDOWN: "Hotel declined the business (capacity, rate, or fit).",
-	COMPLETED: "Group stay is finished and all folios are closed.",
+	inquiry: "Initial contact — guest or planner is asking about availability.",
+	prospect: "Qualified lead — sales team is actively working the deal.",
+	tentative: "Space held with a cutoff date, pending a signed contract.",
+	definite: "Contract signed — the group booking is confirmed.",
+	confirmed: "Rooms have been picked and assigned to the group.",
+	cancelled: "Group booking was cancelled by the guest or planner.",
+	turndown: "Hotel declined the business (capacity, rate, or fit).",
+	completed: "Group stay is finished and all folios are closed.",
 };
 
 // =====================================================
@@ -697,15 +697,15 @@ export const GroupBlockStatusDescriptions: Record<GroupBlockStatus, string> = {
  * @database ml_model_type
  */
 export const MLModelTypeEnum = z.enum([
-	"LINEAR_REGRESSION",
-	"RANDOM_FOREST",
-	"GRADIENT_BOOSTING",
-	"NEURAL_NETWORK",
-	"LSTM",
-	"ENSEMBLE",
-	"PROPHET",
-	"ARIMA",
-	"OTHER",
+	"linear_regression",
+	"random_forest",
+	"gradient_boosting",
+	"neural_network",
+	"lstm",
+	"ensemble",
+	"prophet",
+	"arima",
+	"other",
 ]);
 export type MLModelType = z.infer<typeof MLModelTypeEnum>;
 
@@ -714,11 +714,11 @@ export type MLModelType = z.infer<typeof MLModelTypeEnum>;
  * @database pricing_action
  */
 export const PricingActionEnum = z.enum([
-	"INCREASE",
-	"DECREASE",
-	"HOLD",
-	"MANUAL_OVERRIDE",
-	"NONE",
+	"increase",
+	"decrease",
+	"hold",
+	"manual_override",
+	"none",
 ]);
 export type PricingAction = z.infer<typeof PricingActionEnum>;
 
@@ -727,10 +727,10 @@ export type PricingAction = z.infer<typeof PricingActionEnum>;
  * @database scenario_type
  */
 export const ScenarioTypeEnum = z.enum([
-	"BEST_CASE",
-	"WORST_CASE",
-	"MOST_LIKELY",
-	"CUSTOM",
+	"best_case",
+	"worst_case",
+	"most_likely",
+	"custom",
 ]);
 export type ScenarioType = z.infer<typeof ScenarioTypeEnum>;
 
@@ -743,11 +743,11 @@ export type ScenarioType = z.infer<typeof ScenarioTypeEnum>;
  * @database measurement_period
  */
 export const MeasurementPeriodEnum = z.enum([
-	"DAILY",
-	"WEEKLY",
-	"MONTHLY",
-	"QUARTERLY",
-	"YEARLY",
+	"daily",
+	"weekly",
+	"monthly",
+	"quarterly",
+	"yearly",
 ]);
 export type MeasurementPeriod = z.infer<typeof MeasurementPeriodEnum>;
 
@@ -756,10 +756,10 @@ export type MeasurementPeriod = z.infer<typeof MeasurementPeriodEnum>;
  * @database regulatory_compliance_status
  */
 export const RegulatoryComplianceStatusEnum = z.enum([
-	"COMPLIANT",
-	"NON_COMPLIANT",
-	"PENDING_REVIEW",
-	"NOT_APPLICABLE",
+	"compliant",
+	"non_compliant",
+	"pending_review",
+	"not_applicable",
 ]);
 export type RegulatoryComplianceStatus = z.infer<
 	typeof RegulatoryComplianceStatusEnum
@@ -770,12 +770,12 @@ export type RegulatoryComplianceStatus = z.infer<
  * @database certification_status
  */
 export const CertificationStatusEnum = z.enum([
-	"PURSUING",
-	"IN_PROGRESS",
-	"CERTIFIED",
-	"RECERTIFYING",
-	"LAPSED",
-	"DENIED",
+	"pursuing",
+	"in_progress",
+	"certified",
+	"recertifying",
+	"lapsed",
+	"denied",
 ]);
 export type CertificationStatus = z.infer<typeof CertificationStatusEnum>;
 
@@ -784,12 +784,12 @@ export type CertificationStatus = z.infer<typeof CertificationStatusEnum>;
  * @database certification_type
  */
 export const CertificationTypeEnum = z.enum([
-	"BUILDING",
-	"OPERATIONS",
-	"FOOD_SERVICE",
-	"MEETINGS",
-	"SPA",
-	"OVERALL",
+	"building",
+	"operations",
+	"food_service",
+	"meetings",
+	"spa",
+	"overall",
 ]);
 export type CertificationType = z.infer<typeof CertificationTypeEnum>;
 
@@ -798,13 +798,13 @@ export type CertificationType = z.infer<typeof CertificationTypeEnum>;
  * @database carbon_offset_program_type
  */
 export const CarbonOffsetProgramTypeEnum = z.enum([
-	"REFORESTATION",
-	"RENEWABLE_ENERGY",
-	"METHANE_CAPTURE",
-	"OCEAN_CLEANUP",
-	"WILDLIFE_CONSERVATION",
-	"COMMUNITY_PROJECT",
-	"OTHER",
+	"reforestation",
+	"renewable_energy",
+	"methane_capture",
+	"ocean_cleanup",
+	"wildlife_conservation",
+	"community_project",
+	"other",
 ]);
 export type CarbonOffsetProgramType = z.infer<
 	typeof CarbonOffsetProgramTypeEnum
@@ -815,16 +815,16 @@ export type CarbonOffsetProgramType = z.infer<
  * @database sustainability_initiative_category
  */
 export const SustainabilityInitiativeCategoryEnum = z.enum([
-	"ENERGY",
-	"WATER",
-	"WASTE",
-	"CARBON",
-	"BIODIVERSITY",
-	"COMMUNITY",
-	"PROCUREMENT",
-	"TRANSPORTATION",
-	"EDUCATION",
-	"OTHER",
+	"energy",
+	"water",
+	"waste",
+	"carbon",
+	"biodiversity",
+	"community",
+	"procurement",
+	"transportation",
+	"education",
+	"other",
 ]);
 export type SustainabilityInitiativeCategory = z.infer<
 	typeof SustainabilityInitiativeCategoryEnum
@@ -835,11 +835,11 @@ export type SustainabilityInitiativeCategory = z.infer<
  * @database initiative_status
  */
 export const InitiativeStatusEnum = z.enum([
-	"PLANNED",
-	"IN_PROGRESS",
-	"COMPLETED",
-	"ON_HOLD",
-	"CANCELLED",
+	"planned",
+	"in_progress",
+	"completed",
+	"on_hold",
+	"cancelled",
 ]);
 export type InitiativeStatus = z.infer<typeof InitiativeStatusEnum>;
 
@@ -852,27 +852,27 @@ export type InitiativeStatus = z.infer<typeof InitiativeStatusEnum>;
  * @database smart_device_type
  */
 export const SmartDeviceTypeEnum = z.enum([
-	"SMART_THERMOSTAT",
-	"SMART_LOCK",
-	"LIGHTING_CONTROL",
-	"CURTAIN_CONTROL",
-	"TV",
-	"VOICE_ASSISTANT",
-	"OCCUPANCY_SENSOR",
-	"MOTION_SENSOR",
-	"DOOR_SENSOR",
-	"WINDOW_SENSOR",
-	"SMOKE_DETECTOR",
-	"CO_DETECTOR",
-	"LEAK_DETECTOR",
-	"AIR_QUALITY_MONITOR",
-	"SMART_MIRROR",
-	"SMART_SHOWER",
-	"MINI_BAR_SENSOR",
-	"SAFE",
-	"ENERGY_MONITOR",
-	"HUB",
-	"OTHER",
+	"smart_thermostat",
+	"smart_lock",
+	"lighting_control",
+	"curtain_control",
+	"tv",
+	"voice_assistant",
+	"occupancy_sensor",
+	"motion_sensor",
+	"door_sensor",
+	"window_sensor",
+	"smoke_detector",
+	"co_detector",
+	"leak_detector",
+	"air_quality_monitor",
+	"smart_mirror",
+	"smart_shower",
+	"mini_bar_sensor",
+	"safe",
+	"energy_monitor",
+	"hub",
+	"other",
 ]);
 export type SmartDeviceType = z.infer<typeof SmartDeviceTypeEnum>;
 
@@ -881,14 +881,14 @@ export type SmartDeviceType = z.infer<typeof SmartDeviceTypeEnum>;
  * @database device_category
  */
 export const DeviceCategoryEnum = z.enum([
-	"CLIMATE_CONTROL",
-	"ACCESS_CONTROL",
-	"LIGHTING",
-	"ENTERTAINMENT",
-	"SECURITY",
-	"ENVIRONMENTAL",
-	"CONVENIENCE",
-	"ENERGY_MANAGEMENT",
+	"climate_control",
+	"access_control",
+	"lighting",
+	"entertainment",
+	"security",
+	"environmental",
+	"convenience",
+	"energy_management",
 ]);
 export type DeviceCategory = z.infer<typeof DeviceCategoryEnum>;
 
@@ -897,14 +897,14 @@ export type DeviceCategory = z.infer<typeof DeviceCategoryEnum>;
  * @database network_type
  */
 export const NetworkTypeEnum = z.enum([
-	"WIFI",
-	"ETHERNET",
-	"ZIGBEE",
-	"Z_WAVE",
-	"BLUETOOTH",
-	"THREAD",
-	"MATTER",
-	"PROPRIETARY",
+	"wifi",
+	"ethernet",
+	"zigbee",
+	"z_wave",
+	"bluetooth",
+	"thread",
+	"matter",
+	"proprietary",
 ]);
 export type NetworkType = z.infer<typeof NetworkTypeEnum>;
 
@@ -913,12 +913,12 @@ export type NetworkType = z.infer<typeof NetworkTypeEnum>;
  * @database device_status
  */
 export const DeviceStatusEnum = z.enum([
-	"ACTIVE",
-	"INACTIVE",
-	"MAINTENANCE",
-	"OFFLINE",
-	"ERROR",
-	"DECOMMISSIONED",
+	"active",
+	"inactive",
+	"maintenance",
+	"offline",
+	"error",
+	"decommissioned",
 ]);
 export type DeviceStatus = z.infer<typeof DeviceStatusEnum>;
 
@@ -927,10 +927,10 @@ export type DeviceStatus = z.infer<typeof DeviceStatusEnum>;
  * @database operational_status
  */
 export const OperationalStatusEnum = z.enum([
-	"NORMAL",
-	"WARNING",
-	"ERROR",
-	"CRITICAL",
+	"normal",
+	"warning",
+	"error",
+	"critical",
 ]);
 export type OperationalStatus = z.infer<typeof OperationalStatusEnum>;
 
@@ -939,11 +939,11 @@ export type OperationalStatus = z.infer<typeof OperationalStatusEnum>;
  * @database efficiency_rating
  */
 export const EfficiencyRatingEnum = z.enum([
-	"EXCELLENT",
-	"GOOD",
-	"AVERAGE",
-	"POOR",
-	"VERY_POOR",
+	"excellent",
+	"good",
+	"average",
+	"poor",
+	"very_poor",
 ]);
 export type EfficiencyRating = z.infer<typeof EfficiencyRatingEnum>;
 
@@ -959,18 +959,18 @@ export type HVACMode = z.infer<typeof HVACModeEnum>;
  * @database device_event_type
  */
 export const DeviceEventTypeEnum = z.enum([
-	"STATE_CHANGE",
-	"ACTIVATION",
-	"DEACTIVATION",
-	"ERROR",
-	"WARNING",
-	"MAINTENANCE",
-	"UPDATE",
-	"CONNECTION",
-	"DISCONNECTION",
-	"ALERT",
-	"GUEST_INTERACTION",
-	"AUTOMATION_TRIGGERED",
+	"state_change",
+	"activation",
+	"deactivation",
+	"error",
+	"warning",
+	"maintenance",
+	"update",
+	"connection",
+	"disconnection",
+	"alert",
+	"guest_interaction",
+	"automation_triggered",
 ]);
 export type DeviceEventType = z.infer<typeof DeviceEventTypeEnum>;
 
@@ -979,14 +979,14 @@ export type DeviceEventType = z.infer<typeof DeviceEventTypeEnum>;
  * @database event_trigger
  */
 export const EventTriggerEnum = z.enum([
-	"GUEST",
-	"STAFF",
-	"AUTOMATION",
-	"SCHEDULE",
-	"SENSOR",
-	"SYSTEM",
-	"API",
-	"VOICE_COMMAND",
+	"guest",
+	"staff",
+	"automation",
+	"schedule",
+	"sensor",
+	"system",
+	"api",
+	"voice_command",
 ]);
 export type EventTrigger = z.infer<typeof EventTriggerEnum>;
 
@@ -995,10 +995,10 @@ export type EventTrigger = z.infer<typeof EventTriggerEnum>;
  * @database event_severity
  */
 export const EventSeverityEnum = z.enum([
-	"INFO",
-	"WARNING",
-	"ERROR",
-	"CRITICAL",
+	"info",
+	"warning",
+	"error",
+	"critical",
 ]);
 export type EventSeverity = z.infer<typeof EventSeverityEnum>;
 
@@ -1011,20 +1011,20 @@ export type EventSeverity = z.infer<typeof EventSeverityEnum>;
  * @database asset_type
  */
 export const AssetTypeEnum = z.enum([
-	"FURNITURE",
-	"APPLIANCE",
-	"HVAC_EQUIPMENT",
-	"ELECTRONICS",
-	"KITCHEN_EQUIPMENT",
-	"LAUNDRY_EQUIPMENT",
-	"FITNESS_EQUIPMENT",
-	"POOL_EQUIPMENT",
-	"VEHICLE",
-	"IT_EQUIPMENT",
-	"LIGHTING_FIXTURE",
-	"PLUMBING_FIXTURE",
-	"ARTWORK",
-	"OTHER",
+	"furniture",
+	"appliance",
+	"hvac_equipment",
+	"electronics",
+	"kitchen_equipment",
+	"laundry_equipment",
+	"fitness_equipment",
+	"pool_equipment",
+	"vehicle",
+	"it_equipment",
+	"lighting_fixture",
+	"plumbing_fixture",
+	"artwork",
+	"other",
 ]);
 export type AssetType = z.infer<typeof AssetTypeEnum>;
 
@@ -1033,12 +1033,12 @@ export type AssetType = z.infer<typeof AssetTypeEnum>;
  * @database asset_category
  */
 export const AssetCategoryEnum = z.enum([
-	"GUEST_ROOM",
-	"PUBLIC_AREA",
-	"BACK_OF_HOUSE",
-	"FACILITY",
-	"GROUNDS",
-	"VEHICLE_FLEET",
+	"guest_room",
+	"public_area",
+	"back_of_house",
+	"facility",
+	"grounds",
+	"vehicle_fleet",
 ]);
 export type AssetCategory = z.infer<typeof AssetCategoryEnum>;
 
@@ -1047,17 +1047,17 @@ export type AssetCategory = z.infer<typeof AssetCategoryEnum>;
  * @database location_type
  */
 export const LocationTypeEnum = z.enum([
-	"ROOM",
-	"PUBLIC_SPACE",
-	"STORAGE",
-	"MAINTENANCE_AREA",
-	"KITCHEN",
-	"LAUNDRY",
-	"POOL",
-	"GYM",
-	"PARKING",
-	"OFFICE",
-	"OTHER",
+	"room",
+	"public_space",
+	"storage",
+	"maintenance_area",
+	"kitchen",
+	"laundry",
+	"pool",
+	"gym",
+	"parking",
+	"office",
+	"other",
 ]);
 export type LocationType = z.infer<typeof LocationTypeEnum>;
 
@@ -1066,12 +1066,12 @@ export type LocationType = z.infer<typeof LocationTypeEnum>;
  * @database asset_condition
  */
 export const AssetConditionEnum = z.enum([
-	"EXCELLENT",
-	"GOOD",
-	"FAIR",
-	"POOR",
-	"BROKEN",
-	"DECOMMISSIONED",
+	"excellent",
+	"good",
+	"fair",
+	"poor",
+	"broken",
+	"decommissioned",
 ]);
 export type AssetCondition = z.infer<typeof AssetConditionEnum>;
 
@@ -1080,10 +1080,10 @@ export type AssetCondition = z.infer<typeof AssetConditionEnum>;
  * @database depreciation_method
  */
 export const DepreciationMethodEnum = z.enum([
-	"STRAIGHT_LINE",
-	"DECLINING_BALANCE",
-	"SUM_OF_YEARS_DIGITS",
-	"NONE",
+	"straight_line",
+	"declining_balance",
+	"sum_of_years_digits",
+	"none",
 ]);
 export type DepreciationMethod = z.infer<typeof DepreciationMethodEnum>;
 
@@ -1092,13 +1092,13 @@ export type DepreciationMethod = z.infer<typeof DepreciationMethodEnum>;
  * @database maintenance_schedule
  */
 export const MaintenanceScheduleEnum = z.enum([
-	"DAILY",
-	"WEEKLY",
-	"MONTHLY",
-	"QUARTERLY",
-	"SEMI_ANNUAL",
-	"ANNUAL",
-	"AS_NEEDED",
+	"daily",
+	"weekly",
+	"monthly",
+	"quarterly",
+	"semi_annual",
+	"annual",
+	"as_needed",
 ]);
 export type MaintenanceSchedule = z.infer<typeof MaintenanceScheduleEnum>;
 
@@ -1119,13 +1119,13 @@ export type CriticalityLevel = z.infer<typeof CriticalityLevelEnum>;
  * @database asset_status
  */
 export const AssetStatusEnum = z.enum([
-	"ACTIVE",
-	"INACTIVE",
-	"IN_MAINTENANCE",
-	"OUT_OF_SERVICE",
-	"DISPOSED",
-	"LOST",
-	"STOLEN",
+	"active",
+	"inactive",
+	"in_maintenance",
+	"out_of_service",
+	"disposed",
+	"lost",
+	"stolen",
 ]);
 export type AssetStatus = z.infer<typeof AssetStatusEnum>;
 
@@ -1134,11 +1134,11 @@ export type AssetStatus = z.infer<typeof AssetStatusEnum>;
  * @database disposal_method
  */
 export const DisposalMethodEnum = z.enum([
-	"SOLD",
-	"DONATED",
-	"RECYCLED",
-	"TRASHED",
-	"RETURNED_TO_VENDOR",
+	"sold",
+	"donated",
+	"recycled",
+	"trashed",
+	"returned_to_vendor",
 ]);
 export type DisposalMethod = z.infer<typeof DisposalMethodEnum>;
 
@@ -1147,14 +1147,14 @@ export type DisposalMethod = z.infer<typeof DisposalMethodEnum>;
  * @database predictive_alert_type
  */
 export const PredictiveAlertTypeEnum = z.enum([
-	"PREDICTIVE_FAILURE",
-	"PERFORMANCE_DEGRADATION",
-	"ANOMALY_DETECTED",
-	"MAINTENANCE_DUE",
-	"WARRANTY_EXPIRING",
-	"CERTIFICATION_EXPIRING",
-	"END_OF_LIFE",
-	"EXCESSIVE_USAGE",
+	"predictive_failure",
+	"performance_degradation",
+	"anomaly_detected",
+	"maintenance_due",
+	"warranty_expiring",
+	"certification_expiring",
+	"end_of_life",
+	"excessive_usage",
 ]);
 export type PredictiveAlertType = z.infer<typeof PredictiveAlertTypeEnum>;
 
@@ -1163,11 +1163,11 @@ export type PredictiveAlertType = z.infer<typeof PredictiveAlertTypeEnum>;
  * @database alert_severity
  */
 export const AlertSeverityEnum = z.enum([
-	"INFO",
-	"LOW",
-	"MEDIUM",
-	"HIGH",
-	"CRITICAL",
+	"info",
+	"low",
+	"medium",
+	"high",
+	"critical",
 ]);
 export type AlertSeverity = z.infer<typeof AlertSeverityEnum>;
 
@@ -1183,11 +1183,11 @@ export type ImpactLevel = z.infer<typeof ImpactLevelEnum>;
  * @database action_urgency
  */
 export const ActionUrgencyEnum = z.enum([
-	"IMMEDIATE",
-	"WITHIN_24_HOURS",
-	"WITHIN_WEEK",
-	"WITHIN_MONTH",
-	"MONITOR",
+	"immediate",
+	"within_24_hours",
+	"within_week",
+	"within_month",
+	"monitor",
 ]);
 export type ActionUrgency = z.infer<typeof ActionUrgencyEnum>;
 
@@ -1196,13 +1196,13 @@ export type ActionUrgency = z.infer<typeof ActionUrgencyEnum>;
  * @database alert_status
  */
 export const AlertStatusEnum = z.enum([
-	"ACTIVE",
-	"ACKNOWLEDGED",
-	"SCHEDULED",
-	"IN_PROGRESS",
-	"RESOLVED",
-	"FALSE_POSITIVE",
-	"DISMISSED",
+	"active",
+	"acknowledged",
+	"scheduled",
+	"in_progress",
+	"resolved",
+	"false_positive",
+	"dismissed",
 ]);
 export type AlertStatus = z.infer<typeof AlertStatusEnum>;
 
@@ -1211,14 +1211,14 @@ export type AlertStatus = z.infer<typeof AlertStatusEnum>;
  * @database maintenance_type
  */
 export const MaintenanceTypeEnum = z.enum([
-	"PREVENTIVE",
-	"CORRECTIVE",
-	"PREDICTIVE",
-	"EMERGENCY",
-	"ROUTINE_INSPECTION",
-	"CALIBRATION",
-	"UPGRADE",
-	"REPLACEMENT",
+	"preventive",
+	"corrective",
+	"predictive",
+	"emergency",
+	"routine_inspection",
+	"calibration",
+	"upgrade",
+	"replacement",
 ]);
 export type MaintenanceType = z.infer<typeof MaintenanceTypeEnum>;
 
@@ -1227,10 +1227,10 @@ export type MaintenanceType = z.infer<typeof MaintenanceTypeEnum>;
  * @database service_provider_type
  */
 export const ServiceProviderTypeEnum = z.enum([
-	"INTERNAL_STAFF",
-	"EXTERNAL_VENDOR",
-	"MANUFACTURER",
-	"WARRANTY_SERVICE",
+	"internal_staff",
+	"external_vendor",
+	"manufacturer",
+	"warranty_service",
 ]);
 export type ServiceProviderType = z.infer<typeof ServiceProviderTypeEnum>;
 
@@ -1239,10 +1239,10 @@ export type ServiceProviderType = z.infer<typeof ServiceProviderTypeEnum>;
  * @database prediction_accuracy
  */
 export const PredictionAccuracyEnum = z.enum([
-	"ACCURATE",
-	"EARLY",
-	"LATE",
-	"FALSE_POSITIVE",
+	"accurate",
+	"early",
+	"late",
+	"false_positive",
 ]);
 export type PredictionAccuracy = z.infer<typeof PredictionAccuracyEnum>;
 

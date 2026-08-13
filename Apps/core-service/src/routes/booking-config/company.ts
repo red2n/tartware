@@ -2,9 +2,11 @@ import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/
 import type { CompanyUpdateBody, CompanyWriteBody } from "@tartware/schemas";
 import {
   CompanyListItemSchema,
+  type CompanyType,
   CompanyTypeEnum,
   CompanyUpdateBodySchema,
   CompanyWriteBodySchema,
+  type CreditStatus,
   CreditStatusEnum,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
@@ -28,7 +30,9 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       .string()
       .toLowerCase()
       .optional()
-      .refine((val) => !val || CompanyTypeEnum.options.map((t) => t.toLowerCase()).includes(val), {
+      // CompanyTypeEnum now carries the constraint's own lowercase values, so
+      // there is nothing left to fold here.
+      .refine((val) => !val || CompanyTypeEnum.options.includes(val as CompanyType), {
         message: "Invalid company type",
       }),
     is_active: z.coerce.boolean().optional(),
@@ -36,12 +40,9 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       .string()
       .toLowerCase()
       .optional()
-      .refine(
-        (val) => !val || CreditStatusEnum.options.map((s: string) => s.toLowerCase()).includes(val),
-        {
-          message: "Invalid credit status",
-        },
-      ),
+      .refine((val) => !val || CreditStatusEnum.options.includes(val as CreditStatus), {
+        message: "Invalid credit status",
+      }),
     is_blacklisted: z.coerce.boolean().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
     offset: z.coerce.number().int().min(0).default(0),

@@ -23,7 +23,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS night_audit_log CASCADE;
 
-CREATE TABLE night_audit_log (
+CREATE TABLE IF NOT EXISTS night_audit_log (
     -- Primary Key
     audit_log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

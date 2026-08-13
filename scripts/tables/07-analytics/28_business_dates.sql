@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS business_dates CASCADE;
 
-CREATE TABLE business_dates (
+CREATE TABLE IF NOT EXISTS business_dates (
     -- Primary Key
     business_date_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

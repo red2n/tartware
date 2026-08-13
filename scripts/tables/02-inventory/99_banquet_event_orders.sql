@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS banquet_event_orders CASCADE;
 
-CREATE TABLE banquet_event_orders (
+CREATE TABLE IF NOT EXISTS banquet_event_orders (
     -- Primary Key
     beo_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique BEO identifier
 

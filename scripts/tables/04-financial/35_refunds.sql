@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS refunds CASCADE;
 
-CREATE TABLE refunds (
+CREATE TABLE IF NOT EXISTS refunds (
     -- Primary Key
     refund_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

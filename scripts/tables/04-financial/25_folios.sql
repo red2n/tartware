@@ -23,7 +23,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS folios CASCADE;
 
-CREATE TABLE folios (
+CREATE TABLE IF NOT EXISTS folios (
     -- Primary Key
     folio_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

@@ -114,7 +114,7 @@ And two findings the audit did not make at all:
 | 06 | Incident log — **✅ closed 2026-08-13**: module gate fixed (was 403 for every tenant), detail contract fixed, UI shipped | [06-incidents.md](06-incidents.md) | UI | done |
 | 07 | Lost & found — **✅ shipped 2026-08-13**: duplicate deleted, gateway repointed, UI built | [07-lost-and-found.md](07-lost-and-found.md) | UI+cleanup | done |
 | 08 | Front-desk shift handovers — **✅ write path + UI shipped 2026-08-13** | [08-shift-handovers.md](08-shift-handovers.md) | Backend+UI | done |
-| 09 | Guest feedback — **✅ write path + staff inbox shipped 2026-08-13**; portal intake still open | [09-guest-feedback.md](09-guest-feedback.md) | Backend+UI | part |
+| 09 | Guest feedback — **✅ closed 2026-08-13**: write path, staff inbox and guest-portal intake all shipped | [09-guest-feedback.md](09-guest-feedback.md) | Backend+UI | done |
 
 ### P2 — Commercial Surfaces (4 gaps)
 
@@ -224,7 +224,7 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
 12. ~~COV-06, COV-08, COV-09, COV-14 step 1~~ — **done 2026-08-13.** Three write paths added, all
     plain HTTP per COV-18's rule, plus the channel-health screen over commands that already existed.
 13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** Then COV-18 (remainder), COV-13,
-    COV-16's allotments, COV-14's CRUD half and COV-09's portal intake
+    COV-16's allotments, COV-14's CRUD half
 14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
 
 **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
@@ -233,20 +233,28 @@ describes a write that already exists as plain HTTP on the owning service. Keepi
 meant two write paths for one table, one of which silently drops every message. That discharges most
 of COV-18's third acceptance criterion.
 
-**A recurring defect worth naming: schema enums drifting from their CHECK constraints.** Measured
-2026-08-13: **~53 unused enums** in `schema/` disagree with an apparent constraint, and **3 live call
-sites already compensate** with `.options.map(t => t.toLowerCase())` — `CompanyTypeEnum` and
-`CreditStatusEnum` in `booking-config/company.ts`, `TaxTypeEnum` in `finance-admin.ts`. Named
-instances so far: `CompanyTypeEnum`, `LostFoundStatusEnum` (COV-07), `ShiftHandoverStatusEnum`
-(COV-08), `PromotionalCodeStatusEnum` and `PromotionalCodeDiscountTypeEnum` (COV-16).
+**Schema enums drifting from their CHECK constraints — ✅ closed 2026-08-13.**
 
-**It is not purely cosmetic.** COV-16 found three list filters comparing `UPPER($n)` against
-lowercase CHECK columns, which matched nothing — the drift reaching live SQL.
+Found in five specs (COV-07, COV-08, COV-16 twice, plus `CompanyTypeEnum`), then measured across the
+repo: **41 enums** whose value set matched a constraint modulo case, and **3 live call sites** papering
+over it with `.options.map(t => t.toLowerCase())` — `CompanyTypeEnum`, `CreditStatusEnum`, `TaxTypeEnum`.
 
-**A conformance test was tried and rejected**: enum→column matching is only heuristic, and the fuzzy
-version paired `TenantStatusEnum` with `membership_status` and `SettingsValueStatusEnum` with
-`warranty_status`. A test that cries wolf is worse than none. The tractable fix is to delete the
-unused enums and let the three live ones carry the constraint's own case.
+**It was not cosmetic.** COV-16 found three list filters comparing `UPPER($n)` against lowercase CHECK
+columns, matching nothing — the drift reaching live SQL.
+
+**Fixed by aligning, not deleting.** The earlier note here recommended deleting the unused ones; that
+was wrong. Most carry `@database <column>` annotations, so they are meant to be the canonical enum for
+that column — deleting them invites the next author to re-invent them in UPPERCASE, which is how this
+started. 38 were rewritten to the constraint's exact spelling (plus a companion label map keyed by the
+old values), the 3 live call sites dropped their `.toLowerCase()` folding, and all 20 projects
+typecheck. Three were left alone (`InAppNotificationPriorityEnum`, `CriticalityLevelEnum`,
+`ImpactLevelEnum`): several constraints share their value set with different spellings, so the column
+pairing is ambiguous and wants a human decision.
+
+**No conformance test.** One was built and thrown away: enum→column matching is only heuristic, and the
+fuzzy version paired `TenantStatusEnum` with `membership_status` and `SettingsValueStatusEnum` with
+`warranty_status`. A test that cries wolf is worse than none. The alignment above removes the standing
+defect; a future guard would need an explicit enum↔column annotation to be trustworthy.
 
 **Third guardrail added 2026-08-13** — `tenant-scope-module-conformance.test.ts` asserts every
 `requiredModules:` literal in `Apps/*/src` is a real `MODULE_IDS` entry. It was written after finding

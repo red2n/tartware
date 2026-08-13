@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS event_bookings CASCADE;
 
-CREATE TABLE event_bookings (
+CREATE TABLE IF NOT EXISTS event_bookings (
     -- Primary Key
     event_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique event identifier
 

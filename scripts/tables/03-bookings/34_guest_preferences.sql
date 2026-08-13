@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS guest_preferences CASCADE;
 
-CREATE TABLE guest_preferences (
+CREATE TABLE IF NOT EXISTS guest_preferences (
     -- Primary Key
     preference_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

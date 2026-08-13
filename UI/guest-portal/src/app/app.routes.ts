@@ -27,6 +27,10 @@ export const routes: Routes = [
 		loadComponent: () => import("./pages/checkout/checkout").then((m) => m.CheckoutPage),
 	},
 	{
+		path: "feedback",
+		loadComponent: () => import("./pages/feedback/feedback").then((m) => m.FeedbackPage),
+	},
+	{
 		path: "rewards",
 		loadComponent: () => import("./pages/rewards/rewards").then((m) => m.RewardsPage),
 	},

@@ -20,7 +20,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS booking_sources CASCADE;
 
-CREATE TABLE booking_sources (
+CREATE TABLE IF NOT EXISTS booking_sources (
     -- Primary Key
     source_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

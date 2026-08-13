@@ -189,6 +189,42 @@ export class GuestApiService {
 		return res.json();
 	}
 
+	/**
+	 * Submit post-stay feedback.
+	 *
+	 * The confirmation code is the credential — the server resolves it to the
+	 * reservation and derives guest, property and stay from it, so the portal never
+	 * sends a guest_id it could not prove.
+	 * See ui-gaps/09-guest-feedback.md.
+	 */
+	async submitFeedback(body: {
+		tenant_id: string;
+		confirmation_code: string;
+		review_text: string;
+		review_title?: string;
+		overall_rating?: number;
+		cleanliness_rating?: number;
+		staff_rating?: number;
+		location_rating?: number;
+		value_rating?: number;
+		would_recommend?: boolean;
+		would_return?: boolean;
+	}): Promise<{ message: string }> {
+		const res = await fetch(`${this.baseUrl}/feedback`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		if (res.status === 404) {
+			throw new Error("We could not find a booking with that confirmation code.");
+		}
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({}));
+			throw new Error(err.message ?? `Could not send feedback: ${res.statusText}`);
+		}
+		return res.json();
+	}
+
 	async getRedemptions(params: {
 		tenant_id: string;
 		guest_id?: string;

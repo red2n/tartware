@@ -622,6 +622,66 @@ export const createGuestFeedback = async (
 };
 
 /**
+ * Log feedback submitted through the guest portal.
+ *
+ * The confirmation code is the credential — the portal is unauthenticated, so a
+ * caller-supplied `guest_id` would let anyone attribute feedback to any guest.
+ * Guest, property and stay are derived from the reservation the code resolves to,
+ * and the source is fixed to GUEST_PORTAL rather than being caller-settable.
+ *
+ * Returns null when the code matches nothing; the route reports that as a 404
+ * without echoing whether the code merely belongs to another tenant.
+ */
+export const createSelfServiceFeedback = async (
+  tenantId: string,
+  input: {
+    confirmationCode: string;
+    reviewText: string;
+    reviewTitle?: string;
+    overallRating?: number;
+    cleanlinessRating?: number;
+    staffRating?: number;
+    locationRating?: number;
+    valueRating?: number;
+    wouldRecommend?: boolean;
+    wouldReturn?: boolean;
+  },
+): Promise<GuestFeedbackListItem | null> => {
+  const { rows } = await query<{ id: string; guest_id: string; property_id: string }>(
+    `SELECT r.id, r.guest_id, r.property_id
+       FROM public.reservations r
+      WHERE r.tenant_id = $1::uuid
+        AND UPPER(r.confirmation_number) = UPPER($2)
+        AND COALESCE(r.is_deleted, false) = false
+        AND r.deleted_at IS NULL
+      LIMIT 1`,
+    [tenantId, input.confirmationCode],
+  );
+
+  const reservation = rows[0];
+  if (!reservation) return null;
+
+  return createGuestFeedback(tenantId, {
+    propertyId: reservation.property_id,
+    feedbackSource: "GUEST_PORTAL",
+    reviewText: input.reviewText,
+    guestId: reservation.guest_id,
+    reservationId: reservation.id,
+    reviewTitle: input.reviewTitle,
+    overallRating: input.overallRating,
+    ratingScale: 5,
+    cleanlinessRating: input.cleanlinessRating,
+    staffRating: input.staffRating,
+    locationRating: input.locationRating,
+    valueRating: input.valueRating,
+    wouldRecommend: input.wouldRecommend,
+    wouldReturn: input.wouldReturn,
+    // Guest-submitted text is not published until someone has read it.
+    isPublic: false,
+  });
+};
+
+/**
  * Triage: categorise, set sentiment, assign an owner, adjust publication.
  *
  * `COALESCE` keeps the stored value when a field is absent, so a screen can send

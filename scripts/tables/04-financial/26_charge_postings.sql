@@ -26,7 +26,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS charge_postings CASCADE;
 
-CREATE TABLE charge_postings (
+CREATE TABLE IF NOT EXISTS charge_postings (
     -- Primary Key
     posting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

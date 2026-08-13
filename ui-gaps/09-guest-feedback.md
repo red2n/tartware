@@ -2,7 +2,7 @@
 
 **Priority:** P1 | **Risk:** 🟡 MEDIUM | **Type:** Backend + UI | **Effort:** M
 
-> ## ✅ Write path + staff UI shipped 2026-08-13 (portal intake still open)
+> ## ✅ Closed 2026-08-13 — write path, staff inbox and portal intake
 >
 > **Two things in the table made the spec's design impossible**, both fixed:
 >
@@ -34,11 +34,29 @@
 > UI at `UI/pms-ui/src/app/features/guests/feedback/`, routed at `/guests/feedback` ahead of
 > `guests/:guestId`, which would otherwise match `feedback` as an id.
 >
-> **Still open:** §2, the guest-portal intake endpoint. The portal is unauthenticated guest context and
-> must not call `/v1/guest-feedback` directly, so this needs `POST /v1/self-service/feedback` fanning
-> out to the same store — see [11](11-self-service-coverage.md). Until then feedback is staff-entered
-> and OTA/survey-imported only. Also deferred: KPI tiles (§3.5), guest-profile integration (§3.6), and
-> the `notification.automated.create` overlap check (§4).
+> ### ✅ §2 portal intake shipped 2026-08-13
+>
+> `POST /v1/self-service/feedback`, registered on **core-service** rather than guests-service, which
+> owns every other self-service path — because core-service owns `guest_feedback`, and a second writer
+> would be the duplicate-surface pattern [07](07-lost-and-found.md) and [04](04-duplicate-ar-surface.md)
+> had to unpick. The gateway routes this one self-service path to core with the guest-facing write
+> rate-limit tier; the proxy-conformance test confirms it resolves.
+>
+> **The confirmation code is the credential.** The portal is unauthenticated, so a caller-supplied
+> `guest_id` would let anyone attribute feedback to any guest. The server resolves the code to a
+> reservation and derives guest, property and stay from it; `feedback_source` is fixed to
+> `GUEST_PORTAL` rather than being settable. Guest submissions land `is_public = false` — nothing a
+> guest writes is published before a human reads it — and the response is a plain acknowledgement, not
+> the stored record, which carries internal triage fields.
+>
+> Portal page at `UI/guest-portal/src/app/pages/feedback/`, routed at `/feedback`: star ratings for
+> overall plus the four sub-scores, title, free text, and would-recommend / would-return. Unset
+> ratings are omitted rather than sent as a genuine score of zero, and the two intent flags stay
+> absent when the guest has not answered — "not asked" is not "no".
+>
+> **Still open:** KPI tiles (§3.5), guest-profile integration (§3.6), and the
+> `notification.automated.create` overlap check (§4) — a post-stay survey trigger likely belongs there
+> rather than as new machinery here.
 >
 > **Not yet exercised against a live stack**, and the new columns need
 > `psql -f scripts/tables/03-bookings/43_guest_feedback.sql` run against an existing database.

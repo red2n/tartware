@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS meeting_rooms CASCADE;
 
-CREATE TABLE meeting_rooms (
+CREATE TABLE IF NOT EXISTS meeting_rooms (
     -- Primary Key
     room_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique function space identifier
 

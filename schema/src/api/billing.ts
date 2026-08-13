@@ -339,15 +339,15 @@ export type TaxType = z.infer<typeof TaxTypeEnum>;
  * Tax calculation method enum.
  */
 export const TaxCalculationMethodEnum = z.enum([
-	"INCLUSIVE",
-	"EXCLUSIVE",
-	"COMPOUND",
-	"CASCADING",
-	"ADDITIVE",
-	"TIERED",
-	"PROGRESSIVE",
-	"FLAT",
-	"CUSTOM",
+	"inclusive",
+	"exclusive",
+	"compound",
+	"cascading",
+	"additive",
+	"tiered",
+	"progressive",
+	"flat",
+	"custom",
 ]);
 export type TaxCalculationMethod = z.infer<typeof TaxCalculationMethodEnum>;
 

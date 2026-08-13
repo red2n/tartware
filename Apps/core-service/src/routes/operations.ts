@@ -13,6 +13,7 @@ import type {
   PoliceReportStatusBody,
   PoliceReportUpdateBody,
   PoliceReportWriteBody,
+  SelfServiceFeedbackBody,
   ShiftHandoverAcknowledgeBody,
   ShiftHandoverUpdateBody,
   ShiftHandoverWriteBody,
@@ -25,6 +26,7 @@ import {
   PoliceReportStatusBodySchema,
   PoliceReportUpdateBodySchema,
   PoliceReportWriteBodySchema,
+  SelfServiceFeedbackBodySchema,
   ShiftHandoverAcknowledgeBodySchema,
   ShiftHandoverUpdateBodySchema,
   ShiftHandoverWriteBodySchema,
@@ -35,6 +37,7 @@ import {
   acknowledgeShiftHandover,
   createGuestFeedback,
   createPoliceReport,
+  createSelfServiceFeedback,
   createShiftHandover,
   getBanquetOrderById,
   getCashierSessionById,
@@ -806,6 +809,48 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
       }
 
       return reply.send({ data: feedback, message: "Response recorded" });
+    },
+  );
+
+  /**
+   * Guest-portal intake. Registered on core-service because it owns
+   * `guest_feedback`; a second writer in guests-service would be the
+   * duplicate-surface pattern this backlog keeps having to unpick.
+   * See ui-gaps/09-guest-feedback.md.
+   */
+  fastify.post(
+    "/v1/self-service/feedback",
+    {
+      schema: {
+        summary: "Submit guest feedback from the guest portal",
+        description:
+          "Unauthenticated. The confirmation code is the credential: guest, property and stay are derived from the reservation it resolves to, and the source is fixed to GUEST_PORTAL.",
+        tags: ["Guest Feedback"],
+        body: schemaFromZod(SelfServiceFeedbackBodySchema, "SelfServiceFeedbackBody"),
+      },
+    },
+    async (request: FastifyRequest<{ Body: SelfServiceFeedbackBody }>, reply: FastifyReply) => {
+      const body = SelfServiceFeedbackBodySchema.parse(request.body);
+      const feedback = await createSelfServiceFeedback(body.tenant_id, {
+        confirmationCode: body.confirmation_code,
+        reviewText: body.review_text,
+        reviewTitle: body.review_title,
+        overallRating: body.overall_rating,
+        cleanlinessRating: body.cleanliness_rating,
+        staffRating: body.staff_rating,
+        locationRating: body.location_rating,
+        valueRating: body.value_rating,
+        wouldRecommend: body.would_recommend,
+        wouldReturn: body.would_return,
+      });
+
+      if (!feedback) {
+        return reply.notFound("No reservation found for that confirmation code");
+      }
+
+      // The guest gets an acknowledgement, not the stored record — it carries
+      // internal triage fields they have no business seeing.
+      return reply.status(201).send({ message: "Thank you — your feedback has been recorded." });
     },
   );
 

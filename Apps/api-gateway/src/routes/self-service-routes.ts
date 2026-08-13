@@ -24,6 +24,14 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
   const proxySelfService = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestsServiceUrl);
 
+  /**
+   * Feedback is the one self-service path that does not live in guests-service:
+   * core-service owns `guest_feedback`, and a second writer would repeat the
+   * duplicate-surface pattern from ui-gaps/07 and ui-gaps/04.
+   */
+  const proxyCoreSelfService = async (request: FastifyRequest, reply: FastifyReply) =>
+    proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+
   // Rate-limit tiers for guest-facing routes (no JWT — auth via confirmation code downstream)
   const selfServiceWriteLimit = {
     rateLimit: {
@@ -37,6 +45,22 @@ export const registerSelfServiceRoutes = (app: FastifyInstance): void => {
       timeWindow: gatewayConfig.rateLimit.commandTimeWindow,
     },
   };
+
+  // ─── Feedback ─────────────────────────────────────────────
+
+  app.post(
+    "/v1/self-service/feedback",
+    {
+      config: selfServiceWriteLimit,
+      schema: buildRouteSchema({
+        tag: SELF_SERVICE_PROXY_TAG,
+        summary: "Submit guest feedback after a stay.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCoreSelfService,
+  );
 
   // ─── Check-In Routes ──────────────────────────────────────
 

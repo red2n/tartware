@@ -20,7 +20,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS allotments CASCADE;
 
-CREATE TABLE allotments (
+CREATE TABLE IF NOT EXISTS allotments (
     -- Primary Key
     allotment_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

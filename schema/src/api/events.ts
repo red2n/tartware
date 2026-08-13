@@ -496,14 +496,14 @@ export type WaitlistEntryListResponse = z.infer<
  * Group booking status enum matching database constraints.
  */
 export const GroupBookingStatusEnum = z.enum([
-	"INQUIRY",
-	"PROSPECT",
-	"TENTATIVE",
-	"DEFINITE",
-	"CONFIRMED",
-	"CANCELLED",
-	"TURNDOWN",
-	"COMPLETED",
+	"inquiry",
+	"prospect",
+	"tentative",
+	"definite",
+	"confirmed",
+	"cancelled",
+	"turndown",
+	"completed",
 ]);
 export type GroupBookingStatus = z.infer<typeof GroupBookingStatusEnum>;
 
@@ -1678,6 +1678,32 @@ export const GuestFeedbackWriteBodySchema = z.object({
 });
 
 export type GuestFeedbackWriteBody = z.infer<typeof GuestFeedbackWriteBodySchema>;
+
+/**
+ * Guest-portal feedback intake.
+ *
+ * The portal is unauthenticated guest context, so it must not call
+ * `/v1/guest-feedback` directly with a caller-supplied `guest_id` — anyone could
+ * then attribute feedback to any guest. The confirmation code is the credential:
+ * the server resolves it to the reservation and derives guest, property and stay
+ * from that. Same pattern as self-service check-in and checkout.
+ * See ui-gaps/09-guest-feedback.md and ui-gaps/11-self-service-coverage.md.
+ */
+export const SelfServiceFeedbackBodySchema = z.object({
+	tenant_id: uuid,
+	confirmation_code: z.string().min(4).max(50),
+	review_text: z.string().min(1).max(5000),
+	review_title: z.string().max(500).optional(),
+	overall_rating: z.coerce.number().min(0).max(10).optional(),
+	cleanliness_rating: z.coerce.number().min(0).max(10).optional(),
+	staff_rating: z.coerce.number().min(0).max(10).optional(),
+	location_rating: z.coerce.number().min(0).max(10).optional(),
+	value_rating: z.coerce.number().min(0).max(10).optional(),
+	would_recommend: z.boolean().optional(),
+	would_return: z.boolean().optional(),
+});
+
+export type SelfServiceFeedbackBody = z.infer<typeof SelfServiceFeedbackBodySchema>;
 
 /** Triage: categorise, set sentiment, assign an owner, adjust publication. */
 export const GuestFeedbackUpdateBodySchema = z.object({
