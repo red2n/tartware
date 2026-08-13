@@ -121,7 +121,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 13 | Sales & catering — banquet orders, meeting rooms, event bookings | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | L |
-| 14 | Channel / distribution — **✅ channel health screen shipped 2026-08-13** (4 existing commands wired); CRUD half open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
+| 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
 

@@ -30,8 +30,56 @@
 > The actions answer 202 — the work happens on the bus — so the screen reports acceptance and the
 > operator refreshes, rather than being shown a fake success.
 >
-> **Still open:** the CRUD half (§2) — connections, booking sources, market segments all still have no
-> write path — plus the mapping editor (§3.3), connections admin (§3.4) and metasearch (§3.6).
+> ## ✅ §2 CRUD shipped 2026-08-13 — and "OTA connections" is not a domain
+>
+> ### `/v1/ota-connections` is a projection of `channel_mappings`
+>
+> **There is no `ota_connections` table.** `OTA_CONNECTION_LIST_SQL` selects from `channel_mappings`
+> with `id as ota_connection_id`, `entity_type as channel_type`, `last_sync_status as
+> connection_status`. So `/v1/ota-connections` and `/v1/channel-mappings` are two presentations of the
+> same rows.
+>
+> This spec asks for `POST /v1/ota-connections` **and** channel-mapping create/delete alongside the
+> existing `integration.mapping.update` command — three write paths onto one table, which is the
+> duplicate-surface pattern [04](04-duplicate-ar-surface.md) and [07](07-lost-and-found.md) had to
+> unpick. Not built. Instead:
+>
+> - **`integration.mapping.update` wrapped** at `POST /v1/tenants/:tenantId/channels/mapping-update`.
+>   It was implemented and unwrapped, like the four in step 1. Editing a mapping fans out to OTA sync,
+>   which is [18](18-write-path-gap.md)'s test for command-over-HTTP, so the command is the right
+>   mechanism and no HTTP CRUD was added beside it.
+> - **The connections view stays read-only** — it is a projection, and giving a projection its own
+>   writes is how the two surfaces would drift apart.
+>
+> Credential handling (§2's "never return secrets on read") turns out to be moot: there are no
+> credential columns on `channel_mappings`. Whatever holds OTA credentials today is not this table,
+> and finding it is a separate question.
+>
+> ### Booking sources and market segments (reference data → plain HTTP)
+>
+> `POST/PUT/DELETE` for both on core-service, bare `POST`s at the gateway, and the two wildcard proxies
+> switched from query-only to query-or-body scoping — they would otherwise have refused every
+> body-shaped write, the recurring trap.
+>
+> - Codes are **not editable** on either. Reservations carry `source_code` and `segment_code`, and
+>   production reporting groups on them, so rewriting one orphans history.
+> - Delete is a soft delete that also clears `is_bookable`: historic reservations still reference the
+>   row for reporting, but nothing new should be able to pick it.
+> - Retiring a market segment is **refused with 409 while sub-segments point at it** — orphaning them
+>   would leave rows whose `segment_level` describes a hierarchy that no longer exists.
+> - `segment_level` is derived from the parent at creation rather than being caller-supplied, and
+>   re-parenting is deliberately not offered, since it would leave the level stale.
+> - Performance columns (bookings, revenue, conversion) are absent from both write bodies — a
+>   caller-supplied booking count is how channel-production reporting stops meaning anything.
+>
+> §2's own note that market segments are "already load-bearing for reporting" understated it:
+> `/v1/reports/market-segment-production` has been grouping by a dimension **nothing could populate**.
+>
+> UI at `UI/pms-ui/src/app/features/settings/distribution/`, routed at `/settings/distribution` under
+> the existing `settings` screen key — this spec is right that these belong in settings rather than
+> their own area.
+>
+> **Still open:** the mapping editor UI (§3.3), connections admin (§3.4) and metasearch (§3.6).
 > **Not yet exercised against a live stack**, and the new screen key needs
 > `psql -f scripts/tables/01-core/22_role_screen_permissions_seed.sql` (idempotent) before it appears
 > in the sidebar.

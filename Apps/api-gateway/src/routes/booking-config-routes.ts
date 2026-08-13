@@ -89,10 +89,26 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  // Creating reference data POSTs to the bare path, which the wildcard does not
+  // match, and the body carries tenant_id. See ui-gaps/14-channel-distribution.md.
+  app.post(
+    "/v1/booking-sources",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create a booking source.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/booking-sources/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy booking source operations to core service.",
@@ -115,10 +131,24 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  app.post(
+    "/v1/market-segments",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create a market segment.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/market-segments/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy market segment operations to core service.",
@@ -478,6 +508,22 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     "/v1/tenants/:tenantId/channels/webhook-retry",
     "Retry a failed inbound webhook delivery via the Command Center.",
     "integration.webhook.retry",
+  );
+
+  /**
+   * Mapping edits go through the command bus, not HTTP.
+   *
+   * `channel_mappings` is the one table behind both `/v1/channel-mappings` and
+   * `/v1/ota-connections` — the latter is a projection of the same rows, not a
+   * separate domain, so there is no `ota_connections` table to give CRUD to.
+   * Editing a mapping fans out to OTA sync, which is COV-18's test for command
+   * rather than HTTP, and `integration.mapping.update` already implements it —
+   * it simply had no wrapper. See ui-gaps/14-channel-distribution.md.
+   */
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/mapping-update",
+    "Update a channel ↔ room-type mapping via the Command Center.",
+    "integration.mapping.update",
   );
 
   // Metasearch Configurations - CPC/CPA bid management

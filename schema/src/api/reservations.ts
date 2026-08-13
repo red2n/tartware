@@ -339,6 +339,103 @@ export const BookingSourceListItemSchema = z.object({
 
 export type BookingSourceListItem = z.infer<typeof BookingSourceListItemSchema>;
 
+/** Commission basis, matching the `commission_type` CHECK constraint. */
+export const CommissionTypeEnum = z.enum(["PERCENTAGE", "FIXED", "TIERED", "NONE"]);
+
+export type CommissionType = z.infer<typeof CommissionTypeEnum>;
+
+/**
+ * Create a booking source.
+ *
+ * Performance columns (`total_bookings`, `total_revenue`, `conversion_rate` and
+ * the rest) are machine-maintained and deliberately absent: a caller-supplied
+ * booking count is how channel-production reporting stops meaning anything.
+ *
+ * `source_code` is unique per (tenant, property) and stored as typed — it is what
+ * reservations carry, so folding its case would orphan existing rows.
+ */
+export const BookingSourceWriteBodySchema = z
+	.object({
+		tenant_id: uuid,
+		property_id: uuid.optional(),
+		source_code: z
+			.string()
+			.min(2)
+			.max(50)
+			.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+		source_name: z.string().min(1).max(200),
+		source_type: BookingSourceTypeEnum,
+		category: z.string().max(50).optional(),
+		sub_category: z.string().max(50).optional(),
+		is_active: z.boolean().optional(),
+		is_bookable: z.boolean().optional(),
+		channel_name: z.string().max(200).optional(),
+		channel_website: z.string().max(500).optional(),
+		channel_manager: z.string().max(100).optional(),
+		commission_type: CommissionTypeEnum.optional(),
+		commission_percentage: z.coerce.number().min(0).max(100).optional(),
+		commission_fixed_amount: z.coerce.number().nonnegative().optional(),
+		commission_notes: z.string().optional(),
+		ranking: z.coerce.number().int().optional(),
+		is_preferred: z.boolean().optional(),
+	})
+	.refine(
+		(body) => body.commission_type !== "PERCENTAGE" || body.commission_percentage != null,
+		{
+			message: "commission_percentage is required for a percentage commission",
+			path: ["commission_percentage"],
+		},
+	)
+	.refine((body) => body.commission_type !== "FIXED" || body.commission_fixed_amount != null, {
+		message: "commission_fixed_amount is required for a fixed commission",
+		path: ["commission_fixed_amount"],
+	});
+
+export type BookingSourceWriteBody = z.infer<typeof BookingSourceWriteBodySchema>;
+
+/** Edit a booking source. `source_code` is fixed — reservations reference it. */
+export const BookingSourceUpdateBodySchema = z.object({
+	tenant_id: uuid,
+	source_name: z.string().min(1).max(200).optional(),
+	source_type: BookingSourceTypeEnum.optional(),
+	category: z.string().max(50).optional(),
+	sub_category: z.string().max(50).optional(),
+	is_active: z.boolean().optional(),
+	is_bookable: z.boolean().optional(),
+	channel_name: z.string().max(200).optional(),
+	channel_website: z.string().max(500).optional(),
+	channel_manager: z.string().max(100).optional(),
+	commission_type: CommissionTypeEnum.optional(),
+	commission_percentage: z.coerce.number().min(0).max(100).optional(),
+	commission_fixed_amount: z.coerce.number().nonnegative().optional(),
+	commission_notes: z.string().optional(),
+	ranking: z.coerce.number().int().optional(),
+	is_preferred: z.boolean().optional(),
+});
+
+export type BookingSourceUpdateBody = z.infer<typeof BookingSourceUpdateBodySchema>;
+
+/** Service-layer input for a booking source write, per AGENTS.md. */
+export type BookingSourceWriteInput = {
+	sourceCode: string;
+	sourceName: string;
+	sourceType: string;
+	propertyId?: string;
+	category?: string;
+	subCategory?: string;
+	isActive?: boolean;
+	isBookable?: boolean;
+	channelName?: string;
+	channelWebsite?: string;
+	channelManager?: string;
+	commissionType?: string;
+	commissionPercentage?: number;
+	commissionFixedAmount?: number;
+	commissionNotes?: string;
+	ranking?: number;
+	isPreferred?: boolean;
+};
+
 /**
  * Booking source list response schema.
  */
@@ -440,6 +537,57 @@ export const MarketSegmentListItemSchema = z.object({
 });
 
 export type MarketSegmentListItem = z.infer<typeof MarketSegmentListItemSchema>;
+
+/**
+ * Create a market segment.
+ *
+ * `/v1/reports/market-segment-production` already reads these, so segments are
+ * load-bearing for reporting before anything can create one — the report has been
+ * grouping by a dimension nobody could populate. Volume and behaviour columns are
+ * machine-maintained and not settable.
+ */
+export const MarketSegmentWriteBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid.optional(),
+	segment_code: z
+		.string()
+		.min(2)
+		.max(50)
+		.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+	segment_name: z.string().min(1).max(200),
+	segment_type: MarketSegmentTypeEnum,
+	is_active: z.boolean().optional(),
+	is_bookable: z.boolean().optional(),
+	parent_segment_id: uuid.optional(),
+	rate_multiplier: z.coerce.number().positive().optional(),
+});
+
+export type MarketSegmentWriteBody = z.infer<typeof MarketSegmentWriteBodySchema>;
+
+/** Edit a market segment. `segment_code` is fixed — reservations reference it. */
+export const MarketSegmentUpdateBodySchema = z.object({
+	tenant_id: uuid,
+	segment_name: z.string().min(1).max(200).optional(),
+	segment_type: MarketSegmentTypeEnum.optional(),
+	is_active: z.boolean().optional(),
+	is_bookable: z.boolean().optional(),
+	parent_segment_id: uuid.optional(),
+	rate_multiplier: z.coerce.number().positive().optional(),
+});
+
+export type MarketSegmentUpdateBody = z.infer<typeof MarketSegmentUpdateBodySchema>;
+
+/** Service-layer input for a market segment write, per AGENTS.md. */
+export type MarketSegmentWriteInput = {
+	segmentCode: string;
+	segmentName: string;
+	segmentType: string;
+	propertyId?: string;
+	isActive?: boolean;
+	isBookable?: boolean;
+	parentSegmentId?: string;
+	rateMultiplier?: number;
+};
 
 /**
  * Market segment list response schema.

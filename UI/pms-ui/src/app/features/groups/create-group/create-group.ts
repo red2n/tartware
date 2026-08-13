@@ -80,10 +80,10 @@ export class CreateGroupComponent {
 	];
 
 	readonly blockStatuses = [
-		{ value: "inquiry", label: "Inquiry", description: GroupBlockStatusDescriptions.INQUIRY },
-		{ value: "prospect", label: "Prospect", description: GroupBlockStatusDescriptions.PROSPECT },
-		{ value: "tentative", label: "Tentative", description: GroupBlockStatusDescriptions.TENTATIVE },
-		{ value: "definite", label: "Definite", description: GroupBlockStatusDescriptions.DEFINITE },
+		{ value: "inquiry", label: "Inquiry", description: GroupBlockStatusDescriptions.inquiry },
+		{ value: "prospect", label: "Prospect", description: GroupBlockStatusDescriptions.prospect },
+		{ value: "tentative", label: "Tentative", description: GroupBlockStatusDescriptions.tentative },
+		{ value: "definite", label: "Definite", description: GroupBlockStatusDescriptions.definite },
 	];
 
 	get selectedStatusDescription(): string {

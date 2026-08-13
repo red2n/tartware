@@ -461,6 +461,13 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
 				description: "OTA connection status, sync history and recovery actions",
 			},
 			{
+				label: "Distribution",
+				icon: "hub",
+				route: "/settings/distribution",
+				screenKey: "settings",
+				description: "Booking sources and market segments",
+			},
+			{
 				label: "Police reports",
 				icon: "local_police",
 				route: "/compliance/police-reports",

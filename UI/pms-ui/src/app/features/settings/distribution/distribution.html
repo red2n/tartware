@@ -1,0 +1,335 @@
+<app-page-header
+  title="Distribution settings"
+  description="Booking sources and market segments — where business comes from, and how it is classified.">
+  @if (tab() === 'sources') {
+    <button class="btn btn-primary btn-sm" (click)="openCreateSource()" [disabled]="submitting()">
+      <app-icon name="add" /> New source
+    </button>
+  } @else {
+    <button class="btn btn-primary btn-sm" (click)="openCreateSegment()" [disabled]="submitting()">
+      <app-icon name="add" /> New segment
+    </button>
+  }
+</app-page-header>
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="ds-tab">Showing</label>
+    <select class="field-input" id="ds-tab" [ngModel]="tab()" (ngModelChange)="tab.set($event)">
+      <option value="sources">Booking sources</option>
+      <option value="segments">Market segments</option>
+    </select>
+  </div>
+</div>
+
+@if (retireTarget(); as target) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="block" />
+      <h3 class="confirm-title">Retire {{ target.label }}?</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        It stops being selectable for new bookings. Existing reservations keep referencing it, so
+        production reporting stays intact.
+      </p>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelRetire()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="confirmRetire()" [disabled]="submitting()">
+        {{ submitting() ? 'Retiring…' : 'Retire' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (sourceEditorOpen()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="hub" />
+      <h3 class="confirm-title">
+        {{ editingSource() ? 'Edit ' + editingSource()!.source_code : 'New booking source' }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      @if (editingSource()) {
+        <p class="confirm-note">
+          The code cannot be changed — reservations reference it, and production reporting groups on
+          it.
+        </p>
+      }
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="bs-code">Code</label>
+          <input class="field-input" id="bs-code" type="text" [ngModel]="sourceForm().source_code"
+                 (ngModelChange)="sourceForm.set({ ...sourceForm(), source_code: $event ?? '' })"
+                 [disabled]="editingSource() !== null" placeholder="BOOKINGCOM" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-name">Name</label>
+          <input class="field-input" id="bs-name" type="text" [ngModel]="sourceForm().source_name"
+                 (ngModelChange)="sourceForm.set({ ...sourceForm(), source_name: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-type">Type</label>
+          <select class="field-input" id="bs-type" [ngModel]="sourceForm().source_type"
+                  (ngModelChange)="sourceForm.set({ ...sourceForm(), source_type: $event })">
+            @for (t of sourceTypes; track t) {
+              <option [value]="t">{{ labelFor(t) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-category">Category</label>
+          <input class="field-input" id="bs-category" type="text" [ngModel]="sourceForm().category"
+                 (ngModelChange)="sourceForm.set({ ...sourceForm(), category: $event ?? '' })"
+                 placeholder="ONLINE / OFFLINE" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-channel">Channel name</label>
+          <input class="field-input" id="bs-channel" type="text" [ngModel]="sourceForm().channel_name"
+                 (ngModelChange)="sourceForm.set({ ...sourceForm(), channel_name: $event ?? '' })"
+                 placeholder="Booking.com" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-website">Channel website</label>
+          <input class="field-input" id="bs-website" type="text" [ngModel]="sourceForm().channel_website"
+                 (ngModelChange)="sourceForm.set({ ...sourceForm(), channel_website: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-comm-type">Commission</label>
+          <select class="field-input" id="bs-comm-type" [ngModel]="sourceForm().commission_type"
+                  (ngModelChange)="sourceForm.set({ ...sourceForm(), commission_type: $event })">
+            @for (c of commissionTypes; track c) {
+              <option [value]="c">{{ labelFor(c) }}</option>
+            }
+          </select>
+        </div>
+        @if (sourceForm().commission_type === 'PERCENTAGE') {
+          <div class="form-field">
+            <label class="field-label" for="bs-comm-pct">Commission %</label>
+            <input class="field-input" id="bs-comm-pct" type="number" min="0" max="100" step="0.01"
+                   [ngModel]="sourceForm().commission_percentage"
+                   (ngModelChange)="sourceForm.set({ ...sourceForm(), commission_percentage: $event })" />
+          </div>
+        }
+        @if (sourceForm().commission_type === 'FIXED') {
+          <div class="form-field">
+            <label class="field-label" for="bs-comm-amt">Commission amount</label>
+            <input class="field-input" id="bs-comm-amt" type="number" min="0" step="0.01"
+                   [ngModel]="sourceForm().commission_fixed_amount"
+                   (ngModelChange)="sourceForm.set({ ...sourceForm(), commission_fixed_amount: $event })" />
+          </div>
+        }
+        <div class="form-field">
+          <label class="field-label" for="bs-ranking">Display order</label>
+          <input class="field-input" id="bs-ranking" type="number" [ngModel]="sourceForm().ranking"
+                 (ngModelChange)="sourceForm.set({ ...sourceForm(), ranking: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-bookable">Bookable</label>
+          <select class="field-input" id="bs-bookable" [ngModel]="sourceForm().is_bookable"
+                  (ngModelChange)="sourceForm.set({ ...sourceForm(), is_bookable: $event })">
+            <option [ngValue]="true">Accepts new bookings</option>
+            <option [ngValue]="false">Reporting only</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="bs-preferred">Preferred</label>
+          <select class="field-input" id="bs-preferred" [ngModel]="sourceForm().is_preferred"
+                  (ngModelChange)="sourceForm.set({ ...sourceForm(), is_preferred: $event })">
+            <option [ngValue]="false">No</option>
+            <option [ngValue]="true">Yes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelSourceEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitSource()"
+              [disabled]="submitting() || !canSubmitSource()">
+        {{ submitting() ? 'Saving…' : (editingSource() ? 'Save changes' : 'Create source') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (segmentEditorOpen()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="donut_small" />
+      <h3 class="confirm-title">
+        {{ editingSegment() ? 'Edit ' + editingSegment()!.segment_code : 'New market segment' }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="ms-code">Code</label>
+          <input class="field-input" id="ms-code" type="text" [ngModel]="segmentForm().segment_code"
+                 (ngModelChange)="segmentForm.set({ ...segmentForm(), segment_code: $event ?? '' })"
+                 [disabled]="editingSegment() !== null" placeholder="CORP" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ms-name">Name</label>
+          <input class="field-input" id="ms-name" type="text" [ngModel]="segmentForm().segment_name"
+                 (ngModelChange)="segmentForm.set({ ...segmentForm(), segment_name: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ms-type">Type</label>
+          <select class="field-input" id="ms-type" [ngModel]="segmentForm().segment_type"
+                  (ngModelChange)="segmentForm.set({ ...segmentForm(), segment_type: $event })">
+            @for (t of segmentTypes; track t) {
+              <option [value]="t">{{ labelFor(t) }}</option>
+            }
+          </select>
+        </div>
+        @if (!editingSegment()) {
+          <div class="form-field">
+            <label class="field-label" for="ms-parent">Parent segment</label>
+            <select class="field-input" id="ms-parent" [ngModel]="segmentForm().parent_segment_id"
+                    (ngModelChange)="segmentForm.set({ ...segmentForm(), parent_segment_id: $event ?? '' })">
+              <option value="">None — top level</option>
+              @for (p of parentCandidates(); track p.segment_id) {
+                <option [value]="p.segment_id">{{ p.segment_code }} — {{ p.segment_name }}</option>
+              }
+            </select>
+          </div>
+        }
+        <div class="form-field">
+          <label class="field-label" for="ms-multiplier">Rate multiplier</label>
+          <input class="field-input" id="ms-multiplier" type="number" min="0.01" step="0.01"
+                 [ngModel]="segmentForm().rate_multiplier"
+                 (ngModelChange)="segmentForm.set({ ...segmentForm(), rate_multiplier: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ms-bookable">Bookable</label>
+          <select class="field-input" id="ms-bookable" [ngModel]="segmentForm().is_bookable"
+                  (ngModelChange)="segmentForm.set({ ...segmentForm(), is_bookable: $event })">
+            <option [ngValue]="true">Accepts new bookings</option>
+            <option [ngValue]="false">Reporting only</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelSegmentEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitSegment()"
+              [disabled]="submitting() || !canSubmitSegment()">
+        {{ submitting() ? 'Saving…' : (editingSegment() ? 'Save changes' : 'Create segment') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (loading()) {
+  <div class="loading-state">Loading…</div>
+} @else if (tab() === 'sources') {
+  @if (sources().length === 0) {
+    <div class="empty-state">
+      <app-icon class="empty-icon" name="hub" />
+      <h3>No booking sources configured</h3>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table data-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Type</th>
+            <th>Channel</th>
+            <th>Commission</th>
+            <th>Production</th>
+            <th>Status</th>
+            <th class="cell-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of sources(); track s.source_id) {
+            <tr>
+              <td class="cell-primary">
+                <strong>{{ s.source_code }}</strong>
+                <div class="cell-sub">{{ s.source_name }}</div>
+                @if (s.is_preferred) {
+                  <span class="badge badge-accent badge-sm">Preferred</span>
+                }
+              </td>
+              <td>{{ s.source_type_display }}</td>
+              <td>{{ s.channel_name || '—' }}</td>
+              <td>{{ commissionSummary(s) }}</td>
+              <td>{{ s.total_bookings }} bookings</td>
+              <td>
+                @if (s.is_bookable) {
+                  <span class="badge badge-accent badge-sm">Bookable</span>
+                } @else {
+                  <span class="badge badge-muted badge-sm">Reporting only</span>
+                }
+                @if (!s.is_active) {
+                  <span class="badge badge-muted badge-sm">Inactive</span>
+                }
+              </td>
+              <td class="cell-actions">
+                <button class="btn btn-outline btn-sm" (click)="openEditSource(s)">Edit</button>
+                <button class="btn btn-outline btn-sm"
+                        (click)="openRetire('source', s.source_id, s.source_code)">Retire</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else {
+  @if (segments().length === 0) {
+    <div class="empty-state">
+      <app-icon class="empty-icon" name="donut_small" />
+      <h3>No market segments configured</h3>
+      <span>Market-segment production reporting groups on these.</span>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="table data-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Type</th>
+            <th>Level</th>
+            <th>Rate multiplier</th>
+            <th>Production</th>
+            <th>Status</th>
+            <th class="cell-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of segments(); track m.segment_id) {
+            <tr>
+              <td class="cell-primary">
+                <strong>{{ m.segment_code }}</strong>
+                <div class="cell-sub">{{ m.segment_name }}</div>
+              </td>
+              <td>{{ m.segment_type_display }}</td>
+              <td>{{ m.segment_level === 1 ? 'Top level' : 'Sub-segment' }}</td>
+              <td>{{ m.rate_multiplier }}×</td>
+              <td>{{ m.total_bookings }} bookings</td>
+              <td>
+                @if (m.is_bookable) {
+                  <span class="badge badge-accent badge-sm">Bookable</span>
+                } @else {
+                  <span class="badge badge-muted badge-sm">Reporting only</span>
+                }
+                @if (!m.is_active) {
+                  <span class="badge badge-muted badge-sm">Inactive</span>
+                }
+              </td>
+              <td class="cell-actions">
+                <button class="btn btn-outline btn-sm" (click)="openEditSegment(m)">Edit</button>
+                <button class="btn btn-outline btn-sm"
+                        (click)="openRetire('segment', m.segment_id, m.segment_code)">Retire</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

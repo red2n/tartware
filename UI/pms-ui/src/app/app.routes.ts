@@ -438,6 +438,15 @@ export const routes: Routes = [
 					),
 			},
 			{
+				path: "settings/distribution",
+				canActivate: [propertyGuard, screenGuard("settings")],
+				data: { screen: "settings" },
+				loadComponent: () =>
+					import("./features/settings/distribution/distribution").then(
+						(m) => m.DistributionSettingsComponent,
+					),
+			},
+			{
 				path: "screen-permissions",
 				canActivate: [screenGuard("users")],
 				data: { screen: "users" },

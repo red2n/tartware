@@ -1,21 +1,37 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
+import type {
+  BookingSourceUpdateBody,
+  BookingSourceWriteBody,
+  MarketSegmentUpdateBody,
+  MarketSegmentWriteBody,
+} from "@tartware/schemas";
 import {
   BookingSourceListItemSchema,
   BookingSourceTypeEnum,
+  BookingSourceUpdateBodySchema,
+  BookingSourceWriteBodySchema,
   ChannelMappingListItemSchema,
   MarketSegmentListItemSchema,
   MarketSegmentTypeEnum,
+  MarketSegmentUpdateBodySchema,
+  MarketSegmentWriteBodySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
+  createBookingSource,
+  createMarketSegment,
+  deleteBookingSource,
+  deleteMarketSegment,
   getBookingSourceById,
   getChannelMappingById,
   getMarketSegmentById,
   listBookingSources,
   listChannelMappings,
   listMarketSegments,
+  updateBookingSource,
+  updateMarketSegment,
 } from "../../services/booking-config/distribution.js";
 
 // =====================================================
@@ -409,6 +425,250 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
       }
 
       return ChannelMappingListItemSchema.parse(mapping);
+    },
+  );
+
+  // =====================================================
+  // Write paths — reference data, plain HTTP per
+  // ui-gaps/18-write-path-gap.md. See ui-gaps/14-channel-distribution.md.
+  // =====================================================
+
+  const writeScopeFromBody = app.withTenantScope({
+    resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  const deleteScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string })?.tenant_id,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  const tenantQuerySchema = z.object({ tenant_id: z.string().uuid() });
+
+  app.post<{ Body: BookingSourceWriteBody }>(
+    "/v1/booking-sources",
+    {
+      preHandler: writeScopeFromBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_SOURCES_TAG,
+        summary: "Create a booking source",
+        description:
+          "Performance columns (bookings, revenue, conversion) are machine-maintained and not settable here.",
+        body: schemaFromZod(BookingSourceWriteBodySchema, "BookingSourceWriteBody"),
+      }),
+    },
+    async (request, reply) => {
+      const body = BookingSourceWriteBodySchema.parse(request.body);
+      const created = await createBookingSource(
+        body.tenant_id,
+        {
+          sourceCode: body.source_code,
+          sourceName: body.source_name,
+          sourceType: body.source_type,
+          propertyId: body.property_id,
+          category: body.category,
+          subCategory: body.sub_category,
+          isActive: body.is_active,
+          isBookable: body.is_bookable,
+          channelName: body.channel_name,
+          channelWebsite: body.channel_website,
+          channelManager: body.channel_manager,
+          commissionType: body.commission_type,
+          commissionPercentage: body.commission_percentage,
+          commissionFixedAmount: body.commission_fixed_amount,
+          commissionNotes: body.commission_notes,
+          ranking: body.ranking,
+          isPreferred: body.is_preferred,
+        },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!created) {
+        return reply.internalServerError("Failed to create booking source");
+      }
+
+      return reply.status(201).send({ data: created, message: "Booking source created" });
+    },
+  );
+
+  app.put<{ Params: { sourceId: string }; Body: BookingSourceUpdateBody }>(
+    "/v1/booking-sources/:sourceId",
+    {
+      preHandler: writeScopeFromBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_SOURCES_TAG,
+        summary: "Update a booking source",
+        description: "source_code is fixed — reservations reference it.",
+        params: BookingSourceIdParamJsonSchema,
+        body: schemaFromZod(BookingSourceUpdateBodySchema, "BookingSourceUpdateBody"),
+      }),
+    },
+    async (request, reply) => {
+      const body = BookingSourceUpdateBodySchema.parse(request.body);
+      const { sourceId } = BookingSourceParamsSchema.parse(request.params);
+      const updated = await updateBookingSource(
+        body.tenant_id,
+        sourceId,
+        {
+          sourceName: body.source_name,
+          sourceType: body.source_type,
+          category: body.category,
+          subCategory: body.sub_category,
+          isActive: body.is_active,
+          isBookable: body.is_bookable,
+          channelName: body.channel_name,
+          channelWebsite: body.channel_website,
+          channelManager: body.channel_manager,
+          commissionType: body.commission_type,
+          commissionPercentage: body.commission_percentage,
+          commissionFixedAmount: body.commission_fixed_amount,
+          commissionNotes: body.commission_notes,
+          ranking: body.ranking,
+          isPreferred: body.is_preferred,
+        },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!updated) {
+        return reply.notFound("Booking source not found");
+      }
+
+      return reply.send({ data: updated, message: "Booking source updated" });
+    },
+  );
+
+  app.delete<{ Params: { sourceId: string }; Querystring: { tenant_id: string } }>(
+    "/v1/booking-sources/:sourceId",
+    {
+      preHandler: deleteScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_SOURCES_TAG,
+        summary: "Retire a booking source",
+        description:
+          "Soft delete. Historic reservations still reference the source for production reporting, so the row stays but stops being bookable.",
+        params: BookingSourceIdParamJsonSchema,
+        querystring: schemaFromZod(tenantQuerySchema, "BookingSourceDeleteQuery"),
+      }),
+    },
+    async (request, reply) => {
+      const { sourceId } = BookingSourceParamsSchema.parse(request.params);
+      const { tenant_id } = tenantQuerySchema.parse(request.query);
+      const removed = await deleteBookingSource(
+        tenant_id,
+        sourceId,
+        (request as { userId?: string }).userId,
+      );
+
+      if (!removed) {
+        return reply.notFound("Booking source not found");
+      }
+
+      return reply.send({ message: "Booking source retired" });
+    },
+  );
+
+  app.post<{ Body: MarketSegmentWriteBody }>(
+    "/v1/market-segments",
+    {
+      preHandler: writeScopeFromBody,
+      schema: buildRouteSchema({
+        tag: MARKET_SEGMENTS_TAG,
+        summary: "Create a market segment",
+        body: schemaFromZod(MarketSegmentWriteBodySchema, "MarketSegmentWriteBody"),
+      }),
+    },
+    async (request, reply) => {
+      const body = MarketSegmentWriteBodySchema.parse(request.body);
+      const created = await createMarketSegment(
+        body.tenant_id,
+        {
+          segmentCode: body.segment_code,
+          segmentName: body.segment_name,
+          segmentType: body.segment_type,
+          propertyId: body.property_id,
+          isActive: body.is_active,
+          isBookable: body.is_bookable,
+          parentSegmentId: body.parent_segment_id,
+          rateMultiplier: body.rate_multiplier,
+        },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!created) {
+        return reply.internalServerError("Failed to create market segment");
+      }
+
+      return reply.status(201).send({ data: created, message: "Market segment created" });
+    },
+  );
+
+  app.put<{ Params: { segmentId: string }; Body: MarketSegmentUpdateBody }>(
+    "/v1/market-segments/:segmentId",
+    {
+      preHandler: writeScopeFromBody,
+      schema: buildRouteSchema({
+        tag: MARKET_SEGMENTS_TAG,
+        summary: "Update a market segment",
+        description: "segment_code is fixed — production reporting groups on it.",
+        params: MarketSegmentIdParamJsonSchema,
+        body: schemaFromZod(MarketSegmentUpdateBodySchema, "MarketSegmentUpdateBody"),
+      }),
+    },
+    async (request, reply) => {
+      const body = MarketSegmentUpdateBodySchema.parse(request.body);
+      const { segmentId } = MarketSegmentParamsSchema.parse(request.params);
+      const updated = await updateMarketSegment(
+        body.tenant_id,
+        segmentId,
+        {
+          segmentName: body.segment_name,
+          segmentType: body.segment_type,
+          isActive: body.is_active,
+          isBookable: body.is_bookable,
+          rateMultiplier: body.rate_multiplier,
+        },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!updated) {
+        return reply.notFound("Market segment not found");
+      }
+
+      return reply.send({ data: updated, message: "Market segment updated" });
+    },
+  );
+
+  app.delete<{ Params: { segmentId: string }; Querystring: { tenant_id: string } }>(
+    "/v1/market-segments/:segmentId",
+    {
+      preHandler: deleteScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: MARKET_SEGMENTS_TAG,
+        summary: "Retire a market segment",
+        description: "Refused with 409 while sub-segments still point at it.",
+        params: MarketSegmentIdParamJsonSchema,
+        querystring: schemaFromZod(tenantQuerySchema, "MarketSegmentDeleteQuery"),
+      }),
+    },
+    async (request, reply) => {
+      const { segmentId } = MarketSegmentParamsSchema.parse(request.params);
+      const { tenant_id } = tenantQuerySchema.parse(request.query);
+      const result = await deleteMarketSegment(
+        tenant_id,
+        segmentId,
+        (request as { userId?: string }).userId,
+      );
+
+      if (result.reason === "SEGMENT_HAS_CHILDREN") {
+        return reply.conflict("Reassign or retire the sub-segments first");
+      }
+      if (!result.removed) {
+        return reply.notFound("Market segment not found");
+      }
+
+      return reply.send({ message: "Market segment retired" });
     },
   );
 };
