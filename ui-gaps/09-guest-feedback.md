@@ -2,6 +2,47 @@
 
 **Priority:** P1 | **Risk:** 🟡 MEDIUM | **Type:** Backend + UI | **Effort:** M
 
+> ## ✅ Write path + staff UI shipped 2026-08-13 (portal intake still open)
+>
+> **Two things in the table made the spec's design impossible**, both fixed:
+>
+> 1. **`guest_id` and `reservation_id` were NOT NULL.** `STAFF_ENTERED` intake is a phone complaint
+>    from someone who may not be in the system and may not map to one stay — the constraint forbade
+>    exactly the case the feature exists for. Both are now nullable.
+> 2. **There was no workflow at all.** The table had `response_text`/`responded_by`/`responded_at` and
+>    nothing else — no status, no owner, no category, no resolution. Feedback with no owner and no
+>    status is a table that fills up and is never worked. Added additively (`ADD COLUMN IF NOT EXISTS`)
+>    to the canonical `43_guest_feedback.sql`: `feedback_status` (CHECK-constrained,
+>    default `new`), `feedback_category`, `assigned_to`/`assigned_at`, `resolution_notes`,
+>    `resolved_by`/`resolved_at`, `service_recovery_reference`.
+>
+> Four HTTP routes on core-service, per [18](18-write-path-gap.md)'s rule:
+> `POST /v1/guest-feedback`, `PUT …/:feedbackId` (triage), `POST …/:feedbackId/respond`,
+> `POST …/:feedbackId/resolve` — plus the bare `POST` at the gateway, and the list gaining
+> `feedback_status` / `feedback_category` filters.
+>
+> Two transitions are deliberate rather than blind writes:
+> - responding advances the status **only from a state that precedes it**, so answering something
+>   already resolved does not reopen it;
+> - assigning stamps `assigned_at` in the same statement, because an owner with no timestamp cannot
+>   be aged.
+>
+> `service_recovery_reference` is on the resolve body so a goodwill spend is tied to the complaint
+> that caused it rather than floating free on the folio (§3 item 4). It is a reference string today,
+> not a `billing.comp.post` dispatch — wiring that is a follow-on.
+>
+> UI at `UI/pms-ui/src/app/features/guests/feedback/`, routed at `/guests/feedback` ahead of
+> `guests/:guestId`, which would otherwise match `feedback` as an id.
+>
+> **Still open:** §2, the guest-portal intake endpoint. The portal is unauthenticated guest context and
+> must not call `/v1/guest-feedback` directly, so this needs `POST /v1/self-service/feedback` fanning
+> out to the same store — see [11](11-self-service-coverage.md). Until then feedback is staff-entered
+> and OTA/survey-imported only. Also deferred: KPI tiles (§3.5), guest-profile integration (§3.6), and
+> the `notification.automated.create` overlap check (§4).
+>
+> **Not yet exercised against a live stack**, and the new columns need
+> `psql -f scripts/tables/03-bookings/43_guest_feedback.sql` run against an existing database.
+
 ## Current State (Backend ⚠️ read-only → UI ❌)
 
 `Apps/core-service/src/routes/operations.ts`:

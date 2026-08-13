@@ -1,8 +1,11 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
+import type { PromotionalCodeUpdateBody, PromotionalCodeWriteBody } from "@tartware/schemas";
 import {
   GroupBookingDetailSchema,
   GroupBookingListItemSchema,
   PromotionalCodeListItemSchema,
+  PromotionalCodeUpdateBodySchema,
+  PromotionalCodeWriteBodySchema,
   ValidatePromoCodeRequestSchema,
   ValidatePromoCodeResponseSchema,
   WaitlistEntryListItemSchema,
@@ -12,12 +15,15 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
+  createPromotionalCode,
+  deletePromotionalCode,
   getGroupBookingDetail,
   getPromotionalCodeById,
   getWaitlistEntryById,
   listGroupBookings,
   listPromotionalCodes,
   listWaitlistEntries,
+  updatePromotionalCode,
   validatePromoCode,
 } from "../../services/booking-config/group-waitlist-promo.js";
 
@@ -284,7 +290,7 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
   const PromotionalCodeListQuerySchema = z.object({
     tenant_id: z.string().uuid(),
     property_id: z.string().uuid().optional(),
-    promo_status: z.string().toUpperCase().optional(),
+    promo_status: z.string().toLowerCase().optional(),
     is_active: z
       .string()
       .optional()
@@ -441,6 +447,163 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
         discount_value: result.discountValue,
         rejection_reason: result.rejectionReason,
       });
+    },
+  );
+
+  // ---------------------------------------------------
+  // Promotional code write path — see ui-gaps/16-booking-reference-data.md.
+  //
+  // Registered after /v1/promo-codes/validate so the literal path keeps winning
+  // over :promoId, which would otherwise match "validate" as an id.
+  // ---------------------------------------------------
+  const PromoWriteBodyJsonSchema = schemaFromZod(
+    PromotionalCodeWriteBodySchema,
+    "PromotionalCodeWriteBody",
+  );
+  const PromoUpdateBodyJsonSchema = schemaFromZod(
+    PromotionalCodeUpdateBodySchema,
+    "PromotionalCodeUpdateBody",
+  );
+
+  const toPromoInput = (body: PromotionalCodeUpdateBody) => ({
+    promoName: body.promo_name as string,
+    promoDescription: body.promo_description,
+    promoType: body.promo_type,
+    promoStatus: body.promo_status,
+    isActive: body.is_active,
+    isPublic: body.is_public,
+    validFrom: body.valid_from as string,
+    validTo: body.valid_to as string,
+    discountType: body.discount_type,
+    discountPercent: body.discount_percent,
+    discountAmount: body.discount_amount,
+    discountCurrency: body.discount_currency,
+    maxDiscountAmount: body.max_discount_amount,
+    freeNightsCount: body.free_nights_count,
+    hasUsageLimit: body.has_usage_limit,
+    totalUsageLimit: body.total_usage_limit,
+    perUserLimit: body.per_user_limit,
+    minimumStayNights: body.minimum_stay_nights,
+    maximumStayNights: body.maximum_stay_nights,
+    minimumBookingAmount: body.minimum_booking_amount,
+    combinableWithOtherPromos: body.combinable_with_other_promos,
+    autoApply: body.auto_apply,
+    displayOnWebsite: body.display_on_website,
+  });
+
+  app.post<{ Body: PromotionalCodeWriteBody }>(
+    "/v1/promo-codes",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: PROMO_CODE_TAG,
+        summary: "Create a promotional code",
+        description:
+          "Codes are stored upper-cased and are unique per tenant. Usage and analytics counters are machine-maintained and not settable here.",
+        body: PromoWriteBodyJsonSchema,
+      }),
+    },
+    async (request, reply) => {
+      const body = PromotionalCodeWriteBodySchema.parse(request.body);
+      const created = await createPromotionalCode(
+        body.tenant_id,
+        {
+          ...toPromoInput(body as PromotionalCodeUpdateBody),
+          promoCode: body.promo_code,
+          promoName: body.promo_name,
+          validFrom: body.valid_from,
+          validTo: body.valid_to,
+          propertyId: body.property_id,
+        },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!created) {
+        return reply.internalServerError("Failed to create promotional code");
+      }
+
+      return reply.status(201).send({ data: created, message: "Promotional code created" });
+    },
+  );
+
+  app.put<{ Params: { promoId: string }; Body: PromotionalCodeUpdateBody }>(
+    "/v1/promo-codes/:promoId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: PROMO_CODE_TAG,
+        summary: "Update a promotional code",
+        description:
+          "promo_code itself is not editable — guests already hold it. Withdraw the code and issue a new one instead.",
+        params: PromotionalCodeIdParamJsonSchema,
+        body: PromoUpdateBodyJsonSchema,
+      }),
+    },
+    async (request, reply) => {
+      const body = PromotionalCodeUpdateBodySchema.parse(request.body);
+      const { promoId } = PromotionalCodeParamsSchema.parse(request.params);
+      const updated = await updatePromotionalCode(
+        body.tenant_id,
+        promoId,
+        toPromoInput(body),
+        (request as { userId?: string }).userId,
+      );
+
+      if (!updated) {
+        return reply.notFound("Promotional code not found");
+      }
+
+      return reply.send({ data: updated, message: "Promotional code updated" });
+    },
+  );
+
+  app.delete<{ Params: { promoId: string }; Querystring: { tenant_id: string } }>(
+    "/v1/promo-codes/:promoId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) =>
+          (request.query as { tenant_id?: string })?.tenant_id ??
+          (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: PROMO_CODE_TAG,
+        summary: "Withdraw a promotional code",
+        description:
+          "Soft delete: the row stays because redemption history references it, but the code stops validating.",
+        params: PromotionalCodeIdParamJsonSchema,
+      }),
+    },
+    async (request, reply) => {
+      const { promoId } = PromotionalCodeParamsSchema.parse(request.params);
+      const tenantId =
+        (request.query as { tenant_id?: string })?.tenant_id ??
+        (request.body as { tenant_id?: string } | undefined)?.tenant_id;
+
+      if (!tenantId) {
+        return reply.badRequest("tenant_id is required");
+      }
+
+      const removed = await deletePromotionalCode(
+        tenantId,
+        promoId,
+        (request as { userId?: string }).userId,
+      );
+
+      if (!removed) {
+        return reply.notFound("Promotional code not found");
+      }
+
+      return reply.send({ message: "Promotional code withdrawn" });
     },
   );
 };

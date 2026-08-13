@@ -84,6 +84,22 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  // Opening a handover POSTs to the bare path, which `/v1/shift-handovers/*`
+  // does not match. See ui-gaps/08-shift-handovers.md.
+  app.post(
+    "/v1/shift-handovers",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: OPERATIONS_TAG,
+        summary: "Open a shift handover.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   app.all(
     "/v1/shift-handovers/*",
     {
@@ -97,32 +113,9 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  // Lost and Found
-  app.get(
-    "/v1/lost-and-found",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: OPERATIONS_TAG,
-        summary: "List lost and found items.",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyCore,
-  );
-
-  app.all(
-    "/v1/lost-and-found/*",
-    {
-      preHandler: tenantScopeFromQuery,
-      schema: buildRouteSchema({
-        tag: OPERATIONS_TAG,
-        summary: "Proxy lost and found operations to core service.",
-        response: { 200: jsonObjectSchema },
-      }),
-    },
-    proxyCore,
-  );
+  // Lost and Found is owned by housekeeping-service — see housekeeping-routes.ts.
+  // It was registered here proxying to core-service, whose copy was read-only, so
+  // register / update / claim / return all 404ed downstream. See ui-gaps/07-lost-and-found.md.
 
   // Banquet Event Orders
   app.get(
@@ -160,6 +153,23 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
         tag: OPERATIONS_TAG,
         summary: "List guest feedback and reviews.",
         response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  // Logging feedback POSTs to the bare path, which `/v1/guest-feedback/*` does
+  // not match, and the body carries tenant_id — the same trap as police-report
+  // and incident filing. See ui-gaps/09-guest-feedback.md.
+  app.post(
+    "/v1/guest-feedback",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: OPERATIONS_TAG,
+        summary: "Log guest feedback.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
       }),
     },
     proxyCore,

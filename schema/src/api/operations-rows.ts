@@ -45,41 +45,6 @@ export type ShiftHandoverRow = {
 };
 
 // =====================================================
-// LOST AND FOUND ROW
-// =====================================================
-
-/** Raw row shape from lost_found_items table query. */
-export type LostFoundRow = {
-	item_id: string;
-	tenant_id: string;
-	property_id: string;
-	property_name: string | null;
-	item_number: string | null;
-	item_name: string;
-	item_description: string;
-	item_category: string;
-	item_category_display: string;
-	color: string | null;
-	estimated_value: string | null;
-	is_valuable: boolean | null;
-	found_date: Date | string;
-	found_by_name: string | null;
-	found_location: string;
-	room_number: string | null;
-	guest_name: string | null;
-	item_status: string;
-	item_status_display: string;
-	storage_location: string | null;
-	days_in_storage: number | null;
-	claimed: boolean | null;
-	returned: boolean | null;
-	disposed: boolean | null;
-	hold_until_date: Date | string | null;
-	has_photos: boolean | null;
-	created_at: Date | string | null;
-};
-
-// =====================================================
 // BANQUET EVENT ORDER ROW
 // =====================================================
 
@@ -130,9 +95,9 @@ export type GuestFeedbackRow = {
 	tenant_id: string;
 	property_id: string;
 	property_name: string | null;
-	guest_id: string;
+	guest_id: string | null;
 	guest_name: string | null;
-	reservation_id: string;
+	reservation_id: string | null;
 	feedback_source: string | null;
 	feedback_source_display: string | null;
 	overall_rating: string | null;
@@ -152,6 +117,40 @@ export type GuestFeedbackRow = {
 	response_text: string | null;
 	responded_at: Date | string | null;
 	created_at: Date | string | null;
+	feedback_status: string | null;
+	feedback_status_display: string | null;
+	feedback_category: string | null;
+	assigned_to: string | null;
+	assigned_at: Date | string | null;
+	resolution_notes: string | null;
+	resolved_at: Date | string | null;
+	service_recovery_reference: string | null;
+};
+
+/**
+ * Service-layer input for logging a piece of guest feedback. Camel-cased
+ * counterpart of `GuestFeedbackWriteBodySchema`; lives here because AGENTS.md
+ * requires service-layer shapes in the schema package, not in a service file.
+ */
+export type GuestFeedbackWriteInput = {
+	propertyId: string;
+	feedbackSource: string;
+	reviewText: string;
+	guestId?: string;
+	reservationId?: string;
+	reviewTitle?: string;
+	overallRating?: number;
+	ratingScale?: number;
+	cleanlinessRating?: number;
+	staffRating?: number;
+	locationRating?: number;
+	valueRating?: number;
+	wouldRecommend?: boolean;
+	wouldReturn?: boolean;
+	feedbackCategory?: string;
+	sentimentLabel?: string;
+	isPublic?: boolean;
+	languageCode?: string;
 };
 
 // =====================================================

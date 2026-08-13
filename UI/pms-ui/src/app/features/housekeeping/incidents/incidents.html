@@ -1,0 +1,356 @@
+<app-page-header
+  title="Incident log"
+  description="Guest and property incidents — the liability record behind an insurance or legal request.">
+  <button class="btn btn-primary btn-sm" (click)="openFile()" [disabled]="submitting()">
+    <app-icon name="report" /> Report incident
+  </button>
+</app-page-header>
+
+@if (openSafetyIncidents().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="warning" />
+    {{ openSafetyIncidents().length }} unresolved incident{{ openSafetyIncidents().length === 1 ? '' : 's' }}
+    at serious severity or above
+  </p>
+}
+
+@if (filing()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="report" />
+      <h3 class="confirm-title">
+        {{ editing() ? 'Amend ' + editing()!.incident_number : 'Report an incident' }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label class="field-label" for="in-title">Title</label>
+          <input class="field-input" id="in-title" type="text" [ngModel]="form().incident_title"
+                 (ngModelChange)="form.set({ ...form(), incident_title: $event ?? '' })"
+                 placeholder="One line — what happened" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-type">Type</label>
+          <select class="field-input" id="in-type" [ngModel]="form().incident_type"
+                  (ngModelChange)="form.set({ ...form(), incident_type: $event })">
+            @for (t of incidentTypes; track t) {
+              <option [value]="t">{{ labelFor(t) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-severity">Severity</label>
+          <select class="field-input" id="in-severity" [ngModel]="form().severity"
+                  (ngModelChange)="form.set({ ...form(), severity: $event })">
+            @for (s of severities; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-category">Category</label>
+          <input class="field-input" id="in-category" type="text" [ngModel]="form().incident_category"
+                 (ngModelChange)="form.set({ ...form(), incident_category: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-date">Date</label>
+          <input class="field-input" id="in-date" type="date" [ngModel]="form().incident_date"
+                 (ngModelChange)="form.set({ ...form(), incident_date: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-time">Time</label>
+          <input class="field-input" id="in-time" type="time" [ngModel]="form().incident_time"
+                 (ngModelChange)="form.set({ ...form(), incident_time: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-location">Location</label>
+          <input class="field-input" id="in-location" type="text" [ngModel]="form().incident_location"
+                 (ngModelChange)="form.set({ ...form(), incident_location: $event ?? '' })"
+                 placeholder="e.g. Pool deck, Lobby stairs" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-room">Room number</label>
+          <input class="field-input" id="in-room" type="text" [ngModel]="form().room_number"
+                 (ngModelChange)="form.set({ ...form(), room_number: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-area">Area</label>
+          <input class="field-input" id="in-area" type="text" [ngModel]="form().area_name"
+                 (ngModelChange)="form.set({ ...form(), area_name: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-discovered">Discovered by</label>
+          <input class="field-input" id="in-discovered" type="text" [ngModel]="form().discovered_by_name"
+                 (ngModelChange)="form.set({ ...form(), discovered_by_name: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-guest">Guest involved</label>
+          <select class="field-input" id="in-guest" [ngModel]="form().guest_involved"
+                  (ngModelChange)="form.set({ ...form(), guest_involved: $event })">
+            <option [ngValue]="false">No</option>
+            <option [ngValue]="true">Yes</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-staff">Staff involved</label>
+          <select class="field-input" id="in-staff" [ngModel]="form().staff_involved"
+                  (ngModelChange)="form.set({ ...form(), staff_involved: $event })">
+            <option [ngValue]="false">No</option>
+            <option [ngValue]="true">Yes</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-injury">Injury severity</label>
+          <select class="field-input" id="in-injury" [ngModel]="form().injury_severity"
+                  (ngModelChange)="form.set({ ...form(), injury_severity: $event })">
+            @for (s of injurySeverities; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-police">Police notified</label>
+          <select class="field-input" id="in-police" [ngModel]="form().police_notified"
+                  (ngModelChange)="form.set({ ...form(), police_notified: $event })">
+            <option [ngValue]="false">No</option>
+            <option [ngValue]="true">Yes</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="in-score">Severity score (1–10)</label>
+          <input class="field-input" id="in-score" type="number" min="1" max="10"
+                 [ngModel]="form().severity_score"
+                 (ngModelChange)="form.set({ ...form(), severity_score: $event })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="in-desc">What happened</label>
+          <textarea class="field-input" id="in-desc" rows="4" [ngModel]="form().incident_description"
+                    (ngModelChange)="form.set({ ...form(), incident_description: $event ?? '' })"
+                    placeholder="Facts only — this record may be read by an insurer or a court"></textarea>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="in-actions">Immediate actions taken</label>
+          <textarea class="field-input" id="in-actions" rows="3" [ngModel]="form().immediate_actions_taken"
+                    (ngModelChange)="form.set({ ...form(), immediate_actions_taken: $event ?? '' })"
+                    placeholder="First aid given, area closed off, guest relocated…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitForm()"
+              [disabled]="submitting() || !canSubmitForm()">
+        {{ submitting() ? 'Saving…' : (editing() ? 'Save amendment' : 'File incident') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (statusTarget(); as incident) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="fact_check" />
+      <h3 class="confirm-title">Update status — {{ incident.incident_number }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="in-status">Status</label>
+          <select class="field-input" id="in-status" [ngModel]="statusForm().incident_status"
+                  (ngModelChange)="statusForm.set({ ...statusForm(), incident_status: $event })">
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="in-closure">Closure notes</label>
+          <textarea class="field-input" id="in-closure" rows="3" [ngModel]="statusForm().closure_notes"
+                    (ngModelChange)="statusForm.set({ ...statusForm(), closure_notes: $event ?? '' })"
+                    placeholder="How it was resolved — recorded against the closure"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelStatus()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitStatus()" [disabled]="submitting()">
+        {{ submitting() ? 'Saving…' : 'Update status' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (detailLoading()) {
+  <div class="loading-state">Loading incident…</div>
+} @else if (detail(); as d) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="description" />
+      <h3 class="confirm-title">{{ d.incident_number }} — {{ d.incident_title }}</h3>
+      <button class="btn btn-outline btn-sm" (click)="closeDetail()">Close</button>
+    </div>
+    <div class="confirm-body">
+      <div class="record-grid">
+        <div><span class="field-label">Type</span> {{ d.incident_type_display }}</div>
+        <div><span class="field-label">Severity</span>
+          <span [class]="severityClass(d.severity)">{{ d.severity_display }}</span>
+        </div>
+        <div><span class="field-label">Status</span>
+          <span [class]="statusClass(d.incident_status)">{{ d.incident_status_display }}</span>
+        </div>
+        <div><span class="field-label">When</span>
+          {{ d.incident_date | date: 'mediumDate' }} {{ d.incident_time }}
+        </div>
+        <div><span class="field-label">Where</span>
+          {{ d.room_number || d.area_name || d.incident_location }}
+        </div>
+        <div><span class="field-label">Discovered by</span> {{ d.discovered_by_name || '—' }}</div>
+        <div><span class="field-label">Guest</span> {{ d.guest_name || (d.guest_involved ? 'Yes' : 'No') }}</div>
+        <div><span class="field-label">Staff involved</span> {{ d.staff_involved ? 'Yes' : 'No' }}</div>
+        <div><span class="field-label">Injury</span> {{ labelFor(d.injury_severity) }}</div>
+        <div><span class="field-label">Police</span>
+          {{ d.police_notified ? (d.police_report_number || 'Notified') : 'Not notified' }}
+        </div>
+      </div>
+
+      <h4 class="record-heading">What happened</h4>
+      <p class="record-text">{{ d.incident_description }}</p>
+
+      @if (d.immediate_actions_taken) {
+        <h4 class="record-heading">Immediate actions taken</h4>
+        <p class="record-text">{{ d.immediate_actions_taken }}</p>
+      }
+      @if (d.injury_details) {
+        <h4 class="record-heading">Injury details</h4>
+        <p class="record-text">{{ d.injury_details }}</p>
+      }
+      @if (d.damage_description) {
+        <h4 class="record-heading">Damage</h4>
+        <p class="record-text">{{ d.damage_description }}</p>
+      }
+      @if (d.investigation_findings) {
+        <h4 class="record-heading">Investigation findings</h4>
+        <p class="record-text">{{ d.investigation_findings }}</p>
+      }
+      @if (d.corrective_actions) {
+        <h4 class="record-heading">Corrective actions</h4>
+        <p class="record-text">{{ d.corrective_actions }}</p>
+      }
+      @if (d.follow_up_required && d.follow_up_actions) {
+        <h4 class="record-heading">Follow-up</h4>
+        <p class="record-text">{{ d.follow_up_actions }}</p>
+      }
+      @if (d.closed_at) {
+        <h4 class="record-heading">Closed {{ d.closed_at | date: 'medium' }}</h4>
+        <p class="record-text">{{ d.closure_notes || '—' }}</p>
+      }
+    </div>
+  </div>
+}
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="in-f-severity">Severity</label>
+    <select class="field-input" id="in-f-severity" [ngModel]="severityFilter()"
+            (ngModelChange)="severityFilter.set($event ?? ''); load()">
+      <option value="">All</option>
+      @for (s of severities; track s) {
+        <option [value]="s">{{ labelFor(s) }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="in-f-type">Type</label>
+    <select class="field-input" id="in-f-type" [ngModel]="typeFilter()"
+            (ngModelChange)="typeFilter.set($event ?? ''); load()">
+      <option value="">All</option>
+      @for (t of incidentTypes; track t) {
+        <option [value]="t">{{ labelFor(t) }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="in-f-status">Status</label>
+    <select class="field-input" id="in-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">All</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ labelFor(s) }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="in-f-from">From date</label>
+    <input class="field-input" id="in-f-from" type="date" [ngModel]="dateFromFilter()"
+           (ngModelChange)="dateFromFilter.set($event ?? ''); load()" />
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="in-f-open">Show</label>
+    <select class="field-input" id="in-f-open" [ngModel]="openOnly()"
+            (ngModelChange)="openOnly.set($event)">
+      <option [ngValue]="false">All incidents</option>
+      <option [ngValue]="true">Open only</option>
+    </select>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">Loading…</div>
+} @else if (visibleIncidents().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="report" />
+    <h3>No incidents on record</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>Incident</th>
+          <th>When</th>
+          <th>Type</th>
+          <th>Severity</th>
+          <th>Where</th>
+          <th>Flags</th>
+          <th>Status</th>
+          <th class="cell-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (i of visibleIncidents(); track i.incident_id) {
+          <tr>
+            <td class="cell-primary">
+              <strong>{{ i.incident_number }}</strong>
+              <div class="cell-sub">{{ i.incident_title }}</div>
+            </td>
+            <td>{{ i.incident_date | date: 'mediumDate' }} {{ i.incident_time }}</td>
+            <td>{{ i.incident_type_display }}</td>
+            <td><span [class]="severityClass(i.severity)">{{ i.severity_display }}</span></td>
+            <td>{{ i.room_number || i.area_name || i.incident_location }}</td>
+            <td>
+              @if (i.injuries_sustained) {
+                <span class="badge badge-attention badge-sm">Injury</span>
+              }
+              @if (i.property_damage) {
+                <span class="badge badge-warning badge-sm">Damage</span>
+              }
+              @if (i.police_notified) {
+                <span class="badge badge-accent badge-sm">Police</span>
+              }
+              @if (i.investigation_required && !i.investigation_completed) {
+                <span class="badge badge-warning badge-sm">Investigating</span>
+              }
+            </td>
+            <td><span [class]="statusClass(i.incident_status)">{{ i.incident_status_display }}</span></td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openDetail(i)">View</button>
+              <button class="btn btn-outline btn-sm" (click)="openEdit(i)">Amend</button>
+              <button class="btn btn-outline btn-sm" (click)="openStatus(i)">Status</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

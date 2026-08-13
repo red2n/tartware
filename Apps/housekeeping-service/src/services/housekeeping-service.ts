@@ -8,6 +8,9 @@ import {
   type HousekeepingTaskListItem,
   HousekeepingTaskListItemSchema,
   type HousekeepingTaskRow,
+  type IncidentReportDetail,
+  type IncidentReportDetailRow,
+  IncidentReportDetailSchema,
   type IncidentReportListItem,
   IncidentReportListItemSchema,
   type IncidentReportRow,
@@ -445,13 +448,36 @@ export const listIncidentReports = async (options: {
 };
 
 /**
+ * Map the by-id row, which carries the narrative columns the list shape omits.
+ * Reusing the list mapper here is what made an incident's description, the
+ * actions taken and the closure notes unreadable through the product.
+ */
+const mapIncidentReportDetailRow = (row: IncidentReportDetailRow): IncidentReportDetail => {
+  return IncidentReportDetailSchema.parse({
+    ...mapIncidentReportRow(row),
+    incident_description: row.incident_description,
+    immediate_actions_taken: row.immediate_actions_taken,
+    discovered_by_name: row.discovered_by_name,
+    guest_name: row.guest_name,
+    injury_details: row.injury_details,
+    damage_description: row.damage_description,
+    investigation_findings: row.investigation_findings,
+    corrective_actions: row.corrective_actions,
+    follow_up_required: row.follow_up_required,
+    follow_up_actions: row.follow_up_actions,
+    closed_at: toIsoString(row.closed_at),
+    closure_notes: row.closure_notes,
+  });
+};
+
+/**
  * Get a single incident report by ID.
  */
 export const getIncidentReportById = async (options: {
   incidentId: string;
   tenantId: string;
-}): Promise<IncidentReportListItem | null> => {
-  const { rows } = await query<IncidentReportRow>(INCIDENT_REPORT_BY_ID_SQL, [
+}): Promise<IncidentReportDetail | null> => {
+  const { rows } = await query<IncidentReportDetailRow>(INCIDENT_REPORT_BY_ID_SQL, [
     options.incidentId,
     options.tenantId,
   ]);
@@ -461,7 +487,7 @@ export const getIncidentReportById = async (options: {
     return null;
   }
 
-  return mapIncidentReportRow(row);
+  return mapIncidentReportDetailRow(row);
 };
 
 // =====================================================
@@ -493,7 +519,7 @@ export const createIncidentReport = async (
   tenantId: string,
   input: IncidentWriteInput,
   actorId: string,
-): Promise<IncidentReportListItem | null> => {
+): Promise<IncidentReportDetail | null> => {
   const { rows } = await query<{ incident_id: string }>(
     `
       INSERT INTO public.incident_reports (
@@ -555,7 +581,7 @@ export const updateIncidentReport = async (
   incidentId: string,
   input: Partial<IncidentWriteInput>,
   actorId: string,
-): Promise<IncidentReportListItem | null> => {
+): Promise<IncidentReportDetail | null> => {
   const { rowCount } = await query(
     `
       UPDATE public.incident_reports
@@ -616,7 +642,7 @@ export const updateIncidentStatus = async (
   incidentId: string,
   input: IncidentStatusInput,
   actorId: string,
-): Promise<IncidentReportListItem | null> => {
+): Promise<IncidentReportDetail | null> => {
   const { rowCount } = await query(
     `
       UPDATE public.incident_reports

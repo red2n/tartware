@@ -1,6 +1,7 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import type { IncidentStatusBody, IncidentUpdateBody, IncidentWriteBody } from "@tartware/schemas";
 import {
+  IncidentReportDetailSchema,
   IncidentReportListItemSchema,
   IncidentSeverityEnum,
   IncidentStatusBodySchema,
@@ -90,9 +91,9 @@ const IncidentListResponseJsonSchema = schemaFromZod(
   IncidentListResponseSchema,
   "IncidentListResponse",
 );
-const IncidentReportItemJsonSchema = schemaFromZod(
-  IncidentReportListItemSchema,
-  "IncidentReportListItem",
+const IncidentReportDetailJsonSchema = schemaFromZod(
+  IncidentReportDetailSchema,
+  "IncidentReportDetail",
 );
 const IncidentParamsJsonSchema = schemaFromZod(IncidentParamsSchema, "IncidentParams");
 
@@ -172,7 +173,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
         params: IncidentParamsJsonSchema,
         querystring: schemaFromZod(z.object({ tenant_id: z.string().uuid() }), "TenantQuery"),
         response: {
-          200: IncidentReportItemJsonSchema,
+          200: IncidentReportDetailJsonSchema,
           404: ErrorResponseSchema,
         },
       }),
@@ -190,7 +191,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
         return reply.notFound("Incident report not found");
       }
 
-      return IncidentReportListItemSchema.parse(incident);
+      return IncidentReportDetailSchema.parse(incident);
     },
   );
 
@@ -236,7 +237,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
         minRole: "STAFF",
-        requiredModules: "housekeeping",
+        requiredModules: "facility-maintenance",
       }),
       schema: buildRouteSchema({
         tag: INCIDENTS_TAG,
@@ -259,7 +260,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       if (!incident) {
         return reply.internalServerError("Failed to file incident");
       }
-      return reply.status(201).send(IncidentReportListItemSchema.parse(incident));
+      return reply.status(201).send(IncidentReportDetailSchema.parse(incident));
     },
   );
 
@@ -269,7 +270,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
         minRole: "STAFF",
-        requiredModules: "housekeeping",
+        requiredModules: "facility-maintenance",
       }),
       schema: buildRouteSchema({
         tag: INCIDENTS_TAG,
@@ -291,7 +292,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       if (!incident) {
         return reply.notFound("Incident report not found");
       }
-      return IncidentReportListItemSchema.parse(incident);
+      return IncidentReportDetailSchema.parse(incident);
     },
   );
 
@@ -301,7 +302,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
         minRole: "STAFF",
-        requiredModules: "housekeeping",
+        requiredModules: "facility-maintenance",
       }),
       schema: buildRouteSchema({
         tag: INCIDENTS_TAG,
@@ -325,7 +326,7 @@ export const registerIncidentRoutes = (app: FastifyInstance): void => {
       if (!incident) {
         return reply.notFound("Incident report not found");
       }
-      return IncidentReportListItemSchema.parse(incident);
+      return IncidentReportDetailSchema.parse(incident);
     },
   );
 };

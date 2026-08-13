@@ -78,13 +78,96 @@ state is the only one with no upside.
 
 ## Work Required Before Deciding
 
-- Confirm the read endpoints return real data for a tenant with reservation history — the event
-  consumer implies they should. If they return empty, the backend is less complete than it looks and
-  Option B gets cheaper.
-- Check whether `revenue.daily_close.process` is invoked by night audit or by nothing.
-- Check overlap with `billing.pricing.evaluate` / `billing.pricing.bulk_recommend` in billing-service
-  (UI-dispatched today) — if billing already does yield pricing, revenue-service may be a duplicate
-  surface, which is a strong argument for Option B.
+- ~~Confirm the read endpoints return real data~~ — **answered 2026-08-13, below.**
+- ~~Check whether `revenue.daily_close.process` is invoked by night audit or by nothing.~~ — **nothing.**
+- ~~Check overlap with `billing.pricing.evaluate` / `billing.pricing.bulk_recommend`.~~ — **answered.**
+
+## Pre-Decision Investigation — 2026-08-13 (static)
+
+### 1. Only one revenue-owned table has a producer
+
+`consumers/reservation-event-consumer.ts` writes **`demand_calendar` and nothing else** — three
+statements, all incrementing/decrementing on-the-books on book, cancel and check-out. Every other
+revenue-owned table (`pricing_rules`, `rate_recommendations`, `competitor_rates`, `rate_restrictions`,
+`hurdle_rates`, `revenue_forecasts`, `revenue_goals`) is written **only** by the 32 `revenue.*`
+commands, and nothing dispatches any of them. So those tables are empty by construction, not by
+accident.
+
+Splitting the 20 reads by what they actually query:
+
+| Returns real data today | Empty by construction |
+|---|---|
+| `demand-calendar`, `booking-pace` (demand_calendar) | `pricing-rules`, `rate-recommendations`, `rate-shopping`, `competitive-response-rules` |
+| `segment-analysis`, `channel-profitability` (reservations) | `competitor-rates`, `compset-indices` |
+| `displacement-analysis` (reservations + charge_postings + group_blocks) | `rate-restrictions`, `hurdle-rates` |
+| | `forecasts`, `forecast-accuracy`, `goals`, `budget-variance`, `managers-report` |
+
+**Five of twenty work.** The audit's "20 endpoints" counts 15 readers over tables that have never held
+a row. The backend is materially less complete than the endpoint count implies.
+
+### 2. `revenue.daily_close.process` is invoked by nothing
+
+It is seeded in the command catalog ("triggered after night audit") and listed as a **required command
+of the `NIGHT_AUDIT` flow** in `schema/src/flows/flow-registry.ts`. Neither core-service's nor
+billing-service's night audit dispatches it. Nothing does — a whole-repo search for a dispatched
+`revenue.*` command name outside revenue-service's own files, the validators and the flow manifests
+returns **zero hits**. The flow registry declares a dependency the running system does not honour.
+
+### 3. The overlap is real, and both ends are dead
+
+`billing.pricing.evaluate` reads **`pricing_rules`** — the same table `revenue.pricing_rule.*` writes —
+and writes the result to `availability.room_availability.dynamic_price`. So billing owns the *evaluator*
+and revenue owns the *rule editor* for one table.
+
+**Correction to this spec's premise:** `billing.pricing.evaluate` and `billing.pricing.bulk_recommend`
+are **not** UI-dispatched. Neither occurs anywhere in `UI/`, and neither has a gateway REST wrapper.
+They are in COV-17's unreachable set like the rest.
+
+The consequence: dynamic pricing is dead end to end. No rule can be created (revenue commands
+unreachable), and the evaluator that would consume one cannot be triggered (billing commands
+unreachable). This is not a duplicate surface — it is one feature split across two services with
+neither half connected.
+
+## ✅ Cheap slice shipped 2026-08-13 — decision on the rest still open
+
+The four analyses that already return real numbers are now entries in
+`UI/pms-ui/src/app/features/reports/report-defs.ts`: `segment-analysis`, `channel-profitability`,
+`booking-pace`, `displacement-analysis`. Their query contracts matched the existing `range` shape, so
+each is one table entry and the nav picks them up automatically — no new screens, no backend, no
+commands. **The working fifth of revenue-service is now product.**
+
+They are gated `revenue-management` at the gateway and ADMIN downstream; the reports screen already
+renders both refusals as callouts. Note `displacement-analysis` requires `finance-automation`
+downstream while the gateway checks `revenue-management`, so a tenant with one and not the other
+passes the gateway and 403s at the service — worth aligning.
+
+**Still yours to decide:** the other 15 endpoints and 32 commands. Build the recommendation chain
+(generate → approve → apply plus the pricing-rule editor, which is three items, not one) or retire
+them under Option B. And `revenue.daily_close.process` should either be dispatched or come out of the
+`NIGHT_AUDIT` flow's `requiredCommands`.
+
+## Recommendation after investigating — 2026-08-13
+
+**Option A as written is worse value than it looks**, because item 1 (rate recommendations worklist)
+sits on `rate_recommendations`, a table with no producer — the worklist would be empty until
+`revenue.recommendation.generate` is also wired, and that reads `pricing_rules`, which is also empty.
+Item 1 is really three items.
+
+**The cheap, high-confidence slice is item 8, not items 1–2.** `segment-analysis`,
+`channel-profitability`, `displacement-analysis` and `booking-pace` already compute real numbers from
+`reservations`, `charge_postings` and `demand_calendar`. Their query contracts (`start_date` +
+`end_date` + `property_id`) match the `range` shape `report-defs.ts` already supports, so each is
+**one table entry** on the existing data-driven reports screen — no new screens, no new backend, no
+commands. That turns the working fifth of the service into product this week.
+
+Then decide the rest on that evidence: if the analyses get used, fund the recommendation chain
+(generate → approve → apply, plus the pricing-rule editor); if not, retire the remaining 15 endpoints
+and the 32 commands under Option B, keeping the reservation event consumer only if `demand_calendar`
+is worth accumulating.
+
+**Whichever way it goes, `revenue.daily_close.process` should come out of the `NIGHT_AUDIT` flow's
+`requiredCommands` or start being dispatched.** A flow that declares a command nobody sends is a
+guardrail lying about what the system does.
 
 ## Acceptance
 

@@ -14,13 +14,14 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
 
+import { forwardCommandWithTenant } from "./command-helpers.js";
 import {
   allotmentListResponse,
   bookingSourceListResponse,
   channelMappingListResponse,
   marketSegmentListResponse,
 } from "./response-schemas.js";
-import { BOOKING_CONFIG_TAG } from "./schemas.js";
+import { BOOKING_CONFIG_TAG, commandAcceptedSchema, reservationParamsSchema } from "./schemas.js";
 
 /** Register booking configuration proxy routes on the gateway. */
 export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
@@ -317,10 +318,33 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  // Creating a code POSTs to the bare path, which `/v1/promo-codes/*` does not
+  // match. See ui-gaps/16-booking-reference-data.md.
+  app.post(
+    "/v1/promo-codes",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create a promotional code.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  /**
+   * Query-or-body scoping, not query-only. `POST /v1/promo-codes/validate`
+   * carries `tenant_id` in the body, so a query-only resolver refused every
+   * validation attempt with TENANT_ID_REQUIRED before it reached core-service —
+   * the redemption path this spec described as "already working" was refused at
+   * the gateway. The write routes added below are body-shaped for the same reason.
+   */
   app.all(
     "/v1/promo-codes/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy promotional code operations to core service.",
@@ -395,6 +419,65 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
       }),
     },
     proxyCore,
+  );
+
+  /**
+   * Channel operator actions.
+   *
+   * `integration.ota.sync_request`, `.rate_push`, `.content_sync` and
+   * `integration.webhook.retry` have been implemented in
+   * reservations-command-service all along, with no REST wrapper and no UI
+   * dispatch — so a stale mapping or a failed push had no operator-facing
+   * recovery and every failure became an engineering ticket. These wrappers add
+   * no new backend logic; they make the existing handlers reachable.
+   * See ui-gaps/14-channel-distribution.md.
+   *
+   * Module gating is left to the command catalog, which already requires
+   * `marketing-channel` for all four — duplicating it here would mean two places
+   * to keep in step.
+   */
+  const tenantWriteScopeFromParams = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  const channelCommandRoute = (path: string, summary: string, commandName: string): void => {
+    app.post(
+      path,
+      {
+        preHandler: tenantWriteScopeFromParams,
+        schema: buildRouteSchema({
+          tag: BOOKING_CONFIG_TAG,
+          summary,
+          params: reservationParamsSchema,
+          body: jsonObjectSchema,
+          response: { 202: commandAcceptedSchema },
+        }),
+      },
+      (request, reply) => forwardCommandWithTenant({ request, reply, commandName }),
+    );
+  };
+
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/sync",
+    "Request a channel sync via the Command Center.",
+    "integration.ota.sync_request",
+  );
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/rate-push",
+    "Push rates to a channel via the Command Center.",
+    "integration.ota.rate_push",
+  );
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/content-sync",
+    "Push property and room content to a channel via the Command Center.",
+    "integration.ota.content_sync",
+  );
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/webhook-retry",
+    "Retry a failed inbound webhook delivery via the Command Center.",
+    "integration.webhook.retry",
   );
 
   // Metasearch Configurations - CPC/CPA bid management

@@ -2,6 +2,40 @@
 
 **Priority:** P2 | **Risk:** 🟠 MEDIUM | **Type:** Backend + UI | **Effort:** L
 
+> ## ✅ Step 1 shipped 2026-08-13 — channel health screen, no new backend logic
+>
+> This spec was right that step 1 was the cheapest real win. Four gateway REST wrappers in
+> `booking-config-routes.ts` over commands that were already implemented in
+> reservations-command-service:
+>
+> | Route | Command |
+> |---|---|
+> | `POST /v1/tenants/:tenantId/channels/sync` | `integration.ota.sync_request` |
+> | `POST /v1/tenants/:tenantId/channels/rate-push` | `integration.ota.rate_push` |
+> | `POST /v1/tenants/:tenantId/channels/content-sync` | `integration.ota.content_sync` |
+> | `POST /v1/tenants/:tenantId/channels/webhook-retry` | `integration.webhook.retry` |
+>
+> Module gating is left to the command catalog, which already requires `marketing-channel` for all
+> four — duplicating it on the wrapper would mean two places to keep in step.
+>
+> UI at `UI/pms-ui/src/app/features/channels/`, routed at `/channels` under a new `channels` screen
+> key (added to `22_role_screen_permissions_seed.sql`; MANAGER and above by default, since the actions
+> dispatch commands requiring MANAGER). Covers §3 items 1 and 2:
+> - per-connection status, last sync and outcome, mapped rooms/rates, pending reservations, last error
+> - Sync now / Push rates / Sync content / Retry webhook
+> - sync history with a failures-only filter
+> - **an unmapped-channel banner**: an active connection with no mapped rooms or rates cannot sell
+>   whatever its status says, which is §3.3's point without the mapping editor
+>
+> The actions answer 202 — the work happens on the bus — so the screen reports acceptance and the
+> operator refreshes, rather than being shown a fake success.
+>
+> **Still open:** the CRUD half (§2) — connections, booking sources, market segments all still have no
+> write path — plus the mapping editor (§3.3), connections admin (§3.4) and metasearch (§3.6).
+> **Not yet exercised against a live stack**, and the new screen key needs
+> `psql -f scripts/tables/01-core/22_role_screen_permissions_seed.sql` (idempotent) before it appears
+> in the sidebar.
+
 ## Current State (Backend ⚠️ mostly read-only → UI ❌)
 
 Four related surfaces, none reachable from the UI. None of `ota-connection`, `channel-mapping`,

@@ -45,7 +45,11 @@ DECLARE
         'webhooks',
         -- Data breach register (GDPR Art. 33). Statutory filings, so it is not a
         -- general-staff screen: OWNER/ADMIN only by default, like 'settings'.
-        'compliance'
+        'compliance',
+        -- OTA / channel-manager health and recovery actions. Its actions dispatch
+        -- commands that require MANAGER, so it follows the default MANAGER-and-above
+        -- rule rather than being listed as admin-only.
+        'channels'
     ];
     v_screen TEXT;
     v_role tenant_role;

@@ -312,22 +312,26 @@ export type BillingLedgerEntryInsertInput = z.infer<
 // =====================================================
 
 /**
- * Tax type enum matching database constraints.
+ * Tax type, matching the `tax_configurations.tax_type` CHECK constraint.
+ *
+ * The comment above this enum always claimed it matched the database; it did
+ * not — it was UPPERCASE against a lowercase constraint, and the route
+ * lower-cased it at the call site to compensate.
  */
 export const TaxTypeEnum = z.enum([
-	"SALES_TAX",
-	"VAT",
-	"GST",
-	"OCCUPANCY_TAX",
-	"TOURISM_TAX",
-	"CITY_TAX",
-	"STATE_TAX",
-	"FEDERAL_TAX",
-	"RESORT_FEE",
-	"SERVICE_CHARGE",
-	"EXCISE_TAX",
-	"CUSTOMS_DUTY",
-	"OTHER",
+	"sales_tax",
+	"vat",
+	"gst",
+	"occupancy_tax",
+	"tourism_tax",
+	"city_tax",
+	"state_tax",
+	"federal_tax",
+	"resort_fee",
+	"service_charge",
+	"excise_tax",
+	"customs_duty",
+	"other",
 ]);
 export type TaxType = z.infer<typeof TaxTypeEnum>;
 

@@ -4,7 +4,11 @@
  *          banquet orders, guest feedback, and police reports
  */
 
-import type { PoliceReportStatusInput, PoliceReportWriteInput } from "@tartware/schemas";
+import type {
+  PoliceReportStatusInput,
+  PoliceReportWriteInput,
+  ShiftHandoverWriteInput,
+} from "@tartware/schemas";
 import {
   type BanquetOrderListItem,
   BanquetOrderListItemSchema,
@@ -15,21 +19,17 @@ import {
   type GetBanquetOrderInput,
   type GetCashierSessionInput,
   type GetGuestFeedbackInput,
-  type GetLostFoundInput,
   type GetPoliceReportInput,
   type GetShiftHandoverInput,
   type GuestFeedbackListItem,
   GuestFeedbackListItemSchema,
   type GuestFeedbackRow,
+  type GuestFeedbackWriteInput,
   type ListBanquetOrdersInput,
   type ListCashierSessionsInput,
   type ListGuestFeedbackInput,
-  type ListLostFoundInput,
   type ListPoliceReportsInput,
   type ListShiftHandoversInput,
-  type LostFoundListItem,
-  LostFoundListItemSchema,
-  type LostFoundRow,
   type PoliceReportListItem,
   PoliceReportListItemSchema,
   type PoliceReportRow,
@@ -46,8 +46,6 @@ import {
   CASHIER_SESSION_LIST_SQL,
   GUEST_FEEDBACK_BY_ID_SQL,
   GUEST_FEEDBACK_LIST_SQL,
-  LOST_FOUND_BY_ID_SQL,
-  LOST_FOUND_LIST_SQL,
   POLICE_REPORT_BY_ID_SQL,
   POLICE_REPORT_LIST_SQL,
   SHIFT_HANDOVER_BY_ID_SQL,
@@ -206,70 +204,199 @@ export const getShiftHandoverById = async (
 };
 
 // =====================================================
-// LOST AND FOUND
+// SHIFT HANDOVERS — WRITE PATH
+//
+// Read-only until 2026-08-13, so the operational handover happened verbally or
+// in a notebook and open items were dropped at every shift change. Per
+// ui-gaps/18-write-path-gap.md this is one service, one table, no fan-out — so
+// plain HTTP. See ui-gaps/08-shift-handovers.md.
 // =====================================================
 
-const mapLostFoundRow = (row: LostFoundRow): LostFoundListItem => {
-  return LostFoundListItemSchema.parse({
-    item_id: row.item_id,
-    tenant_id: row.tenant_id,
-    property_id: row.property_id,
-    property_name: row.property_name ?? undefined,
-    item_number: row.item_number ?? undefined,
-    item_name: row.item_name,
-    item_description: row.item_description,
-    item_category: row.item_category,
-    item_category_display: row.item_category_display,
-    color: row.color ?? undefined,
-    estimated_value: row.estimated_value ?? undefined,
-    is_valuable: row.is_valuable ?? undefined,
-    found_date: toIsoString(row.found_date) ?? "",
-    found_by_name: row.found_by_name ?? undefined,
-    found_location: row.found_location,
-    room_number: row.room_number ?? undefined,
-    guest_name: row.guest_name ?? undefined,
-    item_status: row.item_status,
-    item_status_display: row.item_status_display,
-    storage_location: row.storage_location ?? undefined,
-    days_in_storage: row.days_in_storage ?? undefined,
-    claimed: row.claimed ?? undefined,
-    returned: row.returned ?? undefined,
-    disposed: row.disposed ?? undefined,
-    hold_until_date: toIsoString(row.hold_until_date) ?? undefined,
-    has_photos: row.has_photos ?? undefined,
-    created_at: toIsoString(row.created_at) ?? undefined,
-  });
+/** `SH-YYYYMMDD-XXXX`, matching the police-report and folio numbering style. */
+const buildHandoverNumber = (): string => {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `SH-${datePart}-${random}`;
 };
 
-export const listLostFoundItems = async (
-  options: ListLostFoundInput,
-): Promise<LostFoundListItem[]> => {
-  const { rows } = await query<LostFoundRow>(LOST_FOUND_LIST_SQL, [
-    options.limit ?? 50,
-    options.tenantId,
-    options.propertyId ?? null,
-    options.itemStatus ?? null,
-    options.itemCategory ?? null,
-    options.foundDateFrom ?? null,
-    options.offset ?? 0,
-  ]);
+/**
+ * Open a handover for a shift.
+ *
+ * Starts `in_progress` with `handover_started_at` stamped: the record is opened
+ * at the start of the outgoing shift and filled as it runs, rather than written
+ * in one go at the end when the details have already been forgotten.
+ */
+export const createShiftHandover = async (
+  tenantId: string,
+  input: ShiftHandoverWriteInput,
+  actorId?: string,
+): Promise<ShiftHandoverListItem | null> => {
+  const { rows } = await query<{ handover_id: string }>(
+    `
+      INSERT INTO public.shift_handovers (
+        tenant_id, property_id, handover_number, handover_title,
+        shift_date, department,
+        outgoing_shift, outgoing_user_id, outgoing_user_name,
+        incoming_shift, incoming_user_id, incoming_user_name,
+        key_points, important_notes, urgent_matters,
+        handover_status, handover_started_at,
+        requires_follow_up,
+        cash_on_hand, deposits_to_make, payment_issues,
+        staff_issues, special_situations,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid, $3, $4,
+        $5::date, $6,
+        $7, $8::uuid, $9,
+        $10, $11::uuid, $12,
+        $13, $14, $15,
+        'in_progress', CURRENT_TIMESTAMP,
+        COALESCE($16, false),
+        $17, $18, $19,
+        $20, $21,
+        $22, $22
+      )
+      RETURNING handover_id
+    `,
+    [
+      tenantId,
+      input.propertyId,
+      buildHandoverNumber(),
+      input.handoverTitle ?? null,
+      input.shiftDate,
+      input.department,
+      input.outgoingShift,
+      input.outgoingUserId,
+      input.outgoingUserName ?? null,
+      input.incomingShift,
+      input.incomingUserId,
+      input.incomingUserName ?? null,
+      input.keyPoints,
+      input.importantNotes ?? null,
+      input.urgentMatters ?? null,
+      input.requiresFollowUp ?? null,
+      input.cashOnHand ?? null,
+      input.depositsToMake ?? null,
+      input.paymentIssues ?? null,
+      input.staffIssues ?? null,
+      input.specialSituations ?? null,
+      actorId ?? null,
+    ],
+  );
 
-  return rows.map(mapLostFoundRow);
+  const handoverId = rows[0]?.handover_id;
+  if (!handoverId) return null;
+
+  return getShiftHandoverById({ handoverId, tenantId });
 };
 
-export const getLostFoundItemById = async (
-  options: GetLostFoundInput,
-): Promise<LostFoundListItem | null> => {
-  const { rows } = await query<LostFoundRow>(LOST_FOUND_BY_ID_SQL, [
-    options.itemId,
-    options.tenantId,
-  ]);
+/**
+ * Add or edit notes and open items while the shift runs.
+ *
+ * `COALESCE` keeps the stored value when a field is absent. Shift, department
+ * and the two users are deliberately not settable — changing who a handover is
+ * between makes it a different record, not an edit of this one.
+ */
+export const updateShiftHandover = async (
+  tenantId: string,
+  handoverId: string,
+  input: Partial<ShiftHandoverWriteInput>,
+  actorId?: string,
+): Promise<ShiftHandoverListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.shift_handovers
+      SET
+        handover_title = COALESCE($3, handover_title),
+        key_points = COALESCE($4, key_points),
+        important_notes = COALESCE($5, important_notes),
+        urgent_matters = COALESCE($6, urgent_matters),
+        handover_status = COALESCE($7, handover_status),
+        requires_follow_up = COALESCE($8, requires_follow_up),
+        cash_on_hand = COALESCE($9, cash_on_hand),
+        deposits_to_make = COALESCE($10, deposits_to_make),
+        payment_issues = COALESCE($11, payment_issues),
+        staff_issues = COALESCE($12, staff_issues),
+        special_situations = COALESCE($13, special_situations),
+        handover_completed_at = CASE
+          WHEN $7 = 'completed' AND handover_completed_at IS NULL
+          THEN CURRENT_TIMESTAMP ELSE handover_completed_at
+        END,
+        updated_by = $14,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE handover_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      handoverId,
+      tenantId,
+      input.handoverTitle ?? null,
+      input.keyPoints ?? null,
+      input.importantNotes ?? null,
+      input.urgentMatters ?? null,
+      input.handoverStatus ?? null,
+      input.requiresFollowUp ?? null,
+      input.cashOnHand ?? null,
+      input.depositsToMake ?? null,
+      input.paymentIssues ?? null,
+      input.staffIssues ?? null,
+      input.specialSituations ?? null,
+      actorId ?? null,
+    ],
+  );
 
-  if (rows.length === 0) {
-    return null;
-  }
+  if (!rowCount) return null;
 
-  return mapLostFoundRow(rows[0] as NonNullable<(typeof rows)[0]>);
+  return getShiftHandoverById({ handoverId, tenantId });
+};
+
+/**
+ * The incoming staff member signs off.
+ *
+ * Guarded on `acknowledged = false` so a second call cannot overwrite who
+ * actually took the handover, or when — that pair is the whole evidentiary value
+ * of the record.
+ */
+export const acknowledgeShiftHandover = async (
+  tenantId: string,
+  handoverId: string,
+  input: {
+    acknowledgmentNotes?: string;
+    questionsAsked?: string;
+    handoverQualityRating?: number;
+  },
+  actorId?: string,
+): Promise<ShiftHandoverListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.shift_handovers
+      SET
+        acknowledged = true,
+        acknowledged_by = $3::uuid,
+        acknowledged_at = CURRENT_TIMESTAMP,
+        acknowledgment_notes = $4,
+        questions_asked = COALESCE($5, questions_asked),
+        handover_quality_rating = COALESCE($6, handover_quality_rating),
+        handover_status = 'acknowledged',
+        handover_completed_at = COALESCE(handover_completed_at, CURRENT_TIMESTAMP),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE handover_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(acknowledged, false) = false
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      handoverId,
+      tenantId,
+      actorId ?? null,
+      input.acknowledgmentNotes ?? null,
+      input.questionsAsked ?? null,
+      input.handoverQualityRating ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getShiftHandoverById({ handoverId, tenantId });
 };
 
 // =====================================================
@@ -355,9 +482,9 @@ const mapGuestFeedbackRow = (row: GuestFeedbackRow): GuestFeedbackListItem => {
     tenant_id: row.tenant_id,
     property_id: row.property_id,
     property_name: row.property_name ?? undefined,
-    guest_id: row.guest_id,
+    guest_id: row.guest_id ?? undefined,
     guest_name: row.guest_name ?? undefined,
-    reservation_id: row.reservation_id,
+    reservation_id: row.reservation_id ?? undefined,
     feedback_source: row.feedback_source ?? undefined,
     feedback_source_display: row.feedback_source_display ?? undefined,
     overall_rating: row.overall_rating ?? undefined,
@@ -377,6 +504,14 @@ const mapGuestFeedbackRow = (row: GuestFeedbackRow): GuestFeedbackListItem => {
     response_text: row.response_text ?? undefined,
     responded_at: toIsoString(row.responded_at) ?? undefined,
     created_at: toIsoString(row.created_at) ?? undefined,
+    feedback_status: row.feedback_status ?? undefined,
+    feedback_status_display: row.feedback_status_display ?? undefined,
+    feedback_category: row.feedback_category ?? undefined,
+    assigned_to: row.assigned_to ?? undefined,
+    assigned_at: toIsoString(row.assigned_at) ?? undefined,
+    resolution_notes: row.resolution_notes ?? undefined,
+    resolved_at: toIsoString(row.resolved_at) ?? undefined,
+    service_recovery_reference: row.service_recovery_reference ?? undefined,
   });
 };
 
@@ -391,6 +526,8 @@ export const listGuestFeedback = async (
     options.isPublic ?? null,
     options.hasResponse ?? null,
     options.offset ?? 0,
+    options.feedbackStatus ?? null,
+    options.feedbackCategory ?? null,
   ]);
 
   return rows.map(mapGuestFeedbackRow);
@@ -409,6 +546,208 @@ export const getGuestFeedbackById = async (
   }
 
   return mapGuestFeedbackRow(rows[0] as NonNullable<(typeof rows)[0]>);
+};
+
+// =====================================================
+// GUEST FEEDBACK — WRITE PATH
+//
+// The register was read-only: two GETs over a table nothing could create a row
+// in, so there was no intake (not from the portal, not from staff on a phone
+// complaint) and no response loop. Per ui-gaps/18-write-path-gap.md this is one
+// service, one table, no fan-out — so plain HTTP, not a command.
+// See ui-gaps/09-guest-feedback.md.
+// =====================================================
+
+/**
+ * Log a piece of feedback.
+ *
+ * `guest_id` and `reservation_id` are optional because the table's NOT NULL on
+ * both is exactly what made staff-entered intake impossible — a caller
+ * complaining about last night has neither to hand.
+ */
+export const createGuestFeedback = async (
+  tenantId: string,
+  input: GuestFeedbackWriteInput,
+): Promise<GuestFeedbackListItem | null> => {
+  const { rows } = await query<{ id: string }>(
+    `
+      INSERT INTO public.guest_feedback (
+        tenant_id, property_id, guest_id, reservation_id,
+        feedback_source, review_title, review_text,
+        overall_rating, rating_scale,
+        cleanliness_rating, staff_rating, location_rating, value_rating,
+        would_recommend, would_return,
+        feedback_category, sentiment_label,
+        is_public, language_code,
+        feedback_status
+      ) VALUES (
+        $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+        $5, $6, $7,
+        $8, COALESCE($9, 5),
+        $10, $11, $12, $13,
+        $14, $15,
+        $16, $17,
+        COALESCE($18, true), COALESCE($19, 'en'),
+        'new'
+      )
+      RETURNING id
+    `,
+    [
+      tenantId,
+      input.propertyId,
+      input.guestId ?? null,
+      input.reservationId ?? null,
+      input.feedbackSource,
+      input.reviewTitle ?? null,
+      input.reviewText,
+      input.overallRating ?? null,
+      input.ratingScale ?? null,
+      input.cleanlinessRating ?? null,
+      input.staffRating ?? null,
+      input.locationRating ?? null,
+      input.valueRating ?? null,
+      input.wouldRecommend ?? null,
+      input.wouldReturn ?? null,
+      input.feedbackCategory ?? null,
+      input.sentimentLabel ?? null,
+      input.isPublic ?? null,
+      input.languageCode ?? null,
+    ],
+  );
+
+  const feedbackId = rows[0]?.id;
+  if (!feedbackId) return null;
+
+  return getGuestFeedbackById({ feedbackId, tenantId });
+};
+
+/**
+ * Triage: categorise, set sentiment, assign an owner, adjust publication.
+ *
+ * `COALESCE` keeps the stored value when a field is absent, so a screen can send
+ * only what changed. Assigning stamps `assigned_at` in the same statement —
+ * an owner with no timestamp cannot be aged.
+ */
+export const updateGuestFeedback = async (
+  tenantId: string,
+  feedbackId: string,
+  input: {
+    feedbackCategory?: string;
+    sentimentLabel?: string;
+    feedbackStatus?: string;
+    assignedTo?: string;
+    isPublic?: boolean;
+    isFeatured?: boolean;
+    isVerified?: boolean;
+  },
+): Promise<GuestFeedbackListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.guest_feedback
+      SET
+        feedback_category = COALESCE($3, feedback_category),
+        sentiment_label = COALESCE($4, sentiment_label),
+        feedback_status = COALESCE($5, feedback_status),
+        assigned_to = COALESCE($6::uuid, assigned_to),
+        assigned_at = CASE
+          WHEN $6::uuid IS NOT NULL AND $6::uuid IS DISTINCT FROM assigned_to
+          THEN CURRENT_TIMESTAMP ELSE assigned_at
+        END,
+        is_public = COALESCE($7, is_public),
+        is_featured = COALESCE($8, is_featured),
+        is_verified = COALESCE($9, is_verified),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1::uuid AND tenant_id = $2::uuid
+    `,
+    [
+      feedbackId,
+      tenantId,
+      input.feedbackCategory ?? null,
+      input.sentimentLabel ?? null,
+      input.feedbackStatus ?? null,
+      input.assignedTo ?? null,
+      input.isPublic ?? null,
+      input.isFeatured ?? null,
+      input.isVerified ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getGuestFeedbackById({ feedbackId, tenantId });
+};
+
+/**
+ * Record the response sent to the guest.
+ *
+ * The status only advances to `responded` from a state that precedes it —
+ * responding again to something already resolved should not reopen it.
+ */
+export const respondToGuestFeedback = async (
+  tenantId: string,
+  feedbackId: string,
+  input: { responseText: string; isPublic?: boolean },
+  actorId?: string,
+): Promise<GuestFeedbackListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.guest_feedback
+      SET
+        response_text = $3,
+        responded_by = $4::uuid,
+        responded_at = CURRENT_TIMESTAMP,
+        is_public = COALESCE($5, is_public),
+        feedback_status = CASE
+          WHEN feedback_status IN ('new', 'acknowledged', 'in_progress')
+          THEN 'responded' ELSE feedback_status
+        END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1::uuid AND tenant_id = $2::uuid
+    `,
+    [feedbackId, tenantId, input.responseText, actorId ?? null, input.isPublic ?? null],
+  );
+
+  if (!rowCount) return null;
+
+  return getGuestFeedbackById({ feedbackId, tenantId });
+};
+
+/** Close the loop, optionally linking the goodwill gesture that settled it. */
+export const resolveGuestFeedback = async (
+  tenantId: string,
+  feedbackId: string,
+  input: {
+    resolutionNotes: string;
+    serviceRecoveryReference?: string;
+    feedbackStatus?: string;
+  },
+  actorId?: string,
+): Promise<GuestFeedbackListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.guest_feedback
+      SET
+        resolution_notes = $3,
+        service_recovery_reference = COALESCE($4, service_recovery_reference),
+        feedback_status = COALESCE($5, 'resolved'),
+        resolved_by = $6::uuid,
+        resolved_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1::uuid AND tenant_id = $2::uuid
+    `,
+    [
+      feedbackId,
+      tenantId,
+      input.resolutionNotes,
+      input.serviceRecoveryReference ?? null,
+      input.feedbackStatus ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getGuestFeedbackById({ feedbackId, tenantId });
 };
 
 // =====================================================

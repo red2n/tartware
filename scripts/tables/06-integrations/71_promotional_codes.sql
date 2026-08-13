@@ -225,4 +225,47 @@ COMMENT ON COLUMN promotional_codes.conversion_rate IS 'Percentage of code views
 COMMENT ON COLUMN promotional_codes.auto_apply IS 'Whether this promo is automatically applied when conditions are met';
 COMMENT ON COLUMN promotional_codes.requires_approval IS 'Whether redemption requires manual approval before applying';
 
+-- =====================================================
+-- Promo codes are unique PER TENANT, not globally.
+--
+-- `promo_code VARCHAR(100) UNIQUE NOT NULL` above creates a table-wide unique
+-- index, so the first tenant to create 'SUMMER20' permanently blocks every other
+-- tenant from using it — a cross-tenant collision on a value guests type in. It
+-- went unnoticed because nothing could create a promo code until 2026-08-13.
+--
+-- Replaced with (tenant_id, promo_code). Codes are stored upper-cased by the
+-- write path, so the index does not need to be case-folded.
+-- See ui-gaps/16-booking-reference-data.md.
+-- =====================================================
+
+DO $$
+DECLARE
+    v_constraint_name TEXT;
+BEGIN
+    -- The inline UNIQUE gets a generated name; find it by shape rather than guessing.
+    SELECT con.conname INTO v_constraint_name
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    JOIN pg_attribute att ON att.attrelid = rel.oid AND att.attnum = ANY (con.conkey)
+    WHERE rel.relname = 'promotional_codes'
+      AND con.contype = 'u'
+      AND array_length(con.conkey, 1) = 1
+      AND att.attname = 'promo_code'
+    LIMIT 1;
+
+    IF v_constraint_name IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE promotional_codes DROP CONSTRAINT %I', v_constraint_name);
+        RAISE NOTICE 'Dropped global unique constraint % on promotional_codes.promo_code', v_constraint_name;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_promotional_codes_tenant_code'
+    ) THEN
+        ALTER TABLE promotional_codes
+            ADD CONSTRAINT uq_promotional_codes_tenant_code UNIQUE (tenant_id, promo_code);
+    END IF;
+END $$;
+
+COMMENT ON COLUMN promotional_codes.promo_code IS 'Guest-facing code, upper-cased on write. Unique per tenant, not globally';
+
 \echo 'promotional_codes table created successfully!'

@@ -50,27 +50,6 @@ export type GetShiftHandoverInput = {
 };
 
 // =====================================================
-// LOST AND FOUND INPUTS
-// =====================================================
-
-/** Query parameters for listing lost and found items. */
-export type ListLostFoundInput = {
-	tenantId: string;
-	propertyId?: string;
-	itemStatus?: string;
-	itemCategory?: string;
-	foundDateFrom?: string;
-	limit?: number;
-	offset?: number;
-};
-
-/** Query parameters for retrieving a single lost and found item. */
-export type GetLostFoundInput = {
-	itemId: string;
-	tenantId: string;
-};
-
-// =====================================================
 // BANQUET ORDER INPUTS
 // =====================================================
 
@@ -102,6 +81,8 @@ export type ListGuestFeedbackInput = {
 	sentimentLabel?: string;
 	isPublic?: boolean;
 	hasResponse?: boolean;
+	feedbackStatus?: string;
+	feedbackCategory?: string;
 	limit?: number;
 	offset?: number;
 };

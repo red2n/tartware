@@ -66,7 +66,7 @@ And two findings the audit did not make at all:
 | Commands with **no** wrapper and **no** direct dispatch | — | **108** | structurally unreachable |
 | Commands unreachable *from the UI* | 134 | 108–134 | 26 have a wrapper the UI never calls |
 | Domains with zero UI presence | 16 | 16 | confirmed by whole-word search |
-| Catalogued commands with no handler anywhere | — | **7** | already tracked in `flow-command-catalog.test.ts` |
+| Catalogued commands with no handler anywhere | — | **4** | was 7; three deleted 2026-08-13 rather than implemented |
 
 ---
 
@@ -90,7 +90,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 05 | revenue-service: 20 endpoints + 32 commands, no front-end at all | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | XL or delete |
+| 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
 | 18 | Read-only domains have no write path — **✅ mechanism decided 2026-08-11**; per-domain writes remain | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
@@ -111,19 +111,19 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 06 | Incident log — read-only backend, catalogued command unimplemented | [06-incidents.md](06-incidents.md) | Backend+UI | M |
-| 07 | Lost & found — full CRUD in housekeeping-service, duplicated read-only in core | [07-lost-and-found.md](07-lost-and-found.md) | UI+cleanup | M |
-| 08 | Front-desk shift handovers — read-only, no UI | [08-shift-handovers.md](08-shift-handovers.md) | Backend+UI | M |
-| 09 | Guest feedback — read-only, no UI | [09-guest-feedback.md](09-guest-feedback.md) | Backend+UI | M |
+| 06 | Incident log — **✅ closed 2026-08-13**: module gate fixed (was 403 for every tenant), detail contract fixed, UI shipped | [06-incidents.md](06-incidents.md) | UI | done |
+| 07 | Lost & found — **✅ shipped 2026-08-13**: duplicate deleted, gateway repointed, UI built | [07-lost-and-found.md](07-lost-and-found.md) | UI+cleanup | done |
+| 08 | Front-desk shift handovers — **✅ write path + UI shipped 2026-08-13** | [08-shift-handovers.md](08-shift-handovers.md) | Backend+UI | done |
+| 09 | Guest feedback — **✅ write path + staff inbox shipped 2026-08-13**; portal intake still open | [09-guest-feedback.md](09-guest-feedback.md) | Backend+UI | part |
 
 ### P2 — Commercial Surfaces (4 gaps)
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 13 | Sales & catering — banquet orders, meeting rooms, event bookings | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | L |
-| 14 | Channel / distribution — OTA connections, mappings, sources, metasearch | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | L |
+| 14 | Channel / distribution — **✅ channel health screen shipped 2026-08-13** (4 existing commands wired); CRUD half open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
-| 16 | Booking reference data — allotments, waitlist, promo codes, segments | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | M |
+| 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
 
 ### P2 — Cross-Cutting (1 gap)
 
@@ -216,8 +216,43 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
 10. COV-05: build a front-end or retire the service. 32 commands and 20 endpoints hang on this.
 
 **Phase 6 — Remaining write paths + screens**
-11. COV-18 (remainder), then COV-06 → COV-09, COV-13, COV-14, COV-16
-12. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
+11. ~~COV-07: lost & found~~ — **done 2026-08-13.** Started here because it was the only fully
+    unblocked item; tracing it found the gateway proxying the domain to the *read-only* copy, so the
+    complete backend in housekeeping-service had never been reachable. Two guardrail lessons:
+    the proxy-conformance test skips `ALL /*` wildcards, which is exactly where writes get swallowed;
+    and a bare `POST` needs its own gateway registration every time.
+12. ~~COV-06, COV-08, COV-09, COV-14 step 1~~ — **done 2026-08-13.** Three write paths added, all
+    plain HTTP per COV-18's rule, plus the channel-health screen over commands that already existed.
+13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** Then COV-18 (remainder), COV-13,
+    COV-16's allotments, COV-14's CRUD half and COV-09's portal intake
+14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
+
+**`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
+`operations.incident.report` were **deleted** (catalog row, payload schema, validator), because each
+describes a write that already exists as plain HTTP on the owning service. Keeping them would have
+meant two write paths for one table, one of which silently drops every message. That discharges most
+of COV-18's third acceptance criterion.
+
+**A recurring defect worth naming: schema enums drifting from their CHECK constraints.** Measured
+2026-08-13: **~53 unused enums** in `schema/` disagree with an apparent constraint, and **3 live call
+sites already compensate** with `.options.map(t => t.toLowerCase())` — `CompanyTypeEnum` and
+`CreditStatusEnum` in `booking-config/company.ts`, `TaxTypeEnum` in `finance-admin.ts`. Named
+instances so far: `CompanyTypeEnum`, `LostFoundStatusEnum` (COV-07), `ShiftHandoverStatusEnum`
+(COV-08), `PromotionalCodeStatusEnum` and `PromotionalCodeDiscountTypeEnum` (COV-16).
+
+**It is not purely cosmetic.** COV-16 found three list filters comparing `UPPER($n)` against
+lowercase CHECK columns, which matched nothing — the drift reaching live SQL.
+
+**A conformance test was tried and rejected**: enum→column matching is only heuristic, and the fuzzy
+version paired `TenantStatusEnum` with `membership_status` and `SettingsValueStatusEnum` with
+`warranty_status`. A test that cries wolf is worse than none. The tractable fix is to delete the
+unused enums and let the three live ones carry the constraint's own case.
+
+**Third guardrail added 2026-08-13** — `tenant-scope-module-conformance.test.ts` asserts every
+`requiredModules:` literal in `Apps/*/src` is a real `MODULE_IDS` entry. It was written after finding
+the incident write path gated on a module that does not exist, 403ing for every tenant since it
+shipped. Note the E2E sweep *cannot* find this class of bug: `api_smoke` scores
+`403 TENANT_MODULE_NOT_ENABLED` as a skip.
 
 ---
 

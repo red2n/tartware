@@ -162,15 +162,22 @@ describe("command catalog ↔ consumer target services", () => {
    *
    * Do not add a command here to silence this check — an entry means "not
    * built yet", and a command WITH a handler must never appear in this list.
+   *
+   * Three entries left on 2026-08-13 by deletion rather than implementation:
+   * `compliance.breach.report`, `compliance.breach.notify` and
+   * `operations.incident.report`. All three describe a write that already exists
+   * as plain HTTP on the owning service — the breach register on core-service and
+   * the incident register on housekeeping-service. Per ui-gaps/18-write-path-gap.md
+   * a single-service, single-table write with no fan-out does not belong on the
+   * command bus, so the catalog rows, payload schemas and validators went instead
+   * of gaining handlers. Keeping them would have meant two write paths for one
+   * table, one of which silently drops every message.
    */
   const UNIMPLEMENTED = new Set([
     "analytics.metric.ingest",
     "analytics.report.schedule",
-    "operations.incident.report",
     "operations.asset.update",
     "operations.inventory.adjust",
-    "compliance.breach.report",
-    "compliance.breach.notify",
   ]);
 
   it("routes every command to a target service some consumer claims", () => {

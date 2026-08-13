@@ -259,7 +259,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
       (request.query as { tenant_id?: string })?.tenant_id ??
       (request.body as { tenant_id?: string } | undefined)?.tenant_id,
     minRole: "STAFF",
-    requiredModules: "housekeeping",
+    requiredModules: "facility-maintenance",
   });
 
   app.post(
@@ -286,6 +286,55 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
         response: {
           200: jsonObjectSchema,
         },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  /**
+   * Lost & found — housekeeping-service owns the full lifecycle (register,
+   * update, claim, return). These were previously registered in
+   * operations-routes.ts against core-service, which only ever implemented the
+   * two reads, so every write 404ed downstream and the working implementation
+   * was unreachable through the gateway. See ui-gaps/07-lost-and-found.md.
+   */
+  app.get(
+    "/v1/lost-and-found",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "List lost and found items.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  // Registering an item POSTs to the bare path, which `/v1/lost-and-found/*`
+  // does not match — the same trap as incident and police-report filing.
+  app.post(
+    "/v1/lost-and-found",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Register a lost and found item.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  app.all(
+    "/v1/lost-and-found/*",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy lost and found operations to the housekeeping service.",
+        response: { 200: jsonObjectSchema },
       }),
     },
     proxyHousekeeping,

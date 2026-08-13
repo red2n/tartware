@@ -634,31 +634,56 @@ export type GroupBookingListResponse = z.infer<
 // =====================================================
 
 /**
- * Promotional code status enum matching database constraints.
+ * Promotional code status, matching the `promotional_codes.promo_status` CHECK
+ * constraint.
+ *
+ * The previous definition here was UPPERCASE with two values the constraint
+ * rejects (`INACTIVE`, `SUSPENDED`) and three missing that it accepts (`draft`,
+ * `paused`, `cancelled`). Nothing read it, so it was corrected rather than kept.
+ * Same drift as `CompanyTypeEnum`, `LostFoundStatusEnum` and
+ * `ShiftHandoverStatusEnum` — see ui-gaps/16-booking-reference-data.md.
  */
 export const PromotionalCodeStatusEnum = z.enum([
-	"ACTIVE",
-	"INACTIVE",
-	"EXPIRED",
-	"DEPLETED",
-	"SCHEDULED",
-	"SUSPENDED",
+	"draft",
+	"scheduled",
+	"active",
+	"paused",
+	"expired",
+	"depleted",
+	"cancelled",
 ]);
 export type PromotionalCodeStatus = z.infer<typeof PromotionalCodeStatusEnum>;
 
 /**
- * Promotional code discount type enum.
+ * Promotional code discount type, matching the `discount_type` CHECK constraint.
+ * Note `free_night` is singular in the constraint; the old enum said
+ * `FREE_NIGHTS` and added an `AMENITY` value the constraint does not allow.
  */
 export const PromotionalCodeDiscountTypeEnum = z.enum([
-	"PERCENTAGE",
-	"FIXED_AMOUNT",
-	"FREE_NIGHTS",
-	"UPGRADE",
-	"AMENITY",
+	"percentage",
+	"fixed_amount",
+	"free_night",
+	"upgrade",
+	"other",
 ]);
 export type PromotionalCodeDiscountType = z.infer<
 	typeof PromotionalCodeDiscountTypeEnum
 >;
+
+/** Promo type, matching the `promo_type` CHECK constraint. */
+export const PromotionalCodeTypeEnum = z.enum([
+	"discount_percent",
+	"discount_fixed",
+	"free_night",
+	"free_upgrade",
+	"free_service",
+	"bonus_points",
+	"bundle_deal",
+	"early_bird",
+	"last_minute",
+	"other",
+]);
+export type PromotionalCodeType = z.infer<typeof PromotionalCodeTypeEnum>;
 
 /**
  * Promotional code list item schema for API responses.
@@ -730,6 +755,145 @@ export const PromotionalCodeListItemSchema = z.object({
 export type PromotionalCodeListItem = z.infer<
 	typeof PromotionalCodeListItemSchema
 >;
+
+/**
+ * Create a promotional code.
+ *
+ * `POST /v1/promo-codes/validate` has always worked, so codes could be *used*
+ * and never *created* — the redemption path was live over a table only SQL could
+ * populate. See ui-gaps/16-booking-reference-data.md.
+ *
+ * Usage counters (`usage_count`, `times_redeemed`, `total_discount_given` and
+ * the rest of the analytics block) are machine-maintained and deliberately not
+ * settable: a caller-supplied redemption count is how a limit stops meaning
+ * anything.
+ */
+export const PromotionalCodeWriteBodySchema = z
+	.object({
+		tenant_id: uuid,
+		property_id: uuid.optional(),
+		promo_code: z
+			.string()
+			.min(2)
+			.max(100)
+			// Codes are typed by guests and pasted from emails; folding case and
+			// rejecting spaces at the edge avoids "SUMMER20" and "summer20 " being
+			// two different rows that both look right in a list.
+			.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only")
+			.transform((value) => value.toUpperCase()),
+		promo_name: z.string().min(1).max(255),
+		promo_description: z.string().optional(),
+		promo_type: PromotionalCodeTypeEnum.optional(),
+		promo_status: PromotionalCodeStatusEnum.optional(),
+		is_active: z.boolean().optional(),
+		is_public: z.boolean().optional(),
+		valid_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+		valid_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+		discount_type: PromotionalCodeDiscountTypeEnum.optional(),
+		discount_percent: z.coerce.number().min(0).max(100).optional(),
+		discount_amount: z.coerce.number().nonnegative().optional(),
+		discount_currency: z.string().length(3).optional(),
+		max_discount_amount: z.coerce.number().nonnegative().optional(),
+		free_nights_count: z.coerce.number().int().positive().optional(),
+		has_usage_limit: z.boolean().optional(),
+		total_usage_limit: z.coerce.number().int().positive().optional(),
+		per_user_limit: z.coerce.number().int().positive().optional(),
+		minimum_stay_nights: z.coerce.number().int().positive().optional(),
+		maximum_stay_nights: z.coerce.number().int().positive().optional(),
+		minimum_booking_amount: z.coerce.number().nonnegative().optional(),
+		combinable_with_other_promos: z.boolean().optional(),
+		auto_apply: z.boolean().optional(),
+		display_on_website: z.boolean().optional(),
+	})
+	.refine((body) => body.valid_to >= body.valid_from, {
+		message: "valid_to must not be before valid_from",
+		path: ["valid_to"],
+	})
+	.refine(
+		(body) => body.discount_type !== "percentage" || body.discount_percent != null,
+		{ message: "discount_percent is required for a percentage discount", path: ["discount_percent"] },
+	)
+	.refine(
+		(body) => body.discount_type !== "fixed_amount" || body.discount_amount != null,
+		{ message: "discount_amount is required for a fixed-amount discount", path: ["discount_amount"] },
+	)
+	.refine((body) => !body.has_usage_limit || body.total_usage_limit != null, {
+		message: "total_usage_limit is required when has_usage_limit is set",
+		path: ["total_usage_limit"],
+	});
+
+export type PromotionalCodeWriteBody = z.infer<
+	typeof PromotionalCodeWriteBodySchema
+>;
+
+/**
+ * Edit a promotional code. `promo_code` is not settable: it is the identifier
+ * guests already hold, and rewriting it silently invalidates every email and
+ * landing page carrying the old one. Withdraw the code and issue a new one.
+ */
+export const PromotionalCodeUpdateBodySchema = z.object({
+	tenant_id: uuid,
+	promo_name: z.string().min(1).max(255).optional(),
+	promo_description: z.string().optional(),
+	promo_type: PromotionalCodeTypeEnum.optional(),
+	promo_status: PromotionalCodeStatusEnum.optional(),
+	is_active: z.boolean().optional(),
+	is_public: z.boolean().optional(),
+	valid_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	valid_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	discount_type: PromotionalCodeDiscountTypeEnum.optional(),
+	discount_percent: z.coerce.number().min(0).max(100).optional(),
+	discount_amount: z.coerce.number().nonnegative().optional(),
+	discount_currency: z.string().length(3).optional(),
+	max_discount_amount: z.coerce.number().nonnegative().optional(),
+	free_nights_count: z.coerce.number().int().positive().optional(),
+	has_usage_limit: z.boolean().optional(),
+	total_usage_limit: z.coerce.number().int().positive().optional(),
+	per_user_limit: z.coerce.number().int().positive().optional(),
+	minimum_stay_nights: z.coerce.number().int().positive().optional(),
+	maximum_stay_nights: z.coerce.number().int().positive().optional(),
+	minimum_booking_amount: z.coerce.number().nonnegative().optional(),
+	combinable_with_other_promos: z.boolean().optional(),
+	auto_apply: z.boolean().optional(),
+	display_on_website: z.boolean().optional(),
+});
+
+export type PromotionalCodeUpdateBody = z.infer<
+	typeof PromotionalCodeUpdateBodySchema
+>;
+
+/**
+ * Service-layer input for a promotional code write. Camel-cased counterpart of
+ * {@link PromotionalCodeWriteBodySchema}; lives here because AGENTS.md requires
+ * service-layer shapes in the schema package, not in a service file.
+ */
+export type PromotionalCodeWriteInput = {
+	promoCode: string;
+	promoName: string;
+	validFrom: string;
+	validTo: string;
+	propertyId?: string;
+	promoDescription?: string;
+	promoType?: string;
+	promoStatus?: string;
+	isActive?: boolean;
+	isPublic?: boolean;
+	discountType?: string;
+	discountPercent?: number;
+	discountAmount?: number;
+	discountCurrency?: string;
+	maxDiscountAmount?: number;
+	freeNightsCount?: number;
+	hasUsageLimit?: boolean;
+	totalUsageLimit?: number;
+	perUserLimit?: number;
+	minimumStayNights?: number;
+	maximumStayNights?: number;
+	minimumBookingAmount?: number;
+	combinableWithOtherPromos?: boolean;
+	autoApply?: boolean;
+	displayOnWebsite?: boolean;
+};
 
 /**
  * Promotional code list response schema.
@@ -1173,18 +1337,6 @@ export type CashierSessionListResponse = z.infer<
 // =====================================================
 
 /**
- * Shift handover status enum.
- */
-export const ShiftHandoverStatusEnum = z.enum([
-	"DRAFT",
-	"PENDING",
-	"COMPLETED",
-	"ACKNOWLEDGED",
-	"REVIEWED",
-]);
-export type ShiftHandoverStatus = z.infer<typeof ShiftHandoverStatusEnum>;
-
-/**
  * Shift handover list item schema.
  * Used by: GET /v1/shift-handovers
  */
@@ -1221,59 +1373,140 @@ export const ShiftHandoverListItemSchema = z.object({
 
 export type ShiftHandoverListItem = z.infer<typeof ShiftHandoverListItemSchema>;
 
-// =====================================================
-// LOST AND FOUND
-// =====================================================
+/** Shifts and departments, matching the table's CHECK constraints (lowercase). */
+export const ShiftNameEnum = z.enum(["morning", "afternoon", "evening", "night"]);
 
-/**
- * Lost and found item status enum.
- */
-export const LostFoundStatusEnum = z.enum([
-	"FOUND",
-	"STORED",
-	"CLAIMED",
-	"RETURNED",
-	"SHIPPED",
-	"DISPOSED",
-	"DONATED",
+export type ShiftName = z.infer<typeof ShiftNameEnum>;
+
+export const ShiftHandoverDepartmentEnum = z.enum([
+	"front_desk",
+	"housekeeping",
+	"maintenance",
+	"food_beverage",
+	"management",
+	"sales",
+	"security",
+	"spa",
+	"concierge",
+	"other",
 ]);
-export type LostFoundStatus = z.infer<typeof LostFoundStatusEnum>;
+
+export type ShiftHandoverDepartment = z.infer<typeof ShiftHandoverDepartmentEnum>;
 
 /**
- * Lost and found list item schema.
- * Used by: GET /v1/lost-and-found
+ * Matches the table's CHECK constraint. The previous definition here was
+ * UPPERCASE with two values the constraint rejects ('DRAFT', 'REVIEWED') and
+ * missing two it accepts — the same drift found in `CompanyTypeEnum` and
+ * `LostFoundStatusEnum`. Nothing consumed it, so it was replaced rather than
+ * kept alongside.
  */
-export const LostFoundListItemSchema = z.object({
-	item_id: uuid,
+export const ShiftHandoverStatusEnum = z.enum([
+	"pending",
+	"in_progress",
+	"completed",
+	"acknowledged",
+	"escalated",
+]);
+
+export type ShiftHandoverStatus = z.infer<typeof ShiftHandoverStatusEnum>;
+
+/**
+ * Open a handover for a shift. `handover_number` is absent on purpose: it is
+ * UNIQUE and generated server-side.
+ *
+ * `incoming_user_id` is required because the column is NOT NULL — a handover
+ * addressed to nobody has no one to acknowledge it, which is the whole point of
+ * the record. See ui-gaps/08-shift-handovers.md.
+ */
+export const ShiftHandoverWriteBodySchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid,
-	property_name: z.string().optional(),
-	item_number: z.string().optional(),
-	item_name: z.string(),
-	item_description: z.string(),
-	item_category: z.string(),
-	item_category_display: z.string(),
-	color: z.string().optional(),
-	estimated_value: z.string().optional(),
-	is_valuable: z.boolean().optional(),
-	found_date: z.string(),
-	found_by_name: z.string().optional(),
-	found_location: z.string(),
-	room_number: z.string().optional(),
-	guest_name: z.string().optional(),
-	item_status: z.string(),
-	item_status_display: z.string(),
-	storage_location: z.string().optional(),
-	days_in_storage: z.number().int().optional(),
-	claimed: z.boolean().optional(),
-	returned: z.boolean().optional(),
-	disposed: z.boolean().optional(),
-	hold_until_date: z.string().optional(),
-	has_photos: z.boolean().optional(),
-	created_at: z.string().optional(),
+	shift_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	department: ShiftHandoverDepartmentEnum,
+	outgoing_shift: ShiftNameEnum,
+	outgoing_user_id: uuid,
+	outgoing_user_name: z.string().max(200).optional(),
+	incoming_shift: ShiftNameEnum,
+	incoming_user_id: uuid,
+	incoming_user_name: z.string().max(200).optional(),
+	handover_title: z.string().max(255).optional(),
+	key_points: z.string().min(1),
+	important_notes: z.string().optional(),
+	urgent_matters: z.string().optional(),
+	requires_follow_up: z.boolean().optional(),
+	cash_on_hand: z.coerce.number().optional(),
+	deposits_to_make: z.coerce.number().optional(),
+	payment_issues: z.string().optional(),
+	staff_issues: z.string().optional(),
+	special_situations: z.string().optional(),
 });
 
-export type LostFoundListItem = z.infer<typeof LostFoundListItemSchema>;
+export type ShiftHandoverWriteBody = z.infer<typeof ShiftHandoverWriteBodySchema>;
+
+/**
+ * Edit an open handover while the shift runs. Everything is optional so a screen
+ * can send only what changed; the shift, department and the two users are fixed
+ * at creation because changing who a handover is between makes it a different
+ * record.
+ */
+export const ShiftHandoverUpdateBodySchema = z.object({
+	tenant_id: uuid,
+	handover_title: z.string().max(255).optional(),
+	key_points: z.string().min(1).optional(),
+	important_notes: z.string().optional(),
+	urgent_matters: z.string().optional(),
+	handover_status: ShiftHandoverStatusEnum.optional(),
+	requires_follow_up: z.boolean().optional(),
+	cash_on_hand: z.coerce.number().optional(),
+	deposits_to_make: z.coerce.number().optional(),
+	payment_issues: z.string().optional(),
+	staff_issues: z.string().optional(),
+	special_situations: z.string().optional(),
+});
+
+export type ShiftHandoverUpdateBody = z.infer<typeof ShiftHandoverUpdateBodySchema>;
+
+/**
+ * The incoming staff member signs off, capturing who and when. A handover list
+ * nobody is prompted to read is not worth building — this is the transition that
+ * makes it a handover rather than a note.
+ */
+export const ShiftHandoverAcknowledgeBodySchema = z.object({
+	tenant_id: uuid,
+	acknowledgment_notes: z.string().max(2000).optional(),
+	questions_asked: z.string().max(2000).optional(),
+	handover_quality_rating: z.coerce.number().int().min(1).max(5).optional(),
+});
+
+export type ShiftHandoverAcknowledgeBody = z.infer<typeof ShiftHandoverAcknowledgeBodySchema>;
+
+/**
+ * Service-layer input for a shift handover write. Camel-cased counterpart of
+ * {@link ShiftHandoverWriteBodySchema}; lives here because AGENTS.md requires
+ * service-layer shapes in the schema package, not in a service file.
+ */
+export type ShiftHandoverWriteInput = {
+	propertyId: string;
+	shiftDate: string;
+	department: string;
+	outgoingShift: string;
+	outgoingUserId: string;
+	incomingShift: string;
+	incomingUserId: string;
+	keyPoints: string;
+	outgoingUserName?: string;
+	incomingUserName?: string;
+	handoverTitle?: string;
+	importantNotes?: string;
+	urgentMatters?: string;
+	handoverStatus?: string;
+	requiresFollowUp?: boolean;
+	cashOnHand?: number;
+	depositsToMake?: number;
+	paymentIssues?: string;
+	staffIssues?: string;
+	specialSituations?: string;
+};
 
 // =====================================================
 // BANQUET EVENT ORDERS
@@ -1347,9 +1580,11 @@ export const GuestFeedbackListItemSchema = z.object({
 	tenant_id: uuid,
 	property_id: uuid,
 	property_name: z.string().optional(),
-	guest_id: uuid,
+	// Nullable in the table since 2026-08-13: staff-entered feedback may predate a
+	// guest record, and is not always attributable to one stay.
+	guest_id: uuid.optional(),
 	guest_name: z.string().optional(),
-	reservation_id: uuid,
+	reservation_id: uuid.optional(),
 	feedback_source: z.string().optional(),
 	feedback_source_display: z.string().optional(),
 	overall_rating: z.string().optional(),
@@ -1369,9 +1604,117 @@ export const GuestFeedbackListItemSchema = z.object({
 	response_text: z.string().optional(),
 	responded_at: z.string().optional(),
 	created_at: z.string().optional(),
+
+	// Complaint-handling workflow. Feedback with no owner and no status is a table
+	// that fills up and is never worked. See ui-gaps/09-guest-feedback.md.
+	feedback_status: z.string().optional(),
+	feedback_status_display: z.string().optional(),
+	feedback_category: z.string().optional(),
+	assigned_to: uuid.optional(),
+	assigned_at: z.string().optional(),
+	resolution_notes: z.string().optional(),
+	resolved_at: z.string().optional(),
+	service_recovery_reference: z.string().optional(),
 });
 
 export type GuestFeedbackListItem = z.infer<typeof GuestFeedbackListItemSchema>;
+
+/** Where a piece of feedback came from. */
+export const GuestFeedbackSourceEnum = z.enum([
+	"GUEST_PORTAL",
+	"STAFF_ENTERED",
+	"EMAIL_SURVEY",
+	"SMS_SURVEY",
+	"IN_APP",
+	"OTA_REVIEW",
+	"EMAIL",
+	"PHONE",
+	"GOOGLE",
+	"TRIPADVISOR",
+	"BOOKING_COM",
+]);
+
+export type GuestFeedbackSource = z.infer<typeof GuestFeedbackSourceEnum>;
+
+/** Complaint-handling state, matching the table's CHECK constraint (lowercase). */
+export const GuestFeedbackStatusEnum = z.enum([
+	"new",
+	"acknowledged",
+	"in_progress",
+	"responded",
+	"resolved",
+	"closed",
+]);
+
+export type GuestFeedbackStatus = z.infer<typeof GuestFeedbackStatusEnum>;
+
+/**
+ * Log a piece of feedback.
+ *
+ * `guest_id` and `reservation_id` are optional: the point of `STAFF_ENTERED` is a
+ * phone complaint from someone who may not be in the system yet, and the table's
+ * NOT NULL on both is what made that impossible. See ui-gaps/09-guest-feedback.md.
+ */
+export const GuestFeedbackWriteBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	feedback_source: GuestFeedbackSourceEnum,
+	guest_id: uuid.optional(),
+	reservation_id: uuid.optional(),
+	review_title: z.string().max(500).optional(),
+	review_text: z.string().min(1),
+	overall_rating: z.coerce.number().nonnegative().optional(),
+	rating_scale: z.coerce.number().int().positive().max(10).optional(),
+	cleanliness_rating: z.coerce.number().nonnegative().optional(),
+	staff_rating: z.coerce.number().nonnegative().optional(),
+	location_rating: z.coerce.number().nonnegative().optional(),
+	value_rating: z.coerce.number().nonnegative().optional(),
+	would_recommend: z.boolean().optional(),
+	would_return: z.boolean().optional(),
+	feedback_category: z.string().max(100).optional(),
+	sentiment_label: z.string().max(20).optional(),
+	is_public: z.boolean().optional(),
+	language_code: z.string().max(10).optional(),
+});
+
+export type GuestFeedbackWriteBody = z.infer<typeof GuestFeedbackWriteBodySchema>;
+
+/** Triage: categorise, set sentiment, assign an owner, adjust publication. */
+export const GuestFeedbackUpdateBodySchema = z.object({
+	tenant_id: uuid,
+	feedback_category: z.string().max(100).optional(),
+	sentiment_label: z.string().max(20).optional(),
+	feedback_status: GuestFeedbackStatusEnum.optional(),
+	assigned_to: uuid.optional(),
+	is_public: z.boolean().optional(),
+	is_featured: z.boolean().optional(),
+	is_verified: z.boolean().optional(),
+});
+
+export type GuestFeedbackUpdateBody = z.infer<typeof GuestFeedbackUpdateBodySchema>;
+
+/** Record the response sent to the guest. Stamps responded_by/responded_at. */
+export const GuestFeedbackRespondBodySchema = z.object({
+	tenant_id: uuid,
+	response_text: z.string().min(1).max(5000),
+	is_public: z.boolean().optional(),
+});
+
+export type GuestFeedbackRespondBody = z.infer<typeof GuestFeedbackRespondBodySchema>;
+
+/**
+ * Close the loop. `service_recovery_reference` carries the comp posting or
+ * gesture, so a goodwill spend is recorded against the complaint that caused it
+ * rather than floating free on the folio.
+ */
+export const GuestFeedbackResolveBodySchema = z.object({
+	tenant_id: uuid,
+	resolution_notes: z.string().min(1).max(5000),
+	service_recovery_reference: z.string().max(200).optional(),
+	feedback_status: z.enum(["resolved", "closed"]).optional(),
+});
+
+export type GuestFeedbackResolveBody = z.infer<typeof GuestFeedbackResolveBodySchema>;
 
 // =====================================================
 // POLICE REPORTS

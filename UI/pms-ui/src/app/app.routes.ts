@@ -46,6 +46,14 @@ export const routes: Routes = [
 					import("./features/reservations/reservations").then((m) => m.ReservationsComponent),
 			},
 			{
+				// Ahead of reservations/:reservationId, which would match "waitlist" as an id.
+				path: "reservations/waitlist",
+				canActivate: [propertyGuard, screenGuard("reservations")],
+				data: { screen: "reservations" },
+				loadComponent: () =>
+					import("./features/reservations/waitlist/waitlist").then((m) => m.WaitlistComponent),
+			},
+			{
 				path: "reservations/new",
 				canDeactivate: [unsavedChangesGuard],
 				canActivate: [propertyGuard, screenGuard("reservations")],
@@ -112,6 +120,13 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/rates/rates").then((m) => m.RatesComponent),
 			},
 			{
+				path: "promo-codes",
+				canActivate: [propertyGuard, screenGuard("rates")],
+				data: { screen: "rates" },
+				loadComponent: () =>
+					import("./features/rates/promo-codes/promo-codes").then((m) => m.PromoCodesComponent),
+			},
+			{
 				path: "rate-calendar",
 				canActivate: [propertyGuard, screenGuard("rate-calendar")],
 				data: { screen: "rate-calendar" },
@@ -145,6 +160,14 @@ export const routes: Routes = [
 				path: "guests",
 				pathMatch: "full",
 				redirectTo: "guests/segment/all",
+			},
+			{
+				// Ahead of guests/:guestId, which would otherwise match "feedback" as an id.
+				path: "guests/feedback",
+				canActivate: [propertyGuard, screenGuard("guests")],
+				data: { screen: "guests" },
+				loadComponent: () =>
+					import("./features/guests/feedback/feedback").then((m) => m.GuestFeedbackComponent),
 			},
 			{
 				// Declared before guests/:guestId; the extra segment keeps them distinct.
@@ -183,6 +206,23 @@ export const routes: Routes = [
 				path: "housekeeping",
 				pathMatch: "full",
 				redirectTo: "housekeeping/rooms",
+			},
+			// Ahead of `housekeeping/:view`, which would otherwise swallow these as board tabs.
+			{
+				path: "housekeeping/incidents",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/housekeeping/incidents/incidents").then((m) => m.IncidentsComponent),
+			},
+			{
+				path: "housekeeping/lost-and-found",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/housekeeping/lost-and-found/lost-and-found").then(
+						(m) => m.LostAndFoundComponent,
+					),
 			},
 			{
 				path: "housekeeping/:view",
@@ -362,6 +402,22 @@ export const routes: Routes = [
 				data: { screen: "webhooks" },
 				loadComponent: () =>
 					import("./features/webhooks/webhooks").then((m) => m.WebhooksComponent),
+			},
+			{
+				path: "operations/shift-handovers",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/operations/shift-handovers/shift-handovers").then(
+						(m) => m.ShiftHandoversComponent,
+					),
+			},
+			{
+				path: "channels",
+				canActivate: [screenGuard("channels")],
+				data: { screen: "channels" },
+				loadComponent: () =>
+					import("./features/channels/channels").then((m) => m.ChannelsComponent),
 			},
 			{
 				path: "compliance/police-reports",

@@ -163,4 +163,49 @@ export const REPORTS: readonly ReportDef[] = [
 		query: "range-paged",
 		icon: "trending_up",
 	},
+
+	/**
+	 * revenue-service analyses. These four are the part of that service that
+	 * returns real numbers today: they compute from `reservations`,
+	 * `charge_postings`, `group_blocks` and `demand_calendar`, all of which are
+	 * populated by ordinary operation. Its other reads sit on revenue-owned tables
+	 * written only by the 32 `revenue.*` commands, which nothing dispatches — so
+	 * they are empty by construction and deliberately not listed here.
+	 * See ui-gaps/05-revenue-module-status.md.
+	 *
+	 * They need the `revenue-management` module and an ADMIN role; the screen
+	 * surfaces both refusals as callouts rather than errors.
+	 */
+	{
+		key: "segment-analysis",
+		label: "Segment Analysis",
+		description: "Room nights, ADR and revenue by market segment for the date range.",
+		path: "/revenue/segment-analysis",
+		query: "range",
+		icon: "pie_chart",
+	},
+	{
+		key: "channel-profitability",
+		label: "Channel Profitability",
+		description: "Revenue net of channel cost, by booking channel.",
+		path: "/revenue/channel-profitability",
+		query: "range",
+		icon: "hub",
+	},
+	{
+		key: "booking-pace",
+		label: "Booking Pace",
+		description: "On-the-books pace against the same point last year.",
+		path: "/revenue/booking-pace",
+		query: "range",
+		icon: "speed",
+	},
+	{
+		key: "displacement-analysis",
+		label: "Displacement Analysis",
+		description: "Revenue displaced by group business over the date range.",
+		path: "/revenue/displacement-analysis",
+		query: "range",
+		icon: "compare_arrows",
+	},
 ];

@@ -603,34 +603,41 @@ export type InvoiceStatus = z.infer<typeof InvoiceStatusEnum>;
 /**
  * Company Type - Business partner classification
  * @database company_type
+ *
+ * Lowercase to match the `companies.company_type` CHECK constraint. It was
+ * UPPERCASE, so every consumer lower-cased it at the call site instead — the
+ * constraint is the contract, and it belongs here rather than at each use.
+ * See ui-gaps/16-booking-reference-data.md.
  */
 export const CompanyTypeEnum = z.enum([
-	"CORPORATE",
-	"TRAVEL_AGENCY",
-	"WHOLESALER",
-	"OTA",
-	"EVENT_PLANNER",
-	"AIRLINE",
-	"GOVERNMENT",
-	"EDUCATIONAL",
-	"CONSORTIUM",
-	"PARTNER",
+	"corporate",
+	"travel_agency",
+	"wholesaler",
+	"ota",
+	"event_planner",
+	"airline",
+	"government",
+	"educational",
+	"consortium",
+	"partner",
 ]);
 export type CompanyType = z.infer<typeof CompanyTypeEnum>;
 
 /**
  * Credit Status - Credit management
  * @database credit_status
+ *
+ * Lowercase to match the `companies.credit_status` CHECK constraint.
  */
 export const CreditStatusEnum = z.enum([
-	"PENDING",
-	"ACTIVE",
-	"SUSPENDED",
-	"BLOCKED",
-	"UNDER_REVIEW",
-	"EXPIRED",
-	"REVOKED",
-	"CANCELLED",
+	"pending",
+	"active",
+	"suspended",
+	"blocked",
+	"under_review",
+	"expired",
+	"revoked",
+	"cancelled",
 ]);
 export type CreditStatus = z.infer<typeof CreditStatusEnum>;
 

@@ -92,10 +92,6 @@ import {
 	CommissionStatementGenerateCommandSchema,
 } from "./events/commands/billing.js";
 import {
-	ComplianceBreachNotifyCommandSchema,
-	ComplianceBreachReportCommandSchema,
-} from "./events/commands/compliance.js";
-import {
 	GroupAddRoomsCommandSchema,
 	GroupBillingSetupCommandSchema,
 	GroupCheckInCommandSchema,
@@ -157,7 +153,6 @@ import {
 } from "./events/commands/notifications.js";
 import {
 	OperationsAssetUpdateCommandSchema,
-	OperationsIncidentReportCommandSchema,
 	OperationsInventoryAdjustCommandSchema,
 	OperationsMaintenanceAssignCommandSchema,
 	OperationsMaintenanceCompleteCommandSchema,
@@ -695,10 +690,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => OperationsMaintenanceEscalateCommandSchema.parse(payload),
 	],
 	[
-		"operations.incident.report",
-		(payload) => OperationsIncidentReportCommandSchema.parse(payload),
-	],
-	[
 		"operations.asset.update",
 		(payload) => OperationsAssetUpdateCommandSchema.parse(payload),
 	],
@@ -713,14 +704,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"operations.schedule.update",
 		(payload) => OperationsScheduleUpdateCommandSchema.parse(payload),
-	],
-	[
-		"compliance.breach.report",
-		(payload) => ComplianceBreachReportCommandSchema.parse(payload),
-	],
-	[
-		"compliance.breach.notify",
-		(payload) => ComplianceBreachNotifyCommandSchema.parse(payload),
 	],
 	[
 		"loyalty.program.enroll",

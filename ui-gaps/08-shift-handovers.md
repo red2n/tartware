@@ -2,6 +2,43 @@
 
 **Priority:** P1 | **Risk:** 🟡 MEDIUM | **Type:** Backend + UI | **Effort:** M
 
+> ## ✅ Write path + UI shipped 2026-08-13
+>
+> **No schema change was needed** — `shift_handovers` already had acknowledgment, follow-up and
+> `previous_handover_id` columns. The table was fully designed and had no way to put a row in it,
+> which is [18](18-write-path-gap.md)'s pattern exactly.
+>
+> Three HTTP routes on core-service, per [18](18-write-path-gap.md)'s rule (one service, one table,
+> no fan-out):
+> - `POST /v1/shift-handovers` — opens `in_progress` with `handover_started_at` stamped, so the record
+>   is opened at the *start* of the outgoing shift and filled as it runs, not written from memory at
+>   the end.
+> - `PUT /v1/shift-handovers/:handoverId` — notes and open items while the shift runs. Shift,
+>   department and the two users are deliberately not settable: changing who a handover is between
+>   makes it a different record.
+> - `POST /v1/shift-handovers/:handoverId/acknowledge` — **guarded on `acknowledged = false`**, so a
+>   second call cannot overwrite who took the handover or when. That pair is the record's entire
+>   evidentiary value.
+>
+> Plus the bare `POST` at the gateway (`/v1/shift-handovers/*` does not match the bare path — the
+> recurring trap), and `UI/pms-ui/src/app/features/operations/shift-handovers/`, routed at
+> `/operations/shift-handovers` with banners for unacknowledged handovers and open items to carry
+> forward.
+>
+> **Found while building:** `ShiftHandoverStatusEnum` in `@tartware/schemas` was UPPERCASE
+> (`DRAFT`, `PENDING`, `COMPLETED`, `ACKNOWLEDGED`, `REVIEWED`) against a CHECK constraint that
+> requires lowercase, included two values the constraint rejects (`DRAFT`, `REVIEWED`) and omitted two
+> it accepts (`in_progress`, `escalated`). Nothing consumed it, so it was replaced rather than kept
+> alongside. **This is the third instance of the same drift** — after `CompanyTypeEnum` ([16](16-booking-reference-data.md))
+> and `LostFoundStatusEnum` ([07](07-lost-and-found.md)). An enum in `schema/` that no code reads is
+> not checked by anything; the constraint is the real contract.
+>
+> **Constraint worth knowing:** `incoming_user_id` is NOT NULL, so the incoming person must be named
+> when the handover is opened, not when it is handed over. The form requires it and says why.
+>
+> **Not yet exercised against a live stack.** Deferred: merging with cashier close (item 5) and the
+> dashboard hook (§3).
+
 ## Current State (Backend ⚠️ read-only → UI ❌)
 
 `Apps/core-service/src/routes/operations.ts`:

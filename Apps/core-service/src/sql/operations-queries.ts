@@ -180,90 +180,6 @@ WHERE sh.handover_id = $1
 `;
 
 // =====================================================
-// LOST AND FOUND
-// =====================================================
-
-export const LOST_FOUND_LIST_SQL = `
-SELECT
-    lf.item_id,
-    lf.tenant_id,
-    lf.property_id,
-    p.property_name,
-    lf.item_number,
-    lf.item_name,
-    lf.item_description,
-    lf.item_category,
-    INITCAP(REPLACE(lf.item_category, '_', ' ')) as item_category_display,
-    lf.color,
-    lf.estimated_value::TEXT,
-    lf.is_valuable,
-    lf.found_date,
-    lf.found_by_name,
-    lf.found_location,
-    lf.room_number,
-    g.first_name || ' ' || g.last_name as guest_name,
-    lf.item_status,
-    INITCAP(REPLACE(lf.item_status, '_', ' ')) as item_status_display,
-    lf.storage_location,
-    EXTRACT(DAY FROM AGE(CURRENT_DATE, lf.found_date))::INTEGER as days_in_storage,
-    lf.claimed,
-    lf.returned,
-    lf.disposed,
-    lf.hold_until_date,
-    lf.has_photos,
-    lf.created_at
-FROM lost_and_found lf
-LEFT JOIN properties p ON p.id = lf.property_id
-LEFT JOIN guests g ON g.id = lf.guest_id AND g.tenant_id = lf.tenant_id
-WHERE lf.tenant_id = $2
-  AND ($3::UUID IS NULL OR lf.property_id = $3)
-  AND ($4::VARCHAR IS NULL OR lf.item_status = $4)
-  AND ($5::VARCHAR IS NULL OR lf.item_category = $5)
-  AND ($6::DATE IS NULL OR lf.found_date >= $6)
-  AND COALESCE(lf.is_deleted, false) = false
-ORDER BY lf.found_date DESC
-LIMIT $1
-OFFSET $7
-`;
-
-export const LOST_FOUND_BY_ID_SQL = `
-SELECT
-    lf.item_id,
-    lf.tenant_id,
-    lf.property_id,
-    p.property_name,
-    lf.item_number,
-    lf.item_name,
-    lf.item_description,
-    lf.item_category,
-    INITCAP(REPLACE(lf.item_category, '_', ' ')) as item_category_display,
-    lf.color,
-    lf.estimated_value::TEXT,
-    lf.is_valuable,
-    lf.found_date,
-    lf.found_by_name,
-    lf.found_location,
-    lf.room_number,
-    g.first_name || ' ' || g.last_name as guest_name,
-    lf.item_status,
-    INITCAP(REPLACE(lf.item_status, '_', ' ')) as item_status_display,
-    lf.storage_location,
-    EXTRACT(DAY FROM AGE(CURRENT_DATE, lf.found_date))::INTEGER as days_in_storage,
-    lf.claimed,
-    lf.returned,
-    lf.disposed,
-    lf.hold_until_date,
-    lf.has_photos,
-    lf.created_at
-FROM lost_and_found lf
-LEFT JOIN properties p ON p.id = lf.property_id
-LEFT JOIN guests g ON g.id = lf.guest_id AND g.tenant_id = lf.tenant_id
-WHERE lf.item_id = $1
-  AND lf.tenant_id = $2
-  AND COALESCE(lf.is_deleted, false) = false
-`;
-
-// =====================================================
 // BANQUET EVENT ORDERS
 // =====================================================
 
@@ -390,6 +306,14 @@ SELECT
     gf.is_featured,
     gf.response_text,
     gf.responded_at,
+    gf.feedback_status,
+    INITCAP(REPLACE(COALESCE(gf.feedback_status, ''), '_', ' ')) as feedback_status_display,
+    gf.feedback_category,
+    gf.assigned_to,
+    gf.assigned_at,
+    gf.resolution_notes,
+    gf.resolved_at,
+    gf.service_recovery_reference,
     gf.created_at
 FROM guest_feedback gf
 LEFT JOIN properties p ON p.id = gf.property_id
@@ -399,6 +323,8 @@ WHERE gf.tenant_id = $2
   AND ($4::VARCHAR IS NULL OR gf.sentiment_label = $4)
   AND ($5::BOOLEAN IS NULL OR gf.is_public = $5)
   AND ($6::BOOLEAN IS NULL OR (gf.response_text IS NOT NULL) = $6)
+  AND ($8::VARCHAR IS NULL OR gf.feedback_status = $8)
+  AND ($9::VARCHAR IS NULL OR gf.feedback_category = $9)
 ORDER BY gf.created_at DESC
 LIMIT $1
 OFFSET $7
@@ -431,6 +357,14 @@ SELECT
     gf.is_featured,
     gf.response_text,
     gf.responded_at,
+    gf.feedback_status,
+    INITCAP(REPLACE(COALESCE(gf.feedback_status, ''), '_', ' ')) as feedback_status_display,
+    gf.feedback_category,
+    gf.assigned_to,
+    gf.assigned_at,
+    gf.resolution_notes,
+    gf.resolved_at,
+    gf.service_recovery_reference,
     gf.created_at
 FROM guest_feedback gf
 LEFT JOIN properties p ON p.id = gf.property_id

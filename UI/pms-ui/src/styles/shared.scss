@@ -2952,3 +2952,35 @@ $tl-colors: (
   &--msg   { width: 90%; }
   &--time  { width: 35%; height: 8px; }
 }
+
+/* ── Read-only record panel (incident detail, and any screen showing a filed
+      narrative rather than a form) ── */
+
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--base-size-8) var(--base-size-16);
+  margin-bottom: var(--base-size-16);
+
+  .field-label {
+    display: block;
+    margin-bottom: var(--base-size-2);
+  }
+}
+
+.record-heading {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: var(--base-size-16) 0 var(--base-size-4);
+}
+
+/* Narratives are typed or pasted from notes and wrap arbitrarily; preserving the
+   author's line breaks keeps a sequence of events readable as it was filed. */
+.record-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}

@@ -2,6 +2,44 @@
 
 **Priority:** P1 | **Risk:** 🟡 MEDIUM | **Type:** UI + backend cleanup | **Effort:** M
 
+> ## ✅ Shipped 2026-08-13 — duplicate removed, UI built
+>
+> **The duplicate was worse than "drift in response shape".** This spec assumed the gateway proxied
+> `/v1/lost-and-found` to housekeeping-service, leaving the core-service copy merely unreachable. It was
+> the other way round: `operations-routes.ts` registered both `GET /v1/lost-and-found` and
+> `ALL /v1/lost-and-found/*` against **core-service**, which only ever implemented the two reads. So the
+> complete lifecycle in housekeeping-service — register, update, claim, return — was unreachable through
+> the gateway, and every write 404ed downstream. The backend was not "genuinely complete"; it was
+> complete and disconnected.
+>
+> The conformance test from [10](10-reports-coverage.md)(a) could not catch it: it skips wildcard
+> routes, and `ALL /*` is where the writes were being swallowed.
+>
+> **Done:**
+> - Lost & found moved to `housekeeping-routes.ts` proxying to housekeeping-service, with a **bare
+>   `POST /v1/lost-and-found`** added — `ALL /v1/lost-and-found/*` does not match the bare path, the
+>   same trap as police-report and incident filing, and without it registering an item was impossible.
+> - Core-service's two `GET` handlers, both SQL constants and both service functions deleted. They had
+>   **no `withTenantScope` preHandler at all** — no role check, no module check, no tenant scoping —
+>   a second reason not to keep them.
+> - Dead schema types removed with their only consumer: `LostFoundRow`, `LostFoundListItem(Schema)`,
+>   `ListLostFoundInput`, `GetLostFoundInput`, and `LostFoundStatusEnum` — which was UPPERCASE
+>   (`FOUND`, `STORED`) against a table whose CHECK requires lowercase, the same defect
+>   [16](16-booking-reference-data.md) found in `CompanyTypeEnum`.
+> - UI at `UI/pms-ui/src/app/features/housekeeping/lost-and-found/`, routed at
+>   `/housekeeping/lost-and-found` ahead of `housekeeping/:view` so the board's tab param does not
+>   swallow it, plus a nav entry under Housekeeping. Covers list + filters, register, edit, claim,
+>   return and the retention view.
+>
+> **`days_in_storage` is a lie in the database.** It is a plain `INTEGER` column and nothing ever
+> writes it, so it is null on every row. The screen derives item age from `found_date` and drives the
+> retention view off `hold_until_date` (which `createLostAndFoundItem` does set, `found_date` +
+> `hold_days`, default 90). Anything else reading that column gets null.
+>
+> **Not yet exercised against a live stack** — no dev stack was running. Per
+> [18](18-write-path-gap.md)'s warning, assume the by-id read and the write paths have never returned
+> a row until they are.
+
 ## Current State (Backend ✅ → UI ❌)
 
 This is the one zero-UI operations domain where the backend is genuinely complete.

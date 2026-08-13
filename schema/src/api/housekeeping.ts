@@ -463,6 +463,32 @@ export type IncidentReportListItem = z.infer<
 >;
 
 /**
+ * Detail shape for `GET /v1/incidents/:incidentId`.
+ *
+ * The list shape carries classification and flags only. `INCIDENT_REPORT_BY_ID_SQL`
+ * has always selected the narrative columns too, but the by-id handler reused the
+ * list mapper and dropped them — so what happened, what was done about it and how
+ * it was closed could be written through the product and never read back.
+ * See ui-gaps/06-incidents.md.
+ */
+export const IncidentReportDetailSchema = IncidentReportListItemSchema.extend({
+	incident_description: z.string(),
+	immediate_actions_taken: z.string().nullable(),
+	discovered_by_name: z.string().nullable(),
+	guest_name: z.string().nullable(),
+	injury_details: z.string().nullable(),
+	damage_description: z.string().nullable(),
+	investigation_findings: z.string().nullable(),
+	corrective_actions: z.string().nullable(),
+	follow_up_required: z.boolean().nullable(),
+	follow_up_actions: z.string().nullable(),
+	closed_at: z.string().nullable(),
+	closure_notes: z.string().nullable(),
+});
+
+export type IncidentReportDetail = z.infer<typeof IncidentReportDetailSchema>;
+
+/**
  * Incident report list response schema.
  */
 export const IncidentReportListResponseSchema = z.object({

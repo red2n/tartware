@@ -25,7 +25,6 @@ import {
   registerBanquetOrderRoutes,
   registerCashierSessionRoutes,
   registerGuestFeedbackRoutes,
-  registerLostFoundRoutes,
   registerPoliceReportRoutes,
   registerShiftHandoverRoutes,
 } from "./routes/operations.js";
@@ -99,7 +98,6 @@ export const buildServer = (): FastifyInstance => {
       registerOtaRoutes(app);
       registerCashierSessionRoutes(app);
       registerShiftHandoverRoutes(app);
-      registerLostFoundRoutes(app);
       registerBanquetOrderRoutes(app);
       registerGuestFeedbackRoutes(app);
       registerPoliceReportRoutes(app);

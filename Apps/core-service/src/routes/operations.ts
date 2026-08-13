@@ -6,33 +6,52 @@
 
 import { schemaFromZod } from "@tartware/openapi";
 import type {
+  GuestFeedbackResolveBody,
+  GuestFeedbackRespondBody,
+  GuestFeedbackUpdateBody,
+  GuestFeedbackWriteBody,
   PoliceReportStatusBody,
   PoliceReportUpdateBody,
   PoliceReportWriteBody,
+  ShiftHandoverAcknowledgeBody,
+  ShiftHandoverUpdateBody,
+  ShiftHandoverWriteBody,
 } from "@tartware/schemas";
 import {
+  GuestFeedbackResolveBodySchema,
+  GuestFeedbackRespondBodySchema,
+  GuestFeedbackUpdateBodySchema,
+  GuestFeedbackWriteBodySchema,
   PoliceReportStatusBodySchema,
   PoliceReportUpdateBodySchema,
   PoliceReportWriteBodySchema,
+  ShiftHandoverAcknowledgeBodySchema,
+  ShiftHandoverUpdateBodySchema,
+  ShiftHandoverWriteBodySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
+  acknowledgeShiftHandover,
+  createGuestFeedback,
   createPoliceReport,
+  createShiftHandover,
   getBanquetOrderById,
   getCashierSessionById,
   getGuestFeedbackById,
-  getLostFoundItemById,
   getPoliceReportById,
   getShiftHandoverById,
   listBanquetOrders,
   listCashierSessions,
   listGuestFeedback,
-  listLostFoundItems,
   listPoliceReports,
   listShiftHandovers,
+  resolveGuestFeedback,
+  respondToGuestFeedback,
+  updateGuestFeedback,
   updatePoliceReport,
   updatePoliceReportStatus,
+  updateShiftHandover,
 } from "../services/operations-service.js";
 
 // =====================================================
@@ -287,151 +306,134 @@ export function registerShiftHandoverRoutes(fastify: FastifyInstance): void {
       return reply.send({ data: handover });
     },
   );
-}
 
-// =====================================================
-// LOST AND FOUND ROUTES
-// =====================================================
+  // ---------------------------------------------------
+  // Write path — see ui-gaps/08-shift-handovers.md.
+  // ---------------------------------------------------
+  const handoverIdParams = {
+    type: "object",
+    required: ["handoverId"],
+    properties: { handoverId: { type: "string", format: "uuid" } },
+  } as const;
 
-export function registerLostFoundRoutes(fastify: FastifyInstance): void {
-  // ---------------------------------------------------
-  // GET /v1/lost-and-found - List lost and found items
-  // ---------------------------------------------------
-  fastify.get(
-    "/v1/lost-and-found",
+  const toHandoverInput = (body: ShiftHandoverUpdateBody) => ({
+    handoverTitle: body.handover_title,
+    keyPoints: body.key_points,
+    importantNotes: body.important_notes,
+    urgentMatters: body.urgent_matters,
+    handoverStatus: body.handover_status,
+    requiresFollowUp: body.requires_follow_up,
+    cashOnHand: body.cash_on_hand,
+    depositsToMake: body.deposits_to_make,
+    paymentIssues: body.payment_issues,
+    staffIssues: body.staff_issues,
+    specialSituations: body.special_situations,
+  });
+
+  fastify.post(
+    "/v1/shift-handovers",
     {
       schema: {
-        summary: "List lost and found items",
-        tags: ["Lost and Found"],
-        querystring: {
-          type: "object",
-          required: ["tenant_id"],
-          properties: {
-            tenant_id: { type: "string", format: "uuid" },
-            property_id: { type: "string", format: "uuid" },
-            item_status: {
-              type: "string",
-              enum: [
-                "registered",
-                "stored",
-                "claimed",
-                "returned",
-                "shipped",
-                "donated",
-                "disposed",
-                "lost_again",
-                "pending_claim",
-              ],
-            },
-            item_category: {
-              type: "string",
-              enum: [
-                "electronics",
-                "jewelry",
-                "clothing",
-                "accessories",
-                "documents",
-                "keys",
-                "bags",
-                "wallets",
-                "phones",
-                "laptops",
-                "tablets",
-                "watches",
-                "glasses",
-                "books",
-                "toys",
-                "medical",
-                "other",
-              ],
-            },
-            found_date_from: { type: "string", format: "date" },
-            limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
-            offset: { type: "integer", minimum: 0, default: 0 },
-          },
-        },
+        summary: "Open a shift handover",
+        description:
+          "Opens the handover at the start of the outgoing shift; it is filled as the shift runs and acknowledged by the incoming user.",
+        tags: ["Shift Handovers"],
+        body: schemaFromZod(ShiftHandoverWriteBodySchema, "ShiftHandoverWriteBody"),
       },
     },
-    async (
-      request: FastifyRequest<{
-        Querystring: {
-          tenant_id: string;
-          property_id?: string;
-          item_status?: string;
-          item_category?: string;
-          found_date_from?: string;
-          limit?: number;
-          offset?: number;
-        };
-      }>,
-      reply: FastifyReply,
-    ) => {
-      const { tenant_id, property_id, item_status, item_category, found_date_from, limit, offset } =
-        request.query;
+    async (request: FastifyRequest<{ Body: ShiftHandoverWriteBody }>, reply: FastifyReply) => {
+      const body = request.body;
+      const handover = await createShiftHandover(
+        body.tenant_id,
+        {
+          ...toHandoverInput(body),
+          propertyId: body.property_id,
+          shiftDate: body.shift_date,
+          department: body.department,
+          outgoingShift: body.outgoing_shift,
+          outgoingUserId: body.outgoing_user_id,
+          outgoingUserName: body.outgoing_user_name,
+          incomingShift: body.incoming_shift,
+          incomingUserId: body.incoming_user_id,
+          incomingUserName: body.incoming_user_name,
+          keyPoints: body.key_points,
+        },
+        (request as { userId?: string }).userId,
+      );
 
-      const items = await listLostFoundItems({
-        tenantId: tenant_id,
-        propertyId: property_id,
-        itemStatus: item_status,
-        itemCategory: item_category,
-        foundDateFrom: found_date_from,
-        limit: limit,
-        offset: offset,
-      });
+      if (!handover) {
+        return reply.internalServerError("Failed to open shift handover");
+      }
 
-      return reply.send({
-        data: items,
-        meta: { count: items.length },
-        offset: offset ?? 0,
-      });
+      return reply.status(201).send({ data: handover, message: "Shift handover opened" });
     },
   );
 
-  // ---------------------------------------------------
-  // GET /v1/lost-and-found/:itemId - Get item by ID
-  // ---------------------------------------------------
-  fastify.get(
-    "/v1/lost-and-found/:itemId",
+  fastify.put(
+    "/v1/shift-handovers/:handoverId",
     {
       schema: {
-        summary: "Get lost and found item by ID",
-        tags: ["Lost and Found"],
-        params: {
-          type: "object",
-          required: ["itemId"],
-          properties: {
-            itemId: { type: "string", format: "uuid" },
-          },
-        },
-        querystring: {
-          type: "object",
-          required: ["tenant_id"],
-          properties: {
-            tenant_id: { type: "string", format: "uuid" },
-          },
-        },
+        summary: "Update an open shift handover",
+        tags: ["Shift Handovers"],
+        params: handoverIdParams,
+        body: schemaFromZod(ShiftHandoverUpdateBodySchema, "ShiftHandoverUpdateBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { handoverId: string }; Body: ShiftHandoverUpdateBody }>,
+      reply: FastifyReply,
+    ) => {
+      const handover = await updateShiftHandover(
+        request.body.tenant_id,
+        request.params.handoverId,
+        toHandoverInput(request.body),
+        (request as { userId?: string }).userId,
+      );
+
+      if (!handover) {
+        return reply.notFound("Shift handover not found");
+      }
+
+      return reply.send({ data: handover, message: "Shift handover updated" });
+    },
+  );
+
+  fastify.post(
+    "/v1/shift-handovers/:handoverId/acknowledge",
+    {
+      schema: {
+        summary: "Acknowledge a shift handover",
+        description:
+          "The incoming staff member signs off. Rejected with 404 if already acknowledged — who took the handover and when must not be overwritten.",
+        tags: ["Shift Handovers"],
+        params: handoverIdParams,
+        body: schemaFromZod(ShiftHandoverAcknowledgeBodySchema, "ShiftHandoverAcknowledgeBody"),
       },
     },
     async (
       request: FastifyRequest<{
-        Params: { itemId: string };
-        Querystring: { tenant_id: string };
+        Params: { handoverId: string };
+        Body: ShiftHandoverAcknowledgeBody;
       }>,
       reply: FastifyReply,
     ) => {
-      const { itemId } = request.params;
-      const { tenant_id } = request.query;
+      const body = request.body;
+      const handover = await acknowledgeShiftHandover(
+        body.tenant_id,
+        request.params.handoverId,
+        {
+          acknowledgmentNotes: body.acknowledgment_notes,
+          questionsAsked: body.questions_asked,
+          handoverQualityRating: body.handover_quality_rating,
+        },
+        (request as { userId?: string }).userId,
+      );
 
-      const item = await getLostFoundItemById({
-        itemId,
-        tenantId: tenant_id,
-      });
-
-      if (!item) {
-        return reply.notFound("Lost and found item not found");
+      if (!handover) {
+        return reply.notFound("Shift handover not found, or already acknowledged");
       }
 
-      return reply.send({ data: item });
+      return reply.send({ data: handover, message: "Shift handover acknowledged" });
     },
   );
 }
@@ -585,6 +587,11 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
             },
             is_public: { type: "boolean" },
             has_response: { type: "boolean" },
+            feedback_status: {
+              type: "string",
+              enum: ["new", "acknowledged", "in_progress", "responded", "resolved", "closed"],
+            },
+            feedback_category: { type: "string" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
             offset: { type: "integer", minimum: 0, default: 0 },
           },
@@ -599,14 +606,25 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
           sentiment_label?: string;
           is_public?: boolean;
           has_response?: boolean;
+          feedback_status?: string;
+          feedback_category?: string;
           limit?: number;
           offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, sentiment_label, is_public, has_response, limit, offset } =
-        request.query;
+      const {
+        tenant_id,
+        property_id,
+        sentiment_label,
+        is_public,
+        has_response,
+        feedback_status,
+        feedback_category,
+        limit,
+        offset,
+      } = request.query;
 
       const feedback = await listGuestFeedback({
         tenantId: tenant_id,
@@ -614,6 +632,8 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
         sentimentLabel: sentiment_label,
         isPublic: is_public,
         hasResponse: has_response,
+        feedbackStatus: feedback_status,
+        feedbackCategory: feedback_category,
         limit: limit,
         offset: offset,
       });
@@ -671,6 +691,157 @@ export function registerGuestFeedbackRoutes(fastify: FastifyInstance): void {
       }
 
       return reply.send({ data: item });
+    },
+  );
+
+  // ---------------------------------------------------
+  // Write path. Intake and the response loop — see ui-gaps/09-guest-feedback.md.
+  // ---------------------------------------------------
+  const feedbackIdParams = {
+    type: "object",
+    required: ["feedbackId"],
+    properties: { feedbackId: { type: "string", format: "uuid" } },
+  } as const;
+
+  fastify.post(
+    "/v1/guest-feedback",
+    {
+      schema: {
+        summary: "Log guest feedback",
+        description:
+          "Intake for portal, survey, OTA and staff-entered feedback. guest_id and reservation_id are optional: a phone complaint may have neither.",
+        tags: ["Guest Feedback"],
+        body: schemaFromZod(GuestFeedbackWriteBodySchema, "GuestFeedbackWriteBody"),
+      },
+    },
+    async (request: FastifyRequest<{ Body: GuestFeedbackWriteBody }>, reply: FastifyReply) => {
+      const body = request.body;
+      const feedback = await createGuestFeedback(body.tenant_id, {
+        propertyId: body.property_id,
+        feedbackSource: body.feedback_source,
+        reviewText: body.review_text,
+        guestId: body.guest_id,
+        reservationId: body.reservation_id,
+        reviewTitle: body.review_title,
+        overallRating: body.overall_rating,
+        ratingScale: body.rating_scale,
+        cleanlinessRating: body.cleanliness_rating,
+        staffRating: body.staff_rating,
+        locationRating: body.location_rating,
+        valueRating: body.value_rating,
+        wouldRecommend: body.would_recommend,
+        wouldReturn: body.would_return,
+        feedbackCategory: body.feedback_category,
+        sentimentLabel: body.sentiment_label,
+        isPublic: body.is_public,
+        languageCode: body.language_code,
+      });
+
+      if (!feedback) {
+        return reply.internalServerError("Failed to log guest feedback");
+      }
+
+      return reply.status(201).send({ data: feedback, message: "Guest feedback logged" });
+    },
+  );
+
+  fastify.put(
+    "/v1/guest-feedback/:feedbackId",
+    {
+      schema: {
+        summary: "Triage guest feedback",
+        description: "Categorise, set sentiment, assign an owner, adjust publication.",
+        tags: ["Guest Feedback"],
+        params: feedbackIdParams,
+        body: schemaFromZod(GuestFeedbackUpdateBodySchema, "GuestFeedbackUpdateBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { feedbackId: string }; Body: GuestFeedbackUpdateBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = request.body;
+      const feedback = await updateGuestFeedback(body.tenant_id, request.params.feedbackId, {
+        feedbackCategory: body.feedback_category,
+        sentimentLabel: body.sentiment_label,
+        feedbackStatus: body.feedback_status,
+        assignedTo: body.assigned_to,
+        isPublic: body.is_public,
+        isFeatured: body.is_featured,
+        isVerified: body.is_verified,
+      });
+
+      if (!feedback) {
+        return reply.notFound("Guest feedback not found");
+      }
+
+      return reply.send({ data: feedback, message: "Guest feedback updated" });
+    },
+  );
+
+  fastify.post(
+    "/v1/guest-feedback/:feedbackId/respond",
+    {
+      schema: {
+        summary: "Record the response sent to the guest",
+        tags: ["Guest Feedback"],
+        params: feedbackIdParams,
+        body: schemaFromZod(GuestFeedbackRespondBodySchema, "GuestFeedbackRespondBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { feedbackId: string }; Body: GuestFeedbackRespondBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = request.body;
+      const feedback = await respondToGuestFeedback(
+        body.tenant_id,
+        request.params.feedbackId,
+        { responseText: body.response_text, isPublic: body.is_public },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!feedback) {
+        return reply.notFound("Guest feedback not found");
+      }
+
+      return reply.send({ data: feedback, message: "Response recorded" });
+    },
+  );
+
+  fastify.post(
+    "/v1/guest-feedback/:feedbackId/resolve",
+    {
+      schema: {
+        summary: "Close guest feedback with a resolution",
+        description:
+          "service_recovery_reference links the comp posting or gesture to the complaint that caused it.",
+        tags: ["Guest Feedback"],
+        params: feedbackIdParams,
+        body: schemaFromZod(GuestFeedbackResolveBodySchema, "GuestFeedbackResolveBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { feedbackId: string }; Body: GuestFeedbackResolveBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = request.body;
+      const feedback = await resolveGuestFeedback(
+        body.tenant_id,
+        request.params.feedbackId,
+        {
+          resolutionNotes: body.resolution_notes,
+          serviceRecoveryReference: body.service_recovery_reference,
+          feedbackStatus: body.feedback_status,
+        },
+        (request as { userId?: string }).userId,
+      );
+
+      if (!feedback) {
+        return reply.notFound("Guest feedback not found");
+      }
+
+      return reply.send({ data: feedback, message: "Guest feedback resolved" });
     },
   );
 }

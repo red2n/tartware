@@ -1,0 +1,323 @@
+<app-page-header
+  title="Guest feedback"
+  description="Reviews, surveys and complaints — from intake through to resolution.">
+  <button class="btn btn-primary btn-sm" (click)="openLog()" [disabled]="submitting()">
+    <app-icon name="rate_review" /> Log feedback
+  </button>
+</app-page-header>
+
+@if (awaitingResponse().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="mark_email_unread" />
+    {{ awaitingResponse().length }} open item{{ awaitingResponse().length === 1 ? '' : 's' }} with no
+    response sent
+  </p>
+}
+
+@if (logging()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="rate_review" />
+      <h3 class="confirm-title">Log guest feedback</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        Guest and reservation are optional — a phone complaint may have neither.
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="gf-source">Source</label>
+          <select class="field-input" id="gf-source" [ngModel]="form().feedback_source"
+                  (ngModelChange)="form.set({ ...form(), feedback_source: $event })">
+            @for (s of sources; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-sentiment">Sentiment</label>
+          <select class="field-input" id="gf-sentiment" [ngModel]="form().sentiment_label"
+                  (ngModelChange)="form.set({ ...form(), sentiment_label: $event })">
+            @for (s of sentiments; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-category">Category</label>
+          <input class="field-input" id="gf-category" type="text" [ngModel]="form().feedback_category"
+                 (ngModelChange)="form.set({ ...form(), feedback_category: $event ?? '' })"
+                 placeholder="e.g. housekeeping, noise, billing" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-rating">Overall rating</label>
+          <input class="field-input" id="gf-rating" type="number" min="0" max="10" step="0.5"
+                 [ngModel]="form().overall_rating"
+                 (ngModelChange)="form.set({ ...form(), overall_rating: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-guest">Guest ID</label>
+          <input class="field-input" id="gf-guest" type="text" [ngModel]="form().guest_id"
+                 (ngModelChange)="form.set({ ...form(), guest_id: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-res">Reservation ID</label>
+          <input class="field-input" id="gf-res" type="text" [ngModel]="form().reservation_id"
+                 (ngModelChange)="form.set({ ...form(), reservation_id: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-public">Publish</label>
+          <select class="field-input" id="gf-public" [ngModel]="form().is_public"
+                  (ngModelChange)="form.set({ ...form(), is_public: $event })">
+            <option [ngValue]="false">Internal only</option>
+            <option [ngValue]="true">Public</option>
+          </select>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-title">Title</label>
+          <input class="field-input" id="gf-title" type="text" [ngModel]="form().review_title"
+                 (ngModelChange)="form.set({ ...form(), review_title: $event ?? '' })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-text">What the guest said</label>
+          <textarea class="field-input" id="gf-text" rows="4" [ngModel]="form().review_text"
+                    (ngModelChange)="form.set({ ...form(), review_text: $event ?? '' })"
+                    placeholder="In the guest's own words where possible"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelLog()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitLog()"
+              [disabled]="submitting() || !canLog()">
+        {{ submitting() ? 'Saving…' : 'Log feedback' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (triageTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="label" />
+      <h3 class="confirm-title">Triage — {{ item.review_title || 'Feedback' }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="gf-t-status">Status</label>
+          <select class="field-input" id="gf-t-status" [ngModel]="triageForm().feedback_status"
+                  (ngModelChange)="triageForm.set({ ...triageForm(), feedback_status: $event })">
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-t-sentiment">Sentiment</label>
+          <select class="field-input" id="gf-t-sentiment" [ngModel]="triageForm().sentiment_label"
+                  (ngModelChange)="triageForm.set({ ...triageForm(), sentiment_label: $event })">
+            <option value="">Unset</option>
+            @for (s of sentiments; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-t-category">Category</label>
+          <input class="field-input" id="gf-t-category" type="text" [ngModel]="triageForm().feedback_category"
+                 (ngModelChange)="triageForm.set({ ...triageForm(), feedback_category: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-t-owner">Assign to (user ID)</label>
+          <input class="field-input" id="gf-t-owner" type="text" [ngModel]="triageForm().assigned_to"
+                 (ngModelChange)="triageForm.set({ ...triageForm(), assigned_to: $event ?? '' })" />
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelTriage()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitTriage()" [disabled]="submitting()">
+        {{ submitting() ? 'Saving…' : 'Save' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (respondTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="reply" />
+      <h3 class="confirm-title">Respond — {{ item.guest_name || 'Guest' }}</h3>
+    </div>
+    <div class="confirm-body">
+      @if (item.review_text) {
+        <p class="confirm-note">“{{ item.review_text }}”</p>
+      }
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-r-text">Response</label>
+          <textarea class="field-input" id="gf-r-text" rows="4" [ngModel]="respondForm().response_text"
+                    (ngModelChange)="respondForm.set({ ...respondForm(), response_text: $event ?? '' })"
+                    placeholder="What was sent to the guest"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-r-public">Publish response</label>
+          <select class="field-input" id="gf-r-public" [ngModel]="respondForm().is_public"
+                  (ngModelChange)="respondForm.set({ ...respondForm(), is_public: $event })">
+            <option [ngValue]="false">Internal only</option>
+            <option [ngValue]="true">Public</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelRespond()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitRespond()"
+              [disabled]="submitting() || !canRespond()">
+        {{ submitting() ? 'Saving…' : 'Record response' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (resolveTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="task_alt" />
+      <h3 class="confirm-title">Resolve — {{ item.review_title || 'Feedback' }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-x-notes">Resolution</label>
+          <textarea class="field-input" id="gf-x-notes" rows="3" [ngModel]="resolveForm().resolution_notes"
+                    (ngModelChange)="resolveForm.set({ ...resolveForm(), resolution_notes: $event ?? '' })"
+                    placeholder="What was done about it"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-x-recovery">Service recovery reference</label>
+          <input class="field-input" id="gf-x-recovery" type="text"
+                 [ngModel]="resolveForm().service_recovery_reference"
+                 (ngModelChange)="resolveForm.set({ ...resolveForm(), service_recovery_reference: $event ?? '' })"
+                 placeholder="Comp posting or gesture, so the spend is tied to the complaint" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-x-status">Close as</label>
+          <select class="field-input" id="gf-x-status" [ngModel]="resolveForm().feedback_status"
+                  (ngModelChange)="resolveForm.set({ ...resolveForm(), feedback_status: $event })">
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelResolve()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="submitResolve()"
+              [disabled]="submitting() || !canResolve()">
+        {{ submitting() ? 'Saving…' : 'Resolve' }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="gf-f-status">Status</label>
+    <select class="field-input" id="gf-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">All</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ labelFor(s) }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="gf-f-sentiment">Sentiment</label>
+    <select class="field-input" id="gf-f-sentiment" [ngModel]="sentimentFilter()"
+            (ngModelChange)="sentimentFilter.set($event ?? ''); load()">
+      <option value="">All</option>
+      @for (s of sentiments; track s) {
+        <option [value]="s">{{ labelFor(s) }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="gf-f-category">Category</label>
+    <input class="field-input" id="gf-f-category" type="text" [ngModel]="categoryFilter()"
+           (ngModelChange)="categoryFilter.set($event ?? '')" (change)="load()" />
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="gf-f-open">Show</label>
+    <select class="field-input" id="gf-f-open" [ngModel]="unresolvedOnly()"
+            (ngModelChange)="unresolvedOnly.set($event)">
+      <option [ngValue]="false">All feedback</option>
+      <option [ngValue]="true">Unresolved only</option>
+    </select>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">Loading…</div>
+} @else if (visibleItems().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="rate_review" />
+    <h3>{{ unresolvedOnly() ? 'Nothing unresolved' : 'No guest feedback recorded' }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>Received</th>
+          <th>Guest</th>
+          <th>Source</th>
+          <th>Feedback</th>
+          <th>Category</th>
+          <th>Rating</th>
+          <th>Status</th>
+          <th class="cell-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (f of visibleItems(); track f.id) {
+          <tr>
+            <td>{{ f.created_at | date: 'mediumDate' }}</td>
+            <td>{{ f.guest_name || '—' }}</td>
+            <td>{{ f.feedback_source_display || labelFor(f.feedback_source) }}</td>
+            <td class="cell-primary">
+              @if (f.review_title) {
+                <strong>{{ f.review_title }}</strong>
+              }
+              <div class="cell-sub">{{ f.review_text }}</div>
+              @if (f.response_text) {
+                <span class="badge badge-accent badge-sm">Responded</span>
+              }
+            </td>
+            <td>
+              {{ labelFor(f.feedback_category) }}
+              @if (f.sentiment_label) {
+                <span [class]="sentimentClass(f.sentiment_label)">{{ labelFor(f.sentiment_label) }}</span>
+              }
+            </td>
+            <td>{{ f.overall_rating ? f.overall_rating + ' / ' + (f.rating_scale ?? 5) : '—' }}</td>
+            <td>
+              <span [class]="statusClass(f.feedback_status)">
+                {{ f.feedback_status_display || labelFor(f.feedback_status) }}
+              </span>
+              @if (f.assigned_to) {
+                <span class="badge badge-muted badge-sm">Assigned</span>
+              }
+            </td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openTriage(f)">Triage</button>
+              <button class="btn btn-outline btn-sm" (click)="openRespond(f)">Respond</button>
+              <button class="btn btn-outline btn-sm" (click)="openResolve(f)">Resolve</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

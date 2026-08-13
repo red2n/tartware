@@ -35,6 +35,74 @@
 >
 > **Not yet verified live** — needs the run in flight to finish first.
 
+> ## ✅ Promo codes + waitlist shipped 2026-08-13 — and both "duplicates" were misdiagnosed
+>
+> ### Step 1 resolved by investigation, not deletion
+>
+> **`/v1/group-bookings` is not a duplicate — it is the live surface.** `features/groups` reads it
+> directly (`groups.ts:257`, `group-detail.ts:315`). Deleting it would have broken the groups screen.
+>
+> **`/v1/waitlist` is not a duplicate read either.** This spec cites
+> "`GET /v1/tenants/:tenantId/reservations/waitlist`" as the competing read — that route is **POST**
+> (`reservation.waitlist_add`), as is `…/convert`. So there is exactly one read surface
+> (core-service) and one write surface (reservations-command-service) over one table, split across two
+> services. Nothing to delete; what was missing was a screen. Built one at
+> `UI/pms-ui/src/app/features/reservations/waitlist/`, reading from core and dispatching both commands.
+>
+> **Neither deletion in step 1 was correct.** The "this may remove a third of this spec" estimate was
+> wrong in the other direction: both surfaces were load-bearing.
+>
+> ### Promo code CRUD (step 3)
+>
+> `POST/PUT/DELETE /v1/promo-codes` on core-service per [18](18-write-path-gap.md)'s rule, plus the
+> bare `POST` at the gateway, and an admin screen at `features/rates/promo-codes/` routed at
+> `/promo-codes` under the existing `rates` screen key. Delete is a soft delete that also clears
+> `is_active` and sets `cancelled` — redemption history references the row, so it stays, but the code
+> must stop validating. `promo_code` is not editable: guests already hold it, and rewriting it silently
+> invalidates every email carrying the old one.
+>
+> ### Three live defects found while building
+>
+> 1. **`promo_code` was globally UNIQUE, not per-tenant.** `promo_code VARCHAR(100) UNIQUE NOT NULL`
+>    creates a table-wide index, so the first tenant to create `SUMMER20` would have permanently
+>    blocked every other tenant from using it — a cross-tenant collision on a value guests type.
+>    Invisible until now precisely because nothing could create a code. Replaced with
+>    `UNIQUE (tenant_id, promo_code)`.
+> 2. **Three list filters compared `UPPER($n)` against lowercase CHECK columns**, so they matched
+>    nothing: `promo_status`, and `block_status` / `group_type` on `/v1/group-bookings`. The groups
+>    screen escaped this only because it filters client-side. The other `UPPER()` filters in
+>    `booking-config/` are correct — those columns really are uppercase — so this was three specific
+>    bugs, not a blanket rule.
+> 3. **`POST /v1/promo-codes/validate` never worked through the gateway.** `/v1/promo-codes/*` was
+>    query-scoped while validate carries `tenant_id` in the body, so `withTenantScope` refused it with
+>    TENANT_ID_REQUIRED. This spec's "already works, so codes can be *used* but not *created*" was
+>    wrong on both halves. Now query-or-body scoped.
+>
+> ### Enum drift, quantified
+>
+> `PromotionalCodeStatusEnum` and `PromotionalCodeDiscountTypeEnum` were both UPPERCASE against
+> lowercase CHECK constraints, with values the constraints reject (`INACTIVE`, `SUSPENDED`, `AMENITY`)
+> and values missing that they accept (`draft`, `paused`, `cancelled`). Corrected, and
+> `PromotionalCodeTypeEnum` added.
+>
+> A repo-wide scan puts the real scale at **~53 unused enums** that disagree with an apparent
+> constraint, plus **3 places that already compensate at the call site** with
+> `.options.map(t => t.toLowerCase())` — `CompanyTypeEnum` and `CreditStatusEnum` in
+> `booking-config/company.ts`, `TaxTypeEnum` in `billing-service/routes/finance-admin.ts`. So the
+> codebase already knows these enums are wrong and works around them one call site at a time.
+>
+> **A conformance test was considered and rejected**: matching an enum to its column can only be done
+> heuristically, and the fuzzy version produced obvious false pairs (`TenantStatusEnum` against
+> `membership_status`, `SettingsValueStatusEnum` against `warranty_status`). Shipping it would have
+> meant a test nobody trusts. The tractable fix is narrower — delete the unused enums, and have the
+> three live ones read the constraint's case directly instead of lower-casing at each use.
+>
+> **Still open:** allotments write path (step 4), which needs the availability-guard decision, and the
+> `ALL /*` proxies for domains that still have no writes (step 5).
+>
+> **Not yet built or exercised** — the user is running the build and tests separately. The uniqueness
+> change needs `psql -f scripts/tables/06-integrations/71_promotional_codes.sql`.
+
 ## Current State (Backend ⚠️ read-only → UI ❌)
 
 The `booking-config` family in core-service is **entirely read-only**: 24 endpoints across 7 files,
