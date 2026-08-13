@@ -111,7 +111,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   );
 
   // Dashboard routes - proxy to core service
-  app.all(
+  app.get(
     "/v1/dashboard/*",
     {
       preHandler: tenantScopeFromQuery,

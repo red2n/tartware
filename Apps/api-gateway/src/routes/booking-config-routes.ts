@@ -63,7 +63,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/allotments/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -171,7 +171,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/channel-mappings/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -242,7 +242,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/meeting-rooms/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -268,7 +268,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/event-bookings/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -294,7 +294,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/waitlist/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -321,7 +321,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/group-bookings/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -424,6 +424,24 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyBilling,
   );
 
+  /**
+   * The real connections domain — credentials, endpoint, sync settings.
+   * `/v1/ota-connections` below is a projection of `channel_mappings` despite the
+   * name. See ui-gaps/14-channel-distribution.md.
+   */
+  app.get(
+    "/v1/ota-configurations",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "List OTA configurations (credentials redacted).",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   // OTA/Channel Connections - third-party booking integrations
   app.get(
     "/v1/ota-connections",
@@ -438,7 +456,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/ota-connections/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -553,7 +571,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/metasearch-configs/*",
     {
       preHandler: tenantScopeFromQuery,

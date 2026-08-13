@@ -10,6 +10,7 @@ import {
   getNightAuditRunDetail,
   listBusinessCalendar,
   listNightAuditHistory,
+  listOtaConfigurations,
   listOtaConnections,
   listOtaSyncLogs,
 } from "../services/night-audit-service.js";
@@ -166,6 +167,65 @@ export function registerNightAuditRoutes(fastify: FastifyInstance): void {
 
 export function registerOtaRoutes(fastify: FastifyInstance): void {
   // ---------------------------------------------------
+  // ---------------------------------------------------
+  // GET /v1/ota-configurations - List OTA connection configs
+  //
+  // The real connections domain: credentials, endpoint and sync settings.
+  // /v1/ota-connections below is a projection of channel_mappings despite the
+  // name, and `integration.ota.content_sync` takes an ota_config_id from here.
+  // Credentials are never returned — see ui-gaps/14-channel-distribution.md.
+  // ---------------------------------------------------
+  fastify.get(
+    "/v1/ota-configurations",
+    {
+      schema: {
+        summary: "List OTA configurations",
+        description:
+          "Connection records with credentials redacted; has_credentials reports only whether a key pair is stored.",
+        tags: ["OTA Connections"],
+        querystring: {
+          type: "object",
+          required: ["tenant_id"],
+          properties: {
+            tenant_id: { type: "string", format: "uuid" },
+            property_id: { type: "string", format: "uuid" },
+            is_active: { type: "boolean" },
+            limit: { type: "integer", minimum: 1, maximum: 200, default: 100 },
+            offset: { type: "integer", minimum: 0, default: 0 },
+          },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Querystring: {
+          tenant_id: string;
+          property_id?: string;
+          is_active?: boolean;
+          limit?: number;
+          offset?: number;
+        };
+      }>,
+      reply: FastifyReply,
+    ) => {
+      const { tenant_id, property_id, is_active, limit, offset } = request.query;
+
+      const configurations = await listOtaConfigurations({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        isActive: is_active,
+        limit,
+        offset,
+      });
+
+      return reply.send({
+        data: configurations,
+        meta: { count: configurations.length },
+        offset: offset ?? 0,
+      });
+    },
+  );
+
   // GET /v1/ota-connections - List OTA/channel connections
   // ---------------------------------------------------
   fastify.get(

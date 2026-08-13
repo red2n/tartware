@@ -51,9 +51,24 @@
 > - **The connections view stays read-only** — it is a projection, and giving a projection its own
 >   writes is how the two surfaces would drift apart.
 >
-> Credential handling (§2's "never return secrets on read") turns out to be moot: there are no
-> credential columns on `channel_mappings`. Whatever holds OTA credentials today is not this table,
-> and finding it is a separate question.
+> ### The real connections table is `ota_configurations`, and nothing served it
+>
+> Chasing §2's credential requirement found it: `ota_configurations` holds `api_key`, `api_secret`,
+> `api_endpoint`, `hotel_id`, sync cadence and the push/pull feature flags. **It had no endpoint at
+> all** — only reservations-command-service read it, internally.
+>
+> So the naming was actively misleading: the thing called `/v1/ota-connections` is the *mapping*
+> table, and the actual connection records were invisible. `integration.ota.content_sync` takes an
+> `ota_config_id` from `ota_configurations` — which means the channel-health screen shipped in step 1
+> **had a bug**: it passed a `channel_mappings.id` as `ota_config_id`, targeting nothing. Found and
+> fixed here.
+>
+> Added `GET /v1/ota-configurations` (core-service + gateway). **Credentials are excluded by the query
+> itself**, not filtered in a mapper — `api_key`/`api_secret` are never selected, and a computed
+> `has_credentials` boolean reports only whether a pair is stored. A secret cannot reach the service
+> layer to be leaked by accident. That satisfies §2's "never return secrets on read" for the table that
+> actually has secrets. The channel screen now resolves the config by matching `ota_code`, and refuses
+> to dispatch content sync when no configuration exists rather than sending a wrong id.
 >
 > ### Booking sources and market segments (reference data → plain HTTP)
 >

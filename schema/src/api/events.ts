@@ -1213,6 +1213,84 @@ export type OtaConnectionListItem = z.infer<typeof OtaConnectionListItemSchema>;
 /**
  * OTA connection list response schema.
  */
+/**
+ * An OTA connection as configured — credentials, endpoint and sync settings.
+ *
+ * This is the real connections domain. `/v1/ota-connections` is a projection of
+ * `channel_mappings` (room-type/rate mappings) despite the name, and had nothing
+ * to do with the credentials an operator sets up. `ota_configurations` is what
+ * `integration.ota.content_sync` means by `ota_config_id`, and until 2026-08-13
+ * nothing served it. See ui-gaps/14-channel-distribution.md.
+ *
+ * **`api_key` and `api_secret` are deliberately absent.** They are never returned;
+ * `has_credentials` reports only whether they are set, so a screen can show a
+ * connection as configured without the secret crossing the wire.
+ */
+export const OtaConfigurationListItemSchema = z.object({
+	ota_config_id: uuid,
+	tenant_id: uuid,
+	property_id: uuid,
+	property_name: z.string().optional(),
+	ota_name: z.string(),
+	ota_code: z.string(),
+	api_endpoint: z.string().nullable(),
+	hotel_id: z.string().nullable(),
+	channel_manager: z.string().nullable(),
+	/** Whether an api_key/api_secret pair is stored — never the values themselves. */
+	has_credentials: z.boolean(),
+	is_active: z.boolean(),
+	sync_enabled: z.boolean(),
+	sync_frequency_minutes: z.number().int().nullable(),
+	last_sync_at: z.string().optional(),
+	sync_status: z.string().nullable(),
+	sync_error_message: z.string().nullable(),
+	rate_push_enabled: z.boolean(),
+	availability_push_enabled: z.boolean(),
+	reservation_pull_enabled: z.boolean(),
+	commission_percentage: z.string().nullable(),
+	currency_code: z.string().nullable(),
+	created_at: z.string().optional(),
+	updated_at: z.string().optional(),
+});
+
+export type OtaConfigurationListItem = z.infer<typeof OtaConfigurationListItemSchema>;
+
+/** Raw row for {@link OtaConfigurationListItemSchema}. */
+export type OtaConfigurationRow = {
+	ota_config_id: string;
+	tenant_id: string;
+	property_id: string;
+	property_name: string | null;
+	ota_name: string;
+	ota_code: string;
+	api_endpoint: string | null;
+	hotel_id: string | null;
+	channel_manager: string | null;
+	has_credentials: boolean;
+	is_active: boolean;
+	sync_enabled: boolean;
+	sync_frequency_minutes: number | null;
+	last_sync_at: Date | string | null;
+	sync_status: string | null;
+	sync_error_message: string | null;
+	rate_push_enabled: boolean;
+	availability_push_enabled: boolean;
+	reservation_pull_enabled: boolean;
+	commission_percentage: string | null;
+	currency_code: string | null;
+	created_at: Date | string | null;
+	updated_at: Date | string | null;
+};
+
+/** Query parameters for listing OTA configurations. */
+export type ListOtaConfigurationsInput = {
+	tenantId: string;
+	propertyId?: string;
+	isActive?: boolean;
+	limit?: number;
+	offset?: number;
+};
+
 export const OtaConnectionListResponseSchema = z.object({
 	data: z.array(OtaConnectionListItemSchema),
 	meta: z.object({

@@ -39,6 +39,23 @@ type OtaConnection = {
 	pending_reservations?: number;
 };
 
+/**
+ * The actual OTA connection record — credentials, endpoint, sync settings.
+ *
+ * Distinct from OtaConnection above, which is a projection of `channel_mappings`
+ * despite the endpoint name. `integration.ota.content_sync` takes an
+ * `ota_config_id` from *this* table, so content sync has to pick from here.
+ */
+type OtaConfiguration = {
+	ota_config_id: string;
+	property_id: string;
+	ota_name: string;
+	ota_code: string;
+	has_credentials: boolean;
+	is_active: boolean;
+	sync_enabled: boolean;
+};
+
 type OtaSyncLog = {
 	sync_log_id: string;
 	sync_type: string;
@@ -85,6 +102,7 @@ export class ChannelsComponent {
 	readonly contentTypes = CONTENT_TYPES;
 
 	readonly connections = signal<OtaConnection[]>([]);
+	readonly configurations = signal<OtaConfiguration[]>([]);
 	readonly loading = signal(false);
 	readonly statusFilter = signal("");
 	readonly submitting = signal(false);
@@ -163,11 +181,15 @@ export class ChannelsComponent {
 			const status = this.statusFilter().trim();
 			if (status) params["connection_status"] = status;
 
-			const res = await this.api.get<{ data: OtaConnection[] } | OtaConnection[]>(
-				"/ota-connections",
-				params,
-			);
+			const [res, configRes] = await Promise.all([
+				this.api.get<{ data: OtaConnection[] } | OtaConnection[]>("/ota-connections", params),
+				this.api.get<{ data: OtaConfiguration[] } | OtaConfiguration[]>(
+					"/ota-configurations",
+					params,
+				),
+			]);
 			this.connections.set(Array.isArray(res) ? res : (res?.data ?? []));
+			this.configurations.set(Array.isArray(configRes) ? configRes : (configRes?.data ?? []));
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to load channel connections");
 		} finally {
@@ -202,7 +224,13 @@ export class ChannelsComponent {
 	openAction(kind: "rate-push" | "content-sync", connection: OtaConnection): void {
 		this.actionTarget.set(connection);
 		this.ratePushForm.set({ rate_plan_id: "", effective_from: "", effective_to: "" });
-		this.contentSyncForm.set({ ota_config_id: connection.ota_connection_id, content_types: "ALL" });
+		// Match on channel code, not on the connection id: the ids come from
+		// different tables, and passing a channel_mappings id as an ota_config_id
+		// would target nothing.
+		const match = this.configurations().find(
+			(c) => c.ota_code.toUpperCase() === connection.channel_code.toUpperCase(),
+		);
+		this.contentSyncForm.set({ ota_config_id: match?.ota_config_id ?? "", content_types: "ALL" });
 		this.action.set(kind);
 	}
 
@@ -277,6 +305,12 @@ export class ChannelsComponent {
 		const propertyId = connection?.property_id ?? this.ctx.propertyId();
 		if (!connection || !propertyId) return;
 		const f = this.contentSyncForm();
+		if (!f.ota_config_id) {
+			this.toast.error(
+				`No OTA configuration found for ${connection.channel_code}. Content sync needs one.`,
+			);
+			return;
+		}
 		await this.dispatch(
 			"content-sync",
 			{

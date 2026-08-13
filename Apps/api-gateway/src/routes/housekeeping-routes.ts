@@ -341,7 +341,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   );
 
   // Maintenance routes - proxy to housekeeping service
-  app.all(
+  app.get(
     "/v1/maintenance/*",
     {
       preHandler: tenantScopeFromQuery,

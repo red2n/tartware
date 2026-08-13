@@ -74,9 +74,16 @@
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="ch-content-config">OTA config ID</label>
-          <input class="field-input" id="ch-content-config" type="text" [ngModel]="contentSyncForm().ota_config_id"
-                 (ngModelChange)="contentSyncForm.set({ ...contentSyncForm(), ota_config_id: $event ?? '' })" />
+          <label class="field-label" for="ch-content-config">OTA configuration</label>
+          <select class="field-input" id="ch-content-config" [ngModel]="contentSyncForm().ota_config_id"
+                  (ngModelChange)="contentSyncForm.set({ ...contentSyncForm(), ota_config_id: $event })">
+            <option value="">Select a configuration…</option>
+            @for (c of configurations(); track c.ota_config_id) {
+              <option [value]="c.ota_config_id">
+                {{ c.ota_name }} ({{ c.ota_code }}){{ c.has_credentials ? '' : ' — no credentials' }}
+              </option>
+            }
+          </select>
         </div>
       </div>
     </div>

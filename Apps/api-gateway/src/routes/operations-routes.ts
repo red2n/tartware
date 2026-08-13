@@ -57,7 +57,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/cashier-sessions/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -131,7 +131,7 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.all(
+  app.get(
     "/v1/banquet-orders/*",
     {
       preHandler: tenantScopeFromQueryOrBody,

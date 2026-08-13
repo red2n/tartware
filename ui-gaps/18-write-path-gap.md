@@ -26,10 +26,37 @@
 > **Applied so far:** COV-01 (existing HTTP write path, UI only) and COV-02 (three new HTTP routes on
 > core-service). Remaining domains in the table below inherit the rule — no per-domain re-litigation.
 >
-> **Still open:** deleting or implementing the misleading `ALL /*` gateway proxies for domains that
-> still have no writes, and the `UNIMPLEMENTED` catalog rows. Note two of those rows
-> (`compliance.breach.report` / `.notify`) are now definitively redundant: the HTTP path is the live
-> one, so they should be **deleted**, not implemented.
+> ### ✅ Items 2 and 3 closed 2026-08-13
+>
+> **The misleading `ALL /*` proxies are gone.** An audit of every wildcard proxy against its target's
+> write registrations found **13 advertising a write surface nothing implements**: allotments, meeting
+> rooms, event bookings, banquet orders, waitlist, group bookings, ota-connections, channel mappings,
+> metasearch, dashboard, maintenance, cashier sessions and revenue.
+>
+> They fall into three groups and the fix is the same for all: **register `app.get`**, so an
+> unsupported method is refused at the edge with a plain "no such route" instead of passing gateway
+> auth and tenant scoping only to 404 inside a service.
+>
+> | Group | Domains |
+> |---|---|
+> | Writes go through the command bus (correct) | waitlist, group bookings, channel mappings, metasearch, maintenance, cashier sessions, revenue |
+> | No write path built yet | allotments, meeting rooms, event bookings, banquet orders |
+> | Read-only by nature | dashboard, ota-connections (a projection of `channel_mappings`) |
+>
+> **Guardrail:** `Apps/api-gateway/tests/wildcard-write-conformance.test.ts` — a wildcard may use
+> `app.all` only if its target registers at least one write under that prefix. This closes the blind
+> spot the proxy-conformance test leaves open by design: it skips wildcards, which is exactly where
+> writes were being swallowed. Verified to fail by reverting one route and watching it catch it.
+>
+> **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
+> `operations.incident.report` were deleted rather than implemented, because each described a write
+> that already exists as plain HTTP on the owning service. The remaining four
+> (`analytics.metric.ingest`, `analytics.report.schedule`, `operations.asset.update`,
+> `operations.inventory.adjust`) are genuinely unbuilt and want a product decision.
+>
+> **Still open:** item 4 — per-domain writes for the four domains that have none. Three of them
+> (meeting rooms, event bookings, banquet orders) are [13](13-sales-catering.md)'s build-or-retire
+> decision; allotments is [16](16-booking-reference-data.md)'s, pending the availability-guard call.
 
 > ### Related defect found 2026-08-11: `SELECT x.*` in every `*_BY_ID_SQL`
 >

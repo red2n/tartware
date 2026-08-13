@@ -91,7 +91,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
-| 18 | Read-only domains have no write path — **✅ mechanism decided 2026-08-11**; per-domain writes remain | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
+| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; 4 domains still lack writes, all blocked on COV-13/COV-16 decisions | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
 
@@ -256,7 +256,7 @@ fuzzy version paired `TenantStatusEnum` with `membership_status` and `SettingsVa
 `warranty_status`. A test that cries wolf is worse than none. The alignment above removes the standing
 defect; a future guard would need an explicit enum↔column annotation to be trustworthy.
 
-**Third guardrail added 2026-08-13** — `tenant-scope-module-conformance.test.ts` asserts every
+**Third and fourth guardrails added 2026-08-13** — `tenant-scope-module-conformance.test.ts` asserts every
 `requiredModules:` literal in `Apps/*/src` is a real `MODULE_IDS` entry. It was written after finding
 the incident write path gated on a module that does not exist, 403ing for every tenant since it
 shipped. Note the E2E sweep *cannot* find this class of bug: `api_smoke` scores
