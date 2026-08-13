@@ -110,30 +110,84 @@ gen_uuid() {
   fi
 }
 
+# ─── Rate-limit aware transport ────────────────────────────────────────
+# The gateway allows API_GATEWAY_RATE_MAX (default 200) requests per minute
+# per IP, and a full multi-tenant run comfortably exceeds that. A throttled
+# response is not a result — it carries no data and says nothing about the
+# endpoint — but the helpers below used to hand the error body straight to
+# resp_count, which reported 0. That turned one throttle window into
+# "Buildings seeded (A1): expected >= 2 actual=0" plus a cascade of empty
+# screens, none of which were real defects. Retry throttled calls instead,
+# honouring the gateway's advertised retry hint.
+RATE_LIMIT_MAX_RETRIES="${RATE_LIMIT_MAX_RETRIES:-4}"
+
+# True when the last response was a throttle rather than a real answer.
+# The gateway surfaces these as 429, but some proxied paths report 403 with
+# the same message, so match on both.
+is_rate_limited() {
+  local code="$1"
+  [[ "$code" == "429" ]] && return 0
+  if [[ "$code" == "403" ]] && grep -qi "rate limit" "$RESP_FILE" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+# Sleep out the throttle window, preferring the "retry in N seconds" hint the
+# gateway sends. Capped so one stuck window cannot stall the entire run.
+rate_limit_wait() {
+  local hint
+  hint=$(grep -oiE 'retry in[^0-9]*[0-9]+' "$RESP_FILE" 2>/dev/null | grep -oE '[0-9]+' | head -1)
+  [[ -z "$hint" ]] && hint=5
+  [[ "$hint" -lt 1 ]] && hint=1
+  [[ "$hint" -gt 35 ]] && hint=35
+  sleep "$((hint + 1))"
+}
+
 post() {
+  # Generate the idempotency key once and reuse it across retries — a retry
+  # must not be able to create a second row.
   local idem="${3:-$(gen_uuid)}"
-  curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X POST "$1" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -H "Idempotency-Key: $idem" \
-    -d "$2"
+  local code attempt=0
+  while :; do
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X POST "$1" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $idem" \
+      -d "$2")
+    is_rate_limited "$code" && [[ $attempt -lt $RATE_LIMIT_MAX_RETRIES ]] || break
+    attempt=$((attempt + 1)); rate_limit_wait
+  done
+  echo "$code"
 }
 
 put() {
   local idem="${3:-$(gen_uuid)}"
-  curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X PUT "$1" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -H "Idempotency-Key: $idem" \
-    -d "$2"
+  local code attempt=0
+  while :; do
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X PUT "$1" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $idem" \
+      -d "$2")
+    is_rate_limited "$code" && [[ $attempt -lt $RATE_LIMIT_MAX_RETRIES ]] || break
+    attempt=$((attempt + 1)); rate_limit_wait
+  done
+  echo "$code"
 }
 
 get() {
-  curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    "$1" \
-    -H "Authorization: Bearer $TOKEN"
+  local code attempt=0
+  while :; do
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      "$1" \
+      -H "Authorization: Bearer $TOKEN")
+    is_rate_limited "$code" && [[ $attempt -lt $RATE_LIMIT_MAX_RETRIES ]] || break
+    attempt=$((attempt + 1)); rate_limit_wait
+  done
+  echo "$code"
 }
 
 # ─── API response helpers (replace all direct SQL queries) ─────────────
@@ -264,17 +318,44 @@ wait_kafka() { sleep "${1:-$KAFKA_WAIT}"; }
 # a fixed sleep that works for the first property starves the fourth.
 # Usage: poll_count <url> <want> [max_wait_s=60]
 poll_count() {
-  local url="$1" want="$2" max="${3:-60}" waited=0 n=0
+  local url="$1" want="$2" max="${3:-60}" waited=0 n=0 code
   while [[ $waited -lt $max ]]; do
-    get "$url" >/dev/null
-    n=$(resp_count)
-    [[ "$n" -ge "$want" ]] && { echo "$n"; return 0; }
+    code=$(get "$url")
+    # Only a 2xx body carries a count. A throttled or errored response has no
+    # items in it, and treating that as "0 rows" reports a data problem where
+    # there is only a transport one — keep the last real count and poll again.
+    if [[ "$code" =~ ^2 ]]; then
+      n=$(resp_count)
+      [[ "$n" -ge "$want" ]] && { echo "$n"; return 0; }
+    fi
     sleep 4; waited=$((waited + 4))
   done
   # Always exit 0: the caller asserts on the count. Returning non-zero would
   # abort the whole script under `set -e` when used as `x=$(poll_count ...)`,
   # turning one slow endpoint into a total run failure.
   echo "$n"
+}
+
+# res_status_of — current status of one reservation, uppercased ("" if absent).
+#
+# The billing commands below each demand a specific reservation status and the
+# handlers treat a mismatch as non-retryable, so a command fired against the
+# wrong state is dead-lettered rather than failed politely. Since one pipeline
+# reservation moves through several of these scenarios, callers must check the
+# live status first instead of assuming the state they set up earlier still
+# holds — an async command from a previous step may have moved it.
+res_status_of() {
+  local tid="$1" pid="$2" rid="$3"
+  if [[ "$(get "$GW/v1/reservations/$rid?tenant_id=$tid")" =~ ^2 ]]; then
+    resp_field "status" | tr '[:lower:]' '[:upper:]'
+    return 0
+  fi
+  # Fall back to the collection when the single-resource read is unavailable.
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+  jq -r --arg id "$rid" \
+    '(if type=="array" then . else (.data // []) end)
+     | map(select(.id == $id)) | .[0].status // empty' "$RESP_FILE" 2>/dev/null \
+    | tr '[:lower:]' '[:upper:]'
 }
 
 
@@ -492,12 +573,19 @@ fi
 echo "  ✓ Tenant B auth token acquired"
 
 # Enable all modules for Tenant B
-echo "  Enabling all modules for Tenant B..."
+echo "  Enabling modules for Tenant B..."
+# Deliberately withholds tenant-owner-portal and enterprise-api. Phase 5b needs
+# two modules this tenant does NOT have in order to exercise the request →
+# approve / reject flow, and the catalog is exactly these ten — enabling all of
+# them left nothing lockable and silently skipped that whole phase. Neither
+# withheld module gates any route the suite calls (only core,
+# finance-automation, facility-maintenance, analytics-bi and revenue-management
+# appear in a requiredModules guard), so nothing else loses coverage.
 MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_B/modules" \
   -H "Authorization: Bearer $TOKEN_B" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\",\"revenue-management\",\"loyalty\",\"distribution\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"revenue-management\",\"loyalty\",\"distribution\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant B (HTTP $MOD_CODE)"
 else
@@ -1457,30 +1545,49 @@ run_billing_pipeline() {
     echo ""
 
     # ── No-Show Charge ──
+    # Handler requires CONFIRMED or NO_SHOW, and promotes CONFIRMED → NO_SHOW.
     echo "── ${tag} — No-Show Charge ──────────────────────────────────────"
     if [[ -n "$res_id" ]]; then
-      local pre_ns
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      pre_ns=$(resp_count)
-      send_command "CMD no_show.charge" \
-        "billing.no_show.charge" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
-      wait_kafka 8
-      poll_delta "No-show charge ($label)" \
-        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
-        "$pre_ns"
+      local ns_status; ns_status=$(res_status_of "$tid" "$pid" "$res_id")
+      if [[ "$ns_status" == "CONFIRMED" || "$ns_status" == "NO_SHOW" ]]; then
+        local pre_ns
+        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+        pre_ns=$(resp_count)
+        send_command "CMD no_show.charge" \
+          "billing.no_show.charge" \
+          "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
+        wait_kafka 8
+        poll_delta "No-show charge ($label)" \
+          "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+          "$pre_ns"
+      else
+        skip "No-show charge ($label)" "reservation is ${ns_status:-unknown}, needs CONFIRMED/NO_SHOW"
+      fi
     else
       skip "No-show charge ($label)" "no reservation"
     fi
     echo ""
 
     # ── Late Checkout Charge ──
+    # Handler requires CHECKED_IN. Note this is mutually exclusive with the
+    # no-show scenario above, which leaves the reservation NO_SHOW — so on a
+    # pipeline that ran that step this one legitimately skips.
     echo "── ${tag} — Late Checkout Charge ────────────────────────────────"
     if [[ -n "$res_id" ]]; then
+      # 15:00 *today*, i.e. 3h past the 12:00 standard checkout. This used to be
+      # "now + 15 hours", which rolls into the small hours of the next day and
+      # lands *before* that day's 12:00 — the handler compares against standard
+      # checkout on the same date as the actual checkout, so the charge was
+      # rejected as NOT_LATE_CHECKOUT whenever the run started after ~09:00.
       local late_iso
-      late_iso=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
-        || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
-      if [[ -n "$late_iso" ]]; then
+      late_iso=$(date -u -d "today 15:00" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
+        || date -u -v15H -v0M -v0S +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
+      local lc_status; lc_status=$(res_status_of "$tid" "$pid" "$res_id")
+      if [[ -z "$late_iso" ]]; then
+        skip "Late checkout charge ($label)" "date calc unavailable"
+      elif [[ "$lc_status" != "CHECKED_IN" ]]; then
+        skip "Late checkout charge ($label)" "reservation is ${lc_status:-unknown}, needs CHECKED_IN"
+      else
         local pre_late
         get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
         pre_late=$(resp_count)
@@ -1491,8 +1598,6 @@ run_billing_pipeline() {
         poll_delta "Late checkout charge ($label)" \
           "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
           "$pre_late"
-      else
-        skip "Late checkout charge ($label)" "date calc unavailable"
       fi
     else
       skip "Late checkout charge ($label)" "no reservation"
@@ -1500,18 +1605,24 @@ run_billing_pipeline() {
     echo ""
 
     # ── Cancellation Penalty ──
+    # Handler requires CANCELLED or NO_SHOW.
     echo "── ${tag} — Cancellation Penalty ────────────────────────────────"
     if [[ -n "$res_id" ]]; then
-      local pre_cp
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      pre_cp=$(resp_count)
-      send_command "CMD cancellation.penalty" \
-        "billing.cancellation.penalty" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
-      wait_kafka 8
-      poll_delta "Cancellation penalty ($label)" \
-        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
-        "$pre_cp"
+      local cp_status; cp_status=$(res_status_of "$tid" "$pid" "$res_id")
+      if [[ "$cp_status" == "CANCELLED" || "$cp_status" == "NO_SHOW" ]]; then
+        local pre_cp
+        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+        pre_cp=$(resp_count)
+        send_command "CMD cancellation.penalty" \
+          "billing.cancellation.penalty" \
+          "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
+        wait_kafka 8
+        poll_delta "Cancellation penalty ($label)" \
+          "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+          "$pre_cp"
+      else
+        skip "Cancellation penalty ($label)" "reservation is ${cp_status:-unknown}, needs CANCELLED/NO_SHOW"
+      fi
     else
       skip "Cancellation penalty ($label)" "no reservation"
     fi
@@ -2925,9 +3036,14 @@ seed_reservations() {
   get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   before=$(resp_count)
 
-  # Free rooms for the check-in cohort.
+  # Free rooms for the check-in cohort — AVAILABLE only. Earlier phases already
+  # checked guests into some of this property's rooms, and the check-in handler
+  # rejects a non-AVAILABLE room as non-retryable, so taking the first N rooms
+  # regardless of status parked those check-ins in the DLQ.
   get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
-  local room_ids; room_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | .[].room_id // .[].id' "$RESP_FILE" 2>/dev/null | head -20)
+  local room_ids; room_ids=$(jq -r '(if type=="array" then . else (.data // []) end)
+    | map(select((.status // .room_status // "" | ascii_upcase) == "AVAILABLE"))
+    | .[] | (.room_id // .id)' "$RESP_FILE" 2>/dev/null | head -20)
   local -a rooms=(); local r
   for r in $room_ids; do rooms+=("$r"); done
 
@@ -2981,13 +3097,22 @@ seed_reservations() {
     return
   fi
 
-  # --- 6 → CHECKED_IN (force bypasses the deposit gate) ---
+  # --- up to 6 → CHECKED_IN (force bypasses the deposit gate) ---
+  # Each check-in needs its own room: the first one leaves the room OCCUPIED, so
+  # the previous round-robin (n_in % #rooms) handed the same room out again and
+  # every surplus command was dead-lettered as ROOM_NOT_AVAILABLE. Cap the
+  # cohort at the number of free rooms; with none, omit room_id and let the
+  # handler assign.
+  local max_in=6
+  if [[ ${#rooms[@]} -gt 0 && ${#rooms[@]} -lt $max_in ]]; then
+    max_in=${#rooms[@]}
+  fi
   local n_in=0 idx=0 rid
-  while [[ $idx -lt $total && $n_in -lt 6 ]]; do
+  while [[ $idx -lt $total && $n_in -lt $max_in ]]; do
     rid="${pending[$idx]}"
     local room_arg=""
     if [[ ${#rooms[@]} -gt 0 ]]; then
-      room_arg=",\"room_id\":\"${rooms[$(( n_in % ${#rooms[@]} ))]}\""
+      room_arg=",\"room_id\":\"${rooms[$n_in]}\""
     fi
     send_command "reservation.check_in #$((n_in+1)) ($lbl)" \
       "reservation.check_in" \

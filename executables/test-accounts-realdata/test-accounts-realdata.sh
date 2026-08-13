@@ -2177,8 +2177,13 @@ if [[ -n "${RES1_ID:-}" ]]; then
     wait_kafka 8
   fi
 
-  LATE_CHECKOUT_ISO=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
-    || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
+  # 15:00 *today* — the "3h overdue" this scenario claims, measured against the
+  # 12:00 standard checkout below. "now + 15 hours" rolled into the next day's
+  # small hours, and the handler compares against standard checkout on the same
+  # date as the actual checkout, so any run starting after ~09:00 produced an
+  # actual checkout *earlier* than standard and was rejected NOT_LATE_CHECKOUT.
+  LATE_CHECKOUT_ISO=$(date -u -d "today 15:00" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
+    || date -u -v15H -v0M -v0S +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
   if [[ -n "$LATE_CHECKOUT_ISO" ]]; then
     get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
     PRE_LATE_CHARGES=$(resp_count)
@@ -2204,22 +2209,37 @@ echo "── 1.35  Cancellation Penalty ─────────────�
 echo "  Scenario: Apply \$99.50 cancellation penalty to reservation"
 
 if [[ -n "${RES1_ID:-}" ]]; then
-  get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
-  PRE_CANCEL_CHARGES=$(resp_count)
+  # The handler requires CANCELLED or NO_SHOW and treats a mismatch as
+  # non-retryable, so firing this at the wrong state dead-letters the command
+  # rather than failing it politely. §1.33 leaves RES1 NO_SHOW but §1.34 then
+  # forces it back to CHECKED_IN for the late-checkout charge, so by the time we
+  # get here the precondition no longer holds. Cancelling RES1 to satisfy it
+  # would close its folio and break the comp posting in §1.37, so check the live
+  # status and skip instead of parking a message in the DLQ.
+  get "$GW/v1/reservations/$RES1_ID?tenant_id=$TID" >/dev/null
+  CANCEL_RES_STATUS=$(resp_field "status" | tr '[:lower:]' '[:upper:]')
 
-  send_command "CMD cancellation.penalty: \$99.50" \
-    "billing.cancellation.penalty" \
-    "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"penalty_amount_override\":99.50,\"currency\":\"$CURRENCY\",\"reason\":\"Cancellation within 24h of arrival — QA test\"}"
-
-  wait_kafka 8
-
-  get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
-  POST_CANCEL_CHARGES=$(resp_count)
-  CANCEL_DELTA=$((POST_CANCEL_CHARGES - PRE_CANCEL_CHARGES))
-  if [[ "$CANCEL_DELTA" -ge 1 ]]; then
-    pass "DB: cancellation penalty posted (Δ=$CANCEL_DELTA)"
+  if [[ "$CANCEL_RES_STATUS" != "CANCELLED" && "$CANCEL_RES_STATUS" != "NO_SHOW" ]]; then
+    skip "Cancellation penalty" \
+      "reservation is ${CANCEL_RES_STATUS:-unknown}, needs CANCELLED/NO_SHOW"
   else
-    skip "DB: cancellation penalty" "no new charge postings (Δ=$CANCEL_DELTA)"
+    get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
+    PRE_CANCEL_CHARGES=$(resp_count)
+
+    send_command "CMD cancellation.penalty: \$99.50" \
+      "billing.cancellation.penalty" \
+      "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"penalty_amount_override\":99.50,\"currency\":\"$CURRENCY\",\"reason\":\"Cancellation within 24h of arrival — QA test\"}"
+
+    wait_kafka 8
+
+    get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
+    POST_CANCEL_CHARGES=$(resp_count)
+    CANCEL_DELTA=$((POST_CANCEL_CHARGES - PRE_CANCEL_CHARGES))
+    if [[ "$CANCEL_DELTA" -ge 1 ]]; then
+      pass "DB: cancellation penalty posted (Δ=$CANCEL_DELTA)"
+    else
+      skip "DB: cancellation penalty" "no new charge postings (Δ=$CANCEL_DELTA)"
+    fi
   fi
 else
   skip "Cancellation penalty" "no reservation ID"
