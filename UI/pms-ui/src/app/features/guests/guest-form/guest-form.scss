@@ -69,7 +69,7 @@
     min-width: 0;
 
     &.invalid {
-      border-color: var(--fgColor-danger, #d1242f);
+      border-color: var(--fgColor-danger);
     }
   }
 }
@@ -93,12 +93,12 @@
 }
 
 .req {
-  color: var(--fgColor-danger, #d1242f);
+  color: var(--fgColor-danger);
 }
 
 .field-error {
   font-size: var(--base-text-size-xs);
-  color: var(--fgColor-danger, #d1242f);
+  color: var(--fgColor-danger);
 }
 
 .field-hint {

@@ -1,6 +1,9 @@
 /**
- * @spec See /DESIGN_TOKENS_SPEC.md for naming logic and semantic pairings.
- * @rule Never use raw values (hex/px). Use semantic tokens ONLY.
+ * Shared palette — DARK. Consumed by pms-ui and guest-portal alike.
+ *
+ * @spec  ./README.md for the token set, cascade order and contrast floors.
+ * @rule  Never use raw values in an app. Semantic tokens ONLY.
+ * @test  node UI/shared-styles/check-contrast.mjs — run it after any edit here.
  */
 [data-theme="dark"] {
   /* ── OpenSea-inspired palette ── */
