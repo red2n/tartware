@@ -39,6 +39,27 @@
 >   `schema/src/events/commands/compliance.ts` with them. `UNIMPLEMENTED` is down from 7 to 4 and all
 >   six catalog conformance tests pass.
 >
+> ### ⚠️ Still dead after that pass — the actor lookup, fixed 2026-08-16
+>
+> The module-id fix above made the routes reachable; they still refused every write. `requireActor`
+> read `request.userId`, a property nothing sets — the shared auth plugin
+> (`@tartware/tenant-auth/auth-plugin`) decorates **`request.auth.userId`**, which is what every other
+> service reads. `incident_reports.created_by` is NOT NULL and the handler correctly refuses an
+> unattributed report, so all three writes answered
+> **400 "An authenticated user is required to file an incident"** for every caller, valid token or not.
+> That is why the table was still empty after COV-06 was closed.
+>
+> **Fixed:** `requireActor` now reads `request.auth.userId`. Verified by seeding — incidents go from 0
+> rows to seeded through the gateway.
+>
+> Same slip, same file family: `routes/lost-and-found.ts` read `request.userId` at four sites. There it
+> did not refuse, it just wrote `created_by: NULL` silently — the worse failure, because nothing
+> surfaced. Also corrected.
+>
+> **Nothing caught either one.** The guardrail added above scans `requiredModules:` literals; it has no
+> opinion on how a handler resolves its actor. A conformance test asserting that services read the
+> actor off `request.auth` would close this class.
+>
 > ### The detail endpoint was returning a shape with no narrative in it
 >
 > Found while building the detail panel: `INCIDENT_REPORT_BY_ID_SQL` selects the full record —

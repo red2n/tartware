@@ -6,15 +6,23 @@ import {
   MeetingRoomListItemSchema,
   MeetingRoomStatusEnum,
   MeetingRoomTypeEnum,
+  type MeetingRoomUpdateBody,
+  MeetingRoomUpdateBodySchema,
+  type MeetingRoomWriteBody,
+  MeetingRoomWriteBodySchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
+  createMeetingRoom,
+  deleteMeetingRoom,
   getEventBookingById,
   getMeetingRoomById,
   listEventBookings,
   listMeetingRooms,
+  MeetingRoomCodeConflictError,
+  updateMeetingRoom,
 } from "../../services/booking-config/event.js";
 
 // =====================================================
@@ -139,6 +147,228 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
         return reply.notFound("Meeting room not found");
       }
       return MeetingRoomListItemSchema.parse(room);
+    },
+  );
+
+  // -------------------------------------------------
+  // MEETING ROOM WRITES — reference data, plain HTTP per
+  // ui-gaps/18-write-path-gap.md. See ui-gaps/13-sales-catering.md.
+  // -------------------------------------------------
+
+  const roomWriteScopeFromBody = app.withTenantScope({
+    resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  const roomDeleteScopeFromQuery = app.withTenantScope({
+    resolveTenantId: (request) => (request.query as { tenant_id?: string })?.tenant_id,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  const roomTenantQuerySchema = z.object({ tenant_id: z.string().uuid() });
+
+  app.post<{ Body: MeetingRoomWriteBody }>(
+    "/v1/meeting-rooms",
+    {
+      preHandler: roomWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: MEETING_ROOMS_TAG,
+        summary: "Create a meeting room",
+        description:
+          "Function space inventory. room_code is unique per (tenant, property); a collision returns 409.",
+        body: schemaFromZod(MeetingRoomWriteBodySchema, "MeetingRoomWriteBody"),
+      }),
+    },
+    async (request, reply) => {
+      const body = MeetingRoomWriteBodySchema.parse(request.body);
+      let created: Awaited<ReturnType<typeof createMeetingRoom>>;
+
+      try {
+        created = await createMeetingRoom(
+          body.tenant_id,
+          {
+            propertyId: body.property_id,
+            roomCode: body.room_code,
+            roomName: body.room_name,
+            roomType: body.room_type,
+            roomStatus: body.room_status,
+            maxCapacity: body.max_capacity,
+            building: body.building,
+            floor: body.floor,
+            locationDescription: body.location_description,
+            theaterCapacity: body.theater_capacity,
+            classroomCapacity: body.classroom_capacity,
+            banquetCapacity: body.banquet_capacity,
+            receptionCapacity: body.reception_capacity,
+            uShapeCapacity: body.u_shape_capacity,
+            boardroomCapacity: body.boardroom_capacity,
+            areaSqm: body.area_sqm,
+            areaSqft: body.area_sqft,
+            lengthMeters: body.length_meters,
+            widthMeters: body.width_meters,
+            ceilingHeightMeters: body.ceiling_height_meters,
+            hasNaturalLight: body.has_natural_light,
+            hasAudioVisual: body.has_audio_visual,
+            hasVideoConferencing: body.has_video_conferencing,
+            hasWifi: body.has_wifi,
+            hasStage: body.has_stage,
+            hasDanceFloor: body.has_dance_floor,
+            wheelchairAccessible: body.wheelchair_accessible,
+            defaultSetup: body.default_setup,
+            setupTimeMinutes: body.setup_time_minutes,
+            teardownTimeMinutes: body.teardown_time_minutes,
+            turnoverTimeMinutes: body.turnover_time_minutes,
+            hourlyRate: body.hourly_rate,
+            halfDayRate: body.half_day_rate,
+            fullDayRate: body.full_day_rate,
+            minimumRentalHours: body.minimum_rental_hours,
+            currencyCode: body.currency_code,
+            operatingHoursStart: body.operating_hours_start,
+            operatingHoursEnd: body.operating_hours_end,
+            cateringRequired: body.catering_required,
+            inHouseCateringAvailable: body.in_house_catering_available,
+            externalCateringAllowed: body.external_catering_allowed,
+            primaryPhotoUrl: body.primary_photo_url,
+            floorPlanUrl: body.floor_plan_url,
+            virtualTourUrl: body.virtual_tour_url,
+            isActive: body.is_active,
+            requiresApproval: body.requires_approval,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        if (error instanceof MeetingRoomCodeConflictError) {
+          return reply.conflict(error.message);
+        }
+        throw error;
+      }
+
+      if (!created) {
+        return reply.internalServerError("Failed to create meeting room");
+      }
+
+      return reply.status(201).send({ data: created, message: "Meeting room created" });
+    },
+  );
+
+  app.put<{ Params: z.infer<typeof MeetingRoomParamsSchema>; Body: MeetingRoomUpdateBody }>(
+    "/v1/meeting-rooms/:roomId",
+    {
+      preHandler: roomWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: MEETING_ROOMS_TAG,
+        summary: "Update a meeting room",
+        description:
+          "room_code is editable — event bookings and banquet orders reference room_id, not the code.",
+        params: MeetingRoomIdParamJsonSchema,
+        body: schemaFromZod(MeetingRoomUpdateBodySchema, "MeetingRoomUpdateBody"),
+      }),
+    },
+    async (request, reply) => {
+      const body = MeetingRoomUpdateBodySchema.parse(request.body);
+      const { roomId } = MeetingRoomParamsSchema.parse(request.params);
+      let updated: Awaited<ReturnType<typeof updateMeetingRoom>>;
+
+      try {
+        updated = await updateMeetingRoom(
+          body.tenant_id,
+          roomId,
+          {
+            roomCode: body.room_code,
+            roomName: body.room_name,
+            roomType: body.room_type,
+            roomStatus: body.room_status,
+            maxCapacity: body.max_capacity,
+            building: body.building,
+            floor: body.floor,
+            locationDescription: body.location_description,
+            theaterCapacity: body.theater_capacity,
+            classroomCapacity: body.classroom_capacity,
+            banquetCapacity: body.banquet_capacity,
+            receptionCapacity: body.reception_capacity,
+            uShapeCapacity: body.u_shape_capacity,
+            boardroomCapacity: body.boardroom_capacity,
+            areaSqm: body.area_sqm,
+            areaSqft: body.area_sqft,
+            lengthMeters: body.length_meters,
+            widthMeters: body.width_meters,
+            ceilingHeightMeters: body.ceiling_height_meters,
+            hasNaturalLight: body.has_natural_light,
+            hasAudioVisual: body.has_audio_visual,
+            hasVideoConferencing: body.has_video_conferencing,
+            hasWifi: body.has_wifi,
+            hasStage: body.has_stage,
+            hasDanceFloor: body.has_dance_floor,
+            wheelchairAccessible: body.wheelchair_accessible,
+            defaultSetup: body.default_setup,
+            setupTimeMinutes: body.setup_time_minutes,
+            teardownTimeMinutes: body.teardown_time_minutes,
+            turnoverTimeMinutes: body.turnover_time_minutes,
+            hourlyRate: body.hourly_rate,
+            halfDayRate: body.half_day_rate,
+            fullDayRate: body.full_day_rate,
+            minimumRentalHours: body.minimum_rental_hours,
+            currencyCode: body.currency_code,
+            operatingHoursStart: body.operating_hours_start,
+            operatingHoursEnd: body.operating_hours_end,
+            cateringRequired: body.catering_required,
+            inHouseCateringAvailable: body.in_house_catering_available,
+            externalCateringAllowed: body.external_catering_allowed,
+            primaryPhotoUrl: body.primary_photo_url,
+            floorPlanUrl: body.floor_plan_url,
+            virtualTourUrl: body.virtual_tour_url,
+            isActive: body.is_active,
+            requiresApproval: body.requires_approval,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        if (error instanceof MeetingRoomCodeConflictError) {
+          return reply.conflict(error.message);
+        }
+        throw error;
+      }
+
+      if (!updated) {
+        return reply.notFound("Meeting room not found");
+      }
+
+      return reply.send({ data: updated, message: "Meeting room updated" });
+    },
+  );
+
+  app.delete<{
+    Params: z.infer<typeof MeetingRoomParamsSchema>;
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/meeting-rooms/:roomId",
+    {
+      preHandler: roomDeleteScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: MEETING_ROOMS_TAG,
+        summary: "Retire a meeting room",
+        description:
+          "Soft delete. Event bookings and banquet orders reference the room with ON DELETE RESTRICT, so history is preserved and the room simply stops being bookable.",
+        params: MeetingRoomIdParamJsonSchema,
+        querystring: schemaFromZod(roomTenantQuerySchema, "MeetingRoomDeleteQuery"),
+      }),
+    },
+    async (request, reply) => {
+      const { roomId } = MeetingRoomParamsSchema.parse(request.params);
+      const { tenant_id } = roomTenantQuerySchema.parse(request.query);
+      const removed = await deleteMeetingRoom(
+        tenant_id,
+        roomId,
+        (request as { userId?: string }).userId,
+      );
+
+      if (!removed) {
+        return reply.notFound("Meeting room not found");
+      }
+
+      return reply.send({ message: "Meeting room retired" });
     },
   );
 

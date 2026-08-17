@@ -153,10 +153,11 @@ cashier reads there. The housekeeping-service copy was unreachable through the g
 `sql/cashier-queries.ts` deleted along with their `server.ts` registration. The ported SQL was run
 against a real `cashier_sessions` row to confirm it still returns the reconciliation figures.
 
-**Left in place, and worth its own item:** housekeeping-service's command consumer still has
-`billing.cashier.open`, `.close` and `.handover` cases. The catalog targets billing-service, so those
-handlers can never fire — dead write-path code, and a different risk class from the read routes fixed
-here. Deleting them means first confirming billing-service's implementations are the ones in use.
+**✅ Removed 2026-08-16.** Confirmed before deleting, as this item asked: `command_routes` sends all
+three to `billing-service`, billing-service implements all three, and `command-consumer-utils`
+(`index.ts:150`) skips any envelope whose `targetService` is not its own id — so housekeeping never saw
+these messages. Dead code, not a double-processing bug. The three cases and
+`services/cashier-commands.ts` (its only consumer) are gone.
 Note also that the two services returned *different shapes* for the same path (billing returns raw
 rows; housekeeping mapped them to `CashierSessionListItem` with display fields) — the UI consumes
 billing's shape, which is the one the gateway has always served.

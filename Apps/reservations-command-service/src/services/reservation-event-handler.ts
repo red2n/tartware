@@ -250,9 +250,40 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
       currency: payload.currency ?? "USD",
     }),
     incrementGuestBookingCount(tenantId, payload.guest_id),
+    linkWaitlistEntry(tenantId, reservationId, (payload as { waitlist_id?: string }).waitlist_id),
   ]);
 
   return reservationId;
+};
+
+/**
+ * Point a converted waitlist entry at the reservation it produced.
+ *
+ * This has to happen here rather than in the convert command: that command only
+ * emits reservation.created, so waitlist_entries.reservation_id has no row to
+ * reference until the insert above has run. Best-effort like the folio and
+ * booking-count writes beside it — a missing link is not worth failing an
+ * otherwise good booking over — but it is logged, never swallowed.
+ */
+const linkWaitlistEntry = async (
+  tenantId: string,
+  reservationId: string,
+  waitlistId: string | undefined,
+): Promise<void> => {
+  if (!waitlistId) return;
+  try {
+    await query(
+      `UPDATE waitlist_entries
+          SET reservation_id = $3, updated_at = NOW()
+        WHERE waitlist_id = $1 AND tenant_id = $2`,
+      [waitlistId, tenantId, reservationId],
+    );
+  } catch (error) {
+    reservationsLogger.warn(
+      { err: error, waitlistId, reservationId },
+      "Reservation created but the waitlist entry could not be linked to it",
+    );
+  }
 };
 
 const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise<string> => {

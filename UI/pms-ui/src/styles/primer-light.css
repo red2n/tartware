@@ -9,12 +9,20 @@
   --bgColor-inset: var(--bgColor-muted);
   --bgColor-emphasis: #1e2442;
 
-  /* ── Accent — OpenSea electric blue ── */
-  --fgColor-accent: #2081e2;
-  --bgColor-accent-emphasis: #2081e2;
+  /* ── Accent — OpenSea electric blue ──
+   * The showcase blue #2081e2 is only 3.96:1 on white, short of the 4.5:1
+   * WCAG 1.4.3 floor, so it cannot carry text or sit behind a white label.
+   * The accent tokens below are one step darker (5.07:1 as text on the page,
+   * 4.65:1 on --bgColor-muted, 5.07:1 behind --fgColor-onEmphasis).
+   * #2081e2 survives only where 1.4.11's 3:1 applies — see --accent-decorative.
+   */
+  --fgColor-accent: #1a6fc7;
+  --bgColor-accent-emphasis: #1a6fc7;
   --bgColor-accent-muted: #e8f2fd;
-  --borderColor-accent-emphasis: #2081e2;
+  --borderColor-accent-emphasis: #1a6fc7;
   --borderColor-accent-muted: #2081e266;
+  /* Glows, gradients and washes that never sit under text. */
+  --accent-decorative: #2081e2;
 
   /* ── Borders ── */
   --borderColor-default: #dde1ed;       /** Cool-tinted border */
@@ -25,7 +33,11 @@
 
   /* ── Foreground ── */
   --fgColor-default: #1e2442;           /** Deep navy text — matches OpenSea */
-  --fgColor-muted: #6b7280;
+  /* #6b7280 clears 4.5:1 on white but only reaches 4.44:1 on --bgColor-muted,
+     and muted text inside a muted panel is one of the app's commonest pairings
+     (card subtitles, table headers, hints). One step darker clears both:
+     5.22:1 on the page, 4.79:1 on the panel. */
+  --fgColor-muted: #656d7a;
   --fgColor-onEmphasis: #ffffff;
 
   /* ── Semantic ── */
@@ -53,8 +65,8 @@
   --borderColor-done-muted: #c297ff66;
 
   /* ── Primary button → OpenSea blue ── */
-  --button-primary-bgColor-rest: #2081e2;
-  --button-primary-bgColor-hover: #1a6fc7;
+  --button-primary-bgColor-rest: #1a6fc7;
+  --button-primary-bgColor-hover: #145fae;
   --button-primary-borderColor-rest: var(--borderColor-translucent);
 
   --control-transparent-bgColor-hover: #2081e214;

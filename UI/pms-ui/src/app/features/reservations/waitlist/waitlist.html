@@ -118,6 +118,24 @@
         {{ entry.room_type_name || 'requested room type' }}. Inventory is checked when the command is
         processed, so this can still fail if the room has gone.
       </p>
+      <!--
+        The waitlist entry records what the guest asked for, never a price, and
+        rate resolution picks the plan without pricing the stay — so the total
+        has to be entered here. Converting without it is rejected outright.
+      -->
+      <label class="field">
+        <span class="field-label">Total amount ({{ entry.nights }} night{{ entry.nights === 1 ? '' : 's' }})</span>
+        <input
+          class="input"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          [value]="convertAmount()"
+          (input)="setConvertAmount($any($event.target).value)"
+          placeholder="0.00"
+        />
+      </label>
     </div>
     <div class="confirm-actions">
       <button class="btn btn-outline btn-sm" (click)="cancelConvert()" [disabled]="submitting()">Cancel</button>

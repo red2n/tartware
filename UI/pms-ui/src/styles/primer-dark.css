@@ -10,11 +10,17 @@
   --bgColor-emphasis: #1e2442;          /** High-emphasis surface for strong contrast */
 
   /* ── Accent — OpenSea electric blue ── */
-  --fgColor-accent: #62a5f5;            /** Accent text for links and interactive elements */
-  --bgColor-accent-emphasis: #2081e2;   /** Strong accent — active states, CTAs */
+  --fgColor-accent: #62a5f5;            /** Accent text for links — 7.53:1 on the page */
+  /* White on #2081e2 is 3.96:1 in either theme, so the CTA surface darkens by a
+     step to clear 1.4.3 (5.07:1 behind --fgColor-onEmphasis). Still 3.79:1
+     against the page, so the sites that use it as a border keep their 1.4.11. */
+  --bgColor-accent-emphasis: #1a6fc7;   /** Strong accent — active states, CTAs */
   --bgColor-accent-muted: #2081e21a;    /** Subtle accent — selected, informational */
+  /* The ring is never a text ground, so it keeps the brighter blue: 4.85:1 on
+     the page reads far better here than the darkened CTA surface would. */
   --borderColor-accent-emphasis: #2081e2;
   --borderColor-accent-muted: #2081e266;
+  --accent-decorative: #2081e2;
 
   /* ── Borders ── */
   --borderColor-default: #1e2442;       /** Default border — tighter, dark navy */
@@ -56,8 +62,8 @@
   --borderColor-done-muted: #ab7df866;
 
   /* ── Primary button → OpenSea blue (replaces green) ── */
-  --button-primary-bgColor-rest: #2081e2;
-  --button-primary-bgColor-hover: #1a6fc7;
+  --button-primary-bgColor-rest: #1a6fc7;
+  --button-primary-bgColor-hover: #145fae;
   --button-primary-borderColor-rest: var(--borderColor-translucent);
 
   /* ── Hover controls ── */

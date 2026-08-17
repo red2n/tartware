@@ -149,6 +149,62 @@ if [[ -z "$RTID" ]]; then
   [[ -n "$RTID" ]] || RTID=$(resp_first "id")
 fi
 
+# Incidents and lost & found are gated on facility-maintenance. The full suite
+# switches the modules on in Phase 0; running standalone against a freshly reset
+# database there is nothing but "core", and both seeders 403 with
+# TENANT_MODULE_NOT_ENABLED. Enable them here so this script stands alone.
+MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X PUT "$GW/v1/tenants/$TID/modules" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"modules":["core","finance-automation","facility-maintenance","analytics-bi","marketing-channel","revenue-management","loyalty","distribution"]}')
+if [[ "$MOD_CODE" =~ ^2 ]]; then
+  echo "  ✓ modules enabled (HTTP $MOD_CODE)"
+else
+  echo "  ⚠ module enable returned HTTP $MOD_CODE — gated seeders may 403"
+fi
+
+# The waitlist entry points at a guest. On a fresh database there may not be one
+# yet, and a screen that skips for want of a single row is not worth the skip.
+# Commands ship disabled on a fresh database — the suite turns all 206 on in
+# Phase 0.5. Standalone we only need the two the seeders dispatch, and leaving
+# them off shows up as a confusing 409 "Command X is currently disabled" on what
+# looks like an ordinary create.
+CMD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+  -X PATCH "$GW/v1/commands/features/batch" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"updates":[{"command_name":"guest.register","status":"enabled"},{"command_name":"reservation.waitlist_add","status":"enabled"},{"command_name":"reservation.create","status":"enabled"},{"command_name":"billing.ar.post","status":"enabled"},{"command_name":"ar.account.create","status":"enabled"},{"command_name":"reservation.check_in","status":"enabled"},{"command_name":"reservation.check_out","status":"enabled"},{"command_name":"housekeeping.task.create","status":"enabled"},{"command_name":"loyalty.program.enroll","status":"enabled"},{"command_name":"loyalty.points.earn","status":"enabled"},{"command_name":"loyalty.points.redeem","status":"enabled"}]}')
+if [[ "$CMD_CODE" =~ ^2 ]]; then
+  # The gateway caches the command catalog for ~30s, so a create issued right
+  # after enabling is still refused by the stale entry — the batch call returns
+  # 2xx and the very next dispatch comes back 409 "currently disabled". The
+  # suite waits 32s here for the same reason; skip the wait only when the
+  # commands were already on.
+  echo "  ✓ commands enabled — waiting 35s for the gateway command cache"
+  sleep 35
+else
+  echo "  ⚠ command enable returned HTTP $CMD_CODE — waitlist may skip"
+fi
+
+get "$GW/v1/guests?tenant_id=$TID&limit=5" >/dev/null
+if [[ "$(resp_count)" -lt 1 ]]; then
+  # Phone must carry 10–15 digits — "+1-555-0123" is only 8 and is rejected.
+  local_phone="+1-415-555-$(printf '%04d' $((RANDOM % 10000)))"
+  guest_code=$(post "$GW/v1/guests" \
+    "{\"tenant_id\":\"$TID\",\"first_name\":\"Seed\",\"last_name\":\"Guest-$RUN_TAG\",\"email\":\"seed-guest-$RUN_TAG@tartware-test.local\",\"phone\":\"$local_phone\",\"nationality\":\"US\"}")
+  if [[ "$guest_code" =~ ^2 ]]; then
+    # guest.register is a command: 202 means accepted, not stored. Wait for the
+    # row before the waitlist seeder looks for it.
+    if [[ "$(poll_count "$GW/v1/guests?tenant_id=$TID&limit=5" 1 30)" -ge 1 ]]; then
+      echo "  ✓ seeded a guest for the waitlist entries"
+    else
+      echo "  ⚠ guest accepted (HTTP $guest_code) but did not appear — waitlist will skip"
+    fi
+  else
+    echo "  ⚠ guest create returned HTTP $guest_code — waitlist will skip"
+    jq -r '.detail // empty' "$RESP_FILE" 2>/dev/null | head -c 160
+  fi
+fi
+
 echo "┌─ tenant=$TID"
 echo "│  property=$PID"
 echo "│  room_type=${RTID:-<none>}  run_tag=$RUN_TAG"
@@ -158,13 +214,38 @@ echo ""
 # shellcheck source=/dev/null
 for f in "$SCRIPT_DIR"/seeds/*.sh; do [[ -e "$f" ]] && source "$f"; done
 
+# AR accounts and approvals both hang off a reservation — AR bills one, and an
+# approval is raised against its folio. On a freshly reset database there is no
+# reservation to attach to and both would skip, so make one. The folio follows
+# automatically; it is created off the reservation, not requested separately.
+get "$GW/v1/reservations?tenant_id=$TID&property_id=$PID&limit=5" >/dev/null
+if [[ "$(resp_count)" -lt 1 && -n "$RTID" ]]; then
+  get "$GW/v1/guests?tenant_id=$TID&limit=5" >/dev/null
+  seed_guest_id=$(resp_first "id")
+  if [[ -n "$seed_guest_id" ]]; then
+    CUR_TID="$TID"
+    send_command "reservation.create (prerequisite)" "reservation.create" \
+      "{\"property_id\":\"$PID\",\"guest_id\":\"$seed_guest_id\",\"room_type_id\":\"$RTID\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"status\":\"CONFIRMED\",\"source\":\"DIRECT\",\"adults\":2,\"children\":0,\"total_amount\":420.00,\"currency\":\"USD\"}"
+    if [[ "$(poll_count "$GW/v1/reservations?tenant_id=$TID&property_id=$PID&limit=5" 1 45)" -ge 1 ]]; then
+      echo "  ✓ seeded a reservation for the AR / approval seeders"
+    else
+      echo "  ⚠ reservation did not appear — AR and approvals will skip"
+    fi
+  fi
+fi
+echo ""
+
 seed_waitlist        "$TOKEN" "$TID" "$PID" "$RTID" "main"
 seed_guest_feedback  "$TOKEN" "$TID" "$PID" "main"
 seed_promo_codes     "$TOKEN" "$TID" "$PID" "main"
 seed_lost_and_found  "$TOKEN" "$TID" "$PID" "main"
 seed_incidents       "$TOKEN" "$TID" "$PID" "main"
 seed_shift_handovers "$TOKEN" "$TID" "$PID" "main"
+seed_loyalty         "$TOKEN" "$TID" "$PID" "main"
+seed_ar_accounts     "$TOKEN" "$TID" "$PID" "main"
 seed_approvals       "$TOKEN" "$TID" "$PID" "main"
+seed_operations_day  "$TOKEN" "$TID" "$PID" "$RTID" "main"
+seed_housekeeping_tasks "$TOKEN" "$TID" "$PID" "main"
 
 echo ""
 echo "  ${PASS} passed, ${FAIL} failed, ${SKIP} skipped"

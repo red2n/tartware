@@ -9,6 +9,7 @@ import {
   type MeetingRoomListItem,
   MeetingRoomListItemSchema,
   type MeetingRoomRow,
+  type MeetingRoomWriteInput,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -111,6 +112,298 @@ export const getMeetingRoomById = async (
     return null;
   }
   return mapMeetingRoomRow(row);
+};
+
+// =====================================================
+// MEETING ROOM WRITES
+//
+// Reference data — plain HTTP on the owning service per
+// ui-gaps/18-write-path-gap.md. See ui-gaps/13-sales-catering.md.
+// =====================================================
+
+/** Raised when (tenant, property, room_code) collides. Routes turn it into a 409. */
+export class MeetingRoomCodeConflictError extends Error {
+  constructor(roomCode: string) {
+    super(`Room code "${roomCode}" already exists for this property`);
+    this.name = "MeetingRoomCodeConflictError";
+  }
+}
+
+const UNIQUE_VIOLATION = "23505";
+
+/** The UNIQUE (tenant_id, property_id, room_code) index — note it is not named after the column. */
+const ROOM_CODE_CONSTRAINT = "meeting_rooms_code_unique";
+
+const isRoomCodeConflict = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { code?: string }).code === UNIQUE_VIOLATION &&
+  (error as { constraint?: string }).constraint === ROOM_CODE_CONSTRAINT;
+
+export const createMeetingRoom = async (
+  tenantId: string,
+  input: MeetingRoomWriteInput,
+  actorId?: string,
+): Promise<MeetingRoomListItem | null> => {
+  let roomId: string | undefined;
+
+  try {
+    const { rows } = await query<{ room_id: string }>(
+      `
+        INSERT INTO public.meeting_rooms (
+          tenant_id, property_id,
+          room_code, room_name, room_type, room_status, max_capacity,
+          building, floor, location_description,
+          theater_capacity, classroom_capacity, banquet_capacity,
+          reception_capacity, u_shape_capacity, boardroom_capacity,
+          area_sqm, area_sqft, length_meters, width_meters, ceiling_height_meters,
+          has_natural_light, has_audio_visual, has_video_conferencing, has_wifi,
+          has_stage, has_dance_floor, wheelchair_accessible,
+          default_setup, setup_time_minutes, teardown_time_minutes, turnover_time_minutes,
+          hourly_rate, half_day_rate, full_day_rate, minimum_rental_hours, currency_code,
+          operating_hours_start, operating_hours_end,
+          catering_required, in_house_catering_available, external_catering_allowed,
+          primary_photo_url, floor_plan_url, virtual_tour_url,
+          is_active, requires_approval,
+          created_by, updated_by
+        ) VALUES (
+          $1::uuid, $2::uuid,
+          $3, $4, $5, COALESCE($6, 'AVAILABLE'), $7,
+          $8, $9, $10,
+          $11, $12, $13,
+          $14, $15, $16,
+          $17, $18, $19, $20, $21,
+          COALESCE($22, false), COALESCE($23, false), COALESCE($24, false), COALESCE($25, false),
+          COALESCE($26, false), COALESCE($27, false), COALESCE($28, false),
+          $29, COALESCE($30, 0), COALESCE($31, 0), COALESCE($32, 0),
+          $33, $34, $35, COALESCE($36, 0), COALESCE($37, 'USD'),
+          $38::time, $39::time,
+          COALESCE($40, false), COALESCE($41, false), COALESCE($42, false),
+          $43, $44, $45,
+          COALESCE($46, true), COALESCE($47, false),
+          $48, $48
+        )
+        RETURNING room_id
+      `,
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.roomCode,
+        input.roomName,
+        input.roomType,
+        input.roomStatus ?? null,
+        input.maxCapacity,
+        input.building ?? null,
+        input.floor ?? null,
+        input.locationDescription ?? null,
+        input.theaterCapacity ?? null,
+        input.classroomCapacity ?? null,
+        input.banquetCapacity ?? null,
+        input.receptionCapacity ?? null,
+        input.uShapeCapacity ?? null,
+        input.boardroomCapacity ?? null,
+        input.areaSqm ?? null,
+        input.areaSqft ?? null,
+        input.lengthMeters ?? null,
+        input.widthMeters ?? null,
+        input.ceilingHeightMeters ?? null,
+        input.hasNaturalLight ?? null,
+        input.hasAudioVisual ?? null,
+        input.hasVideoConferencing ?? null,
+        input.hasWifi ?? null,
+        input.hasStage ?? null,
+        input.hasDanceFloor ?? null,
+        input.wheelchairAccessible ?? null,
+        input.defaultSetup ?? null,
+        input.setupTimeMinutes ?? null,
+        input.teardownTimeMinutes ?? null,
+        input.turnoverTimeMinutes ?? null,
+        input.hourlyRate ?? null,
+        input.halfDayRate ?? null,
+        input.fullDayRate ?? null,
+        input.minimumRentalHours ?? null,
+        input.currencyCode ?? null,
+        input.operatingHoursStart ?? null,
+        input.operatingHoursEnd ?? null,
+        input.cateringRequired ?? null,
+        input.inHouseCateringAvailable ?? null,
+        input.externalCateringAllowed ?? null,
+        input.primaryPhotoUrl ?? null,
+        input.floorPlanUrl ?? null,
+        input.virtualTourUrl ?? null,
+        input.isActive ?? null,
+        input.requiresApproval ?? null,
+        actorId ?? null,
+      ],
+    );
+    roomId = rows[0]?.room_id;
+  } catch (error) {
+    if (isRoomCodeConflict(error)) {
+      throw new MeetingRoomCodeConflictError(input.roomCode ?? "");
+    }
+    throw error;
+  }
+
+  if (!roomId) return null;
+
+  return getMeetingRoomById({ roomId, tenantId });
+};
+
+export const updateMeetingRoom = async (
+  tenantId: string,
+  roomId: string,
+  input: MeetingRoomWriteInput,
+  actorId?: string,
+): Promise<MeetingRoomListItem | null> => {
+  let rowCount: number | null = null;
+
+  try {
+    const result = await query(
+      `
+        UPDATE public.meeting_rooms
+        SET
+          room_code = COALESCE($3, room_code),
+          room_name = COALESCE($4, room_name),
+          room_type = COALESCE($5, room_type),
+          room_status = COALESCE($6, room_status),
+          max_capacity = COALESCE($7, max_capacity),
+          building = COALESCE($8, building),
+          floor = COALESCE($9, floor),
+          location_description = COALESCE($10, location_description),
+          theater_capacity = COALESCE($11, theater_capacity),
+          classroom_capacity = COALESCE($12, classroom_capacity),
+          banquet_capacity = COALESCE($13, banquet_capacity),
+          reception_capacity = COALESCE($14, reception_capacity),
+          u_shape_capacity = COALESCE($15, u_shape_capacity),
+          boardroom_capacity = COALESCE($16, boardroom_capacity),
+          area_sqm = COALESCE($17, area_sqm),
+          area_sqft = COALESCE($18, area_sqft),
+          length_meters = COALESCE($19, length_meters),
+          width_meters = COALESCE($20, width_meters),
+          ceiling_height_meters = COALESCE($21, ceiling_height_meters),
+          has_natural_light = COALESCE($22, has_natural_light),
+          has_audio_visual = COALESCE($23, has_audio_visual),
+          has_video_conferencing = COALESCE($24, has_video_conferencing),
+          has_wifi = COALESCE($25, has_wifi),
+          has_stage = COALESCE($26, has_stage),
+          has_dance_floor = COALESCE($27, has_dance_floor),
+          wheelchair_accessible = COALESCE($28, wheelchair_accessible),
+          default_setup = COALESCE($29, default_setup),
+          setup_time_minutes = COALESCE($30, setup_time_minutes),
+          teardown_time_minutes = COALESCE($31, teardown_time_minutes),
+          turnover_time_minutes = COALESCE($32, turnover_time_minutes),
+          hourly_rate = COALESCE($33, hourly_rate),
+          half_day_rate = COALESCE($34, half_day_rate),
+          full_day_rate = COALESCE($35, full_day_rate),
+          minimum_rental_hours = COALESCE($36, minimum_rental_hours),
+          currency_code = COALESCE($37, currency_code),
+          operating_hours_start = COALESCE($38::time, operating_hours_start),
+          operating_hours_end = COALESCE($39::time, operating_hours_end),
+          catering_required = COALESCE($40, catering_required),
+          in_house_catering_available = COALESCE($41, in_house_catering_available),
+          external_catering_allowed = COALESCE($42, external_catering_allowed),
+          primary_photo_url = COALESCE($43, primary_photo_url),
+          floor_plan_url = COALESCE($44, floor_plan_url),
+          virtual_tour_url = COALESCE($45, virtual_tour_url),
+          is_active = COALESCE($46, is_active),
+          requires_approval = COALESCE($47, requires_approval),
+          updated_by = $48,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE room_id = $1::uuid AND tenant_id = $2::uuid
+          AND COALESCE(is_deleted, false) = false
+      `,
+      [
+        roomId,
+        tenantId,
+        input.roomCode ?? null,
+        input.roomName ?? null,
+        input.roomType ?? null,
+        input.roomStatus ?? null,
+        input.maxCapacity ?? null,
+        input.building ?? null,
+        input.floor ?? null,
+        input.locationDescription ?? null,
+        input.theaterCapacity ?? null,
+        input.classroomCapacity ?? null,
+        input.banquetCapacity ?? null,
+        input.receptionCapacity ?? null,
+        input.uShapeCapacity ?? null,
+        input.boardroomCapacity ?? null,
+        input.areaSqm ?? null,
+        input.areaSqft ?? null,
+        input.lengthMeters ?? null,
+        input.widthMeters ?? null,
+        input.ceilingHeightMeters ?? null,
+        input.hasNaturalLight ?? null,
+        input.hasAudioVisual ?? null,
+        input.hasVideoConferencing ?? null,
+        input.hasWifi ?? null,
+        input.hasStage ?? null,
+        input.hasDanceFloor ?? null,
+        input.wheelchairAccessible ?? null,
+        input.defaultSetup ?? null,
+        input.setupTimeMinutes ?? null,
+        input.teardownTimeMinutes ?? null,
+        input.turnoverTimeMinutes ?? null,
+        input.hourlyRate ?? null,
+        input.halfDayRate ?? null,
+        input.fullDayRate ?? null,
+        input.minimumRentalHours ?? null,
+        input.currencyCode ?? null,
+        input.operatingHoursStart ?? null,
+        input.operatingHoursEnd ?? null,
+        input.cateringRequired ?? null,
+        input.inHouseCateringAvailable ?? null,
+        input.externalCateringAllowed ?? null,
+        input.primaryPhotoUrl ?? null,
+        input.floorPlanUrl ?? null,
+        input.virtualTourUrl ?? null,
+        input.isActive ?? null,
+        input.requiresApproval ?? null,
+        actorId ?? null,
+      ],
+    );
+    rowCount = result.rowCount;
+  } catch (error) {
+    if (isRoomCodeConflict(error)) {
+      throw new MeetingRoomCodeConflictError(input.roomCode ?? "");
+    }
+    throw error;
+  }
+
+  if (!rowCount) return null;
+
+  return getMeetingRoomById({ roomId, tenantId });
+};
+
+/**
+ * Retire a meeting room. Soft delete: `event_bookings` and `banquet_event_orders`
+ * both reference `room_id` with ON DELETE RESTRICT, so a hard delete would fail
+ * the moment the room has any history. Retiring also drops it from the bookable
+ * list, which is what the caller actually wants.
+ */
+export const deleteMeetingRoom = async (
+  tenantId: string,
+  roomId: string,
+  actorId?: string,
+): Promise<boolean> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.meeting_rooms
+      SET
+        is_deleted = true,
+        is_active = false,
+        deleted_at = CURRENT_TIMESTAMP,
+        deleted_by = $3,
+        updated_by = $3,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE room_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [roomId, tenantId, actorId ?? null],
+  );
+
+  return Boolean(rowCount);
 };
 
 // =====================================================

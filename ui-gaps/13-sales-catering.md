@@ -2,6 +2,39 @@
 
 **Priority:** P2 | **Risk:** 🟡 MEDIUM | **Type:** Backend + UI | **Effort:** L
 
+> ## ✅ Decision 2026-08-17: **build**
+>
+> Tartware is selling function space. The retire option below is closed; the three surfaces and
+> their tables stay. Work proceeds one domain at a time in the order this spec already recommends —
+> meeting rooms → event bookings → banquet orders — because each is the previous one's prerequisite.
+>
+> **Slice 1 — meeting-room writes: shipped 2026-08-17.** `POST /v1/meeting-rooms`,
+> `PUT /v1/meeting-rooms/:roomId`, `DELETE /v1/meeting-rooms/:roomId` on core-service, plain HTTP
+> per COV-18's rule (meeting rooms are named explicitly in its reference-data row). Gateway
+> re-registered: bare `POST` plus `app.all` on the wildcard, replacing the `app.get` that the
+> 2026-08-13 sweep left behind.
+>
+> Details worth carrying into slices 2 and 3:
+>
+> - **Delete is soft.** `event_bookings` and `banquet_event_orders` both reference
+>   `meeting_rooms(room_id)` `ON DELETE RESTRICT`, so a hard delete fails as soon as a room has any
+>   history. Retiring sets `is_deleted` + `is_active = false`.
+> - **`room_code` is editable**, unlike a booking source's `source_code` — both FKs point at
+>   `room_id`, not the code. It is still `UNIQUE (tenant_id, property_id, room_code)`, so the service
+>   maps `23505` to a 409 rather than letting it surface as a 500.
+> - **Zod bounds mirror the table's CHECK constraints** (`max_capacity > 0`, `area_* > 0`,
+>   `hourly_rate >= 0`, setup/teardown/turnover `>= 0`) so a bad payload is a 400, not a 23514.
+> - **The enums were already aligned** — `MeetingRoomTypeEnum` and `MeetingRoomStatusEnum` match
+>   `meeting_rooms_room_type_check` / `_room_status_check` exactly. No drift to fix here.
+>
+> **Still to do in slice 1:** no UI yet (item 4 of the UI list below — meeting room admin), and no
+> live smoke test; the routes are typechecked and conformance-tested but core-service and the gateway
+> need a restart to serve them.
+>
+> **Decision still open before slice 2:** the billing-integration question in §2 below. Event revenue
+> has to land on a folio, and that choice shapes event bookings. It must be answered before
+> `POST /v1/event-bookings`, not after.
+
 ## Current State (Backend ⚠️ read-only → UI ❌)
 
 Three related read-only surfaces with no UI, forming one absent product area.
@@ -39,7 +72,7 @@ is worse than none: it appears in the OpenAPI document as capability the product
 
 ### 1. Backend write paths (per COV-18)
 
-**Meeting rooms** (reference data, smallest first):
+**Meeting rooms** (reference data, smallest first): ✅ **shipped 2026-08-17**
 `POST/PUT/DELETE /v1/meeting-rooms` — capacity, layouts, area, features, rate basis.
 
 **Event bookings** (the booking itself):

@@ -2481,7 +2481,21 @@ if [[ "$FULL_API" == true ]]; then
       code=$(get "$url")
     fi
     case "$code" in
-      2*|400|404)         pass "$label  HTTP=$code" ;;
+      2*|400|404)
+        # An array serialised against an object schema comes back index-keyed —
+        # {"0":{...},"1":{...}} instead of [...]. It is a 200 and a browser
+        # renders it happily, so nothing notices; every client counting rows
+        # reads zero. buildRouteSchema defaults to {200: jsonObjectSchema}, so
+        # any list route that omits an explicit 200 has this waiting for it
+        # (57 routes omit one today). Caught live because the shape is only
+        # visible at runtime — the handler's return type is not.
+        if [[ "$code" =~ ^2 ]] && jq -e 'type=="object" and (keys_unsorted|length)>0
+              and ([keys_unsorted[] | test("^[0-9]+$")] | all)' "$RESP_FILE" >/dev/null 2>&1; then
+          fail "$label" "array serialised as index-keyed object — route needs response:{200:jsonArraySchema}"
+        else
+          pass "$label  HTTP=$code"
+        fi
+        ;;
       403)
         local err
         err=$(jq -r '.code // .detail // empty' "$RESP_FILE" 2>/dev/null)
@@ -3320,6 +3334,15 @@ seed_shift_handovers "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
 
 seed_approvals       "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
 seed_approvals       "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+# Loyalty → Transactions is a lookup screen keyed on a program id, and the two
+# Accounts screens sit on two different tables (ui-gaps/04-duplicate-ar-surface)
+# — seeding one leaves the other empty.
+seed_loyalty         "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_loyalty         "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_ar_accounts     "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_ar_accounts     "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
 echo ""
 
 # ── 6c.9  Screen-readiness roll-up ──────────────────────────────────────

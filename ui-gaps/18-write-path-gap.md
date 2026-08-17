@@ -48,15 +48,31 @@
 > spot the proxy-conformance test leaves open by design: it skips wildcards, which is exactly where
 > writes were being swallowed. Verified to fail by reverting one route and watching it catch it.
 >
+> ### ⚠️ The guardrail is one-directional — found 2026-08-17
+>
+> It scans `app.all(...)` registrations only. So it catches **`app.all` with no downstream write**
+> (a phantom write surface) but is blind to the converse: **a downstream write with only `app.get`
+> at the gateway**. In that state PUT/DELETE are refused at the edge with "no such route" while the
+> service implements them perfectly — the write is swallowed exactly as before, just one layer up.
+>
+> Found while building COV-13's meeting-room slice: reverting the gateway wildcard from `app.all`
+> back to `app.get` left all 26 gateway tests green, with `PUT /v1/meeting-rooms/:roomId` dead.
+>
+> **Consequence for the remaining domains** (allotments, event bookings, banquet orders): the
+> 2026-08-13 sweep demoted all 13 wildcards to `app.get`, so every one of them now needs its gateway
+> registration promoted back to `app.all` *in the same commit* as its service write — and no test
+> will remind you. Until the converse check exists, that pairing is a manual step.
+>
 > **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
 > `operations.incident.report` were deleted rather than implemented, because each described a write
 > that already exists as plain HTTP on the owning service. The remaining four
 > (`analytics.metric.ingest`, `analytics.report.schedule`, `operations.asset.update`,
 > `operations.inventory.adjust`) are genuinely unbuilt and want a product decision.
 >
-> **Still open:** item 4 — per-domain writes for the four domains that have none. Three of them
-> (meeting rooms, event bookings, banquet orders) are [13](13-sales-catering.md)'s build-or-retire
-> decision; allotments is [16](16-booking-reference-data.md)'s, pending the availability-guard call.
+> **Still open:** item 4 — per-domain writes for the three domains that have none.
+> [13](13-sales-catering.md) decided **build** on 2026-08-17 and shipped meeting-room writes, so
+> event bookings and banquet orders are unblocked and queued behind it; allotments is
+> [16](16-booking-reference-data.md)'s, pending the availability-guard call.
 
 > ### Related defect found 2026-08-11: `SELECT x.*` in every `*_BY_ID_SQL`
 >

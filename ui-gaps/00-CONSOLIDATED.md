@@ -91,7 +91,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
-| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; 4 domains still lack writes, all blocked on COV-13/COV-16 decisions | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
+| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; 3 domains still lack writes. **Guardrail found one-directional 2026-08-17** — it cannot see a service write the gateway refuses | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
 
@@ -120,7 +120,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 13 | Sales & catering — banquet orders, meeting rooms, event bookings | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | L |
+| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room write path shipped, event bookings + banquet orders queued (event billing decision open) | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
 | 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |

@@ -90,7 +90,7 @@ export const waitlistConvert = async (
 ): Promise<CreateReservationResult> => {
   // 1. Fetch waitlist entry
   const wlResult = await query(
-    `SELECT waitlist_id, guest_id, requested_room_type_id, requested_rate_id,
+    `SELECT waitlist_id, property_id, guest_id, requested_room_type_id, requested_rate_id,
             arrival_date, departure_date, number_of_adults, number_of_children,
             waitlist_status, notes
      FROM waitlist_entries
@@ -101,6 +101,7 @@ export const waitlistConvert = async (
   const entry = wlResult.rows?.[0] as
     | {
         waitlist_id: string;
+        property_id: string;
         guest_id: string;
         requested_room_type_id: string;
         requested_rate_id: string | null;
@@ -136,10 +137,16 @@ export const waitlistConvert = async (
 
   // 3. Create reservation via the normal pipeline
   const roomTypeId = command.room_type_id ?? entry.requested_room_type_id;
+  // The entry already knows which property it is waiting on; the command may
+  // override it, but the caller is not obliged to repeat it.
+  const propertyId = command.property_id ?? entry.property_id;
   const result = await createReservation(
     tenantId,
     {
-      property_id: command.property_id,
+      // Carried so the event handler can link the entry back once the
+      // reservation row is actually written.
+      waitlist_id: command.waitlist_id,
+      property_id: propertyId,
       guest_id: entry.guest_id,
       room_type_id: roomTypeId,
       check_in_date: entry.arrival_date,
@@ -155,16 +162,13 @@ export const waitlistConvert = async (
     options,
   );
 
-  // 4. Link waitlist entry to the new reservation
-  try {
-    await query(
-      `UPDATE waitlist_entries SET reservation_id = $3, updated_at = NOW()
-       WHERE waitlist_id = $1 AND tenant_id = $2`,
-      [command.waitlist_id, tenantId, result.eventId],
-    );
-  } catch {
-    // Non-critical
-  }
+  // 4. The entry is linked to its reservation by the reservation.created
+  //    handler, not here — see waitlist_id on the create command. Writing the
+  //    link at this point cannot work: createReservation has only emitted the
+  //    event, so fk_waitlist_entries_tenant_reservation_id has nothing to point
+  //    at yet and the update fails every time. It used to be attempted inside
+  //    an empty catch labelled "non-critical", which hid a permanent failure and
+  //    left every converted entry CONFIRMED but unlinked.
 
   reservationsLogger.info(
     { waitlistId: command.waitlist_id, guestId: entry.guest_id },

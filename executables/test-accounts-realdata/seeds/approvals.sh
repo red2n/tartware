@@ -7,6 +7,11 @@
 # GET and POST $GW/v1/billing/approvals both return
 # "Route ...:/v1/billing/approvals not found".
 #
+# The collection path is write-only — billing-service registers POST on
+# /v1/billing/approvals and GET only on /v1/billing/approvals/pending, so
+# reading back from the collection 404s even when talking to the service
+# directly. The pending list is the screen's queue and returns {"data":[...]}.
+#
 # That is a genuine gap, not a seeding problem — Accounts → Approvals cannot be
 # read by the UI through the gateway either, so seeding alone will not light the
 # screen up until a proxy route is registered. Seed anyway so the data is there
@@ -25,7 +30,7 @@ seed_approvals() {
   TOKEN="$tok"
 
   local before
-  get "$BILLING_DIRECT/v1/billing/approvals?tenant_id=$tid&limit=200" >/dev/null
+  get "$BILLING_DIRECT/v1/billing/approvals/pending?tenant_id=$tid&limit=200" >/dev/null
   before=$(resp_count)
   if [[ "$before" -ge 3 ]]; then
     pass "Approvals seeded ($lbl) — already has $before"
@@ -64,6 +69,6 @@ seed_approvals() {
   done
 
   local total
-  total=$(poll_count "$GW/v1/billing/approvals?tenant_id=$tid&limit=200" 3 40)
+  total=$(poll_count "$BILLING_DIRECT/v1/billing/approvals/pending?tenant_id=$tid&limit=200" 3 40)
   assert_gte "Approvals seeded ($lbl)" "$total" 3
 }

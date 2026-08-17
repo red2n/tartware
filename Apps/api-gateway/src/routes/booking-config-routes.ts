@@ -242,10 +242,26 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.get(
+  // Creating reference data POSTs to the bare path, which the wildcard does not
+  // match, and the body carries tenant_id. See ui-gaps/13-sales-catering.md.
+  app.post(
+    "/v1/meeting-rooms",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create a meeting room.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.all(
     "/v1/meeting-rooms/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy meeting room operations to core service.",

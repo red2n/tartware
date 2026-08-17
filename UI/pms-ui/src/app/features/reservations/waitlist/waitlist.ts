@@ -88,6 +88,12 @@ export class WaitlistComponent {
 	});
 
 	readonly convertTarget = signal<WaitlistEntry | null>(null);
+	/** Total for the converted stay. Held as text so the field can start empty. */
+	readonly convertAmount = signal<string>("");
+
+	setConvertAmount(value: string): void {
+		this.convertAmount.set(value);
+	}
 
 	/** An offer that has lapsed is a guest still waiting on an answer nobody gave. */
 	readonly expiredOffers = computed(() => {
@@ -235,20 +241,32 @@ export class WaitlistComponent {
 
 	cancelConvert(): void {
 		this.convertTarget.set(null);
+		this.convertAmount.set("");
 	}
 
 	async confirmConvert(): Promise<void> {
 		const entry = this.convertTarget();
 		const tenantId = this.auth.tenantId();
 		if (!entry || !tenantId || this.submitting()) return;
+
+		// The convert command requires a total; posting an empty body came back
+		// 400 COMMAND_PAYLOAD_INVALID with no hint in the UI. Validate here so the
+		// operator is told what is missing instead of the request failing.
+		const totalAmount = Number(this.convertAmount());
+		if (!this.convertAmount().trim() || Number.isNaN(totalAmount) || totalAmount < 0) {
+			this.toast.error("Enter the total amount for the booking before converting.");
+			return;
+		}
+
 		this.submitting.set(true);
 		try {
 			await this.api.post(
 				`/tenants/${tenantId}/reservations/waitlist/${entry.waitlist_id}/convert`,
-				{},
+				{ property_id: entry.property_id, total_amount: totalAmount },
 			);
 			this.toast.success("Conversion accepted — the reservation will appear shortly.");
 			this.convertTarget.set(null);
+			this.convertAmount.set("");
 			await this.load();
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to convert the waitlist entry");

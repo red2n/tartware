@@ -144,6 +144,157 @@ export type MeetingRoomListResponse = z.infer<
 	typeof MeetingRoomListResponseSchema
 >;
 
+/**
+ * Create a meeting room. Reference data, so plain HTTP on the owning service
+ * per ui-gaps/18-write-path-gap.md. See ui-gaps/13-sales-catering.md.
+ *
+ * The numeric bounds here mirror the table's CHECK constraints
+ * (`max_capacity > 0`, `area_* > 0`, `hourly_rate >= 0`, setup/teardown/turnover
+ * `>= 0`) so a bad payload is a 400 from zod rather than a 23514 from Postgres.
+ *
+ * Unlike a booking source, `room_code` is editable: `event_bookings` and
+ * `banquet_event_orders` both reference `room_id`, not the code. It is still
+ * unique per (tenant, property).
+ */
+export const MeetingRoomWriteBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	room_code: z
+		.string()
+		.min(2)
+		.max(50)
+		.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+	room_name: z.string().min(1).max(200),
+	room_type: MeetingRoomTypeEnum,
+	room_status: MeetingRoomStatusEnum.optional(),
+	max_capacity: z.coerce.number().int().positive(),
+
+	// Location
+	building: z.string().max(100).optional(),
+	floor: z.coerce.number().int().optional(),
+	location_description: z.string().max(500).optional(),
+
+	// Capacity by layout
+	theater_capacity: z.coerce.number().int().nonnegative().optional(),
+	classroom_capacity: z.coerce.number().int().nonnegative().optional(),
+	banquet_capacity: z.coerce.number().int().nonnegative().optional(),
+	reception_capacity: z.coerce.number().int().nonnegative().optional(),
+	u_shape_capacity: z.coerce.number().int().nonnegative().optional(),
+	boardroom_capacity: z.coerce.number().int().nonnegative().optional(),
+
+	// Physical dimensions
+	area_sqm: z.coerce.number().positive().optional(),
+	area_sqft: z.coerce.number().positive().optional(),
+	length_meters: z.coerce.number().positive().optional(),
+	width_meters: z.coerce.number().positive().optional(),
+	ceiling_height_meters: z.coerce.number().positive().optional(),
+
+	// Features
+	has_natural_light: z.boolean().optional(),
+	has_audio_visual: z.boolean().optional(),
+	has_video_conferencing: z.boolean().optional(),
+	has_wifi: z.boolean().optional(),
+	has_stage: z.boolean().optional(),
+	has_dance_floor: z.boolean().optional(),
+	wheelchair_accessible: z.boolean().optional(),
+
+	// Setup
+	default_setup: z.string().max(50).optional(),
+	setup_time_minutes: z.coerce.number().int().nonnegative().optional(),
+	teardown_time_minutes: z.coerce.number().int().nonnegative().optional(),
+	turnover_time_minutes: z.coerce.number().int().nonnegative().optional(),
+
+	// Pricing
+	hourly_rate: z.coerce.number().nonnegative().optional(),
+	half_day_rate: z.coerce.number().nonnegative().optional(),
+	full_day_rate: z.coerce.number().nonnegative().optional(),
+	minimum_rental_hours: z.coerce.number().int().nonnegative().optional(),
+	currency_code: z.string().length(3).optional(),
+
+	// Operating hours
+	operating_hours_start: z
+		.string()
+		.regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use HH:MM or HH:MM:SS")
+		.optional(),
+	operating_hours_end: z
+		.string()
+		.regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use HH:MM or HH:MM:SS")
+		.optional(),
+
+	// Catering
+	catering_required: z.boolean().optional(),
+	in_house_catering_available: z.boolean().optional(),
+	external_catering_allowed: z.boolean().optional(),
+
+	// Media
+	primary_photo_url: z.string().max(500).optional(),
+	floor_plan_url: z.string().max(500).optional(),
+	virtual_tour_url: z.string().max(500).optional(),
+
+	// Status
+	is_active: z.boolean().optional(),
+	requires_approval: z.boolean().optional(),
+});
+
+export type MeetingRoomWriteBody = z.infer<typeof MeetingRoomWriteBodySchema>;
+
+/** Edit a meeting room. Every field optional but `tenant_id`. */
+export const MeetingRoomUpdateBodySchema = MeetingRoomWriteBodySchema.partial()
+	.omit({ tenant_id: true, property_id: true })
+	.extend({ tenant_id: uuid });
+
+export type MeetingRoomUpdateBody = z.infer<typeof MeetingRoomUpdateBodySchema>;
+
+/** Service-layer input for a meeting room write, per AGENTS.md. */
+export type MeetingRoomWriteInput = {
+	propertyId?: string;
+	roomCode?: string;
+	roomName?: string;
+	roomType?: MeetingRoomType;
+	roomStatus?: MeetingRoomStatus;
+	maxCapacity?: number;
+	building?: string;
+	floor?: number;
+	locationDescription?: string;
+	theaterCapacity?: number;
+	classroomCapacity?: number;
+	banquetCapacity?: number;
+	receptionCapacity?: number;
+	uShapeCapacity?: number;
+	boardroomCapacity?: number;
+	areaSqm?: number;
+	areaSqft?: number;
+	lengthMeters?: number;
+	widthMeters?: number;
+	ceilingHeightMeters?: number;
+	hasNaturalLight?: boolean;
+	hasAudioVisual?: boolean;
+	hasVideoConferencing?: boolean;
+	hasWifi?: boolean;
+	hasStage?: boolean;
+	hasDanceFloor?: boolean;
+	wheelchairAccessible?: boolean;
+	defaultSetup?: string;
+	setupTimeMinutes?: number;
+	teardownTimeMinutes?: number;
+	turnoverTimeMinutes?: number;
+	hourlyRate?: number;
+	halfDayRate?: number;
+	fullDayRate?: number;
+	minimumRentalHours?: number;
+	currencyCode?: string;
+	operatingHoursStart?: string;
+	operatingHoursEnd?: string;
+	cateringRequired?: boolean;
+	inHouseCateringAvailable?: boolean;
+	externalCateringAllowed?: boolean;
+	primaryPhotoUrl?: string;
+	floorPlanUrl?: string;
+	virtualTourUrl?: string;
+	isActive?: boolean;
+	requiresApproval?: boolean;
+};
+
 // =====================================================
 // EVENT BOOKINGS
 // =====================================================

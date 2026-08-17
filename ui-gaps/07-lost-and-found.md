@@ -2,6 +2,20 @@
 
 **Priority:** P1 | **Risk:** 🟡 MEDIUM | **Type:** UI + backend cleanup | **Effort:** M
 
+> ## ⚠️ The list route still returned an object, not an array — fixed 2026-08-16
+>
+> `GET /v1/lost-and-found` answered `{"0":{…},"1":{…}}` instead of a JSON array. The handler returns an
+> array, but the route declared no 200 schema and `buildRouteSchema` falls back to
+> `{200: jsonObjectSchema}` — serialising an array against an object schema index-keys it. Every client
+> reading the list as an array saw **zero rows** while the table held data.
+>
+> **Fixed:** the route declares `response: { 200: jsonArraySchema }`. Count went 0 → 4 immediately.
+>
+> **This is a class, not an instance.** Any list route that omits an explicit 200 has the same defect,
+> and it is invisible until something counts the rows — a browser renders the object without
+> complaint. Worth a sweep of `buildRouteSchema` callers that return arrays, and a conformance test in
+> the shape of the `requiredModules` one.
+>
 > ## ✅ Shipped 2026-08-13 — duplicate removed, UI built
 >
 > **The duplicate was worse than "drift in response shape".** This spec assumed the gateway proxied
