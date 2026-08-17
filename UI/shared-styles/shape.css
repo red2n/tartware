@@ -1,0 +1,22 @@
+/* =====================================================
+ * Shared shape scale
+ *
+ * Primer's defaults are 3 / 6 / 12px, which read tighter
+ * than the rounded style this product uses. Overriding
+ * here rather than in either app keeps pms-ui and
+ * guest-portal the same shape.
+ *
+ * :root is (0,1,0), the same specificity as Primer's own
+ * :root block, so this must be imported AFTER
+ * @primer/primitives to win on source order.
+ * ===================================================== */
+
+:root {
+	--borderRadius-small: 6px;
+	--borderRadius-medium: 10px;
+	--borderRadius-large: 14px;
+	--borderRadius-full: 999px;
+
+	/* Primer has no bold weight token; both apps need one. */
+	--base-text-weight-bold: 700;
+}

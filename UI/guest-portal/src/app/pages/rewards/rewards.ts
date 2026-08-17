@@ -123,24 +123,24 @@ import { GuestApiService } from "../../services/guest-api.service";
 		:host { display: block; max-width: 560px; margin: 2rem auto; }
 		.rewards-card { padding: 1rem; }
 		.centre { display: flex; justify-content: center; padding: 2rem 0; }
-		.warn { color: #ed6c02; margin-top: 1rem; }
-		.muted { color: #616161; }
+		.warn { color: var(--fgColor-attention); margin-top: 1rem; }
+		.muted { color: var(--fgColor-muted); }
 		.full { width: 100%; }
 		.reward {
 			display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-			padding: 0.75rem 0; border-bottom: 1px solid #f5f5f5;
+			padding: 0.75rem 0; border-bottom: 1px solid var(--borderColor-muted);
 		}
 		.reward-main { display: flex; flex-direction: column; gap: 0.15rem; }
 		.reward-side { display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; }
-		.points { font-weight: 600; color: #1565c0; }
-		.details { border-top: 1px solid #e0e0e0; margin-top: 1.5rem; padding-top: 1rem; }
+		.points { font-weight: 600; color: var(--fgColor-accent); }
+		.details { border-top: 1px solid var(--borderColor-default); margin-top: 1.5rem; padding-top: 1rem; }
 		.details h4 { margin: 0 0 0.75rem; }
 		.actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
 		.row {
 			display: flex; justify-content: space-between; padding: 0.4rem 0;
-			border-bottom: 1px solid #f5f5f5;
+			border-bottom: 1px solid var(--borderColor-muted);
 		}
-		.status { text-transform: capitalize; color: #1565c0; }
+		.status { text-transform: capitalize; color: var(--fgColor-accent); }
 	`,
 })
 export class RewardsPage {

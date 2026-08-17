@@ -67,15 +67,15 @@ import { GuestApiService } from "../../services/guest-api.service";
 		.lookup-card { padding: 1rem; }
 		.search-row { display: flex; gap: 1rem; align-items: center; padding-top: 1rem; }
 		.code-field { flex: 1; }
-		.warn { color: #ed6c02; margin-top: 1rem; }
-		.details { border-top: 1px solid #e0e0e0; margin-top: 1.5rem; padding-top: 1rem; }
+		.warn { color: var(--fgColor-attention); margin-top: 1rem; }
+		.details { border-top: 1px solid var(--borderColor-default); margin-top: 1.5rem; padding-top: 1rem; }
 		.details h3 { margin: 0 0 0.75rem; }
 		.row {
 			display: flex; justify-content: space-between; padding: 0.4rem 0;
-			border-bottom: 1px solid #f5f5f5;
+			border-bottom: 1px solid var(--borderColor-muted);
 		}
-		.row span:first-child { color: #616161; }
-		.status { text-transform: capitalize; font-weight: 500; color: #1565c0; }
+		.row span:first-child { color: var(--fgColor-muted); }
+		.status { text-transform: capitalize; font-weight: 500; color: var(--fgColor-accent); }
 	`,
 })
 export class LookupPage {

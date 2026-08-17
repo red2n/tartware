@@ -151,24 +151,24 @@ import { GuestApiService } from "../../services/guest-api.service";
 		:host { display: block; max-width: 520px; margin: 2rem auto; }
 		.feedback-card { padding: 1rem; }
 		.full { width: 100%; margin-top: 1rem; }
-		h4 { margin: 1.25rem 0 0.25rem; font-size: 0.9rem; color: #616161; }
-		.muted { color: #616161; }
+		h4 { margin: 1.25rem 0 0.25rem; font-size: var(--base-text-size-sm); color: var(--fgColor-muted); }
+		.muted { color: var(--fgColor-muted); }
 		.stars { display: flex; gap: 0.25rem; }
 		.star {
 			background: none; border: none; cursor: pointer; padding: 0.1rem;
-			color: #f5a623; line-height: 0;
+			color: var(--fgColor-attention); line-height: 0;
 		}
 		.stars.small .star mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
 		.sub-ratings { display: flex; flex-direction: column; gap: 0.35rem; }
 		.sub-row {
 			display: flex; justify-content: space-between; align-items: center;
-			padding: 0.2rem 0; color: #616161;
+			padding: 0.2rem 0; color: var(--fgColor-muted);
 		}
 		.intent { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; }
 		.submit { width: 100%; margin-top: 1.5rem; }
-		.error { color: #d32f2f; margin-top: 1rem; }
+		.error { color: var(--fgColor-danger); margin-top: 1rem; }
 		.thanks { text-align: center; padding: 1.5rem 0; }
-		.thanks-icon { color: #2e7d32; font-size: 3rem; width: 3rem; height: 3rem; }
+		.thanks-icon { color: var(--fgColor-success); font-size: 3rem; width: 3rem; height: 3rem; }
 		.thanks h3 { margin: 0.75rem 0 0.25rem; }
 	`,
 })

@@ -2,7 +2,7 @@
  * @spec See /DESIGN_TOKENS_SPEC.md for naming logic and semantic pairings.
  * @rule Never use raw values (hex/px). Use semantic tokens ONLY.
  */
-[data-color-mode="dark"][data-dark-theme="dark"] {
+[data-theme="dark"] {
   /* ── OpenSea-inspired palette ── */
   --bgColor-default: #0b0e1a;           /** Deep navy — main page background */
   --bgColor-muted: #10142a;             /** Slightly lighter navy — sidebars, secondary surfaces */
@@ -64,6 +64,7 @@
   /* ── Primary button → OpenSea blue (replaces green) ── */
   --button-primary-bgColor-rest: #1a6fc7;
   --button-primary-bgColor-hover: #145fae;
+  --button-primary-bgColor-active: #12508f;
   --button-primary-borderColor-rest: var(--borderColor-translucent);
 
   /* ── Hover controls ── */

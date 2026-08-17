@@ -9,11 +9,20 @@ export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM";
 
 const THEME_STORAGE_KEY = "theme_mode";
 
+function isThemeMode(value: string | null): value is ThemeMode {
+	return value === "LIGHT" || value === "DARK" || value === "SYSTEM";
+}
+
 function restoreTheme(): ThemeMode {
 	const stored =
 		typeof localStorage !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
-	if (stored === "LIGHT" || stored === "DARK") return stored;
-	return "LIGHT";
+	if (isThemeMode(stored)) return stored;
+	// Load-bearing: this fallback must stay SYSTEM to match the pre-bootstrap
+	// script in index.html, which resolves an unset preference against the OS.
+	// When the two disagree the page paints one theme and then snaps to the
+	// other the moment Angular boots — the exact flash that script prevents.
+	// The column default in 19_user_ui_preferences.sql is SYSTEM as well.
+	return "SYSTEM";
 }
 
 @Injectable({ providedIn: "root" })
@@ -52,13 +61,11 @@ export class ThemeService {
 			const theme = this.effectiveTheme();
 			if (typeof document !== "undefined") {
 				const el = document.documentElement;
-				const isDark = theme === "DARK";
-				// PrimeNG dark mode selector — must match darkModeSelector in app.config.ts
-				el.setAttribute("data-theme", isDark ? "dark" : "light");
-				// Primer primitives selectors (activates @primer/primitives theme tokens)
-				el.setAttribute("data-color-mode", isDark ? "dark" : "light");
-				el.setAttribute("data-light-theme", "light");
-				el.setAttribute("data-dark-theme", "dark");
+				// Single source of truth for the theme. Every layer keys off this one
+				// attribute: primer-light, primer-dark, tokens.css, contrast.css, and
+				// PrimeNG's darkModeSelector in app.config.ts. The pre-bootstrap script
+				// in index.html sets the same one, and must keep agreeing with this.
+				el.setAttribute("data-theme", theme === "DARK" ? "dark" : "light");
 			}
 		});
 	}
@@ -72,13 +79,13 @@ export class ThemeService {
 			const prefs = await this.api.get<UserUiPreferences>("/users/me/ui-preferences", {
 				tenant_id: tenantId,
 			});
-			const raw = prefs.theme;
-			const mode: ThemeMode = raw === "LIGHT" || raw === "DARK" ? raw : "LIGHT";
+			const raw = prefs.theme ?? null;
+			const mode: ThemeMode = isThemeMode(raw) ? raw : "SYSTEM";
 			this._themeMode.set(mode);
 			localStorage.setItem(THEME_STORAGE_KEY, mode);
 		} catch {
-			// Default to LIGHT if backend unavailable
-			this._themeMode.set("LIGHT");
+			// Backend unavailable — keep whatever was restored locally rather than
+			// overwriting a deliberate choice with a default.
 		}
 	}
 

@@ -88,7 +88,7 @@ import { GuestApiService } from "../../services/guest-api.service";
 		}
 		.full-width { grid-column: 1 / -1; }
 		.actions { display: flex; justify-content: space-between; margin-top: 0.5rem; }
-		.error { color: #d32f2f; }
+		.error { color: var(--fgColor-danger); }
 	`,
 })
 export class BookingPage implements OnInit {

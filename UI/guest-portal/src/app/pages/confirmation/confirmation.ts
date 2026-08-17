@@ -47,17 +47,17 @@ import { GuestApiService } from "../../services/guest-api.service";
 		:host { display: block; max-width: 500px; margin: 2rem auto; }
 		.center { display: flex; justify-content: center; padding: 4rem; }
 		.confirm-card { text-align: center; padding: 2rem; }
-		.success-icon mat-icon { font-size: 64px; width: 64px; height: 64px; color: #2e7d32; }
-		.warn-icon { font-size: 48px; width: 48px; height: 48px; color: #ed6c02; }
+		.success-icon mat-icon { font-size: 4rem; width: 4rem; height: 4rem; color: var(--fgColor-success); }
+		.warn-icon { font-size: 3rem; width: 3rem; height: 3rem; color: var(--fgColor-attention); }
 		h2 { margin: 1rem 0 0.5rem; }
-		.code { font-size: 1.1rem; margin-bottom: 1.5rem; }
-		.details { text-align: left; border-top: 1px solid #e0e0e0; padding-top: 1rem; }
+		.code { font-size: var(--base-text-size-lg); margin-bottom: 1.5rem; }
+		.details { text-align: left; border-top: 1px solid var(--borderColor-default); padding-top: 1rem; }
 		.row {
 			display: flex; justify-content: space-between; padding: 0.4rem 0;
-			border-bottom: 1px solid #f5f5f5;
+			border-bottom: 1px solid var(--borderColor-muted);
 		}
-		.row span:first-child { color: #616161; }
-		.status { text-transform: capitalize; font-weight: 500; color: #1565c0; }
+		.row span:first-child { color: var(--fgColor-muted); }
+		.status { text-transform: capitalize; font-weight: 500; color: var(--fgColor-accent); }
 		.actions { display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; }
 	`,
 })

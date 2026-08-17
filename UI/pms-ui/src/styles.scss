@@ -2,13 +2,24 @@
 @use './styles/shared';
 @use './styles/primeng-theme';
 
-/* Layer 0: Primer Design System primitives (official tokens) */
+/* Layer 0: Primer Design System primitives — size, type and motion scales.
+   Note that Primer's primitives.css deliberately ships no colour; the palette
+   below is ours. */
 @import '@primer/primitives/dist/css/primitives.css';
-@import url('./styles/primer-light.css');
-@import url('./styles/primer-dark.css');
+@import url('../../shared-styles/shape.css');
 
-/* Layer 1: App-specific tokens (sidebar, hero, layout — no Primer equivalent) */
+/* Layer 1: Shared palette — the single source of truth for colour across
+   pms-ui AND guest-portal. Lives in UI/shared-styles/ so neither app owns it.
+   Edit there, never here. */
+@import url('../../shared-styles/palette-light.css');
+@import url('../../shared-styles/palette-dark.css');
+
+/* Layer 2: App-specific tokens (sidebar, hero, login scene — PMS only) */
 @import url('./styles/tokens.css');
+
+/* Layer 3: Accessibility overrides — prefers-contrast and forced-colors.
+   Must load after the palette so it wins at equal specificity. */
+@import url('../../shared-styles/contrast.css');
 
 /* ── Global resets ── */
 *,

@@ -137,16 +137,16 @@ import {
 		:host { display: block; max-width: 560px; margin: 2rem auto; }
 		.checkin-card { padding: 1rem; }
 		.step-content { display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0; }
-		.details { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; }
+		.details { border: 1px solid var(--borderColor-default); border-radius: 8px; padding: 1rem; }
 		.row {
 			display: flex; justify-content: space-between; padding: 0.3rem 0;
-			border-bottom: 1px solid #f5f5f5;
+			border-bottom: 1px solid var(--borderColor-muted);
 		}
-		.row span:first-child { color: #616161; }
-		.error { color: #d32f2f; margin: 0; }
+		.row span:first-child { color: var(--fgColor-muted); }
+		.error { color: var(--fgColor-danger); margin: 0; }
 		.done { text-align: center; align-items: center; }
-		.done-icon { font-size: 64px; width: 64px; height: 64px; color: #2e7d32; }
-		.room-number { font-size: 1.4rem; }
+		.done-icon { font-size: 4rem; width: 4rem; height: 4rem; color: var(--fgColor-success); }
+		.room-number { font-size: var(--base-text-size-lg); }
 	`,
 })
 export class CheckinPage {

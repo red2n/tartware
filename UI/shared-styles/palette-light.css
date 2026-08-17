@@ -2,7 +2,7 @@
  * @spec See /DESIGN_TOKENS_SPEC.md for naming logic and semantic pairings.
  * @rule Never use raw values (hex/px). Use semantic tokens ONLY.
  */
-[data-color-mode="light"][data-light-theme="light"] {
+[data-theme="light"] {
   /* ── OpenSea-inspired light palette — cool whites with blue accent ── */
   --bgColor-default: #ffffff;
   --bgColor-muted: #f4f5f9;             /** Cool-tinted muted surface */
@@ -26,8 +26,10 @@
 
   /* ── Borders ── */
   --borderColor-default: #dde1ed;       /** Cool-tinted border */
-  /* Same 1.4.11 requirement: #dde1ed is only 1.31:1 on white. */
-  --borderColor-control: #88909b;
+  /* Same 1.4.11 requirement: #dde1ed is only 1.31:1 on white. The value has to
+     clear 3:1 on the PANEL too, not just the page — #88909b managed 3.23:1 on
+     white but fell to 2.96:1 on --bgColor-muted, where most forms actually sit. */
+  --borderColor-control: #818995;
   --borderColor-muted: #dde1edb3;
   --borderColor-translucent: #1f23280f;
 
@@ -67,6 +69,7 @@
   /* ── Primary button → OpenSea blue ── */
   --button-primary-bgColor-rest: #1a6fc7;
   --button-primary-bgColor-hover: #145fae;
+  --button-primary-bgColor-active: #12508f;
   --button-primary-borderColor-rest: var(--borderColor-translucent);
 
   --control-transparent-bgColor-hover: #2081e214;

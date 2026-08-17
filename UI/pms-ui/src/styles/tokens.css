@@ -2,8 +2,10 @@
  * App-Specific Design Tokens — OpenSea-inspired
  *
  * All standard design tokens (colors, typography, spacing,
- * radius, motion, shadows) come from @primer/primitives
- * and are activated via data-color-mode attributes on <html>.
+ * radius, motion, shadows) come from @primer/primitives,
+ * with our palette layered on top by primer-light.css and
+ * primer-dark.css. Every layer keys off one attribute,
+ * data-theme on <html>, written only by ThemeService.
  *
  * This file contains ONLY app-specific tokens that have
  * no equivalent in the Primer design system.
@@ -85,14 +87,8 @@
 	--fontStack-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
 	--fontStack-accent: "Jost", "Inter", -apple-system, sans-serif;
 
-	/* ── Typography extensions (Primer base has no bold token) ── */
-	--base-text-weight-bold: 700;
-
-	/* ── Global border-radius override — OpenSea rounded style ── */
-	--borderRadius-small: 6px;
-	--borderRadius-medium: 10px;
-	--borderRadius-large: 14px;
-	--borderRadius-full: 999px;
+	/* The rounded shape scale and --base-text-weight-bold moved to
+	   UI/shared-styles/shape.css so guest-portal inherits the same values. */
 
 	/* ── Layout ── */
 	--sidebar-width: 240px;
