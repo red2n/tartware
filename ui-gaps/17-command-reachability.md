@@ -214,6 +214,54 @@ four stranded writes exactly — the pairing that COV-18 noted "no test will rem
 > "every `requiredCommands` entry resolves to a reachable command" needs no product judgement, has no
 > false-positive problem, and `flow-command-catalog.test.ts` already parses both sides.
 
+> ## ⚠️ Case-drift sweep — 2026-08-18
+>
+> Run after the maintenance screen was found comparing UPPERCASE constants against a lowercased API
+> response. The question was whether that was a one-off. It was not.
+>
+> **25 fields across 8 files are case-folded by a service row mapper on the way out** — in both
+> directions. `housekeeping-service` and most of `core-service/booking-config` lowercase; `event.ts`
+> and `group-waitlist-promo.ts` uppercase. The column, the CHECK constraint and the Zod enum are
+> generally the opposite of whatever the mapper emits.
+>
+> ### Live bug found: the dashboard's housekeeping tiles all read zero
+>
+> `/v1/housekeeping/tasks` emits `status: "in_progress"`, `priority: "high"` — lowercase.
+> `features/dashboard/dashboard.ts` compared `=== "PENDING"`, `"IN_PROGRESS"`, `"COMPLETED"`,
+> `"URGENT"`, `"HIGH"`. **All four tiles therefore counted zero against 16 real tasks.** Fixed
+> 2026-08-18; the same data now reads 10 pending / 2 in progress / 4 complete / 6 urgent.
+>
+> **`features/housekeeping/housekeeping.ts` already worked around this** at `canComplete` and
+> `canReopen` with `task.status?.toUpperCase()`. So the defect was known, patched locally, and never
+> generalised — the dashboard reading the same endpoint never got the same treatment. That is the
+> shape of this whole class: a local fix that does not travel.
+>
+> ### The deeper problem underneath the casing
+>
+> `housekeeping_tasks.status` stores **CLEAN / DIRTY / IN_PROGRESS** — a room-cleanliness vocabulary.
+> Both the dashboard and `housekeeping.ts` expect **PENDING / ASSIGNED / COMPLETED / INSPECTED /
+> CANCELLED** — a task-lifecycle vocabulary. The two do not overlap, and the table carries **no CHECK
+> constraint on `status`**, so nothing in the database says which is canonical. That is why the drift
+> was invisible.
+>
+> The consequence in `housekeeping.ts` is subtler than the dashboard's: `canComplete` returns
+> `s !== "COMPLETED" && s !== "INSPECTED" && s !== "CANCELLED"`, so with CLEAN/DIRTY data it is
+> **always true** — the Complete button always shows and Reopen never does. It fails open rather than
+> failing visibly.
+>
+> **This needs a decision, not a patch:** which vocabulary is canonical for `housekeeping_tasks.status`,
+> and then a CHECK constraint so the answer is enforced. The dashboard fix bridges both vocabularies as
+> a stopgap and says so in a comment.
+>
+> ### Why no conformance test
+>
+> The obvious guard — "a UI literal compared against field X must match the casing the mapper emits" —
+> needs a reliable mapper→field→UI chain, and the scan that found this produced false positives on
+> `priority` alone (the dashboard hit was housekeeping tasks, not maintenance; same field name, different
+> endpoint). A test built on that would cry wolf, which `00-CONSOLIDATED.md` already rules out on
+> 2026-08-13. **The durable fix is to stop case-folding in the mappers** so the wire matches the column
+> and the enum, which is a backend change with 25 call sites and its own blast radius.
+
 ## Current State
 
 The command bus is the write path for most of the system. The UI reaches it two ways:

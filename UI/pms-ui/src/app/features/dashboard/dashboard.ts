@@ -204,15 +204,31 @@ export class DashboardComponent {
 		};
 	});
 
-	/** Housekeeping summary computed from tasks data. */
+	/**
+	 * Housekeeping summary computed from tasks data.
+	 *
+	 * `status` and `priority` are compared upper-cased because housekeeping-service
+	 * lowercases both in its row mapper while the column stores them upper — the
+	 * same drift `features/housekeeping/housekeeping.ts` already works around at
+	 * `canComplete`/`canReopen`. Comparing raw made **every tile below read zero**
+	 * regardless of the data.
+	 *
+	 * Known remaining gap: the stored vocabulary is CLEAN / DIRTY / IN_PROGRESS,
+	 * not the PENDING / ASSIGNED / COMPLETED / INSPECTED lifecycle this summary and
+	 * `housekeeping.ts` both expect, and `housekeeping_tasks` carries no CHECK
+	 * constraint to say which is canonical. So `pending` and `completed` still
+	 * under-count until that is settled — see ui-gaps/17-command-reachability.md.
+	 */
 	readonly hkSummary = computed(() => {
 		const all = this.hkTasks();
-		const pending = all.filter((t) => t.status === "PENDING" || t.status === "ASSIGNED").length;
-		const inProgress = all.filter((t) => t.status === "IN_PROGRESS").length;
-		const completed = all.filter(
-			(t) => t.status === "COMPLETED" || t.status === "INSPECTED",
+		const status = (t: { status?: string | null }): string => (t.status ?? "").toUpperCase();
+		const priority = (t: { priority?: string | null }): string => (t.priority ?? "").toUpperCase();
+		const pending = all.filter((t) => ["PENDING", "ASSIGNED", "DIRTY"].includes(status(t))).length;
+		const inProgress = all.filter((t) => status(t) === "IN_PROGRESS").length;
+		const completed = all.filter((t) =>
+			["COMPLETED", "INSPECTED", "CLEAN"].includes(status(t)),
 		).length;
-		const urgent = all.filter((t) => t.priority === "URGENT" || t.priority === "HIGH").length;
+		const urgent = all.filter((t) => ["URGENT", "HIGH"].includes(priority(t))).length;
 		return { total: all.length, pending, inProgress, completed, urgent };
 	});
 
