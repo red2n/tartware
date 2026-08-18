@@ -10,10 +10,6 @@ import grpcServerPlugin from "./plugins/grpc-server.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import { locksRoutes } from "./routes/locks.js";
 import {
-  shutdownAvailabilityGuardCommandCenterConsumer,
-  startAvailabilityGuardCommandCenterConsumer,
-} from "./workers/command-center-consumer.js";
-import {
   shutdownManualReleaseNotificationConsumer,
   startManualReleaseNotificationConsumer,
 } from "./workers/manual-release-notification-consumer.js";
@@ -65,16 +61,9 @@ export const buildServer = () => {
     void startManualReleaseNotificationConsumer(app.log).catch((err: unknown) =>
       app.log.error({ err }, "failed to start manual release notification consumer"),
     );
-    app.log.info("starting availability guard command consumer");
-    void startAvailabilityGuardCommandCenterConsumer(app.log).catch((err: unknown) =>
-      app.log.error({ err }, "failed to start availability guard command consumer"),
-    );
   });
   app.addHook("onClose", async () => {
     // Shutdown in proper order: stop consumers first, then notification dispatcher
-    await shutdownStep("command-consumer", () =>
-      shutdownAvailabilityGuardCommandCenterConsumer(app.log),
-    );
     await shutdownStep("manual-release-consumer", () =>
       shutdownManualReleaseNotificationConsumer(app.log),
     );

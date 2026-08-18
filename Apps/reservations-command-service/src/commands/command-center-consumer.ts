@@ -40,8 +40,6 @@ import {
   ReservationExpireCommandSchema,
   ReservationExtendStayCommandSchema,
   ReservationGenerateRegCardCommandSchema,
-  ReservationMobileCheckinCompleteCommandSchema,
-  ReservationMobileCheckinStartCommandSchema,
   ReservationModifyCommandSchema,
   ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
@@ -62,7 +60,6 @@ import {
   cancelReservation,
   checkInReservation,
   checkOutReservation,
-  completeMobileCheckin,
   convertQuote,
   createGroupBooking,
   createMetasearchConfig,
@@ -83,7 +80,6 @@ import {
   releaseDeposit,
   sendQuote,
   setupGroupBilling,
-  startMobileCheckin,
   unassignRoom,
   updateIntegrationMapping,
   updateMetasearchConfig,
@@ -208,16 +204,6 @@ const routeReservationCommand = async (
     case "reservation.generate_registration_card": {
       const commandPayload = ReservationGenerateRegCardCommandSchema.parse(envelope.payload);
       await generateRegistrationCard(metadata.tenantId, commandPayload, context);
-      break;
-    }
-    case "reservation.mobile_checkin.start": {
-      const commandPayload = ReservationMobileCheckinStartCommandSchema.parse(envelope.payload);
-      await startMobileCheckin(metadata.tenantId, commandPayload, context);
-      break;
-    }
-    case "reservation.mobile_checkin.complete": {
-      const commandPayload = ReservationMobileCheckinCompleteCommandSchema.parse(envelope.payload);
-      await completeMobileCheckin(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.send_quote": {

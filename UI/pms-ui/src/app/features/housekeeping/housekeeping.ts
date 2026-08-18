@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-import type { HousekeepingTaskListItem, RoomItem, UserWithTenants } from "@tartware/schemas";
+import type { HousekeepingTaskListItem, HousekeepingTaskStatus, RoomItem, UserWithTenants } from "@tartware/schemas";
 import { PopoverModule } from "primeng/popover";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
@@ -497,14 +497,32 @@ export class HousekeepingComponent {
 		return name || (u as { email?: string }).email || userId.slice(0, 8);
 	}
 
+	/**
+	 * `housekeeping_tasks.status` is the Postgres enum `housekeeping_status`:
+	 * CLEAN, DIRTY, INSPECTED, IN_PROGRESS, DO_NOT_DISTURB. It is a room-cleanliness
+	 * vocabulary, not a task lifecycle — COMPLETED and CANCELLED are not values the
+	 * database can hold, so the previous checks against them never matched.
+	 *
+	 * The effect was that `canComplete` was true for everything except INSPECTED
+	 * (Complete always offered) and `canReopen` was true for nothing but INSPECTED.
+	 * It failed open, which is why it went unnoticed. See
+	 * ui-gaps/17-command-reachability.md.
+	 *
+	 * `.toUpperCase()` stays: the row mapper lowercases on the way out while the
+	 * column stores upper.
+	 */
+	private taskStatus(task: HousekeepingTaskListItem): string {
+		return task.status?.toUpperCase() ?? "";
+	}
+
 	canComplete(task: HousekeepingTaskListItem): boolean {
-		const s = task.status?.toUpperCase();
-		return s !== "COMPLETED" && s !== "INSPECTED" && s !== "CANCELLED";
+		const open: HousekeepingTaskStatus[] = ["DIRTY", "IN_PROGRESS", "DO_NOT_DISTURB"];
+		return (open as string[]).includes(this.taskStatus(task));
 	}
 
 	canReopen(task: HousekeepingTaskListItem): boolean {
-		const s = task.status?.toUpperCase();
-		return s === "COMPLETED" || s === "INSPECTED" || s === "CANCELLED";
+		const done: HousekeepingTaskStatus[] = ["CLEAN", "INSPECTED"];
+		return (done as string[]).includes(this.taskStatus(task));
 	}
 
 	canAssign(task: HousekeepingTaskListItem): boolean {

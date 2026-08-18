@@ -249,9 +249,74 @@ four stranded writes exactly — the pairing that COV-18 noted "no test will rem
 > **always true** — the Complete button always shows and Reopen never does. It fails open rather than
 > failing visibly.
 >
-> **This needs a decision, not a patch:** which vocabulary is canonical for `housekeeping_tasks.status`,
-> and then a CHECK constraint so the answer is enforced. The dashboard fix bridges both vocabularies as
-> a stopgap and says so in a comment.
+> ### ✅ Settled by evidence, not by decision — 2026-08-18
+>
+> No product call was needed. `housekeeping_tasks.status` is the Postgres enum type
+> `housekeeping_status` (`NOT NULL DEFAULT 'DIRTY'`) — which is *why* there is no CHECK constraint, the
+> type itself constrains it. Its values are **CLEAN, DIRTY, INSPECTED, IN_PROGRESS, DO_NOT_DISTURB**,
+> the DDL column comment says the same, and the `housekeeping.task.*` handlers write `'CLEAN'`,
+> `'DIRTY'`, `'INSPECTED'`.
+>
+> So the task-lifecycle vocabulary was never canonical — **PENDING, ASSIGNED, COMPLETED and CANCELLED
+> are values the database cannot store.** Every comparison against them was dead code.
+>
+> | Fixed | Was | Now |
+> |---|---|---|
+> | `dashboard.ts` tiles | all four zero | DIRTY/DO_NOT_DISTURB = pending, CLEAN/INSPECTED = complete |
+> | `housekeeping.ts` `canComplete` | `!== COMPLETED && !== INSPECTED && !== CANCELLED` → true for everything but INSPECTED | DIRTY / IN_PROGRESS / DO_NOT_DISTURB |
+> | `housekeeping.ts` `canReopen` | matched only INSPECTED | CLEAN / INSPECTED |
+>
+> The room board in the same file already used the right values (DIRTY 11×, INSPECTED 7×, CLEAN 5×,
+> DO_NOT_DISTURB 4×) — only the two task-lifecycle helpers were wrong, which is why nobody noticed.
+>
+> ### The durable fix: the missing enum
+>
+> **Root cause: housekeeping tasks was the only domain in `schema/src/api/housekeeping.ts` with no
+> status enum.** Maintenance, incidents and lost-and-found all have one; tasks had `status: z.string()`,
+> so the UI had nothing to import and hardcoded literals instead. That is precisely the drift the
+> schema-first gate in `AGENTS.md` exists to prevent.
+>
+> `HousekeepingTaskStatusEnum` now exists in `schema/src/api/housekeeping.ts` with a `@database`
+> annotation, and both screens import the type. **Verified: reintroducing `"COMPLETED"` is now a
+> compile error** (`TS2322: Type '"COMPLETED"' is not assignable to ...`), so this class of bug cannot
+> come back in these files.
+>
+> The list response still types `status` as `z.string()` deliberately — the row mapper lowercases on
+> the way out, so parsing a real response against the uppercase enum would fail. That asymmetry is the
+> remaining debt, and the fix is to stop case-folding in the mappers (25 sites).
+>
+> ### ✅ Scoped by data, not by refactor — 2026-08-18
+>
+> The plan was to strip case-folding from all 25 mapper sites. Sampling the actual columns first showed
+> that would have been mostly wasted work and wide risk: **the fold only matters where the column
+> stores uppercase**, and most do not.
+>
+> | Column | Stored | Folded to | Verdict |
+> |---|---|---|---|
+> | `housekeeping_tasks.status` | `DIRTY` | lower | **mismatch** — fixed |
+> | `maintenance_requests.*` | `COMPLETED`, `URGENT` | lower | **mismatch** — fixed |
+> | `booking_sources.source_type` | `DIRECT` | lower | **mismatch** — fixed below |
+> | `market_segments.segment_type` | `CORPORATE` | lower | **mismatch** — fixed below |
+> | `packages.package_type` | `romance` | lower | no-op, harmless |
+> | others | no rows yet | — | undetermined; the fold is latent |
+>
+> The correct end state is the **lost-and-found pattern**: DB casing == wire casing == enum casing,
+> no fold at all. `LostAndFoundItemStatusEnum` is lowercase, the service does not fold, and the
+> response schema types the field with it. Every folded domain is a deviation from that.
+>
+> ### Third instance found: distribution edit forms silently rewrote records
+>
+> `features/settings/distribution` lists `SOURCE_TYPES` / `SEGMENT_TYPES` as uppercase `<option>`
+> values — correct for writing, since the column stores upper. But `openEditSource` and
+> `openEditSegment` populated the form with the **raw response value**, which the mapper had
+> lowercased. The select matched no option, rendered empty, and **saving rewrote the record's type**.
+>
+> Worse than the dashboard's zeros: that one was visibly wrong and read-only, this one was invisible
+> and destructive. Both edit paths now normalise on the way in.
+>
+> **Three instances of one root cause, in three different shapes** — a summary reading zero, two
+> permission helpers inverted, and an edit form corrupting data. None was reachable by the type
+> checker, because every one of these fields is typed `z.string()`.
 >
 > ### Why no conformance test
 >
@@ -261,6 +326,37 @@ four stranded writes exactly — the pairing that COV-18 noted "no test will rem
 > endpoint). A test built on that would cry wolf, which `00-CONSOLIDATED.md` already rules out on
 > 2026-08-13. **The durable fix is to stop case-folding in the mappers** so the wire matches the column
 > and the enum, which is a backend change with 25 call sites and its own blast radius.
+
+> ## ✅ 9 commands retired 2026-08-18
+>
+> All category (c). Each had a live alternative path already carrying the traffic, so nothing lost a
+> capability.
+>
+> | Retired | Live path that replaced it |
+> |---|---|
+> | `inventory.lock.room` · `.release.room` · `.release.bulk` | **gRPC** — `LockRoom` / `ReleaseRoom` / `BulkRelease`, a 1:1 match calling the same functions |
+> | `reservation.mobile_checkin.start` · `.complete` | **REST** on guests-service (`routes/checkin.ts`), which the guest portal calls |
+> | `operations.maintenance.request` · `.assign` · `.complete` · `.escalate` | **HTTP** on housekeeping-service, shipped earlier the same day |
+>
+> Removed per command: catalog row, payload validator, consumer case. Plus
+> `schema/src/events/commands/inventory.ts` and its barrel export, the two `mobile_checkin` entries in
+> `flow-registry.ts`'s PRE_ARRIVAL flow and in `flow-manifest.ts`, and their `KNOWN_UNREACHABLE` rows.
+>
+> **Two whole consumers went with them**, because each existed solely for the deleted commands:
+> `availability-guard-service/src/workers/command-center-consumer.ts` (491 lines) and the
+> `guest-experience` consumer inside guests-service. availability-guard-service is no longer a command
+> consumer at all — its work arrives over gRPC, which was always the live path.
+>
+> **Payload schemas were kept where they are still load-bearing.** The four
+> `OperationsMaintenance*CommandSchema` objects are now the request-body contract for the HTTP routes
+> that replaced the commands, so deleting them would have broken the very thing that made the commands
+> redundant. Their name is now a misnomer — worth renaming when someone is next in that file.
+>
+> **Two guardrails fired during the work, both correctly.** `flow-command-catalog.test.ts` failed on a
+> hardcoded consumer path that no longer existed, then again on its vacuity floor
+> (`handled > 20`) once the real handler count fell from 26 to 19. The floor is a guard against the
+> check going vacuous, not a claim about how many commands should exist, so it was lowered to 15 with
+> that reasoning recorded inline.
 
 ## Current State
 

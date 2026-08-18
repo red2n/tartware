@@ -77,11 +77,11 @@ export const FLOW_REGISTRY: FlowRegistry = {
 
   [FlowId.PRE_ARRIVAL]: {
     name: "Pre-Arrival",
-    requiredCommands: [
-      "reservation.mobile_checkin.start",
-      "reservation.mobile_checkin.complete",
-      "reservation.generate_registration_card",
-    ],
+    // `reservation.mobile_checkin.*` were removed 2026-08-18: the guest portal
+    // does mobile check-in over REST on guests-service (`routes/checkin.ts`), so
+    // the commands were a third entry point nothing dispatched.
+    // See ui-gaps/17-command-reachability.md.
+    requiredCommands: ["reservation.generate_registration_card"],
     dependsOn: [FlowId.RESERVATION],
   },
 

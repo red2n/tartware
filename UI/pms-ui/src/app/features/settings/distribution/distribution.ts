@@ -53,6 +53,17 @@ type MarketSegment = {
 	rate_multiplier: number;
 };
 
+/**
+ * `source_type` and `segment_type` come back lowercase — core-service's
+ * booking-config mappers fold them (`distribution.ts:45,270`) while the columns
+ * store upper (`DIRECT`, `CORPORATE`). The option lists below are uppercase and
+ * are correct for writing, but an edit form populated with the raw response
+ * value matches no `<option>`: the select renders empty and saving silently
+ * rewrites the record's type. Normalise on the way in.
+ * See ui-gaps/17-command-reachability.md.
+ */
+const upper = (value: string | null | undefined): string => (value ?? "").toUpperCase();
+
 const SOURCE_TYPES = [
 	"OTA",
 	"GDS",
@@ -231,7 +242,7 @@ export class DistributionSettingsComponent {
 		this.sourceForm.set({
 			source_code: source.source_code,
 			source_name: source.source_name,
-			source_type: source.source_type,
+			source_type: upper(source.source_type),
 			category: source.category ?? "",
 			channel_name: source.channel_name ?? "",
 			channel_website: source.channel_website ?? "",
@@ -318,7 +329,7 @@ export class DistributionSettingsComponent {
 		this.segmentForm.set({
 			segment_code: segment.segment_code,
 			segment_name: segment.segment_name,
-			segment_type: segment.segment_type,
+			segment_type: upper(segment.segment_type),
 			parent_segment_id: segment.parent_segment_id ?? "",
 			rate_multiplier: segment.rate_multiplier,
 			is_active: segment.is_active,

@@ -108,9 +108,13 @@ describe("command handlers ↔ command catalog", () => {
    * inventory.release.room, inventory.release.bulk, rooms.key.issue,
    * rooms.key.revoke and the three operations.maintenance.* verbs — each with a
    * handler, a payload validator, and no way to be invoked.
+   *
+   * The inventory.* and operations.maintenance.* entries above are historical:
+   * both sets were retired on 2026-08-18 (gRPC and plain HTTP respectively were
+   * already the live paths), and availability-guard-service's consumer went with
+   * them — it handled nothing else. See ui-gaps/17-command-reachability.md.
    */
   const CONSUMERS = [
-    "availability-guard-service/src/workers/command-center-consumer.ts",
     "housekeeping-service/src/commands/command-center-consumer.ts",
     "rooms-service/src/commands/command-center-consumer.ts",
     "guests-service/src/services/guest-command-service.ts",
@@ -132,7 +136,10 @@ describe("command handlers ↔ command catalog", () => {
     }
 
     // Guards against a consumer being renamed and this check going vacuous.
-    expect(handled, "no `case \"command.name\":` handlers found — consumer layout changed").toBeGreaterThan(20);
+    // Floor lowered from 20 to 15 on 2026-08-18: retiring inventory.* (3) and
+    // operations.maintenance.* (4) took the real count from 26 to 19. The floor
+    // is a vacuity guard, not an assertion about how many commands should exist.
+    expect(handled, "no `case \"command.name\":` handlers found — consumer layout changed").toBeGreaterThan(15);
 
     expect(
       [...new Set(missing)].sort(),
@@ -304,8 +311,6 @@ describe("flow registry ↔ dispatchability", () => {
     // ui-gaps/17-command-reachability.md — (c) retire: the guest portal reaches
     // mobile check-in over REST on guests-service, so the flow declares a path
     // the product does not use.
-    "reservation.mobile_checkin.start",
-    "reservation.mobile_checkin.complete",
     // ui-gaps/17 — (a) needs UI.
     "reservation.generate_registration_card",
     "rooms.move",

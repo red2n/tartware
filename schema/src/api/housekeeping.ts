@@ -538,6 +538,40 @@ export type ReturnLostAndFoundBody = z.infer<
 >;
 
 // =====================================================
+// HOUSEKEEPING TASK STATUS
+// =====================================================
+
+/**
+ * Status of a housekeeping task.
+ *
+ * @database housekeeping_tasks.status — the Postgres enum type
+ * `housekeeping_status`, which is why the column carries no CHECK constraint.
+ *
+ * This is a **room-cleanliness** vocabulary, not a task lifecycle. There is no
+ * PENDING, COMPLETED or CANCELLED; the database cannot store them. Both the
+ * dashboard summary and `features/housekeeping` were coded against those
+ * non-existent values until 2026-08-18 — the dashboard's four housekeeping tiles
+ * read zero against real data, and `canComplete`/`canReopen` were inverted.
+ * Housekeeping tasks was the only domain here with no status enum to import,
+ * which is exactly how the UI drifted. See ui-gaps/17-command-reachability.md.
+ *
+ * **The values on the wire are lowercase.** `housekeeping-service`'s row mapper
+ * lowercases `status` on the way out while the column stores upper, so the list
+ * response types `status` as `z.string()` rather than this enum — parsing a
+ * response against these values would fail. Compare case-insensitively until the
+ * mappers stop case-folding.
+ */
+export const HousekeepingTaskStatusEnum = z.enum([
+	"CLEAN",
+	"DIRTY",
+	"INSPECTED",
+	"IN_PROGRESS",
+	"DO_NOT_DISTURB",
+]);
+
+export type HousekeepingTaskStatus = z.infer<typeof HousekeepingTaskStatusEnum>;
+
+// =====================================================
 // LOST & FOUND ITEM CATEGORIES & STATUSES
 // =====================================================
 

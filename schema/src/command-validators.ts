@@ -132,11 +132,6 @@ import {
 	MetasearchConfigUpdateCommandSchema,
 } from "./events/commands/integrations.js";
 import {
-	InventoryBulkReleaseCommandSchema,
-	InventoryLockRoomCommandSchema,
-	InventoryReleaseRoomCommandSchema,
-} from "./events/commands/inventory.js";
-import {
 	LoyaltyPointsEarnCommandSchema,
 	LoyaltyProgramEnrollCommandSchema,
 	LoyaltyPointsExpireSweepCommandSchema,
@@ -154,10 +149,6 @@ import {
 import {
 	OperationsAssetUpdateCommandSchema,
 	OperationsInventoryAdjustCommandSchema,
-	OperationsMaintenanceAssignCommandSchema,
-	OperationsMaintenanceCompleteCommandSchema,
-	OperationsMaintenanceEscalateCommandSchema,
-	OperationsMaintenanceRequestCommandSchema,
 	OperationsScheduleCreateCommandSchema,
 	OperationsScheduleUpdateCommandSchema,
 } from "./events/commands/operations.js";
@@ -174,8 +165,6 @@ import {
 	ReservationExpireCommandSchema,
 	ReservationExtendStayCommandSchema,
 	ReservationGenerateRegCardCommandSchema,
-	ReservationMobileCheckinCompleteCommandSchema,
-	ReservationMobileCheckinStartCommandSchema,
 	ReservationModifyCommandSchema,
 	ReservationNoShowCommandSchema,
 	ReservationRateOverrideCommandSchema,
@@ -662,34 +651,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => MetasearchClickRecordCommandSchema.parse(payload),
 	],
 	[
-		"inventory.lock.room",
-		(payload) => InventoryLockRoomCommandSchema.parse(payload),
-	],
-	[
-		"inventory.release.room",
-		(payload) => InventoryReleaseRoomCommandSchema.parse(payload),
-	],
-	[
-		"inventory.release.bulk",
-		(payload) => InventoryBulkReleaseCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.request",
-		(payload) => OperationsMaintenanceRequestCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.assign",
-		(payload) => OperationsMaintenanceAssignCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.complete",
-		(payload) => OperationsMaintenanceCompleteCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.escalate",
-		(payload) => OperationsMaintenanceEscalateCommandSchema.parse(payload),
-	],
-	[
 		"operations.asset.update",
 		(payload) => OperationsAssetUpdateCommandSchema.parse(payload),
 	],
@@ -796,14 +757,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.generate_registration_card",
 		(payload) => ReservationGenerateRegCardCommandSchema.parse(payload),
-	],
-	[
-		"reservation.mobile_checkin.start",
-		(payload) => ReservationMobileCheckinStartCommandSchema.parse(payload),
-	],
-	[
-		"reservation.mobile_checkin.complete",
-		(payload) => ReservationMobileCheckinCompleteCommandSchema.parse(payload),
 	],
 	[
 		"reservation.send_quote",

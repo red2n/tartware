@@ -159,9 +159,6 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('rooms.features.update', 'Update room features and amenities', 'rooms-service', ARRAY['core']),
         ('rooms.key.issue', 'Issue a room key for a reservation', 'rooms-service', ARRAY['core']),
         ('rooms.key.revoke', 'Revoke an issued room key', 'rooms-service', ARRAY['core']),
-        ('inventory.lock.room', 'Lock room inventory for a reservation', 'availability-guard-service', ARRAY['core']),
-        ('inventory.release.room', 'Release a room inventory lock', 'availability-guard-service', ARRAY['core']),
-        ('inventory.release.bulk', 'Release room inventory locks in bulk', 'availability-guard-service', ARRAY['core']),
         ('housekeeping.task.assign', 'Assign housekeeping task', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('housekeeping.task.complete', 'Complete housekeeping task workflow', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('housekeeping.task.create', 'Create housekeeping task', 'housekeeping-service', ARRAY['facility-maintenance']),
@@ -198,14 +195,8 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         -- Target is housekeeping-service because that is where the handlers
         -- live. No consumer claims 'operations-command-service', and a command
         -- whose target no consumer matches is dropped by shouldProcess().
-        ('operations.maintenance.request', 'Create maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.maintenance.assign', 'Assign a maintenance request to a technician', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.maintenance.complete', 'Complete a maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.maintenance.escalate', 'Escalate a maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('operations.asset.update', 'Update asset status or location', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.inventory.adjust', 'Adjust inventory levels', 'operations-command-service', ARRAY['facility-maintenance']),
-        ('reservation.mobile_checkin.start', 'Begin mobile check-in for a reservation', 'reservations-command-service', ARRAY['core']),
-        ('reservation.mobile_checkin.complete', 'Complete mobile check-in for a reservation', 'reservations-command-service', ARRAY['core']),
         ('reservation.generate_registration_card', 'Generate the guest registration card', 'reservations-command-service', ARRAY['core']),
         ('reservation.waitlist_offer', 'Offer a freed room to a waitlisted guest', 'reservations-command-service', ARRAY['core']),
         ('reservation.waitlist_expire_sweep', 'Sweep and expire stale waitlist offers', 'reservations-command-service', ARRAY['core']),
