@@ -67,6 +67,24 @@ const ISSUE_CATEGORIES = [
 /** Statuses where the fault is still outstanding. */
 const OPEN_STATUSES = new Set(["OPEN", "ASSIGNED", "IN_PROGRESS", "ON_HOLD"]);
 
+/**
+ * housekeeping-service lowercases `request_status`, `priority` and
+ * `issue_category` in its row mapper, while the table, its CHECK constraint and
+ * `MaintenanceRequestStatusEnum` are all UPPERCASE. So the value on the wire is
+ * `"completed"` and every constant here is `"COMPLETED"`.
+ *
+ * Comparing raw would have made all three banners read zero, "Open only" hide
+ * every row, and each badge fall through to the neutral style — a screen that
+ * looks right and is silently wrong. Found by exercising the API, not by types:
+ * `MaintenanceRequestListItemSchema` types these as `z.string()`, so nothing
+ * catches it at compile time. Same case drift `00-CONSOLIDATED.md` records for
+ * the 41 enums on 2026-08-13.
+ *
+ * Filters are unaffected — the route's query schema `.toUpperCase()`s them, so
+ * either casing matches.
+ */
+const norm = (value: string | null | undefined): string => (value ?? "").toUpperCase();
+
 /** Priorities that should not sit in a queue overnight. */
 const URGENT_PRIORITIES = new Set(["URGENT", "EMERGENCY"]);
 
@@ -133,29 +151,40 @@ export class MaintenanceComponent {
 	});
 
 	/**
-	 * Rooms held out of service by an unresolved fault. This is the number that
-	 * costs money — every one is a room that cannot be sold tonight — so it gets
-	 * a banner rather than a column.
+	 * Rooms an unresolved fault is keeping off the market. This is the number that
+	 * costs money — every one is a room that cannot be sold tonight — so it gets a
+	 * banner rather than a column.
+	 *
+	 * Counts `affects_occupancy` as well as `room_out_of_service`, because they are
+	 * different things and only the first is set when a fault is raised:
+	 * `affects_occupancy` is the reporter's claim that the room cannot be sold,
+	 * while `room_out_of_service` is the actual OOS state, set separately when
+	 * someone takes the room down. Keying on the latter alone left the banner
+	 * permanently at zero — every fault raised through this screen has it false.
 	 */
 	readonly roomsOutOfService = computed(() =>
-		this.requests().filter((r) => r.room_out_of_service && OPEN_STATUSES.has(r.request_status)),
+		this.requests().filter(
+			(r) =>
+				(r.room_out_of_service || r.affects_occupancy) &&
+				OPEN_STATUSES.has(norm(r.request_status)),
+		),
 	);
 
 	readonly urgentOpen = computed(() =>
 		this.requests().filter(
-			(r) => OPEN_STATUSES.has(r.request_status) && URGENT_PRIORITIES.has(r.priority),
+			(r) => OPEN_STATUSES.has(norm(r.request_status)) && URGENT_PRIORITIES.has(norm(r.priority)),
 		),
 	);
 
 	readonly safetyOpen = computed(() =>
 		this.requests().filter(
-			(r) => OPEN_STATUSES.has(r.request_status) && (r.is_safety_issue || r.is_health_issue),
+			(r) => OPEN_STATUSES.has(norm(r.request_status)) && (r.is_safety_issue || r.is_health_issue),
 		),
 	);
 
 	readonly visibleRequests = computed(() =>
 		this.openOnly()
-			? this.requests().filter((r) => OPEN_STATUSES.has(r.request_status))
+			? this.requests().filter((r) => OPEN_STATUSES.has(norm(r.request_status)))
 			: this.requests(),
 	);
 
@@ -201,7 +230,7 @@ export class MaintenanceComponent {
 	}
 
 	priorityClass(priority: string): string {
-		switch (priority) {
+		switch (norm(priority)) {
 			case "EMERGENCY":
 			case "URGENT":
 				return "badge badge-danger badge-sm";
@@ -215,7 +244,7 @@ export class MaintenanceComponent {
 	}
 
 	statusClass(status: string): string {
-		switch (status) {
+		switch (norm(status)) {
 			case "COMPLETED":
 			case "VERIFIED":
 				return "badge badge-success badge-sm";
@@ -355,11 +384,12 @@ export class MaintenanceComponent {
 	}
 
 	canAssign(request: MaintenanceRequest): boolean {
-		return OPEN_STATUSES.has(request.request_status);
+		return OPEN_STATUSES.has(norm(request.request_status));
 	}
 
 	canComplete(request: MaintenanceRequest): boolean {
-		return request.request_status === "ASSIGNED" || request.request_status === "IN_PROGRESS";
+		const status = norm(request.request_status);
+		return status === "ASSIGNED" || status === "IN_PROGRESS";
 	}
 
 	canEscalate(request: MaintenanceRequest): boolean {

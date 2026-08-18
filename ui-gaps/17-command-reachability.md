@@ -105,6 +105,29 @@ like the incidents and lost-and-found screens beside it — so no new permission
 
 `/v1/reports/maintenance-sla` now reports on a table the product can fill.
 
+**Exercised end to end through the gateway before being called done** — the check COV-12's approvals
+screen never got. All four writes returned cleanly (`201`, `204`, `204`, `204`) and a read-back
+confirmed every field persisted, including `total_cost` derived from labour + parts. It found two
+bugs that neither the build nor the type-checker could:
+
+1. **Case drift on the wire.** `housekeeping-service.ts:257-265` lowercases `request_status`,
+   `priority` and `issue_category` in its row mapper, while the column, its CHECK constraint and
+   `MaintenanceRequestStatusEnum` are all UPPERCASE. The screen compared against the uppercase
+   constants, so **all three banners would have read zero, "Open only" would have hidden every row,
+   and every badge would have fallen through to the neutral style** — a page that looks right and is
+   silently wrong. Invisible to TypeScript, because `MaintenanceRequestListItemSchema` types these as
+   `z.string()`. This is the same drift `00-CONSOLIDATED.md` records for the 41 enums on 2026-08-13,
+   reaching the API response rather than SQL. Filters were unaffected: the route's query schema
+   `.toUpperCase()`s them.
+2. **A banner keyed on a column nothing sets.** `room_out_of_service` is the actual OOS state, set
+   when someone takes a room down; `affects_occupancy` is the reporter's claim that it cannot be sold,
+   and is the only one a raise sets. The headline banner counted the former and would have sat at zero
+   for every fault raised through the screen. It now counts both.
+
+Neither is a coverage gap and neither would have been caught by any test in the repo. **This is the
+argument for making "exercise one write against a running gateway" part of the definition of shipped
+— see [12](12-billing-partials.md).**
+
 **The converse guardrail earned itself here.** Removing the gateway `app.post` and re-running named all
 four stranded writes exactly — the pairing that COV-18 noted "no test will remind you" about on
 2026-08-17 is now enforced, and it was enforced on the first write path built after it existed.
