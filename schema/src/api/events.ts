@@ -402,7 +402,10 @@ export const EventBookingListItemSchema = z.object({
 	audio_visual_needed: z.boolean(),
 
 	// Status
-	booking_status: z.string(),
+	// Typed, not `z.string()`. The CHECK on `event_bookings.booking_status` holds
+	// exactly these eight values in exactly this spelling, and an untyped column is
+	// precisely the shape that let enum/CHECK case drift go unnoticed elsewhere.
+	booking_status: EventBookingStatusEnum,
 	booking_status_display: z.string(),
 	payment_status: z.string(),
 	payment_status_display: z.string(),
@@ -441,6 +444,35 @@ export const EventBookingListItemSchema = z.object({
 export type EventBookingListItem = z.infer<typeof EventBookingListItemSchema>;
 
 /**
+ * The single-booking read model — everything the list carries, plus the fields
+ * only the detail screen needs.
+ *
+ * Split rather than widened because the list query does not select these: the
+ * function space calendar loads a month of bookings at a time and has no use for
+ * billing instructions or internal notes. `folio_id` and `group_booking_id` are
+ * the §2 billing linkage recorded in ui-gaps/13-sales-catering.md — independent
+ * pointers, either, both or neither.
+ */
+export const EventBookingDetailSchema = EventBookingListItemSchema.extend({
+	teardown_end_time: z.string().nullable(),
+	contact_person: z.string().nullable(),
+	contact_email: z.string().nullable(),
+	contact_phone: z.string().nullable(),
+	group_booking_id: uuid.nullable(),
+	folio_id: uuid.nullable(),
+	setup_details: z.string().nullable(),
+	special_requests: z.string().nullable(),
+	internal_notes: z.string().nullable(),
+	billing_instructions: z.string().nullable(),
+	billing_contact_name: z.string().nullable(),
+	billing_contact_email: z.string().nullable(),
+	cancellation_date: z.string().nullable(),
+	cancellation_notes: z.string().nullable(),
+});
+
+export type EventBookingDetail = z.infer<typeof EventBookingDetailSchema>;
+
+/**
  * Event booking list response schema.
  */
 export const EventBookingListResponseSchema = z.object({
@@ -453,6 +485,255 @@ export const EventBookingListResponseSchema = z.object({
 export type EventBookingListResponse = z.infer<
 	typeof EventBookingListResponseSchema
 >;
+
+/**
+ * Envelope returned by the event booking write routes — create, update and the
+ * lifecycle transition all reply `{ data, message }`.
+ *
+ * It exists because declaring the bare item as the route's success response made
+ * fast-json-stringify reject every successful write with `"event_id" is
+ * required!` — a 500 raised *after* the row had already been inserted, so the
+ * caller saw a failure for a write that had in fact happened. Mirrors
+ * `AmenityResponseSchema`.
+ */
+export const EventBookingWriteResponseSchema = z.object({
+	data: EventBookingDetailSchema,
+	message: z.string(),
+});
+
+export type EventBookingWriteResponse = z.infer<
+	typeof EventBookingWriteResponseSchema
+>;
+
+/**
+ * Create an event booking.
+ *
+ * Slice 2 of ui-gaps/13-sales-catering.md — plain HTTP on the owning service per
+ * COV-18's rule (one table, one service, no fan-out).
+ *
+ * Required fields mirror the table's NOT NULL columns with no default:
+ * `event_name`, `event_type`, `meeting_room_id`, `event_date`, `start_time`,
+ * `end_time`, `organizer_name`, `expected_attendees`, `setup_type`.
+ *
+ * Bounds mirror the table's CHECK constraints so a bad payload is a 400, not a
+ * 23514: `event_bookings_attendees_check` (expected_attendees > 0),
+ * `event_bookings_time_check` (end_time > start_time) and
+ * `event_bookings_setup_time_check` (setup_start_time <= start_time), the last
+ * two enforced by the cross-field refinements below.
+ *
+ * Billing linkage per the §2 decision recorded in ui-gaps/13: `folio_id` is the
+ * event's own folio, `group_booking_id` links it to a group block when the event
+ * belongs to one. Both are optional and independent.
+ */
+/** `TIME` column input: HH:MM or HH:MM:SS, matching the meeting-room fields. */
+const TIME_OF_DAY = z
+	.string()
+	.regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use HH:MM or HH:MM:SS");
+
+/**
+ * Pads HH:MM to HH:MM:SS so two times compare correctly as strings.
+ * Without this, "09:00" < "09:00:00" lexicographically and a zero-length
+ * booking would slip past the end_time refinement.
+ */
+const normalizeTimeOfDay = (value: string): string =>
+	value.length === 5 ? `${value}:00` : value;
+
+const EventBookingWriteFieldsSchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+
+	// Event information
+	event_number: z.string().max(50).optional(),
+	event_name: z.string().min(1).max(200),
+	event_type: EventTypeEnum,
+
+	// Space and schedule
+	meeting_room_id: uuid,
+	event_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
+	start_time: TIME_OF_DAY,
+	end_time: TIME_OF_DAY,
+	setup_start_time: TIME_OF_DAY.optional(),
+	teardown_end_time: TIME_OF_DAY.optional(),
+
+	// Organizer
+	organizer_name: z.string().min(1).max(200),
+	organizer_company: z.string().max(200).optional(),
+	organizer_email: z.string().email().max(200).optional(),
+	organizer_phone: z.string().max(20).optional(),
+	contact_person: z.string().max(200).optional(),
+	contact_email: z.string().email().max(200).optional(),
+	contact_phone: z.string().max(20).optional(),
+
+	// Linked entities
+	guest_id: uuid.optional(),
+	reservation_id: uuid.optional(),
+	company_id: uuid.optional(),
+	group_booking_id: uuid.optional(),
+
+	// Attendance
+	expected_attendees: z.coerce.number().int().positive(),
+	confirmed_attendees: z.coerce.number().int().nonnegative().optional(),
+	guarantee_number: z.coerce.number().int().nonnegative().optional(),
+
+	// Setup
+	setup_type: EventSetupTypeEnum,
+	setup_details: z.string().optional(),
+	special_requests: z.string().optional(),
+	catering_required: z.boolean().optional(),
+	audio_visual_needed: z.boolean().optional(),
+
+	// Status — defaults to TENTATIVE at the table
+	booking_status: EventBookingStatusEnum.optional(),
+
+	// Key dates
+	beo_due_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+		.optional(),
+	final_count_due_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+		.optional(),
+
+	// Financial
+	rental_rate: z.coerce.number().nonnegative().optional(),
+	estimated_total: z.coerce.number().nonnegative().optional(),
+	deposit_required: z.coerce.number().nonnegative().optional(),
+	currency_code: z.string().length(3).optional(),
+
+	// Billing — see §2 decision in ui-gaps/13-sales-catering.md
+	folio_id: uuid.optional(),
+	billing_instructions: z.string().optional(),
+	billing_contact_name: z.string().max(200).optional(),
+	billing_contact_email: z.string().email().max(200).optional(),
+});
+
+/** `end_time > start_time`, mirroring `event_bookings_time_check`. */
+const refineEventTimes = <T extends z.ZodTypeAny>(schema: T) =>
+	schema
+		.refine(
+			(value: { start_time?: string; end_time?: string }) =>
+				!value.start_time ||
+				!value.end_time ||
+				normalizeTimeOfDay(value.end_time) >
+					normalizeTimeOfDay(value.start_time),
+			{ message: "end_time must be after start_time", path: ["end_time"] },
+		)
+		.refine(
+			(value: { setup_start_time?: string; start_time?: string }) =>
+				!value.setup_start_time ||
+				!value.start_time ||
+				normalizeTimeOfDay(value.setup_start_time) <=
+					normalizeTimeOfDay(value.start_time),
+			{
+				message: "setup_start_time must be at or before start_time",
+				path: ["setup_start_time"],
+			},
+		);
+
+export const EventBookingWriteBodySchema = refineEventTimes(
+	EventBookingWriteFieldsSchema,
+);
+
+export type EventBookingWriteBody = z.infer<typeof EventBookingWriteBodySchema>;
+
+/** Edit an event booking. Every field optional but `tenant_id`. */
+export const EventBookingUpdateBodySchema = refineEventTimes(
+	EventBookingWriteFieldsSchema.partial()
+		.omit({ tenant_id: true, property_id: true })
+		.extend({ tenant_id: uuid }),
+);
+
+export type EventBookingUpdateBody = z.infer<
+	typeof EventBookingUpdateBodySchema
+>;
+
+/**
+ * The legal lifecycle movements for an event booking.
+ *
+ * The table's CHECK constrains the *value* of `booking_status`, not the movement
+ * between values, so the ordering rule has to live somewhere. It lives here
+ * rather than in the service because both ends need it: core-service rejects an
+ * illegal move with 409, and the UI uses it to offer only the moves that will be
+ * accepted. Two copies would drift, and the drift would show up as a screen
+ * offering a button that always fails.
+ *
+ * COMPLETED and NO_SHOW are terminal; CANCELLED is reachable from any live status.
+ */
+export const EVENT_BOOKING_LEGAL_TRANSITIONS: Record<
+	EventBookingStatus,
+	readonly EventBookingStatus[]
+> = {
+	INQUIRY: ["TENTATIVE", "DEFINITE", "CANCELLED"],
+	TENTATIVE: ["DEFINITE", "CONFIRMED", "CANCELLED"],
+	DEFINITE: ["CONFIRMED", "IN_PROGRESS", "CANCELLED"],
+	CONFIRMED: ["IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"],
+	IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+	COMPLETED: [],
+	CANCELLED: [],
+	NO_SHOW: [],
+};
+
+/**
+ * Lifecycle transition — tentative → definite → cancelled and the rest.
+ *
+ * Separate from the general update because a status change is an operator
+ * action with its own audit meaning, and because the legal transitions are
+ * enforced in the service rather than by the table's CHECK.
+ */
+export const EventBookingStatusChangeBodySchema = z.object({
+	tenant_id: uuid,
+	booking_status: EventBookingStatusEnum,
+	cancellation_reason: z.string().max(500).optional(),
+});
+
+export type EventBookingStatusChangeBody = z.infer<
+	typeof EventBookingStatusChangeBodySchema
+>;
+
+/** Service-layer input for an event booking write, per AGENTS.md. */
+export type EventBookingWriteInput = {
+	propertyId?: string;
+	eventNumber?: string;
+	eventName?: string;
+	eventType?: EventType;
+	meetingRoomId?: string;
+	eventDate?: string;
+	startTime?: string;
+	endTime?: string;
+	setupStartTime?: string;
+	teardownEndTime?: string;
+	organizerName?: string;
+	organizerCompany?: string;
+	organizerEmail?: string;
+	organizerPhone?: string;
+	contactPerson?: string;
+	contactEmail?: string;
+	contactPhone?: string;
+	guestId?: string;
+	reservationId?: string;
+	companyId?: string;
+	groupBookingId?: string;
+	expectedAttendees?: number;
+	confirmedAttendees?: number;
+	guaranteeNumber?: number;
+	setupType?: EventSetupType;
+	setupDetails?: string;
+	specialRequests?: string;
+	cateringRequired?: boolean;
+	audioVisualNeeded?: boolean;
+	bookingStatus?: EventBookingStatus;
+	beoDueDate?: string;
+	finalCountDueDate?: string;
+	rentalRate?: number;
+	estimatedTotal?: number;
+	depositRequired?: number;
+	currencyCode?: string;
+	folioId?: string;
+	billingInstructions?: string;
+	billingContactName?: string;
+	billingContactEmail?: string;
+};
 
 // =====================================================
 // COMPANIES (B2B Corporate Accounts)

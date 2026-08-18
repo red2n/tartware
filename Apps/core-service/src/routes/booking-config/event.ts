@@ -1,7 +1,15 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import {
+  EventBookingDetailSchema,
   EventBookingListItemSchema,
+  type EventBookingStatusChangeBody,
+  EventBookingStatusChangeBodySchema,
   EventBookingStatusEnum,
+  type EventBookingUpdateBody,
+  EventBookingUpdateBodySchema,
+  type EventBookingWriteBody,
+  EventBookingWriteBodySchema,
+  EventBookingWriteResponseSchema,
   EventTypeEnum,
   MeetingRoomListItemSchema,
   MeetingRoomStatusEnum,
@@ -15,13 +23,19 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
+  changeEventBookingStatus,
+  createEventBooking,
   createMeetingRoom,
   deleteMeetingRoom,
+  EventBookingTransitionError,
   getEventBookingById,
   getMeetingRoomById,
   listEventBookings,
   listMeetingRooms,
   MeetingRoomCodeConflictError,
+  MeetingRoomNotFoundError,
+  MeetingRoomUnavailableError,
+  updateEventBooking,
   updateMeetingRoom,
 } from "../../services/booking-config/event.js";
 
@@ -421,10 +435,21 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
     EventBookingListResponseSchema,
     "EventBookingListResponse",
   );
+  // The detail schema, not the list item: the by-id query selects the contact,
+  // billing and linkage fields the detail screen needs, and a narrower response
+  // schema would have fast-json-stringify strip them back off on the way out.
   const EventBookingDetailResponseJsonSchema = schemaFromZod(
-    EventBookingListItemSchema,
+    EventBookingDetailSchema,
     "EventBookingDetailResponse",
   );
+  // The write handlers reply with `{ data, message }`, not a bare item. Declaring
+  // the bare item here made fast-json-stringify reject every successful write with
+  // `"event_id" is required!` — a 500 after the row had already been inserted.
+  const EventBookingWriteResponseJsonSchema = schemaFromZod(
+    EventBookingWriteResponseSchema,
+    "EventBookingWriteResponse",
+  );
+
   const EventBookingParamsSchema = z.object({ eventId: z.string().uuid() });
   const EventBookingIdParamJsonSchema = schemaFromZod(
     EventBookingParamsSchema,
@@ -504,7 +529,252 @@ export const registerEventRoutes = (app: FastifyInstance): void => {
       if (!event) {
         return reply.notFound("Event booking not found");
       }
-      return EventBookingListItemSchema.parse(event);
+      return EventBookingDetailSchema.parse(event);
+    },
+  );
+
+  // -------------------------------------------------
+  // EVENT BOOKING WRITES — slice 2 of ui-gaps/13-sales-catering.md
+  // Plain HTTP per COV-18: one table, one service, no fan-out.
+  // -------------------------------------------------
+
+  const eventWriteScopeFromBody = app.withTenantScope({
+    resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
+  /**
+   * Maps the service's write errors onto HTTP. Shared by all three routes.
+   *
+   * Typed structurally rather than against `FastifyReply` so each route can pass
+   * its own generic-parameterised reply without a variance fight.
+   */
+  const replyForEventWriteError = <
+    TReply extends {
+      notFound: (message: string) => unknown;
+      conflict: (message: string) => unknown;
+    },
+  >(
+    error: unknown,
+    reply: TReply,
+  ): unknown => {
+    if (error instanceof MeetingRoomNotFoundError) {
+      return reply.notFound(error.message);
+    }
+    if (error instanceof MeetingRoomUnavailableError) {
+      return reply.conflict(error.message);
+    }
+    if (error instanceof EventBookingTransitionError) {
+      return reply.conflict(error.message);
+    }
+    throw error;
+  };
+
+  app.post<{ Body: EventBookingWriteBody }>(
+    "/v1/event-bookings",
+    {
+      preHandler: eventWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: EVENT_BOOKINGS_TAG,
+        summary: "Create an event booking",
+        description:
+          "Books function space. The meeting room must be free for the requested window including setup and teardown; an overlap returns 409.",
+        body: schemaFromZod(EventBookingWriteBodySchema, "EventBookingWriteBody"),
+        response: {
+          201: EventBookingWriteResponseJsonSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const body = EventBookingWriteBodySchema.parse(request.body);
+      let created: Awaited<ReturnType<typeof createEventBooking>>;
+
+      try {
+        created = await createEventBooking(
+          body.tenant_id,
+          {
+            propertyId: body.property_id,
+            eventNumber: body.event_number,
+            eventName: body.event_name,
+            eventType: body.event_type,
+            meetingRoomId: body.meeting_room_id,
+            eventDate: body.event_date,
+            startTime: body.start_time,
+            endTime: body.end_time,
+            setupStartTime: body.setup_start_time,
+            teardownEndTime: body.teardown_end_time,
+            organizerName: body.organizer_name,
+            organizerCompany: body.organizer_company,
+            organizerEmail: body.organizer_email,
+            organizerPhone: body.organizer_phone,
+            contactPerson: body.contact_person,
+            contactEmail: body.contact_email,
+            contactPhone: body.contact_phone,
+            guestId: body.guest_id,
+            reservationId: body.reservation_id,
+            companyId: body.company_id,
+            groupBookingId: body.group_booking_id,
+            expectedAttendees: body.expected_attendees,
+            confirmedAttendees: body.confirmed_attendees,
+            guaranteeNumber: body.guarantee_number,
+            setupType: body.setup_type,
+            setupDetails: body.setup_details,
+            specialRequests: body.special_requests,
+            cateringRequired: body.catering_required,
+            audioVisualNeeded: body.audio_visual_needed,
+            bookingStatus: body.booking_status,
+            beoDueDate: body.beo_due_date,
+            finalCountDueDate: body.final_count_due_date,
+            rentalRate: body.rental_rate,
+            estimatedTotal: body.estimated_total,
+            depositRequired: body.deposit_required,
+            currencyCode: body.currency_code,
+            folioId: body.folio_id,
+            billingInstructions: body.billing_instructions,
+            billingContactName: body.billing_contact_name,
+            billingContactEmail: body.billing_contact_email,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForEventWriteError(error, reply);
+      }
+
+      if (!created) {
+        return reply.internalServerError("Failed to create event booking");
+      }
+
+      return reply.status(201).send({ data: created, message: "Event booking created" });
+    },
+  );
+
+  app.put<{ Params: z.infer<typeof EventBookingParamsSchema>; Body: EventBookingUpdateBody }>(
+    "/v1/event-bookings/:eventId",
+    {
+      preHandler: eventWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: EVENT_BOOKINGS_TAG,
+        summary: "Update an event booking",
+        description:
+          "Edits an event booking. Moving the room, date or times re-checks availability and returns 409 on an overlap. Use the status route for lifecycle changes.",
+        params: EventBookingIdParamJsonSchema,
+        body: schemaFromZod(EventBookingUpdateBodySchema, "EventBookingUpdateBody"),
+        response: {
+          200: EventBookingWriteResponseJsonSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { eventId } = EventBookingParamsSchema.parse(request.params);
+      const body = EventBookingUpdateBodySchema.parse(request.body);
+      let updated: Awaited<ReturnType<typeof updateEventBooking>>;
+
+      try {
+        updated = await updateEventBooking(
+          body.tenant_id,
+          eventId,
+          {
+            eventNumber: body.event_number,
+            eventName: body.event_name,
+            eventType: body.event_type,
+            meetingRoomId: body.meeting_room_id,
+            eventDate: body.event_date,
+            startTime: body.start_time,
+            endTime: body.end_time,
+            setupStartTime: body.setup_start_time,
+            teardownEndTime: body.teardown_end_time,
+            organizerName: body.organizer_name,
+            organizerCompany: body.organizer_company,
+            organizerEmail: body.organizer_email,
+            organizerPhone: body.organizer_phone,
+            contactPerson: body.contact_person,
+            contactEmail: body.contact_email,
+            contactPhone: body.contact_phone,
+            guestId: body.guest_id,
+            reservationId: body.reservation_id,
+            companyId: body.company_id,
+            groupBookingId: body.group_booking_id,
+            expectedAttendees: body.expected_attendees,
+            confirmedAttendees: body.confirmed_attendees,
+            guaranteeNumber: body.guarantee_number,
+            setupType: body.setup_type,
+            setupDetails: body.setup_details,
+            specialRequests: body.special_requests,
+            cateringRequired: body.catering_required,
+            audioVisualNeeded: body.audio_visual_needed,
+            beoDueDate: body.beo_due_date,
+            finalCountDueDate: body.final_count_due_date,
+            rentalRate: body.rental_rate,
+            estimatedTotal: body.estimated_total,
+            depositRequired: body.deposit_required,
+            currencyCode: body.currency_code,
+            folioId: body.folio_id,
+            billingInstructions: body.billing_instructions,
+            billingContactName: body.billing_contact_name,
+            billingContactEmail: body.billing_contact_email,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForEventWriteError(error, reply);
+      }
+
+      if (!updated) {
+        return reply.notFound("Event booking not found");
+      }
+
+      return reply.send({ data: updated, message: "Event booking updated" });
+    },
+  );
+
+  app.post<{
+    Params: z.infer<typeof EventBookingParamsSchema>;
+    Body: EventBookingStatusChangeBody;
+  }>(
+    "/v1/event-bookings/:eventId/status",
+    {
+      preHandler: eventWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: EVENT_BOOKINGS_TAG,
+        summary: "Change event booking status",
+        description:
+          "Lifecycle transition: inquiry → tentative → definite → confirmed, and cancellation. An illegal move returns 409.",
+        params: EventBookingIdParamJsonSchema,
+        body: schemaFromZod(EventBookingStatusChangeBodySchema, "EventBookingStatusChangeBody"),
+        response: {
+          200: EventBookingWriteResponseJsonSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { eventId } = EventBookingParamsSchema.parse(request.params);
+      const body = EventBookingStatusChangeBodySchema.parse(request.body);
+      let changed: Awaited<ReturnType<typeof changeEventBookingStatus>>;
+
+      try {
+        changed = await changeEventBookingStatus(
+          body.tenant_id,
+          eventId,
+          body.booking_status,
+          body.cancellation_reason,
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForEventWriteError(error, reply);
+      }
+
+      if (!changed) {
+        return reply.notFound("Event booking not found");
+      }
+
+      return reply.send({ data: changed, message: "Event booking status updated" });
     },
   );
 };

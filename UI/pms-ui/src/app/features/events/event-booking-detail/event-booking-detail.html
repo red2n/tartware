@@ -1,0 +1,497 @@
+@if (booking(); as b) {
+  <app-page-header [title]="b.event_name" [description]="b.event_type_display + ' · ' + (b.meeting_room_name ?? '')">
+    <button class="btn btn-outline btn-sm" (click)="backToCalendar()">
+      <app-icon name="calendar_month" /> {{ 'Function space' | translate }}
+    </button>
+    @if (!editing()) {
+      <button class="btn btn-outline btn-sm" (click)="openEdit()" [disabled]="submitting()">
+        <app-icon name="edit" /> {{ 'Edit' | translate }}
+      </button>
+    }
+    @for (next of nextStatuses(); track next) {
+      <button class="btn btn-sm"
+              [class.btn-primary]="next === 'CONFIRMED' || next === 'DEFINITE'"
+              [class.btn-outline]="next !== 'CONFIRMED' && next !== 'DEFINITE' && next !== 'CANCELLED'"
+              [class.btn-danger]="next === 'CANCELLED'"
+              (click)="askStatus(next)" [disabled]="submitting()">
+        {{ labelFor(next) }}
+      </button>
+    }
+  </app-page-header>
+
+  <!-- A plain status strip, not `.notice`: that style is the attention colour
+       and a booking simply being Definite is not something to warn about. -->
+  <p class="status-strip">
+    <span [class]="statusClass(b.booking_status)">{{ b.booking_status_display }}</span>
+    @if (b.event_number) {
+      <span class="text-muted">{{ 'Event' | translate }} {{ b.event_number }}</span>
+    }
+    <span class="text-muted">{{ 'Booked' | translate }} {{ b.booked_date | date: 'mediumDate' }}</span>
+    @if (b.confirmed_date) {
+      <span class="text-muted">{{ 'Confirmed' | translate }} {{ b.confirmed_date | date: 'mediumDate' }}</span>
+    }
+    @if (isTerminal()) {
+      <span class="text-muted">{{ 'Closed — no further status changes are possible.' | translate }}</span>
+    }
+  </p>
+
+  @if (b.booking_status === 'CANCELLED') {
+    <p class="notice">
+      <app-icon class="notice-icon" name="event_busy" />
+      {{ 'Cancelled' | translate }}@if (b.cancellation_date) { {{ b.cancellation_date | date: 'medium' }} }.
+      {{ 'The space is released and can be rebooked.' | translate }}
+      @if (b.cancellation_notes) { {{ b.cancellation_notes }} }
+    </p>
+  }
+
+  <!-- Lifecycle confirmation -->
+  @if (pendingStatus(); as next) {
+    <div class="action-confirm-card" [class.action-confirm-danger]="next === 'CANCELLED'">
+      <div class="confirm-header">
+        <app-icon class="confirm-icon" [name]="next === 'CANCELLED' ? 'event_busy' : 'check_circle'" />
+        <h3 class="confirm-title">
+          {{ 'Move to' | translate }} {{ labelFor(next) }}?
+        </h3>
+      </div>
+      <div class="confirm-body">
+        @if (next === 'CANCELLED') {
+          <p class="confirm-note">
+            {{ 'Cancelling releases the room for the whole held window, setup and teardown included, so the space becomes bookable again straight away.' | translate }}
+          </p>
+          <div class="form-field">
+            <label class="field-label" for="eb-cancel-reason">{{ 'Reason' | translate }}</label>
+            <input class="field-input" id="eb-cancel-reason" type="text" [ngModel]="cancellationReason()"
+                   (ngModelChange)="cancellationReason.set($event ?? '')"
+                   placeholder="Client postponed" />
+          </div>
+        } @else if (next === 'CONFIRMED') {
+          <p class="confirm-note">{{ 'Confirming stamps the confirmation date on the booking.' | translate }}</p>
+        } @else {
+          <p class="confirm-note">{{ 'This is a one-way move — the lifecycle does not run backwards.' | translate }}</p>
+        }
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm" (click)="cancelStatus()" [disabled]="submitting()">
+          {{ 'Go back' | translate }}
+        </button>
+        <button class="btn btn-sm" [class.btn-danger]="next === 'CANCELLED'"
+                [class.btn-primary]="next !== 'CANCELLED'"
+                (click)="confirmStatus()" [disabled]="submitting()">
+          {{ (submitting() ? 'Working…' : 'Confirm') | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Editor -->
+  @if (editing() && form(); as f) {
+    <div class="action-confirm-card" appSubmitOnEnter appUnsavedGuard>
+      <div class="confirm-header">
+        <app-icon class="confirm-icon" name="edit" />
+        <h3 class="confirm-title">{{ 'Edit booking' | translate }}</h3>
+      </div>
+      <div class="confirm-body">
+        <p class="confirm-note">
+          {{ 'Moving the room, date or times re-checks the space. If the new window overlaps another booking the change is refused and nothing moves.' | translate }}
+        </p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="eb-name">{{ 'Event name' | translate }}</label>
+            <input class="field-input" id="eb-name" type="text" [ngModel]="f.event_name"
+                   (ngModelChange)="patchForm({ event_name: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="eb-type">{{ 'Event type' | translate }}</label>
+            <select class="field-input" id="eb-type" [ngModel]="f.event_type"
+                    (ngModelChange)="patchForm({ event_type: $event })">
+              @for (t of eventTypes; track t) {
+                <option [value]="t">{{ labelFor(t) }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="eb-date">{{ 'Date' | translate }}</label>
+            <input class="field-input" id="eb-date" type="date" [ngModel]="f.event_date"
+                   (ngModelChange)="patchForm({ event_date: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="eb-setup-start">{{ 'Setup from' | translate }}</label>
+            <input class="field-input" id="eb-setup-start" type="time" [ngModel]="f.setup_start_time"
+                   (ngModelChange)="patchForm({ setup_start_time: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="eb-start">{{ 'Starts' | translate }}</label>
+            <input class="field-input" id="eb-start" type="time" [ngModel]="f.start_time"
+                   (ngModelChange)="patchForm({ start_time: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="eb-end">{{ 'Ends' | translate }}</label>
+            <input class="field-input" id="eb-end" type="time" [ngModel]="f.end_time"
+                   (ngModelChange)="patchForm({ end_time: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="eb-teardown-end">{{ 'Teardown until' | translate }}</label>
+            <input class="field-input" id="eb-teardown-end" type="time" [ngModel]="f.teardown_end_time"
+                   (ngModelChange)="patchForm({ teardown_end_time: $event ?? '' })" />
+          </div>
+        </div>
+
+        <section class="form-section">
+          <span class="form-section-title">{{ 'Organizer & contact' | translate }}</span>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="eb-organizer">{{ 'Organizer' | translate }}</label>
+              <input class="field-input" id="eb-organizer" type="text" [ngModel]="f.organizer_name"
+                     (ngModelChange)="patchForm({ organizer_name: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-company">{{ 'Company' | translate }}</label>
+              <input class="field-input" id="eb-company" type="text" [ngModel]="f.organizer_company"
+                     (ngModelChange)="patchForm({ organizer_company: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-email">{{ 'Organizer email' | translate }}</label>
+              <input class="field-input" id="eb-email" type="email" [ngModel]="f.organizer_email"
+                     (ngModelChange)="patchForm({ organizer_email: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-phone">{{ 'Organizer phone' | translate }}</label>
+              <input class="field-input" id="eb-phone" type="tel" [ngModel]="f.organizer_phone"
+                     (ngModelChange)="patchForm({ organizer_phone: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-contact">{{ 'On-site contact' | translate }}</label>
+              <input class="field-input" id="eb-contact" type="text" [ngModel]="f.contact_person"
+                     (ngModelChange)="patchForm({ contact_person: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-contact-email">{{ 'Contact email' | translate }}</label>
+              <input class="field-input" id="eb-contact-email" type="email" [ngModel]="f.contact_email"
+                     (ngModelChange)="patchForm({ contact_email: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-contact-phone">{{ 'Contact phone' | translate }}</label>
+              <input class="field-input" id="eb-contact-phone" type="tel" [ngModel]="f.contact_phone"
+                     (ngModelChange)="patchForm({ contact_phone: $event ?? '' })" />
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <span class="form-section-title">{{ 'Attendance & setup' | translate }}</span>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="eb-expected">{{ 'Expected' | translate }}</label>
+              <input class="field-input" id="eb-expected" type="number" min="1" [ngModel]="f.expected_attendees"
+                     (ngModelChange)="patchForm({ expected_attendees: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-confirmed">{{ 'Confirmed' | translate }}</label>
+              <input class="field-input" id="eb-confirmed" type="number" min="0" [ngModel]="f.confirmed_attendees"
+                     (ngModelChange)="patchForm({ confirmed_attendees: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-guarantee">{{ 'Guarantee' | translate }}</label>
+              <input class="field-input" id="eb-guarantee" type="number" min="0" [ngModel]="f.guarantee_number"
+                     (ngModelChange)="patchForm({ guarantee_number: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-setup-type">{{ 'Setup' | translate }}</label>
+              <select class="field-input" id="eb-setup-type" [ngModel]="f.setup_type"
+                      (ngModelChange)="patchForm({ setup_type: $event })">
+                @for (s of setupTypes; track s) {
+                  <option [value]="s">{{ labelFor(s) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field form-field-wide">
+              <label class="field-label" for="eb-setup-details">{{ 'Setup details' | translate }}</label>
+              <input class="field-input" id="eb-setup-details" type="text" [ngModel]="f.setup_details"
+                     (ngModelChange)="patchForm({ setup_details: $event ?? '' })" />
+            </div>
+            <div class="form-field form-field-wide">
+              <label class="field-label" for="eb-requests">{{ 'Special requests' | translate }}</label>
+              <input class="field-input" id="eb-requests" type="text" [ngModel]="f.special_requests"
+                     (ngModelChange)="patchForm({ special_requests: $event ?? '' })" />
+            </div>
+          </div>
+
+          <div class="checkbox-grid">
+            <label class="checkbox-field">
+              <input type="checkbox" [ngModel]="f.catering_required"
+                     (ngModelChange)="patchForm({ catering_required: $event })" />
+              {{ 'Catering required' | translate }}
+            </label>
+            <label class="checkbox-field">
+              <input type="checkbox" [ngModel]="f.audio_visual_needed"
+                     (ngModelChange)="patchForm({ audio_visual_needed: $event })" />
+              {{ 'Audio visual needed' | translate }}
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <span class="form-section-title">{{ 'Key dates & money' | translate }}</span>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="eb-beo-due">{{ 'BEO due' | translate }}</label>
+              <input class="field-input" id="eb-beo-due" type="date" [ngModel]="f.beo_due_date"
+                     (ngModelChange)="patchForm({ beo_due_date: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-count-due">{{ 'Final count due' | translate }}</label>
+              <input class="field-input" id="eb-count-due" type="date" [ngModel]="f.final_count_due_date"
+                     (ngModelChange)="patchForm({ final_count_due_date: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-rate">{{ 'Rental rate' | translate }}</label>
+              <input class="field-input" id="eb-rate" type="number" min="0" step="0.01" [ngModel]="f.rental_rate"
+                     (ngModelChange)="patchForm({ rental_rate: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-total">{{ 'Estimated total' | translate }}</label>
+              <input class="field-input" id="eb-total" type="number" min="0" step="0.01" [ngModel]="f.estimated_total"
+                     (ngModelChange)="patchForm({ estimated_total: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-deposit">{{ 'Deposit required' | translate }}</label>
+              <input class="field-input" id="eb-deposit" type="number" min="0" step="0.01" [ngModel]="f.deposit_required"
+                     (ngModelChange)="patchForm({ deposit_required: $event })" />
+            </div>
+            <div class="form-field form-field-wide">
+              <label class="field-label" for="eb-billing">{{ 'Billing instructions' | translate }}</label>
+              <input class="field-input" id="eb-billing" type="text" [ngModel]="f.billing_instructions"
+                     (ngModelChange)="patchForm({ billing_instructions: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-billing-name">{{ 'Billing contact' | translate }}</label>
+              <input class="field-input" id="eb-billing-name" type="text" [ngModel]="f.billing_contact_name"
+                     (ngModelChange)="patchForm({ billing_contact_name: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-billing-email">{{ 'Billing email' | translate }}</label>
+              <input class="field-input" id="eb-billing-email" type="email" [ngModel]="f.billing_contact_email"
+                     (ngModelChange)="patchForm({ billing_contact_email: $event ?? '' })" />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelEdit()" [disabled]="submitting()">
+          {{ 'Cancel' | translate }}
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="!canSave() || submitting()">
+          {{ (submitting() ? 'Saving…' : 'Save changes') | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="detail-layout">
+    <div class="detail-card">
+      <div class="card-header card-header-flex">
+        <h3 class="card-title">{{ 'Space & schedule' | translate }}</h3>
+        <span class="card-note">{{ 'What is held, and for how long.' | translate }}</span>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Meeting room' | translate }}</dt>
+            <dd class="detail-value">{{ b.meeting_room_name ?? '—' }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Date' | translate }}</dt>
+            <dd class="detail-value">{{ b.event_date | date: 'fullDate' }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Event runs' | translate }}</dt>
+            <dd class="detail-value">{{ shortTime(b.start_time) }} – {{ shortTime(b.end_time) }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Room held' | translate }}</dt>
+            <dd class="detail-value">
+              {{ holdWindow() }}
+              @if (hasHoldMargin()) {
+                <span class="text-muted">{{ '(setup and teardown included)' | translate }}</span>
+              }
+            </dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Setup' | translate }}</dt>
+            <dd class="detail-value">
+              {{ b.setup_type_display }}
+              @if (b.setup_details) { <div class="cell-sub">{{ b.setup_details }}</div> }
+            </dd>
+          </div>
+          @if (b.special_requests) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Special requests' | translate }}</dt>
+              <dd class="detail-value">{{ b.special_requests }}</dd>
+            </div>
+          }
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Needs' | translate }}</dt>
+            <dd class="detail-value">
+              @if (b.catering_required) { <span class="badge badge-muted badge-sm">{{ 'Catering' | translate }}</span> }
+              @if (b.audio_visual_needed) { <span class="badge badge-muted badge-sm">{{ 'Audio visual' | translate }}</span> }
+              @if (!b.catering_required && !b.audio_visual_needed) { — }
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header card-header-flex">
+        <h3 class="card-title">{{ 'Client' | translate }}</h3>
+        <span class="card-note">{{ 'Who booked it and who to call on the day.' | translate }}</span>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Organizer' | translate }}</dt>
+            <dd class="detail-value">
+              {{ b.organizer_name }}
+              @if (b.organizer_company) { <div class="cell-sub">{{ b.organizer_company }}</div> }
+            </dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Email' | translate }}</dt>
+            <dd class="detail-value">{{ b.organizer_email ?? '—' }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Phone' | translate }}</dt>
+            <dd class="detail-value">{{ b.organizer_phone ?? '—' }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'On-site contact' | translate }}</dt>
+            <dd class="detail-value">
+              {{ b.contact_person ?? '—' }}
+              @if (b.contact_email || b.contact_phone) {
+                <div class="cell-sub">{{ b.contact_email }} {{ b.contact_phone }}</div>
+              }
+            </dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Group booking' | translate }}</dt>
+            <dd class="detail-value">
+              @if (b.group_booking_id) {
+                <a [routerLink]="['/groups', b.group_booking_id]">{{ 'Open the group block' | translate }}</a>
+              } @else {
+                <span class="text-muted">{{ 'Not part of a group block' | translate }}</span>
+              }
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header card-header-flex">
+        <h3 class="card-title">{{ 'Attendance' | translate }}</h3>
+        <span class="card-note">{{ 'Expected, confirmed, and the number being guaranteed.' | translate }}</span>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Expected' | translate }}</dt>
+            <dd class="detail-value">{{ b.expected_attendees }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Confirmed' | translate }}</dt>
+            <dd class="detail-value">{{ b.confirmed_attendees ?? '—' }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Guarantee' | translate }}</dt>
+            <dd class="detail-value">{{ b.guarantee_number ?? '—' }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Final count due' | translate }}</dt>
+            <dd class="detail-value">
+              {{ b.final_count_due_date ? (b.final_count_due_date | date: 'mediumDate') : '—' }}
+            </dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'BEO due' | translate }}</dt>
+            <dd class="detail-value">
+              {{ b.beo_due_date ? (b.beo_due_date | date: 'mediumDate') : '—' }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="card-header card-header-flex">
+        <h3 class="card-title">{{ 'Money' | translate }}</h3>
+        <span class="card-note">{{ 'Rental, deposit, and where the charges land.' | translate }}</span>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Rental rate' | translate }}</dt>
+            <dd class="detail-value">{{ b.rental_rate ?? '—' }} {{ b.currency_code }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Estimated total' | translate }}</dt>
+            <dd class="detail-value">{{ b.estimated_total ?? '—' }} {{ b.currency_code }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Deposit' | translate }}</dt>
+            <dd class="detail-value">
+              {{ b.deposit_paid ?? 0 }} / {{ b.deposit_required ?? 0 }} {{ b.currency_code }}
+              @if (depositOutstanding(); as outstanding) {
+                @if (outstanding > 0) {
+                  <span class="badge badge-warning badge-sm">{{ outstanding }} {{ 'outstanding' | translate }}</span>
+                }
+              }
+            </dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Payment status' | translate }}</dt>
+            <dd class="detail-value">{{ b.payment_status_display }}</dd>
+          </div>
+          <div class="detail-row">
+            <dt class="detail-label">{{ 'Folio' | translate }}</dt>
+            <dd class="detail-value">
+              @if (b.folio_id) {
+                <span class="badge badge-accent badge-sm">{{ 'Linked' | translate }}</span>
+              } @else {
+                <!-- Posting charges is UI item 6; until then this records only
+                     whether a folio has been pointed at. -->
+                <span class="text-muted">{{ 'No folio linked yet — event charges have nowhere to post.' | translate }}</span>
+              }
+            </dd>
+          </div>
+          @if (b.billing_instructions || b.billing_contact_name) {
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Billing' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.billing_contact_name }}
+                @if (b.billing_contact_email) { <div class="cell-sub">{{ b.billing_contact_email }}</div> }
+                @if (b.billing_instructions) { <div class="cell-sub">{{ b.billing_instructions }}</div> }
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+  </div>
+} @else if (loading()) {
+  <div class="detail-layout" aria-busy="true" [attr.aria-label]="'Loading event booking' | translate">
+    <div class="skeleton-stack" aria-hidden="true">
+      @for (r of skeletonRows; track $index) {
+        <span class="skeleton skeleton-block"></span>
+      }
+    </div>
+  </div>
+} @else if (notFound()) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="event_busy" />
+    <h3>{{ 'Event booking not found' | translate }}</h3>
+    <p class="text-muted">{{ 'It may have been removed, or it belongs to another property.' | translate }}</p>
+    <button class="btn btn-outline btn-sm" (click)="backToCalendar()">{{ 'Back to function space' | translate }}</button>
+  </div>
+}

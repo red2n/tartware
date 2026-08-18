@@ -194,6 +194,31 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 		],
 	},
 	{
+		// Sales & catering (ui-gaps/13). The group's own screenKey is the calendar's,
+		// so a STAFF user who can book an event still sees the section even though
+		// meeting-room admin inside it is MANAGER-and-above.
+		label: "Events",
+		icon: "celebration",
+		screenKey: "events",
+		description: "Function space, event bookings and the sales & catering diary",
+		children: [
+			{
+				label: "Function space",
+				icon: "calendar_month",
+				route: "/events/calendar",
+				screenKey: "events",
+				description: "Meeting rooms by day — who holds which space, and what is still free",
+			},
+			{
+				label: "Meeting rooms",
+				icon: "meeting_room",
+				route: "/events/meeting-rooms",
+				screenKey: "meeting-rooms",
+				description: "Function space inventory — capacity by layout, features and rate basis",
+			},
+		],
+	},
+	{
 		label: "Housekeeping",
 		icon: "cleaning_services",
 		screenKey: "housekeeping",

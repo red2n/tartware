@@ -138,6 +138,59 @@ const readWildcardRoutes = (method: "all" | "get"): WildcardRoute[] => {
   return routes;
 };
 
+type ScopedWildcard = { path: string; helper: string; readsBody: boolean; file: string };
+
+/**
+ * Every `app.all` wildcard paired with what its `preHandler` resolver looks at.
+ *
+ * Only `withTenantScope` helpers are judged: `authenticatedOnly` and `adminOnly`
+ * do not resolve a tenant at all, and a params-based resolver reads the path,
+ * which a body cannot contradict.
+ */
+const readWildcardScopes = (): ScopedWildcard[] => {
+  const scoped: ScopedWildcard[] = [];
+  const routesDirectory = `${APPS_DIR}api-gateway/src/routes`;
+
+  for (const file of typescriptFilesUnder(routesDirectory)) {
+    const source = readFileSync(file, "utf8");
+
+    // helper name → the resolveTenantId expression it was declared with
+    const resolvers = new Map<string, string>();
+    for (const match of source.matchAll(
+      /const\s+([A-Za-z0-9_]+)\s*=\s*app\.withTenantScope\(\{([\s\S]*?)\n\s*\}\);/g,
+    )) {
+      resolvers.set(match[1]!, match[2]!);
+    }
+    if (resolvers.size === 0) continue;
+
+    for (const match of source.matchAll(wildcardRegistrations("all"))) {
+      const path = match[2]!;
+      const body = match[3]!;
+      const preHandler = /preHandler:\s*([A-Za-z0-9_]+)/.exec(body)?.[1];
+      if (!preHandler) continue;
+
+      const declaration = resolvers.get(preHandler);
+      // Not a tenant-scoped wildcard at all.
+      if (declaration === undefined) continue;
+      // `allowMissingTenantId` helpers (authenticatedOnly, adminOnly) do not
+      // reject an unscoped request, so where the tenant is read from cannot
+      // strand a write.
+      if (/allowMissingTenantId:\s*true/.test(declaration)) continue;
+      // A params resolver reads the path itself — the body cannot disagree.
+      if (/request\.params/.test(declaration) && !/request\.query/.test(declaration)) continue;
+
+      scoped.push({
+        path,
+        helper: preHandler,
+        readsBody: /request\.body/.test(declaration),
+        file: file.slice(APPS_DIR.length),
+      });
+    }
+  }
+
+  return scoped;
+};
+
 describe("gateway wildcard proxies ↔ downstream write handlers", () => {
   const routes = readWildcardRoutes("all");
 
@@ -266,6 +319,50 @@ describe("gateway read-only wildcards ↔ stranded downstream writes", () => {
         `unreachable through the product:\n${summary}\n\n` +
         `Register the missing method on the wildcard in the same commit as the\n` +
         `service write, or give the write its own explicit gateway route.\n`,
+    ).toEqual([]);
+  });
+});
+
+/**
+ * ── The third variant, added 2026-08-18 ──
+ *
+ * A wildcard can be registered `app.all`, have a target that really does
+ * implement the write, and *still* refuse every write — because the tenant
+ * scope resolver reads `tenant_id` from the query string only, while the front
+ * end sends it in the JSON body. `withTenantScope` rejects anything it cannot
+ * scope, so the request dies at the edge with 400 TENANT_ID_REQUIRED and never
+ * reaches the service. Neither check above sees it: the registration is right
+ * and the downstream write exists.
+ *
+ * Found live on 2026-08-18 on `/v1/rooms/*`, `/v1/buildings/*`, `/v1/rates/*`
+ * and `/v1/night-audit/*` — room edit, building edit and delete, and rate edit
+ * were all dead in the UI. The rule: a write-forwarding wildcard must resolve
+ * the tenant from the body as well as the query.
+ */
+describe("gateway write wildcards ↔ body-scoped writes", () => {
+  const scoped = readWildcardScopes();
+
+  it("finds the wildcard scope resolvers to check", () => {
+    expect(scoped.length).toBeGreaterThan(5);
+  });
+
+  it("resolves tenant_id from the body, not the query alone", () => {
+    const offenders = scoped.filter((route) => !route.readsBody);
+
+    const summary = offenders
+      .map(
+        (route) =>
+          `  \u2717 ${route.path} \u2014 preHandler ${route.helper} reads tenant_id from the query only — ${route.file}`,
+      )
+      .join("\n");
+
+    expect(
+      offenders.map((route) => route.path).sort(),
+      `\nWrite-forwarding wildcards that refuse every body-shaped write.\n` +
+        `withTenantScope rejects a request it cannot scope, so these return\n` +
+        `400 TENANT_ID_REQUIRED at the edge however correct the body is:\n${summary}\n\n` +
+        `Resolve tenant_id from the query *or* the body on any wildcard that\n` +
+        `forwards writes.\n`,
     ).toEqual([]);
   });
 });

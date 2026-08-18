@@ -1,0 +1,254 @@
+/* Function space calendar — meeting rooms × days.
+   Same skeleton as features/rate-calendar (sticky first column, scrolling date
+   columns); the cell differs because it holds bookings rather than one number. */
+
+/* ── Toolbar ── */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-16);
+  margin-bottom: var(--base-size-16);
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  flex-wrap: wrap;
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+}
+
+.date-nav-input {
+  width: 140px;
+  text-align: center;
+}
+
+/* ── Grid ── */
+.calendar-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+}
+
+.calendar-grid {
+  width: max-content;
+  min-width: 100%;
+  /* Fixed layout, so a long event name ellipsizes inside its day instead of
+     stretching that column and knocking the rest of the fortnight out of
+     alignment. Auto layout sized columns by content and the widths drifted. */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--base-text-size-xs);
+}
+
+.th-room {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bgColor-muted);
+  width: 200px;
+  min-width: 200px;
+  padding: var(--base-size-8) var(--base-size-12);
+  text-align: left;
+  font-weight: var(--base-text-weight-semibold);
+  border-bottom: 2px solid var(--borderColor-default);
+  border-right: 2px solid var(--borderColor-default);
+}
+
+.th-date {
+  width: 118px;
+  min-width: 118px;
+  padding: var(--base-size-4) var(--base-size-8);
+  text-align: center;
+  font-weight: var(--base-text-weight-medium);
+  background: var(--bgColor-muted);
+  border-bottom: 2px solid var(--borderColor-default);
+  border-right: 1px solid var(--borderColor-muted);
+  white-space: nowrap;
+
+  .date-dow {
+    display: block;
+    font-size: var(--base-text-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--fgColor-muted);
+  }
+
+  .date-num {
+    display: block;
+    font-size: var(--base-text-size-sm);
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+  }
+}
+
+.th-weekend {
+  background: color-mix(in srgb, var(--bgColor-muted) 50%, var(--bgColor-attention-muted));
+}
+
+.th-today {
+  background: var(--bgColor-accent-muted);
+
+  .date-num {
+    color: var(--fgColor-accent);
+  }
+}
+
+.td-room {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bgColor-default);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-bottom: 1px solid var(--borderColor-muted);
+  border-right: 2px solid var(--borderColor-default);
+  white-space: nowrap;
+  vertical-align: top;
+
+  .room-name {
+    display: block;
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+  }
+
+  .room-meta {
+    display: block;
+    font-size: var(--base-text-size-xs);
+    color: var(--fgColor-muted);
+  }
+}
+
+.td-day {
+  width: 118px;
+  min-width: 118px;
+  max-width: 118px;
+  padding: var(--base-size-4);
+  vertical-align: top;
+  border-bottom: 1px solid var(--borderColor-muted);
+  border-right: 1px solid var(--borderColor-muted);
+
+  /* The add control only appears on hover or keyboard focus, so an empty day
+     reads as empty rather than as a wall of plus signs. */
+  .cell-add {
+    opacity: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: var(--base-size-2);
+    border: 1px dashed var(--borderColor-muted);
+    border-radius: var(--borderRadius-small);
+    background: transparent;
+    color: var(--fgColor-muted);
+    cursor: pointer;
+  }
+
+  &:hover .cell-add,
+  .cell-add:focus-visible {
+    opacity: 1;
+  }
+}
+
+.td-weekend {
+  background: color-mix(in srgb, var(--bgColor-default) 92%, var(--bgColor-attention-muted));
+}
+
+.td-today {
+  background: color-mix(in srgb, var(--bgColor-default) 92%, var(--bgColor-accent-muted));
+}
+
+/* ── Booking chips ── */
+/* Two lines, not one: a day column is ~118px, and "09:00 " ate enough of that
+   to truncate every event to about six characters. Stacking gives the name the
+   full width and keeps the start time legible above it. */
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  margin-bottom: var(--base-size-4);
+  padding: var(--base-size-2) var(--base-size-6);
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: var(--borderRadius-small);
+  font-size: var(--base-text-size-xs);
+  text-align: left;
+  cursor: pointer;
+
+  .chip-time {
+    flex: 0 0 auto;
+    font-size: var(--base-text-size-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--fgColor-muted);
+  }
+
+  .chip-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fgColor-default);
+  }
+}
+
+/* Status carries meaning, so it is border + background rather than colour of
+   the text alone — the same reason the badges elsewhere pair the two. */
+.chip-tentative {
+  background: var(--bgColor-attention-muted);
+  border-color: var(--borderColor-attention-emphasis);
+}
+
+.chip-definite {
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-emphasis);
+}
+
+.chip-confirmed {
+  background: var(--bgColor-success-muted);
+  border-color: var(--borderColor-success-emphasis);
+}
+
+.chip-completed {
+  background: var(--bgColor-muted);
+  border-color: var(--borderColor-default);
+}
+
+.chip-released {
+  background: transparent;
+  border-color: var(--borderColor-muted);
+
+  .chip-name {
+    color: var(--fgColor-muted);
+    text-decoration: line-through;
+  }
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  flex-wrap: wrap;
+  margin-top: var(--base-size-12);
+
+  .chip {
+    width: auto;
+    margin-bottom: 0;
+    cursor: default;
+  }
+
+  .chip-name {
+    white-space: nowrap;
+  }
+}

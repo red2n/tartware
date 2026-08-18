@@ -91,7 +91,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
-| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; 3 domains still lack writes. **Guardrail found one-directional 2026-08-17** — it cannot see a service write the gateway refuses | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
+| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; converse guardrail closed 2026-08-18. Event bookings shipped 2026-08-18; banquet orders + allotments still lack writes | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
 
@@ -120,7 +120,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room write path shipped, event bookings + banquet orders queued (event billing decision open) | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
+| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), and **UI items 1 + 2 + 4 shipped 2026-08-18** (function space calendar, booking detail, meeting room admin). Banquet orders + the BEO editor are the last slice | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
 | 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
@@ -223,8 +223,10 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
     and a bare `POST` needs its own gateway registration every time.
 12. ~~COV-06, COV-08, COV-09, COV-14 step 1~~ — **done 2026-08-13.** Three write paths added, all
     plain HTTP per COV-18's rule, plus the channel-health screen over commands that already existed.
-13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** Then COV-18 (remainder), COV-13,
-    COV-16's allotments, COV-14's CRUD half
+13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** COV-13 is in progress: meeting-room
+    writes 2026-08-17, **event-booking writes, the event-billing decision, and UI items 1 + 2 + 4
+    on 2026-08-18** — the domain now has screens over its write paths. Remaining:
+    COV-13's banquet orders, COV-16's allotments, COV-14's CRUD half, and the UI for all of them
 14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
 
 **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
@@ -255,6 +257,25 @@ pairing is ambiguous and wants a human decision.
 fuzzy version paired `TenantStatusEnum` with `membership_status` and `SettingsValueStatusEnum` with
 `warranty_status`. A test that cries wolf is worse than none. The alignment above removes the standing
 defect; a future guard would need an explicit enum↔column annotation to be trustworthy.
+
+**Typecheck + conformance is not evidence that a write path runs — measured 2026-08-13 … 2026-08-18.**
+
+COV-13's two shipped slices were both fully typechecked and passed the gateway conformance suites.
+The first time a running stack touched them (`http_test/smoke-events.sh`, 2026-08-18), meeting rooms
+were clean and **every event-booking write returned 500** — for two independent reasons, each of a
+kind that only exists at runtime:
+
+- **A response schema that does not match what the handler sends.** Fastify compiles the declared
+  success schema into a serializer, so `{ data, message }` against a declared bare item fails
+  *after* the handler has run — the row is already committed when the caller gets its 500. The type
+  checker sees the route's declared schema and the handler's `.send()` argument as unrelated values.
+- **SQL that will not prepare.** `booking_status = $3` alongside `CASE WHEN $3 = 'CONFIRMED'` makes
+  Postgres deduce two types for one parameter and reject the statement. Nothing outside a live
+  database evaluates a SQL string.
+
+The lesson for the remaining write paths (banquet orders, allotments): budget the smoke test as part
+of the slice, not as follow-up hygiene. Both bugs took minutes to find with a stack running and were
+invisible to every gate that ran without one.
 
 **Third and fourth guardrails added 2026-08-13** — `tenant-scope-module-conformance.test.ts` asserts every
 `requiredModules:` literal in `Apps/*/src` is a real `MODULE_IDS` entry. It was written after finding

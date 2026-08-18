@@ -93,10 +93,55 @@
 > (`analytics.metric.ingest`, `analytics.report.schedule`, `operations.asset.update`,
 > `operations.inventory.adjust`) are genuinely unbuilt and want a product decision.
 >
-> **Still open:** item 4 — per-domain writes for the three domains that have none.
-> [13](13-sales-catering.md) decided **build** on 2026-08-17 and shipped meeting-room writes, so
-> event bookings and banquet orders are unblocked and queued behind it; allotments is
-> [16](16-booking-reference-data.md)'s, pending the availability-guard call.
+> **Still open:** item 4 — per-domain writes for the domains that have none.
+> [13](13-sales-catering.md) decided **build** on 2026-08-17 and has now shipped **meeting-room
+> writes (2026-08-17)** and **event-booking writes (2026-08-18)**, both plain HTTP per this spec's
+> rule; banquet orders is the last slice there. Allotments is [16](16-booking-reference-data.md)'s,
+> pending the availability-guard call.
+>
+> **Slice 2 shipped broken and was fixed the same day**, which is worth carrying into the remaining
+> write paths: it typechecked and passed conformance, and every one of its writes 500ed the first
+> time a live stack ran them (response-schema mismatch; a SQL statement Postgres would not prepare).
+> `http_test/smoke-events.sh` is the check that found it — the equivalent for banquet orders and
+> allotments belongs in the same commit as the routes, not after.
+>
+> ### 🐛 A third gateway failure mode, found live 2026-08-18: query-only tenant scope
+>
+> Reported from the running app as `PUT /v1/rooms/:roomId` → **400 TENANT_ID_REQUIRED** with a
+> perfectly good `tenant_id` in the body. The wildcard was registered `app.all`, rooms-service really
+> does implement the write, and both existing conformance checks were green — but the wildcard's
+> `preHandler` resolved the tenant from `request.query` only, and every write the front end sends
+> puts `tenant_id` in the JSON body. `withTenantScope` rejects what it cannot scope, so the request
+> died at the edge and never reached the service.
+>
+> **Four wildcards were in that state**, three of them with live UI callers:
+>
+> | Wildcard | Dead UI writes |
+> |---|---|
+> | `/v1/rooms/*` | room edit (`room-detail`), housekeeping status updates |
+> | `/v1/buildings/*` | building edit and delete |
+> | `/v1/rates/*` | rate edit |
+> | `/v1/night-audit/*` | none yet — reads only, fixed for consistency |
+>
+> All four now resolve query *or* body. The role is unchanged (`VIEWER` on the rooms group, `STAFF`
+> on night-audit) — this changed **where** the tenant is read from, not who may write.
+>
+> **Guardrail added** as a third check in `wildcard-write-conformance.test.ts`: a write-forwarding
+> wildcard must resolve `tenant_id` from the body as well as the query. Helpers declared
+> `allowMissingTenantId: true` are exempt — they never reject an unscoped request. Verified by
+> reverting one wildcard and watching the suite fail, so it is not vacuously green.
+>
+> **Worth noting for a separate decision:** the rooms-group wildcards authorise writes at `VIEWER`,
+> because one `app.all` covers reads and writes together and the reads must stay open. Raising it
+> would break housekeeping staff, who legitimately `PUT /v1/rooms/:roomId` to change status. Splitting
+> the wildcard by method is the real fix and is not in this change.
+>
+> **Both sales & catering slices found the same gateway bug**, which is worth naming as a pattern:
+> a read-only domain reached through `app.get` on *both* the bare path and the `/*` wildcard will
+> swallow every write added downstream, silently, because the wildcard never matches a bare `POST`
+> and the `app.get` never matches a `PUT`. Adding a service route is therefore never sufficient on
+> its own — the gateway registration has to be re-cut at the same time. `wildcard-write-conformance`
+> catches the wildcard half; the bare-`POST` half is still eyes-only.
 
 > ### ✅ Maintenance write path shipped 2026-08-18
 >

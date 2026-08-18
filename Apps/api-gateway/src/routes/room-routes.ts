@@ -50,6 +50,29 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /**
+   * Wildcard scope — query *or* body.
+   *
+   * The `/v1/rooms/*`, `/v1/buildings/*` and `/v1/rates/*` wildcards carry reads
+   * and writes together, and every write the front end sends puts `tenant_id` in
+   * the JSON body rather than the query string — `PUT /v1/rooms/:roomId` from
+   * both room-detail and housekeeping, `PUT /v1/rates/:rateId`,
+   * `PUT`/`DELETE /v1/buildings/:buildingId`. Resolving from the query alone
+   * rejected all of them with 400 TENANT_ID_REQUIRED at the edge, before the
+   * request ever reached rooms-service. Same failure the booking-config
+   * wildcards had; see ui-gaps/18-write-path-gap.md.
+   *
+   * The role stays VIEWER, which is what these wildcards already required — this
+   * changes *where* the tenant is read from, nothing about who may write.
+   */
+  const tenantScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "VIEWER",
+    requiredModules: "core",
+  });
+
   /** Write scope for POST/PUT/PATCH — reads tenant_id from request body. */
   const tenantWriteScopeFromBody = app.withTenantScope({
     resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
@@ -108,7 +131,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/rooms/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy room updates to the rooms service.",
@@ -283,7 +306,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/buildings/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy building operations to the rooms service.",
@@ -332,7 +355,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/rates/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy rate operations to rooms service.",

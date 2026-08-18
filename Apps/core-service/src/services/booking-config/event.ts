@@ -1,7 +1,13 @@
 import {
+  EVENT_BOOKING_LEGAL_TRANSITIONS,
+  type EventBookingDetail,
+  type EventBookingDetailRow,
+  EventBookingDetailSchema,
   type EventBookingListItem,
   EventBookingListItemSchema,
   type EventBookingRow,
+  type EventBookingStatus,
+  type EventBookingWriteInput,
   type GetEventBookingInput,
   type GetMeetingRoomInput,
   type ListEventBookingsInput,
@@ -474,6 +480,33 @@ const mapEventBookingRow = (row: EventBookingRow): EventBookingListItem => {
   });
 };
 
+/**
+ * The by-id query selects more columns than the list one, and the list mapper
+ * would silently drop them — zod strips unknown keys. The detail screen needs
+ * exactly those extras, so it gets its own mapper over the same base.
+ */
+const mapEventBookingDetailRow = (row: EventBookingDetailRow): EventBookingDetail => {
+  return EventBookingDetailSchema.parse({
+    ...mapEventBookingRow(row),
+    teardown_end_time: row.teardown_end_time,
+    contact_person: row.contact_person,
+    contact_email: row.contact_email,
+    contact_phone: row.contact_phone,
+    group_booking_id: row.group_booking_id,
+    folio_id: row.folio_id,
+    setup_details: row.setup_details,
+    special_requests: row.special_requests,
+    internal_notes: row.internal_notes,
+    billing_instructions: row.billing_instructions,
+    billing_contact_name: row.billing_contact_name,
+    billing_contact_email: row.billing_contact_email,
+    // `toIsoString` returns undefined for a null column, and the schema wants an
+    // explicit null — an uncancelled booking is a known absence, not a missing field.
+    cancellation_date: toIsoString(row.cancellation_date) ?? null,
+    cancellation_notes: row.cancellation_notes,
+  });
+};
+
 export const listEventBookings = async (
   options: ListEventBookingsInput,
 ): Promise<EventBookingListItem[]> => {
@@ -493,8 +526,8 @@ export const listEventBookings = async (
 
 export const getEventBookingById = async (
   options: GetEventBookingInput,
-): Promise<EventBookingListItem | null> => {
-  const { rows } = await query<EventBookingRow>(EVENT_BOOKING_BY_ID_SQL, [
+): Promise<EventBookingDetail | null> => {
+  const { rows } = await query<EventBookingDetailRow>(EVENT_BOOKING_BY_ID_SQL, [
     options.eventId,
     options.tenantId,
   ]);
@@ -502,5 +535,453 @@ export const getEventBookingById = async (
   if (!row) {
     return null;
   }
-  return mapEventBookingRow(row);
+  return mapEventBookingDetailRow(row);
+};
+
+// =====================================================
+// EVENT BOOKING WRITES
+// Slice 2 of ui-gaps/13-sales-catering.md. Plain HTTP on the owning service per
+// COV-18's rule: one table, one service, no cross-service fan-out.
+// =====================================================
+
+/** Raised when the requested space is already held for an overlapping time. */
+export class MeetingRoomUnavailableError extends Error {
+  constructor(meetingRoomId: string, eventDate: string) {
+    super(`Meeting room ${meetingRoomId} is already booked on ${eventDate} for that time range`);
+    this.name = "MeetingRoomUnavailableError";
+  }
+}
+
+/** Raised when a lifecycle transition is not legal from the current status. */
+export class EventBookingTransitionError extends Error {
+  constructor(from: string, to: string) {
+    super(`Cannot move an event booking from ${from} to ${to}`);
+    this.name = "EventBookingTransitionError";
+  }
+}
+
+/** Raised when the referenced meeting room does not exist for this tenant. */
+export class MeetingRoomNotFoundError extends Error {
+  constructor(meetingRoomId: string) {
+    super(`Meeting room ${meetingRoomId} not found`);
+    this.name = "MeetingRoomNotFoundError";
+  }
+}
+
+/**
+ * Statuses that still hold the space. A CANCELLED or NO_SHOW booking releases
+ * its room, so it must not block a new one.
+ */
+const SPACE_HOLDING_STATUSES = [
+  "INQUIRY",
+  "TENTATIVE",
+  "DEFINITE",
+  "CONFIRMED",
+  "IN_PROGRESS",
+  "COMPLETED",
+];
+
+// The transition map lives in @tartware/schemas as EVENT_BOOKING_LEGAL_TRANSITIONS:
+// the UI needs the same rule to offer only the moves this service will accept,
+// and a second copy of it would drift.
+
+/**
+ * Function-space double-booking check.
+ *
+ * `availability-guard-service` guards *guest-room* inventory only — it touches
+ * `inventory_locks_shadow` / `inventory_lock_audits` and has no concept of
+ * meeting rooms — so it is the wrong mechanism here (checked per COV-13's
+ * instruction not to invent a second mechanism without looking).
+ *
+ * Overlap is half-open: a booking ending at 12:00 does not collide with one
+ * starting at 12:00. Setup and teardown windows are included when present, so
+ * a room being dressed is not offered to someone else.
+ */
+const assertMeetingRoomFree = async (
+  tenantId: string,
+  meetingRoomId: string,
+  eventDate: string,
+  startTime: string,
+  endTime: string,
+  setupStartTime?: string,
+  teardownEndTime?: string,
+  excludeEventId?: string,
+): Promise<void> => {
+  const { rows } = await query<{ event_id: string }>(
+    `
+      SELECT event_id
+      FROM public.event_bookings
+      WHERE tenant_id = $1::uuid
+        AND meeting_room_id = $2::uuid
+        AND event_date = $3::date
+        AND COALESCE(is_deleted, false) = false
+        AND booking_status = ANY($4::text[])
+        AND ($5::uuid IS NULL OR event_id <> $5::uuid)
+        AND COALESCE(setup_start_time, start_time) < $7::time
+        AND COALESCE(teardown_end_time, end_time) > $6::time
+      LIMIT 1
+    `,
+    [
+      tenantId,
+      meetingRoomId,
+      eventDate,
+      SPACE_HOLDING_STATUSES,
+      excludeEventId ?? null,
+      setupStartTime ?? startTime,
+      teardownEndTime ?? endTime,
+    ],
+  );
+
+  if (rows.length > 0) {
+    throw new MeetingRoomUnavailableError(meetingRoomId, eventDate);
+  }
+};
+
+/** Confirms the room exists for this tenant before referencing it. */
+const assertMeetingRoomExists = async (tenantId: string, meetingRoomId: string): Promise<void> => {
+  const { rows } = await query<{ room_id: string }>(
+    `
+      SELECT room_id
+      FROM public.meeting_rooms
+      WHERE room_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+      LIMIT 1
+    `,
+    [meetingRoomId, tenantId],
+  );
+
+  if (rows.length === 0) {
+    throw new MeetingRoomNotFoundError(meetingRoomId);
+  }
+};
+
+/**
+ * The stored hold window for one booking.
+ *
+ * `EventBookingListItem` omits `teardown_end_time`, so an update that does not
+ * restate it would otherwise check availability against a shorter window than
+ * the row actually holds. Read it from the table instead.
+ */
+const getStoredHoldWindow = async (
+  tenantId: string,
+  eventId: string,
+): Promise<{ setupStartTime?: string; teardownEndTime?: string } | null> => {
+  const { rows } = await query<{
+    setup_start_time: string | null;
+    teardown_end_time: string | null;
+  }>(
+    `
+      SELECT setup_start_time, teardown_end_time
+      FROM public.event_bookings
+      WHERE event_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+      LIMIT 1
+    `,
+    [eventId, tenantId],
+  );
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    setupStartTime: row.setup_start_time ?? undefined,
+    teardownEndTime: row.teardown_end_time ?? undefined,
+  };
+};
+
+export const createEventBooking = async (
+  tenantId: string,
+  input: EventBookingWriteInput,
+  actorId?: string,
+): Promise<EventBookingDetail | null> => {
+  const meetingRoomId = input.meetingRoomId as string;
+  const eventDate = input.eventDate as string;
+  const startTime = input.startTime as string;
+  const endTime = input.endTime as string;
+
+  await assertMeetingRoomExists(tenantId, meetingRoomId);
+  await assertMeetingRoomFree(
+    tenantId,
+    meetingRoomId,
+    eventDate,
+    startTime,
+    endTime,
+    input.setupStartTime,
+    input.teardownEndTime,
+  );
+
+  const { rows } = await query<{ event_id: string }>(
+    `
+      INSERT INTO public.event_bookings (
+        tenant_id, property_id,
+        event_number, event_name, event_type,
+        meeting_room_id, event_date, start_time, end_time,
+        setup_start_time, teardown_end_time,
+        organizer_name, organizer_company, organizer_email, organizer_phone,
+        contact_person, contact_email, contact_phone,
+        guest_id, reservation_id, company_id, group_booking_id,
+        expected_attendees, confirmed_attendees, guarantee_number,
+        setup_type, setup_details, special_requests,
+        catering_required, audio_visual_needed,
+        booking_status,
+        beo_due_date, final_count_due_date,
+        rental_rate, estimated_total, deposit_required, currency_code,
+        folio_id, billing_instructions, billing_contact_name, billing_contact_email,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid,
+        $3, $4, $5,
+        $6::uuid, $7::date, $8::time, $9::time,
+        $10::time, $11::time,
+        $12, $13, $14, $15,
+        $16, $17, $18,
+        $19::uuid, $20::uuid, $21::uuid, $22::uuid,
+        $23, $24, $25,
+        $26, $27, $28,
+        COALESCE($29, false), COALESCE($30, false),
+        COALESCE($31, 'TENTATIVE'),
+        $32::date, $33::date,
+        $34, $35, $36, COALESCE($37, 'USD'),
+        $38::uuid, $39, $40, $41,
+        $42, $42
+      )
+      RETURNING event_id
+    `,
+    [
+      tenantId,
+      input.propertyId ?? null,
+      input.eventNumber ?? null,
+      input.eventName,
+      input.eventType,
+      meetingRoomId,
+      eventDate,
+      startTime,
+      endTime,
+      input.setupStartTime ?? null,
+      input.teardownEndTime ?? null,
+      input.organizerName,
+      input.organizerCompany ?? null,
+      input.organizerEmail ?? null,
+      input.organizerPhone ?? null,
+      input.contactPerson ?? null,
+      input.contactEmail ?? null,
+      input.contactPhone ?? null,
+      input.guestId ?? null,
+      input.reservationId ?? null,
+      input.companyId ?? null,
+      input.groupBookingId ?? null,
+      input.expectedAttendees,
+      input.confirmedAttendees ?? null,
+      input.guaranteeNumber ?? null,
+      input.setupType,
+      input.setupDetails ?? null,
+      input.specialRequests ?? null,
+      input.cateringRequired ?? null,
+      input.audioVisualNeeded ?? null,
+      input.bookingStatus ?? null,
+      input.beoDueDate ?? null,
+      input.finalCountDueDate ?? null,
+      input.rentalRate ?? null,
+      input.estimatedTotal ?? null,
+      input.depositRequired ?? null,
+      input.currencyCode ?? null,
+      input.folioId ?? null,
+      input.billingInstructions ?? null,
+      input.billingContactName ?? null,
+      input.billingContactEmail ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  const eventId = rows[0]?.event_id;
+  if (!eventId) return null;
+
+  return getEventBookingById({ eventId, tenantId });
+};
+
+export const updateEventBooking = async (
+  tenantId: string,
+  eventId: string,
+  input: EventBookingWriteInput,
+  actorId?: string,
+): Promise<EventBookingDetail | null> => {
+  const existing = await getEventBookingById({ eventId, tenantId });
+  if (!existing) return null;
+
+  const meetingRoomId = input.meetingRoomId ?? existing.meeting_room_id;
+  const eventDate = input.eventDate ?? existing.event_date;
+  const startTime = input.startTime ?? existing.start_time;
+  const endTime = input.endTime ?? existing.end_time;
+
+  if (input.meetingRoomId && input.meetingRoomId !== existing.meeting_room_id) {
+    await assertMeetingRoomExists(tenantId, input.meetingRoomId);
+  }
+
+  // Re-check the space whenever anything that defines the hold moves.
+  const holdChanged =
+    Boolean(input.meetingRoomId) ||
+    Boolean(input.eventDate) ||
+    Boolean(input.startTime) ||
+    Boolean(input.endTime) ||
+    Boolean(input.setupStartTime) ||
+    Boolean(input.teardownEndTime);
+
+  if (holdChanged) {
+    const stored = await getStoredHoldWindow(tenantId, eventId);
+    await assertMeetingRoomFree(
+      tenantId,
+      meetingRoomId,
+      eventDate,
+      startTime,
+      endTime,
+      input.setupStartTime ?? stored?.setupStartTime,
+      input.teardownEndTime ?? stored?.teardownEndTime,
+      eventId,
+    );
+  }
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.event_bookings
+      SET
+        event_number = COALESCE($3, event_number),
+        event_name = COALESCE($4, event_name),
+        event_type = COALESCE($5, event_type),
+        meeting_room_id = COALESCE($6::uuid, meeting_room_id),
+        event_date = COALESCE($7::date, event_date),
+        start_time = COALESCE($8::time, start_time),
+        end_time = COALESCE($9::time, end_time),
+        setup_start_time = COALESCE($10::time, setup_start_time),
+        teardown_end_time = COALESCE($11::time, teardown_end_time),
+        organizer_name = COALESCE($12, organizer_name),
+        organizer_company = COALESCE($13, organizer_company),
+        organizer_email = COALESCE($14, organizer_email),
+        organizer_phone = COALESCE($15, organizer_phone),
+        contact_person = COALESCE($16, contact_person),
+        contact_email = COALESCE($17, contact_email),
+        contact_phone = COALESCE($18, contact_phone),
+        guest_id = COALESCE($19::uuid, guest_id),
+        reservation_id = COALESCE($20::uuid, reservation_id),
+        company_id = COALESCE($21::uuid, company_id),
+        group_booking_id = COALESCE($22::uuid, group_booking_id),
+        expected_attendees = COALESCE($23, expected_attendees),
+        confirmed_attendees = COALESCE($24, confirmed_attendees),
+        guarantee_number = COALESCE($25, guarantee_number),
+        setup_type = COALESCE($26, setup_type),
+        setup_details = COALESCE($27, setup_details),
+        special_requests = COALESCE($28, special_requests),
+        catering_required = COALESCE($29, catering_required),
+        audio_visual_needed = COALESCE($30, audio_visual_needed),
+        beo_due_date = COALESCE($31::date, beo_due_date),
+        final_count_due_date = COALESCE($32::date, final_count_due_date),
+        rental_rate = COALESCE($33, rental_rate),
+        estimated_total = COALESCE($34, estimated_total),
+        deposit_required = COALESCE($35, deposit_required),
+        currency_code = COALESCE($36, currency_code),
+        folio_id = COALESCE($37::uuid, folio_id),
+        billing_instructions = COALESCE($38, billing_instructions),
+        billing_contact_name = COALESCE($39, billing_contact_name),
+        billing_contact_email = COALESCE($40, billing_contact_email),
+        updated_by = $41,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE event_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      eventId,
+      tenantId,
+      input.eventNumber ?? null,
+      input.eventName ?? null,
+      input.eventType ?? null,
+      input.meetingRoomId ?? null,
+      input.eventDate ?? null,
+      input.startTime ?? null,
+      input.endTime ?? null,
+      input.setupStartTime ?? null,
+      input.teardownEndTime ?? null,
+      input.organizerName ?? null,
+      input.organizerCompany ?? null,
+      input.organizerEmail ?? null,
+      input.organizerPhone ?? null,
+      input.contactPerson ?? null,
+      input.contactEmail ?? null,
+      input.contactPhone ?? null,
+      input.guestId ?? null,
+      input.reservationId ?? null,
+      input.companyId ?? null,
+      input.groupBookingId ?? null,
+      input.expectedAttendees ?? null,
+      input.confirmedAttendees ?? null,
+      input.guaranteeNumber ?? null,
+      input.setupType ?? null,
+      input.setupDetails ?? null,
+      input.specialRequests ?? null,
+      input.cateringRequired ?? null,
+      input.audioVisualNeeded ?? null,
+      input.beoDueDate ?? null,
+      input.finalCountDueDate ?? null,
+      input.rentalRate ?? null,
+      input.estimatedTotal ?? null,
+      input.depositRequired ?? null,
+      input.currencyCode ?? null,
+      input.folioId ?? null,
+      input.billingInstructions ?? null,
+      input.billingContactName ?? null,
+      input.billingContactEmail ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getEventBookingById({ eventId, tenantId });
+};
+
+/**
+ * Lifecycle transition. Rejects illegal movements rather than letting any
+ * status overwrite any other, and stamps `confirmed_date` / `cancellation_date`
+ * so the read model's key dates stay truthful.
+ */
+export const changeEventBookingStatus = async (
+  tenantId: string,
+  eventId: string,
+  nextStatus: EventBookingStatus,
+  cancellationReason?: string,
+  actorId?: string,
+): Promise<EventBookingDetail | null> => {
+  const existing = await getEventBookingById({ eventId, tenantId });
+  if (!existing) return null;
+
+  const current = existing.booking_status;
+  if (current === nextStatus) {
+    return existing;
+  }
+
+  if (!EVENT_BOOKING_LEGAL_TRANSITIONS[current]?.includes(nextStatus)) {
+    throw new EventBookingTransitionError(current, nextStatus);
+  }
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.event_bookings
+      SET
+        -- $3 is cast explicitly at every use. Without the casts Postgres deduces
+        -- character varying from the assignment and text from the CASE comparisons,
+        -- and rejects the whole statement with "inconsistent types deduced for
+        -- parameter $3" — a 500 on every lifecycle transition.
+        booking_status = $3::text,
+        confirmed_date = CASE WHEN $3::text = 'CONFIRMED' THEN CURRENT_DATE ELSE confirmed_date END,
+        cancellation_date = CASE WHEN $3::text = 'CANCELLED' THEN CURRENT_TIMESTAMP ELSE cancellation_date END,
+        cancellation_notes = COALESCE($4, cancellation_notes),
+        updated_by = $5,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE event_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [eventId, tenantId, nextStatus, cancellationReason ?? null, actorId ?? null],
+  );
+
+  if (!rowCount) return null;
+
+  return getEventBookingById({ eventId, tenantId });
 };

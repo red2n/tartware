@@ -49,7 +49,14 @@ DECLARE
         -- OTA / channel-manager health and recovery actions. Its actions dispatch
         -- commands that require MANAGER, so it follows the default MANAGER-and-above
         -- rule rather than being listed as admin-only.
-        'channels'
+        'channels',
+        -- Sales & catering (ui-gaps/13). Two keys, because the two screens sit at
+        -- different privilege levels and the backend already draws that line:
+        -- POST /v1/event-bookings requires STAFF, POST /v1/meeting-rooms requires
+        -- MANAGER. 'events' is therefore in the STAFF list below; 'meeting-rooms',
+        -- which is function-space reference data, is not.
+        'events',
+        'meeting-rooms'
     ];
     v_screen TEXT;
     v_role tenant_role;
@@ -68,7 +75,7 @@ BEGIN
                     -- MANAGER sees most screens except admin-only
                     WHEN v_role = 'MANAGER' THEN v_screen NOT IN ('settings', 'command-management', 'users', 'tax-config', 'compliance')
                     -- STAFF sees operational screens
-                    WHEN v_role = 'STAFF' THEN v_screen IN ('dashboard', 'reservations', 'guests', 'rooms', 'housekeeping', 'rates')
+                    WHEN v_role = 'STAFF' THEN v_screen IN ('dashboard', 'reservations', 'guests', 'rooms', 'housekeeping', 'rates', 'events')
                     -- VIEWER sees read-only screens
                     WHEN v_role = 'VIEWER' THEN v_screen IN ('dashboard', 'guests')
                     ELSE false

@@ -1,0 +1,384 @@
+<app-page-header
+  title="Meeting rooms"
+  description="Function space inventory — capacity by layout, features, setup times and rate basis.">
+  <button class="btn btn-primary btn-sm" (click)="openCreate()" [disabled]="submitting()">
+    <app-icon name="meeting_room" /> {{ 'New meeting room' | translate }}
+  </button>
+</app-page-header>
+
+@if (unbookable().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="event_busy" />
+    {{ unbookable().length }} {{ (unbookable().length === 1 ? 'room cannot take a booking right now' : 'rooms cannot take a booking right now') | translate }}
+  </p>
+}
+
+@if (retireTarget(); as room) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="block" />
+      <h3 class="confirm-title">{{ 'Retire' | translate }} {{ room.room_code }}?</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'The room stops being bookable immediately. It is not erased — existing event bookings and banquet orders still reference it, so the history stays intact.' | translate }}
+      </p>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelRetire()" [disabled]="submitting()">
+        {{ 'Cancel' | translate }}
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="confirmRetire()" [disabled]="submitting()">
+        {{ (submitting() ? 'Retiring…' : 'Retire room') | translate }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (editorOpen()) {
+  <!-- appUnsavedGuard: this editor is long enough that losing it to a stray
+       click on Cancel would be a real loss; unsavedClose marks the control. -->
+  <div class="action-confirm-card" appSubmitOnEnter appUnsavedGuard>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="meeting_room" />
+      <h3 class="confirm-title">
+        {{ editing() ? ('Edit ' | translate) + editing()!.room_code : ('New meeting room' | translate) }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      @if (editing()) {
+        <p class="confirm-note">
+          {{ 'The code is editable — bookings reference the room by id, not by code.' | translate }}
+        </p>
+      }
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="mr-code">{{ 'Code' | translate }}</label>
+          <input class="field-input" id="mr-code" type="text" [ngModel]="form().room_code"
+                 (ngModelChange)="patchForm({ room_code: $event ?? '' })"
+                 [disabled]="editing() !== null"
+                 placeholder="GRAND-BR" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="mr-name">{{ 'Name' | translate }}</label>
+          <input class="field-input" id="mr-name" type="text" [ngModel]="form().room_name"
+                 (ngModelChange)="patchForm({ room_name: $event ?? '' })"
+                 placeholder="Grand Ballroom" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="mr-type">{{ 'Room type' | translate }}</label>
+          <select class="field-input" id="mr-type" [ngModel]="form().room_type"
+                  (ngModelChange)="patchForm({ room_type: $event })">
+            @for (t of roomTypes; track t) {
+              <option [value]="t">{{ labelFor(t) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="mr-status">{{ 'Status' | translate }}</label>
+          <select class="field-input" id="mr-status" [ngModel]="form().room_status"
+                  (ngModelChange)="patchForm({ room_status: $event })">
+            @for (s of roomStatuses; track s) {
+              <option [value]="s">{{ labelFor(s) }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="mr-building">{{ 'Building' | translate }}</label>
+          <input class="field-input" id="mr-building" type="text" [ngModel]="form().building"
+                 (ngModelChange)="patchForm({ building: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="mr-floor">{{ 'Floor' | translate }}</label>
+          <input class="field-input" id="mr-floor" type="number" [ngModel]="form().floor"
+                 (ngModelChange)="patchForm({ floor: $event })" />
+        </div>
+      </div>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Capacity' | translate }}</span>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="mr-max">{{ 'Maximum capacity' | translate }}</label>
+            <input class="field-input" id="mr-max" type="number" min="1" [ngModel]="form().max_capacity"
+                   (ngModelChange)="patchForm({ max_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-theater">{{ 'Theater' | translate }}</label>
+            <input class="field-input" id="mr-theater" type="number" min="0" [ngModel]="form().theater_capacity"
+                   (ngModelChange)="patchForm({ theater_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-classroom">{{ 'Classroom' | translate }}</label>
+            <input class="field-input" id="mr-classroom" type="number" min="0" [ngModel]="form().classroom_capacity"
+                   (ngModelChange)="patchForm({ classroom_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-banquet">{{ 'Banquet' | translate }}</label>
+            <input class="field-input" id="mr-banquet" type="number" min="0" [ngModel]="form().banquet_capacity"
+                   (ngModelChange)="patchForm({ banquet_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-reception">{{ 'Reception' | translate }}</label>
+            <input class="field-input" id="mr-reception" type="number" min="0" [ngModel]="form().reception_capacity"
+                   (ngModelChange)="patchForm({ reception_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-ushape">{{ 'U-shape' | translate }}</label>
+            <input class="field-input" id="mr-ushape" type="number" min="0" [ngModel]="form().u_shape_capacity"
+                   (ngModelChange)="patchForm({ u_shape_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-boardroom">{{ 'Boardroom' | translate }}</label>
+            <input class="field-input" id="mr-boardroom" type="number" min="0" [ngModel]="form().boardroom_capacity"
+                   (ngModelChange)="patchForm({ boardroom_capacity: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-area">{{ 'Area (m²)' | translate }}</label>
+            <input class="field-input" id="mr-area" type="number" min="0" step="0.1" [ngModel]="form().area_sqm"
+                   (ngModelChange)="patchForm({ area_sqm: $event })" />
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Setup & availability' | translate }}</span>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="mr-setup">{{ 'Default setup' | translate }}</label>
+            <select class="field-input" id="mr-setup" [ngModel]="form().default_setup"
+                    (ngModelChange)="patchForm({ default_setup: $event })">
+              <option value="">{{ 'Not set' | translate }}</option>
+              @for (s of setups; track s) {
+                <option [value]="s">{{ labelFor(s) }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-setup-min">{{ 'Setup minutes' | translate }}</label>
+            <input class="field-input" id="mr-setup-min" type="number" min="0" [ngModel]="form().setup_time_minutes"
+                   (ngModelChange)="patchForm({ setup_time_minutes: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-teardown-min">{{ 'Teardown minutes' | translate }}</label>
+            <input class="field-input" id="mr-teardown-min" type="number" min="0" [ngModel]="form().teardown_time_minutes"
+                   (ngModelChange)="patchForm({ teardown_time_minutes: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-open">{{ 'Opens' | translate }}</label>
+            <input class="field-input" id="mr-open" type="time" [ngModel]="form().operating_hours_start"
+                   (ngModelChange)="patchForm({ operating_hours_start: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-close">{{ 'Closes' | translate }}</label>
+            <input class="field-input" id="mr-close" type="time" [ngModel]="form().operating_hours_end"
+                   (ngModelChange)="patchForm({ operating_hours_end: $event ?? '' })" />
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Rate basis' | translate }}</span>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="mr-hourly">{{ 'Hourly rate' | translate }}</label>
+            <input class="field-input" id="mr-hourly" type="number" min="0" step="0.01" [ngModel]="form().hourly_rate"
+                   (ngModelChange)="patchForm({ hourly_rate: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-halfday">{{ 'Half-day rate' | translate }}</label>
+            <input class="field-input" id="mr-halfday" type="number" min="0" step="0.01" [ngModel]="form().half_day_rate"
+                   (ngModelChange)="patchForm({ half_day_rate: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-fullday">{{ 'Full-day rate' | translate }}</label>
+            <input class="field-input" id="mr-fullday" type="number" min="0" step="0.01" [ngModel]="form().full_day_rate"
+                   (ngModelChange)="patchForm({ full_day_rate: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="mr-currency">{{ 'Currency' | translate }}</label>
+            <input class="field-input" id="mr-currency" type="text" maxlength="3" [ngModel]="form().currency_code"
+                   (ngModelChange)="patchForm({ currency_code: $event ?? '' })" />
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Features' | translate }}</span>
+        <div class="checkbox-grid">
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().has_natural_light"
+                   (ngModelChange)="patchForm({ has_natural_light: $event })" />
+            {{ 'Natural light' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().has_audio_visual"
+                   (ngModelChange)="patchForm({ has_audio_visual: $event })" />
+            {{ 'Audio visual' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().has_video_conferencing"
+                   (ngModelChange)="patchForm({ has_video_conferencing: $event })" />
+            {{ 'Video conferencing' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().has_wifi"
+                   (ngModelChange)="patchForm({ has_wifi: $event })" />
+            {{ 'WiFi' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().has_stage"
+                   (ngModelChange)="patchForm({ has_stage: $event })" />
+            {{ 'Stage' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().has_dance_floor"
+                   (ngModelChange)="patchForm({ has_dance_floor: $event })" />
+            {{ 'Dance floor' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().wheelchair_accessible"
+                   (ngModelChange)="patchForm({ wheelchair_accessible: $event })" />
+            {{ 'Step-free access' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().requires_approval"
+                   (ngModelChange)="patchForm({ requires_approval: $event })" />
+            {{ 'Requires approval' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().is_active"
+                   (ngModelChange)="patchForm({ is_active: $event })" />
+            {{ 'Active' | translate }}
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelEditor()" [disabled]="submitting()">
+        {{ 'Cancel' | translate }}
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="submitForm()" [disabled]="!canSubmit() || submitting()">
+        {{ (submitting() ? 'Saving…' : (editing() ? 'Save changes' : 'Create room')) | translate }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="filter-bar">
+  <div class="filter-fields">
+  <div class="form-field">
+    <label class="field-label" for="mr-f-type">{{ 'Room type' | translate }}</label>
+    <select class="field-input" id="mr-f-type" [ngModel]="typeFilter()"
+            (ngModelChange)="typeFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (t of roomTypes; track t) {
+        <option [value]="t">{{ labelFor(t) }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="mr-f-status">{{ 'Status' | translate }}</label>
+    <select class="field-input" id="mr-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (s of roomStatuses; track s) {
+        <option [value]="s">{{ labelFor(s) }}</option>
+      }
+    </select>
+  </div>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="table-container" aria-busy="true" [attr.aria-label]="'Loading meeting rooms' | translate">
+    <div class="skeleton-table" [style.--skeleton-cols]="skeletonCols.length" aria-hidden="true">
+      <div class="skeleton-row skeleton-row-head">
+        @for (c of skeletonCols; track $index) {
+          <span class="skeleton skeleton-text"></span>
+        }
+      </div>
+      @for (r of skeletonRows; track $index) {
+        <div class="skeleton-row">
+          @for (c of skeletonCols; track $index) {
+            <span class="skeleton skeleton-text"></span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+} @else if (rooms().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="meeting_room" />
+    <h3>{{ 'No meeting rooms yet' | translate }}</h3>
+    <p class="text-muted">{{ 'Add the function space this property sells, then book it from the function space calendar.' | translate }}</p>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Room' | translate }}</th>
+          <th>{{ 'Type' | translate }}</th>
+          <th>{{ 'Capacity by layout' | translate }}</th>
+          <th>{{ 'Features' | translate }}</th>
+          <th>{{ 'Rate' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (room of rooms(); track room.room_id) {
+          <tr>
+            <td class="cell-primary">
+              <strong>{{ room.room_code }}</strong>
+              <div class="cell-sub">{{ room.room_name }}</div>
+              @if (room.building) {
+                <div class="cell-sub">{{ room.building }}@if (room.floor !== null) { · {{ 'Floor' | translate }} {{ room.floor }} }</div>
+              }
+            </td>
+            <td>
+              {{ room.room_type_display }}
+              @if (room.area_sqm) {
+                <div class="cell-sub">{{ room.area_sqm }} m²</div>
+              }
+            </td>
+            <td>
+              <strong>{{ 'Max' | translate }} {{ room.max_capacity }}</strong>
+              <div class="cell-sub">{{ capacitySummary(room) }}</div>
+            </td>
+            <td>
+              @for (f of featureIcons(room); track f.icon) {
+                <app-icon [name]="f.icon" [attr.aria-label]="f.label | translate" />
+              }
+              @if (featureIcons(room).length === 0) { — }
+            </td>
+            <td>
+              {{ rateSummary(room) }}
+              @if (room.setup_time_minutes || room.teardown_time_minutes) {
+                <div class="cell-sub">
+                  {{ 'Turnaround' | translate }} {{ room.setup_time_minutes }}+{{ room.teardown_time_minutes }} {{ 'min' | translate }}
+                </div>
+              }
+            </td>
+            <td>
+              <span [class]="statusClass(room.room_status)">{{ room.room_status_display }}</span>
+              @if (!room.is_active) {
+                <span class="badge badge-muted badge-sm">{{ 'Retired' | translate }}</span>
+              }
+              @if (room.requires_approval) {
+                <span class="badge badge-warning badge-sm">{{ 'Approval' | translate }}</span>
+              }
+            </td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openEdit(room)">{{ 'Edit' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openRetire(room)">{{ 'Retire' | translate }}</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

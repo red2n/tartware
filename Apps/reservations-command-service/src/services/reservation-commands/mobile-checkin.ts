@@ -3,9 +3,7 @@ import { v4 as uuid } from "uuid";
 import { query } from "../../lib/db.js";
 import { reservationsLogger } from "../../logger.js";
 
-import type {
-  ReservationGenerateRegCardCommand,
-} from "../../schemas/reservation-command.js";
+import type { ReservationGenerateRegCardCommand } from "../../schemas/reservation-command.js";
 
 import { ReservationCommandError } from "./common.js";
 

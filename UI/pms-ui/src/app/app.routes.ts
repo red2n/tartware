@@ -134,6 +134,41 @@ export const routes: Routes = [
 					import("./features/rate-calendar/rate-calendar").then((m) => m.RateCalendarComponent),
 			},
 			{
+				// Sales & catering (ui-gaps/13). Two screen keys, matching the two
+				// privilege levels the write routes already draw: booking an event is
+				// STAFF, editing function space inventory is MANAGER.
+				path: "events",
+				redirectTo: "events/calendar",
+				pathMatch: "full",
+			},
+			{
+				path: "events/calendar",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/function-space-calendar/function-space-calendar").then(
+						(m) => m.FunctionSpaceCalendarComponent,
+					),
+			},
+			{
+				path: "events/meeting-rooms",
+				canActivate: [propertyGuard, screenGuard("meeting-rooms")],
+				data: { screen: "meeting-rooms" },
+				loadComponent: () =>
+					import("./features/events/meeting-rooms/meeting-rooms").then(
+						(m) => m.MeetingRoomsComponent,
+					),
+			},
+			{
+				path: "events/bookings/:eventId",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/event-booking-detail/event-booking-detail").then(
+						(m) => m.EventBookingDetailComponent,
+					),
+			},
+			{
 				path: "packages",
 				canActivate: [propertyGuard, screenGuard("packages")],
 				data: { screen: "packages" },

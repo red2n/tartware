@@ -167,6 +167,31 @@ export type EventBookingRow = {
 	updated_at: string | Date | null;
 };
 
+/**
+ * Raw row from the by-id event booking query, which selects more than the list.
+ *
+ * The list view answers "what is on in this room today"; the detail screen has
+ * to show who to call, what was promised, and where the money lands, so the
+ * fields below are read only there. Kept as an extension rather than widening
+ * `EventBookingRow`, because the list SQL genuinely does not select them.
+ */
+export type EventBookingDetailRow = EventBookingRow & {
+	teardown_end_time: string | null;
+	contact_person: string | null;
+	contact_email: string | null;
+	contact_phone: string | null;
+	group_booking_id: string | null;
+	folio_id: string | null;
+	setup_details: string | null;
+	special_requests: string | null;
+	internal_notes: string | null;
+	billing_instructions: string | null;
+	billing_contact_name: string | null;
+	billing_contact_email: string | null;
+	cancellation_date: string | Date | null;
+	cancellation_notes: string | null;
+};
+
 // =====================================================
 // BOOKING SOURCE ROW
 // =====================================================

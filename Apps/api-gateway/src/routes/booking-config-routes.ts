@@ -284,10 +284,28 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.get(
+  // Booking function space POSTs to the bare path, which the wildcard does not
+  // match, and the body carries tenant_id. See ui-gaps/13-sales-catering.md.
+  app.post(
+    "/v1/event-bookings",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create an event booking.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  // `app.all`, not `app.get`: PUT /:eventId and POST /:eventId/status both land
+  // here, and a GET-only wildcard silently swallows them.
+  app.all(
     "/v1/event-bookings/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy event booking operations to core service.",
@@ -427,10 +445,12 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyBilling,
   );
 
+  // `app.all` forwards writes, so it needs the body resolver too — a query-only
+  // wildcard refuses every body-shaped write at the edge. Both helpers are STAFF.
   app.all(
     "/v1/night-audit/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy night audit operations to billing service.",
