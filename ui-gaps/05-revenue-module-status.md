@@ -137,9 +137,27 @@ each is one table entry and the nav picks them up automatically — no new scree
 commands. **The working fifth of revenue-service is now product.**
 
 They are gated `revenue-management` at the gateway and ADMIN downstream; the reports screen already
-renders both refusals as callouts. Note `displacement-analysis` requires `finance-automation`
-downstream while the gateway checks `revenue-management`, so a tenant with one and not the other
-passes the gateway and 403s at the service — worth aligning.
+renders both refusals as callouts. 
+
+**✅ The `displacement-analysis` module gate was aligned 2026-08-18.** It required
+`finance-automation` downstream while the gateway gates all of `/v1/revenue/*` on
+`revenue-management`, so a tenant with revenue-management and not finance-automation passed the edge
+and 403d at the service. Fixed downstream rather than at the gateway, for two reasons: the gateway's
+`revenue-management` check already makes the route unreachable for a finance-automation-only tenant,
+so the old value could *only* cost tenants who had already passed; and displacement analysis ships
+beside `segment-analysis`, `channel-profitability` and `booking-pace` on the reports screen, all three
+of which are `revenue-management`. All four shipped analyses now gate identically.
+
+**Still mismatched, deliberately left alone:** `forecasts`, `goals`, `kpis`, `compset-indices`,
+`budget-variance` and `managers-report` require `finance-automation` downstream behind the same
+`revenue-management` gateway gate — so they effectively require *both* modules. None is reachable from
+the UI yet, and requiring both may be intentional for a premium reporting tier. That is a product
+decision, not a bug, and it should be recorded either way before any of them ships.
+
+No conformance test was added for this class. Asserting gateway and service modules must match would
+fire on those six legitimate both-module routes, and a test that cries wolf is worse than none — the
+same lesson the enum sweep recorded on 2026-08-13. A trustworthy version needs the tiering decision
+made first.
 
 **Still yours to decide:** the other 15 endpoints and 32 commands. Build the recommendation chain
 (generate → approve → apply plus the pricing-rule editor, which is three items, not one) or retire

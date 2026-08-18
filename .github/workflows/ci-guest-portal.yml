@@ -5,12 +5,14 @@ on:
     branches: [main, develop, deployment]
     paths:
       - 'UI/guest-portal/**'
+      - 'UI/shared-styles/**'
       - 'schema/**'
       - 'package.json'
       - 'nx.json'
   pull_request:
     paths:
       - 'UI/guest-portal/**'
+      - 'UI/shared-styles/**'
       - 'schema/**'
   workflow_dispatch:
 
@@ -59,6 +61,9 @@ jobs:
 
       - name: Build schemas (dependency)
         run: npx nx run @tartware/schemas:build
+
+      - name: Check palette contrast (WCAG 2.2)
+        run: node UI/shared-styles/check-contrast.mjs
 
       - name: Build Guest Portal
         run: npx nx run @tartware/guest-portal:build

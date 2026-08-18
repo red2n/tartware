@@ -154,3 +154,39 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Material → shared tokens bridge ──
+ * Material v21 emits literal colour values per component rather than routing
+ * through --mat-sys-*, so the azure palette above decides what a button looks
+ * like. Left alone, the guest CTA is #005cbb in light and a pale #abc7ff with
+ * dark text in dark mode, while the PMS CTA is #1a6fc7 with a white label in
+ * both. Same product, two different primary actions.
+ *
+ * Both Material defaults pass contrast; this is about the two apps agreeing.
+ * Only the tokens that carry brand colour are re-pointed — Material keeps
+ * ownership of shape, ripple, elevation and disabled states.
+ *
+ * Selector is html[data-theme], not html: the dark block above is
+ * [data-theme='dark'] at (0,1,0) and would otherwise outrank a bare element
+ * selector, leaving dark mode on Material's pale azure while light followed
+ * our token. data-theme is always present, so this matches in both themes.
+ */
+html[data-theme] {
+  --mat-button-filled-container-color: var(--button-primary-bgColor-rest);
+  --mat-button-filled-label-text-color: var(--fgColor-onEmphasis);
+  --mat-button-filled-state-layer-color: var(--fgColor-onEmphasis);
+  --mat-button-filled-ripple-color: var(--fgColor-onEmphasis);
+
+  --mat-button-protected-container-color: var(--button-primary-bgColor-rest);
+  --mat-button-protected-label-text-color: var(--fgColor-onEmphasis);
+
+  --mat-button-outlined-label-text-color: var(--fgColor-accent);
+  --mat-button-outlined-outline-color: var(--borderColor-control);
+
+  --mat-button-text-label-text-color: var(--fgColor-accent);
+
+  /* Form fields: the focused label and underline are the other place the
+     accent shows up on every page of the booking flow. */
+  --mat-form-field-focus-active-indicator-color: var(--fgColor-accent);
+  --mat-form-field-focus-label-text-color: var(--fgColor-accent);
+}

@@ -355,4 +355,31 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     },
     proxyHousekeeping,
   );
+
+  /**
+   * Maintenance writes. Only POST is registered because POST is all
+   * housekeeping-service implements under this prefix — a PUT/DELETE wildcard
+   * here would advertise a write surface that does not exist, which is the
+   * phantom-write defect `wildcard-write-conformance.test.ts` guards against.
+   *
+   * The wildcard was demoted to `app.get` in the 2026-08-13 sweep because the
+   * domain was read-only; it is promoted here in the same change as the service
+   * writes, which is the pairing the converse check now enforces.
+   * See ui-gaps/18-write-path-gap.md.
+   */
+  app.post(
+    "/v1/maintenance/*",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy maintenance writes to the housekeeping service.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyHousekeeping,
+  );
 };

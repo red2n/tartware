@@ -60,11 +60,11 @@ And two findings the audit did not make at all:
 |---|---|---|---|
 | UI calls hitting a missing route | 0 | 0 | confirmed |
 | Backend endpoints | 428 | 635 raw registrations | raw count includes gateway proxy pairs |
-| Commands total | 199 | **202** | `case` labels across 11 consumers |
-| Commands wrapped in gateway REST actions | 75 | **81** | `commandName:` in `Apps/api-gateway` |
-| Commands dispatched directly by UI | 21 | **22** | `/commands/<name>` in `UI/*` |
-| Commands with **no** wrapper and **no** direct dispatch | — | **108** | structurally unreachable |
-| Commands unreachable *from the UI* | 134 | 108–134 | 26 have a wrapper the UI never calls |
+| Commands total | 199 | **203** | `case` labels across 11 consumers (re-derived 2026-08-18) |
+| Commands reachable from the gateway | 75 | **83** | incl. ternary and wrapper-factory forms a `commandName:` regex misses |
+| Commands dispatched directly by UI | 21 | **26** | `/commands/<name>` in `UI/*`, incl. the resolved dynamic dispatch |
+| Commands with **no** wrapper and **no** direct dispatch | — | **95** | structurally unreachable — all classified 2026-08-18 |
+| Commands unreachable *from the UI* | 134 | **95** | was overstated: the scan missed two dispatch forms, see [17](17-command-reachability.md) |
 | Domains with zero UI presence | 16 | 16 | confirmed by whole-word search |
 | Catalogued commands with no handler anywhere | — | **4** | was 7; three deleted 2026-08-13 rather than implemented |
 
@@ -129,7 +129,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 17 | 108 commands structurally unreachable; 26 more wrapped but uncalled | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | L |
+| 17 | **✅ classified 2026-08-18**: 95 unreachable (not 108), split a/b/c. Found 3 sweeps with **no invoker at all** and 12 flow-declared commands that are unreachable | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | part |
 
 ---
 

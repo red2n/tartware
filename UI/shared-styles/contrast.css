@@ -32,6 +32,14 @@
 		--fgColor-done: #5b21b6;
 		--fgColor-open: #136129;
 
+		/* The status washes lift with the text. contrast.css darkened
+		   --fgColor-success/-danger for the 7:1 tier but left the muted fills
+		   they sit on, so the success, danger and open badges landed at 6.81:1
+		   against a 7:1 floor. --bgColor-open-muted is var(--bgColor-success-muted)
+		   and follows automatically. */
+		--bgColor-success-muted: #e8fdee;
+		--bgColor-danger-muted: #fff2f1;
+
 		--borderColor-default: #6e7687;
 		--borderColor-muted: #6e7687;
 		--borderColor-control: #5c6470;
@@ -102,15 +110,25 @@
 		outline-offset: 2px;
 	}
 
-	/* The selected nav item is marked with a tint that the OS discards. */
-	.nav-item-active {
-		border-inline-start: 3px solid Highlight;
+	/* Component-scoped rules below need !important.
+	   Angular's emulated encapsulation rewrites a component selector to
+	   `.foo[_ngcontent-abc]`, which is (0,2,0) and outranks anything a global
+	   stylesheet can say with a single class. Rules targeting classes defined
+	   in shared.scss (badges, cards, fields, skeletons) are global too, so
+	   they win on source order alone and need none of this. */
+
+	/* The selected nav item is a ::before bar tinted with --fgColor-accent,
+	   plus a background wash. The OS flattens both, so the bar is repainted in
+	   the system highlight colour rather than given a border it never had. */
+	.nav-item-active::before {
+		background: Highlight !important;
+		width: 3px !important;
 	}
 
 	/* The watermark scene is pure decoration and only adds noise once the
 	   palette is overridden. */
 	.title-bar-motif {
-		display: none;
+		display: none !important;
 	}
 
 	/* Skeletons stay — they are the only "still loading" signal on screen.

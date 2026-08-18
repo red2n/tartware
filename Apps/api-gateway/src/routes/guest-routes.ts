@@ -461,4 +461,34 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
     },
     proxyGuests,
   );
+
+  /**
+   * The privacy writes under this prefix (CCPA opt-out, communication
+   * preferences) are PUT-only and MANAGER-gated in guests-service. Only PUT is
+   * registered: a POST/DELETE wildcard here would advertise a write surface the
+   * service does not implement — see ui-gaps/18-write-path-gap.md.
+   */
+  const guestWriteScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  app.put(
+    "/v1/guests/*",
+    {
+      preHandler: guestWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "Proxy nested guest privacy updates to the guests service.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyGuests,
+  );
 };

@@ -72,6 +72,21 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /**
+   * Writes proxied through the billing catch-all. Tenant comes from the body on
+   * a write, not the query. STAFF is the floor, deliberately the least
+   * restrictive role any of these routes accepts — billing-service enforces the
+   * stricter role per route (MANAGER on approve/reject), so raising it here
+   * would only lock STAFF out of the writes it is entitled to.
+   */
+  const billingWriteScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
   const financeTenantScopeFromQuery = app.withTenantScope({
     resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "ADMIN",
@@ -1226,6 +1241,53 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy nested billing routes to the billing service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.post(
+    "/v1/billing/*",
+    {
+      preHandler: billingWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing writes to the billing service.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.patch(
+    "/v1/billing/*",
+    {
+      preHandler: billingWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing partial updates to the billing service.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.delete(
+    "/v1/billing/*",
+    {
+      preHandler: billingWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing deletions to the billing service.",
         response: {
           200: jsonObjectSchema,
         },

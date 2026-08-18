@@ -1,7 +1,9 @@
 /**
  * Shared palette — LIGHT. Consumed by pms-ui and guest-portal alike.
  *
- * @spec  ./README.md for the token set, cascade order and contrast floors.
+ * @spec  ./README.md — the naming grammar, the full token set, the pairing
+ *        contract (which foreground may sit on which background) and the
+ *        contrast floor each pairing holds.
  *        (This header used to point at /DESIGN_TOKENS_SPEC.md, which is a file
  *        inside @primer/primitives, not a file in this repo.)
  * @rule  Never use raw values in an app. Semantic tokens ONLY.
@@ -23,7 +25,10 @@
    */
   --fgColor-accent: #1a6fc7;
   --bgColor-accent-emphasis: #1a6fc7;
-  --bgColor-accent-muted: #e8f2fd;
+  /* 4.60:1 behind --fgColor-accent. #e8f2fd was 4.48:1 — the accent badge
+     was the one status chip under the floor, and nothing checked it until
+     the badge pairing was added to the guard. */
+  --bgColor-accent-muted: #ecf5fe;
   --borderColor-accent-emphasis: #1a6fc7;
   --borderColor-accent-muted: #2081e266;
   /* Glows, gradients and washes that never sit under text. */

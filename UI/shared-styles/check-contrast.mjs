@@ -132,6 +132,17 @@ const PAIRS = [
 	["--borderColor-control", "--bgColor-default", UI, "input border on the page"],
 	["--borderColor-control", "--bgColor-muted", UI, "input border on a panel"],
 	["--borderColor-accent-emphasis", "--bgColor-default", UI, "focus ring on the page"],
+
+	/* The badge contract: `--bgColor-<role>-muted` is a wash that carries
+	   `--fgColor-<role>`, never --fgColor-default. Every status chip in
+	   shared.scss is built this way, and none of it was checked — the light
+	   accent badge was sitting at 4.48:1. */
+	["--fgColor-success", "--bgColor-success-muted", TEXT, "success badge"],
+	["--fgColor-danger", "--bgColor-danger-muted", TEXT, "danger badge"],
+	["--fgColor-attention", "--bgColor-attention-muted", TEXT, "attention badge"],
+	["--fgColor-done", "--bgColor-done-muted", TEXT, "done badge"],
+	["--fgColor-accent", "--bgColor-accent-muted", TEXT, "accent badge"],
+	["--fgColor-open", "--bgColor-open-muted", TEXT, "open badge"],
 ];
 
 /** Same pairings, but text must reach AAA once more contrast is requested. */
@@ -159,6 +170,30 @@ const THEMES = [
 
 let failures = 0;
 let checked = 0;
+
+/* ── Theme parity ──────────────────────────────────────────
+ * README states the rule — "a token that exists in one theme is a bug waiting
+ * for the other theme" — and nothing enforced it. A token missing from one
+ * palette does not fall back to a sane value; it falls back to *nothing*, and
+ * the property it feeds is simply dropped in that theme. That reads as an
+ * invisible border or unstyled text, not as an error.
+ */
+{
+  const light = new Set(Object.keys(THEMES[0].base));
+  const dark = new Set(Object.keys(THEMES[1].base));
+  const missingFromDark = [...light].filter((token) => !dark.has(token)).sort();
+  const missingFromLight = [...dark].filter((token) => !light.has(token)).sort();
+
+  console.log(`\n  theme parity`);
+  checked++;
+  if (missingFromDark.length === 0 && missingFromLight.length === 0) {
+    console.log(`  pass  ${String(light.size).padStart(6)}    tokens defined in both themes`);
+  } else {
+    failures++;
+    for (const token of missingFromDark) console.log(`  FAIL           ${token} — missing from palette-dark.css`);
+    for (const token of missingFromLight) console.log(`  FAIL           ${token} — missing from palette-light.css`);
+  }
+}
 
 for (const theme of THEMES) {
 	for (const [mode, scope, pairs] of [

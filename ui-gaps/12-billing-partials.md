@@ -20,6 +20,25 @@
 > - **Flow-guard bypass log** — the `force`-override audit trail. **`flow_approvals` has 22 rows in the
 >   dev database that nothing could read**, which is exactly the failure this spec described.
 >
+> ### ⚠️ Every action button on this screen was 404ing — found and fixed 2026-08-18
+>
+> The queue read fine, but Approve / Reject / Cancel never reached the service. The screen issues
+> `POST /v1/billing/approvals/:id/:action`, and the gateway registered **only** `app.get("/v1/billing/*")`
+> for the prefix — so the POST matched no route and came back "no such route". The screen shipped
+> 2026-08-11 in that state and the defect survived seven days of green CI.
+>
+> Nothing could have caught it: `proxy-route-conformance.test.ts` skips wildcards by design, and
+> `wildcard-write-conformance.test.ts` only scanned `app.all`, so a write stranded behind a read-only
+> wildcard was invisible to both. The converse check added in
+> [18-write-path-gap.md](18-write-path-gap.md) found it on its first run, along with 8 more stranded
+> billing writes and 2 guest privacy writes.
+>
+> **Worth drawing the lesson explicitly:** this spec recorded the screen as shipped on the strength of
+> the UI being built and the reads working. Neither this backlog nor CI checks that a write path is
+> reachable end to end. A screen is not shipped until one of its writes has been exercised against a
+> running gateway — the same "an endpoint nothing calls is an endpoint whose defects nobody sees"
+> argument COV-18 makes about by-id reads applies to the buttons.
+
 > **Corrected while building:** I first wrote the bypass table against guessed column names
 > (`flow_id`, `justification`, `created_at`). The real shape from `flow-approval-repository.ts` is
 > `flow_name`, `gate_name`, `reason_code`, `reason_notes`, `approved_at`, `role_at_approval` — a log

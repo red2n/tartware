@@ -48,7 +48,7 @@
 > spot the proxy-conformance test leaves open by design: it skips wildcards, which is exactly where
 > writes were being swallowed. Verified to fail by reverting one route and watching it catch it.
 >
-> ### ⚠️ The guardrail is one-directional — found 2026-08-17
+> ### ✅ The one-directional guardrail is closed — 2026-08-18
 >
 > It scans `app.all(...)` registrations only. So it catches **`app.all` with no downstream write**
 > (a phantom write surface) but is blind to the converse: **a downstream write with only `app.get`
@@ -60,8 +60,32 @@
 >
 > **Consequence for the remaining domains** (allotments, event bookings, banquet orders): the
 > 2026-08-13 sweep demoted all 13 wildcards to `app.get`, so every one of them now needs its gateway
-> registration promoted back to `app.all` *in the same commit* as its service write — and no test
-> will remind you. Until the converse check exists, that pairing is a manual step.
+> registration promoted back to `app.all` *in the same commit* as its service write.
+>
+> **The converse check now enforces that pairing**, added 2026-08-18 as a second `describe` block in
+> `Apps/api-gateway/tests/wildcard-write-conformance.test.ts`: for every wildcard the gateway proxies,
+> each write its target implements under that prefix must have a gateway registration that accepts
+> **that method**. Method-awareness is the load-bearing part — the first draft treated "some write
+> method is registered on the prefix" as coverage, and demoting `app.post` while `app.patch` and
+> `app.delete` remained slipped straight past it. Both directions were verified by reintroducing a
+> regression and watching the suite fail.
+>
+> **It found two live strandings on its first run, both now fixed:**
+>
+> | Prefix | Stranded | Impact |
+> |---|---|---|
+> | `/v1/billing/*` | 7 POSTs + 1 PATCH + 1 DELETE in billing-service | **User-facing.** COV-12's approvals screen listed pending requests correctly, but every Approve / Reject / Cancel button issued `POST /v1/billing/approvals/:id/:action` into a gateway that registered only `app.get` for the prefix — "no such route". The screen shipped 2026-08-11 with dead actions. |
+> | `/v1/guests/*` | 2 PUTs (CCPA opt-out, communication preferences) | Latent — MANAGER-gated privacy writes with no UI caller yet. |
+>
+> Gateway registrations were added for **exactly the methods each service implements** — POST/PATCH/DELETE
+> for billing, PUT only for guests. Adding the rest would recreate the phantom-write surface the sibling
+> check guards against. The billing wildcard takes `minRole: "STAFF"`, the least restrictive role any of
+> those routes accepts; billing-service still enforces MANAGER on approve/reject, so the gateway does
+> coarse scoping and the service does fine-grained authz.
+>
+> **A false positive worth recording:** `/v1/room-types/*` looked stranded until the check learned that a
+> wildcard is commonly registered once per method (`app.get` + `app.put` + `app.patch` + `app.delete`)
+> rather than as one `app.all`. Those writes were always reachable.
 >
 > **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
 > `operations.incident.report` were deleted rather than implemented, because each described a write
@@ -73,6 +97,21 @@
 > [13](13-sales-catering.md) decided **build** on 2026-08-17 and shipped meeting-room writes, so
 > event bookings and banquet orders are unblocked and queued behind it; allotments is
 > [16](16-booking-reference-data.md)'s, pending the availability-guard call.
+
+> ### ✅ Maintenance write path shipped 2026-08-18
+>
+> `operations.maintenance.*` was the textbook case for this spec's rule, and the first write path built
+> after the converse guardrail existed. Four handled commands with no dispatcher, two GETs, and a
+> demoted `app.get` wildcard. All four writes touch `maintenance_requests` in one service with no
+> fan-out, so they were built as **HTTP on housekeeping-service** — matching the
+> `operations.incident.report` deletion of 2026-08-13 rather than adding a fifth gateway command wrapper.
+>
+> The gateway wildcard was promoted from `app.get` to `app.get` + `app.post` **in the same change** as
+> the service writes. That is exactly the pairing this spec warned "no test will remind you" about, and
+> the converse check now does: reverting the gateway registration names all four stranded writes.
+>
+> Remaining domains with no write path: allotments ([16](16-booking-reference-data.md)), event bookings
+> and banquet orders ([13](13-sales-catering.md)).
 
 > ### Related defect found 2026-08-11: `SELECT x.*` in every `*_BY_ID_SQL`
 >

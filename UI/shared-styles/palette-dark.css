@@ -1,7 +1,9 @@
 /**
  * Shared palette — DARK. Consumed by pms-ui and guest-portal alike.
  *
- * @spec  ./README.md for the token set, cascade order and contrast floors.
+ * @spec  ./README.md — the naming grammar, the full token set, the pairing
+ *        contract (which foreground may sit on which background) and the
+ *        contrast floor each pairing holds.
  * @rule  Never use raw values in an app. Semantic tokens ONLY.
  * @test  node UI/shared-styles/check-contrast.mjs — run it after any edit here.
  */
