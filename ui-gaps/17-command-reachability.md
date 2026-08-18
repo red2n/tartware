@@ -64,7 +64,7 @@
 >   guests-service's `routes/checkin.ts`. The reservations-command-service commands are a third
 >   entry point for the same operation and nothing dispatches them.
 >
-> ### ✅ `operations.maintenance.*` — write path shipped 2026-08-18, commands now retirable
+> ### ✅ `operations.maintenance.*` — write path **and screen** shipped 2026-08-18, commands now retirable
 
 Classified **(a)** above, and building it showed the classification was half right: the *capability*
 was missing, but the four commands were the wrong vehicle for it.
@@ -89,6 +89,21 @@ a PUT/DELETE wildcard would recreate the phantom-write surface the sibling check
 
 **Consequently the four commands move (a) → (c)**, on the incident precedent: keeping them would mean
 two write paths for one table. They join the retirement list.
+
+**Screen shipped the same day:** `UI/pms-ui/src/app/features/housekeeping/maintenance/`, route
+`/housekeeping/maintenance`, nav entry under Housekeeping. It reuses the `housekeeping` screen key —
+like the incidents and lost-and-found screens beside it — so no new permission seed was needed.
+
+- **Raise** a fault: category, type, priority, room or free-text location, and an
+  "stops the room being sold" flag.
+- **Assign** to a technician (the `/users` picker `features/housekeeping` already uses, since
+  `assigned_to` is a user id), **complete** with labour/parts cost and duration, **escalate** with a
+  reason and optional new priority.
+- Three banners, ordered by what costs money: **rooms out of service** on an unresolved fault first,
+  then open safety/health issues, then anything urgent or above. Rooms held out of sale is the number
+  a duty manager acts on, so it is a banner rather than a column.
+
+`/v1/reports/maintenance-sla` now reports on a table the product can fill.
 
 **The converse guardrail earned itself here.** Removing the gateway `app.post` and re-running named all
 four stranded writes exactly — the pairing that COV-18 noted "no test will remind you" about on

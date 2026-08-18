@@ -218,6 +218,12 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "Items handed in, held in storage, claimed and returned",
 			},
 			{
+				label: "Maintenance",
+				icon: "build",
+				route: "/housekeeping/maintenance",
+				description: "Property faults — raise, assign, complete and escalate",
+			},
+			{
 				label: "Incidents",
 				icon: "report",
 				route: "/housekeeping/incidents",

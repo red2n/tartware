@@ -216,6 +216,15 @@ export const routes: Routes = [
 					import("./features/housekeeping/incidents/incidents").then((m) => m.IncidentsComponent),
 			},
 			{
+				path: "housekeeping/maintenance",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/housekeeping/maintenance/maintenance").then(
+						(m) => m.MaintenanceComponent,
+					),
+			},
+			{
 				path: "housekeeping/lost-and-found",
 				canActivate: [propertyGuard, screenGuard("housekeeping")],
 				data: { screen: "housekeeping" },
