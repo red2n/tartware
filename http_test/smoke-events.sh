@@ -2,16 +2,18 @@
 ###############################################################################
 # smoke-events.sh — live write-path smoke test for function space.
 #
-# Covers ui-gaps/13-sales-catering.md slices 1 (meeting rooms) and 2 (event
-# bookings). Everything goes through the API gateway on :8080, because the
-# gateway's own routing for these paths is part of what is under test — the
-# wildcard there was GET-only and swallowed every write.
+# Covers ui-gaps/13-sales-catering.md slices 1 (meeting rooms), 2 (event
+# bookings) and 3 (banquet orders). Everything goes through the API gateway on
+# :8080, because the gateway's own routing for these paths is part of what is
+# under test — the wildcard there was GET-only and swallowed every write.
 #
 # Needs the dev stack up (pnpm run dev). No direct SQL, per the house rule in
 # executables/test-accounts-realdata: it creates its own room with a run-unique
 # code, then cancels the bookings and retires the rooms it made. Rows are left
 # behind in a cancelled/retired state rather than deleted, so re-runs are safe
-# but the tables do grow.
+# but the tables do grow. BEOs have no delete or cancel route of their own, so
+# the ones this script creates are simply left in place under their run-unique
+# BEO numbers.
 #
 # Note: right after a core-service restart the gateway's circuit breaker can
 # still be open and the first write returns 503. Re-run; it is not a code fault.
@@ -185,6 +187,122 @@ code=$(req GET "$GW/v1/event-bookings?tenant_id=$TID&booking_status=confirmed&me
 check "list filter booking_status=confirmed (lowercase in)" 200 "$code"
 confirmed=$(jq -r '(if type=="array" then . else (.data // []) end) | map(select(.booking_status=="CONFIRMED")) | length' "$RESP")
 check "  filter returns the confirmed booking" 1 "$confirmed"
+
+echo
+echo "── BANQUET ORDERS (slice 3) ──"
+
+mk_beo() { # extra-json
+  cat <<JSON
+{"tenant_id":"$TID","property_id":"$PID","event_booking_id":"$EVENT_A",
+ "meeting_room_id":"$ROOM_ID","event_date":"$D1",
+ "setup_start_time":"07:00","event_start_time":"09:00","event_end_time":"12:00",
+ "teardown_end_time":"13:00","room_setup":"BANQUET","guaranteed_count":120,
+ "expected_count":130,"menu_type":"PLATED","service_style":"PLATED",
+ "menu_items":[{"name":"Chicken roulade","quantity":120}],
+ "entrees":[{"name":"Chicken roulade"},{"name":"Wild mushroom risotto"}],
+ "bar_type":"HOST_BAR","vegetarian_count":12,"gluten_free_count":4,
+ "servers_count":10,"chefs_count":4,"food_subtotal":7200,"beverage_subtotal":2400,
+ "currency_code":"USD","kitchen_instructions":"Nut-free kitchen for this event",
+ "distribution_list":["kitchen@example.com","setup@example.com"]
+ ${1:+,$1}}
+JSON
+}
+
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo)")
+check "POST /v1/banquet-orders creates" 201 "$code"
+BEO_V1=$(jq -r '.data.beo_id // empty' "$RESP")
+BEO_NUMBER=$(jq -r '.data.beo_number // empty' "$RESP")
+check "  born as DRAFT" DRAFT "$(jq -r '.data.beo_status // empty' "$RESP")"
+check "  version 1" 1 "$(jq -r '.data.beo_version // empty' "$RESP")"
+check "  not superseded" false "$(jq -r '.data.is_superseded' "$RESP")"
+check "  JSONB round-trips as JSON not an array literal" "Chicken roulade" \
+  "$(jq -r '.data.menu_items[0].name // empty' "$RESP")"
+check "  TEXT[] round-trips" "kitchen@example.com" \
+  "$(jq -r '.data.distribution_list[0] // empty' "$RESP")"
+[[ -n "$BEO_V1" ]] || { echo "FATAL: no beo_id — cannot continue"; exit 1; }
+
+code=$(req POST "$GW/v1/banquet-orders" \
+  "$(mk_beo '"event_booking_id":"'"$(uuid)"'"')")
+check "unknown event booking → not found" 404 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"guaranteed_count":0')")
+check "guaranteed_count 0 → bad request (CHECK mirrored in zod)" 400 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"event_end_time":"08:00"')")
+check "end before start → bad request" 400 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"setup_start_time":"10:00"')")
+check "setup after start → bad request" 400 "$code"
+
+echo
+echo "── BEO EDIT WHILE DRAFT ──"
+code=$(req PUT "$GW/v1/banquet-orders/$BEO_V1" \
+  "{\"tenant_id\":\"$TID\",\"guaranteed_count\":140,\"chefs_count\":6,\"allergy_warnings\":\"Severe nut allergy on table 4\"}")
+check "PUT /v1/banquet-orders/:beoId updates a draft" 200 "$code"
+check "  guaranteed_count persisted" 140 "$(jq -r '.data.guaranteed_count // empty' "$RESP")"
+check "  untouched field kept" "PLATED" "$(jq -r '.data.menu_type // empty' "$RESP")"
+
+echo
+echo "── PUBLISH FREEZES THE DOCUMENT ──"
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V1/publish" \
+  "{\"tenant_id\":\"$TID\",\"notify_client\":true}")
+check "POST /v1/banquet-orders/:beoId/publish" 200 "$code"
+check "  status APPROVED" APPROVED "$(jq -r '.data.beo_status // empty' "$RESP")"
+sent=$(jq -r 'if (.data.last_sent_to_kitchen // null) != null then "ok" else "missing" end' "$RESP")
+check "  last_sent_to_kitchen stamped" ok "$sent"
+sent=$(jq -r 'if (.data.last_sent_to_client // null) != null then "ok" else "missing" end' "$RESP")
+check "  last_sent_to_client stamped (notify_client)" ok "$sent"
+
+code=$(req PUT "$GW/v1/banquet-orders/$BEO_V1" "{\"tenant_id\":\"$TID\",\"guaranteed_count\":150}")
+check "editing a published BEO → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V1/publish" "{\"tenant_id\":\"$TID\"}")
+check "publishing twice → conflict" 409 "$code"
+
+echo
+echo "── REVISE PRODUCES A NEW VERSION ──"
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V1/revise" \
+  "{\"tenant_id\":\"$TID\",\"revision_reason\":\"Client added a vegan main\"}")
+check "POST /v1/banquet-orders/:beoId/revise" 201 "$code"
+BEO_V2=$(jq -r '.data.beo_id // empty' "$RESP")
+check "  version 2" 2 "$(jq -r '.data.beo_version // empty' "$RESP")"
+check "  same beo_number" "$BEO_NUMBER" "$(jq -r '.data.beo_number // empty' "$RESP")"
+check "  back to DRAFT" DRAFT "$(jq -r '.data.beo_status // empty' "$RESP")"
+check "  previous_beo_id points at v1" "$BEO_V1" "$(jq -r '.data.previous_beo_id // empty' "$RESP")"
+check "  revision_reason recorded" "Client added a vegan main" "$(jq -r '.data.revision_reason // empty' "$RESP")"
+check "  content copied forward" 140 "$(jq -r '.data.guaranteed_count // empty' "$RESP")"
+check "  JSONB copied forward" "Chicken roulade" "$(jq -r '.data.menu_items[0].name // empty' "$RESP")"
+check "  approvals reset" null "$(jq -r '.data.last_sent_to_kitchen // "null"' "$RESP")"
+
+code=$(req GET "$GW/v1/banquet-orders/$BEO_V1?tenant_id=$TID")
+check "GET v1 after revision" 200 "$code"
+check "  v1 now reads as superseded" true "$(jq -r '.data.is_superseded' "$RESP")"
+check "  v1 kept the status it was issued under" APPROVED "$(jq -r '.data.beo_status // empty' "$RESP")"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V1/revise" \
+  "{\"tenant_id\":\"$TID\",\"revision_reason\":\"forking the chain\"}")
+check "revising a superseded version → conflict" 409 "$code"
+
+code=$(req PUT "$GW/v1/banquet-orders/$BEO_V2" \
+  "{\"tenant_id\":\"$TID\",\"entrees\":[{\"name\":\"Chicken roulade\"},{\"name\":\"Vegan wellington\"}]}")
+check "the new draft is editable again" 200 "$code"
+check "  revised menu persisted" "Vegan wellington" "$(jq -r '.data.entrees[1].name // empty' "$RESP")"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/publish" "{\"tenant_id\":\"$TID\"}")
+check "publishing the revision" 200 "$code"
+
+echo
+echo "── BEO READS ──"
+code=$(req GET "$GW/v1/banquet-orders?tenant_id=$TID&meeting_room_id=$ROOM_ID")
+check "GET /v1/banquet-orders list" 200 "$code"
+versions=$(jq -r --arg n "$BEO_NUMBER" '(if type=="array" then . else (.data // []) end) | map(select(.beo_number==$n)) | length' "$RESP")
+check "  both versions listed under one number" 2 "$versions"
+
+code=$(req GET "$GW/v1/banquet-orders?tenant_id=$TID&beo_status=APPROVED&meeting_room_id=$ROOM_ID")
+check "list filter beo_status=APPROVED" 200 "$code"
+
+code=$(req GET "$GW/v1/banquet-orders/$(uuid)?tenant_id=$TID")
+check "unknown beo_id → not found" 404 "$code"
 
 echo
 echo "── ROOM RETIREMENT ──"

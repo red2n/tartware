@@ -2024,11 +2024,19 @@ export type ShiftHandoverWriteInput = {
 
 /**
  * BEO status enum.
+ *
+ * These are exactly the six spellings in `banquet_event_orders_beo_status_check`.
+ * Until slice 3 of ui-gaps/13-sales-catering.md this enum read `PENDING` and
+ * `CONFIRMED` where the table says `PENDING_APPROVAL` and `APPROVED` — drift
+ * that stayed invisible because nothing referenced the enum (`beo_status` on the
+ * list item was the untyped `z.string()`, and the GET route spelled the filter
+ * values out by hand). The first write to reach for it would have been rejected
+ * by the CHECK at runtime. Same class as the 2026-08-13 case-drift sweep.
  */
 export const BeoStatusEnum = z.enum([
 	"DRAFT",
-	"PENDING",
-	"CONFIRMED",
+	"PENDING_APPROVAL",
+	"APPROVED",
 	"IN_PROGRESS",
 	"COMPLETED",
 	"CANCELLED",
@@ -2047,8 +2055,14 @@ export const BanquetOrderListItemSchema = z.object({
 	event_booking_id: uuid,
 	beo_number: z.string(),
 	beo_version: z.number().int().optional(),
-	beo_status: z.string(),
+	beo_status: BeoStatusEnum,
 	beo_status_display: z.string(),
+	/**
+	 * True when a later revision points back at this row via `previous_beo_id`.
+	 * Derived in SQL rather than stored: the status CHECK has no `SUPERSEDED`
+	 * value, and the revision chain already carries the fact.
+	 */
+	is_superseded: z.boolean(),
 	event_date: z.string(),
 	event_start_time: z.string(),
 	event_end_time: z.string(),
@@ -2076,6 +2090,636 @@ export const BanquetOrderListItemSchema = z.object({
 });
 
 export type BanquetOrderListItem = z.infer<typeof BanquetOrderListItemSchema>;
+
+/**
+ * Banquet Event Order detail schema.
+ * Used by: GET /v1/banquet-orders/:beoId and every write route's response.
+ *
+ * The list item carries what a BEO index row needs. The BEO *is* the operational
+ * document, though — the kitchen, the setup crew and the captain all work from
+ * it — so the detail adds the parts they actually read: the full timeline, the
+ * F&B blocks, dietary counts, décor, equipment, staffing, instructions and the
+ * approval and execution state. UI items 3 (BEO editor) and 5 (daily BEO print)
+ * both read from here.
+ *
+ * `DECIMAL` and `TIME` columns arrive as strings because the query casts them
+ * `::TEXT`, matching the list item's existing money fields; timestamps are
+ * ISO strings via the service's `toIsoString`.
+ */
+export const BanquetOrderDetailSchema = BanquetOrderListItemSchema.extend({
+	// Revision tracking — the reason this domain is versioned at all
+	revision_date: z.string().optional(),
+	revision_reason: z.string().optional(),
+	previous_beo_id: uuid.optional(),
+
+	// Timeline
+	setup_start_time: z.string(),
+	teardown_end_time: z.string().optional(),
+	room_release_time: z.string().optional(),
+
+	// Room and setup
+	tables_count: z.number().int().optional(),
+	chairs_count: z.number().int().optional(),
+	table_configuration: z.string().optional(),
+	seating_chart_layout_url: z.string().optional(),
+	over_set_percentage: z.string().optional(),
+
+	// Menu and food service
+	menu_items: z.unknown().optional(),
+	courses_count: z.number().int().optional(),
+	meal_service_start_time: z.string().optional(),
+	meal_service_duration_minutes: z.number().int().optional(),
+	appetizers: z.unknown().optional(),
+	salads: z.unknown().optional(),
+	entrees: z.unknown().optional(),
+	sides: z.unknown().optional(),
+	desserts: z.unknown().optional(),
+	stations: z.unknown().optional(),
+
+	// Beverage service
+	bar_start_time: z.string().optional(),
+	bar_end_time: z.string().optional(),
+	bar_setup_location: z.string().optional(),
+	beverages: z.unknown().optional(),
+	wine_service: z.unknown().optional(),
+	coffee_tea_service: z.boolean().optional(),
+	water_service: z.string().optional(),
+
+	// Dietary restrictions — what the kitchen plates separately
+	vegetarian_count: z.number().int().optional(),
+	vegan_count: z.number().int().optional(),
+	gluten_free_count: z.number().int().optional(),
+	dairy_free_count: z.number().int().optional(),
+	nut_free_count: z.number().int().optional(),
+	kosher_count: z.number().int().optional(),
+	halal_count: z.number().int().optional(),
+	special_diets: z.unknown().optional(),
+
+	// Linens and décor
+	linen_color: z.string().optional(),
+	linen_type: z.string().optional(),
+	napkin_color: z.string().optional(),
+	napkin_fold: z.string().optional(),
+	table_skirting: z.boolean().optional(),
+	centerpieces: z.string().optional(),
+	decor_description: z.string().optional(),
+	candles: z.boolean().optional(),
+	floral_arrangements: z.string().optional(),
+
+	// Equipment and AV
+	equipment_list: z.unknown().optional(),
+	av_equipment: z.unknown().optional(),
+	stage_required: z.boolean().optional(),
+	stage_dimensions: z.string().optional(),
+	podium_required: z.boolean().optional(),
+	dance_floor_required: z.boolean().optional(),
+	special_lighting: z.boolean().optional(),
+	lighting_notes: z.string().optional(),
+
+	// Service staff
+	servers_count: z.number().int().optional(),
+	bartenders_count: z.number().int().optional(),
+	chefs_count: z.number().int().optional(),
+	captains_count: z.number().int().optional(),
+	coat_check_attendants: z.number().int().optional(),
+	valet_attendants: z.number().int().optional(),
+	security_guards: z.number().int().optional(),
+	staff_arrival_time: z.string().optional(),
+	staff_meal_time: z.string().optional(),
+	staff_break_schedule: z.string().optional(),
+	overtime_authorized: z.boolean().optional(),
+
+	// Financial
+	equipment_rental_total: z.string().optional(),
+	labor_charges: z.string().optional(),
+	service_charge_percent: z.string().optional(),
+	service_charge_amount: z.string().optional(),
+	gratuity_percent: z.string().optional(),
+	gratuity_amount: z.string().optional(),
+	tax_percent: z.string().optional(),
+	tax_amount: z.string().optional(),
+	currency_code: z.string().optional(),
+	billing_type: z.string().optional(),
+	price_per_person: z.string().optional(),
+	children_price: z.string().optional(),
+	children_count: z.number().int().optional(),
+
+	// Special instructions — the free text each department works from
+	kitchen_instructions: z.string().optional(),
+	service_instructions: z.string().optional(),
+	setup_instructions: z.string().optional(),
+	cleanup_instructions: z.string().optional(),
+	audio_visual_instructions: z.string().optional(),
+
+	// Approvals
+	client_approved_date: z.string().optional(),
+	client_approved_by: z.string().optional(),
+	client_signature_url: z.string().optional(),
+	chef_approved_date: z.string().optional(),
+	chef_approved_by: uuid.optional(),
+	manager_approved_date: z.string().optional(),
+	manager_approved_by: uuid.optional(),
+
+	// Execution tracking
+	setup_completed_time: z.string().optional(),
+	event_started_time: z.string().optional(),
+	event_ended_time: z.string().optional(),
+	teardown_completed: z.boolean().optional(),
+	teardown_completed_time: z.string().optional(),
+
+	// Post-event
+	post_event_notes: z.string().optional(),
+	issues_encountered: z.string().optional(),
+	client_satisfaction_rating: z.number().int().optional(),
+	photos: z.unknown().optional(),
+
+	// Distribution — stamped by the publish route
+	last_sent_to_client: z.string().optional(),
+	last_sent_to_kitchen: z.string().optional(),
+	last_sent_to_setup: z.string().optional(),
+	distribution_list: z.array(z.string()).optional(),
+
+	// Documents
+	signed_beo_url: z.string().optional(),
+	floor_plan_url: z.string().optional(),
+	seating_chart_document_url: z.string().optional(),
+	menu_card_url: z.string().optional(),
+
+	// Notes
+	internal_notes: z.string().optional(),
+	client_notes: z.string().optional(),
+	allergy_warnings: z.string().optional(),
+
+	metadata: z.unknown().optional(),
+	updated_at: z.string().optional(),
+});
+
+export type BanquetOrderDetail = z.infer<typeof BanquetOrderDetailSchema>;
+
+/**
+ * Create a banquet event order.
+ *
+ * Slice 3 of ui-gaps/13-sales-catering.md — plain HTTP on the owning service per
+ * COV-18's rule, matching slices 1 and 2.
+ *
+ * Required fields are exactly the table's NOT NULL columns with no default:
+ * `event_booking_id`, `event_date`, `setup_start_time`, `event_start_time`,
+ * `event_end_time`, `meeting_room_id`, `room_setup`, `guaranteed_count`.
+ * `beo_number` is generated when absent and `beo_status` is not settable here —
+ * a BEO is born a DRAFT and moves only through publish and revise, which is what
+ * makes "frozen for the kitchen" mean anything.
+ *
+ * Bounds mirror the table's CHECK constraints so a bad payload is a 400 rather
+ * than a 23514: `beo_count_check` (guaranteed_count > 0), `beo_time_check`
+ * (event_end_time > event_start_time) and `beo_rating_check` (rating 1–5).
+ */
+/** `TIME` column input: HH:MM or HH:MM:SS, matching the event booking fields. */
+const BEO_TIME_OF_DAY = z
+	.string()
+	.regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use HH:MM or HH:MM:SS");
+
+const BEO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+
+/** Pads HH:MM to HH:MM:SS so two times compare correctly as strings. */
+const padTimeOfDay = (value: string): string =>
+	value.length === 5 ? `${value}:00` : value;
+
+const BanquetOrderWriteFieldsSchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+
+	// Linked event — a BEO is always the operational detail of one booking
+	event_booking_id: uuid,
+	beo_number: z.string().max(50).optional(),
+
+	// Timeline
+	event_date: BEO_DATE,
+	setup_start_time: BEO_TIME_OF_DAY,
+	event_start_time: BEO_TIME_OF_DAY,
+	event_end_time: BEO_TIME_OF_DAY,
+	teardown_end_time: BEO_TIME_OF_DAY.optional(),
+	room_release_time: BEO_TIME_OF_DAY.optional(),
+
+	// Room and setup
+	meeting_room_id: uuid,
+	room_setup: EventSetupTypeEnum,
+	tables_count: z.coerce.number().int().nonnegative().optional(),
+	chairs_count: z.coerce.number().int().nonnegative().optional(),
+	table_configuration: z.string().optional(),
+	seating_chart_layout_url: z.string().max(500).optional(),
+
+	// Counts
+	guaranteed_count: z.coerce.number().int().positive(),
+	expected_count: z.coerce.number().int().nonnegative().optional(),
+	over_set_percentage: z.coerce.number().nonnegative().optional(),
+	actual_count: z.coerce.number().int().nonnegative().optional(),
+
+	// Menu and food service
+	menu_type: z.string().max(50).optional(),
+	menu_items: z.array(z.unknown()).optional(),
+	service_style: z.string().max(50).optional(),
+	courses_count: z.coerce.number().int().nonnegative().optional(),
+	meal_service_start_time: BEO_TIME_OF_DAY.optional(),
+	meal_service_duration_minutes: z.coerce.number().int().nonnegative().optional(),
+	appetizers: z.array(z.unknown()).optional(),
+	salads: z.array(z.unknown()).optional(),
+	entrees: z.array(z.unknown()).optional(),
+	sides: z.array(z.unknown()).optional(),
+	desserts: z.array(z.unknown()).optional(),
+	stations: z.array(z.unknown()).optional(),
+
+	// Beverage service
+	bar_type: z.string().max(50).optional(),
+	bar_start_time: BEO_TIME_OF_DAY.optional(),
+	bar_end_time: BEO_TIME_OF_DAY.optional(),
+	bar_setup_location: z.string().max(100).optional(),
+	beverages: z.array(z.unknown()).optional(),
+	wine_service: z.record(z.unknown()).optional(),
+	coffee_tea_service: z.boolean().optional(),
+	water_service: z.string().max(50).optional(),
+
+	// Dietary restrictions
+	vegetarian_count: z.coerce.number().int().nonnegative().optional(),
+	vegan_count: z.coerce.number().int().nonnegative().optional(),
+	gluten_free_count: z.coerce.number().int().nonnegative().optional(),
+	dairy_free_count: z.coerce.number().int().nonnegative().optional(),
+	nut_free_count: z.coerce.number().int().nonnegative().optional(),
+	kosher_count: z.coerce.number().int().nonnegative().optional(),
+	halal_count: z.coerce.number().int().nonnegative().optional(),
+	special_diets: z.array(z.unknown()).optional(),
+
+	// Linens and décor
+	linen_color: z.string().max(50).optional(),
+	linen_type: z.string().max(50).optional(),
+	napkin_color: z.string().max(50).optional(),
+	napkin_fold: z.string().max(50).optional(),
+	table_skirting: z.boolean().optional(),
+	centerpieces: z.string().optional(),
+	decor_description: z.string().optional(),
+	candles: z.boolean().optional(),
+	floral_arrangements: z.string().optional(),
+
+	// Equipment and AV
+	equipment_list: z.array(z.unknown()).optional(),
+	av_equipment: z.array(z.unknown()).optional(),
+	stage_required: z.boolean().optional(),
+	stage_dimensions: z.string().max(50).optional(),
+	podium_required: z.boolean().optional(),
+	dance_floor_required: z.boolean().optional(),
+	special_lighting: z.boolean().optional(),
+	lighting_notes: z.string().optional(),
+
+	// Service staff
+	servers_count: z.coerce.number().int().nonnegative().optional(),
+	bartenders_count: z.coerce.number().int().nonnegative().optional(),
+	chefs_count: z.coerce.number().int().nonnegative().optional(),
+	captains_count: z.coerce.number().int().nonnegative().optional(),
+	coat_check_attendants: z.coerce.number().int().nonnegative().optional(),
+	valet_attendants: z.coerce.number().int().nonnegative().optional(),
+	security_guards: z.coerce.number().int().nonnegative().optional(),
+	staff_arrival_time: BEO_TIME_OF_DAY.optional(),
+	staff_meal_time: BEO_TIME_OF_DAY.optional(),
+	staff_break_schedule: z.string().optional(),
+	overtime_authorized: z.boolean().optional(),
+
+	// Financial
+	food_subtotal: z.coerce.number().nonnegative().optional(),
+	beverage_subtotal: z.coerce.number().nonnegative().optional(),
+	equipment_rental_total: z.coerce.number().nonnegative().optional(),
+	labor_charges: z.coerce.number().nonnegative().optional(),
+	service_charge_percent: z.coerce.number().nonnegative().optional(),
+	service_charge_amount: z.coerce.number().nonnegative().optional(),
+	gratuity_percent: z.coerce.number().nonnegative().optional(),
+	gratuity_amount: z.coerce.number().nonnegative().optional(),
+	tax_percent: z.coerce.number().nonnegative().optional(),
+	tax_amount: z.coerce.number().nonnegative().optional(),
+	total_estimated: z.coerce.number().nonnegative().optional(),
+	total_actual: z.coerce.number().nonnegative().optional(),
+	currency_code: z.string().length(3).optional(),
+
+	// Billing
+	billing_type: z.string().max(50).optional(),
+	price_per_person: z.coerce.number().nonnegative().optional(),
+	children_price: z.coerce.number().nonnegative().optional(),
+	children_count: z.coerce.number().int().nonnegative().optional(),
+
+	// Special instructions
+	kitchen_instructions: z.string().optional(),
+	service_instructions: z.string().optional(),
+	setup_instructions: z.string().optional(),
+	cleanup_instructions: z.string().optional(),
+	audio_visual_instructions: z.string().optional(),
+
+	// Approvals — the boolean and who gave it; the dates are stamped by the service
+	client_approved: z.boolean().optional(),
+	client_approved_by: z.string().max(200).optional(),
+	client_signature_url: z.string().max(500).optional(),
+	chef_approved: z.boolean().optional(),
+	chef_approved_by: uuid.optional(),
+	manager_approved: z.boolean().optional(),
+	manager_approved_by: uuid.optional(),
+
+	// Execution tracking
+	setup_completed: z.boolean().optional(),
+	event_started: z.boolean().optional(),
+	event_ended: z.boolean().optional(),
+	teardown_completed: z.boolean().optional(),
+
+	// Post-event
+	post_event_notes: z.string().optional(),
+	issues_encountered: z.string().optional(),
+	client_satisfaction_rating: z.coerce.number().int().min(1).max(5).optional(),
+	photos: z.array(z.unknown()).optional(),
+
+	// Distribution and documents
+	distribution_list: z.array(z.string()).optional(),
+	signed_beo_url: z.string().max(500).optional(),
+	floor_plan_url: z.string().max(500).optional(),
+	seating_chart_document_url: z.string().max(500).optional(),
+	menu_card_url: z.string().max(500).optional(),
+
+	// Notes
+	internal_notes: z.string().optional(),
+	client_notes: z.string().optional(),
+	allergy_warnings: z.string().optional(),
+
+	metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * The BEO's own time ordering.
+ *
+ * `beo_time_check` is the only one of these the table enforces
+ * (`event_end_time > event_start_time`). Setup running before the event and
+ * teardown after it are not in the DDL but are true of every banquet, and
+ * `event_bookings` already enforces the equivalent rule on its own setup window,
+ * so rejecting them here keeps the two tables telling the same story.
+ */
+const refineBeoTimes = <T extends z.ZodTypeAny>(schema: T) =>
+	schema
+		.refine(
+			(value: { event_start_time?: string; event_end_time?: string }) =>
+				!value.event_start_time ||
+				!value.event_end_time ||
+				padTimeOfDay(value.event_end_time) > padTimeOfDay(value.event_start_time),
+			{
+				message: "event_end_time must be after event_start_time",
+				path: ["event_end_time"],
+			},
+		)
+		.refine(
+			(value: { setup_start_time?: string; event_start_time?: string }) =>
+				!value.setup_start_time ||
+				!value.event_start_time ||
+				padTimeOfDay(value.setup_start_time) <=
+					padTimeOfDay(value.event_start_time),
+			{
+				message: "setup_start_time must be at or before event_start_time",
+				path: ["setup_start_time"],
+			},
+		)
+		.refine(
+			(value: { teardown_end_time?: string; event_end_time?: string }) =>
+				!value.teardown_end_time ||
+				!value.event_end_time ||
+				padTimeOfDay(value.teardown_end_time) >=
+					padTimeOfDay(value.event_end_time),
+			{
+				message: "teardown_end_time must be at or after event_end_time",
+				path: ["teardown_end_time"],
+			},
+		);
+
+export const BanquetOrderWriteBodySchema = refineBeoTimes(
+	BanquetOrderWriteFieldsSchema,
+);
+
+export type BanquetOrderWriteBody = z.infer<typeof BanquetOrderWriteBodySchema>;
+
+/**
+ * Edit a banquet event order. Every field optional but `tenant_id`.
+ *
+ * Only accepted while the BEO is still a draft — see {@link BEO_EDITABLE_STATUSES}.
+ *
+ * `property_id` and `event_booking_id` are omitted rather than optional: a BEO is
+ * the operational detail *of one booking at one property*, so re-pointing it at a
+ * different event would silently rewrite what the kitchen is cooking for. Move
+ * the booking, or write a new BEO.
+ */
+export const BanquetOrderUpdateBodySchema = refineBeoTimes(
+	BanquetOrderWriteFieldsSchema.partial()
+		.omit({ tenant_id: true, property_id: true, event_booking_id: true })
+		.extend({ tenant_id: uuid }),
+);
+
+export type BanquetOrderUpdateBody = z.infer<
+	typeof BanquetOrderUpdateBodySchema
+>;
+
+/**
+ * Publish a BEO — freeze it for the kitchen and the setup crew.
+ *
+ * Publishing is what gives a BEO its authority: once it is out, the departments
+ * are working from paper on a wall and an in-place edit would silently diverge
+ * from what they hold. So publishing closes the document to further edits and
+ * every later change has to go through {@link BanquetOrderReviseBodySchema},
+ * which produces a new numbered version the kitchen can see it does not have.
+ *
+ * `distribution_list` overrides the stored list for this send when supplied.
+ */
+export const BanquetOrderPublishBodySchema = z.object({
+	tenant_id: uuid,
+	distribution_list: z.array(z.string()).optional(),
+	/** Marks `last_sent_to_client` too, for a client-facing send. */
+	notify_client: z.boolean().optional(),
+});
+
+export type BanquetOrderPublishBody = z.infer<
+	typeof BanquetOrderPublishBodySchema
+>;
+
+/**
+ * Revise a published BEO — the versioning that BEOs exist for.
+ *
+ * A revision is a *new row*, not an edit: same `beo_number`, `beo_version + 1`,
+ * `previous_beo_id` pointing at the row it replaces. The old row is left exactly
+ * as the kitchen received it, which is the whole point — "what changed between
+ * v2 and v3" is a question the operation asks constantly. The table's
+ * `UNIQUE (tenant_id, property_id, beo_number, beo_version)` is what lets both
+ * versions coexist under one number.
+ *
+ * The new version starts as a DRAFT, so a revision is edited and then published
+ * in its own right.
+ */
+export const BanquetOrderReviseBodySchema = z.object({
+	tenant_id: uuid,
+	revision_reason: z.string().min(1).max(1000),
+});
+
+export type BanquetOrderReviseBody = z.infer<
+	typeof BanquetOrderReviseBodySchema
+>;
+
+/**
+ * The statuses in which a BEO can still be edited in place.
+ *
+ * Anything past this is frozen and must be revised instead. Exported so the BEO
+ * editor can disable its own form rather than let the user type into a document
+ * the service will refuse — the same reasoning as
+ * {@link EVENT_BOOKING_LEGAL_TRANSITIONS}.
+ */
+export const BEO_EDITABLE_STATUSES: readonly BeoStatus[] = [
+	"DRAFT",
+	"PENDING_APPROVAL",
+];
+
+/**
+ * The statuses a BEO can be published from.
+ *
+ * Publishing an already-published BEO is a conflict rather than a no-op: the
+ * caller believes it is releasing something the kitchen has not seen, and it is
+ * not. Re-issuing means revising.
+ */
+export const BEO_PUBLISHABLE_STATUSES: readonly BeoStatus[] = [
+	"DRAFT",
+	"PENDING_APPROVAL",
+];
+
+/** Service-layer input for a banquet event order write, per AGENTS.md. */
+export type BanquetOrderWriteInput = {
+	propertyId?: string;
+	eventBookingId?: string;
+	beoNumber?: string;
+	eventDate?: string;
+	setupStartTime?: string;
+	eventStartTime?: string;
+	eventEndTime?: string;
+	teardownEndTime?: string;
+	roomReleaseTime?: string;
+	meetingRoomId?: string;
+	roomSetup?: EventSetupType;
+	tablesCount?: number;
+	chairsCount?: number;
+	tableConfiguration?: string;
+	seatingChartLayoutUrl?: string;
+	guaranteedCount?: number;
+	expectedCount?: number;
+	overSetPercentage?: number;
+	actualCount?: number;
+	menuType?: string;
+	menuItems?: unknown;
+	serviceStyle?: string;
+	coursesCount?: number;
+	mealServiceStartTime?: string;
+	mealServiceDurationMinutes?: number;
+	appetizers?: unknown;
+	salads?: unknown;
+	entrees?: unknown;
+	sides?: unknown;
+	desserts?: unknown;
+	stations?: unknown;
+	barType?: string;
+	barStartTime?: string;
+	barEndTime?: string;
+	barSetupLocation?: string;
+	beverages?: unknown;
+	wineService?: unknown;
+	coffeeTeaService?: boolean;
+	waterService?: string;
+	vegetarianCount?: number;
+	veganCount?: number;
+	glutenFreeCount?: number;
+	dairyFreeCount?: number;
+	nutFreeCount?: number;
+	kosherCount?: number;
+	halalCount?: number;
+	specialDiets?: unknown;
+	linenColor?: string;
+	linenType?: string;
+	napkinColor?: string;
+	napkinFold?: string;
+	tableSkirting?: boolean;
+	centerpieces?: string;
+	decorDescription?: string;
+	candles?: boolean;
+	floralArrangements?: string;
+	equipmentList?: unknown;
+	avEquipment?: unknown;
+	stageRequired?: boolean;
+	stageDimensions?: string;
+	podiumRequired?: boolean;
+	danceFloorRequired?: boolean;
+	specialLighting?: boolean;
+	lightingNotes?: string;
+	serversCount?: number;
+	bartendersCount?: number;
+	chefsCount?: number;
+	captainsCount?: number;
+	coatCheckAttendants?: number;
+	valetAttendants?: number;
+	securityGuards?: number;
+	staffArrivalTime?: string;
+	staffMealTime?: string;
+	staffBreakSchedule?: string;
+	overtimeAuthorized?: boolean;
+	foodSubtotal?: number;
+	beverageSubtotal?: number;
+	equipmentRentalTotal?: number;
+	laborCharges?: number;
+	serviceChargePercent?: number;
+	serviceChargeAmount?: number;
+	gratuityPercent?: number;
+	gratuityAmount?: number;
+	taxPercent?: number;
+	taxAmount?: number;
+	totalEstimated?: number;
+	totalActual?: number;
+	currencyCode?: string;
+	billingType?: string;
+	pricePerPerson?: number;
+	childrenPrice?: number;
+	childrenCount?: number;
+	kitchenInstructions?: string;
+	serviceInstructions?: string;
+	setupInstructions?: string;
+	cleanupInstructions?: string;
+	audioVisualInstructions?: string;
+	clientApproved?: boolean;
+	clientApprovedBy?: string;
+	clientSignatureUrl?: string;
+	chefApproved?: boolean;
+	chefApprovedBy?: string;
+	managerApproved?: boolean;
+	managerApprovedBy?: string;
+	setupCompleted?: boolean;
+	eventStarted?: boolean;
+	eventEnded?: boolean;
+	teardownCompleted?: boolean;
+	postEventNotes?: string;
+	issuesEncountered?: string;
+	clientSatisfactionRating?: number;
+	photos?: unknown;
+	distributionList?: string[];
+	signedBeoUrl?: string;
+	floorPlanUrl?: string;
+	seatingChartDocumentUrl?: string;
+	menuCardUrl?: string;
+	internalNotes?: string;
+	clientNotes?: string;
+	allergyWarnings?: string;
+	metadata?: unknown;
+};
+
+/** Service-layer input for publishing a BEO. */
+export type BanquetOrderPublishInput = {
+	distributionList?: string[];
+	notifyClient?: boolean;
+};
+
+/** Service-layer input for revising a BEO. */
+export type BanquetOrderReviseInput = {
+	revisionReason: string;
+};
 
 // =====================================================
 // GUEST FEEDBACK

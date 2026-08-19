@@ -167,10 +167,119 @@
 >   pushed the rest of the fortnight out of alignment. `table-layout: fixed` plus a two-line chip
 >   (time above name) — a one-line chip left about six characters for the name at 118px.
 >
-> **Still open here:** item 3 (BEO editor), 5 (daily BEO print) and 6 (event billing) all wait on
-> slice 3. `folio_id` is displayed but nothing posts to it yet — that is item 6.
+> **Still open here:** item 6 (event billing). `folio_id` is displayed but nothing posts to it yet.
+> Items 3 (BEO editor) and 5 (daily BEO print) are unblocked as of slice 3 below.
+
+### ✅ Slice 3 — banquet order writes: shipped 2026-08-19
+
+`POST /v1/banquet-orders`, `PUT …/:beoId`, `POST …/:beoId/publish` and `POST …/:beoId/revise` on
+core-service, plain HTTP per COV-18's rule, matching slices 1 and 2. Banquet lives in
+`routes/operations.ts` / `services/operations-service.ts` rather than `booking-config/event.ts`, so
+it follows that file's conventions (flat registration, no success-response schema — see below).
+
+**Gateway promoted in the same commit**, as this spec asked: `operations-routes.ts` was `GET` +
+`GET /*`, now `GET` + bare `POST` + `app.all` on the wildcard. That is the third consecutive slice to
+find the same hole. `Apps/api-gateway/tests/wildcard-write-conformance.test.ts` — the check added in
+slice 2 precisely to stop this recurring — would have failed the build had the promotion been
+forgotten, and it is the reason this one was caught before a live run rather than by one.
+
+#### The design decisions this slice had to make
+
+**Publish is what makes "frozen" mean something.** A BEO's authority comes from the kitchen and the
+setup crew holding a copy of it. So publishing closes the document: `PUT` is accepted only while the
+BEO is `DRAFT` or `PENDING_APPROVAL` (`BEO_EDITABLE_STATUSES`, exported from `@tartware/schemas` so
+the editor can disable its own form rather than let a user type into a document the service will
+refuse — the same reasoning as `EVENT_BOOKING_LEGAL_TRANSITIONS`). Editing a published BEO is a 409,
+and so is publishing one twice: the caller believes it is releasing something the departments have
+not seen, and it is not.
+
+**A revision is a new row, not an edit.** Same `beo_number`, `beo_version + 1`, `previous_beo_id`
+pointing at the row it replaces, back to `DRAFT` so it is edited and published in its own right.
+The table's `UNIQUE (tenant_id, property_id, beo_number, beo_version)` is exactly what lets both
+versions coexist under one number — the constraint was designed for this and nothing had used it.
+Revising a version that has *already* been revised is a 409, or the chain forks.
+
+**Supersession is derived, not stored.** `beo_status`'s CHECK has no `SUPERSEDED` value, and adding
+one would have meant a migration to record something the revision chain already knows. `is_superseded`
+is an `EXISTS` over rows whose `previous_beo_id` points back — so v1 keeps reading as `APPROVED`,
+which is the truthful answer to "what did the kitchen receive", while still being visibly stale.
+
+**What a revision does *not* carry forward:** approvals (the chef approved a different menu, so v2
+starts unapproved), and the `last_sent_to_*` stamps (nobody has been sent this version). Execution
+tracking — `setup_completed`, `event_started` — *does* carry forward: those describe the physical
+event, which a paperwork revision does not undo.
+
+**The revision copies the row via `to_jsonb` / `jsonb_populate_record`** rather than naming ~140
+columns. A hand-written column list would silently stop copying any column added to the table later,
+and "the v3 lost the field someone added last month" is a bug nobody would attribute to this code.
+
+#### Two traps found by reading, before they could be found by running
+
+Slices 1 and 2 each shipped a bug that only a live stack caught. This slice found its two at the
+schema and driver level instead, which is why the smoke test passed first time rather than second:
+
+**1. `BeoStatusEnum` had drifted from the CHECK constraint.** It read
+`DRAFT, PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED`; the table says
+`DRAFT, PENDING_APPROVAL, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED`. Two values wrong, and the
+first write to reach for the enum would have been rejected by Postgres at runtime. It survived
+because **nothing referenced it** — `beo_status` on the list item was the untyped `z.string()`, and
+the GET route spelled its filter values out by hand, correctly. Same class as the 2026-08-13
+case-drift sweep and the same fix as slice 2 applied to `booking_status`: correct the enum, then
+type the read model against it so the type checker owns the question from here.
+
+**2. `pg` encodes a JS array as a Postgres array literal, not JSON.** Passing `menu_items` — a
+`JSONB` column — as an array would have written `{...}` array-literal syntax into a JSON document
+column. The JSONB fields are `JSON.stringify`d explicitly; `distribution_list`, the one field here
+that genuinely is `TEXT[]`, must *not* be. The smoke test asserts both directions round-trip, because
+this is invisible to the type checker and the failure mode is a corrupt-looking document rather than
+an error.
+
+Details worth carrying forward:
+
+- **The write path builds its statements from a column→value map, not a positional list.** A BEO has
+  ~140 writable columns; as a positional `INSERT` a single misalignment writes the right value into
+  the wrong column and still typechecks. The snake↔camel mapping between payload and service input
+  was generated from the schema and diffed both ways rather than typed by hand — 120 body fields, all
+  matched, `propertyId` correctly the only input key not settable from a payload.
+- **Every column in the new SQL was diffed against the DDL programmatically**, per slice 2's note that
+  TypeScript cannot catch a wrong column name in a SQL string. The by-id query selects 141 of the
+  table's 146 columns; the five omitted are `created_by`, `updated_by`, `deleted_at`, `deleted_by`
+  and `version`.
+- **No success-response schema on these routes**, matching the other write routes in
+  `operations.ts` and the house convention slice 2 identified. That is what kept slice 2's
+  fast-json-stringify 500 from recurring here.
+- **`room_setup` has no CHECK constraint** on `banquet_event_orders`, unlike `event_bookings.setup_type`.
+  It is validated against `EventSetupTypeEnum` anyway, so the two tables tell the same story.
+- **Only `beo_time_check` is enforced by the table** (`event_end_time > event_start_time`). Setup
+  before the event and teardown after it are true of every banquet but are not in the DDL; they are
+  refinements in the write schema, so they are service-enforced, not table-enforced.
+- **Not covered by these four endpoints:** the `IN_PROGRESS` / `COMPLETED` end of the status enum and
+  the execution flags (`setup_completed`, `event_started`, `event_ended`, `teardown_completed`) are
+  settable on a draft but have no operational transition route. That belongs with UI item 5, the
+  kitchen view, and is called out here rather than invented as a fifth endpoint.
+
+#### ✅ Smoke test 2026-08-19
+
+`http_test/smoke-events.sh` grew a slice 3 section — **70 assertions through the gateway, all green**,
+39 of them new. Slices 1 and 2 still pass unchanged. It covers: create as DRAFT, the three payload
+bounds rejecting at 400, an unknown event booking at 404, edit-while-draft, publish stamping
+`last_sent_to_kitchen` / `last_sent_to_client`, edit-after-publish and double-publish both at 409,
+revise producing v2 under the same number with content copied and approvals cleared, v1 flipping to
+superseded while keeping `APPROVED`, re-revising a superseded version at 409, and both versions
+listing under one `beo_number`.
+
+BEOs have no delete or cancel route, so the rows the script creates are left in place under
+run-unique BEO numbers rather than cleaned up.
+
+**Still to do in slice 3:** no UI yet — items 3 (BEO editor) and 5 (daily BEO print), both now
+unblocked.
 
 ## Current State (Backend ⚠️ read-only → UI ❌)
+
+> **This section is the original audit snapshot, as written. It is no longer true** — all three
+> domains gained write paths in slices 1–3 above (2026-08-17 → 2026-08-19) and items 1, 2 and 4 of
+> the UI list shipped 2026-08-18. It is kept unedited as the record of what the audit found; the
+> decision blocks above are the current state.
 
 Three related read-only surfaces with no UI, forming one absent product area.
 
@@ -216,9 +325,10 @@ tentative → definite → cancelled. The guard was checked first as instructed 
 mechanism (guest-room inventory only, no concept of meeting rooms), so availability is an overlap
 query on `event_bookings` itself.
 
-**Banquet orders** (BEO — the operational document):
+**Banquet orders** (BEO — the operational document): ✅ **shipped 2026-08-19**
 `POST /v1/banquet-orders`, `PUT …/:beoId`, `POST …/:beoId/publish` (freeze for kitchen/ops),
-`POST …/:beoId/revise` (versioned, since BEO revisions are the whole point).
+`POST …/:beoId/revise` (versioned, since BEO revisions are the whole point). Publish freezes the
+document against in-place edits; revise is a new row carrying `beo_version + 1` and `previous_beo_id`.
 
 Derive every payload from the existing schema files, not from scratch.
 
@@ -236,7 +346,9 @@ whole module and must be made **before** the UI, not after. Also confirm F&B rev
 2. **Event booking detail** — client, contact, dates, spaces held, attendee counts, status, linked
    group booking, linked rooms block (`/v1/allotments`, see COV-16).
 3. **BEO editor** — timeline of the event: setup, F&B courses and timings, AV, layout, staffing,
-   special instructions. Revision history with a published/draft distinction.
+   special instructions. Revision history with a published/draft distinction. *(Backend ready as of
+   slice 3: `BanquetOrderDetailSchema` carries the whole document, `BEO_EDITABLE_STATUSES` says when
+   the form should be read-only, and `is_superseded` + `previous_beo_id` give the revision history.)*
 4. **Meeting room admin** — settings-style CRUD.
 5. **Daily BEO print / kitchen view** — what the operation actually uses each morning.
 6. **Event billing** — charges to the folio chosen in step 2.

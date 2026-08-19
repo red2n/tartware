@@ -83,6 +83,128 @@ export type BanquetOrderRow = {
 	event_started: boolean | null;
 	event_ended: boolean | null;
 	created_at: Date | string;
+	/** Derived: a later revision points back at this row. */
+	is_superseded: boolean;
+};
+
+/**
+ * Raw row shape from the BEO by-id query, which selects the whole document.
+ *
+ * `DECIMAL` and `TIME` columns come back as strings because the query casts them
+ * `::TEXT`; `JSONB` columns come back already parsed by `pg`.
+ */
+export type BanquetOrderDetailRow = BanquetOrderRow & {
+	revision_date: Date | string | null;
+	revision_reason: string | null;
+	previous_beo_id: string | null;
+	setup_start_time: string;
+	teardown_end_time: string | null;
+	room_release_time: string | null;
+	tables_count: number | null;
+	chairs_count: number | null;
+	table_configuration: string | null;
+	seating_chart_layout_url: string | null;
+	over_set_percentage: string | null;
+	menu_items: unknown;
+	courses_count: number | null;
+	meal_service_start_time: string | null;
+	meal_service_duration_minutes: number | null;
+	appetizers: unknown;
+	salads: unknown;
+	entrees: unknown;
+	sides: unknown;
+	desserts: unknown;
+	stations: unknown;
+	bar_start_time: string | null;
+	bar_end_time: string | null;
+	bar_setup_location: string | null;
+	beverages: unknown;
+	wine_service: unknown;
+	coffee_tea_service: boolean | null;
+	water_service: string | null;
+	vegetarian_count: number | null;
+	vegan_count: number | null;
+	gluten_free_count: number | null;
+	dairy_free_count: number | null;
+	nut_free_count: number | null;
+	kosher_count: number | null;
+	halal_count: number | null;
+	special_diets: unknown;
+	linen_color: string | null;
+	linen_type: string | null;
+	napkin_color: string | null;
+	napkin_fold: string | null;
+	table_skirting: boolean | null;
+	centerpieces: string | null;
+	decor_description: string | null;
+	candles: boolean | null;
+	floral_arrangements: string | null;
+	equipment_list: unknown;
+	av_equipment: unknown;
+	stage_required: boolean | null;
+	stage_dimensions: string | null;
+	podium_required: boolean | null;
+	dance_floor_required: boolean | null;
+	special_lighting: boolean | null;
+	lighting_notes: string | null;
+	servers_count: number | null;
+	bartenders_count: number | null;
+	chefs_count: number | null;
+	captains_count: number | null;
+	coat_check_attendants: number | null;
+	valet_attendants: number | null;
+	security_guards: number | null;
+	staff_arrival_time: string | null;
+	staff_meal_time: string | null;
+	staff_break_schedule: string | null;
+	overtime_authorized: boolean | null;
+	equipment_rental_total: string | null;
+	labor_charges: string | null;
+	service_charge_percent: string | null;
+	service_charge_amount: string | null;
+	gratuity_percent: string | null;
+	gratuity_amount: string | null;
+	tax_percent: string | null;
+	tax_amount: string | null;
+	currency_code: string | null;
+	billing_type: string | null;
+	price_per_person: string | null;
+	children_price: string | null;
+	children_count: number | null;
+	kitchen_instructions: string | null;
+	service_instructions: string | null;
+	setup_instructions: string | null;
+	cleanup_instructions: string | null;
+	audio_visual_instructions: string | null;
+	client_approved_date: Date | string | null;
+	client_approved_by: string | null;
+	client_signature_url: string | null;
+	chef_approved_date: Date | string | null;
+	chef_approved_by: string | null;
+	manager_approved_date: Date | string | null;
+	manager_approved_by: string | null;
+	setup_completed_time: Date | string | null;
+	event_started_time: Date | string | null;
+	event_ended_time: Date | string | null;
+	teardown_completed: boolean | null;
+	teardown_completed_time: Date | string | null;
+	post_event_notes: string | null;
+	issues_encountered: string | null;
+	client_satisfaction_rating: number | null;
+	photos: unknown;
+	last_sent_to_client: Date | string | null;
+	last_sent_to_kitchen: Date | string | null;
+	last_sent_to_setup: Date | string | null;
+	distribution_list: string[] | null;
+	signed_beo_url: string | null;
+	floor_plan_url: string | null;
+	seating_chart_document_url: string | null;
+	menu_card_url: string | null;
+	internal_notes: string | null;
+	client_notes: string | null;
+	allergy_warnings: string | null;
+	metadata: unknown;
+	updated_at: Date | string | null;
 };
 
 // =====================================================

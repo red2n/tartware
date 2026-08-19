@@ -5,14 +5,23 @@
  */
 
 import type {
+  BanquetOrderPublishInput,
+  BanquetOrderReviseInput,
+  BanquetOrderWriteInput,
+  BeoStatus,
   PoliceReportStatusInput,
   PoliceReportWriteInput,
   ShiftHandoverWriteInput,
 } from "@tartware/schemas";
 import {
+  type BanquetOrderDetail,
+  type BanquetOrderDetailRow,
+  BanquetOrderDetailSchema,
   type BanquetOrderListItem,
   BanquetOrderListItemSchema,
   type BanquetOrderRow,
+  BEO_EDITABLE_STATUSES,
+  BEO_PUBLISHABLE_STATUSES,
   type CashierSessionListItem,
   CashierSessionListItemSchema,
   type CashierSessionRow,
@@ -438,6 +447,149 @@ const mapBanquetOrderRow = (row: BanquetOrderRow): BanquetOrderListItem => {
     event_started: row.event_started ?? undefined,
     event_ended: row.event_ended ?? undefined,
     created_at: toIsoString(row.created_at) ?? "",
+    is_superseded: row.is_superseded,
+  });
+};
+
+/**
+ * The whole BEO document, for the by-id read and every write response.
+ *
+ * Built on the list item's mapping so the two can never disagree about a shared
+ * field — the drift that made `EventBookingListItem` and its detail diverge in
+ * slice 2.
+ */
+const mapBanquetOrderDetailRow = (row: BanquetOrderDetailRow): BanquetOrderDetail => {
+  return BanquetOrderDetailSchema.parse({
+    ...mapBanquetOrderRow(row),
+
+    revision_date: toIsoString(row.revision_date),
+    revision_reason: row.revision_reason ?? undefined,
+    previous_beo_id: row.previous_beo_id ?? undefined,
+
+    setup_start_time: row.setup_start_time,
+    teardown_end_time: row.teardown_end_time ?? undefined,
+    room_release_time: row.room_release_time ?? undefined,
+
+    tables_count: row.tables_count ?? undefined,
+    chairs_count: row.chairs_count ?? undefined,
+    table_configuration: row.table_configuration ?? undefined,
+    seating_chart_layout_url: row.seating_chart_layout_url ?? undefined,
+    over_set_percentage: row.over_set_percentage ?? undefined,
+
+    menu_items: row.menu_items ?? undefined,
+    courses_count: row.courses_count ?? undefined,
+    meal_service_start_time: row.meal_service_start_time ?? undefined,
+    meal_service_duration_minutes: row.meal_service_duration_minutes ?? undefined,
+    appetizers: row.appetizers ?? undefined,
+    salads: row.salads ?? undefined,
+    entrees: row.entrees ?? undefined,
+    sides: row.sides ?? undefined,
+    desserts: row.desserts ?? undefined,
+    stations: row.stations ?? undefined,
+
+    bar_start_time: row.bar_start_time ?? undefined,
+    bar_end_time: row.bar_end_time ?? undefined,
+    bar_setup_location: row.bar_setup_location ?? undefined,
+    beverages: row.beverages ?? undefined,
+    wine_service: row.wine_service ?? undefined,
+    coffee_tea_service: row.coffee_tea_service ?? undefined,
+    water_service: row.water_service ?? undefined,
+
+    vegetarian_count: row.vegetarian_count ?? undefined,
+    vegan_count: row.vegan_count ?? undefined,
+    gluten_free_count: row.gluten_free_count ?? undefined,
+    dairy_free_count: row.dairy_free_count ?? undefined,
+    nut_free_count: row.nut_free_count ?? undefined,
+    kosher_count: row.kosher_count ?? undefined,
+    halal_count: row.halal_count ?? undefined,
+    special_diets: row.special_diets ?? undefined,
+
+    linen_color: row.linen_color ?? undefined,
+    linen_type: row.linen_type ?? undefined,
+    napkin_color: row.napkin_color ?? undefined,
+    napkin_fold: row.napkin_fold ?? undefined,
+    table_skirting: row.table_skirting ?? undefined,
+    centerpieces: row.centerpieces ?? undefined,
+    decor_description: row.decor_description ?? undefined,
+    candles: row.candles ?? undefined,
+    floral_arrangements: row.floral_arrangements ?? undefined,
+
+    equipment_list: row.equipment_list ?? undefined,
+    av_equipment: row.av_equipment ?? undefined,
+    stage_required: row.stage_required ?? undefined,
+    stage_dimensions: row.stage_dimensions ?? undefined,
+    podium_required: row.podium_required ?? undefined,
+    dance_floor_required: row.dance_floor_required ?? undefined,
+    special_lighting: row.special_lighting ?? undefined,
+    lighting_notes: row.lighting_notes ?? undefined,
+
+    servers_count: row.servers_count ?? undefined,
+    bartenders_count: row.bartenders_count ?? undefined,
+    chefs_count: row.chefs_count ?? undefined,
+    captains_count: row.captains_count ?? undefined,
+    coat_check_attendants: row.coat_check_attendants ?? undefined,
+    valet_attendants: row.valet_attendants ?? undefined,
+    security_guards: row.security_guards ?? undefined,
+    staff_arrival_time: row.staff_arrival_time ?? undefined,
+    staff_meal_time: row.staff_meal_time ?? undefined,
+    staff_break_schedule: row.staff_break_schedule ?? undefined,
+    overtime_authorized: row.overtime_authorized ?? undefined,
+
+    equipment_rental_total: row.equipment_rental_total ?? undefined,
+    labor_charges: row.labor_charges ?? undefined,
+    service_charge_percent: row.service_charge_percent ?? undefined,
+    service_charge_amount: row.service_charge_amount ?? undefined,
+    gratuity_percent: row.gratuity_percent ?? undefined,
+    gratuity_amount: row.gratuity_amount ?? undefined,
+    tax_percent: row.tax_percent ?? undefined,
+    tax_amount: row.tax_amount ?? undefined,
+    currency_code: row.currency_code ?? undefined,
+    billing_type: row.billing_type ?? undefined,
+    price_per_person: row.price_per_person ?? undefined,
+    children_price: row.children_price ?? undefined,
+    children_count: row.children_count ?? undefined,
+
+    kitchen_instructions: row.kitchen_instructions ?? undefined,
+    service_instructions: row.service_instructions ?? undefined,
+    setup_instructions: row.setup_instructions ?? undefined,
+    cleanup_instructions: row.cleanup_instructions ?? undefined,
+    audio_visual_instructions: row.audio_visual_instructions ?? undefined,
+
+    client_approved_date: toIsoString(row.client_approved_date),
+    client_approved_by: row.client_approved_by ?? undefined,
+    client_signature_url: row.client_signature_url ?? undefined,
+    chef_approved_date: toIsoString(row.chef_approved_date),
+    chef_approved_by: row.chef_approved_by ?? undefined,
+    manager_approved_date: toIsoString(row.manager_approved_date),
+    manager_approved_by: row.manager_approved_by ?? undefined,
+
+    setup_completed_time: toIsoString(row.setup_completed_time),
+    event_started_time: toIsoString(row.event_started_time),
+    event_ended_time: toIsoString(row.event_ended_time),
+    teardown_completed: row.teardown_completed ?? undefined,
+    teardown_completed_time: toIsoString(row.teardown_completed_time),
+
+    post_event_notes: row.post_event_notes ?? undefined,
+    issues_encountered: row.issues_encountered ?? undefined,
+    client_satisfaction_rating: row.client_satisfaction_rating ?? undefined,
+    photos: row.photos ?? undefined,
+
+    last_sent_to_client: toIsoString(row.last_sent_to_client),
+    last_sent_to_kitchen: toIsoString(row.last_sent_to_kitchen),
+    last_sent_to_setup: toIsoString(row.last_sent_to_setup),
+    distribution_list: row.distribution_list ?? undefined,
+
+    signed_beo_url: row.signed_beo_url ?? undefined,
+    floor_plan_url: row.floor_plan_url ?? undefined,
+    seating_chart_document_url: row.seating_chart_document_url ?? undefined,
+    menu_card_url: row.menu_card_url ?? undefined,
+
+    internal_notes: row.internal_notes ?? undefined,
+    client_notes: row.client_notes ?? undefined,
+    allergy_warnings: row.allergy_warnings ?? undefined,
+
+    metadata: row.metadata ?? undefined,
+    updated_at: toIsoString(row.updated_at),
   });
 };
 
@@ -459,8 +611,8 @@ export const listBanquetOrders = async (
 
 export const getBanquetOrderById = async (
   options: GetBanquetOrderInput,
-): Promise<BanquetOrderListItem | null> => {
-  const { rows } = await query<BanquetOrderRow>(BANQUET_ORDER_BY_ID_SQL, [
+): Promise<BanquetOrderDetail | null> => {
+  const { rows } = await query<BanquetOrderDetailRow>(BANQUET_ORDER_BY_ID_SQL, [
     options.beoId,
     options.tenantId,
   ]);
@@ -469,7 +621,584 @@ export const getBanquetOrderById = async (
     return null;
   }
 
-  return mapBanquetOrderRow(rows[0] as NonNullable<(typeof rows)[0]>);
+  return mapBanquetOrderDetailRow(rows[0] as NonNullable<(typeof rows)[0]>);
+};
+
+// =====================================================
+// BANQUET EVENT ORDER WRITES
+// Slice 3 of ui-gaps/13-sales-catering.md. Plain HTTP on the owning service per
+// COV-18's rule, matching slices 1 and 2.
+// =====================================================
+
+/** Raised when the linked event booking or meeting room does not exist. */
+export class BanquetOrderReferenceError extends Error {
+  constructor(what: string, id: string) {
+    super(`${what} ${id} not found`);
+    this.name = "BanquetOrderReferenceError";
+  }
+}
+
+/** Raised when (tenant, property, beo_number, beo_version) collides. */
+export class BanquetOrderNumberConflictError extends Error {
+  constructor(beoNumber: string, version: number) {
+    super(`BEO ${beoNumber} version ${version} already exists`);
+    this.name = "BanquetOrderNumberConflictError";
+  }
+}
+
+/** Raised when an in-place edit is attempted on a published BEO. */
+export class BanquetOrderFrozenError extends Error {
+  constructor(beoStatus: string) {
+    super(`A ${beoStatus} BEO cannot be edited in place — revise it to produce a new version`);
+    this.name = "BanquetOrderFrozenError";
+  }
+}
+
+/** Raised when publish or revise is not legal from the current state. */
+export class BanquetOrderTransitionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BanquetOrderTransitionError";
+  }
+}
+
+const UNIQUE_VIOLATION = "23505";
+
+const isBeoNumberConflict = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { code?: string }).code === UNIQUE_VIOLATION;
+
+/**
+ * `BEO-YYYYMMDD-XXXX`, matching the police report number style.
+ *
+ * The number identifies the *document*, not the row: every revision of a BEO
+ * keeps it and increments `beo_version` instead, which is what the table's
+ * `UNIQUE (tenant_id, property_id, beo_number, beo_version)` is for.
+ */
+const buildBeoNumber = (): string => {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `BEO-${datePart}-${random}`;
+};
+
+/**
+ * Column/value pairs for a dynamically built statement.
+ *
+ * A BEO has ~140 writable columns. Written as a positional `INSERT` the way the
+ * smaller domains in this file are, a single misalignment between the column
+ * list and the parameter list would write the right value into the wrong column
+ * and still typecheck — the exact failure mode slice 2 hit in SQL that the type
+ * checker could not see. Naming each column beside its value removes the class
+ * of bug entirely.
+ */
+type BeoColumnValues = Record<string, unknown>;
+
+/**
+ * `JSONB` columns must be handed to `pg` as text.
+ *
+ * node-postgres turns a JS array into a Postgres *array literal* (`{a,b}`), so
+ * passing `menu_items` as an array would try to store an array literal in a
+ * JSONB column rather than a JSON document. `distribution_list` is the one field
+ * here that really is a Postgres `TEXT[]` and must NOT be stringified.
+ */
+const toJsonbParam = (value: unknown): string | null =>
+  value === undefined || value === null ? null : JSON.stringify(value);
+
+/**
+ * Maps the service input onto table columns.
+ *
+ * Every key here was checked against `scripts/tables/02-inventory/99_banquet_event_orders.sql`.
+ * Keys whose value is `undefined` are dropped by the statement builders, so a
+ * partial update touches only what the caller actually sent.
+ */
+const toBeoColumnValues = (input: BanquetOrderWriteInput): BeoColumnValues => ({
+  event_booking_id: input.eventBookingId,
+  event_date: input.eventDate,
+  setup_start_time: input.setupStartTime,
+  event_start_time: input.eventStartTime,
+  event_end_time: input.eventEndTime,
+  teardown_end_time: input.teardownEndTime,
+  room_release_time: input.roomReleaseTime,
+  meeting_room_id: input.meetingRoomId,
+  room_setup: input.roomSetup,
+  tables_count: input.tablesCount,
+  chairs_count: input.chairsCount,
+  table_configuration: input.tableConfiguration,
+  seating_chart_layout_url: input.seatingChartLayoutUrl,
+  guaranteed_count: input.guaranteedCount,
+  expected_count: input.expectedCount,
+  over_set_percentage: input.overSetPercentage,
+  actual_count: input.actualCount,
+  menu_type: input.menuType,
+  menu_items: input.menuItems === undefined ? undefined : toJsonbParam(input.menuItems),
+  service_style: input.serviceStyle,
+  courses_count: input.coursesCount,
+  meal_service_start_time: input.mealServiceStartTime,
+  meal_service_duration_minutes: input.mealServiceDurationMinutes,
+  appetizers: input.appetizers === undefined ? undefined : toJsonbParam(input.appetizers),
+  salads: input.salads === undefined ? undefined : toJsonbParam(input.salads),
+  entrees: input.entrees === undefined ? undefined : toJsonbParam(input.entrees),
+  sides: input.sides === undefined ? undefined : toJsonbParam(input.sides),
+  desserts: input.desserts === undefined ? undefined : toJsonbParam(input.desserts),
+  stations: input.stations === undefined ? undefined : toJsonbParam(input.stations),
+  bar_type: input.barType,
+  bar_start_time: input.barStartTime,
+  bar_end_time: input.barEndTime,
+  bar_setup_location: input.barSetupLocation,
+  beverages: input.beverages === undefined ? undefined : toJsonbParam(input.beverages),
+  wine_service: input.wineService === undefined ? undefined : toJsonbParam(input.wineService),
+  coffee_tea_service: input.coffeeTeaService,
+  water_service: input.waterService,
+  vegetarian_count: input.vegetarianCount,
+  vegan_count: input.veganCount,
+  gluten_free_count: input.glutenFreeCount,
+  dairy_free_count: input.dairyFreeCount,
+  nut_free_count: input.nutFreeCount,
+  kosher_count: input.kosherCount,
+  halal_count: input.halalCount,
+  special_diets: input.specialDiets === undefined ? undefined : toJsonbParam(input.specialDiets),
+  linen_color: input.linenColor,
+  linen_type: input.linenType,
+  napkin_color: input.napkinColor,
+  napkin_fold: input.napkinFold,
+  table_skirting: input.tableSkirting,
+  centerpieces: input.centerpieces,
+  decor_description: input.decorDescription,
+  candles: input.candles,
+  floral_arrangements: input.floralArrangements,
+  equipment_list: input.equipmentList === undefined ? undefined : toJsonbParam(input.equipmentList),
+  av_equipment: input.avEquipment === undefined ? undefined : toJsonbParam(input.avEquipment),
+  stage_required: input.stageRequired,
+  stage_dimensions: input.stageDimensions,
+  podium_required: input.podiumRequired,
+  dance_floor_required: input.danceFloorRequired,
+  special_lighting: input.specialLighting,
+  lighting_notes: input.lightingNotes,
+  servers_count: input.serversCount,
+  bartenders_count: input.bartendersCount,
+  chefs_count: input.chefsCount,
+  captains_count: input.captainsCount,
+  coat_check_attendants: input.coatCheckAttendants,
+  valet_attendants: input.valetAttendants,
+  security_guards: input.securityGuards,
+  staff_arrival_time: input.staffArrivalTime,
+  staff_meal_time: input.staffMealTime,
+  staff_break_schedule: input.staffBreakSchedule,
+  overtime_authorized: input.overtimeAuthorized,
+  food_subtotal: input.foodSubtotal,
+  beverage_subtotal: input.beverageSubtotal,
+  equipment_rental_total: input.equipmentRentalTotal,
+  labor_charges: input.laborCharges,
+  service_charge_percent: input.serviceChargePercent,
+  service_charge_amount: input.serviceChargeAmount,
+  gratuity_percent: input.gratuityPercent,
+  gratuity_amount: input.gratuityAmount,
+  tax_percent: input.taxPercent,
+  tax_amount: input.taxAmount,
+  total_estimated: input.totalEstimated,
+  total_actual: input.totalActual,
+  currency_code: input.currencyCode,
+  billing_type: input.billingType,
+  price_per_person: input.pricePerPerson,
+  children_price: input.childrenPrice,
+  children_count: input.childrenCount,
+  kitchen_instructions: input.kitchenInstructions,
+  service_instructions: input.serviceInstructions,
+  setup_instructions: input.setupInstructions,
+  cleanup_instructions: input.cleanupInstructions,
+  audio_visual_instructions: input.audioVisualInstructions,
+  client_approved: input.clientApproved,
+  client_approved_by: input.clientApprovedBy,
+  client_signature_url: input.clientSignatureUrl,
+  chef_approved: input.chefApproved,
+  chef_approved_by: input.chefApprovedBy,
+  manager_approved: input.managerApproved,
+  manager_approved_by: input.managerApprovedBy,
+  setup_completed: input.setupCompleted,
+  event_started: input.eventStarted,
+  event_ended: input.eventEnded,
+  teardown_completed: input.teardownCompleted,
+  post_event_notes: input.postEventNotes,
+  issues_encountered: input.issuesEncountered,
+  client_satisfaction_rating: input.clientSatisfactionRating,
+  photos: input.photos === undefined ? undefined : toJsonbParam(input.photos),
+  // TEXT[], not JSONB — pg's own array encoding is correct here.
+  distribution_list: input.distributionList,
+  signed_beo_url: input.signedBeoUrl,
+  floor_plan_url: input.floorPlanUrl,
+  seating_chart_document_url: input.seatingChartDocumentUrl,
+  menu_card_url: input.menuCardUrl,
+  internal_notes: input.internalNotes,
+  client_notes: input.clientNotes,
+  allergy_warnings: input.allergyWarnings,
+  metadata: input.metadata === undefined ? undefined : toJsonbParam(input.metadata),
+});
+
+/** Drops the keys the caller did not send. */
+const definedColumns = (columns: BeoColumnValues): [string, unknown][] =>
+  Object.entries(columns).filter(([, value]) => value !== undefined);
+
+/**
+ * The approval stamps that a `true` boolean should carry with it.
+ *
+ * Setting `chef_approved` without `chef_approved_date` would leave the BEO
+ * claiming an approval with no time on it, which is the field the kitchen reads
+ * to know whether the approval predates the last revision.
+ */
+const APPROVAL_STAMPS: Record<string, string> = {
+  client_approved: "client_approved_date",
+  chef_approved: "chef_approved_date",
+  manager_approved: "manager_approved_date",
+};
+
+/** Confirms the linked event booking and meeting room exist for this tenant. */
+const assertBeoReferences = async (
+  tenantId: string,
+  eventBookingId: string | undefined,
+  meetingRoomId: string | undefined,
+): Promise<void> => {
+  if (eventBookingId) {
+    const { rows } = await query<{ event_id: string }>(
+      `
+        SELECT event_id FROM public.event_bookings
+        WHERE event_id = $1::uuid AND tenant_id = $2::uuid
+          AND COALESCE(is_deleted, false) = false
+        LIMIT 1
+      `,
+      [eventBookingId, tenantId],
+    );
+    if (rows.length === 0) {
+      throw new BanquetOrderReferenceError("Event booking", eventBookingId);
+    }
+  }
+
+  if (meetingRoomId) {
+    const { rows } = await query<{ room_id: string }>(
+      `
+        SELECT room_id FROM public.meeting_rooms
+        WHERE room_id = $1::uuid AND tenant_id = $2::uuid
+          AND COALESCE(is_deleted, false) = false
+        LIMIT 1
+      `,
+      [meetingRoomId, tenantId],
+    );
+    if (rows.length === 0) {
+      throw new BanquetOrderReferenceError("Meeting room", meetingRoomId);
+    }
+  }
+};
+
+/** The current state of one BEO, for the guards that run before a write. */
+const getBeoState = async (
+  tenantId: string,
+  beoId: string,
+): Promise<{
+  beoStatus: BeoStatus;
+  beoNumber: string;
+  beoVersion: number;
+  isSuperseded: boolean;
+} | null> => {
+  const { rows } = await query<{
+    beo_status: BeoStatus;
+    beo_number: string;
+    beo_version: number | null;
+    is_superseded: boolean;
+  }>(
+    `
+      SELECT beo.beo_status, beo.beo_number, beo.beo_version,
+             EXISTS (
+               SELECT 1 FROM public.banquet_event_orders newer
+               WHERE newer.previous_beo_id = beo.beo_id
+                 AND COALESCE(newer.is_deleted, false) = false
+             ) AS is_superseded
+      FROM public.banquet_event_orders beo
+      WHERE beo.beo_id = $1::uuid AND beo.tenant_id = $2::uuid
+        AND COALESCE(beo.is_deleted, false) = false
+      LIMIT 1
+    `,
+    [beoId, tenantId],
+  );
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    beoStatus: row.beo_status,
+    beoNumber: row.beo_number,
+    beoVersion: row.beo_version ?? 1,
+    isSuperseded: row.is_superseded,
+  };
+};
+
+/**
+ * Create a banquet event order.
+ *
+ * The BEO is born a DRAFT: `beo_status` is not settable from the payload, so the
+ * only ways out of draft are {@link publishBanquetOrder} and
+ * {@link reviseBanquetOrder}. That is what makes "frozen for the kitchen" a
+ * property of the data rather than a convention.
+ */
+export const createBanquetOrder = async (
+  tenantId: string,
+  propertyId: string,
+  input: BanquetOrderWriteInput,
+  actorId?: string,
+): Promise<BanquetOrderDetail | null> => {
+  await assertBeoReferences(tenantId, input.eventBookingId, input.meetingRoomId);
+
+  const beoNumber = input.beoNumber ?? buildBeoNumber();
+  const columns: BeoColumnValues = {
+    tenant_id: tenantId,
+    property_id: propertyId,
+    beo_number: beoNumber,
+    beo_version: 1,
+    beo_status: "DRAFT",
+    ...toBeoColumnValues(input),
+    created_by: actorId ?? null,
+    updated_by: actorId ?? null,
+  };
+
+  // An approval sent on create still needs its timestamp.
+  for (const [flag, stamp] of Object.entries(APPROVAL_STAMPS)) {
+    if (columns[flag] === true) {
+      columns[stamp] = new Date();
+    }
+  }
+
+  const entries = definedColumns(columns);
+  const names = entries.map(([name]) => name);
+  const values = entries.map(([, value]) => value);
+  const placeholders = names.map((_, index) => `$${index + 1}`);
+
+  let beoId: string | undefined;
+  try {
+    const { rows } = await query<{ beo_id: string }>(
+      `
+        INSERT INTO public.banquet_event_orders (${names.join(", ")})
+        VALUES (${placeholders.join(", ")})
+        RETURNING beo_id
+      `,
+      values,
+    );
+    beoId = rows[0]?.beo_id;
+  } catch (error) {
+    if (isBeoNumberConflict(error)) {
+      throw new BanquetOrderNumberConflictError(beoNumber, 1);
+    }
+    throw error;
+  }
+
+  if (!beoId) return null;
+
+  return getBanquetOrderById({ beoId, tenantId });
+};
+
+/**
+ * Edit a BEO in place.
+ *
+ * Refused once the BEO has been published: the kitchen and the setup crew are
+ * working from a copy, and an in-place edit would leave them holding a document
+ * that silently no longer matches the system. Publishing is the point at which
+ * that stops being allowed, and {@link reviseBanquetOrder} is the way through.
+ */
+export const updateBanquetOrder = async (
+  tenantId: string,
+  beoId: string,
+  input: BanquetOrderWriteInput,
+  actorId?: string,
+): Promise<BanquetOrderDetail | null> => {
+  const state = await getBeoState(tenantId, beoId);
+  if (!state) return null;
+
+  if (!BEO_EDITABLE_STATUSES.includes(state.beoStatus)) {
+    throw new BanquetOrderFrozenError(state.beoStatus);
+  }
+
+  await assertBeoReferences(tenantId, undefined, input.meetingRoomId);
+
+  const columns = toBeoColumnValues(input);
+  for (const [flag, stamp] of Object.entries(APPROVAL_STAMPS)) {
+    if (columns[flag] === true) {
+      columns[stamp] = new Date();
+    }
+  }
+
+  const entries = definedColumns(columns);
+  if (entries.length === 0) {
+    // Nothing to change — report the BEO as it stands rather than touching
+    // updated_at for a no-op.
+    return getBanquetOrderById({ beoId, tenantId });
+  }
+
+  const values = entries.map(([, value]) => value);
+  // $1 and $2 are the identity predicate; assignments start at $3.
+  const assignments = entries.map(([name], index) => `${name} = $${index + 3}`);
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.banquet_event_orders
+      SET ${assignments.join(", ")},
+          updated_at = NOW(),
+          updated_by = $${entries.length + 3}
+      WHERE tenant_id = $1::uuid
+        AND beo_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [tenantId, beoId, ...values, actorId ?? null],
+  );
+
+  if (!rowCount) return null;
+
+  return getBanquetOrderById({ beoId, tenantId });
+};
+
+/**
+ * Publish a BEO — freeze it and stamp the distribution.
+ *
+ * Publishing an already-published BEO is a 409 rather than a silent no-op: the
+ * caller believes it is releasing something the departments have not seen, and
+ * it is not. Re-issuing a published BEO means revising it.
+ */
+export const publishBanquetOrder = async (
+  tenantId: string,
+  beoId: string,
+  input: BanquetOrderPublishInput,
+  actorId?: string,
+): Promise<BanquetOrderDetail | null> => {
+  const state = await getBeoState(tenantId, beoId);
+  if (!state) return null;
+
+  if (!BEO_PUBLISHABLE_STATUSES.includes(state.beoStatus)) {
+    throw new BanquetOrderTransitionError(
+      `A ${state.beoStatus} BEO cannot be published — revise it to issue a new version`,
+    );
+  }
+
+  if (state.isSuperseded) {
+    throw new BanquetOrderTransitionError(
+      `BEO ${state.beoNumber} version ${state.beoVersion} has already been revised — publish the current version instead`,
+    );
+  }
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.banquet_event_orders
+      SET
+        beo_status = 'APPROVED',
+        distribution_list = COALESCE($3::text[], distribution_list),
+        last_sent_to_kitchen = NOW(),
+        last_sent_to_setup = NOW(),
+        last_sent_to_client = CASE WHEN $4::boolean THEN NOW() ELSE last_sent_to_client END,
+        updated_at = NOW(),
+        updated_by = $5
+      WHERE tenant_id = $1::uuid
+        AND beo_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [tenantId, beoId, input.distributionList ?? null, input.notifyClient ?? false, actorId ?? null],
+  );
+
+  if (!rowCount) return null;
+
+  return getBanquetOrderById({ beoId, tenantId });
+};
+
+/**
+ * Revise a BEO — the versioning the document type exists for.
+ *
+ * The revision is a new row rather than an edit, so the version the kitchen was
+ * given stays readable exactly as it was issued. It copies the source row whole
+ * via `to_jsonb` / `jsonb_populate_record` rather than naming ~140 columns:
+ * a column added to the table later is carried into revisions automatically,
+ * where a hand-written column list would quietly start dropping it.
+ *
+ * What deliberately does *not* carry over:
+ * - **approvals** — the chef approved a different menu, so v2 starts unapproved;
+ * - **`last_sent_to_*`** — nobody has been sent this version yet;
+ * - **audit and lock fields** — the new row is new.
+ *
+ * Execution tracking (`setup_completed`, `event_started`, …) *does* carry over:
+ * those describe the physical event, which a paperwork revision does not undo.
+ */
+export const reviseBanquetOrder = async (
+  tenantId: string,
+  beoId: string,
+  input: BanquetOrderReviseInput,
+  actorId?: string,
+): Promise<BanquetOrderDetail | null> => {
+  const state = await getBeoState(tenantId, beoId);
+  if (!state) return null;
+
+  if (state.beoStatus === "CANCELLED") {
+    throw new BanquetOrderTransitionError("A cancelled BEO cannot be revised");
+  }
+
+  if (state.isSuperseded) {
+    throw new BanquetOrderTransitionError(
+      `BEO ${state.beoNumber} version ${state.beoVersion} has already been revised — revise the current version instead`,
+    );
+  }
+
+  let revisionId: string | undefined;
+  try {
+    const { rows } = await query<{ beo_id: string }>(
+      `
+        WITH source AS (
+          SELECT * FROM public.banquet_event_orders
+          WHERE beo_id = $1::uuid AND tenant_id = $2::uuid
+            AND COALESCE(is_deleted, false) = false
+        )
+        INSERT INTO public.banquet_event_orders
+        SELECT (jsonb_populate_record(
+          NULL::public.banquet_event_orders,
+          to_jsonb(source) || jsonb_build_object(
+            'beo_id', uuid_generate_v4(),
+            'beo_version', COALESCE(source.beo_version, 1) + 1,
+            'beo_status', 'DRAFT',
+            'previous_beo_id', source.beo_id,
+            'revision_date', NOW(),
+            'revision_reason', $3::text,
+            'client_approved', false,
+            'client_approved_date', NULL,
+            'client_approved_by', NULL,
+            'client_signature_url', NULL,
+            'chef_approved', false,
+            'chef_approved_date', NULL,
+            'chef_approved_by', NULL,
+            'manager_approved', false,
+            'manager_approved_date', NULL,
+            'manager_approved_by', NULL,
+            'last_sent_to_client', NULL,
+            'last_sent_to_kitchen', NULL,
+            'last_sent_to_setup', NULL,
+            'signed_beo_url', NULL,
+            'created_at', NOW(),
+            'updated_at', NULL,
+            'created_by', $4::uuid,
+            'updated_by', $4::uuid,
+            'is_deleted', false,
+            'deleted_at', NULL,
+            'deleted_by', NULL,
+            'version', 0
+          )
+        )).*
+        FROM source
+        RETURNING beo_id
+      `,
+      [beoId, tenantId, input.revisionReason, actorId ?? null],
+    );
+    revisionId = rows[0]?.beo_id;
+  } catch (error) {
+    if (isBeoNumberConflict(error)) {
+      throw new BanquetOrderNumberConflictError(state.beoNumber, state.beoVersion + 1);
+    }
+    throw error;
+  }
+
+  if (!revisionId) return null;
+
+  return getBanquetOrderById({ beoId: revisionId, tenantId });
 };
 
 // =====================================================

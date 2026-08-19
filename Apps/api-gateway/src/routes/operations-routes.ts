@@ -131,7 +131,33 @@ export const registerOperationsRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.get(
+  /**
+   * Creating a BEO POSTs to the bare path, which `/v1/banquet-orders/*` does not
+   * match — Fastify's wildcard needs at least one more segment. Both earlier
+   * slices of ui-gaps/13-sales-catering.md shipped with this same hole (meeting
+   * rooms 2026-08-17, event bookings 2026-08-18): a working handler downstream
+   * and a 404 at the gateway, invisible to every test that does not cross it.
+   * Tenant comes from the body on writes.
+   */
+  app.post(
+    "/v1/banquet-orders",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: OPERATIONS_TAG,
+        summary: "Create a banquet event order (BEO).",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  /**
+   * `app.all`, not `app.get`: PUT /:beoId, POST /:beoId/publish and
+   * POST /:beoId/revise all live under this wildcard.
+   */
+  app.all(
     "/v1/banquet-orders/*",
     {
       preHandler: tenantScopeFromQueryOrBody,

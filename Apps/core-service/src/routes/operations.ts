@@ -6,6 +6,11 @@
 
 import { schemaFromZod } from "@tartware/openapi";
 import type {
+  BanquetOrderPublishBody,
+  BanquetOrderReviseBody,
+  BanquetOrderUpdateBody,
+  BanquetOrderWriteBody,
+  BanquetOrderWriteInput,
   GuestFeedbackResolveBody,
   GuestFeedbackRespondBody,
   GuestFeedbackUpdateBody,
@@ -19,6 +24,10 @@ import type {
   ShiftHandoverWriteBody,
 } from "@tartware/schemas";
 import {
+  BanquetOrderPublishBodySchema,
+  BanquetOrderReviseBodySchema,
+  BanquetOrderUpdateBodySchema,
+  BanquetOrderWriteBodySchema,
   GuestFeedbackResolveBodySchema,
   GuestFeedbackRespondBodySchema,
   GuestFeedbackUpdateBodySchema,
@@ -35,6 +44,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
   acknowledgeShiftHandover,
+  BanquetOrderFrozenError,
+  BanquetOrderNumberConflictError,
+  BanquetOrderReferenceError,
+  BanquetOrderTransitionError,
+  createBanquetOrder,
   createGuestFeedback,
   createPoliceReport,
   createSelfServiceFeedback,
@@ -49,8 +63,11 @@ import {
   listGuestFeedback,
   listPoliceReports,
   listShiftHandovers,
+  publishBanquetOrder,
   resolveGuestFeedback,
   respondToGuestFeedback,
+  reviseBanquetOrder,
+  updateBanquetOrder,
   updateGuestFeedback,
   updatePoliceReport,
   updatePoliceReportStatus,
@@ -560,6 +577,342 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
       }
 
       return reply.send({ data: order });
+    },
+  );
+
+  // ---------------------------------------------------
+  // BEO WRITES — slice 3 of ui-gaps/13-sales-catering.md
+  // ---------------------------------------------------
+
+  /**
+   * Maps the service's write errors onto HTTP. Shared by all four routes.
+   *
+   * Typed structurally rather than against `FastifyReply` so each route can pass
+   * its own generic-parameterised reply, mirroring the event booking routes.
+   */
+  const replyForBanquetWriteError = <
+    TReply extends {
+      notFound: (message: string) => unknown;
+      conflict: (message: string) => unknown;
+    },
+  >(
+    error: unknown,
+    reply: TReply,
+  ): unknown => {
+    if (error instanceof BanquetOrderReferenceError) {
+      return reply.notFound(error.message);
+    }
+    if (
+      error instanceof BanquetOrderNumberConflictError ||
+      error instanceof BanquetOrderFrozenError ||
+      error instanceof BanquetOrderTransitionError
+    ) {
+      return reply.conflict(error.message);
+    }
+    throw error;
+  };
+
+  /**
+   * Payload field names to service input names.
+   *
+   * `property_id` is absent by design: it is passed separately on create and is
+   * not editable afterwards.
+   */
+  const toBanquetWriteInput = (body: Partial<BanquetOrderWriteBody>): BanquetOrderWriteInput => ({
+    eventBookingId: body.event_booking_id,
+    beoNumber: body.beo_number,
+    eventDate: body.event_date,
+    setupStartTime: body.setup_start_time,
+    eventStartTime: body.event_start_time,
+    eventEndTime: body.event_end_time,
+    teardownEndTime: body.teardown_end_time,
+    roomReleaseTime: body.room_release_time,
+    meetingRoomId: body.meeting_room_id,
+    roomSetup: body.room_setup,
+    tablesCount: body.tables_count,
+    chairsCount: body.chairs_count,
+    tableConfiguration: body.table_configuration,
+    seatingChartLayoutUrl: body.seating_chart_layout_url,
+    guaranteedCount: body.guaranteed_count,
+    expectedCount: body.expected_count,
+    overSetPercentage: body.over_set_percentage,
+    actualCount: body.actual_count,
+    menuType: body.menu_type,
+    menuItems: body.menu_items,
+    serviceStyle: body.service_style,
+    coursesCount: body.courses_count,
+    mealServiceStartTime: body.meal_service_start_time,
+    mealServiceDurationMinutes: body.meal_service_duration_minutes,
+    appetizers: body.appetizers,
+    salads: body.salads,
+    entrees: body.entrees,
+    sides: body.sides,
+    desserts: body.desserts,
+    stations: body.stations,
+    barType: body.bar_type,
+    barStartTime: body.bar_start_time,
+    barEndTime: body.bar_end_time,
+    barSetupLocation: body.bar_setup_location,
+    beverages: body.beverages,
+    wineService: body.wine_service,
+    coffeeTeaService: body.coffee_tea_service,
+    waterService: body.water_service,
+    vegetarianCount: body.vegetarian_count,
+    veganCount: body.vegan_count,
+    glutenFreeCount: body.gluten_free_count,
+    dairyFreeCount: body.dairy_free_count,
+    nutFreeCount: body.nut_free_count,
+    kosherCount: body.kosher_count,
+    halalCount: body.halal_count,
+    specialDiets: body.special_diets,
+    linenColor: body.linen_color,
+    linenType: body.linen_type,
+    napkinColor: body.napkin_color,
+    napkinFold: body.napkin_fold,
+    tableSkirting: body.table_skirting,
+    centerpieces: body.centerpieces,
+    decorDescription: body.decor_description,
+    candles: body.candles,
+    floralArrangements: body.floral_arrangements,
+    equipmentList: body.equipment_list,
+    avEquipment: body.av_equipment,
+    stageRequired: body.stage_required,
+    stageDimensions: body.stage_dimensions,
+    podiumRequired: body.podium_required,
+    danceFloorRequired: body.dance_floor_required,
+    specialLighting: body.special_lighting,
+    lightingNotes: body.lighting_notes,
+    serversCount: body.servers_count,
+    bartendersCount: body.bartenders_count,
+    chefsCount: body.chefs_count,
+    captainsCount: body.captains_count,
+    coatCheckAttendants: body.coat_check_attendants,
+    valetAttendants: body.valet_attendants,
+    securityGuards: body.security_guards,
+    staffArrivalTime: body.staff_arrival_time,
+    staffMealTime: body.staff_meal_time,
+    staffBreakSchedule: body.staff_break_schedule,
+    overtimeAuthorized: body.overtime_authorized,
+    foodSubtotal: body.food_subtotal,
+    beverageSubtotal: body.beverage_subtotal,
+    equipmentRentalTotal: body.equipment_rental_total,
+    laborCharges: body.labor_charges,
+    serviceChargePercent: body.service_charge_percent,
+    serviceChargeAmount: body.service_charge_amount,
+    gratuityPercent: body.gratuity_percent,
+    gratuityAmount: body.gratuity_amount,
+    taxPercent: body.tax_percent,
+    taxAmount: body.tax_amount,
+    totalEstimated: body.total_estimated,
+    totalActual: body.total_actual,
+    currencyCode: body.currency_code,
+    billingType: body.billing_type,
+    pricePerPerson: body.price_per_person,
+    childrenPrice: body.children_price,
+    childrenCount: body.children_count,
+    kitchenInstructions: body.kitchen_instructions,
+    serviceInstructions: body.service_instructions,
+    setupInstructions: body.setup_instructions,
+    cleanupInstructions: body.cleanup_instructions,
+    audioVisualInstructions: body.audio_visual_instructions,
+    clientApproved: body.client_approved,
+    clientApprovedBy: body.client_approved_by,
+    clientSignatureUrl: body.client_signature_url,
+    chefApproved: body.chef_approved,
+    chefApprovedBy: body.chef_approved_by,
+    managerApproved: body.manager_approved,
+    managerApprovedBy: body.manager_approved_by,
+    setupCompleted: body.setup_completed,
+    eventStarted: body.event_started,
+    eventEnded: body.event_ended,
+    teardownCompleted: body.teardown_completed,
+    postEventNotes: body.post_event_notes,
+    issuesEncountered: body.issues_encountered,
+    clientSatisfactionRating: body.client_satisfaction_rating,
+    photos: body.photos,
+    distributionList: body.distribution_list,
+    signedBeoUrl: body.signed_beo_url,
+    floorPlanUrl: body.floor_plan_url,
+    seatingChartDocumentUrl: body.seating_chart_document_url,
+    menuCardUrl: body.menu_card_url,
+    internalNotes: body.internal_notes,
+    clientNotes: body.client_notes,
+    allergyWarnings: body.allergy_warnings,
+    metadata: body.metadata,
+  });
+
+  // ---------------------------------------------------
+  // POST /v1/banquet-orders - Create a BEO (draft)
+  // ---------------------------------------------------
+  fastify.post(
+    "/v1/banquet-orders",
+    {
+      schema: {
+        summary: "Create a banquet event order (BEO)",
+        description:
+          "Creates a BEO as a DRAFT against an existing event booking. The BEO is not visible to the kitchen until it is published.",
+        tags: ["Banquet Orders"],
+        body: schemaFromZod(BanquetOrderWriteBodySchema, "BanquetOrderWriteBody"),
+      },
+    },
+    async (request: FastifyRequest<{ Body: BanquetOrderWriteBody }>, reply: FastifyReply) => {
+      const body = BanquetOrderWriteBodySchema.parse(request.body);
+      let created: Awaited<ReturnType<typeof createBanquetOrder>>;
+
+      try {
+        created = await createBanquetOrder(
+          body.tenant_id,
+          body.property_id,
+          toBanquetWriteInput(body),
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForBanquetWriteError(error, reply);
+      }
+
+      if (!created) {
+        return reply.internalServerError("Failed to create banquet event order");
+      }
+
+      return reply.status(201).send({ data: created, message: "Banquet event order created" });
+    },
+  );
+
+  // ---------------------------------------------------
+  // PUT /v1/banquet-orders/:beoId - Edit a draft BEO
+  // ---------------------------------------------------
+  fastify.put(
+    "/v1/banquet-orders/:beoId",
+    {
+      schema: {
+        summary: "Update a draft banquet event order",
+        description:
+          "Edits a BEO in place. Only accepted while the BEO is still a draft — once published it is frozen and must be revised instead, which returns 409.",
+        tags: ["Banquet Orders"],
+        params: {
+          type: "object",
+          required: ["beoId"],
+          properties: { beoId: { type: "string", format: "uuid" } },
+        },
+        body: schemaFromZod(BanquetOrderUpdateBodySchema, "BanquetOrderUpdateBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { beoId: string }; Body: BanquetOrderUpdateBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = BanquetOrderUpdateBodySchema.parse(request.body);
+      let updated: Awaited<ReturnType<typeof updateBanquetOrder>>;
+
+      try {
+        updated = await updateBanquetOrder(
+          body.tenant_id,
+          request.params.beoId,
+          toBanquetWriteInput(body),
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForBanquetWriteError(error, reply);
+      }
+
+      if (!updated) {
+        return reply.notFound("Banquet event order not found");
+      }
+
+      return reply.send({ data: updated, message: "Banquet event order updated" });
+    },
+  );
+
+  // ---------------------------------------------------
+  // POST /v1/banquet-orders/:beoId/publish - Freeze for kitchen and ops
+  // ---------------------------------------------------
+  fastify.post(
+    "/v1/banquet-orders/:beoId/publish",
+    {
+      schema: {
+        summary: "Publish a banquet event order",
+        description:
+          "Freezes the BEO for the kitchen and setup crew and stamps the distribution. A published BEO can no longer be edited in place; publishing one twice returns 409.",
+        tags: ["Banquet Orders"],
+        params: {
+          type: "object",
+          required: ["beoId"],
+          properties: { beoId: { type: "string", format: "uuid" } },
+        },
+        body: schemaFromZod(BanquetOrderPublishBodySchema, "BanquetOrderPublishBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { beoId: string }; Body: BanquetOrderPublishBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = BanquetOrderPublishBodySchema.parse(request.body);
+      let published: Awaited<ReturnType<typeof publishBanquetOrder>>;
+
+      try {
+        published = await publishBanquetOrder(
+          body.tenant_id,
+          request.params.beoId,
+          {
+            distributionList: body.distribution_list,
+            notifyClient: body.notify_client,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForBanquetWriteError(error, reply);
+      }
+
+      if (!published) {
+        return reply.notFound("Banquet event order not found");
+      }
+
+      return reply.send({ data: published, message: "Banquet event order published" });
+    },
+  );
+
+  // ---------------------------------------------------
+  // POST /v1/banquet-orders/:beoId/revise - New version
+  // ---------------------------------------------------
+  fastify.post(
+    "/v1/banquet-orders/:beoId/revise",
+    {
+      schema: {
+        summary: "Revise a banquet event order",
+        description:
+          "Creates the next version of a BEO: same beo_number, beo_version + 1, previous_beo_id pointing at the row it replaces. The new version is a DRAFT and carries no approvals. Returns the new version, not the one revised.",
+        tags: ["Banquet Orders"],
+        params: {
+          type: "object",
+          required: ["beoId"],
+          properties: { beoId: { type: "string", format: "uuid" } },
+        },
+        body: schemaFromZod(BanquetOrderReviseBodySchema, "BanquetOrderReviseBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { beoId: string }; Body: BanquetOrderReviseBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = BanquetOrderReviseBodySchema.parse(request.body);
+      let revision: Awaited<ReturnType<typeof reviseBanquetOrder>>;
+
+      try {
+        revision = await reviseBanquetOrder(
+          body.tenant_id,
+          request.params.beoId,
+          { revisionReason: body.revision_reason },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForBanquetWriteError(error, reply);
+      }
+
+      if (!revision) {
+        return reply.notFound("Banquet event order not found");
+      }
+
+      return reply.status(201).send({ data: revision, message: "Banquet event order revised" });
     },
   );
 }
