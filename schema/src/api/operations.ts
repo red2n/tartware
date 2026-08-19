@@ -79,6 +79,26 @@ export type GetBanquetOrderInput = {
 	tenantId: string;
 };
 
+/**
+ * One property's BEOs for one date — the day sheet (UI item 5 of
+ * ui-gaps/13-sales-catering.md).
+ *
+ * `propertyId` is required where the list makes it optional: a day sheet is one
+ * property's day, and the supporting index leads with `property_id`.
+ */
+export type BanquetOrderDaySheetInput = {
+	tenantId: string;
+	propertyId: string;
+	eventDate: string;
+};
+
+/** Service-layer input for recording one execution step against a BEO. */
+export type BanquetOrderExecutionInput = {
+	step: "SETUP_COMPLETE" | "EVENT_START" | "EVENT_END" | "TEARDOWN_COMPLETE";
+	occurredAt?: string;
+	notes?: string;
+};
+
 // =====================================================
 // GUEST FEEDBACK INPUTS
 // =====================================================

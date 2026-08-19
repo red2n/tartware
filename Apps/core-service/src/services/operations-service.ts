@@ -5,6 +5,8 @@
  */
 
 import type {
+  BanquetOrderDaySheetInput,
+  BanquetOrderExecutionInput,
   BanquetOrderPublishInput,
   BanquetOrderReviseInput,
   BanquetOrderWriteInput,
@@ -14,6 +16,7 @@ import type {
   ShiftHandoverWriteInput,
 } from "@tartware/schemas";
 import {
+  type BanquetOrderDaySheetResponse,
   type BanquetOrderDetail,
   type BanquetOrderDetailRow,
   BanquetOrderDetailSchema,
@@ -21,6 +24,8 @@ import {
   BanquetOrderListItemSchema,
   type BanquetOrderRow,
   BEO_EDITABLE_STATUSES,
+  BEO_EXECUTABLE_STATUSES,
+  BEO_EXECUTION_PREREQUISITE,
   BEO_PUBLISHABLE_STATUSES,
   type CashierSessionListItem,
   CashierSessionListItemSchema,
@@ -50,6 +55,7 @@ import {
 import { query } from "../lib/db.js";
 import {
   BANQUET_ORDER_BY_ID_SQL,
+  BANQUET_ORDER_DAY_SHEET_SQL,
   BANQUET_ORDER_LIST_SQL,
   CASHIER_SESSION_BY_ID_SQL,
   CASHIER_SESSION_LIST_SQL,
@@ -584,6 +590,11 @@ const mapBanquetOrderDetailRow = (row: BanquetOrderDetailRow): BanquetOrderDetai
     seating_chart_document_url: row.seating_chart_document_url ?? undefined,
     menu_card_url: row.menu_card_url ?? undefined,
 
+    event_name: row.event_name ?? undefined,
+    event_organizer_name: row.event_organizer_name ?? undefined,
+    event_contact_person: row.event_contact_person ?? undefined,
+    event_contact_phone: row.event_contact_phone ?? undefined,
+
     internal_notes: row.internal_notes ?? undefined,
     client_notes: row.client_notes ?? undefined,
     allergy_warnings: row.allergy_warnings ?? undefined,
@@ -1047,6 +1058,165 @@ export const updateBanquetOrder = async (
         AND COALESCE(is_deleted, false) = false
     `,
     [tenantId, beoId, ...values, actorId ?? null],
+  );
+
+  if (!rowCount) return null;
+
+  return getBanquetOrderById({ beoId, tenantId });
+};
+
+/**
+ * The day sheet — every BEO one property works from on one date.
+ *
+ * UI item 5 of ui-gaps/13-sales-catering.md: the document the operation prints
+ * each morning. It returns full BEO detail rather than list rows because the
+ * sheet is read *instead of* opening each BEO — the menu, the dietary counts and
+ * the departmental instructions are the whole point of it — and fetching those
+ * one BEO at a time would be the N+1 this exists to avoid.
+ *
+ * The meta is the part a chef reads first: how many covers the day is worth in
+ * total, and whether anything on it is still unpublished.
+ */
+export const getBanquetOrderDaySheet = async (
+  options: BanquetOrderDaySheetInput,
+): Promise<BanquetOrderDaySheetResponse> => {
+  const { rows } = await query<BanquetOrderDetailRow>(BANQUET_ORDER_DAY_SHEET_SQL, [
+    options.tenantId,
+    options.eventDate,
+    options.propertyId,
+  ]);
+
+  const orders = rows.map((row) => mapBanquetOrderDetailRow(row));
+
+  return {
+    data: orders,
+    meta: {
+      event_date: options.eventDate,
+      property_id: options.propertyId,
+      count: orders.length,
+      guaranteed_total: orders.reduce((total, order) => total + (order.guaranteed_count ?? 0), 0),
+      unpublished_count: orders.filter((order) => BEO_EDITABLE_STATUSES.includes(order.beo_status))
+        .length,
+    },
+  };
+};
+
+/**
+ * Record one execution step against a published BEO — UI item 5's write half.
+ *
+ * The columns behind these four steps have existed since the table was designed
+ * and had no route to move them; slice 3 recorded that as belonging with the
+ * kitchen view rather than with the paperwork endpoints, because they are what
+ * the operation touches on the day rather than what sales writes beforehand.
+ *
+ * Three rules, each of them a real operational statement rather than a
+ * defensive check:
+ *
+ * - **A draft is not recorded against.** The crew works from the published
+ *   document; a draft has not reached them.
+ * - **A superseded version is not recorded against.** Its replacement is what is
+ *   out there.
+ * - **The day runs in one direction.** An end with no start, or a teardown with
+ *   no end, is a mis-tap. `SETUP_COMPLETE` is the exception with no prerequisite
+ *   — dressing the room is the first thing that happens to it.
+ *
+ * Repeating a step is a conflict rather than a no-op, for the same reason
+ * publishing twice is: the caller believes it is recording something new.
+ */
+export const recordBanquetOrderExecution = async (
+  tenantId: string,
+  beoId: string,
+  input: BanquetOrderExecutionInput,
+  actorId?: string,
+): Promise<BanquetOrderDetail | null> => {
+  const state = await getBeoState(tenantId, beoId);
+  if (!state) return null;
+
+  if (!BEO_EXECUTABLE_STATUSES.includes(state.beoStatus)) {
+    // Two different situations wear the same guard, and telling an operator to
+    // publish a BEO that finished yesterday is worse than saying nothing.
+    throw new BanquetOrderTransitionError(
+      state.beoStatus === "COMPLETED" || state.beoStatus === "CANCELLED"
+        ? `BEO ${state.beoNumber} is ${state.beoStatus} — its day is closed`
+        : `BEO ${state.beoNumber} is still ${state.beoStatus} — publish it before recording against it`,
+    );
+  }
+
+  if (state.isSuperseded) {
+    throw new BanquetOrderTransitionError(
+      `BEO ${state.beoNumber} version ${state.beoVersion} has been revised — record against the current version`,
+    );
+  }
+
+  const { rows: currentRows } = await query<{
+    setup_completed: boolean | null;
+    event_started: boolean | null;
+    event_ended: boolean | null;
+    teardown_completed: boolean | null;
+  }>(
+    `SELECT setup_completed, event_started, event_ended, teardown_completed
+       FROM public.banquet_event_orders
+      WHERE beo_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false`,
+    [beoId, tenantId],
+  );
+
+  const current = currentRows[0];
+  if (!current) return null;
+
+  const recorded: Record<string, boolean> = {
+    SETUP_COMPLETE: Boolean(current.setup_completed),
+    EVENT_START: Boolean(current.event_started),
+    EVENT_END: Boolean(current.event_ended),
+    TEARDOWN_COMPLETE: Boolean(current.teardown_completed),
+  };
+
+  if (recorded[input.step]) {
+    throw new BanquetOrderTransitionError(
+      `${input.step} has already been recorded on BEO ${state.beoNumber}`,
+    );
+  }
+
+  const prerequisite = BEO_EXECUTION_PREREQUISITE[input.step];
+  if (prerequisite && !recorded[prerequisite]) {
+    throw new BanquetOrderTransitionError(
+      `${input.step} cannot be recorded before ${prerequisite} on BEO ${state.beoNumber}`,
+    );
+  }
+
+  // Column pairs per step, and the status the step moves the BEO to. EVENT_END
+  // does not complete the BEO — the room still has to be cleared, and a sheet
+  // that reads COMPLETED while a crew is still in the room is wrong.
+  const STEP_COLUMNS = {
+    SETUP_COMPLETE: { flag: "setup_completed", stamp: "setup_completed_time", status: null },
+    EVENT_START: { flag: "event_started", stamp: "event_started_time", status: "IN_PROGRESS" },
+    EVENT_END: { flag: "event_ended", stamp: "event_ended_time", status: null },
+    TEARDOWN_COMPLETE: {
+      flag: "teardown_completed",
+      stamp: "teardown_completed_time",
+      status: "COMPLETED",
+    },
+  } as const;
+
+  const step = STEP_COLUMNS[input.step];
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.banquet_event_orders
+      SET ${step.flag} = TRUE,
+          ${step.stamp} = COALESCE($3::timestamptz, NOW()),
+          ${step.status ? `beo_status = '${step.status}',` : ""}
+          post_event_notes = CASE
+            WHEN $4::text IS NULL THEN post_event_notes
+            ELSE CONCAT_WS(E'\n', post_event_notes, $4::text)
+          END,
+          updated_at = NOW(),
+          updated_by = $5
+      WHERE tenant_id = $1::uuid
+        AND beo_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [tenantId, beoId, input.occurredAt ?? null, input.notes ?? null, actorId ?? null],
   );
 
   if (!rowCount) return null;

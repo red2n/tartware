@@ -2553,6 +2553,14 @@ export const BanquetOrderDetailSchema = BanquetOrderListItemSchema.extend({
 	seating_chart_document_url: z.string().optional(),
 	menu_card_url: z.string().optional(),
 
+	// The booking this BEO details — joined, not stored. A day sheet that cannot
+	// name the function is a list of room numbers, and the phone number is who
+	// the operation calls when something is wrong on the day.
+	event_name: z.string().optional(),
+	event_organizer_name: z.string().optional(),
+	event_contact_person: z.string().optional(),
+	event_contact_phone: z.string().optional(),
+
 	// Notes
 	internal_notes: z.string().optional(),
 	client_notes: z.string().optional(),
@@ -2873,6 +2881,113 @@ export const BEO_PUBLISHABLE_STATUSES: readonly BeoStatus[] = [
 	"DRAFT",
 	"PENDING_APPROVAL",
 ];
+
+/**
+ * The four moments the operation records against a BEO on the day — UI item 5 of
+ * ui-gaps/13-sales-catering.md.
+ *
+ * The columns behind them (`setup_completed`, `event_started`, `event_ended`,
+ * `teardown_completed` and their `*_time` stamps) have existed since the table
+ * was designed and were settable on a draft with no route to move them, which
+ * slice 3 recorded as belonging here rather than inventing a fifth write.
+ */
+export const BeoExecutionStepEnum = z.enum([
+	"SETUP_COMPLETE",
+	"EVENT_START",
+	"EVENT_END",
+	"TEARDOWN_COMPLETE",
+]);
+
+export type BeoExecutionStep = z.infer<typeof BeoExecutionStepEnum>;
+
+/**
+ * What each step requires to have happened already.
+ *
+ * A day runs in one direction: the room is dressed, the function starts, it
+ * ends, the room is cleared. Recording an end for something that never started
+ * is a mis-tap, not a state the operation can be in, so the service refuses it
+ * and the day sheet offers only the step that comes next.
+ *
+ * `SETUP_COMPLETE` has no prerequisite — dressing a room is the first thing that
+ * happens to it, and it is also the one step a rushed operation may record late.
+ */
+export const BEO_EXECUTION_PREREQUISITE: Readonly<
+	Record<BeoExecutionStep, BeoExecutionStep | null>
+> = Object.freeze({
+	SETUP_COMPLETE: null,
+	EVENT_START: null,
+	EVENT_END: "EVENT_START",
+	TEARDOWN_COMPLETE: "EVENT_END",
+});
+
+/**
+ * The boolean each step sets, so the screen can read "already recorded" from the
+ * BEO it is displaying without a second copy of the mapping.
+ */
+export const BEO_EXECUTION_FLAG: Readonly<
+	Record<BeoExecutionStep, "setup_completed" | "event_started" | "event_ended" | "teardown_completed">
+> = Object.freeze({
+	SETUP_COMPLETE: "setup_completed",
+	EVENT_START: "event_started",
+	EVENT_END: "event_ended",
+	TEARDOWN_COMPLETE: "teardown_completed",
+});
+
+/**
+ * Record one execution step against a published BEO.
+ *
+ * A draft is not recorded against: the document the crew is working from is the
+ * published one, and a draft by definition has not reached them.
+ */
+export const BanquetOrderExecutionBodySchema = z.object({
+	tenant_id: uuid,
+	step: BeoExecutionStepEnum,
+	/** Defaults to now; accepted so a step can be logged after the fact. */
+	occurred_at: z.string().datetime().optional(),
+	notes: z.string().max(1000).optional(),
+});
+
+export type BanquetOrderExecutionBody = z.infer<
+	typeof BanquetOrderExecutionBodySchema
+>;
+
+/**
+ * The statuses a BEO can have execution recorded against.
+ *
+ * `APPROVED` is a published, un-started document; `IN_PROGRESS` is one already
+ * part-way through the day. A `DRAFT` or `PENDING_APPROVAL` BEO has not been
+ * issued, and a `COMPLETED` one is finished.
+ */
+export const BEO_EXECUTABLE_STATUSES: readonly BeoStatus[] = [
+	"APPROVED",
+	"IN_PROGRESS",
+];
+
+/**
+ * A day's worth of BEOs, as the operation prints them each morning.
+ *
+ * The full detail for every current BEO on one date at one property, in the
+ * order the rooms are touched. Deliberately not the list read model: a day sheet
+ * is read *instead of* opening each BEO, so it has to carry the menu, the
+ * dietary counts and the instructions, and fetching those one BEO at a time is
+ * the N+1 this endpoint exists to avoid.
+ */
+export const BanquetOrderDaySheetResponseSchema = z.object({
+	data: z.array(BanquetOrderDetailSchema),
+	meta: z.object({
+		event_date: z.string(),
+		property_id: uuid,
+		count: z.number().int().nonnegative(),
+		/** Head counts summed across the day — what the kitchen orders against. */
+		guaranteed_total: z.number().int().nonnegative(),
+		/** BEOs on the sheet that have not been published yet. */
+		unpublished_count: z.number().int().nonnegative(),
+	}),
+});
+
+export type BanquetOrderDaySheetResponse = z.infer<
+	typeof BanquetOrderDaySheetResponseSchema
+>;
 
 /** Service-layer input for a banquet event order write, per AGENTS.md. */
 export type BanquetOrderWriteInput = {

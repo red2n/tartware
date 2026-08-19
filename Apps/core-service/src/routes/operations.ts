@@ -6,6 +6,7 @@
 
 import { schemaFromZod } from "@tartware/openapi";
 import type {
+  BanquetOrderExecutionBody,
   BanquetOrderPublishBody,
   BanquetOrderReviseBody,
   BanquetOrderUpdateBody,
@@ -24,6 +25,7 @@ import type {
   ShiftHandoverWriteBody,
 } from "@tartware/schemas";
 import {
+  BanquetOrderExecutionBodySchema,
   BanquetOrderPublishBodySchema,
   BanquetOrderReviseBodySchema,
   BanquetOrderUpdateBodySchema,
@@ -54,6 +56,7 @@ import {
   createSelfServiceFeedback,
   createShiftHandover,
   getBanquetOrderById,
+  getBanquetOrderDaySheet,
   getCashierSessionById,
   getGuestFeedbackById,
   getPoliceReportById,
@@ -64,6 +67,7 @@ import {
   listPoliceReports,
   listShiftHandovers,
   publishBanquetOrder,
+  recordBanquetOrderExecution,
   resolveGuestFeedback,
   respondToGuestFeedback,
   reviseBanquetOrder,
@@ -544,6 +548,51 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
   );
 
   // ---------------------------------------------------
+  // GET /v1/banquet-orders/day-sheet - The day the operation prints
+  // UI item 5 of ui-gaps/13-sales-catering.md
+  // ---------------------------------------------------
+  //
+  // Registered before `/:beoId` for readability; Fastify prefers a static
+  // segment over a parametric one regardless of order, so "day-sheet" is never
+  // read as a BEO id.
+  fastify.get(
+    "/v1/banquet-orders/day-sheet",
+    {
+      schema: {
+        summary: "Banquet day sheet — every current BEO for one property on one date",
+        description:
+          "Full BEO detail for each function that day, ordered by the time the room is first touched. Superseded revisions and cancelled BEOs are excluded; unpublished drafts are included and counted, because a function whose BEO has not been issued is what the morning meeting is for.",
+        tags: ["Banquet Orders"],
+        querystring: {
+          type: "object",
+          required: ["tenant_id", "property_id", "event_date"],
+          properties: {
+            tenant_id: { type: "string", format: "uuid" },
+            property_id: { type: "string", format: "uuid" },
+            event_date: { type: "string", format: "date" },
+          },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Querystring: { tenant_id: string; property_id: string; event_date: string };
+      }>,
+      reply: FastifyReply,
+    ) => {
+      const { tenant_id, property_id, event_date } = request.query;
+
+      const sheet = await getBanquetOrderDaySheet({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        eventDate: event_date,
+      });
+
+      return reply.send(sheet);
+    },
+  );
+
+  // ---------------------------------------------------
   // GET /v1/banquet-orders/:beoId - Get BEO by ID
   // ---------------------------------------------------
   fastify.get(
@@ -924,6 +973,61 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
       }
 
       return reply.status(201).send({ data: revision, message: "Banquet event order revised" });
+    },
+  );
+
+  // ---------------------------------------------------
+  // POST /v1/banquet-orders/:beoId/execution - The day, as it happens
+  // UI item 5 of ui-gaps/13-sales-catering.md
+  // ---------------------------------------------------
+  //
+  // Slice 3 left the execution flags settable on a draft with no route to move
+  // them, and recorded that they belong with the kitchen view rather than with
+  // the paperwork endpoints. This is that route: one step at a time, in order,
+  // against a published BEO.
+  fastify.post(
+    "/v1/banquet-orders/:beoId/execution",
+    {
+      schema: {
+        summary: "Record an execution step against a banquet event order",
+        description:
+          "Records setup complete, event start, event end or teardown complete, stamping the matching time. EVENT_START moves the BEO to IN_PROGRESS and TEARDOWN_COMPLETE to COMPLETED. A step already recorded, a step out of order, an unpublished BEO or a superseded version all return 409.",
+        tags: ["Banquet Orders"],
+        params: {
+          type: "object",
+          required: ["beoId"],
+          properties: { beoId: { type: "string", format: "uuid" } },
+        },
+        body: schemaFromZod(BanquetOrderExecutionBodySchema, "BanquetOrderExecutionBody"),
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { beoId: string }; Body: BanquetOrderExecutionBody }>,
+      reply: FastifyReply,
+    ) => {
+      const body = BanquetOrderExecutionBodySchema.parse(request.body);
+      let recorded: Awaited<ReturnType<typeof recordBanquetOrderExecution>>;
+
+      try {
+        recorded = await recordBanquetOrderExecution(
+          body.tenant_id,
+          request.params.beoId,
+          {
+            step: body.step,
+            occurredAt: body.occurred_at,
+            notes: body.notes,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        return replyForBanquetWriteError(error, reply);
+      }
+
+      if (!recorded) {
+        return reply.notFound("Banquet event order not found");
+      }
+
+      return reply.send({ data: recorded, message: `${body.step} recorded` });
     },
   );
 }

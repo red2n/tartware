@@ -203,6 +203,11 @@ export type BanquetOrderDetailRow = BanquetOrderRow & {
 	internal_notes: string | null;
 	client_notes: string | null;
 	allergy_warnings: string | null;
+	/** Joined from `event_bookings` — the function this BEO details. */
+	event_name: string | null;
+	event_organizer_name: string | null;
+	event_contact_person: string | null;
+	event_contact_phone: string | null;
 	metadata: unknown;
 	updated_at: Date | string | null;
 };

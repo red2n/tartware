@@ -242,7 +242,15 @@ LIMIT $1
 OFFSET $7
 `;
 
-export const BANQUET_ORDER_BY_ID_SQL = `
+/**
+ * Every column the BEO detail read model carries, with its joins — shared by the
+ * by-id read and the day sheet.
+ *
+ * Extracted rather than copied: this list is 141 of the table's 146 columns, and
+ * a second hand-maintained copy would stop carrying any column added later. The
+ * two queries differ only in their WHERE clause.
+ */
+const BANQUET_ORDER_DETAIL_SELECT = `
 SELECT
     beo.beo_id,
     beo.tenant_id,
@@ -392,13 +400,57 @@ SELECT
         SELECT 1 FROM banquet_event_orders newer
         WHERE newer.previous_beo_id = beo.beo_id
           AND COALESCE(newer.is_deleted, false) = false
-    ) AS is_superseded
+    ) AS is_superseded,
+    -- The booking the BEO details. A day sheet that cannot say "Smith Wedding"
+    -- is a list of room numbers, and the kitchen and the captain both work from
+    -- the name; the phone number is who to call when something is wrong on the
+    -- day. Carried on the detail rather than the day sheet alone so the BEO
+    -- editor names its booking too.
+    eb.event_name,
+    eb.organizer_name AS event_organizer_name,
+    eb.contact_person AS event_contact_person,
+    eb.contact_phone AS event_contact_phone
 FROM banquet_event_orders beo
 LEFT JOIN properties p ON p.id = beo.property_id
 LEFT JOIN meeting_rooms mr ON mr.room_id = beo.meeting_room_id
+LEFT JOIN event_bookings eb
+       ON eb.event_id = beo.event_booking_id
+      AND eb.tenant_id = beo.tenant_id
+`;
+
+export const BANQUET_ORDER_BY_ID_SQL = `${BANQUET_ORDER_DETAIL_SELECT}
 WHERE beo.beo_id = $1
   AND beo.tenant_id = $2
   AND COALESCE(beo.is_deleted, false) = false
+`;
+
+/**
+ * The day sheet — every BEO the operation works from on one date.
+ *
+ * Current versions only: a superseded revision is paperwork the kitchen has
+ * already replaced, and printing both is how the wrong menu reaches the pass.
+ * Cancelled BEOs are dropped; drafts are *kept*, because a function whose BEO
+ * has not been issued is exactly what the morning meeting needs to catch.
+ *
+ * Ordered by the time the room is first touched, not by the event start: the
+ * sheet is read top to bottom as the day happens, and setup comes first.
+ *
+ * `property_id` is required rather than optional: a day sheet is one property's
+ * day, and `idx_beo_event_date` leads with `property_id`, so an optional filter
+ * would have made the common call the one that cannot use the index.
+ */
+export const BANQUET_ORDER_DAY_SHEET_SQL = `${BANQUET_ORDER_DETAIL_SELECT}
+WHERE beo.tenant_id = $1
+  AND beo.property_id = $3::uuid
+  AND beo.event_date = $2::date
+  AND COALESCE(beo.is_deleted, false) = false
+  AND beo.beo_status <> 'CANCELLED'
+  AND NOT EXISTS (
+      SELECT 1 FROM banquet_event_orders newer
+      WHERE newer.previous_beo_id = beo.beo_id
+        AND COALESCE(newer.is_deleted, false) = false
+  )
+ORDER BY COALESCE(beo.setup_start_time, beo.event_start_time), beo.event_start_time, mr.room_name
 `;
 
 // =====================================================
