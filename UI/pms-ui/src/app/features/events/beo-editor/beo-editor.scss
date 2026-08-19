@@ -1,0 +1,69 @@
+/* A course, beverage or equipment list. Three fields on one row, because a line
+   on a BEO is "what, how many, and one note" — anything longer belongs in the
+   department instructions. */
+.line-list {
+  margin-top: var(--base-size-16);
+}
+
+.line-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-8);
+}
+
+.line-list-title {
+  margin: 0;
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+}
+
+.line-row {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-8);
+}
+
+/* The name carries the weight, so it takes the slack; the quantity is a couple
+   of digits and should not stretch to match it. */
+.line-name {
+  flex: 3 1 0;
+  min-width: 0;
+}
+
+.line-qty {
+  flex: 0 0 5rem;
+}
+
+.line-note {
+  flex: 2 1 0;
+  min-width: 0;
+}
+
+/* Read view of the same lists. */
+.course-list {
+  list-style: none;
+  margin: 0 0 var(--base-size-12);
+  padding: 0;
+}
+
+.course-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--base-size-8);
+  flex-wrap: wrap;
+  padding: var(--base-size-4) 0;
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted);
+}
+
+.course-item:last-child {
+  border-bottom: none;
+}
+
+.course-name {
+  font-weight: var(--base-text-weight-medium);
+  color: var(--fgColor-default);
+}

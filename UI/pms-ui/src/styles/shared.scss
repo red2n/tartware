@@ -2984,3 +2984,76 @@ $tl-colors: (
   white-space: pre-wrap;
   line-height: 1.5;
 }
+
+/* ═══════════════════════════════════════════
+   STATUS STRIP — one line of facts under a page title
+   ═══════════════════════════════════════════ */
+
+/* Status badge plus the dates that answer "where is this in its life".
+   Deliberately not `.notice`, which is the attention colour and would make
+   every healthy record look like a problem. Used by the event booking detail
+   and the BEO editor. */
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  flex-wrap: wrap;
+  margin: 0 0 var(--base-size-16);
+  font-size: var(--base-text-size-sm);
+}
+
+/* ═══════════════════════════════════════════
+   RECORD ROW LIST — a card body listing records you can open
+   ═══════════════════════════════════════════ */
+
+/* A borderless list whose rows are whole-width buttons. The row is the target,
+   not the identifier inside it: an operator aims at "the document", and a BEO
+   number or a version label alone is too small to hit comfortably.
+
+   `.record-row-btn` is a real <button>, so it is keyboard reachable and gets the
+   focus ring for free; `:disabled` marks the row you are already on. */
+.record-row-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.record-row {
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.record-row-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: var(--base-size-8) 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    background: var(--bgColor-muted);
+  }
+
+  /* Pushes a trailing chevron to the edge whatever else the row carries. */
+  .cell-chevron {
+    margin-inline-start: auto;
+  }
+}
+
+/* The leading identifier — a BEO number, a version label. */
+.record-row-label {
+  font-weight: var(--base-text-weight-semibold);
+}

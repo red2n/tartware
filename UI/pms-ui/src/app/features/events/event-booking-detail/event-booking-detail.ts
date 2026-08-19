@@ -4,6 +4,8 @@ import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import {
 	EVENT_BOOKING_LEGAL_TRANSITIONS,
+	type BanquetOrderDetail,
+	type BanquetOrderListItem,
 	type EventBookingDetail,
 	type EventBookingStatus,
 } from "@tartware/schemas";
@@ -99,7 +101,8 @@ type EditForm = {
 		UnsavedGuardDirective,
 	],
 	templateUrl: "./event-booking-detail.html",
-	styleUrl: "./event-booking-detail.scss",
+	// No component styles — `.status-strip` and the BEO row list both live in
+	// src/styles/shared.scss, per UI/AGENTS.md.
 })
 export class EventBookingDetailComponent {
 	private readonly api = inject(ApiService);
@@ -125,6 +128,10 @@ export class EventBookingDetailComponent {
 
 	readonly skeletonRows = Array.from({ length: 5 });
 
+	/** BEOs raised against this booking — every version, oldest first. */
+	readonly beos = signal<BanquetOrderListItem[]>([]);
+	readonly creatingBeo = signal(false);
+
 	/** Only the moves the service will accept, from the shared map. */
 	readonly nextStatuses = computed<readonly EventBookingStatus[]>(() => {
 		const current = this.booking()?.booking_status;
@@ -149,6 +156,14 @@ export class EventBookingDetailComponent {
 		if (!b) return false;
 		return Boolean(b.setup_start_time || b.teardown_end_time);
 	});
+
+	/**
+	 * The versions still in force — one per BEO number, the one nothing has
+	 * revised. What the operation is actually working from.
+	 */
+	readonly currentBeos = computed<BanquetOrderListItem[]>(() =>
+		this.beos().filter((b) => !b.is_superseded),
+	);
 
 	readonly depositOutstanding = computed(() => {
 		const b = this.booking();
@@ -209,6 +224,7 @@ export class EventBookingDetailComponent {
 			});
 			this.booking.set(res);
 			this.notFound.set(false);
+			await this.loadBeos(eventId);
 		} catch (e) {
 			this.notFound.set(true);
 			this.toast.error(e instanceof Error ? e.message : "Failed to load event booking");
@@ -345,6 +361,85 @@ export class EventBookingDetailComponent {
 			this.toast.error(e instanceof Error ? e.message : "Failed to update event booking");
 		} finally {
 			this.submitting.set(false);
+		}
+	}
+
+	// ── Banquet event orders ──
+
+	/**
+	 * The BEOs for this booking.
+	 *
+	 * A failure here leaves the card empty rather than failing the screen: the
+	 * booking is the thing the operator came for, and the BEO list is context.
+	 */
+	private async loadBeos(eventId: string): Promise<void> {
+		const tenantId = this.auth.tenantId();
+		if (!tenantId) return;
+		try {
+			const res = await this.api.get<{ data: BanquetOrderListItem[] } | BanquetOrderListItem[]>(
+				"/banquet-orders",
+				{ tenant_id: tenantId, event_booking_id: eventId, limit: "200" },
+			);
+			this.beos.set(Array.isArray(res) ? res : (res?.data ?? []));
+		} catch {
+			this.beos.set([]);
+		}
+	}
+
+	openBeo(beoId: string): void {
+		void this.router.navigate(["/events/beos", beoId]);
+	}
+
+	/**
+	 * Raise the first BEO for this booking.
+	 *
+	 * Everything a BEO requires is already known from the booking — the room, the
+	 * date, the window, the layout and a head count — so this creates the draft
+	 * from those rather than asking an operator to retype them, and drops them
+	 * straight into the editor to fill in the F&B detail. `setup_start_time` is
+	 * NOT NULL on the BEO where it is optional on the booking, so it falls back
+	 * to the event start.
+	 */
+	async createBeo(): Promise<void> {
+		const b = this.booking();
+		const tenantId = this.auth.tenantId();
+		if (!b || !tenantId || this.creatingBeo()) return;
+
+		const guaranteed = b.guarantee_number ?? b.confirmed_attendees ?? b.expected_attendees;
+		if (!guaranteed || guaranteed <= 0) {
+			this.toast.error("Set an expected or guaranteed head count on the booking first.");
+			return;
+		}
+
+		this.creatingBeo.set(true);
+		try {
+			const res = await this.api.post<{ data: BanquetOrderDetail } | BanquetOrderDetail>(
+				"/banquet-orders",
+				{
+					tenant_id: tenantId,
+					property_id: b.property_id,
+					event_booking_id: b.event_id,
+					meeting_room_id: b.meeting_room_id,
+					event_date: b.event_date.slice(0, 10),
+					setup_start_time: this.shortTime(b.setup_start_time ?? b.start_time),
+					event_start_time: this.shortTime(b.start_time),
+					event_end_time: this.shortTime(b.end_time),
+					room_setup: b.setup_type,
+					guaranteed_count: guaranteed,
+					...(b.teardown_end_time
+						? { teardown_end_time: this.shortTime(b.teardown_end_time) }
+						: {}),
+					...(b.expected_attendees ? { expected_count: b.expected_attendees } : {}),
+					...(b.currency_code ? { currency_code: b.currency_code } : {}),
+				},
+			);
+			const created = "data" in res ? res.data : res;
+			this.toast.success(`${created.beo_number} created as a draft.`);
+			void this.router.navigate(["/events/beos", created.beo_id]);
+		} catch (e) {
+			this.toast.error(e instanceof Error ? e.message : "Failed to create the BEO");
+		} finally {
+			this.creatingBeo.set(false);
 		}
 	}
 

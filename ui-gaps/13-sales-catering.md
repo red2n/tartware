@@ -250,9 +250,10 @@ Details worth carrying forward:
   fast-json-stringify 500 from recurring here.
 - **`room_setup` has no CHECK constraint** on `banquet_event_orders`, unlike `event_bookings.setup_type`.
   It is validated against `EventSetupTypeEnum` anyway, so the two tables tell the same story.
-- **Only `beo_time_check` is enforced by the table** (`event_end_time > event_start_time`). Setup
-  before the event and teardown after it are true of every banquet but are not in the DDL; they are
-  refinements in the write schema, so they are service-enforced, not table-enforced.
+- **Only `beo_time_check` is enforced by the table** (`event_end_time > event_start_time`), and the
+  write schema now mirrors that and nothing else. It briefly also required setup before the event and
+  teardown after it — see the correction under UI item 3 below, which is where that turned out to be
+  wrong.
 - **Not covered by these four endpoints:** the `IN_PROGRESS` / `COMPLETED` end of the status enum and
   the execution flags (`setup_completed`, `event_started`, `event_ended`, `teardown_completed`) are
   settable on a draft but have no operational transition route. That belongs with UI item 5, the
@@ -273,6 +274,95 @@ run-unique BEO numbers rather than cleaned up.
 
 **Still to do in slice 3:** no UI yet — items 3 (BEO editor) and 5 (daily BEO print), both now
 unblocked.
+
+### ✅ UI item 3 — BEO editor: shipped 2026-08-19
+
+`UI/pms-ui/src/app/features/events/beo-editor/`, at `/events/beos/:beoId`. Screen key `events`, not a
+new one: `POST /v1/banquet-orders` is STAFF like the booking routes, not MANAGER like meeting-room
+inventory, so the existing key already draws the right line and the permission seed is untouched.
+
+**Not in the nav.** A BEO only exists as the operational detail of one booking, so there is no useful
+"all BEOs" entry point at nav level. It is reached from the booking, which is also where one gets
+raised — a new **Banquet event orders** card on the event booking detail lists every version and
+offers *Create BEO*.
+
+**Creating a BEO does not ask for anything twice.** The room, date, window, layout and head count are
+already on the booking, so the create carries them across and drops the operator into the editor for
+the food and service detail. `setup_start_time` is NOT NULL on the BEO where it is optional on the
+booking, so it falls back to the event start.
+
+**The screen cannot offer an action the service will refuse.** `BEO_EDITABLE_STATUSES` and
+`BEO_PUBLISHABLE_STATUSES` come from `@tartware/schemas` — the same values the service enforces — so
+a published BEO shows no Edit button rather than showing one that 409s, and a superseded version
+shows no actions at all. Same reasoning as `EVENT_BOOKING_LEGAL_TRANSITIONS` in item 2.
+
+**The JSONB course lists are editable.** Appetizers through desserts, plus stations, beverages,
+equipment and AV, each a name/quantity/note row list. Keys the screen does not edit (`price`,
+`dietary_notes`, `presentation_style`) are read and written back untouched, so opening a BEO here
+never silently drops detail entered elsewhere.
+
+**One backend gap the UI exposed:** `GET /v1/banquet-orders` had no `event_booking_id` filter, so
+there was no way to ask "does this booking have a BEO" or to build a revision history without walking
+`previous_beo_id` one request at a time. Added, along with `beo_number, beo_version` in the ORDER BY
+so a history reads in order.
+
+#### ⚠️ A bug this slice put in, and the limitation it uncovered
+
+**Slice 3's write schema rejected the most ordinary banquet there is.** It required
+`teardown_end_time >= event_end_time` and `setup_start_time <= event_start_time`. Both read like safe
+invariants. Both are wrong: these are bare `TIME` columns with no date, so a teardown at 01:00 after a
+23:30 finish is the next morning, and a string comparison reads it as thirteen hours *early*. The
+first realistic payload — a wedding running to 23:30 and cleared down by 01:00 — bounced with a 400.
+
+Neither rule is backed by a CHECK on `banquet_event_orders`. The stated principle for slice 3 was
+"bounds mirror the table's CHECK constraints"; these two were invention on top of it, and the
+invention is what broke. Both removed; `event_end_time > event_start_time` stays because
+`beo_time_check` really does say so. The smoke test now asserts a past-midnight teardown is
+**accepted**, so this cannot come back.
+
+Worth being precise about why item 2 was right to have the equivalent rule and item 3 was not:
+`event_bookings` declares `event_bookings_setup_time_check`, so slice 2 was mirroring a real
+constraint. `banquet_event_orders` declares no such thing.
+
+**The limitation underneath, which is pre-existing and module-wide:** both
+`event_bookings_time_check` and `beo_time_check` are `end > start` on bare `TIME` columns, so **an
+event that ends after midnight cannot be stored at all** — a wedding running 18:00 → 01:00 is
+rejected by the table itself, not by any code written here. Every function running into the small
+hours has to be recorded as ending at 23:59. This predates all three slices and is not something a UI
+slice should quietly work around: fixing it means a migration on two tables plus a change to slice
+2's overlap query, which compares the same bare times. Recorded here as the next real correctness
+item in this module.
+
+#### Driven end to end in a real browser
+
+Not just screenshotted — 14 assertions through Playwright against the running stack, on a wedding
+seeded for the purpose: a superseded version offers no Edit, Publish or Revise; a draft edit (head
+count plus a new entrée line) saves and comes back; publishing flips the status to Approved and
+**withdraws Edit and Publish while leaving Revise**; revising creates v3, navigates to it rather than
+leaving the operator on the version they just superseded, and the history lists all three with v3
+marked "You are here". No console errors. Light and dark, 97/97 contrast pairings.
+
+Two things the screenshots caught that no assertion would have:
+
+- **`5.00% over-set`** — the money and percentage columns are cast `::TEXT` by the query, so they
+  arrive carrying the column's scale. A 5% over-set read like a precision nobody entered. Trimmed for
+  display.
+- **A note placeholder reading `Served with jus`** on every empty row, including the salads, which
+  scans as real data rather than as a hint.
+
+**Styling follows UI/AGENTS.md line 38** — reusable patterns live in `src/styles/shared.scss`, not
+copied into component files. The first cut of this screen broke that twice: it copy-pasted
+`.status-strip` out of the event booking detail, and it wrote the same clickable-row list under two
+names (`.version-*` here, `.beo-*` on the booking). Both are now one pattern in `shared.scss` —
+`.status-strip` and `.record-row-list` / `.record-row` / `.record-row-btn` / `.record-row-label` —
+and `event-booking-detail.scss` was deleted outright because nothing component-specific was left in
+it. Only the BEO course-line editor (`.line-*`, `.course-*`) stays local, being genuinely single-use.
+Verified by computed style rather than by eye, per the encapsulation gotcha in the run-tartware-ui
+skill: the dividers, hover targets and trailing chevron all still resolve on both screens.
+
+**Still open in this module:** item 5 (daily BEO print / kitchen view), item 6 (event billing), and
+the midnight limitation above.
+
 
 ## Current State (Backend ⚠️ read-only → UI ❌)
 
@@ -346,9 +436,8 @@ whole module and must be made **before** the UI, not after. Also confirm F&B rev
 2. **Event booking detail** — client, contact, dates, spaces held, attendee counts, status, linked
    group booking, linked rooms block (`/v1/allotments`, see COV-16).
 3. **BEO editor** — timeline of the event: setup, F&B courses and timings, AV, layout, staffing,
-   special instructions. Revision history with a published/draft distinction. *(Backend ready as of
-   slice 3: `BanquetOrderDetailSchema` carries the whole document, `BEO_EDITABLE_STATUSES` says when
-   the form should be read-only, and `is_superseded` + `previous_beo_id` give the revision history.)*
+   special instructions. Revision history with a published/draft distinction.
+   ✅ **shipped 2026-08-19** — `/events/beos/:beoId`, reached from the booking.
 4. **Meeting room admin** — settings-style CRUD.
 5. **Daily BEO print / kitchen view** — what the operation actually uses each morning.
 6. **Event billing** — charges to the folio chosen in step 2.

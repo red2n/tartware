@@ -604,6 +604,7 @@ export const listBanquetOrders = async (
     options.eventDate ?? null,
     options.meetingRoomId ?? null,
     options.offset ?? 0,
+    options.eventBookingId ?? null,
   ]);
 
   return rows.map(mapBanquetOrderRow);

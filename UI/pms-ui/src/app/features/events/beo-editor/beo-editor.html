@@ -1,0 +1,1253 @@
+@if (beo(); as b) {
+  <app-page-header
+    [title]="b.beo_number + ' · v' + (b.beo_version ?? 1)"
+    [description]="(b.meeting_room_name ?? '') + ' · ' + b.room_setup_display">
+    <button class="btn btn-outline btn-sm" (click)="backToBooking()">
+      <app-icon name="event" /> {{ 'Booking' | translate }}
+    </button>
+    @if (canEdit() && !editing()) {
+      <button class="btn btn-outline btn-sm" (click)="openEdit()" [disabled]="submitting()">
+        <app-icon name="edit" /> {{ 'Edit' | translate }}
+      </button>
+    }
+    @if (canPublish() && !editing()) {
+      <button class="btn btn-primary btn-sm" (click)="askPublish()" [disabled]="submitting()">
+        <app-icon name="outgoing_mail" /> {{ 'Publish' | translate }}
+      </button>
+    }
+    @if (canRevise() && !editing()) {
+      <button class="btn btn-outline btn-sm" (click)="askRevise()" [disabled]="submitting()">
+        <app-icon name="history" /> {{ 'Revise' | translate }}
+      </button>
+    }
+  </app-page-header>
+
+  <p class="status-strip">
+    <span [class]="statusClass(b.beo_status)">{{ b.beo_status_display }}</span>
+    <span class="badge badge-muted badge-sm">{{ 'Version' | translate }} {{ b.beo_version ?? 1 }}</span>
+    @if (b.is_superseded) {
+      <span class="badge badge-warning badge-sm">{{ 'Superseded' | translate }}</span>
+    }
+    <span class="text-muted">{{ b.event_date | date: 'fullDate' }}</span>
+    <span class="text-muted">
+      {{ shortTime(b.event_start_time) }}–{{ shortTime(b.event_end_time) }}
+    </span>
+    @if (b.last_sent_to_kitchen) {
+      <span class="text-muted">
+        {{ 'Sent to kitchen' | translate }} {{ b.last_sent_to_kitchen | date: 'short' }}
+      </span>
+    }
+  </p>
+
+  <!-- A superseded version is still the truth about what the kitchen was given,
+       so it stays readable rather than being hidden or redirected away from. -->
+  @if (b.is_superseded) {
+    <p class="notice">
+      <app-icon class="notice-icon" name="history" />
+      {{ 'This version has been revised. It is kept exactly as it was issued — the current version is the one to work from.' | translate }}
+      @if (successor(); as next) {
+        <button class="btn btn-outline btn-xs" (click)="openVersion(next.beo_id)">
+          {{ 'Open v' | translate }}{{ next.beo_version ?? 1 }}
+        </button>
+      }
+    </p>
+  }
+
+  @if (b.revision_reason) {
+    <p class="notice notice-muted">
+      <app-icon class="notice-icon" name="edit_note" />
+      <strong>{{ 'Revised' | translate }}</strong>
+      @if (b.revision_date) { {{ b.revision_date | date: 'medium' }} }: {{ b.revision_reason }}
+    </p>
+  }
+
+  <!-- Publish confirmation -->
+  @if (pendingAction() === 'publish') {
+    <div class="action-confirm-card">
+      <div class="confirm-header">
+        <app-icon class="confirm-icon" name="outgoing_mail" />
+        <h3 class="confirm-title">{{ 'Publish this BEO?' | translate }}</h3>
+      </div>
+      <div class="confirm-body">
+        <p class="confirm-note">
+          {{ 'Publishing releases the BEO to the kitchen and the setup crew and freezes it. From then on it cannot be edited in place — any further change has to be a numbered revision, so the departments can see they are holding an older version.' | translate }}
+        </p>
+        <label class="toggle-label">
+          <input type="checkbox" [ngModel]="notifyClient()"
+                 (ngModelChange)="notifyClient.set($event === true)" />
+          {{ 'Also record this as sent to the client' | translate }}
+        </label>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">
+          {{ 'Go back' | translate }}
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="confirmPublish()" [disabled]="submitting()">
+          {{ (submitting() ? 'Working…' : 'Publish') | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Revise confirmation -->
+  @if (pendingAction() === 'revise') {
+    <div class="action-confirm-card">
+      <div class="confirm-header">
+        <app-icon class="confirm-icon" name="history" />
+        <h3 class="confirm-title">{{ 'Revise this BEO?' | translate }}</h3>
+      </div>
+      <div class="confirm-body">
+        <p class="confirm-note">
+          {{ 'This creates version' | translate }} {{ (b.beo_version ?? 1) + 1 }}
+          {{ 'as a new draft under the same BEO number. This version stays exactly as it was issued. The revision starts unapproved, so the client, chef and manager sign off again.' | translate }}
+        </p>
+        <div class="form-field">
+          <label class="field-label" for="beo-revision-reason">
+            {{ 'What changed' | translate }} <span class="field-required">*</span>
+          </label>
+          <input class="field-input" id="beo-revision-reason" type="text"
+                 [ngModel]="revisionReason()"
+                 (ngModelChange)="revisionReason.set($event ?? '')"
+                 placeholder="Client added a vegan main" />
+          <span class="field-hint">{{ 'Printed on the revision so the kitchen knows what to re-read.' | translate }}</span>
+        </div>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">
+          {{ 'Go back' | translate }}
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="confirmRevise()"
+                [disabled]="submitting() || revisionReason().trim().length === 0">
+          {{ (submitting() ? 'Working…' : 'Create revision') | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Editor ── -->
+  @if (editing() && form(); as f) {
+    <div class="action-confirm-card" appSubmitOnEnter appUnsavedGuard>
+      <div class="confirm-header">
+        <app-icon class="confirm-icon" name="edit" />
+        <h3 class="confirm-title">{{ 'Edit BEO' | translate }}</h3>
+      </div>
+      <div class="confirm-body">
+        <p class="confirm-note">
+          {{ 'This BEO is still a draft, so it can be changed freely. Once published it is frozen.' | translate }}
+        </p>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Timeline' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-date">{{ 'Event date' | translate }}</label>
+              <input class="field-input" id="beo-date" type="date" [ngModel]="f.event_date"
+                     (ngModelChange)="patchForm({ event_date: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-setup">{{ 'Setup from' | translate }}</label>
+              <input class="field-input" id="beo-setup" type="time" [ngModel]="f.setup_start_time"
+                     (ngModelChange)="patchForm({ setup_start_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-start">{{ 'Doors' | translate }}</label>
+              <input class="field-input" id="beo-start" type="time" [ngModel]="f.event_start_time"
+                     (ngModelChange)="patchForm({ event_start_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-end">{{ 'Ends' | translate }}</label>
+              <input class="field-input" id="beo-end" type="time" [ngModel]="f.event_end_time"
+                     (ngModelChange)="patchForm({ event_end_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-teardown">{{ 'Teardown until' | translate }}</label>
+              <input class="field-input" id="beo-teardown" type="time" [ngModel]="f.teardown_end_time"
+                     (ngModelChange)="patchForm({ teardown_end_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-release">{{ 'Room released' | translate }}</label>
+              <input class="field-input" id="beo-release" type="time" [ngModel]="f.room_release_time"
+                     (ngModelChange)="patchForm({ room_release_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-meal">{{ 'Meal service from' | translate }}</label>
+              <input class="field-input" id="beo-meal" type="time" [ngModel]="f.meal_service_start_time"
+                     (ngModelChange)="patchForm({ meal_service_start_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-meal-mins">{{ 'Meal service minutes' | translate }}</label>
+              <input class="field-input" id="beo-meal-mins" type="number" min="0"
+                     [ngModel]="f.meal_service_duration_minutes"
+                     (ngModelChange)="patchForm({ meal_service_duration_minutes: $event })" />
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Room and setup' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-setup-type">{{ 'Layout' | translate }}</label>
+              <select class="field-input" id="beo-setup-type" [ngModel]="f.room_setup"
+                      (ngModelChange)="patchForm({ room_setup: $event })">
+                @for (s of roomSetups; track s) {
+                  <option [value]="s">{{ labelFor(s) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-tables">{{ 'Tables' | translate }}</label>
+              <input class="field-input" id="beo-tables" type="number" min="0" [ngModel]="f.tables_count"
+                     (ngModelChange)="patchForm({ tables_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-chairs">{{ 'Chairs' | translate }}</label>
+              <input class="field-input" id="beo-chairs" type="number" min="0" [ngModel]="f.chairs_count"
+                     (ngModelChange)="patchForm({ chairs_count: $event })" />
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-table-config">{{ 'Table configuration' | translate }}</label>
+              <input class="field-input" id="beo-table-config" type="text" [ngModel]="f.table_configuration"
+                     (ngModelChange)="patchForm({ table_configuration: $event ?? '' })" />
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Attendance' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-guaranteed">
+                {{ 'Guaranteed' | translate }} <span class="field-required">*</span>
+              </label>
+              <input class="field-input" id="beo-guaranteed" type="number" min="1"
+                     [ngModel]="f.guaranteed_count"
+                     (ngModelChange)="patchForm({ guaranteed_count: $event })" />
+              <span class="field-hint">{{ 'The number billed for, whoever turns up.' | translate }}</span>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-expected">{{ 'Expected' | translate }}</label>
+              <input class="field-input" id="beo-expected" type="number" min="0" [ngModel]="f.expected_count"
+                     (ngModelChange)="patchForm({ expected_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-actual">{{ 'Actual' | translate }}</label>
+              <input class="field-input" id="beo-actual" type="number" min="0" [ngModel]="f.actual_count"
+                     (ngModelChange)="patchForm({ actual_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-overset">{{ 'Over-set %' | translate }}</label>
+              <input class="field-input" id="beo-overset" type="number" min="0" step="0.5"
+                     [ngModel]="f.over_set_percentage"
+                     (ngModelChange)="patchForm({ over_set_percentage: $event })" />
+              <span class="field-hint">{{ 'Extra place settings above the guarantee.' | translate }}</span>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-children">{{ 'Children' | translate }}</label>
+              <input class="field-input" id="beo-children" type="number" min="0" [ngModel]="f.children_count"
+                     (ngModelChange)="patchForm({ children_count: $event })" />
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Food service' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-menu-type">{{ 'Menu type' | translate }}</label>
+              <select class="field-input" id="beo-menu-type" [ngModel]="f.menu_type"
+                      (ngModelChange)="patchForm({ menu_type: $event ?? '' })">
+                <option value="">{{ '—' | translate }}</option>
+                @for (m of menuTypes; track m) {
+                  <option [value]="m">{{ labelFor(m) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-service-style">{{ 'Service style' | translate }}</label>
+              <select class="field-input" id="beo-service-style" [ngModel]="f.service_style"
+                      (ngModelChange)="patchForm({ service_style: $event ?? '' })">
+                <option value="">{{ '—' | translate }}</option>
+                @for (s of serviceStyles; track s) {
+                  <option [value]="s">{{ labelFor(s) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-courses">{{ 'Courses' | translate }}</label>
+              <input class="field-input" id="beo-courses" type="number" min="0" [ngModel]="f.courses_count"
+                     (ngModelChange)="patchForm({ courses_count: $event })" />
+            </div>
+          </div>
+
+          @for (field of listFields; track field.key) {
+            <div class="line-list">
+              <div class="line-list-head">
+                <h5 class="line-list-title">{{ field.label | translate }}</h5>
+                <button type="button" class="btn btn-outline btn-xs" (click)="addLine(field.key)">
+                  <app-icon name="add" /> {{ 'Add' | translate }}
+                </button>
+              </div>
+              @for (item of formItemsFor(field.key); track $index) {
+                <div class="line-row">
+                  <input class="field-input field-input-sm line-name" type="text" [ngModel]="item.name"
+                         [attr.aria-label]="field.label + ' name'"
+                         (ngModelChange)="patchLine(field.key, $index, { name: $event ?? '' })"
+                         placeholder="Chicken roulade" />
+                  <input class="field-input field-input-sm line-qty" type="number" min="0"
+                         [ngModel]="item.quantity" [attr.aria-label]="'Quantity'"
+                         (ngModelChange)="patchLine(field.key, $index, { quantity: $event })"
+                         placeholder="120" />
+                  <input class="field-input field-input-sm line-note" type="text" [ngModel]="item.description"
+                         [attr.aria-label]="'Note'"
+                         (ngModelChange)="patchLine(field.key, $index, { description: $event ?? '' })"
+                         placeholder="Optional note" />
+                  <button type="button" class="btn btn-danger-text btn-xs"
+                          (click)="removeLine(field.key, $index)"
+                          [attr.aria-label]="'Remove line'">
+                    <app-icon name="close" />
+                  </button>
+                </div>
+              } @empty {
+                <p class="text-muted text-xs">{{ 'Nothing listed.' | translate }}</p>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Bar' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-bar-type">{{ 'Bar type' | translate }}</label>
+              <select class="field-input" id="beo-bar-type" [ngModel]="f.bar_type"
+                      (ngModelChange)="patchForm({ bar_type: $event ?? '' })">
+                <option value="">{{ '—' | translate }}</option>
+                @for (b2 of barTypes; track b2) {
+                  <option [value]="b2">{{ labelFor(b2) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-bar-start">{{ 'Bar opens' | translate }}</label>
+              <input class="field-input" id="beo-bar-start" type="time" [ngModel]="f.bar_start_time"
+                     (ngModelChange)="patchForm({ bar_start_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-bar-end">{{ 'Bar closes' | translate }}</label>
+              <input class="field-input" id="beo-bar-end" type="time" [ngModel]="f.bar_end_time"
+                     (ngModelChange)="patchForm({ bar_end_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-bar-loc">{{ 'Bar location' | translate }}</label>
+              <input class="field-input" id="beo-bar-loc" type="text" [ngModel]="f.bar_setup_location"
+                     (ngModelChange)="patchForm({ bar_setup_location: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-water">{{ 'Water service' | translate }}</label>
+              <select class="field-input" id="beo-water" [ngModel]="f.water_service"
+                      (ngModelChange)="patchForm({ water_service: $event ?? '' })">
+                <option value="">{{ '—' | translate }}</option>
+                @for (w of waterService; track w) {
+                  <option [value]="w">{{ labelFor(w) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.coffee_tea_service"
+                       (ngModelChange)="patchForm({ coffee_tea_service: $event === true })" />
+                {{ 'Coffee and tea service' | translate }}
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Special diets' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-veg">{{ 'Vegetarian' | translate }}</label>
+              <input class="field-input" id="beo-veg" type="number" min="0" [ngModel]="f.vegetarian_count"
+                     (ngModelChange)="patchForm({ vegetarian_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-vegan">{{ 'Vegan' | translate }}</label>
+              <input class="field-input" id="beo-vegan" type="number" min="0" [ngModel]="f.vegan_count"
+                     (ngModelChange)="patchForm({ vegan_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-gf">{{ 'Gluten free' | translate }}</label>
+              <input class="field-input" id="beo-gf" type="number" min="0" [ngModel]="f.gluten_free_count"
+                     (ngModelChange)="patchForm({ gluten_free_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-df">{{ 'Dairy free' | translate }}</label>
+              <input class="field-input" id="beo-df" type="number" min="0" [ngModel]="f.dairy_free_count"
+                     (ngModelChange)="patchForm({ dairy_free_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-nf">{{ 'Nut free' | translate }}</label>
+              <input class="field-input" id="beo-nf" type="number" min="0" [ngModel]="f.nut_free_count"
+                     (ngModelChange)="patchForm({ nut_free_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-kosher">{{ 'Kosher' | translate }}</label>
+              <input class="field-input" id="beo-kosher" type="number" min="0" [ngModel]="f.kosher_count"
+                     (ngModelChange)="patchForm({ kosher_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-halal">{{ 'Halal' | translate }}</label>
+              <input class="field-input" id="beo-halal" type="number" min="0" [ngModel]="f.halal_count"
+                     (ngModelChange)="patchForm({ halal_count: $event })" />
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-allergy">{{ 'Allergy warnings' | translate }}</label>
+              <textarea class="field-input" id="beo-allergy" rows="2" [ngModel]="f.allergy_warnings"
+                        (ngModelChange)="patchForm({ allergy_warnings: $event ?? '' })"
+                        placeholder="Severe nut allergy on table 4"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Linens and décor' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-linen-color">{{ 'Linen colour' | translate }}</label>
+              <input class="field-input" id="beo-linen-color" type="text" [ngModel]="f.linen_color"
+                     (ngModelChange)="patchForm({ linen_color: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-linen-type">{{ 'Linen type' | translate }}</label>
+              <input class="field-input" id="beo-linen-type" type="text" [ngModel]="f.linen_type"
+                     (ngModelChange)="patchForm({ linen_type: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-napkin-color">{{ 'Napkin colour' | translate }}</label>
+              <input class="field-input" id="beo-napkin-color" type="text" [ngModel]="f.napkin_color"
+                     (ngModelChange)="patchForm({ napkin_color: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-napkin-fold">{{ 'Napkin fold' | translate }}</label>
+              <input class="field-input" id="beo-napkin-fold" type="text" [ngModel]="f.napkin_fold"
+                     (ngModelChange)="patchForm({ napkin_fold: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-centerpieces">{{ 'Centrepieces' | translate }}</label>
+              <input class="field-input" id="beo-centerpieces" type="text" [ngModel]="f.centerpieces"
+                     (ngModelChange)="patchForm({ centerpieces: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-floral">{{ 'Floral arrangements' | translate }}</label>
+              <input class="field-input" id="beo-floral" type="text" [ngModel]="f.floral_arrangements"
+                     (ngModelChange)="patchForm({ floral_arrangements: $event ?? '' })" />
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-decor">{{ 'Décor notes' | translate }}</label>
+              <textarea class="field-input" id="beo-decor" rows="2" [ngModel]="f.decor_description"
+                        (ngModelChange)="patchForm({ decor_description: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.table_skirting"
+                       (ngModelChange)="patchForm({ table_skirting: $event === true })" />
+                {{ 'Table skirting' | translate }}
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.candles"
+                       (ngModelChange)="patchForm({ candles: $event === true })" />
+                {{ 'Candles' | translate }}
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Equipment and staging' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.stage_required"
+                       (ngModelChange)="patchForm({ stage_required: $event === true })" />
+                {{ 'Stage' | translate }}
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-stage-dim">{{ 'Stage size' | translate }}</label>
+              <input class="field-input" id="beo-stage-dim" type="text" [ngModel]="f.stage_dimensions"
+                     (ngModelChange)="patchForm({ stage_dimensions: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.podium_required"
+                       (ngModelChange)="patchForm({ podium_required: $event === true })" />
+                {{ 'Podium' | translate }}
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.dance_floor_required"
+                       (ngModelChange)="patchForm({ dance_floor_required: $event === true })" />
+                {{ 'Dance floor' | translate }}
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.special_lighting"
+                       (ngModelChange)="patchForm({ special_lighting: $event === true })" />
+                {{ 'Special lighting' | translate }}
+              </label>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-lighting">{{ 'Lighting notes' | translate }}</label>
+              <input class="field-input" id="beo-lighting" type="text" [ngModel]="f.lighting_notes"
+                     (ngModelChange)="patchForm({ lighting_notes: $event ?? '' })" />
+            </div>
+          </div>
+
+          @for (field of equipmentFields; track field.key) {
+            <div class="line-list">
+              <div class="line-list-head">
+                <h5 class="line-list-title">{{ field.label | translate }}</h5>
+                <button type="button" class="btn btn-outline btn-xs" (click)="addLine(field.key)">
+                  <app-icon name="add" /> {{ 'Add' | translate }}
+                </button>
+              </div>
+              @for (item of formItemsFor(field.key); track $index) {
+                <div class="line-row">
+                  <input class="field-input field-input-sm line-name" type="text" [ngModel]="item.name"
+                         [attr.aria-label]="field.label + ' name'"
+                         (ngModelChange)="patchLine(field.key, $index, { name: $event ?? '' })"
+                         placeholder="Wireless handheld mic" />
+                  <input class="field-input field-input-sm line-qty" type="number" min="0"
+                         [ngModel]="item.quantity" [attr.aria-label]="'Quantity'"
+                         (ngModelChange)="patchLine(field.key, $index, { quantity: $event })"
+                         placeholder="2" />
+                  <input class="field-input field-input-sm line-note" type="text" [ngModel]="item.description"
+                         [attr.aria-label]="'Note'"
+                         (ngModelChange)="patchLine(field.key, $index, { description: $event ?? '' })"
+                         placeholder="On the lectern" />
+                  <button type="button" class="btn btn-danger-text btn-xs"
+                          (click)="removeLine(field.key, $index)"
+                          [attr.aria-label]="'Remove line'">
+                    <app-icon name="close" />
+                  </button>
+                </div>
+              } @empty {
+                <p class="text-muted text-xs">{{ 'Nothing listed.' | translate }}</p>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Staffing' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-servers">{{ 'Servers' | translate }}</label>
+              <input class="field-input" id="beo-servers" type="number" min="0" [ngModel]="f.servers_count"
+                     (ngModelChange)="patchForm({ servers_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-bartenders">{{ 'Bartenders' | translate }}</label>
+              <input class="field-input" id="beo-bartenders" type="number" min="0" [ngModel]="f.bartenders_count"
+                     (ngModelChange)="patchForm({ bartenders_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-chefs">{{ 'Chefs' | translate }}</label>
+              <input class="field-input" id="beo-chefs" type="number" min="0" [ngModel]="f.chefs_count"
+                     (ngModelChange)="patchForm({ chefs_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-captains">{{ 'Captains' | translate }}</label>
+              <input class="field-input" id="beo-captains" type="number" min="0" [ngModel]="f.captains_count"
+                     (ngModelChange)="patchForm({ captains_count: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-coat">{{ 'Coat check' | translate }}</label>
+              <input class="field-input" id="beo-coat" type="number" min="0" [ngModel]="f.coat_check_attendants"
+                     (ngModelChange)="patchForm({ coat_check_attendants: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-valet">{{ 'Valet' | translate }}</label>
+              <input class="field-input" id="beo-valet" type="number" min="0" [ngModel]="f.valet_attendants"
+                     (ngModelChange)="patchForm({ valet_attendants: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-security">{{ 'Security' | translate }}</label>
+              <input class="field-input" id="beo-security" type="number" min="0" [ngModel]="f.security_guards"
+                     (ngModelChange)="patchForm({ security_guards: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-staff-arrive">{{ 'Staff arrive' | translate }}</label>
+              <input class="field-input" id="beo-staff-arrive" type="time" [ngModel]="f.staff_arrival_time"
+                     (ngModelChange)="patchForm({ staff_arrival_time: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-staff-meal">{{ 'Staff meal' | translate }}</label>
+              <input class="field-input" id="beo-staff-meal" type="time" [ngModel]="f.staff_meal_time"
+                     (ngModelChange)="patchForm({ staff_meal_time: $event ?? '' })" />
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-breaks">{{ 'Break schedule' | translate }}</label>
+              <input class="field-input" id="beo-breaks" type="text" [ngModel]="f.staff_break_schedule"
+                     (ngModelChange)="patchForm({ staff_break_schedule: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="toggle-label">
+                <input type="checkbox" [ngModel]="f.overtime_authorized"
+                       (ngModelChange)="patchForm({ overtime_authorized: $event === true })" />
+                {{ 'Overtime authorised' | translate }}
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Money' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="beo-food">{{ 'Food subtotal' | translate }}</label>
+              <input class="field-input" id="beo-food" type="number" min="0" step="0.01"
+                     [ngModel]="f.food_subtotal" (ngModelChange)="patchForm({ food_subtotal: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-bev">{{ 'Beverage subtotal' | translate }}</label>
+              <input class="field-input" id="beo-bev" type="number" min="0" step="0.01"
+                     [ngModel]="f.beverage_subtotal" (ngModelChange)="patchForm({ beverage_subtotal: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-equip-total">{{ 'Equipment rental' | translate }}</label>
+              <input class="field-input" id="beo-equip-total" type="number" min="0" step="0.01"
+                     [ngModel]="f.equipment_rental_total"
+                     (ngModelChange)="patchForm({ equipment_rental_total: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-labor">{{ 'Labour charges' | translate }}</label>
+              <input class="field-input" id="beo-labor" type="number" min="0" step="0.01"
+                     [ngModel]="f.labor_charges" (ngModelChange)="patchForm({ labor_charges: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-svc-pct">{{ 'Service charge %' | translate }}</label>
+              <input class="field-input" id="beo-svc-pct" type="number" min="0" step="0.1"
+                     [ngModel]="f.service_charge_percent"
+                     (ngModelChange)="patchForm({ service_charge_percent: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-grat-pct">{{ 'Gratuity %' | translate }}</label>
+              <input class="field-input" id="beo-grat-pct" type="number" min="0" step="0.1"
+                     [ngModel]="f.gratuity_percent" (ngModelChange)="patchForm({ gratuity_percent: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-tax-pct">{{ 'Tax %' | translate }}</label>
+              <input class="field-input" id="beo-tax-pct" type="number" min="0" step="0.1"
+                     [ngModel]="f.tax_percent" (ngModelChange)="patchForm({ tax_percent: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-total-est">{{ 'Estimated total' | translate }}</label>
+              <input class="field-input" id="beo-total-est" type="number" min="0" step="0.01"
+                     [ngModel]="f.total_estimated" (ngModelChange)="patchForm({ total_estimated: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-billing-type">{{ 'Billing basis' | translate }}</label>
+              <select class="field-input" id="beo-billing-type" [ngModel]="f.billing_type"
+                      (ngModelChange)="patchForm({ billing_type: $event ?? '' })">
+                <option value="">{{ '—' | translate }}</option>
+                @for (t of billingTypes; track t) {
+                  <option [value]="t">{{ labelFor(t) }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-pp">{{ 'Price per person' | translate }}</label>
+              <input class="field-input" id="beo-pp" type="number" min="0" step="0.01"
+                     [ngModel]="f.price_per_person" (ngModelChange)="patchForm({ price_per_person: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="beo-child-price">{{ 'Children price' | translate }}</label>
+              <input class="field-input" id="beo-child-price" type="number" min="0" step="0.01"
+                     [ngModel]="f.children_price" (ngModelChange)="patchForm({ children_price: $event })" />
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title">{{ 'Instructions' | translate }}</h4>
+          <div class="form-grid">
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-kitchen">{{ 'Kitchen' | translate }}</label>
+              <textarea class="field-input" id="beo-kitchen" rows="2" [ngModel]="f.kitchen_instructions"
+                        (ngModelChange)="patchForm({ kitchen_instructions: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-service">{{ 'Service' | translate }}</label>
+              <textarea class="field-input" id="beo-service" rows="2" [ngModel]="f.service_instructions"
+                        (ngModelChange)="patchForm({ service_instructions: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-setup-inst">{{ 'Setup' | translate }}</label>
+              <textarea class="field-input" id="beo-setup-inst" rows="2" [ngModel]="f.setup_instructions"
+                        (ngModelChange)="patchForm({ setup_instructions: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-cleanup">{{ 'Cleanup' | translate }}</label>
+              <textarea class="field-input" id="beo-cleanup" rows="2" [ngModel]="f.cleanup_instructions"
+                        (ngModelChange)="patchForm({ cleanup_instructions: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-av-inst">{{ 'Audio visual' | translate }}</label>
+              <textarea class="field-input" id="beo-av-inst" rows="2" [ngModel]="f.audio_visual_instructions"
+                        (ngModelChange)="patchForm({ audio_visual_instructions: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-internal">{{ 'Internal notes' | translate }}</label>
+              <textarea class="field-input" id="beo-internal" rows="2" [ngModel]="f.internal_notes"
+                        (ngModelChange)="patchForm({ internal_notes: $event ?? '' })"></textarea>
+            </div>
+            <div class="form-field form-group-full">
+              <label class="field-label" for="beo-client-notes">{{ 'Client notes' | translate }}</label>
+              <textarea class="field-input" id="beo-client-notes" rows="2" [ngModel]="f.client_notes"
+                        (ngModelChange)="patchForm({ client_notes: $event ?? '' })"></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm" (click)="cancelEdit()" [disabled]="submitting()">
+          {{ 'Cancel' | translate }}
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="save()"
+                [disabled]="submitting() || !canSave()">
+          {{ (submitting() ? 'Saving…' : 'Save') | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Read view ── -->
+  @if (!editing()) {
+    <div class="detail-layout">
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Timeline' | translate }}</h3>
+          <span class="card-note">{{ 'What happens when, from the setup crew arriving to the room being released.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Setup from' | translate }}</dt>
+              <dd class="detail-value">{{ shortTime(b.setup_start_time) }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Event' | translate }}</dt>
+              <dd class="detail-value">
+                {{ shortTime(b.event_start_time) }} – {{ shortTime(b.event_end_time) }}
+              </dd>
+            </div>
+            @if (b.meal_service_start_time) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Meal service' | translate }}</dt>
+                <dd class="detail-value">
+                  {{ shortTime(b.meal_service_start_time) }}
+                  @if (b.meal_service_duration_minutes) {
+                    <span class="cell-sub">{{ b.meal_service_duration_minutes }} {{ 'minutes' | translate }}</span>
+                  }
+                </dd>
+              </div>
+            }
+            @if (b.bar_start_time || b.bar_end_time) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Bar' | translate }}</dt>
+                <dd class="detail-value">
+                  {{ shortTime(b.bar_start_time) }} – {{ shortTime(b.bar_end_time) }}
+                  @if (b.bar_type) { <span class="cell-sub">{{ labelFor(b.bar_type) }}</span> }
+                </dd>
+              </div>
+            }
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Teardown until' | translate }}</dt>
+              <dd class="detail-value">{{ shortTime(b.teardown_end_time) || '—' }}</dd>
+            </div>
+            @if (b.room_release_time) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Room released' | translate }}</dt>
+                <dd class="detail-value">{{ shortTime(b.room_release_time) }}</dd>
+              </div>
+            }
+            @if (b.staff_arrival_time) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Staff arrive' | translate }}</dt>
+                <dd class="detail-value">{{ shortTime(b.staff_arrival_time) }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Room and cover' | translate }}</h3>
+          <span class="card-note">{{ 'The layout to set and the number to set it for.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Layout' | translate }}</dt>
+              <dd class="detail-value">{{ b.room_setup_display }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Guaranteed' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.guaranteed_count }}
+                @if (overSetCover(); as cover) {
+                  <span class="cell-sub">{{ 'Set for' | translate }} {{ cover }} ({{ trimDecimal(b.over_set_percentage) }}% {{ 'over-set' | translate }})</span>
+                }
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Expected' | translate }}</dt>
+              <dd class="detail-value">{{ b.expected_count ?? '—' }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Actual' | translate }}</dt>
+              <dd class="detail-value">{{ b.actual_count ?? '—' }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Tables and chairs' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.tables_count ?? '—' }} / {{ b.chairs_count ?? '—' }}
+                @if (b.table_configuration) { <div class="cell-sub">{{ b.table_configuration }}</div> }
+              </dd>
+            </div>
+            @if (b.children_count) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Children' | translate }}</dt>
+                <dd class="detail-value">{{ b.children_count }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Special diets' | translate }}</h3>
+          <span class="card-note">{{ 'Covers the kitchen plates separately.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          @if (b.allergy_warnings) {
+            <p class="notice">
+              <app-icon class="notice-icon" name="warning" />
+              {{ b.allergy_warnings }}
+            </p>
+          }
+          @if (dietaryOverGuarantee()) {
+            <p class="notice">
+              <app-icon class="notice-icon" name="info" />
+              {{ 'The special diets add up to more than the guarantee. They overlap by nature, but it is worth confirming before the kitchen orders.' | translate }}
+            </p>
+          }
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Vegetarian' | translate }}</dt>
+              <dd class="detail-value">{{ b.vegetarian_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Vegan' | translate }}</dt>
+              <dd class="detail-value">{{ b.vegan_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Gluten free' | translate }}</dt>
+              <dd class="detail-value">{{ b.gluten_free_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Dairy free' | translate }}</dt>
+              <dd class="detail-value">{{ b.dairy_free_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Nut free' | translate }}</dt>
+              <dd class="detail-value">{{ b.nut_free_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Kosher' | translate }}</dt>
+              <dd class="detail-value">{{ b.kosher_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Halal' | translate }}</dt>
+              <dd class="detail-value">{{ b.halal_count ?? 0 }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Total flagged' | translate }}</dt>
+              <dd class="detail-value">{{ dietaryTotal() }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Food and beverage' | translate }}</h3>
+          <span class="card-note">
+            {{ b.menu_type ? labelFor(b.menu_type) : ('No menu type set' | translate) }}
+            @if (b.service_style) { · {{ labelFor(b.service_style) }} }
+          </span>
+        </div>
+        <div class="card-body">
+          @for (field of listFields; track field.key) {
+            @if (itemsFor(field.key).length > 0) {
+              <h5 class="line-list-title">{{ field.label | translate }}</h5>
+              <ul class="course-list">
+                @for (item of itemsFor(field.key); track $index) {
+                  <li class="course-item">
+                    <span class="course-name">{{ item.name }}</span>
+                    @if (item.quantity != null) { <span class="badge badge-muted badge-sm">{{ item.quantity }}</span> }
+                    @if (item.description) { <span class="cell-sub">{{ item.description }}</span> }
+                  </li>
+                }
+              </ul>
+            }
+          }
+          @if (!b.menu_type && itemsFor('entrees').length === 0 && itemsFor('menu_items').length === 0) {
+            <p class="text-muted">{{ 'No menu recorded yet.' | translate }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Staffing' | translate }}</h3>
+          <span class="card-note">{{ 'Who is rostered for the room.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Servers' | translate }}</dt>
+              <dd class="detail-value">{{ b.servers_count ?? '—' }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Bartenders' | translate }}</dt>
+              <dd class="detail-value">{{ b.bartenders_count ?? '—' }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Chefs' | translate }}</dt>
+              <dd class="detail-value">{{ b.chefs_count ?? '—' }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Captains' | translate }}</dt>
+              <dd class="detail-value">{{ b.captains_count ?? '—' }}</dd>
+            </div>
+            @if (b.coat_check_attendants || b.valet_attendants || b.security_guards) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Front of house' | translate }}</dt>
+                <dd class="detail-value">
+                  {{ 'Coat check' | translate }} {{ b.coat_check_attendants ?? 0 }} ·
+                  {{ 'Valet' | translate }} {{ b.valet_attendants ?? 0 }} ·
+                  {{ 'Security' | translate }} {{ b.security_guards ?? 0 }}
+                </dd>
+              </div>
+            }
+            @if (b.overtime_authorized) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Overtime' | translate }}</dt>
+                <dd class="detail-value"><span class="badge badge-warning badge-sm">{{ 'Authorised' | translate }}</span></dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Equipment and staging' | translate }}</h3>
+          <span class="card-note">{{ 'What has to be in the room before doors.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <p class="tag-list">
+            @if (b.stage_required) { <span class="tag">{{ 'Stage' | translate }}@if (b.stage_dimensions) { · {{ b.stage_dimensions }} }</span> }
+            @if (b.podium_required) { <span class="tag">{{ 'Podium' | translate }}</span> }
+            @if (b.dance_floor_required) { <span class="tag">{{ 'Dance floor' | translate }}</span> }
+            @if (b.special_lighting) { <span class="tag">{{ 'Special lighting' | translate }}</span> }
+            @if (b.table_skirting) { <span class="tag">{{ 'Skirting' | translate }}</span> }
+            @if (b.candles) { <span class="tag">{{ 'Candles' | translate }}</span> }
+            @if (b.coffee_tea_service) { <span class="tag">{{ 'Coffee and tea' | translate }}</span> }
+          </p>
+          @if (b.lighting_notes) { <p class="text-muted">{{ b.lighting_notes }}</p> }
+          @for (field of equipmentFields; track field.key) {
+            @if (itemsFor(field.key).length > 0) {
+              <h5 class="line-list-title">{{ field.label | translate }}</h5>
+              <ul class="course-list">
+                @for (item of itemsFor(field.key); track $index) {
+                  <li class="course-item">
+                    <span class="course-name">{{ item.name }}</span>
+                    @if (item.quantity != null) { <span class="badge badge-muted badge-sm">{{ item.quantity }}</span> }
+                    @if (item.description) { <span class="cell-sub">{{ item.description }}</span> }
+                  </li>
+                }
+              </ul>
+            }
+          }
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Linens and décor' | translate }}</h3>
+          <span class="card-note">{{ 'How the room is dressed.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Linen' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.linen_color ?? '—' }}
+                @if (b.linen_type) { <span class="cell-sub">{{ b.linen_type }}</span> }
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Napkins' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.napkin_color ?? '—' }}
+                @if (b.napkin_fold) { <span class="cell-sub">{{ b.napkin_fold }}</span> }
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Centrepieces' | translate }}</dt>
+              <dd class="detail-value">{{ b.centerpieces ?? '—' }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Florals' | translate }}</dt>
+              <dd class="detail-value">{{ b.floral_arrangements ?? '—' }}</dd>
+            </div>
+            @if (b.decor_description) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Notes' | translate }}</dt>
+                <dd class="detail-value">{{ b.decor_description }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Money' | translate }}</h3>
+          <span class="card-note">{{ 'What the event is expected to be worth. Charges post from item 6.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Food' | translate }}</dt>
+              <dd class="detail-value">{{ trimDecimal(b.food_subtotal) }} {{ b.currency_code }}</dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Beverage' | translate }}</dt>
+              <dd class="detail-value">{{ trimDecimal(b.beverage_subtotal) }} {{ b.currency_code }}</dd>
+            </div>
+            @if (b.equipment_rental_total || b.labor_charges) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Equipment and labour' | translate }}</dt>
+                <dd class="detail-value">
+                  {{ trimDecimal(b.equipment_rental_total) }} / {{ trimDecimal(b.labor_charges) }} {{ b.currency_code }}
+                </dd>
+              </div>
+            }
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Service and gratuity' | translate }}</dt>
+              <dd class="detail-value">
+                {{ trimDecimal(b.service_charge_percent) }}% / {{ trimDecimal(b.gratuity_percent) }}%
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Estimated total' | translate }}</dt>
+              <dd class="detail-value">{{ trimDecimal(b.total_estimated) }} {{ b.currency_code }}</dd>
+            </div>
+            @if (b.billing_type) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Billing basis' | translate }}</dt>
+                <dd class="detail-value">
+                  {{ labelFor(b.billing_type) }}
+                  @if (b.price_per_person) { <span class="cell-sub">{{ trimDecimal(b.price_per_person) }} {{ 'per person' | translate }}</span> }
+                </dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      @if (b.kitchen_instructions || b.service_instructions || b.setup_instructions
+            || b.cleanup_instructions || b.audio_visual_instructions
+            || b.internal_notes || b.client_notes) {
+        <div class="detail-card">
+          <div class="card-header card-header-flex">
+            <h3 class="card-title">{{ 'Instructions' | translate }}</h3>
+            <span class="card-note">{{ 'The standing orders each department works to.' | translate }}</span>
+          </div>
+          <div class="card-body">
+            <dl class="detail-list">
+              @if (b.kitchen_instructions) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Kitchen' | translate }}</dt>
+                  <dd class="detail-value">{{ b.kitchen_instructions }}</dd>
+                </div>
+              }
+              @if (b.service_instructions) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Service' | translate }}</dt>
+                  <dd class="detail-value">{{ b.service_instructions }}</dd>
+                </div>
+              }
+              @if (b.setup_instructions) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Setup' | translate }}</dt>
+                  <dd class="detail-value">{{ b.setup_instructions }}</dd>
+                </div>
+              }
+              @if (b.cleanup_instructions) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Cleanup' | translate }}</dt>
+                  <dd class="detail-value">{{ b.cleanup_instructions }}</dd>
+                </div>
+              }
+              @if (b.audio_visual_instructions) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Audio visual' | translate }}</dt>
+                  <dd class="detail-value">{{ b.audio_visual_instructions }}</dd>
+                </div>
+              }
+              @if (b.client_notes) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Client notes' | translate }}</dt>
+                  <dd class="detail-value">{{ b.client_notes }}</dd>
+                </div>
+              }
+              @if (b.internal_notes) {
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Internal' | translate }}</dt>
+                  <dd class="detail-value">{{ b.internal_notes }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      }
+
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Approvals and distribution' | translate }}</h3>
+          <span class="card-note">{{ 'Who has signed this version off, and who has been sent it.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="detail-list">
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Client' | translate }}</dt>
+              <dd class="detail-value">
+                @if (b.client_approved) {
+                  <span class="badge badge-success badge-sm">{{ 'Approved' | translate }}</span>
+                  @if (b.client_approved_date) { <span class="cell-sub">{{ b.client_approved_date | date: 'medium' }}</span> }
+                } @else {
+                  <span class="text-muted">{{ 'Not yet' | translate }}</span>
+                }
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Chef' | translate }}</dt>
+              <dd class="detail-value">
+                @if (b.chef_approved) {
+                  <span class="badge badge-success badge-sm">{{ 'Approved' | translate }}</span>
+                } @else {
+                  <span class="text-muted">{{ 'Not yet' | translate }}</span>
+                }
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Manager' | translate }}</dt>
+              <dd class="detail-value">
+                @if (b.manager_approved) {
+                  <span class="badge badge-success badge-sm">{{ 'Approved' | translate }}</span>
+                } @else {
+                  <span class="text-muted">{{ 'Not yet' | translate }}</span>
+                }
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Sent to kitchen' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.last_sent_to_kitchen ? (b.last_sent_to_kitchen | date: 'medium') : ('Not published yet' | translate) }}
+              </dd>
+            </div>
+            <div class="detail-row">
+              <dt class="detail-label">{{ 'Sent to client' | translate }}</dt>
+              <dd class="detail-value">
+                {{ b.last_sent_to_client ? (b.last_sent_to_client | date: 'medium') : '—' }}
+              </dd>
+            </div>
+            @if (b.distribution_list?.length) {
+              <div class="detail-row">
+                <dt class="detail-label">{{ 'Distribution' | translate }}</dt>
+                <dd class="detail-value">
+                  <span class="tag-list">
+                    @for (address of b.distribution_list; track address) {
+                      <span class="tag tag-compact">{{ address }}</span>
+                    }
+                  </span>
+                </dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <!-- Revision history — the reason a BEO is versioned at all. -->
+      <div class="detail-card">
+        <div class="card-header card-header-flex">
+          <h3 class="card-title">{{ 'Revision history' | translate }}</h3>
+          <span class="card-note">{{ 'Every version issued under this BEO number.' | translate }}</span>
+        </div>
+        <div class="card-body">
+          @if (history().length > 0) {
+            <ul class="record-row-list">
+              @for (v of history(); track v.beo_id) {
+                <li class="record-row">
+                  <button type="button" class="record-row-btn" (click)="openVersion(v.beo_id)"
+                          [disabled]="v.beo_id === b.beo_id">
+                    <span class="record-row-label">v{{ v.beo_version ?? 1 }}</span>
+                    <span [class]="statusClass(v.beo_status)">{{ v.beo_status_display }}</span>
+                    @if (v.is_superseded) {
+                      <span class="badge badge-muted badge-sm">{{ 'Superseded' | translate }}</span>
+                    } @else {
+                      <span class="badge badge-accent badge-sm">{{ 'Current' | translate }}</span>
+                    }
+                    @if (v.beo_id === b.beo_id) {
+                      <span class="text-muted text-xs">{{ 'You are here' | translate }}</span>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="text-muted">{{ 'This is the only version.' | translate }}</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+} @else if (loading()) {
+  <div class="detail-layout" aria-busy="true" [attr.aria-label]="'Loading BEO' | translate">
+    <div class="skeleton-stack" aria-hidden="true">
+      @for (r of skeletonRows; track $index) {
+        <span class="skeleton skeleton-block"></span>
+      }
+    </div>
+  </div>
+} @else if (notFound()) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="event_busy" />
+    <h3>{{ 'BEO not found' | translate }}</h3>
+    <p class="text-muted">{{ 'It may have been removed, or it belongs to another property.' | translate }}</p>
+    <a class="btn btn-outline btn-sm" routerLink="/events/calendar">{{ 'Back to function space' | translate }}</a>
+  </div>
+}

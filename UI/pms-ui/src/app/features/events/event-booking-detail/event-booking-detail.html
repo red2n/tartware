@@ -423,6 +423,50 @@
       </div>
     </div>
 
+    <!-- Banquet event orders. The BEO is the operational half of the booking:
+         this card is where one gets raised, and where the operation checks a
+         version is actually out to the kitchen. See ui-gaps/13 item 3. -->
+    <div class="detail-card">
+      <div class="card-header card-header-flex">
+        <h3 class="card-title">{{ 'Banquet event orders' | translate }}</h3>
+        @if (beos().length === 0) {
+          <button class="btn btn-primary btn-sm" (click)="createBeo()" [disabled]="creatingBeo()">
+            <app-icon name="add" /> {{ (creatingBeo() ? 'Creating…' : 'Create BEO') | translate }}
+          </button>
+        }
+      </div>
+      <div class="card-body">
+        @if (beos().length > 0) {
+          <ul class="record-row-list">
+            @for (beo of beos(); track beo.beo_id) {
+              <li class="record-row">
+                <button type="button" class="record-row-btn" (click)="openBeo(beo.beo_id)">
+                  <span class="record-row-label">{{ beo.beo_number }}</span>
+                  <span class="badge badge-muted badge-sm">v{{ beo.beo_version ?? 1 }}</span>
+                  <span [class]="statusClass(beo.beo_status)">{{ beo.beo_status_display }}</span>
+                  @if (beo.is_superseded) {
+                    <span class="badge badge-muted badge-sm">{{ 'Superseded' | translate }}</span>
+                  }
+                  <span class="text-muted text-xs">
+                    {{ beo.guaranteed_count }} {{ 'covers' | translate }}
+                    @if (beo.menu_type) { · {{ labelFor(beo.menu_type) }} }
+                  </span>
+                  <app-icon class="cell-chevron" name="chevron_right" />
+                </button>
+              </li>
+            }
+          </ul>
+          @if (currentBeos().length === 0) {
+            <p class="text-muted">{{ 'Every version has been revised — nothing current is out.' | translate }}</p>
+          }
+        } @else {
+          <p class="text-muted">
+            {{ 'No BEO yet. Creating one carries the room, date, window, layout and head count across from this booking, so only the food and service detail is left to fill in.' | translate }}
+          </p>
+        }
+      </div>
+    </div>
+
     <div class="detail-card">
       <div class="card-header card-header-flex">
         <h3 class="card-title">{{ 'Money' | translate }}</h3>

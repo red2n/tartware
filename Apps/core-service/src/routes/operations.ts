@@ -491,6 +491,7 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
             },
             event_date: { type: "string", format: "date" },
             meeting_room_id: { type: "string", format: "uuid" },
+            event_booking_id: { type: "string", format: "uuid" },
             limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
             offset: { type: "integer", minimum: 0, default: 0 },
           },
@@ -505,14 +506,23 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
           beo_status?: string;
           event_date?: string;
           meeting_room_id?: string;
+          event_booking_id?: string;
           limit?: number;
           offset?: number;
         };
       }>,
       reply: FastifyReply,
     ) => {
-      const { tenant_id, property_id, beo_status, event_date, meeting_room_id, limit, offset } =
-        request.query;
+      const {
+        tenant_id,
+        property_id,
+        beo_status,
+        event_date,
+        meeting_room_id,
+        event_booking_id,
+        limit,
+        offset,
+      } = request.query;
 
       const orders = await listBanquetOrders({
         tenantId: tenant_id,
@@ -520,6 +530,7 @@ export function registerBanquetOrderRoutes(fastify: FastifyInstance): void {
         beoStatus: beo_status,
         eventDate: event_date,
         meetingRoomId: meeting_room_id,
+        eventBookingId: event_booking_id,
         limit: limit,
         offset: offset,
       });

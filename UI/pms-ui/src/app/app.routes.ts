@@ -169,6 +169,18 @@ export const routes: Routes = [
 					),
 			},
 			{
+				// The BEO editor. Reached from a booking rather than from the nav —
+				// a BEO only exists as the operational detail of one event, so there
+				// is no useful "all BEOs" entry point at this level. Screen key
+				// `events`, because POST /v1/banquet-orders is STAFF like the
+				// booking routes, not MANAGER like meeting-room inventory.
+				path: "events/beos/:beoId",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/beo-editor/beo-editor").then((m) => m.BeoEditorComponent),
+			},
+			{
 				path: "packages",
 				canActivate: [propertyGuard, screenGuard("packages")],
 				data: { screen: "packages" },

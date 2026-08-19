@@ -234,8 +234,10 @@ WHERE beo.tenant_id = $2
   AND ($4::VARCHAR IS NULL OR beo.beo_status = $4)
   AND ($5::DATE IS NULL OR beo.event_date = $5)
   AND ($6::UUID IS NULL OR beo.meeting_room_id = $6)
+  AND ($8::UUID IS NULL OR beo.event_booking_id = $8)
   AND COALESCE(beo.is_deleted, false) = false
-ORDER BY beo.event_date ASC, beo.event_start_time ASC
+-- Version ascending within a document so a revision history reads in order.
+ORDER BY beo.event_date ASC, beo.event_start_time ASC, beo.beo_number ASC, beo.beo_version ASC
 LIMIT $1
 OFFSET $7
 `;

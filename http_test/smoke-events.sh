@@ -231,8 +231,16 @@ check "guaranteed_count 0 → bad request (CHECK mirrored in zod)" 400 "$code"
 code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"event_end_time":"08:00"')")
 check "end before start → bad request" 400 "$code"
 
+# Setup and teardown are deliberately NOT ordered against the event window: they
+# are bare TIME columns with no date, so a teardown at 01:00 after a 23:30 finish
+# is the next morning and any string comparison reads it as thirteen hours early.
+# An earlier draft of slice 3 enforced the ordering and rejected the most ordinary
+# banquet there is; these two assertions exist to keep that from coming back.
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"teardown_end_time":"01:00","event_end_time":"23:30","event_start_time":"18:00"')")
+check "teardown past midnight accepted" 201 "$code"
+
 code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"setup_start_time":"10:00"')")
-check "setup after start → bad request" 400 "$code"
+check "setup after start accepted (no table CHECK backs it)" 201 "$code"
 
 echo
 echo "── BEO EDIT WHILE DRAFT ──"

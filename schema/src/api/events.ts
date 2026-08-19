@@ -2272,6 +2272,8 @@ export type BanquetOrderDetail = z.infer<typeof BanquetOrderDetailSchema>;
  * Bounds mirror the table's CHECK constraints so a bad payload is a 400 rather
  * than a 23514: `beo_count_check` (guaranteed_count > 0), `beo_time_check`
  * (event_end_time > event_start_time) and `beo_rating_check` (rating 1–5).
+ * They mirror those and stop there — see {@link refineBeoTimes} for why an
+ * apparently obvious setup/teardown ordering rule is wrong on bare TIME columns.
  */
 /** `TIME` column input: HH:MM or HH:MM:SS, matching the event booking fields. */
 const BEO_TIME_OF_DAY = z
@@ -2447,48 +2449,34 @@ const BanquetOrderWriteFieldsSchema = z.object({
 });
 
 /**
- * The BEO's own time ordering.
+ * The BEO's own time ordering — exactly `beo_time_check`, and nothing more.
  *
- * `beo_time_check` is the only one of these the table enforces
- * (`event_end_time > event_start_time`). Setup running before the event and
- * teardown after it are not in the DDL but are true of every banquet, and
- * `event_bookings` already enforces the equivalent rule on its own setup window,
- * so rejecting them here keeps the two tables telling the same story.
+ * This deliberately does **not** also require setup before the event or teardown
+ * after it. Those read like safe invariants and are not: these are bare `TIME`
+ * columns with no date, so "01:00" for a teardown after a 23:30 finish is the
+ * small hours of the next morning, and a string comparison reads it as thirteen
+ * hours *before* the event ends. Enforcing the ordering rejected the single most
+ * ordinary banquet there is — an evening function cleared down after midnight —
+ * which is how the over-reach was found: the first realistic wedding payload
+ * bounced with a 400.
+ *
+ * `event_bookings` can carry the equivalent setup rule because its table really
+ * does declare `event_bookings_setup_time_check`; `banquet_event_orders`
+ * declares no such constraint, so mirroring the CHECKs means mirroring only this
+ * one. The same midnight blindness affects `beo_time_check` itself — see the
+ * limitation recorded in ui-gaps/13-sales-catering.md.
  */
 const refineBeoTimes = <T extends z.ZodTypeAny>(schema: T) =>
-	schema
-		.refine(
-			(value: { event_start_time?: string; event_end_time?: string }) =>
-				!value.event_start_time ||
-				!value.event_end_time ||
-				padTimeOfDay(value.event_end_time) > padTimeOfDay(value.event_start_time),
-			{
-				message: "event_end_time must be after event_start_time",
-				path: ["event_end_time"],
-			},
-		)
-		.refine(
-			(value: { setup_start_time?: string; event_start_time?: string }) =>
-				!value.setup_start_time ||
-				!value.event_start_time ||
-				padTimeOfDay(value.setup_start_time) <=
-					padTimeOfDay(value.event_start_time),
-			{
-				message: "setup_start_time must be at or before event_start_time",
-				path: ["setup_start_time"],
-			},
-		)
-		.refine(
-			(value: { teardown_end_time?: string; event_end_time?: string }) =>
-				!value.teardown_end_time ||
-				!value.event_end_time ||
-				padTimeOfDay(value.teardown_end_time) >=
-					padTimeOfDay(value.event_end_time),
-			{
-				message: "teardown_end_time must be at or after event_end_time",
-				path: ["teardown_end_time"],
-			},
-		);
+	schema.refine(
+		(value: { event_start_time?: string; event_end_time?: string }) =>
+			!value.event_start_time ||
+			!value.event_end_time ||
+			padTimeOfDay(value.event_end_time) > padTimeOfDay(value.event_start_time),
+		{
+			message: "event_end_time must be after event_start_time",
+			path: ["event_end_time"],
+		},
+	);
 
 export const BanquetOrderWriteBodySchema = refineBeoTimes(
 	BanquetOrderWriteFieldsSchema,

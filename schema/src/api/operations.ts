@@ -60,6 +60,15 @@ export type ListBanquetOrdersInput = {
 	beoStatus?: string;
 	eventDate?: string;
 	meetingRoomId?: string;
+	/**
+	 * All BEOs raised against one event booking — every version included.
+	 *
+	 * Added for the BEO editor (UI item 3 of ui-gaps/13-sales-catering.md), which
+	 * needs both "does this booking have a BEO yet" and the revision history of
+	 * the one it has. Revisions share the `event_booking_id`, so this one filter
+	 * answers both.
+	 */
+	eventBookingId?: string;
 	limit?: number;
 	offset?: number;
 };
