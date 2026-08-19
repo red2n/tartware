@@ -1,121 +1,20 @@
-/* Rate Calendar — day-level pricing grid */
-
-/* ── Toolbar ── */
-.calendar-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--base-size-16);
-  margin-bottom: var(--base-size-16);
-  flex-wrap: wrap;
-}
-
-.toolbar-left,
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-12);
-}
-
-.toolbar-center {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-}
-
-.date-nav-input {
-  width: 140px;
-  text-align: center;
-}
-
-/* ── Grid wrapper ── */
-.calendar-grid-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-default);
-}
-
-/* ── Grid table ── */
-.calendar-grid {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: collapse;
-  font-size: var(--base-text-size-xs);
-}
+/* Rate Calendar — day-level pricing grid.
+   The toolbar, the scrolling grid and the date headers come from the shared
+   .calendar-* skeleton in styles/shared.scss; what is here is what a price
+   grid needs and a booking grid does not. */
 
 /* ── Header row ── */
-.th-rate-plan {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: var(--bgColor-muted);
-  min-width: 200px;
-  padding: var(--base-size-8) var(--base-size-12);
-  text-align: left;
-  font-weight: var(--base-text-weight-semibold);
-  border-bottom: 2px solid var(--borderColor-default);
-  border-right: 2px solid var(--borderColor-default);
-}
-
+/* A price column is narrow — a number and a flag, nothing more. */
 .th-date {
   min-width: 72px;
-  padding: var(--base-size-4) var(--base-size-8);
-  text-align: center;
-  font-weight: var(--base-text-weight-medium);
-  background: var(--bgColor-muted);
-  border-bottom: 2px solid var(--borderColor-default);
-  border-right: 1px solid var(--borderColor-muted);
-  white-space: nowrap;
-
-  .date-dow {
-    display: block;
-    font-size: var(--base-text-size-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--fgColor-muted);
-  }
-
-  .date-num {
-    display: block;
-    font-size: var(--base-text-size-sm);
-    font-weight: var(--base-text-weight-semibold);
-    color: var(--fgColor-default);
-  }
-}
-
-.th-weekend {
-  background: color-mix(in srgb, var(--bgColor-muted) 50%, var(--bgColor-attention-muted));
-}
-
-.th-today {
-  background: var(--bgColor-accent-muted);
-
-  .date-num {
-    color: var(--fgColor-accent);
-  }
 }
 
 /* ── Body cells ── */
-.td-rate-plan {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: var(--bgColor-default);
-  padding: var(--base-size-8) var(--base-size-12);
-  border-bottom: 1px solid var(--borderColor-muted);
-  border-right: 2px solid var(--borderColor-default);
-  white-space: nowrap;
-
+/* A rate plan stacks its code, name and base rate inside the pinned column. */
+.td-row-head {
   display: flex;
   flex-direction: column;
   gap: var(--base-size-2);
-
-  .rate-code {
-    font-weight: var(--base-text-weight-semibold);
-    color: var(--fgColor-accent);
-    font-size: var(--base-text-size-xs);
-  }
 
   .rate-name {
     font-size: var(--base-text-size-xs);
@@ -160,8 +59,8 @@
     justify-content: flex-end;
   }
 
-  .th-rate-plan,
-  .td-rate-plan {
+  .th-row-head,
+  .td-row-head {
     min-width: 140px;
   }
 }

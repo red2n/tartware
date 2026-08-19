@@ -40,39 +40,16 @@
 .grp-card-rooms .grp-overview-accent { background: var(--bgColor-attention-emphasis); }
 .grp-card-pickup .grp-overview-accent { background: var(--bgColor-done-emphasis); }
 
-.grp-card-total .grp-overview-label app-icon { color: var(--fgColor-accent); }
-.grp-card-active .grp-overview-label app-icon { color: var(--fgColor-success); }
-.grp-card-rooms .grp-overview-label app-icon { color: var(--fgColor-attention); }
-.grp-card-pickup .grp-overview-label app-icon { color: var(--fgColor-done); }
+.grp-card-total .overview-label app-icon { color: var(--fgColor-accent); }
+.grp-card-active .overview-label app-icon { color: var(--fgColor-success); }
+.grp-card-rooms .overview-label app-icon { color: var(--fgColor-attention); }
+.grp-card-pickup .overview-label app-icon { color: var(--fgColor-done); }
 
 .grp-overview-body {
   padding: var(--base-size-12) var(--base-size-16);
   display: flex;
   flex-direction: column;
   gap: var(--base-size-4);
-}
-
-.grp-overview-label {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-  font-size: var(--base-text-size-xs);
-  font-weight: var(--base-text-weight-medium);
-  color: var(--fgColor-muted);
-
-  app-icon {
-    @include icon-size(16px);
-  }
-}
-
-.grp-overview-value {
-  font-size: var(--text-title-size-medium);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-}
-
-.grp-overview-sub {
-  font-size: var(--base-text-size-xs);
 }
 
 /* ── Table cells ── */

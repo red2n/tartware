@@ -17,45 +17,45 @@
     <div class="grp-overview-card grp-card-total">
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
-        <div class="grp-overview-label">
+        <div class="overview-label">
           <app-icon name="groups" />
           {{ 'Total Groups' | translate }}
         </div>
-        <div class="grp-overview-value">{{ summary().totalGroups }}</div>
-        <div class="grp-overview-sub text-muted">{{ 'all bookings' | translate }}</div>
+        <div class="overview-value">{{ summary().totalGroups }}</div>
+        <div class="overview-sub text-muted">{{ 'all bookings' | translate }}</div>
       </div>
     </div>
     <div class="grp-overview-card grp-card-active">
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
-        <div class="grp-overview-label">
+        <div class="overview-label">
           <app-icon name="check_circle" />
           {{ 'Active' | translate }}
         </div>
-        <div class="grp-overview-value">{{ summary().activeGroups }}</div>
-        <div class="grp-overview-sub text-muted">{{ 'current blocks' | translate }}</div>
+        <div class="overview-value">{{ summary().activeGroups }}</div>
+        <div class="overview-sub text-muted">{{ 'current blocks' | translate }}</div>
       </div>
     </div>
     <div class="grp-overview-card grp-card-rooms">
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
-        <div class="grp-overview-label">
+        <div class="overview-label">
           <app-icon name="hotel" />
           {{ 'Rooms Blocked' | translate }}
         </div>
-        <div class="grp-overview-value">{{ summary().totalRoomsBlocked }}</div>
-        <div class="grp-overview-sub text-muted">{{ 'across groups' | translate }}</div>
+        <div class="overview-value">{{ summary().totalRoomsBlocked }}</div>
+        <div class="overview-sub text-muted">{{ 'across groups' | translate }}</div>
       </div>
     </div>
     <div class="grp-overview-card grp-card-pickup">
       <div class="grp-overview-accent"></div>
       <div class="grp-overview-body">
-        <div class="grp-overview-label">
+        <div class="overview-label">
           <app-icon name="trending_up" />
           {{ 'Avg Pickup' | translate }}
         </div>
-        <div class="grp-overview-value">{{ summary().avgPickup }}%</div>
-        <div class="grp-overview-sub text-muted">{{ 'room pickup rate' | translate }}</div>
+        <div class="overview-value">{{ summary().avgPickup }}%</div>
+        <div class="overview-sub text-muted">{{ 'room pickup rate' | translate }}</div>
       </div>
     </div>
   </div>

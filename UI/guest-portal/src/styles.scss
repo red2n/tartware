@@ -23,6 +23,9 @@
 /* Layer 2: prefers-contrast and forced-colors handling */
 @import url('../../shared-styles/contrast.css');
 
+/* Layer 4: element defaults shared with pms-ui */
+@import url('../../shared-styles/base.css');
+
 /* ── Material themes ──
  * The full theme (structure + typography + light colour) is emitted once.
  * Dark mode re-emits colour ONLY, which is roughly a third of the size of a
@@ -104,36 +107,12 @@ html {
   color-scheme: light;
 }
 
-[data-theme='dark'] {
-  color-scheme: dark;
-}
-
-input[type='checkbox'],
-input[type='radio'] {
-  accent-color: var(--fgColor-accent);
-}
-
+/* Element defaults are shared with pms-ui — see shared-styles/base.css.
+   The guest portal sits on the muted canvas, cards on top; that is the one
+   element-level difference and it stays here. */
 html,
 body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: var(--base-text-size-md);
-  line-height: var(--base-text-lineHeight-normal);
-  color: var(--fgColor-default);
   background: var(--bgColor-muted);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  color: var(--fgColor-accent);
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 :focus-visible {

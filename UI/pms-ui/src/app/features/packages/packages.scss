@@ -8,13 +8,6 @@
 }
 
 /* ── Package Engagement Overview ── */
-.pkg-overview {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--base-size-12);
-  margin-bottom: var(--base-size-20);
-}
-
 .pkg-stat {
   display: flex;
   align-items: center;
@@ -55,30 +48,6 @@
   background: var(--bgColor-muted);
 
   > app-icon { color: var(--fgColor-muted); }
-}
-
-.pkg-stat-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--base-size-2);
-}
-
-.pkg-stat-value {
-  font-size: var(--base-text-size-lg);
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-default);
-}
-
-.pkg-stat-label {
-  font-size: var(--base-text-size-xs);
-  color: var(--fgColor-muted);
-}
-
-.pkg-code {
-  font-weight: var(--base-text-weight-semibold);
-  color: var(--fgColor-accent);
-  font-family: var(--fontStack-monospace);
-  font-size: var(--base-text-size-xs);
 }
 
 .pkg-name {

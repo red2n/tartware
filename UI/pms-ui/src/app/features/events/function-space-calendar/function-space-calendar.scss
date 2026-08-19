@@ -1,117 +1,24 @@
 /* Function space calendar — meeting rooms × days.
-   Same skeleton as features/rate-calendar (sticky first column, scrolling date
-   columns); the cell differs because it holds bookings rather than one number. */
+   The skeleton (sticky first column, scrolling date columns, date headers) is
+   the shared .calendar-* set in styles/shared.scss. What is here is what a day
+   of bookings needs: a wider column, fixed layout, and the chips themselves. */
 
 /* ── Toolbar ── */
-.calendar-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--base-size-16);
-  margin-bottom: var(--base-size-16);
-  flex-wrap: wrap;
-}
-
+/* This toolbar carries more controls than the rate grid's, so its rows wrap
+   rather than pushing the date navigator off the edge. */
 .toolbar-left,
 .toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-12);
   flex-wrap: wrap;
-}
-
-.toolbar-center {
-  display: flex;
-  align-items: center;
-  gap: var(--base-size-8);
-}
-
-.date-nav-input {
-  width: 140px;
-  text-align: center;
 }
 
 /* ── Grid ── */
-.calendar-grid-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-default);
-}
-
-.calendar-grid {
-  width: max-content;
-  min-width: 100%;
-  /* Fixed layout, so a long event name ellipsizes inside its day instead of
-     stretching that column and knocking the rest of the fortnight out of
-     alignment. Auto layout sized columns by content and the widths drifted. */
-  table-layout: fixed;
-  border-collapse: collapse;
-  font-size: var(--base-text-size-xs);
-}
-
-.th-room {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: var(--bgColor-muted);
+/* The room column is fixed rather than min-width, so a long room name cannot
+   widen it and squeeze the days. */
+.th-row-head {
   width: 200px;
-  min-width: 200px;
-  padding: var(--base-size-8) var(--base-size-12);
-  text-align: left;
-  font-weight: var(--base-text-weight-semibold);
-  border-bottom: 2px solid var(--borderColor-default);
-  border-right: 2px solid var(--borderColor-default);
 }
 
-.th-date {
-  width: 118px;
-  min-width: 118px;
-  padding: var(--base-size-4) var(--base-size-8);
-  text-align: center;
-  font-weight: var(--base-text-weight-medium);
-  background: var(--bgColor-muted);
-  border-bottom: 2px solid var(--borderColor-default);
-  border-right: 1px solid var(--borderColor-muted);
-  white-space: nowrap;
-
-  .date-dow {
-    display: block;
-    font-size: var(--base-text-size-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--fgColor-muted);
-  }
-
-  .date-num {
-    display: block;
-    font-size: var(--base-text-size-sm);
-    font-weight: var(--base-text-weight-semibold);
-    color: var(--fgColor-default);
-  }
-}
-
-.th-weekend {
-  background: color-mix(in srgb, var(--bgColor-muted) 50%, var(--bgColor-attention-muted));
-}
-
-.th-today {
-  background: var(--bgColor-accent-muted);
-
-  .date-num {
-    color: var(--fgColor-accent);
-  }
-}
-
-.td-room {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: var(--bgColor-default);
-  padding: var(--base-size-8) var(--base-size-12);
-  border-bottom: 1px solid var(--borderColor-muted);
-  border-right: 2px solid var(--borderColor-default);
-  white-space: nowrap;
+.td-row-head {
   vertical-align: top;
 
   .room-name {
@@ -125,6 +32,20 @@
     font-size: var(--base-text-size-xs);
     color: var(--fgColor-muted);
   }
+}
+
+/* Fixed layout, so a long event name ellipsizes inside its day instead of
+   stretching that column and knocking the rest of the fortnight out of
+   alignment. Auto layout sized columns by content and the widths drifted. */
+.calendar-grid {
+  table-layout: fixed;
+}
+
+/* A day here holds event chips, not one number, so the column is wider than
+   the rate grid's. */
+.th-date {
+  width: 118px;
+  min-width: 118px;
 }
 
 .td-day {

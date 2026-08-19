@@ -93,6 +93,182 @@
   margin: 0 0 var(--base-size-16);
 }
 
+/* ── Nav rail ────────────────────────────────────────────────────────────────
+ * Shared by layout/sidebar (primary) and layout/sub-sidebar (secondary): both
+ * collapse to an icon rail and both carry a full-width toggle at the foot.
+ * Only these were genuinely one pattern — .nav-item itself is deliberately
+ * different between the two (denser in the primary rail, and the active marker
+ * sits on the opposite edge), so it stays in each component. */
+.collapsed .nav-item {
+  justify-content: center;
+  padding: var(--base-size-8);
+}
+
+.collapsed .nav-item-active::before {
+  top: 6px;
+  bottom: 6px;
+}
+
+.collapse-toggle {
+  width: 100%;
+  height: var(--control-large-size);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--fgColor-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--color-sidebar-border);
+
+  &:hover {
+    background: var(--bgColor-muted);
+    color: var(--fgColor-default);
+  }
+}
+
+/* ── Calendar grid ───────────────────────────────────────────────────────────
+ * The skeleton behind any "rows × days" screen: a scrolling table with a
+ * sticky first column and one column per date. Lived twice — once in
+ * features/rate-calendar and once in features/events/function-space-calendar,
+ * 94 duplicated lines — until 2026-08-19.
+ *
+ * What stays in the component: the width of the first column and of a day
+ * column, whatever a cell holds, and the weekend/today tints, which are
+ * deliberately different per screen (a booking chip and a price cell need
+ * different amounts of wash behind them). */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-16);
+  margin-bottom: var(--base-size-16);
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+}
+
+.date-nav-input {
+  width: 140px;
+  text-align: center;
+}
+
+/* Horizontal scroll lives here, so the sticky first column has something to
+   stay put against. */
+.calendar-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+}
+
+.calendar-grid {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: var(--base-text-size-xs);
+}
+
+/* One date column header. The width is the component's business — a day of
+   meeting-room bookings needs more room than a day of prices. */
+.th-date {
+  padding: var(--base-size-4) var(--base-size-8);
+  text-align: center;
+  font-weight: var(--base-text-weight-medium);
+  background: var(--bgColor-muted);
+  border-bottom: 2px solid var(--borderColor-default);
+  border-right: 1px solid var(--borderColor-muted);
+  white-space: nowrap;
+
+  .date-dow {
+    display: block;
+    font-size: var(--base-text-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--fgColor-muted);
+  }
+
+  .date-num {
+    display: block;
+    font-size: var(--base-text-size-sm);
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+  }
+}
+
+.th-weekend {
+  background: color-mix(in srgb, var(--bgColor-muted) 50%, var(--bgColor-attention-muted));
+}
+
+.th-today {
+  background: var(--bgColor-accent-muted);
+
+  .date-num {
+    color: var(--fgColor-accent);
+  }
+}
+
+/* The sticky first column — the row's identity, held in place while the date
+   columns scroll under it. The rows differ (a meeting room, a rate plan), so
+   only the pinning and the frame are here; what the cell holds is the
+   component's. */
+.th-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bgColor-muted);
+  min-width: 200px;
+  padding: var(--base-size-8) var(--base-size-12);
+  text-align: left;
+  font-weight: var(--base-text-weight-semibold);
+  border-bottom: 2px solid var(--borderColor-default);
+  border-right: 2px solid var(--borderColor-default);
+}
+
+.td-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bgColor-default);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-bottom: 1px solid var(--borderColor-muted);
+  border-right: 2px solid var(--borderColor-default);
+  white-space: nowrap;
+}
+
+/* ── Sparkline ───────────────────────────────────────────────────────────────
+ * The inline 12-point trend SVG. Identical copies sat in features/dashboard
+ * and features/guests until 2026-08-19; the size is set by the caller (see
+ * .sparkline-lg in dashboard), everything else is the same line. */
+.sparkline-svg {
+  display: block;
+  width: 120px;
+  height: var(--control-small-size);
+}
+
+.sparkline-area {
+  fill: var(--bgColor-accent-muted);
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--bgColor-accent-emphasis);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ── Text helpers ── */
 .text-muted {
   color: var(--fgColor-muted);

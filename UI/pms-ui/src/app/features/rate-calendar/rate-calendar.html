@@ -71,7 +71,7 @@
       <table class="calendar-grid">
         <thead>
           <tr>
-            <th class="th-rate-plan">{{ 'Rate Plan' | translate }}</th>
+            <th class="th-row-head">{{ 'Rate Plan' | translate }}</th>
             @for (date of dateColumns(); track date) {
               <th class="th-date"
                   [class.th-weekend]="isWeekend(date)"
@@ -85,8 +85,8 @@
         <tbody>
           @for (rate of filteredRates(); track rate.id) {
             <tr>
-              <td class="td-rate-plan">
-                <span class="rate-code">{{ rate.rate_code }}</span>
+              <td class="td-row-head">
+                <span class="ref-code">{{ rate.rate_code }}</span>
                 <span class="rate-name text-muted">{{ rate.rate_name }}</span>
                 <span class="rate-base text-xs text-muted">
                   Base: {{ fmtCurrency(rate.base_rate, rate.currency) }}

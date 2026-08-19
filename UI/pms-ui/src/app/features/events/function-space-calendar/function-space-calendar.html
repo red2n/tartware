@@ -259,7 +259,7 @@
     <table class="calendar-grid">
       <thead>
         <tr>
-          <th class="th-room">{{ 'Meeting room' | translate }}</th>
+          <th class="th-row-head">{{ 'Meeting room' | translate }}</th>
           @for (date of dateColumns(); track date) {
             <th class="th-date" [class.th-weekend]="isWeekend(date)" [class.th-today]="isToday(date)">
               <span class="date-dow">{{ dayOfWeek(date) }}</span>
@@ -271,7 +271,7 @@
       <tbody>
         @for (room of visibleRooms(); track room.room_id) {
           <tr>
-            <td class="td-room">
+            <td class="td-row-head">
               <span class="room-name">{{ room.room_name }}</span>
               <span class="room-meta">
                 {{ room.room_type_display }} · {{ 'max' | translate }} {{ room.max_capacity }}
