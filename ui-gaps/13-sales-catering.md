@@ -360,8 +360,65 @@ it. Only the BEO course-line editor (`.line-*`, `.course-*`) stays local, being 
 Verified by computed style rather than by eye, per the encapsulation gotcha in the run-tartware-ui
 skill: the dividers, hover targets and trailing chevron all still resolve on both screens.
 
-**Still open in this module:** item 5 (daily BEO print / kitchen view), item 6 (event billing), and
-the midnight limitation above.
+### ✅ The midnight limitation: closed 2026-08-19
+
+The limitation recorded above — `end > start` on bare `TIME` columns, so an 18:00 → 01:00 wedding
+could not be stored at all — is fixed, on both tables and through the whole stack.
+
+**The fix is a convention, not a column type change.** `event_date DATE` + bare `TIME` is what the
+calendar, the indexes, the list ordering and both screens are built on; moving to `TIMESTAMP` would
+have rewritten all of that to express something the existing columns can already say. So the booking
+is **anchored at `event_date + start_time`** and every other time on the row is read relative to it:
+
+- `end_time` / `teardown_end_time` **at or before** `start_time` fall on the **next** day.
+- `setup_start_time` **after** `start_time` falls on the **previous** day.
+
+Under that rule every combination of times denotes exactly one instant, so there is no out-of-order
+window left to forbid. `event_bookings_time_check` and `beo_time_check` are now `<>` rather than `>`,
+and `event_bookings_setup_time_check` was **dropped outright** — a setup after the start is a gala
+being dressed the evening before, which is legitimate, not invalid.
+
+**The rule is written twice and only twice.** Postgres owns it for stored rows as two generated
+columns on `event_bookings` (`occupancy_starts_at`, `occupancy_ends_at`); `@tartware/schemas` owns
+the TypeScript half (`eventEndsNextDay`, `eventSetupStartsPreviousDay`,
+`resolveEventOccupancyWindow`), which the service uses for the *proposed* booking and all three
+screens use for their labels. No query re-derives it. `banquet_event_orders` got no generated
+columns: a BEO never competes for space, so nothing needs its resolved instants.
+
+#### The second bug, which the limitation was hiding
+
+Slice 2's double-booking check filtered `event_date = $3` and compared bare times. Once events may
+cross midnight that is wrong twice over, and the second fault is the worse one: **collisions between
+neighbouring days were invisible**. A wedding running to 01:00 and a breakfast setting up at 00:30
+the next morning never met, because they are anchored on different dates. The check now compares
+resolved instants and prunes on `event_date BETWEEN $3 - 1 AND $3 + 1`, which keeps
+`idx_event_bookings_meeting_room` usable.
+
+#### The cost, paid back in the UI
+
+A mistyped time is now silently a different day rather than a 400. So every screen that shows or
+takes these times says which day it inferred: `Next day` / `Previous evening` hints under the time
+inputs on all three forms, `(ends next day)` and `(from the previous evening)` on the booking
+detail's read rows, and a `+1` marker on the calendar chip — the grid cell shows only the start time,
+so without it the crossing is invisible where it matters most. One `.daybreak-marker` class in
+`shared.scss` serves the calendar and the BEO header; the first cut had it twice under two names,
+which is the same UI/AGENTS.md line 38 slip slice 3 recorded.
+
+**Verified live: `http_test/smoke-events.sh`, 78 assertions green**, including six new ones — the
+past-midnight event is accepted, a zero-length one is still a 400, a next-morning booking inside the
+overnight window is a 409, one starting exactly as it ends is allowed (half-open holds), a setup on
+the previous evening is accepted, and a booking inside that setup window is a 409. The BEO assertion
+that used to read "end before start → 400" now reads "overnight banquet accepted", with zero-length
+taking over the 400 case.
+
+**Not verified in a browser.** `UI/pms-ui/e2e/midnight.spec.ts` is written but has never run: neither
+Playwright browser starts on this box (`libnspr4.so`, `libnss3.so`, `libasound.so.2` missing, no sudo
+for `npx playwright install-deps`). `ng build` and the 97 contrast pairings are clean.
+
+**What is still not representable:** an event lasting 24 hours or more, since `end_time = start_time`
+is the one window the convention cannot disambiguate and remains a 400.
+
+**Still open in this module:** item 5 (daily BEO print / kitchen view) and item 6 (event billing).
 
 
 ## Current State (Backend ⚠️ read-only → UI ❌)

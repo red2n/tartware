@@ -119,6 +119,9 @@
             <label class="field-label" for="eb-setup-start">{{ 'Setup from' | translate }}</label>
             <input class="field-input" id="eb-setup-start" type="time" [ngModel]="f.setup_start_time"
                    (ngModelChange)="patchForm({ setup_start_time: $event ?? '' })" />
+            @if (formSetupIsPreviousDay()) {
+              <span class="field-hint">{{ 'Previous evening' | translate }}</span>
+            }
           </div>
           <div class="form-field">
             <label class="field-label" for="eb-start">{{ 'Starts' | translate }}</label>
@@ -129,11 +132,17 @@
             <label class="field-label" for="eb-end">{{ 'Ends' | translate }}</label>
             <input class="field-input" id="eb-end" type="time" [ngModel]="f.end_time"
                    (ngModelChange)="patchForm({ end_time: $event ?? '' })" />
+            @if (formEndsNextDay()) {
+              <span class="field-hint">{{ 'Next day' | translate }}</span>
+            }
           </div>
           <div class="form-field">
             <label class="field-label" for="eb-teardown-end">{{ 'Teardown until' | translate }}</label>
             <input class="field-input" id="eb-teardown-end" type="time" [ngModel]="f.teardown_end_time"
                    (ngModelChange)="patchForm({ teardown_end_time: $event ?? '' })" />
+            @if (formTeardownIsNextDay()) {
+              <span class="field-hint">{{ 'Next day' | translate }}</span>
+            }
           </div>
         </div>
 
@@ -307,12 +316,23 @@
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'Event runs' | translate }}</dt>
-            <dd class="detail-value">{{ shortTime(b.start_time) }} – {{ shortTime(b.end_time) }}</dd>
+            <dd class="detail-value">
+              {{ shortTime(b.start_time) }} – {{ shortTime(b.end_time) }}
+              @if (endsNextDay()) {
+                <span class="text-muted">{{ '(ends next day)' | translate }}</span>
+              }
+            </dd>
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'Room held' | translate }}</dt>
             <dd class="detail-value">
               {{ holdWindow() }}
+              @if (holdStartsPreviousDay()) {
+                <span class="text-muted">{{ '(from the previous evening)' | translate }}</span>
+              }
+              @if (holdEndsNextDay()) {
+                <span class="text-muted">{{ '(into the next day)' | translate }}</span>
+              }
               @if (hasHoldMargin()) {
                 <span class="text-muted">{{ '(setup and teardown included)' | translate }}</span>
               }

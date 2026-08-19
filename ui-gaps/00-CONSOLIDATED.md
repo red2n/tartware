@@ -120,7 +120,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), and **UI items 1 + 2 + 4 shipped 2026-08-18** (function space calendar, booking detail, meeting room admin). Banquet orders + the BEO editor are the last slice | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
+| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, and the midnight limitation **closed 2026-08-19** (day-boundary convention + a cross-date double-booking bug it was hiding). Items 5 and 6 remain | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
 | 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
@@ -276,6 +276,18 @@ kind that only exists at runtime:
 The lesson for the remaining write paths (banquet orders, allotments): budget the smoke test as part
 of the slice, not as follow-up hygiene. Both bugs took minutes to find with a stack running and were
 invisible to every gate that ran without one.
+
+**A CHECK constraint can be the bug — measured 2026-08-19.**
+
+COV-13's midnight limitation was not code: `end_time > start_time` on bare `TIME` columns is a table
+refusing to store an ordinary evening wedding. Two things are worth carrying forward. First, the
+constraint hid a second, worse defect — the double-booking check filtered `event_date = $3`, so
+collisions between *neighbouring* days were invisible; nobody could see it while the data that would
+expose it was unstorable. Second, the fix was a **convention plus two generated columns**, not a
+column type change: `event_date + TIME` can express a midnight crossing perfectly well once something
+says which side of midnight each time falls on, and putting that rule in Postgres means no query
+re-derives it. The rule exists in exactly two places — the generated columns and
+`@tartware/schemas` — and the service and all three screens consume the second.
 
 **Third and fourth guardrails added 2026-08-13** — `tenant-scope-module-conformance.test.ts` asserts every
 `requiredModules:` literal in `Apps/*/src` is a real `MODULE_IDS` entry. It was written after finding

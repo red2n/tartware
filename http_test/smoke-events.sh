@@ -31,6 +31,7 @@ ROOM_CODE="SMOKE-$SUFFIX"
 ROOM_CODE2="SMOKE2-$SUFFIX"
 # Dates far enough out that they never collide with seeded demo data.
 D1="2027-03-01"; D2="2027-03-02"; D3="2027-03-03"
+D4="2027-03-04"; D5="2027-03-05"; D6="2027-03-06"
 
 PASS=0; FAIL=0
 declare -a FAILURES=()
@@ -144,6 +145,35 @@ code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke In Setup' "$D3" 12:30
 check "booking inside setup window → conflict" 409 "$code"
 
 echo
+echo "── MIDNIGHT-CROSSING (day-boundary convention) ──"
+# event_bookings stores one event_date plus bare TIME columns, so until the
+# convention landed a wedding running 18:00 → 01:00 was rejected by the table
+# itself and had to be recorded as ending 23:59. An end at or before the start
+# is now the next morning; only a zero-length window is impossible.
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Wedding' "$D4" 18:00 01:00)")
+check "event running past midnight created" 201 "$code"; remember_event
+
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Zero Length' "$D5" 10:00 10:00)")
+check "zero-length event → bad request" 400 "$code"
+
+# The first double-booking check filtered on `event_date = $3` and compared bare
+# times, so a booking anchored the next morning never met the one still running
+# into it. These two assert the resolved-instant comparison that replaced it.
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Small Hours' "$D5" 00:30 02:00)")
+check "next-day booking inside the overnight window → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke After Wedding' "$D5" 01:00 03:00)")
+check "next-day booking starting as it ends allowed (half-open)" 201 "$code"; remember_event
+
+# A setup after start_time is the previous evening — the case the dropped
+# event_bookings_setup_time_check refused outright.
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Overnight Setup' "$D6" 00:30 04:00 '"setup_start_time":"22:00"')")
+check "setup on the previous evening accepted" 201 "$code"; remember_event
+
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Eve Clash' "$D5" 21:00 23:00)")
+check "booking inside the previous-evening setup → conflict" 409 "$code"
+
+echo
 echo "── LIFECYCLE ──"
 code=$(req POST "$GW/v1/event-bookings/$EVENT_A/status" "{\"tenant_id\":\"$TID\",\"booking_status\":\"DEFINITE\"}")
 check "TENTATIVE → DEFINITE" 200 "$code"
@@ -228,8 +258,14 @@ check "unknown event booking → not found" 404 "$code"
 code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"guaranteed_count":0')")
 check "guaranteed_count 0 → bad request (CHECK mirrored in zod)" 400 "$code"
 
+# An end at or before the start is the next morning, not an inverted window —
+# the same day-boundary convention event_bookings uses. Zero-length is the only
+# window `beo_time_check` still refuses.
 code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"event_end_time":"08:00"')")
-check "end before start → bad request" 400 "$code"
+check "overnight banquet (ends 08:00, starts 09:00) accepted" 201 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"event_end_time":"09:00"')")
+check "zero-length banquet → bad request" 400 "$code"
 
 # Setup and teardown are deliberately NOT ordered against the event window: they
 # are bare TIME columns with no date, so a teardown at 01:00 after a 23:30 finish

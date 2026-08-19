@@ -4,6 +4,8 @@ import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import {
 	EVENT_BOOKING_LEGAL_TRANSITIONS,
+	eventEndsNextDay,
+	eventSetupStartsPreviousDay,
 	type BanquetOrderDetail,
 	type BanquetOrderListItem,
 	type EventBookingDetail,
@@ -148,6 +150,57 @@ export class EventBookingDetailComponent {
 		const from = this.shortTime(b.setup_start_time ?? b.start_time);
 		const to = this.shortTime(b.teardown_end_time ?? b.end_time);
 		return `${from} – ${to}`;
+	});
+
+	/**
+	 * Day-boundary markers. The tables store one `event_date` and bare times, so
+	 * an evening function that finishes after midnight reads as "18:00 – 01:00"
+	 * and looks backwards unless the screen says which day each end falls on.
+	 * The rule itself is `eventEndsNextDay` / `eventSetupStartsPreviousDay` in
+	 * `@tartware/schemas` — the same one Postgres applies in the generated
+	 * occupancy columns, so the label cannot disagree with the conflict check.
+	 */
+	readonly endsNextDay = computed(() => {
+		const b = this.booking();
+		return Boolean(b && eventEndsNextDay(b.start_time, b.end_time));
+	});
+
+	readonly holdEndsNextDay = computed(() => {
+		const b = this.booking();
+		if (!b) return false;
+		return eventEndsNextDay(b.start_time, b.teardown_end_time ?? b.end_time);
+	});
+
+	readonly holdStartsPreviousDay = computed(() => {
+		const b = this.booking();
+		if (!b?.setup_start_time) return false;
+		return eventSetupStartsPreviousDay(b.start_time, b.setup_start_time);
+	});
+
+	/** The same three markers against the edit form, so they move as one types. */
+	readonly formEndsNextDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f?.start_time && f.end_time && eventEndsNextDay(f.start_time, f.end_time),
+		);
+	});
+
+	readonly formTeardownIsNextDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f?.start_time &&
+				f.teardown_end_time &&
+				eventEndsNextDay(f.start_time, f.teardown_end_time),
+		);
+	});
+
+	readonly formSetupIsPreviousDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f?.start_time &&
+				f.setup_start_time &&
+				eventSetupStartsPreviousDay(f.start_time, f.setup_start_time),
+		);
 	});
 
 	/** True when setup or teardown extends the hold beyond the event itself. */
@@ -298,8 +351,11 @@ export class EventBookingDetailComponent {
 		if (f.event_name.trim().length === 0) return false;
 		if (f.organizer_name.trim().length === 0) return false;
 		if (f.expected_attendees == null || f.expected_attendees <= 0) return false;
-		if (!f.start_time || !f.end_time || f.end_time <= f.start_time) return false;
-		if (f.setup_start_time && f.setup_start_time > f.start_time) return false;
+		// Not `end <= start`: an end at or before the start is the next morning
+		// under the day-boundary convention, and a setup after the start is the
+		// previous evening. Only a zero-length window is impossible.
+		if (!f.start_time || !f.end_time || f.end_time === f.start_time)
+			return false;
 		return true;
 	});
 

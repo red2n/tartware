@@ -233,7 +233,9 @@ CREATE TABLE IF NOT EXISTS banquet_event_orders (
     -- Constraints
     CONSTRAINT beo_number_unique UNIQUE (tenant_id, property_id, beo_number, beo_version),
     CONSTRAINT beo_count_check CHECK (guaranteed_count > 0),
-    CONSTRAINT beo_time_check CHECK (event_end_time > event_start_time),
+    -- Not `>`: bare TIME columns, so an end at or before the start is the next
+    -- morning. Same day-boundary convention as event_bookings.
+    CONSTRAINT beo_time_check CHECK (event_end_time <> event_start_time),
     CONSTRAINT beo_rating_check CHECK (
         client_satisfaction_rating IS NULL OR
         (client_satisfaction_rating >= 1 AND client_satisfaction_rating <= 5)
@@ -256,5 +258,18 @@ COMMENT ON COLUMN banquet_event_orders.kitchen_instructions IS 'Special instruct
 COMMENT ON COLUMN banquet_event_orders.distribution_list IS 'Email addresses to receive BEO copies';
 COMMENT ON COLUMN banquet_event_orders.seating_chart_layout_url IS 'Layout preview for seating arrangements';
 COMMENT ON COLUMN banquet_event_orders.metadata IS 'Custom fields and additional event specifications';
+
+-- =====================================================
+-- MIDNIGHT-CROSSING EVENTS (ui-gaps/13-sales-catering.md)
+-- Idempotent migration for deployments created before the day-boundary
+-- convention. `beo_time_check` read the bare TIME columns as one calendar day,
+-- so a banquet running 18:00 -> 01:00 was rejected by the table itself.
+-- No generated occupancy columns here: a BEO is the operational detail of one
+-- booking and never competes for space, so nothing needs the resolved instants.
+-- =====================================================
+
+ALTER TABLE banquet_event_orders DROP CONSTRAINT IF EXISTS beo_time_check;
+ALTER TABLE banquet_event_orders
+    ADD CONSTRAINT beo_time_check CHECK (event_end_time <> event_start_time);
 
 \echo 'Banquet event orders table created successfully!'

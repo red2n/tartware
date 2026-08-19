@@ -98,6 +98,16 @@
   color: var(--fgColor-muted);
 }
 
+/* "+1" against a time that falls on the next day. Events store one event_date
+   and bare TIME columns, so a window crossing midnight is only visible if the
+   screen marks it — used by the function-space grid and the BEO header alike. */
+.daybreak-marker {
+  margin-left: 1px;
+  font-size: 0.85em;
+  vertical-align: super;
+  color: var(--fgColor-accent);
+}
+
 .text-subtle {
   color: var(--fgColor-muted);
   font-size: var(--base-text-size-sm);

@@ -16,6 +16,7 @@ import {
   MeetingRoomListItemSchema,
   type MeetingRoomRow,
   type MeetingRoomWriteInput,
+  resolveEventOccupancyWindow,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -596,6 +597,15 @@ const SPACE_HOLDING_STATUSES = [
  * Overlap is half-open: a booking ending at 12:00 does not collide with one
  * starting at 12:00. Setup and teardown windows are included when present, so
  * a room being dressed is not offered to someone else.
+ *
+ * Compared as resolved instants, not as times on one calendar day. The first
+ * cut of this check did the latter and had two faults that only appear once an
+ * event may run past midnight: it read a 18:00 → 01:00 window as inverted, and
+ * `event_date = $3` hid every collision between neighbouring days — the
+ * wedding running to 01:00 and the breakfast setting up at 00:30 never met.
+ * Stored rows resolve through the `occupancy_*` generated columns, the proposed
+ * booking through `resolveEventOccupancyWindow`; the date range is a three-day
+ * prune so `idx_event_bookings_meeting_room` is still usable.
  */
 const assertMeetingRoomFree = async (
   tenantId: string,
@@ -607,18 +617,26 @@ const assertMeetingRoomFree = async (
   teardownEndTime?: string,
   excludeEventId?: string,
 ): Promise<void> => {
+  const proposed = resolveEventOccupancyWindow(
+    eventDate,
+    startTime,
+    endTime,
+    setupStartTime,
+    teardownEndTime,
+  );
+
   const { rows } = await query<{ event_id: string }>(
     `
       SELECT event_id
       FROM public.event_bookings
       WHERE tenant_id = $1::uuid
         AND meeting_room_id = $2::uuid
-        AND event_date = $3::date
+        AND event_date BETWEEN $3::date - 1 AND $3::date + 1
         AND COALESCE(is_deleted, false) = false
         AND booking_status = ANY($4::text[])
         AND ($5::uuid IS NULL OR event_id <> $5::uuid)
-        AND COALESCE(setup_start_time, start_time) < $7::time
-        AND COALESCE(teardown_end_time, end_time) > $6::time
+        AND occupancy_starts_at < $7::timestamp
+        AND occupancy_ends_at > $6::timestamp
       LIMIT 1
     `,
     [
@@ -627,8 +645,8 @@ const assertMeetingRoomFree = async (
       eventDate,
       SPACE_HOLDING_STATUSES,
       excludeEventId ?? null,
-      setupStartTime ?? startTime,
-      teardownEndTime ?? endTime,
+      proposed.startsAt,
+      proposed.endsAt,
     ],
   );
 

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import {
 	BEO_EDITABLE_STATUSES,
 	BEO_PUBLISHABLE_STATUSES,
+	eventEndsNextDay,
 	type BanquetOrderDetail,
 	type BanquetOrderListItem,
 } from "@tartware/schemas";
@@ -659,12 +660,50 @@ export class BeoEditorComponent {
 		if (!f) return false;
 		if (f.guaranteed_count == null || f.guaranteed_count <= 0) return false;
 		if (!f.event_start_time || !f.event_end_time) return false;
-		// Only the rule `beo_time_check` actually enforces. Setup and teardown are
-		// deliberately unchecked: they are bare times with no date, so a teardown
-		// at 01:00 after a 23:30 finish is the next morning, and comparing the
-		// strings would refuse a perfectly ordinary late function.
-		if (f.event_end_time <= f.event_start_time) return false;
+		// Only the rule `beo_time_check` actually enforces, which is now just
+		// "not zero-length". Setup, teardown and the event's own end are all bare
+		// times with no date, so under the day-boundary convention an end at or
+		// before the start is the next morning — comparing the strings for order
+		// would refuse a perfectly ordinary late function.
+		if (f.event_end_time === f.event_start_time) return false;
 		return true;
+	});
+
+	/**
+	 * Day-boundary markers, same rule and same reason as the event booking
+	 * screens: the BEO stores one `event_date` and bare times, so the day an
+	 * evening function ends is inferred and has to be said out loud.
+	 */
+	readonly formEndsNextDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f?.event_start_time &&
+				f.event_end_time &&
+				eventEndsNextDay(f.event_start_time, f.event_end_time),
+		);
+	});
+
+	readonly formTeardownIsNextDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f?.event_start_time &&
+				f.teardown_end_time &&
+				eventEndsNextDay(f.event_start_time, f.teardown_end_time),
+		);
+	});
+
+	/** The saved BEO, for the read-only summary rows. */
+	readonly beoEndsNextDay = computed(() => {
+		const b = this.beo();
+		return Boolean(
+			b && eventEndsNextDay(b.event_start_time, b.event_end_time),
+		);
+	});
+
+	readonly beoTeardownIsNextDay = computed(() => {
+		const b = this.beo();
+		if (!b?.teardown_end_time) return false;
+		return eventEndsNextDay(b.event_start_time, b.teardown_end_time);
 	});
 
 	async save(): Promise<void> {

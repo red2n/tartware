@@ -69,6 +69,9 @@
             <label class="field-label" for="fs-setup-start">{{ 'Setup from' | translate }}</label>
             <input class="field-input" id="fs-setup-start" type="time" [ngModel]="form().setup_start_time"
                    (ngModelChange)="patchForm({ setup_start_time: $event ?? '' })" />
+            @if (formSetupIsPreviousDay()) {
+              <span class="field-hint">{{ 'Previous evening' | translate }}</span>
+            }
           </div>
           <div class="form-field">
             <label class="field-label" for="fs-start">{{ 'Starts' | translate }}</label>
@@ -79,11 +82,17 @@
             <label class="field-label" for="fs-end">{{ 'Ends' | translate }}</label>
             <input class="field-input" id="fs-end" type="time" [ngModel]="form().end_time"
                    (ngModelChange)="patchForm({ end_time: $event ?? '' })" />
+            @if (formEndsNextDay()) {
+              <span class="field-hint">{{ 'Next day' | translate }}</span>
+            }
           </div>
           <div class="form-field">
             <label class="field-label" for="fs-teardown-end">{{ 'Teardown until' | translate }}</label>
             <input class="field-input" id="fs-teardown-end" type="time" [ngModel]="form().teardown_end_time"
                    (ngModelChange)="patchForm({ teardown_end_time: $event ?? '' })" />
+            @if (formTeardownIsNextDay()) {
+              <span class="field-hint">{{ 'Next day' | translate }}</span>
+            }
           </div>
         </div>
       </section>
@@ -273,8 +282,9 @@
                 @for (booking of bookingsFor(room.room_id, date); track booking.event_id) {
                   <button type="button" [class]="statusClass(booking.booking_status)"
                           (click)="openBooking(booking)"
-                          [attr.title]="booking.event_name + ' · ' + booking.booking_status_display">
-                    <span class="chip-time">{{ shortTime(booking.start_time) }}</span>
+                          [attr.title]="booking.event_name + ' · ' + booking.booking_status_display
+                            + (endsNextDay(booking) ? ' · ' + ('ends next day' | translate) : '')">
+                    <span class="chip-time">{{ shortTime(booking.start_time) }}@if (endsNextDay(booking)) {<span class="daybreak-marker">+1</span>}</span>
                     <span class="chip-name">{{ booking.event_name }}</span>
                   </button>
                 }

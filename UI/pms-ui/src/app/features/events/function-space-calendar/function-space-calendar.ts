@@ -1,7 +1,12 @@
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
-import type { EventBookingListItem, MeetingRoomListItem } from "@tartware/schemas";
+import {
+	type EventBookingListItem,
+	type MeetingRoomListItem,
+	eventEndsNextDay,
+	eventSetupStartsPreviousDay,
+} from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
@@ -225,10 +230,50 @@ export class FunctionSpaceCalendarComponent {
 		if (f.event_name.trim().length === 0) return false;
 		if (f.organizer_name.trim().length === 0) return false;
 		if (f.expected_attendees == null || f.expected_attendees <= 0) return false;
-		if (!f.start_time || !f.end_time || f.end_time <= f.start_time) return false;
-		if (f.setup_start_time && f.setup_start_time > f.start_time) return false;
+		// Not `end <= start`: an end at or before the start is the next morning
+		// under the day-boundary convention, and a setup after the start is the
+		// previous evening. Only a zero-length window is impossible.
+		if (!f.start_time || !f.end_time || f.end_time === f.start_time)
+			return false;
 		return true;
 	});
+
+	/**
+	 * Day-boundary markers for the create form. The operator types 01:00 into
+	 * "Ends" and the screen has to say out loud that it means tomorrow morning —
+	 * the tables carry one `event_date` and bare times, so the day is inferred
+	 * rather than entered. Rule shared with the service and with Postgres via
+	 * `@tartware/schemas`.
+	 */
+	readonly formEndsNextDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f.start_time && f.end_time && eventEndsNextDay(f.start_time, f.end_time),
+		);
+	});
+
+	readonly formTeardownIsNextDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f.start_time &&
+				f.teardown_end_time &&
+				eventEndsNextDay(f.start_time, f.teardown_end_time),
+		);
+	});
+
+	readonly formSetupIsPreviousDay = computed(() => {
+		const f = this.form();
+		return Boolean(
+			f.start_time &&
+				f.setup_start_time &&
+				eventSetupStartsPreviousDay(f.start_time, f.setup_start_time),
+		);
+	});
+
+	/** True for a listed booking that runs past midnight, for the day chip. */
+	endsNextDay(booking: EventBookingListItem): boolean {
+		return eventEndsNextDay(booking.start_time, booking.end_time);
+	}
 
 	constructor() {
 		effect(() => {

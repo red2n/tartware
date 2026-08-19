@@ -30,7 +30,7 @@
     }
     <span class="text-muted">{{ b.event_date | date: 'fullDate' }}</span>
     <span class="text-muted">
-      {{ shortTime(b.event_start_time) }}–{{ shortTime(b.event_end_time) }}
+      {{ shortTime(b.event_start_time) }}–{{ shortTime(b.event_end_time) }}@if (beoEndsNextDay()) {<span class="daybreak-marker">+1</span>}
     </span>
     @if (b.last_sent_to_kitchen) {
       <span class="text-muted">
@@ -158,11 +158,17 @@
               <label class="field-label" for="beo-end">{{ 'Ends' | translate }}</label>
               <input class="field-input" id="beo-end" type="time" [ngModel]="f.event_end_time"
                      (ngModelChange)="patchForm({ event_end_time: $event ?? '' })" />
+              @if (formEndsNextDay()) {
+                <span class="field-hint">{{ 'Next day' | translate }}</span>
+              }
             </div>
             <div class="form-field">
               <label class="field-label" for="beo-teardown">{{ 'Teardown until' | translate }}</label>
               <input class="field-input" id="beo-teardown" type="time" [ngModel]="f.teardown_end_time"
                      (ngModelChange)="patchForm({ teardown_end_time: $event ?? '' })" />
+              @if (formTeardownIsNextDay()) {
+                <span class="field-hint">{{ 'Next day' | translate }}</span>
+              }
             </div>
             <div class="form-field">
               <label class="field-label" for="beo-release">{{ 'Room released' | translate }}</label>
@@ -746,6 +752,9 @@
               <dt class="detail-label">{{ 'Event' | translate }}</dt>
               <dd class="detail-value">
                 {{ shortTime(b.event_start_time) }} – {{ shortTime(b.event_end_time) }}
+                @if (beoEndsNextDay()) {
+                  <span class="text-muted">{{ '(ends next day)' | translate }}</span>
+                }
               </dd>
             </div>
             @if (b.meal_service_start_time) {
@@ -770,7 +779,12 @@
             }
             <div class="detail-row">
               <dt class="detail-label">{{ 'Teardown until' | translate }}</dt>
-              <dd class="detail-value">{{ shortTime(b.teardown_end_time) || '—' }}</dd>
+              <dd class="detail-value">
+                {{ shortTime(b.teardown_end_time) || '—' }}
+                @if (beoTeardownIsNextDay()) {
+                  <span class="text-muted">{{ '(next day)' | translate }}</span>
+                }
+              </dd>
             </div>
             @if (b.room_release_time) {
               <div class="detail-row">

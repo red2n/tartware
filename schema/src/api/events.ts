@@ -13,6 +13,98 @@ import { uuid } from "../shared/base-schemas.js";
 // via the shared/enums.ts export (do not re-define here to avoid naming conflicts)
 
 // =====================================================
+// DAY-BOUNDARY CONVENTION FOR EVENT TIMES
+// =====================================================
+
+/**
+ * Pads HH:MM to HH:MM:SS so two times compare correctly as strings.
+ * Without this, "09:00" < "09:00:00" lexicographically and a zero-length
+ * booking would slip past the ordering refinements below.
+ */
+export const padTimeOfDay = (value: string): string =>
+	value.length === 5 ? `${value}:00` : value;
+
+/**
+ * `event_bookings` and `banquet_event_orders` both store one `event_date DATE`
+ * plus bare `TIME` columns. That representation cannot say "01:00 tomorrow" on
+ * its own, which is why an evening function running past midnight was rejected
+ * by the tables themselves — see ui-gaps/13-sales-catering.md.
+ *
+ * **The convention that fixes it, and the only one anything may assume:**
+ * the booking is anchored at `event_date + start_time`, and runs forward from
+ * there. Every other time-of-day on the row is read relative to that anchor:
+ *
+ * - `end_time` / `teardown_end_time` at or before `start_time` fall on the
+ *   **next** day. A wedding 18:00 → 01:00 ends at 01:00 the following morning.
+ * - `setup_start_time` after `start_time` falls on the **previous** day. A gala
+ *   starting 00:30 with setup at 22:00 is dressed the evening before.
+ *
+ * Under this rule every combination of times denotes exactly one instant, so
+ * there is no such thing as an out-of-order window — which is why the tables'
+ * ordering CHECKs are now only "not zero-length", and why
+ * `event_bookings_setup_time_check` was dropped outright rather than relaxed.
+ *
+ * The cost is that a mistyped time is silently a different day rather than a
+ * 400. The UI pays that back by labelling any window that crosses midnight, so
+ * the operator sees the day the system inferred.
+ *
+ * Postgres holds the same rule for stored rows in the `occupancy_starts_at` /
+ * `occupancy_ends_at` generated columns on `event_bookings`; these helpers are
+ * the TypeScript half, for validation and display.
+ */
+export const eventEndsNextDay = (startTime: string, endTime: string): boolean =>
+	padTimeOfDay(endTime) <= padTimeOfDay(startTime);
+
+/**
+ * True when `setup_start_time` denotes the evening before the event, per the
+ * convention documented on {@link eventEndsNextDay}.
+ */
+export const eventSetupStartsPreviousDay = (
+	startTime: string,
+	setupStartTime: string,
+): boolean => padTimeOfDay(setupStartTime) > padTimeOfDay(startTime);
+
+/** Shifts a YYYY-MM-DD date by whole days, UTC so no zone can move it. */
+const shiftIsoDate = (isoDate: string, days: number): string => {
+	const shifted = new Date(`${isoDate}T00:00:00Z`);
+	shifted.setUTCDate(shifted.getUTCDate() + days);
+	return shifted.toISOString().slice(0, 10);
+};
+
+/**
+ * The instants an event booking holds its space, setup and teardown included.
+ *
+ * This is the TypeScript half of the `occupancy_starts_at` /
+ * `occupancy_ends_at` generated columns on `event_bookings`, and it must stay
+ * identical to them: the double-booking check compares a proposed booking
+ * resolved by this function against stored rows resolved by Postgres. Any drift
+ * between the two shows up as a conflict that is missed or invented, which is
+ * why `http_test/smoke-events.sh` asserts a cross-midnight conflict is caught.
+ *
+ * @returns `YYYY-MM-DD HH:MM:SS` strings, ready to bind as `::timestamp`.
+ */
+export const resolveEventOccupancyWindow = (
+	eventDate: string,
+	startTime: string,
+	endTime: string,
+	setupStartTime?: string | null,
+	teardownEndTime?: string | null,
+): { startsAt: string; endsAt: string } => {
+	const occupancyStart = setupStartTime || startTime;
+	const occupancyEnd = teardownEndTime || endTime;
+	const startDate = eventSetupStartsPreviousDay(startTime, occupancyStart)
+		? shiftIsoDate(eventDate, -1)
+		: eventDate;
+	const endDate = eventEndsNextDay(startTime, occupancyEnd)
+		? shiftIsoDate(eventDate, 1)
+		: eventDate;
+	return {
+		startsAt: `${startDate} ${padTimeOfDay(occupancyStart)}`,
+		endsAt: `${endDate} ${padTimeOfDay(occupancyEnd)}`,
+	};
+};
+
+// =====================================================
 // MEETING ROOMS
 // =====================================================
 
@@ -517,9 +609,9 @@ export type EventBookingWriteResponse = z.infer<
  *
  * Bounds mirror the table's CHECK constraints so a bad payload is a 400, not a
  * 23514: `event_bookings_attendees_check` (expected_attendees > 0),
- * `event_bookings_time_check` (end_time > start_time) and
- * `event_bookings_setup_time_check` (setup_start_time <= start_time), the last
- * two enforced by the cross-field refinements below.
+ * `event_bookings_time_check` (end_time <> start_time), enforced by the
+ * cross-field refinement below. There is no setup-ordering bound: see the
+ * day-boundary convention on {@link eventEndsNextDay}.
  *
  * Billing linkage per the §2 decision recorded in ui-gaps/13: `folio_id` is the
  * event's own folio, `group_booking_id` links it to a group block when the event
@@ -529,14 +621,6 @@ export type EventBookingWriteResponse = z.infer<
 const TIME_OF_DAY = z
 	.string()
 	.regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use HH:MM or HH:MM:SS");
-
-/**
- * Pads HH:MM to HH:MM:SS so two times compare correctly as strings.
- * Without this, "09:00" < "09:00:00" lexicographically and a zero-length
- * booking would slip past the end_time refinement.
- */
-const normalizeTimeOfDay = (value: string): string =>
-	value.length === 5 ? `${value}:00` : value;
 
 const EventBookingWriteFieldsSchema = z.object({
 	tenant_id: uuid,
@@ -608,28 +692,26 @@ const EventBookingWriteFieldsSchema = z.object({
 	billing_contact_email: z.string().email().max(200).optional(),
 });
 
-/** `end_time > start_time`, mirroring `event_bookings_time_check`. */
+/**
+ * `end_time <> start_time`, mirroring the relaxed `event_bookings_time_check`.
+ *
+ * This used to require `end_time > start_time` and a setup at or before the
+ * start, mirroring the tables' original CHECKs. Both are gone: under the
+ * day-boundary convention on {@link eventEndsNextDay} an end at or before the
+ * start is the next morning and a late setup is the previous evening, so the
+ * only window that denotes nothing at all is a zero-length one.
+ */
 const refineEventTimes = <T extends z.ZodTypeAny>(schema: T) =>
-	schema
-		.refine(
-			(value: { start_time?: string; end_time?: string }) =>
-				!value.start_time ||
-				!value.end_time ||
-				normalizeTimeOfDay(value.end_time) >
-					normalizeTimeOfDay(value.start_time),
-			{ message: "end_time must be after start_time", path: ["end_time"] },
-		)
-		.refine(
-			(value: { setup_start_time?: string; start_time?: string }) =>
-				!value.setup_start_time ||
-				!value.start_time ||
-				normalizeTimeOfDay(value.setup_start_time) <=
-					normalizeTimeOfDay(value.start_time),
-			{
-				message: "setup_start_time must be at or before start_time",
-				path: ["setup_start_time"],
-			},
-		);
+	schema.refine(
+		(value: { start_time?: string; end_time?: string }) =>
+			!value.start_time ||
+			!value.end_time ||
+			padTimeOfDay(value.end_time) !== padTimeOfDay(value.start_time),
+		{
+			message: "end_time must differ from start_time",
+			path: ["end_time"],
+		},
+	);
 
 export const EventBookingWriteBodySchema = refineEventTimes(
 	EventBookingWriteFieldsSchema,
@@ -2271,7 +2353,7 @@ export type BanquetOrderDetail = z.infer<typeof BanquetOrderDetailSchema>;
  *
  * Bounds mirror the table's CHECK constraints so a bad payload is a 400 rather
  * than a 23514: `beo_count_check` (guaranteed_count > 0), `beo_time_check`
- * (event_end_time > event_start_time) and `beo_rating_check` (rating 1–5).
+ * (event_end_time <> event_start_time) and `beo_rating_check` (rating 1–5).
  * They mirror those and stop there — see {@link refineBeoTimes} for why an
  * apparently obvious setup/teardown ordering rule is wrong on bare TIME columns.
  */
@@ -2281,10 +2363,6 @@ const BEO_TIME_OF_DAY = z
 	.regex(/^\d{2}:\d{2}(:\d{2})?$/, "Use HH:MM or HH:MM:SS");
 
 const BEO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-
-/** Pads HH:MM to HH:MM:SS so two times compare correctly as strings. */
-const padTimeOfDay = (value: string): string =>
-	value.length === 5 ? `${value}:00` : value;
 
 const BanquetOrderWriteFieldsSchema = z.object({
 	tenant_id: uuid,
@@ -2449,31 +2527,28 @@ const BanquetOrderWriteFieldsSchema = z.object({
 });
 
 /**
- * The BEO's own time ordering — exactly `beo_time_check`, and nothing more.
+ * `event_end_time <> event_start_time`, mirroring the relaxed `beo_time_check`.
  *
- * This deliberately does **not** also require setup before the event or teardown
- * after it. Those read like safe invariants and are not: these are bare `TIME`
- * columns with no date, so "01:00" for a teardown after a 23:30 finish is the
- * small hours of the next morning, and a string comparison reads it as thirteen
- * hours *before* the event ends. Enforcing the ordering rejected the single most
- * ordinary banquet there is — an evening function cleared down after midnight —
- * which is how the over-reach was found: the first realistic wedding payload
- * bounced with a 400.
+ * Setup and teardown are deliberately not ordered against the event window, and
+ * the event window is no longer ordered against itself either. Both follow from
+ * the day-boundary convention on {@link eventEndsNextDay}: a teardown at 01:00
+ * after a 23:30 finish is the small hours of the next morning, not thirteen
+ * hours early, and an end at or before the start is the next day. Requiring the
+ * ordering rejected the single most ordinary banquet there is — an evening
+ * function cleared down after midnight — which is how the over-reach was found:
+ * the first realistic wedding payload bounced with a 400.
  *
- * `event_bookings` can carry the equivalent setup rule because its table really
- * does declare `event_bookings_setup_time_check`; `banquet_event_orders`
- * declares no such constraint, so mirroring the CHECKs means mirroring only this
- * one. The same midnight blindness affects `beo_time_check` itself — see the
- * limitation recorded in ui-gaps/13-sales-catering.md.
+ * What is left is the one thing no convention can rescue: a zero-length event.
  */
 const refineBeoTimes = <T extends z.ZodTypeAny>(schema: T) =>
 	schema.refine(
 		(value: { event_start_time?: string; event_end_time?: string }) =>
 			!value.event_start_time ||
 			!value.event_end_time ||
-			padTimeOfDay(value.event_end_time) > padTimeOfDay(value.event_start_time),
+			padTimeOfDay(value.event_end_time) !==
+				padTimeOfDay(value.event_start_time),
 		{
-			message: "event_end_time must be after event_start_time",
+			message: "event_end_time must differ from event_start_time",
 			path: ["event_end_time"],
 		},
 	);
