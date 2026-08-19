@@ -9,6 +9,8 @@ import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
 
+import { type MoneyInput, roundToCurrency } from "./currency.js";
+
 // Note: CompanyTypeEnum and CompanyCreditStatusEnum are available from @tartware/schemas
 // via the shared/enums.ts export (do not re-define here to avoid naming conflicts)
 
@@ -560,6 +562,26 @@ export const EventBookingDetailSchema = EventBookingListItemSchema.extend({
 	billing_contact_email: z.string().nullable(),
 	cancellation_date: z.string().nullable(),
 	cancellation_notes: z.string().nullable(),
+
+	// Billing — the charge basis (UI item 6 of ui-gaps/13-sales-catering.md).
+	// The list item carries only `rental_rate` and the two totals, which is what
+	// a calendar cell needs; the detail screen prices the event, so it needs
+	// every component `deriveEventChargeQuote` reads.
+	setup_fee: z.number().nullable(),
+	equipment_rental_fee: z.number().nullable(),
+	av_equipment_fee: z.number().nullable(),
+	labor_charges: z.number().nullable(),
+	estimated_food_beverage: z.number().nullable(),
+	service_charge_percent: z.number().nullable(),
+	tax_rate: z.number().nullable(),
+	discount_amount: z.number().nullable(),
+	tax_exempt: z.boolean(),
+	/** Set once `billing.event.post_charges` has posted this event to its folio. */
+	charges_posted_at: z.string().nullable(),
+	/** Live balance of the event's folio; null until one is opened. */
+	folio_balance: z.number().nullable(),
+	folio_number: z.string().nullable(),
+	folio_status: z.string().nullable(),
 });
 
 export type EventBookingDetail = z.infer<typeof EventBookingDetailSchema>;
@@ -596,6 +618,189 @@ export const EventBookingWriteResponseSchema = z.object({
 export type EventBookingWriteResponse = z.infer<
 	typeof EventBookingWriteResponseSchema
 >;
+
+// =====================================================
+// EVENT BILLING — the charge basis and its derived lines
+// UI item 6 of ui-gaps/13-sales-catering.md
+// =====================================================
+
+/**
+ * Charge codes an event posts under, seeded in
+ * `scripts/tables/09-reference-data/07_charge_codes.sql` and mapped to USALI GL
+ * accounts in `12_charge_code_gl_mapping.sql`.
+ *
+ * `BANQUET` is the one that pre-dates this module: banquet F&B was already a
+ * seeded F&B code, and posting event catering anywhere else would have split one
+ * revenue line across two accounts.
+ */
+export const EVENT_CHARGE_CODES = {
+	rental: "SPACE_RENTAL",
+	setup: "EVENT_SETUP",
+	equipment: "EVENT_EQUIPMENT",
+	audioVisual: "EVENT_AV",
+	labor: "EVENT_LABOR",
+	foodBeverage: "BANQUET",
+	serviceCharge: "EVENT_SERVICE_CHARGE",
+	discount: "EVENT_DISCOUNT",
+	tax: "EVENT_TAX",
+} as const;
+
+/** One line of an event's bill, ready to post as a charge. */
+export const EventChargeLineSchema = z.object({
+	charge_code: z.string(),
+	department_code: z.string(),
+	description: z.string(),
+	/** `CREDIT` reduces the folio balance — the discount line is the only one. */
+	posting_type: z.enum(["DEBIT", "CREDIT"]),
+	/** Always a positive magnitude; `posting_type` carries the sign. */
+	amount: z.number().positive(),
+});
+
+export type EventChargeLine = z.infer<typeof EventChargeLineSchema>;
+
+/** An event's bill: the lines, and the totals they roll up to. */
+export const EventChargeQuoteSchema = z.object({
+	currency_code: z.string(),
+	lines: z.array(EventChargeLineSchema),
+	/** Revenue lines before service charge, discount and tax. */
+	subtotal: z.number(),
+	service_charge: z.number(),
+	discount: z.number(),
+	tax: z.number(),
+	/** What the folio balance moves by once every line is posted. */
+	total: z.number(),
+});
+
+export type EventChargeQuote = z.infer<typeof EventChargeQuoteSchema>;
+
+/** The fields of an event booking that price it. Accepts `pg` numeric strings. */
+export type EventChargeBasis = {
+	rental_rate?: MoneyInput | null;
+	setup_fee?: MoneyInput | null;
+	equipment_rental_fee?: MoneyInput | null;
+	av_equipment_fee?: MoneyInput | null;
+	labor_charges?: MoneyInput | null;
+	estimated_food_beverage?: MoneyInput | null;
+	service_charge_percent?: MoneyInput | null;
+	tax_rate?: MoneyInput | null;
+	discount_amount?: MoneyInput | null;
+	tax_exempt?: boolean | null;
+	currency_code?: string | null;
+};
+
+/** `pg` hands numerics back as strings; a null column prices as nothing. */
+const toChargeAmount = (
+	value: MoneyInput | null | undefined,
+	currency: string,
+): number => (value === null || value === undefined ? 0 : roundToCurrency(value, currency));
+
+/** Percent columns are rates, not money — they never round to a minor unit. */
+const toPercent = (value: MoneyInput | null | undefined): number => {
+	if (value === null || value === undefined) return 0;
+	const parsed = typeof value === "number" ? value : Number.parseFloat(value);
+	return Number.isFinite(parsed) ? parsed : 0;
+};
+
+/**
+ * Prices an event booking as the charge lines its folio will carry.
+ *
+ * **This is the only place the arithmetic exists.** `billing.event.post_charges`
+ * posts what it returns and the event booking screen previews it, so an operator
+ * approving a total sees the number the ledger is about to receive. A second
+ * copy in either half is the drift that makes the preview a lie.
+ *
+ * The order matters and is the industry-standard one: service charge applies to
+ * the revenue lines, the discount comes off before tax, and tax is levied on
+ * what is actually payable. Every amount is rounded to the currency's smallest
+ * tenderable unit as it is produced, so the lines sum exactly to the total
+ * rather than to within a rounding error of it.
+ *
+ * A line is omitted when its column is null or zero — an event with no AV does
+ * not post a zero AV charge, because a folio reads as a list of what happened.
+ *
+ * @remarks F&B prices from `estimated_food_beverage`: the table has no actual
+ * F&B column, so the estimate is the only figure available at posting time.
+ * Consumption differences are posted to the folio afterwards as ordinary
+ * charges — see ui-gaps/13-sales-catering.md.
+ */
+export const deriveEventChargeQuote = (
+	booking: EventChargeBasis,
+): EventChargeQuote => {
+	const currency = (booking.currency_code ?? "USD").toUpperCase();
+	const lines: EventChargeLine[] = [];
+
+	const addLine = (
+		charge_code: string,
+		department_code: string,
+		description: string,
+		amount: number,
+		posting_type: "DEBIT" | "CREDIT" = "DEBIT",
+	): void => {
+		if (amount > 0) {
+			lines.push({
+				charge_code,
+				department_code,
+				description,
+				posting_type,
+				amount,
+			});
+		}
+	};
+
+	const rental = toChargeAmount(booking.rental_rate, currency);
+	const setup = toChargeAmount(booking.setup_fee, currency);
+	const equipment = toChargeAmount(booking.equipment_rental_fee, currency);
+	const audioVisual = toChargeAmount(booking.av_equipment_fee, currency);
+	const labor = toChargeAmount(booking.labor_charges, currency);
+	const foodBeverage = toChargeAmount(booking.estimated_food_beverage, currency);
+
+	addLine(EVENT_CHARGE_CODES.rental, "EVENTS", "Function space rental", rental);
+	addLine(EVENT_CHARGE_CODES.setup, "EVENTS", "Event setup", setup);
+	addLine(EVENT_CHARGE_CODES.equipment, "EVENTS", "Equipment rental", equipment);
+	addLine(EVENT_CHARGE_CODES.audioVisual, "EVENTS", "Audio-visual", audioVisual);
+	addLine(EVENT_CHARGE_CODES.labor, "EVENTS", "Event labour", labor);
+	addLine(EVENT_CHARGE_CODES.foodBeverage, "FB", "Banquet food & beverage", foodBeverage);
+
+	const subtotal = roundToCurrency(
+		rental + setup + equipment + audioVisual + labor + foodBeverage,
+		currency,
+	);
+
+	const serviceChargePercent = toPercent(booking.service_charge_percent);
+	const serviceCharge = roundToCurrency(
+		(subtotal * serviceChargePercent) / 100,
+		currency,
+	);
+	addLine(
+		EVENT_CHARGE_CODES.serviceCharge,
+		"FB",
+		`Service charge (${serviceChargePercent}%)`,
+		serviceCharge,
+	);
+
+	const discount = toChargeAmount(booking.discount_amount, currency);
+	addLine(EVENT_CHARGE_CODES.discount, "EVENTS", "Event discount", discount, "CREDIT");
+
+	const taxableBase = roundToCurrency(
+		subtotal + serviceCharge - discount,
+		currency,
+	);
+	const taxRate = toPercent(booking.tax_rate);
+	const tax = booking.tax_exempt
+		? 0
+		: roundToCurrency((taxableBase * taxRate) / 100, currency);
+	addLine(EVENT_CHARGE_CODES.tax, "EVENTS", `Tax (${taxRate}%)`, tax);
+
+	return {
+		currency_code: currency,
+		lines,
+		subtotal,
+		service_charge: serviceCharge,
+		discount,
+		tax,
+		total: roundToCurrency(taxableBase + tax, currency),
+	};
+};
 
 /**
  * Create an event booking.
@@ -679,8 +884,20 @@ const EventBookingWriteFieldsSchema = z.object({
 		.regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
 		.optional(),
 
-	// Financial
+	// Financial — the charge basis. Every field here is a line (or a rate over
+	// the lines) in `deriveEventChargeQuote`, so what the sales office types is
+	// what `billing.event.post_charges` puts on the folio. Bounds mirror the
+	// table: amounts are non-negative money, the two percentages are rates.
 	rental_rate: z.coerce.number().nonnegative().optional(),
+	setup_fee: z.coerce.number().nonnegative().optional(),
+	equipment_rental_fee: z.coerce.number().nonnegative().optional(),
+	av_equipment_fee: z.coerce.number().nonnegative().optional(),
+	labor_charges: z.coerce.number().nonnegative().optional(),
+	estimated_food_beverage: z.coerce.number().nonnegative().optional(),
+	service_charge_percent: z.coerce.number().min(0).max(100).optional(),
+	tax_rate: z.coerce.number().min(0).max(100).optional(),
+	discount_amount: z.coerce.number().nonnegative().optional(),
+	tax_exempt: z.boolean().optional(),
 	estimated_total: z.coerce.number().nonnegative().optional(),
 	deposit_required: z.coerce.number().nonnegative().optional(),
 	currency_code: z.string().length(3).optional(),
@@ -808,6 +1025,15 @@ export type EventBookingWriteInput = {
 	beoDueDate?: string;
 	finalCountDueDate?: string;
 	rentalRate?: number;
+	setupFee?: number;
+	equipmentRentalFee?: number;
+	avEquipmentFee?: number;
+	laborCharges?: number;
+	estimatedFoodBeverage?: number;
+	serviceChargePercent?: number;
+	taxRate?: number;
+	discountAmount?: number;
+	taxExempt?: boolean;
 	estimatedTotal?: number;
 	depositRequired?: number;
 	currencyCode?: string;

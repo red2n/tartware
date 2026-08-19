@@ -259,6 +259,46 @@
                      (ngModelChange)="patchForm({ rental_rate: $event })" />
             </div>
             <div class="form-field">
+              <label class="field-label" for="eb-setup-fee">{{ 'Setup fee' | translate }}</label>
+              <input class="field-input" id="eb-setup-fee" type="number" min="0" step="0.01" [ngModel]="f.setup_fee"
+                     (ngModelChange)="patchForm({ setup_fee: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-equipment">{{ 'Equipment rental' | translate }}</label>
+              <input class="field-input" id="eb-equipment" type="number" min="0" step="0.01" [ngModel]="f.equipment_rental_fee"
+                     (ngModelChange)="patchForm({ equipment_rental_fee: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-av">{{ 'Audio-visual' | translate }}</label>
+              <input class="field-input" id="eb-av" type="number" min="0" step="0.01" [ngModel]="f.av_equipment_fee"
+                     (ngModelChange)="patchForm({ av_equipment_fee: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-labour">{{ 'Labour' | translate }}</label>
+              <input class="field-input" id="eb-labour" type="number" min="0" step="0.01" [ngModel]="f.labor_charges"
+                     (ngModelChange)="patchForm({ labor_charges: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-fb">{{ 'Food & beverage' | translate }}</label>
+              <input class="field-input" id="eb-fb" type="number" min="0" step="0.01" [ngModel]="f.estimated_food_beverage"
+                     (ngModelChange)="patchForm({ estimated_food_beverage: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-svc">{{ 'Service charge %' | translate }}</label>
+              <input class="field-input" id="eb-svc" type="number" min="0" max="100" step="0.01" [ngModel]="f.service_charge_percent"
+                     (ngModelChange)="patchForm({ service_charge_percent: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-tax">{{ 'Tax %' | translate }}</label>
+              <input class="field-input" id="eb-tax" type="number" min="0" max="100" step="0.01" [ngModel]="f.tax_rate"
+                     (ngModelChange)="patchForm({ tax_rate: $event })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="eb-discount">{{ 'Discount' | translate }}</label>
+              <input class="field-input" id="eb-discount" type="number" min="0" step="0.01" [ngModel]="f.discount_amount"
+                     (ngModelChange)="patchForm({ discount_amount: $event })" />
+            </div>
+            <div class="form-field">
               <label class="field-label" for="eb-total">{{ 'Estimated total' | translate }}</label>
               <input class="field-input" id="eb-total" type="number" min="0" step="0.01" [ngModel]="f.estimated_total"
                      (ngModelChange)="patchForm({ estimated_total: $event })" />
@@ -521,11 +561,15 @@
             <dt class="detail-label">{{ 'Folio' | translate }}</dt>
             <dd class="detail-value">
               @if (b.folio_id) {
-                <span class="badge badge-accent badge-sm">{{ 'Linked' | translate }}</span>
+                <span class="mono">{{ b.folio_number ?? '—' }}</span>
+                @if (b.folio_status) {
+                  <span [class]="statusClass(b.folio_status.toUpperCase())">{{ labelFor(b.folio_status) }}</span>
+                }
+                <div class="cell-sub">
+                  {{ 'Balance' | translate }}: <span class="mono">{{ b.folio_balance ?? 0 }} {{ b.currency_code }}</span>
+                </div>
               } @else {
-                <!-- Posting charges is UI item 6; until then this records only
-                     whether a folio has been pointed at. -->
-                <span class="text-muted">{{ 'No folio linked yet — event charges have nowhere to post.' | translate }}</span>
+                <span class="text-muted">{{ 'No folio yet — opened when the charges are posted.' | translate }}</span>
               }
             </dd>
           </div>
@@ -540,6 +584,101 @@
             </div>
           }
         </dl>
+      </div>
+    </div>
+
+    <!-- Event billing — item 6 of ui-gaps/13-sales-catering.md. The lines below
+         are not a report of what was posted: they are `deriveEventChargeQuote`
+         run over this booking, which is the same function billing-service runs
+         when the command lands. What is approved here is what reaches the
+         ledger. -->
+    <div class="detail-card">
+      <div class="card-header card-header-flex">
+        <h3 class="card-title">{{ 'Charges' | translate }}</h3>
+        @if (chargesPosted()) {
+          <span class="badge badge-accent badge-sm">
+            {{ 'Posted' | translate }} {{ b.charges_posted_at | date: 'd MMM y' }}
+          </span>
+        } @else if (hasChargesToPost()) {
+          <button class="btn btn-primary btn-sm" (click)="postCharges()" [disabled]="postingCharges()">
+            <app-icon name="receipt_long" />
+            {{ (postingCharges() ? 'Posting…' : 'Post to folio') | translate }}
+          </button>
+        } @else if (!b.folio_id) {
+          <button class="btn btn-outline btn-sm" (click)="openFolio()" [disabled]="openingFolio()">
+            <app-icon name="folder_open" />
+            {{ (openingFolio() ? 'Opening…' : 'Open folio') | translate }}
+          </button>
+        }
+      </div>
+      <div class="card-body">
+        @if (chargeQuote(); as quote) {
+          @if (quote.lines.length > 0) {
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>{{ 'Item' | translate }}</th>
+                    <th>{{ 'Code' | translate }}</th>
+                    <th class="text-right">{{ 'Amount' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (line of quote.lines; track line.charge_code) {
+                    <tr>
+                      <td>{{ line.description }}</td>
+                      <td class="mono text-xs">{{ line.charge_code }}</td>
+                      <td class="text-right mono">
+                        @if (line.posting_type === 'CREDIT') { −{{ line.amount }} } @else { {{ line.amount }} }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2" class="bold">{{ 'Total' | translate }}</td>
+                    <td class="text-right mono bold">{{ quote.total }} {{ quote.currency_code }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            @if (chargesPosted()) {
+              <p class="text-muted text-xs">
+                {{ 'Already posted. Anything further — consumption over the estimate, a late AV hire — goes on the folio as an ordinary charge.' | translate }}
+              </p>
+            } @else {
+              <p class="text-muted text-xs">
+                {{ 'Posting opens the event folio if it has none, then posts every line above. It can only be done once.' | translate }}
+              </p>
+            }
+          } @else {
+            <p class="text-muted">
+              {{ 'Nothing priced yet. Set a rental rate, catering estimate or fees on the booking and they will appear here as the lines that would post.' | translate }}
+            </p>
+          }
+        }
+
+        @if (b.folio_id) {
+          <h4 class="form-section-title">{{ 'On the folio' | translate }}</h4>
+          @if (folioChargesLoading()) {
+            <span class="skeleton skeleton-text" aria-hidden="true"></span>
+          } @else if (folioCharges().length > 0) {
+            <ul class="record-row-list">
+              @for (charge of folioCharges(); track charge.id) {
+                <li class="record-row">
+                  <button type="button" class="record-row-btn" (click)="openFolioInBilling()">
+                    <span class="record-row-label">{{ charge.charge_description }}</span>
+                    <span class="badge badge-muted badge-sm">{{ charge.charge_code }}</span>
+                    <span class="text-muted text-xs">{{ charge.posting_date | date: 'd MMM' }}</span>
+                    <span class="mono cell-chevron">{{ charge.total_amount }} {{ charge.currency }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="text-muted">{{ 'The folio is open and empty.' | translate }}</p>
+          }
+        }
       </div>
     </div>
   </div>

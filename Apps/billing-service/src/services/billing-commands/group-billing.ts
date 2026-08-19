@@ -66,7 +66,12 @@ export const setupGroupBilling = async (
           $4::uuid,
           $5, $6::uuid, $6::uuid
         )
-        ON CONFLICT (tenant_id, folio_number) DO NOTHING
+        -- The unique constraint is uk_folios_number (tenant_id, property_id,
+        -- folio_number). Naming only two of its three columns is not a valid
+        -- inference target, so this statement did not prepare at all: every
+        -- billing.group.setup dispatch failed with "no unique or exclusion
+        -- constraint matching the ON CONFLICT specification".
+        ON CONFLICT (tenant_id, property_id, folio_number) DO NOTHING
         RETURNING folio_id`,
       [
         tenantId,
@@ -83,8 +88,9 @@ export const setupGroupBilling = async (
     if (!masterFolioId) {
       const { rows: existing } = await queryWithClient<{ folio_id: string }>(
         client,
-        `SELECT folio_id FROM folios WHERE tenant_id = $1::uuid AND folio_number = $2`,
-        [tenantId, folioNumber],
+        `SELECT folio_id FROM folios
+          WHERE tenant_id = $1::uuid AND property_id = $2::uuid AND folio_number = $3`,
+        [tenantId, command.property_id, folioNumber],
       );
       masterFolioId = existing[0]?.folio_id;
     }

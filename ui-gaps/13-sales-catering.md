@@ -418,7 +418,93 @@ for `npx playwright install-deps`). `ng build` and the 97 contrast pairings are 
 **What is still not representable:** an event lasting 24 hours or more, since `end_time = start_time`
 is the one window the convention cannot disambiguate and remains a 400.
 
-**Still open in this module:** item 5 (daily BEO print / kitchen view) and item 6 (event billing).
+**Still open in this module:** item 5 (daily BEO print / kitchen view).
+
+
+### ✅ UI item 6 — event billing: shipped 2026-08-19
+
+Event revenue lands on a folio, which is the last clause of this spec's acceptance.
+
+**Two commands, not HTTP routes.** The booking is core-service's and the folio is billing-service's,
+so the write crosses services — COV-18's discriminator exactly, and the first thing in this module
+that has met it. `billing.event.setup` opens the event's own folio and links it back to
+`event_bookings.folio_id`; `billing.event.post_charges` prices the booking and posts it.
+
+**The pricing exists once.** `deriveEventChargeQuote` in `@tartware/schemas` turns the booking's money
+columns into charge lines: rental, setup, equipment, AV, labour and catering as revenue lines, then
+service charge on their subtotal, the discount as a CREDIT, and tax on what is left. The service posts
+what it returns and the booking screen previews it, so the total an operator approves is the total the
+ledger receives. This is the same shape as `resolveEventOccupancyWindow` — the rule in one place, both
+halves consuming it — and for the same reason.
+
+- **Posts once.** `event_bookings.charges_posted_at` is claimed with a conditional `UPDATE` *before*
+  the first line posts. Of the two ways this can fail, a short folio an operator tops up from the
+  billing screen is recoverable and a silently doubled banquet bill is not.
+- **Each line goes through `billing.charge.post`'s own handler**, so event revenue picks up FX
+  locking, GL pairing and folio routing exactly as every other charge does. Nothing here writes
+  `charge_postings`.
+- **The folio is a `MASTER` folio with no reservation**, numbered `EVT-<event id8>` — deterministic,
+  so `ON CONFLICT` makes opening it idempotent, mirroring `MASTER-<id8>` on group folios.
+- **New reference data:** eight charge codes (`SPACE_RENTAL`, `EVENT_SETUP`, `EVENT_EQUIPMENT`,
+  `EVENT_AV`, `EVENT_LABOR`, `EVENT_SERVICE_CHARGE`, `EVENT_DISCOUNT`, `EVENT_TAX`; catering reuses the
+  existing `BANQUET`) and four GL accounts. Function space rental is **Miscellaneous Income** under
+  USALI 12th Ed, not a Rooms sale — only the catering and its service charge are F&B revenue, which is
+  the mapping §2 asked to confirm against `accounts-gaps/16-usali-gl-code-mapping.md`.
+- **The charge basis had no write path.** The derivation reads eight columns the event write schema
+  did not accept, so before this slice they could only be set by hand in SQL. They are now on create,
+  update, and the booking screen's edit form.
+
+**UI:** a *Charges* card on the booking detail showing the derived lines and their total, "Post to
+folio" (or "Open folio" when there is nothing priced yet), the posting date once billed, and the
+postings actually on the folio. The Money card now shows the folio number, status and live balance
+instead of a "Linked" badge.
+
+#### Three bugs, two of them pre-existing and neither reachable without a running stack
+
+**1. `billing.charge.post` added every CREDIT posting to the folio balance.** The table says the
+opposite (`posting_type`: "DEBIT increases balance, CREDIT decreases"), `comp-post.ts` has always
+subtracted, and the same handler already swaps the GL pair for a credit — only the balance update was
+unconditional. So a refund, an allowance, or the room-move `DOWNGRADE_CREDIT` in rooms-service *raised*
+the bill. Found because the event discount came back +550 against an expected −550, leaving the folio
+1100 too high. Fixed: a credit now moves `total_credits` and lowers the balance.
+
+**2. `billing.group.setup` never ran at all.** Its master-folio insert declared
+`ON CONFLICT (tenant_id, folio_number)`, but the constraint is `uk_folios_number
+(tenant_id, property_id, folio_number)`. Naming two of its three columns is not a valid inference
+target, so the statement does not prepare and every dispatch failed — the same class as slice 2's
+`CASE WHEN $3` cast, and invisible to everything that does not execute SQL. Found by reading it as the
+model for this slice's folio insert. Fixed, and the fallback lookup it guards was scoped to the
+property too.
+
+**3. A GL mapping can be written backwards.** `EVENT_DISCOUNT` was seeded DR 5300 (allowance expense) /
+CR 1100 (guest ledger), which reads correctly — but the charge poster swaps the two sides for a CREDIT
+posting, and a discount always posts as one. The live `general_ledger_entries` rows showed the
+allowance credited and the guest ledger debited. The row is now written in the un-swapped orientation
+with a comment, because for a code that only ever posts as a CREDIT the mapping table's "debit/credit"
+means the opposite of what it says.
+
+**A note for the next command-backed screen:** the gateway holds the command registry in memory and
+refreshes it every 30s (`COMMAND_REGISTRY_REFRESH_MS`), so a command enabled through
+`PATCH /v1/commands/:name/features` is still refused for up to half a minute afterwards. New commands
+also seed `disabled` with `requires_activation`, which is correct but means an activation step exists
+before any of this works in a fresh database.
+
+**Verified live: `http_test/smoke-events.sh`, 105 assertions green**, 23 of them new — the folio opens
+with a zero balance and a derived number, a second open adopts it rather than opening another, the nine
+lines post, the service charge is computed rather than copied, the discount posts as a credit, tax
+falls on the discounted base, the balance settles at the derived total, `actual_total` is written back,
+a second post adds nothing, and an unpriced event posts nothing at all. GL pairs were checked directly:
+every event line lands on its new account, and the discount books DR 5300 / CR 1100.
+
+**Not verified in a browser.** `ng build`, the full `pnpm run build` and the gateway/catalog conformance
+suites are green; no Playwright browser starts on this box (unchanged from the midnight slice).
+
+**What this slice does not do:** deposits and payments (`deposit_paid` is untouched — taking money is
+`billing.payment.*` against the folio this now opens); re-pricing after the charges are posted (edit
+the booking and the folio does not follow — further money goes on the folio as ordinary charges); and
+surfacing a command failure to the operator, which no command-backed screen in this product does — the
+button is hidden once `charges_posted_at` is set, so the double-post case is prevented at the screen
+rather than reported from the bus.
 
 
 ## Current State (Backend ⚠️ read-only → UI ❌)

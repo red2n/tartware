@@ -299,6 +299,20 @@ export const EVENT_BOOKING_BY_ID_SQL = `
     e.followup_required,
     e.internal_notes,
     e.folio_id,
+    -- Billing basis: what deriveEventChargeQuote prices the event from, plus
+    -- the folio it posts to. ui-gaps/13-sales-catering.md, UI item 6.
+    e.setup_fee,
+    e.equipment_rental_fee,
+    e.av_equipment_fee,
+    e.labor_charges,
+    e.service_charge_percent,
+    e.tax_rate,
+    e.discount_amount,
+    e.tax_exempt,
+    e.charges_posted_at,
+    f.folio_number,
+    f.folio_status,
+    f.balance AS folio_balance,
     e.billing_instructions,
     e.billing_contact_name,
     e.billing_contact_email,
@@ -311,6 +325,7 @@ export const EVENT_BOOKING_BY_ID_SQL = `
   FROM public.event_bookings e
   LEFT JOIN public.properties p ON e.property_id = p.id
   LEFT JOIN public.meeting_rooms m ON e.meeting_room_id = m.room_id
+  LEFT JOIN public.folios f ON f.folio_id = e.folio_id AND f.tenant_id = e.tenant_id
   WHERE e.event_id = $1
     AND e.tenant_id = $2
     AND COALESCE(e.is_deleted, false) = false

@@ -101,6 +101,24 @@ VALUES
     ('11111111-1111-1111-1111-111111111111', 'ROOM_SERVICE',     '1100', '4130', 'Food & Beverage Revenue',     'FB'),
     ('11111111-1111-1111-1111-111111111111', 'BAR',              '1100', '4120', 'Food & Beverage Revenue',     'FB'),
     ('11111111-1111-1111-1111-111111111111', 'BANQUET',          '1100', '4100', 'Food & Beverage Revenue',     'FB'),
+    -- ── Events & Catering (ui-gaps/13-sales-catering.md, UI item 6) ────────
+    -- Function space rental is Miscellaneous Income under USALI 12th Ed, not a
+    -- Rooms sale; only the catering and its service charge are F&B revenue.
+    -- BANQUET above is the catering line, so it is not repeated here.
+    ('11111111-1111-1111-1111-111111111111', 'SPACE_RENTAL',     '1100', '4710', 'Miscellaneous Revenue',       'EVENTS'),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_AV',         '1100', '4720', 'Miscellaneous Revenue',       'EVENTS'),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_EQUIPMENT',  '1100', '4730', 'Miscellaneous Revenue',       'EVENTS'),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_SETUP',      '1100', '4730', 'Miscellaneous Revenue',       'EVENTS'),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_LABOR',      '1100', '4730', 'Miscellaneous Revenue',       'EVENTS'),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_SERVICE_CHARGE','1100','4150','Food & Beverage Revenue',    'FB'),
+    -- A discount is an allowance: DR Allowance expense (5300), CR Guest Ledger
+    -- (1100). The pair is written the other way round here on purpose — the
+    -- charge poster swaps the two sides for a CREDIT posting (that is how a
+    -- refund reverses its revenue account), and an event discount always posts
+    -- as a CREDIT, so the swap turns this row into the entry above. Written
+    -- 5300/1100 it books backwards: verified against general_ledger_entries.
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_DISCOUNT',   '1100', '5300', 'Allowances',                  'EVENTS'),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_TAX',        '1100', '2100', 'Taxes',                       'EVENTS'),
     -- ── Spa ────────────────────────────────────────────────────────────────
     ('11111111-1111-1111-1111-111111111111', 'SPA',              '1100', '4300', 'Spa Revenue',                 'SPA'),
     ('11111111-1111-1111-1111-111111111111', 'SPA_TAX',          '1100', '2100', 'Taxes',                       'SPA'),

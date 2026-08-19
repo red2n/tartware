@@ -91,7 +91,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
-| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; converse guardrail closed 2026-08-18. Event bookings shipped 2026-08-18; banquet orders + allotments still lack writes | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
+| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; converse guardrail closed 2026-08-18. Event bookings 2026-08-18, banquet orders 2026-08-19, and event billing 2026-08-19 — the first write to take the **command** branch of the rule rather than plain HTTP. Allotments still lack writes | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
 
@@ -120,7 +120,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, and the midnight limitation **closed 2026-08-19** (day-boundary convention + a cross-date double-booking bug it was hiding). Items 5 and 6 remain | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
+| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, the midnight limitation **closed 2026-08-19**, and **event billing shipped 2026-08-19** — event revenue now lands on a folio, which discharges this spec's acceptance. Item 5 (daily BEO print) remains | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
 | 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
@@ -223,10 +223,11 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
     and a bare `POST` needs its own gateway registration every time.
 12. ~~COV-06, COV-08, COV-09, COV-14 step 1~~ — **done 2026-08-13.** Three write paths added, all
     plain HTTP per COV-18's rule, plus the channel-health screen over commands that already existed.
-13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** COV-13 is in progress: meeting-room
-    writes 2026-08-17, **event-booking writes, the event-billing decision, and UI items 1 + 2 + 4
-    on 2026-08-18** — the domain now has screens over its write paths. Remaining:
-    COV-13's banquet orders, COV-16's allotments, COV-14's CRUD half, and the UI for all of them
+13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** COV-13 ran to its acceptance:
+    meeting-room writes 2026-08-17, **event-booking writes, the event-billing decision, and UI items
+    1 + 2 + 4 on 2026-08-18**, then banquet orders, the BEO editor, the midnight fix and
+    **event billing on 2026-08-19**. Remaining: COV-13's item 5 (daily BEO print), COV-16's
+    allotments, COV-14's CRUD half, and the UI for both
 14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
 
 **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
@@ -276,6 +277,29 @@ kind that only exists at runtime:
 The lesson for the remaining write paths (banquet orders, allotments): budget the smoke test as part
 of the slice, not as follow-up hygiene. Both bugs took minutes to find with a stack running and were
 invisible to every gate that ran without one.
+
+**Two commands nobody could have run — measured 2026-08-19.**
+
+COV-13's event-billing slice (UI item 6) is the first write in this module that crosses services, so it
+is the first to go on the command bus per COV-18. Building it over the existing billing handlers turned
+up two defects in code that typechecks, passes every conformance suite, and cannot work:
+
+- **`billing.charge.post` added a CREDIT posting to the folio balance instead of subtracting it.** The
+  table's own comment defines the opposite, `comp-post.ts` has always subtracted, and the same handler
+  already swaps the GL pair for a credit — only the balance update was unconditional. Every refund,
+  allowance and the room-move `DOWNGRADE_CREDIT` raised the bill. The event discount is what exposed
+  it: −550 arrived as +550 and the folio came out 1100 high.
+- **`billing.group.setup` never ran.** `ON CONFLICT (tenant_id, folio_number)` names two of the three
+  columns in `uk_folios_number`, which is not a valid inference target, so the statement does not
+  prepare and every dispatch failed. It was found by *reading* it as the model for the event folio —
+  the same class as slice 2's `CASE WHEN $3` cast, and the same blind spot: nothing that does not
+  execute SQL can see it.
+
+Both are fixed. The general point is narrower than "run a smoke test": **the existing handler you are
+about to model yours on may never have executed.** A command's catalog row, validator, handler and
+conformance coverage all being present says nothing about whether it has ever been dispatched, and
+`command_features` seeds new commands `disabled`, so "unused" is the default state rather than an
+anomaly worth noticing.
 
 **A CHECK constraint can be the bug — measured 2026-08-19.**
 

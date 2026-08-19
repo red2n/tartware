@@ -255,6 +255,25 @@ export const tenantRefundParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/** Tenant + event booking, for the event billing commands (ui-gaps/13 item 6). */
+export const tenantEventParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    eventId: {
+      type: "string",
+      format: "uuid",
+      description: "Event booking identifier.",
+    },
+  },
+  required: ["tenantId", "eventId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 /** Path params schema for tenant + folio routes. */
 export const tenantFolioParamsSchema = {
   type: "object",

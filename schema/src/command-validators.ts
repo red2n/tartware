@@ -32,6 +32,8 @@ import {
 	BillingDepositRefundCommandSchema,
 	BillingDepositTransferCommandSchema,
 	BillingDepositWaiveCommandSchema,
+	BillingEventPostChargesCommandSchema,
+	BillingEventSetupCommandSchema,
 	BillingGroupAddReservationCommandSchema,
 	BillingGroupCheckoutCommandSchema,
 	BillingGroupSetupCommandSchema,
@@ -372,6 +374,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.group.setup",
 		(payload) => BillingGroupSetupCommandSchema.parse(payload),
+	],
+	[
+		"billing.event.setup",
+		(payload) => BillingEventSetupCommandSchema.parse(payload),
+	],
+	[
+		"billing.event.post_charges",
+		(payload) => BillingEventPostChargesCommandSchema.parse(payload),
 	],
 	[
 		"billing.group.checkout",

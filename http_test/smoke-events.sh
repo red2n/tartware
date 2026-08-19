@@ -349,6 +349,124 @@ code=$(req GET "$GW/v1/banquet-orders/$(uuid)?tenant_id=$TID")
 check "unknown beo_id → not found" 404 "$code"
 
 echo
+echo "── EVENT BILLING (UI item 6) ──"
+# Cross-service, so these are commands rather than HTTP routes: the booking is
+# core-service's and the folio is billing-service's. Dispatch answers 202 and the
+# work lands asynchronously, so every assertion below reads the booking back
+# rather than trusting the response body.
+
+# New commands seed as 'disabled' with requires_activation — that is the house
+# convention for a capability nobody has turned on yet, so activate them the way
+# an operator would rather than reaching into the table.
+for cmd in billing.event.setup billing.event.post_charges; do
+  code=$(req PATCH "$GW/v1/commands/$cmd/features" '{"status":"enabled"}')
+  check "enable $cmd" 200 "$code"
+done
+# The gateway holds the command registry in memory and refreshes it on a timer
+# (COMMAND_REGISTRY_REFRESH_MS, 30s by default), so the flag it was just told
+# about is not the flag it is dispatching against yet. The first dispatch below
+# retries through that window rather than asserting against a stale snapshot.
+
+# A fully priced booking: 1800 rental + 250 setup + 400 equipment + 600 AV
+# + 300 labour + 4200 F&B = 7550 subtotal; 20% service charge = 1510;
+# less 550 discount = 8510 taxable; 10% tax = 851; total 9361.
+BILL_EXTRA='"setup_fee":250,"equipment_rental_fee":400,"av_equipment_fee":600,"labor_charges":300,"estimated_food_beverage":4200,"service_charge_percent":20,"tax_rate":10,"discount_amount":550'
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Billing' "$D6" 18:00 23:00 "$BILL_EXTRA")")
+check "POST priced event booking" 201 "$code"
+EVENT_BILL=$(jq -r '.data.event_id // empty' "$RESP"); remember_event
+check "  starts unbilled" null "$(jq -r '.data.charges_posted_at // "null"' "$RESP")"
+check "  starts with no folio" null "$(jq -r '.data.folio_id // "null"' "$RESP")"
+
+# Poll the read model: `field` non-null means the consumer has landed the write.
+wait_for_event_field() { # eventId jq-path
+  for _ in $(seq 1 30); do
+    req GET "$GW/v1/event-bookings/$1?tenant_id=$TID" >/dev/null
+    local value
+    value=$(jq -r "$2 // \"null\"" "$RESP")
+    [[ "$value" != "null" && -n "$value" ]] && { echo "$value"; return 0; }
+    sleep 0.5
+  done
+  echo "null"; return 1
+}
+
+for _ in $(seq 1 15); do
+  code=$(req POST "$GW/v1/tenants/$TID/billing/events/$EVENT_BILL/folio" "{\"property_id\":\"$PID\"}")
+  [[ "$code" != "409" ]] && break
+  sleep 3
+done
+check "POST …/billing/events/:eventId/folio accepted" 202 "$code"
+FOLIO_ID=$(wait_for_event_field "$EVENT_BILL" '.folio_id')
+check "  folio linked back to the booking" 1 "$([[ "$FOLIO_ID" != "null" ]] && echo 1 || echo 0)"
+check "  folio opens with a zero balance" 0 "$(jq -r '.folio_balance // "null"' "$RESP")"
+check "  folio number is derived from the event" 1 \
+  "$(jq -r '.folio_number | if . != null and startswith("EVT-") then 1 else 0 end' "$RESP")"
+
+# Idempotent: a second setup adopts the folio that exists rather than opening
+# another one for the same event.
+code=$(req POST "$GW/v1/tenants/$TID/billing/events/$EVENT_BILL/folio" "{\"property_id\":\"$PID\"}")
+check "second folio open accepted" 202 "$code"
+sleep 2
+req GET "$GW/v1/event-bookings/$EVENT_BILL?tenant_id=$TID" >/dev/null
+check "  still the same folio" "$FOLIO_ID" "$(jq -r '.folio_id // "null"' "$RESP")"
+
+code=$(req POST "$GW/v1/tenants/$TID/billing/events/$EVENT_BILL/charges" "{\"property_id\":\"$PID\"}")
+check "POST …/billing/events/:eventId/charges accepted" 202 "$code"
+# `charges_posted_at` is claimed *before* the first line posts — that is what
+# makes a double dispatch safe — so waiting on it would read an empty folio.
+# The balance settling is what says every line landed.
+# Settle, not "started": the lines post one command at a time, so the balance is
+# non-zero from the first of them. Waiting for two consecutive reads to agree is
+# what distinguishes a folio mid-post from a finished one — the first cut of this
+# broke on the rental line and read a three-line folio.
+prev=""; settled=""
+for _ in $(seq 1 40); do
+  req GET "$GW/v1/event-bookings/$EVENT_BILL?tenant_id=$TID" >/dev/null
+  cur=$(jq -r '.folio_balance // 0' "$RESP")
+  if [[ "$cur" != "0" && "$cur" == "$prev" ]]; then settled="$cur"; break; fi
+  prev="$cur"; sleep 0.5
+done
+check "  charges_posted_at stamped" 1 \
+  "$([[ "$(jq -r '.charges_posted_at // "null"' "$RESP")" != "null" ]] && echo 1 || echo 0)"
+check "  folio balance is the derived total" 9361 "$(jq -r '.folio_balance // "null"' "$RESP")"
+check "  actual_total written back" 9361 "$(jq -r '.actual_total // "null"' "$RESP")"
+
+code=$(req GET "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$FOLIO_ID&limit=200")
+check "GET /v1/billing/charges for the event folio" 200 "$code"
+LINES=$(jq -r '(if type=="array" then . else (.data // []) end) | length' "$RESP")
+check "  one posting per priced line" 9 "$LINES"
+check "  rental posted under SPACE_RENTAL" 1800 \
+  "$(jq -r '(if type=="array" then . else (.data // []) end) | map(select(.charge_code=="SPACE_RENTAL")) | .[0].total_amount // "null"' "$RESP")"
+check "  service charge computed, not copied" 1510 \
+  "$(jq -r '(if type=="array" then . else (.data // []) end) | map(select(.charge_code=="EVENT_SERVICE_CHARGE")) | .[0].total_amount // "null"' "$RESP")"
+# The charge read model lowercases posting_type, as it does folio_status.
+check "  discount posted as a credit" credit \
+  "$(jq -r '(if type=="array" then . else (.data // []) end) | map(select(.charge_code=="EVENT_DISCOUNT")) | .[0].posting_type // "null"' "$RESP")"
+check "  tax on the discounted base" 851 \
+  "$(jq -r '(if type=="array" then . else (.data // []) end) | map(select(.charge_code=="EVENT_TAX")) | .[0].total_amount // "null"' "$RESP")"
+
+# The post-once guard. Dispatch is asynchronous, so the gateway still answers
+# 202 — what must not happen is a second set of postings on the folio.
+code=$(req POST "$GW/v1/tenants/$TID/billing/events/$EVENT_BILL/charges" "{\"property_id\":\"$PID\"}")
+check "second charge post accepted at the edge" 202 "$code"
+sleep 5
+req GET "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$FOLIO_ID&limit=200" >/dev/null
+check "  no second set of postings" "$LINES" \
+  "$(jq -r '(if type=="array" then . else (.data // []) end) | length' "$RESP")"
+req GET "$GW/v1/event-bookings/$EVENT_BILL?tenant_id=$TID" >/dev/null
+check "  balance unchanged" 9361 "$(jq -r '.folio_balance // "null"' "$RESP")"
+
+# An event with nothing priced has nothing to post — the handler refuses rather
+# than opening a folio and leaving it empty.
+code=$(req POST "$GW/v1/event-bookings" "$(mk_event 'Smoke Unpriced' "$D6" 08:00 09:00 '"rental_rate":0')")
+check "POST unpriced event booking" 201 "$code"
+EVENT_FREE=$(jq -r '.data.event_id // empty' "$RESP"); remember_event
+code=$(req POST "$GW/v1/tenants/$TID/billing/events/$EVENT_FREE/charges" "{\"property_id\":\"$PID\"}")
+check "unpriced charge post accepted at the edge" 202 "$code"
+sleep 3
+req GET "$GW/v1/event-bookings/$EVENT_FREE?tenant_id=$TID" >/dev/null
+check "  nothing posted" null "$(jq -r '.charges_posted_at // "null"' "$RESP")"
+
+echo
 echo "── ROOM RETIREMENT ──"
 code=$(req POST "$GW/v1/meeting-rooms" \
   "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"room_code\":\"$ROOM_CODE2\",\"room_name\":\"Smoke Throwaway\",\"room_type\":\"BOARDROOM\",\"max_capacity\":12}")

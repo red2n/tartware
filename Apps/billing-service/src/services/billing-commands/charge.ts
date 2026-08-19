@@ -618,13 +618,21 @@ const applyChargePost = async (
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + $2,
-              balance = balance + $2,
+          SET total_charges = total_charges + CASE WHEN $6::boolean THEN 0 ELSE $2 END,
+              total_credits = total_credits + CASE WHEN $6::boolean THEN $2 ELSE 0 END,
+              balance = balance + CASE WHEN $6::boolean THEN -$2 ELSE $2 END,
               version = version + 1,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5
         `,
-        [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId, destFolio.version],
+        [
+          context.tenantId,
+          routedSubtotal,
+          actorId,
+          decision.destinationFolioId,
+          destFolio.version,
+          isCredit,
+        ],
       );
 
       if (destCount === 0) {
@@ -715,17 +723,26 @@ const applyChargePost = async (
         throw new BillingCommandError("CHARGE_POST_FAILED", "Unable to post charge.");
       }
 
-      // G3: Update source folio totals
+      // G3: Update source folio totals.
+      //
+      // A CREDIT posting reduces what is owed — the table says so
+      // (`posting_type`: "DEBIT increases balance, CREDIT decreases") and
+      // `comp-post.ts` has always done it. This path added *every* posting to
+      // the balance regardless, so a refund, an allowance or an event discount
+      // raised the bill instead of lowering it, and by twice its own value
+      // against the correct figure. Found by http_test/smoke-events.sh when an
+      // event's discount line came back +550 rather than −550.
       await queryWithClient(
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + $2,
-              balance = balance + $2,
+          SET total_charges = total_charges + CASE WHEN $5::boolean THEN 0 ELSE $2 END,
+              total_credits = total_credits + CASE WHEN $5::boolean THEN $2 ELSE 0 END,
+              balance = balance + CASE WHEN $5::boolean THEN -$2 ELSE $2 END,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
         `,
-        [context.tenantId, subtotal, actorId, folioId],
+        [context.tenantId, subtotal, actorId, folioId, isCredit],
       );
 
       // GL: paired DR/CR for the remainder on the source folio.

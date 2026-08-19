@@ -66,10 +66,12 @@ import {
   lockFiscalPeriod,
   mergeFolios,
   postComp,
+  postEventCharges,
   postLedger,
   reopenFiscalPeriod,
   reopenFolio,
   reopenInvoice,
+  setupEventBilling,
   updateChargebackStatus,
   updateRoutingRule,
   updateTaxConfig,
@@ -331,6 +333,19 @@ const routeBillingCommand = async (
       return;
     case "billing.cashier.handover":
       await cashierHandover(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    // ── Event billing (ui-gaps/13-sales-catering.md, UI item 6) ──────────
+    case "billing.event.setup":
+      await setupEventBilling(envelope.payload, {
+        tenantId: metadata.tenantId,
+        initiatedBy: metadata.initiatedBy ?? null,
+      });
+      return;
+    case "billing.event.post_charges":
+      await postEventCharges(envelope.payload, {
         tenantId: metadata.tenantId,
         initiatedBy: metadata.initiatedBy ?? null,
       });

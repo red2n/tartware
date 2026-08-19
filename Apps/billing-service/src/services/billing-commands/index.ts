@@ -50,6 +50,7 @@ export {
 } from "./commission.js";
 export { postComp } from "./comp-post.js";
 export { manualDateRoll } from "./date-roll.js";
+export { postEventCharges, setupEventBilling } from "./event-billing.js";
 export { expressCheckout } from "./express-checkout.js";
 export {
   closeFiscalPeriod,

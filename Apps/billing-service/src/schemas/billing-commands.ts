@@ -34,6 +34,8 @@ export {
   BillingDepositRefundCommandSchema,
   BillingDepositTransferCommandSchema,
   BillingDepositWaiveCommandSchema,
+  BillingEventPostChargesCommandSchema,
+  BillingEventSetupCommandSchema,
   BillingExpressCheckoutCommandSchema,
   BillingFiscalPeriodCloseCommandSchema,
   BillingFiscalPeriodCreateCommandSchema,

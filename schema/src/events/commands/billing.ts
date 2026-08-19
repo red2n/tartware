@@ -11,6 +11,7 @@ export * from "./billing-ara.js";
 export * from "./billing-cashier.js";
 export * from "./billing-charge.js";
 export * from "./billing-deposit.js";
+export * from "./billing-event.js";
 export * from "./billing-folio.js";
 export * from "./billing-group.js";
 export * from "./billing-invoice.js";

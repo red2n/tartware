@@ -238,6 +238,9 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.folio.reopen', 'Reopen a settled/closed folio for further postings', 'billing-service', ARRAY['finance-automation']),
         ('billing.folio.merge', 'Merge a source folio''s postings into a target folio then close the source', 'billing-service', ARRAY['finance-automation']),
         ('billing.chargeback.update_status', 'Advance a chargeback through its RECEIVED→EVIDENCE_SUBMITTED→WON|LOST state machine', 'billing-service', ARRAY['finance-automation']),
+        -- ── Event billing (ui-gaps/13-sales-catering.md, UI item 6) ──────────
+        ('billing.event.setup', 'Open the event''s own folio and link it to the booking', 'billing-service', ARRAY['finance-automation']),
+        ('billing.event.post_charges', 'Post an event booking''s derived charges to its folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.no_show.charge', 'Post a no-show penalty charge to the reservation folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.late_checkout.charge', 'Post a tier-based late checkout fee to the reservation folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.tax_exemption.apply', 'Apply a tax exemption certificate to an open folio', 'billing-service', ARRAY['finance-automation']),

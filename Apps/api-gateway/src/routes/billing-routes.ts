@@ -37,6 +37,7 @@ import {
   paginationQuerySchema,
   reservationParamsSchema,
   tenantChargeParamsSchema,
+  tenantEventParamsSchema,
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
@@ -215,6 +216,58 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "billing.charge.post",
+      }),
+  );
+
+  // ── Event billing — ui-gaps/13-sales-catering.md, UI item 6 ────────────────
+  // The event lives in core-service and the folio in billing-service, so the
+  // write crosses services and goes on the command bus per COV-18's rule.
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/events/:eventId/folio",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Open the event booking's own folio via the Command Center.",
+        params: tenantEventParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.event.setup",
+        paramKey: "eventId",
+        payloadKey: "event_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/events/:eventId/charges",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post an event booking's derived charges to its folio via the Command Center.",
+        params: tenantEventParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.event.post_charges",
+        paramKey: "eventId",
+        payloadKey: "event_id",
       }),
   );
 

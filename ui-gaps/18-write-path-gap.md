@@ -95,9 +95,25 @@
 >
 > **Still open:** item 4 — per-domain writes for the domains that have none.
 > [13](13-sales-catering.md) decided **build** on 2026-08-17 and has now shipped **meeting-room
-> writes (2026-08-17)** and **event-booking writes (2026-08-18)**, both plain HTTP per this spec's
-> rule; banquet orders is the last slice there. Allotments is [16](16-booking-reference-data.md)'s,
-> pending the availability-guard call.
+> writes (2026-08-17)**, **event-booking writes (2026-08-18)** and **banquet-order writes
+> (2026-08-19)**, all plain HTTP per this spec's rule. Allotments is
+> [16](16-booking-reference-data.md)'s, pending the availability-guard call.
+>
+> **The rule's other branch has now been exercised too — event billing, 2026-08-19.** Posting an
+> event's charges touches `event_bookings` in core-service and `folios` / `charge_postings` in
+> billing-service, so it went on the command bus as `billing.event.setup` and
+> `billing.event.post_charges` rather than as routes beside the event's own. Two things the branch
+> costs that the HTTP one does not, both now demonstrated:
+>
+> - **The caller cannot be told anything.** Dispatch answers 202 with no folio id, so the screen polls
+>   its read model (`settleCommandReadModel`), and a handler-side refusal — a second charge post, an
+>   unpriced event — reaches the operator as "nothing happened", not as an error. The event screen
+>   compensates by hiding the action once `charges_posted_at` is set. No command-backed screen in this
+>   product does better; that is a gap in the bus, not in this slice.
+> - **A new command starts switched off.** `command_features` seeds `disabled` with
+>   `requires_activation`, and the gateway caches the registry for 30s
+>   (`COMMAND_REGISTRY_REFRESH_MS`), so a freshly catalogued command is refused twice over until
+>   somebody enables it and the cache turns over.
 >
 > **Slice 2 shipped broken and was fixed the same day**, which is worth carrying into the remaining
 > write paths: it typechecked and passed conformance, and every one of its writes 500ed the first

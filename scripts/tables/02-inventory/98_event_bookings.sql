@@ -325,6 +325,8 @@ evacuation_plan_url VARCHAR(500), -- Link to evacuation plan document
 
 -- Billing
 folio_id UUID, -- Reference to folios for charges
+    charges_posted_at TIMESTAMP, -- When billing.event.post_charges posted this event to its folio; the post-once guard
+    charges_posted_by UUID, -- User whose dispatch posted the charges
     billing_instructions TEXT,  -- Special billing instructions
     billing_contact_name VARCHAR(200),  -- Billing contact person
     billing_contact_email VARCHAR(255), -- Billing contact email
@@ -537,5 +539,19 @@ ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS occupancy_ends_at TIMESTAMP
 
 COMMENT ON COLUMN event_bookings.occupancy_starts_at IS 'Resolved first instant the space is held, setup included. event_date + COALESCE(setup_start_time, start_time), minus one day when setup runs after start_time (the evening before).';
 COMMENT ON COLUMN event_bookings.occupancy_ends_at IS 'Resolved first instant the space is free again, teardown included. event_date + COALESCE(teardown_end_time, end_time), plus one day when that time is at or before start_time (past midnight).';
+
+-- =====================================================
+-- EVENT BILLING (ui-gaps/13-sales-catering.md, UI item 6)
+-- Idempotent migration for deployments created before event charges could be
+-- posted. `charges_posted_at` is the post-once guard billing.event.post_charges
+-- reads: an event whose charges are already on its folio is refused rather than
+-- posted twice, and the screen shows the date instead of the action.
+-- =====================================================
+
+ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS charges_posted_at TIMESTAMP;
+ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS charges_posted_by UUID;
+
+COMMENT ON COLUMN event_bookings.charges_posted_at IS 'When the event charges were posted to folio_id by billing.event.post_charges. NULL means unbilled; a value makes a second posting a 409.';
+COMMENT ON COLUMN event_bookings.charges_posted_by IS 'User who dispatched the charge posting.';
 
 \echo 'Event bookings table created successfully!'
