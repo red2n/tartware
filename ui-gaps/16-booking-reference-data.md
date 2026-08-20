@@ -132,7 +132,40 @@
 > table, one service, no fan-out, exactly like the booking sources and market segments it sits beside
 > in `booking-config`.
 >
-> ### ⚠️ The question this does *not* answer: an allotment still holds nothing
+> ### ✅ Blocks hold inventory — closed 2026-08-20
+>
+> The open question below is answered. `searchAvailableRooms` — the query behind
+> `/v1/rooms/availability`, which both the guest portal and staff booking go through — now
+> subtracts held block rooms per room type, in exactly the way it already subtracted unassigned
+> reservations. Both are demand against a *type* with no physical room attached yet, so both push the
+> same per-type row number.
+>
+> - **Group blocks** (`group_room_blocks`): `blocked_rooms − picked_rooms`, taken as the **MAX** across
+>   the nights in the window rather than the sum — a stay needs one spare room on *every* night, so the
+>   tightest night is the constraint. Released when the parent group is cancelled/turndown/completed,
+>   when the block row is released or sold out, or when `release_unsold_rooms` is set and the cutoff
+>   has passed.
+> - **Allotments**: `COALESCE(rooms_per_night, total_rooms_blocked) − rooms_picked_up`, held while the
+>   status is TENTATIVE/DEFINITE/ACTIVE/PICKUP_IN_PROGRESS and the cutoff has not lapsed.
+> - **Pickup is unaffected.** The rooming-list upload writes reservations directly and never comes
+>   through this query, so a group can still draw down its own block.
+>
+> **Proved live rather than asserted** — `http_test/smoke-operations.sh` grew 11 assertions that walk
+> the whole behaviour against a real room type: a 2-room block takes availability from 4 to 2,
+> recording pickup of one returns a room, a cutoff moved into the past releases the block entirely,
+> restoring the cutoff re-applies it, cancelling releases everything, and a window the block does not
+> cover is untouched.
+>
+> **Still not held: an allotment with no `room_type_id`.** Such a block reserves rooms of no particular
+> type; charging it against every type would over-hold the house several times over. The query skips
+> them, and this is the honest remaining gap — it wants a property-level hold, which the per-type
+> subtraction cannot express.
+>
+> **Also unchanged:** `rooms-service/src/sources/available-rooms-source.ts`, the recommendation
+> pipeline's own candidate query, still reads reservations and rooms alone. It feeds recommendations
+> rather than the booking gate, so it can suggest a room a block is holding.
+>
+> ### ⚠️ The question this answered (kept for the record)
 >
 > `available-rooms-source.ts` computes availability from `reservations` and `rooms` alone. No caller
 > subtracts blocked-but-unsold allotment rooms, so creating an allotment today reserves no inventory —

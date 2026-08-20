@@ -325,6 +325,43 @@ Two things now stop that recurring:
   That is a process gap, not a code one, and it is the reason both this and the smoke suites have
   found so much: **the checks that exist are not reaching the branch the work is on.**
 
+**The show-stopper: a room block held nothing — fixed 2026-08-20.**
+
+Asked which outstanding item was the show-stopper, the answer was not a UI gap. **Availability was
+computed from `reservations` and `rooms` alone**, and nothing anywhere read a block:
+
+- no availability path in rooms-service, guests-service or reservations-command-service referenced
+  `group_room_blocks` or `allotments`;
+- the availability guard holds per-reservation TTL locks and has no concept of a block;
+- there is no `room_availability` ledger table — the one code reference points at nothing;
+- `overbooking_config` exists as a table and **nothing in `Apps/` reads it**, so there was no
+  compensating control either;
+- blocks only become reservations at rooming-list pickup, and `group_room_blocks.available_rooms` is a
+  GENERATED column (`blocked_rooms − picked_rooms`) that no query consumed — the design intended
+  holding and the wiring was never done.
+
+So a 40-room block sold to a tour operator stayed fully sellable to anyone. At pickup the upload hits
+its own escape hatch — *"No available block for guest — creating reservation without block
+decrement"* — and creates the reservation anyway. Oversold house, silently, against a signed contract,
+on a core shipped flow (`group.create` / `group.add_rooms` are reachable today). Walked guests,
+relocation, attrition penalties.
+
+**Fixed in the one place it belongs.** `searchAvailableRooms` already subtracted *unassigned
+reservations* per room type — demand against a type with no physical room attached. A held block is
+exactly the same shape, so it joins the same subtraction: MAX across nights for group blocks (a stay
+needs a spare room every night), the per-night figure for allotments, both released on cutoff,
+cancellation or pickup. Pickup writes reservations directly and never passes through the query, so a
+group can still draw down its own block.
+
+**11 new assertions in `smoke-operations.sh` walk it end to end** against a real room type — 4 → 2 on a
+2-room block, back to 3 when one is picked up, 4 when the cutoff lapses, 3 when it is restored, 4 on
+cancellation, and untouched on dates the block does not cover.
+
+Two gaps left open deliberately and recorded in [16](16-booking-reference-data.md): an allotment with
+no `room_type_id` (it would need a property-level hold, which a per-type subtraction cannot express),
+and the recommendation pipeline's own candidate query, which still ignores blocks but does not gate
+bookings.
+
 **A screen can be shipped, seeded, navigable and unreachable — measured 2026-08-20.**
 
 `/settings/distribution` was declared after `settings/:categoryCode` in `app.routes.ts`. Angular

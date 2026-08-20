@@ -414,6 +414,61 @@ check "unknown allotment_id → not found" 404 "$code"
 
 # ─────────────────────────────────────────────────────────────────────────────
 echo
+echo "── ROOM BLOCKS HOLD INVENTORY ──"
+# Until 2026-08-20 a contracted block reserved nothing: availability was computed
+# from reservations and rooms alone, so a 40-room block stayed fully sellable and
+# the rooming-list upload logged "No available block for guest — creating
+# reservation without block decrement" and oversold the house. These assertions
+# are the proof that a block now holds, and that it lets go when it should.
+
+BLOCK_IN="2027-07-01"; BLOCK_OUT="2027-07-03"
+avail() { # -> number of sellable rooms of $BLOCK_RT in the window
+  req GET "$GW/v1/rooms/availability?tenant_id=$TID&property_id=$PID&check_in_date=$BLOCK_IN&check_out_date=$BLOCK_OUT&room_type_id=$1&limit=200" >/dev/null
+  jq -r '(.available_rooms // []) | length' "$RESP"
+}
+
+# Pick the room type with the most sellable rooms, so the block cannot exhaust it.
+req GET "$GW/v1/rooms/availability?tenant_id=$TID&property_id=$PID&check_in_date=$BLOCK_IN&check_out_date=$BLOCK_OUT&limit=200" >/dev/null
+BLOCK_RT=$(jq -r '(.available_rooms // []) | group_by(.room_type_id) | max_by(length) | .[0].room_type_id // empty' "$RESP")
+BASE=$([[ -n "$BLOCK_RT" ]] && avail "$BLOCK_RT" || echo 0)
+check "a room type with sellable rooms exists to test against" 1 \
+  "$([[ -n "$BLOCK_RT" && "$BASE" -ge 2 ]] && echo 1 || echo 0)"
+
+if [[ -n "$BLOCK_RT" && "$BASE" -ge 2 ]]; then
+  HOLD_CODE="HOLD$(date +%H%M%S)"
+  code=$(req POST "$GW/v1/allotments" \
+    "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"allotment_code\":\"$HOLD_CODE\",\"allotment_name\":\"Availability hold $SUFFIX\",\"allotment_type\":\"TOUR\",\"room_type_id\":\"$BLOCK_RT\",\"start_date\":\"$BLOCK_IN\",\"end_date\":\"$BLOCK_OUT\",\"total_rooms_blocked\":2}")
+  check "POST an allotment holding 2 rooms" 201 "$code"
+  HOLD_ID=$(id_from allotment_id)
+
+  check "  the block takes 2 rooms out of availability" "$((BASE - 2))" "$(avail "$BLOCK_RT")"
+
+  # Pickup converts a held room into a reservation, so the hold shrinks.
+  code=$(req PUT "$GW/v1/allotments/$HOLD_ID" "{\"tenant_id\":\"$TID\",\"rooms_picked_up\":1}")
+  check "recording pickup of 1 room" 200 "$code"
+  check "  one still held, so one room comes back" "$((BASE - 1))" "$(avail "$BLOCK_RT")"
+
+  # A cutoff in the past is the contract releasing what nobody took.
+  code=$(req PUT "$GW/v1/allotments/$HOLD_ID" "{\"tenant_id\":\"$TID\",\"cutoff_date\":\"2020-01-01\"}")
+  check "moving the cutoff into the past" 200 "$code"
+  check "  a lapsed cutoff releases the block" "$BASE" "$(avail "$BLOCK_RT")"
+
+  # Put it back, then cancel: a cancelled block holds nothing either.
+  req PUT "$GW/v1/allotments/$HOLD_ID" "{\"tenant_id\":\"$TID\",\"cutoff_date\":\"$BLOCK_IN\"}" >/dev/null
+  check "  restoring the cutoff re-applies the hold" "$((BASE - 1))" "$(avail "$BLOCK_RT")"
+
+  code=$(req POST "$GW/v1/allotments/$HOLD_ID/status" \
+    "{\"tenant_id\":\"$TID\",\"allotment_status\":\"CANCELLED\",\"cancellation_reason\":\"smoke test cleanup\"}")
+  check "cancelling the block" 200 "$code"
+  check "  a cancelled block releases every room" "$BASE" "$(avail "$BLOCK_RT")"
+
+  # And nothing leaks into a window the block does not cover.
+  req GET "$GW/v1/rooms/availability?tenant_id=$TID&property_id=$PID&check_in_date=2027-09-01&check_out_date=2027-09-03&room_type_id=$BLOCK_RT&limit=200" >/dev/null
+  check "  other dates are untouched" "$BASE" "$(jq -r '(.available_rooms // []) | length' "$RESP")"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+echo
 echo "── POLICE REPORTS (ui-gaps/02) ──"
 # Shipped 2026-08-11 and never run live either. This is a statutory register in
 # some jurisdictions, so a silently broken write is the worst kind here.
