@@ -1089,6 +1089,10 @@ textarea.field-input {
   display: flex;
   flex-direction: column;
   gap: var(--base-size-2);
+  /* A column flex container stretches its children, so a badge dropped under
+     the identifier ran the full width of the cell — 234px for the word "Tour".
+     Text children look identical either way; only the badges change. */
+  align-items: flex-start;
 }
 
 .data-table td.cell-actions,

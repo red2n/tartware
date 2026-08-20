@@ -121,9 +121,9 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, the midnight limitation **closed 2026-08-19**, **event billing** and the **daily BEO / kitchen view shipped 2026-08-19**. Acceptance discharged and the UI list complete: function space can be booked, a BEO produced, the day worked from a printed sheet and recorded back, and event revenue lands on a folio | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | **done** |
-| 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
+| 14 | Channel / distribution — **✅ closed 2026-08-20**: health screen + reference-data CRUD 2026-08-13, then mapping editor, metasearch and allotments into a five-tab `/settings/distribution`. `/v1/ota-connections` is a projection of `channel_mappings`, so connections admin *is* the mapping editor. The screen itself had been unreachable since it shipped — route shadowed by `settings/:categoryCode` | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
-| 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
+| 16 | Booking reference data — **✅ promo code CRUD + waitlist screen 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. **Allotments closed 2026-08-19/20**: the availability-guard premise was wrong (it is a per-reservation TTL lock) and so was "inventory side of a group" (no `group_booking_id` exists; `group_room_blocks` is that). Write path + UI shipped; blocks still do not reduce sellable availability, recorded as the open question | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
 
 ### P2 — Cross-Cutting (1 gap)
 
@@ -324,6 +324,21 @@ Two things now stop that recurring:
   `.github/workflows` has run against this branch — six days of write paths, none of them checked.
   That is a process gap, not a code one, and it is the reason both this and the smoke suites have
   found so much: **the checks that exist are not reaching the branch the work is on.**
+
+**A screen can be shipped, seeded, navigable and unreachable — measured 2026-08-20.**
+
+`/settings/distribution` was declared after `settings/:categoryCode` in `app.routes.ts`. Angular
+matches routes in declaration order, so for seven days the URL rendered the settings catalogue with
+`categoryCode="distribution"`. The screen built, its nav entry was present, its screen key was seeded,
+and clicking it showed something else. Only opening it in a browser could find that — which is the
+argument for the browser step being part of a UI slice rather than a nicety, and the reason
+[14](14-channel-distribution.md)'s "not yet exercised against a live stack" note was worth more than
+it looked.
+
+Two more of the same family came out of the same session: `labelFor` rendering `DEFINITE` instead of
+"Definite" (the fold this repo has now hit three times), and `.cell-primary` stretching a badge to the
+full width of the cell because it is a column flex container. Neither is visible to a type checker,
+a build or an API test.
 
 **Seven write paths, first run — measured 2026-08-19.**
 

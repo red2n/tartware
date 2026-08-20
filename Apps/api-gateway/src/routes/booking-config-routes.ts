@@ -602,6 +602,28 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     "integration.mapping.update",
   );
 
+  /**
+   * Metasearch bid configuration — the same state `integration.mapping.update`
+   * was in: handler in revenue-service, catalog row seeded, payload validator
+   * registered, and no wrapper, so nothing could dispatch either verb. Two of
+   * the 95 structurally unreachable commands in
+   * ui-gaps/17-command-reachability.md, wired here because the distribution
+   * screen is the thing that needs them.
+   *
+   * Commands rather than HTTP by COV-18's rule: a bid change fans out to the
+   * platform's feed, exactly like a mapping edit.
+   */
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/metasearch-config",
+    "Create a metasearch platform configuration via the Command Center.",
+    "metasearch.config.create",
+  );
+  channelCommandRoute(
+    "/v1/tenants/:tenantId/channels/metasearch-config-update",
+    "Update a metasearch platform configuration via the Command Center.",
+    "metasearch.config.update",
+  );
+
   // Metasearch Configurations - CPC/CPA bid management
   app.get(
     "/v1/metasearch-configs",

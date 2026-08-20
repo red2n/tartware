@@ -94,7 +94,52 @@
 > the existing `settings` screen key — this spec is right that these belong in settings rather than
 > their own area.
 >
-> **Still open:** the mapping editor UI (§3.3), connections admin (§3.4) and metasearch (§3.6).
+> **Closed 2026-08-19/20:** the mapping editor (§3.3), connections admin (§3.4 — it *is* the mapping
+> editor, since `/v1/ota-connections` is a projection of the same rows) and metasearch (§3.6) all
+> shipped into `/settings/distribution`, which now carries five tabs: booking sources, market
+> segments, allotments, channel mappings, metasearch.
+>
+> ### 🐛 The screen had never been reachable
+>
+> `/settings/distribution` was declared **after** `settings/:categoryCode` in `app.routes.ts`, and
+> Angular matches in declaration order — so from the day it shipped (2026-08-13) until 2026-08-20 the
+> URL rendered the *settings catalogue* with `categoryCode="distribution"`. It was in the nav, it
+> built, its screen key was seeded, and clicking it showed a different screen. Found by driving it in
+> a browser; nothing else would have. Route moved above the parameterised one.
+>
+> This is the same defect class as the gateway proxy mismatches in
+> [19-gateway-proxy-mismatches.md](19-gateway-proxy-mismatches.md), one layer further out: a
+> capability that is registered, documented and shadowed.
+>
+> ### What the slice added
+>
+> - **Allotments** — the write path from [16](16-booking-reference-data.md) step 4, with the lifecycle
+>   offered from `ALLOTMENT_LEGAL_TRANSITIONS` so a button cannot 409, and pickup shown against the
+>   block. The card says plainly that a block does not yet reduce sellable availability, because it
+>   does not.
+> - **Channel mappings** — edit through `integration.mapping.update`, the command that had a wrapper
+>   and no caller. Dispatch answers 202, so the list settles rather than patching in place.
+> - **Metasearch** — `metasearch.config.create` and `.update` had handlers, catalog rows and payload
+>   validators but **no gateway wrapper**, so neither could ever be dispatched. Two of the 95
+>   unreachable commands in [17](17-command-reachability.md), wrapped at
+>   `/v1/tenants/:tenantId/channels/metasearch-config[-update]` and now driven from this screen.
+>
+> ### Three things the browser caught that the build did not
+>
+> - **The shadowed route above.**
+> - **`labelFor` did not lowercase first**, so `DEFINITE` rendered as `DEFINITE` beside a badge reading
+>   "Definite". Invisible until now because sources and segments render the server's `*_display`
+>   fields; the allotment and metasearch sections are the first here to label a raw enum. Exactly the
+>   slip [13](13-sales-catering.md) records on the event booking detail.
+> - **`.cell-primary` stretched its badges.** It is a column flex container, so a badge under the
+>   identifier ran the full width of the cell — 234px for the word "Tour". Fixed in `shared.scss` with
+>   `align-items: flex-start` rather than a component override, so the "Preferred" badge on booking
+>   sources gets it too.
+>
+> **The screen also stopped re-declaring its data shapes.** It carried local `BookingSource` and
+> `MarketSegment` types with 17 and 13 fields against read models of 31 and 38 — UI/AGENTS.md forbids
+> exactly this, and the cost was that half of what the API returns was invisible to the screen. Both
+> now import from `@tartware/schemas`.
 > **Not yet exercised against a live stack**, and the new screen key needs
 > `psql -f scripts/tables/01-core/22_role_screen_permissions_seed.sql` (idempotent) before it appears
 > in the sidebar.

@@ -420,6 +420,21 @@ export const routes: Routes = [
 				redirectTo: "settings/ADMIN_USER_MANAGEMENT",
 			},
 			{
+				// Must precede `settings/:categoryCode`. Angular matches routes in
+				// declaration order, and the parameterised one matches
+				// `/settings/distribution` too — so this screen rendered the settings
+				// catalogue with categoryCode="distribution" from the day it shipped
+				// (2026-08-13) until 2026-08-20. It was in the nav, it built, and it
+				// was unreachable. See ui-gaps/14-channel-distribution.md.
+				path: "settings/distribution",
+				canActivate: [propertyGuard, screenGuard("settings")],
+				data: { screen: "settings" },
+				loadComponent: () =>
+					import("./features/settings/distribution/distribution").then(
+						(m) => m.DistributionSettingsComponent,
+					),
+			},
+			{
 				path: "settings/:categoryCode",
 				canActivate: [screenGuard("settings")],
 				data: { screen: "settings" },
@@ -502,15 +517,6 @@ export const routes: Routes = [
 				loadComponent: () =>
 					import("./features/compliance/breach-incidents/breach-incidents").then(
 						(m) => m.BreachIncidentsComponent,
-					),
-			},
-			{
-				path: "settings/distribution",
-				canActivate: [propertyGuard, screenGuard("settings")],
-				data: { screen: "settings" },
-				loadComponent: () =>
-					import("./features/settings/distribution/distribution").then(
-						(m) => m.DistributionSettingsComponent,
 					),
 			},
 			{
