@@ -28,7 +28,13 @@ import {
   MARKET_SEGMENT_LIST_SQL,
 } from "../../sql/booking-config/distribution.js";
 
-import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
+import {
+  formatDisplayLabel,
+  isUniqueViolationOn,
+  ReferenceCodeConflictError,
+  toIsoString,
+  toNumber,
+} from "./common.js";
 
 // =====================================================
 // BOOKING SOURCE SERVICE
@@ -113,8 +119,13 @@ export const createBookingSource = async (
   input: BookingSourceWriteInput,
   actorId?: string,
 ): Promise<BookingSourceListItem | null> => {
-  const { rows } = await query<{ source_id: string }>(
-    `
+  // A duplicate `source_code` is an operator typing a code that already exists,
+  // not a fault: the UNIQUE index is caught by name and reported as a conflict.
+  // Mirrors createMeetingRoom in booking-config/event.ts.
+  let rows: { source_id: string }[];
+  try {
+    ({ rows } = await query<{ source_id: string }>(
+      `
       INSERT INTO public.booking_sources (
         tenant_id, property_id,
         source_code, source_name, source_type,
@@ -136,28 +147,36 @@ export const createBookingSource = async (
       )
       RETURNING source_id
     `,
-    [
-      tenantId,
-      input.propertyId ?? null,
-      input.sourceCode,
-      input.sourceName,
-      input.sourceType,
-      input.category ?? null,
-      input.subCategory ?? null,
-      input.isActive ?? null,
-      input.isBookable ?? null,
-      input.channelName ?? null,
-      input.channelWebsite ?? null,
-      input.channelManager ?? null,
-      input.commissionType ?? null,
-      input.commissionPercentage ?? null,
-      input.commissionFixedAmount ?? null,
-      input.commissionNotes ?? null,
-      input.ranking ?? null,
-      input.isPreferred ?? null,
-      actorId ?? null,
-    ],
-  );
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.sourceCode,
+        input.sourceName,
+        input.sourceType,
+        input.category ?? null,
+        input.subCategory ?? null,
+        input.isActive ?? null,
+        input.isBookable ?? null,
+        input.channelName ?? null,
+        input.channelWebsite ?? null,
+        input.channelManager ?? null,
+        input.commissionType ?? null,
+        input.commissionPercentage ?? null,
+        input.commissionFixedAmount ?? null,
+        input.commissionNotes ?? null,
+        input.ranking ?? null,
+        input.isPreferred ?? null,
+        actorId ?? null,
+      ],
+    ));
+  } catch (error) {
+    if (isUniqueViolationOn(error, "uk_booking_sources_code")) {
+      throw new ReferenceCodeConflictError(
+        `Booking source code ${input.sourceCode} already exists for this property`,
+      );
+    }
+    throw error;
+  }
 
   const sourceId = rows[0]?.source_id;
   if (!sourceId) return null;
@@ -345,8 +364,12 @@ export const createMarketSegment = async (
   input: MarketSegmentWriteInput,
   actorId?: string,
 ): Promise<MarketSegmentListItem | null> => {
-  const { rows } = await query<{ segment_id: string }>(
-    `
+  // Same conflict handling as booking sources above: a duplicate `segment_code`
+  // is a 409, not a 500 carrying a Postgres error string.
+  let rows: { segment_id: string }[];
+  try {
+    ({ rows } = await query<{ segment_id: string }>(
+      `
       INSERT INTO public.market_segments (
         tenant_id, property_id,
         segment_code, segment_name, segment_type,
@@ -369,19 +392,27 @@ export const createMarketSegment = async (
       )
       RETURNING segment_id
     `,
-    [
-      tenantId,
-      input.propertyId ?? null,
-      input.segmentCode,
-      input.segmentName,
-      input.segmentType,
-      input.isActive ?? null,
-      input.isBookable ?? null,
-      input.parentSegmentId ?? null,
-      input.rateMultiplier ?? null,
-      actorId ?? null,
-    ],
-  );
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.segmentCode,
+        input.segmentName,
+        input.segmentType,
+        input.isActive ?? null,
+        input.isBookable ?? null,
+        input.parentSegmentId ?? null,
+        input.rateMultiplier ?? null,
+        actorId ?? null,
+      ],
+    ));
+  } catch (error) {
+    if (isUniqueViolationOn(error, "uk_market_segments_code")) {
+      throw new ReferenceCodeConflictError(
+        `Market segment code ${input.segmentCode} already exists for this property`,
+      );
+    }
+    throw error;
+  }
 
   const segmentId = rows[0]?.segment_id;
   if (!segmentId) return null;

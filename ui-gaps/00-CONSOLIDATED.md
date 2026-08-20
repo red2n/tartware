@@ -120,7 +120,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, the midnight limitation **closed 2026-08-19**, and **event billing shipped 2026-08-19** — event revenue now lands on a folio, which discharges this spec's acceptance. Item 5 (daily BEO print) remains | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | part |
+| 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, the midnight limitation **closed 2026-08-19**, **event billing** and the **daily BEO / kitchen view shipped 2026-08-19**. Acceptance discharged and the UI list complete: function space can be booked, a BEO produced, the day worked from a printed sheet and recorded back, and event revenue lands on a folio | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | **done** |
 | 14 | Channel / distribution — **✅ health screen + reference-data CRUD shipped 2026-08-13**; `/v1/ota-connections` found to be a projection of `channel_mappings`, not a domain. Mapping/metasearch UI open | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
 | 16 | Booking reference data — **✅ promo code CRUD + waitlist screen shipped 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. Allotments still open | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
@@ -223,11 +223,11 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
     and a bare `POST` needs its own gateway registration every time.
 12. ~~COV-06, COV-08, COV-09, COV-14 step 1~~ — **done 2026-08-13.** Three write paths added, all
     plain HTTP per COV-18's rule, plus the channel-health screen over commands that already existed.
-13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** COV-13 ran to its acceptance:
+13. ~~COV-16 promo codes + waitlist~~ — **done 2026-08-13.** ~~COV-13~~ — **closed 2026-08-19**:
     meeting-room writes 2026-08-17, **event-booking writes, the event-billing decision, and UI items
-    1 + 2 + 4 on 2026-08-18**, then banquet orders, the BEO editor, the midnight fix and
-    **event billing on 2026-08-19**. Remaining: COV-13's item 5 (daily BEO print), COV-16's
-    allotments, COV-14's CRUD half, and the UI for both
+    1 + 2 + 4 on 2026-08-18**, then banquet orders, the BEO editor, the midnight fix, event billing
+    and the day sheet on 2026-08-19. Remaining: COV-16's allotments, COV-14's CRUD half, and the UI
+    for both
 14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
 
 **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
@@ -277,6 +277,32 @@ kind that only exists at runtime:
 The lesson for the remaining write paths (banquet orders, allotments): budget the smoke test as part
 of the slice, not as follow-up hygiene. Both bugs took minutes to find with a stack running and were
 invisible to every gate that ran without one.
+
+**Seven write paths, first run — measured 2026-08-19.**
+
+`http_test/smoke-operations.sh` (52 assertions) was built to answer one question: what is wrong with
+the write paths shipped on 2026-08-11 and 2026-08-13 that nothing has ever executed? `run-api-tests.sh`
+reaches all of them, with `GET` only. The first run failed 11 of 52, in three distinct ways:
+
+| Finding | Domain | Shape |
+|---|---|---|
+| `PUT`/`DELETE` 500: `column "updated_at" does not exist` | booking sources ([14](14-channel-distribution.md)) | The table is missing two audit columns AGENTS.md requires and every sibling table has |
+| Duplicate code → 500 instead of 409 | booking sources, market segments, promo codes | No service caught `23505`, on the most likely operator mistake there is |
+| `POST` 400 `closed_at Required` *after* the insert committed | incidents ([06](06-incidents.md)) | `toIsoString` answers `undefined`; the schema says `.nullable()` |
+
+All fixed; 52/52 now, and `smoke-events.sh` still 133/133.
+
+**And one finding bigger than the suite.** Before any of the above was reachable, lost & found and
+incidents answered **403 `TENANT_MODULE_NOT_ENABLED`** for every call. The auth gate reads
+`tenants.config -> 'modules'`, and the demo tenant seed has no `modules` key — so a freshly seeded
+database grants `core` alone and every route gated on `facility-maintenance`, `finance-automation`,
+`revenue-management`, `loyalty` or `distribution` is dark. `seed-default-data.mjs` meanwhile populated
+a *different* column (`user_tenant_associations.modules`) with three ids that are not `MODULE_IDS`
+entries. Both fixed.
+
+The reason this survives is recorded in [06](06-incidents.md) and worth repeating here: **the E2E
+sweep scores `403 TENANT_MODULE_NOT_ENABLED` as a skip.** A whole domain can be switched off and every
+suite stays green.
 
 **Two commands nobody could have run — measured 2026-08-19.**
 

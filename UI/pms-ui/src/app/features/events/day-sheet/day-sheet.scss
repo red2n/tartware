@@ -1,0 +1,79 @@
+/* Banquet day sheet — ui-gaps/13-sales-catering.md item 5.
+ *
+ * Only what this screen adds. The card, its header ribbon, the label/value
+ * rows, the stack, the toolbar, the tag list, the empty and skeleton states and
+ * the print scaffolding are all existing shared patterns and are used as they
+ * are — see UI/AGENTS.md. What is left here is the sheet's own shape: the
+ * three-up columns a printed page reads best in, the big time-and-covers
+ * readout, and the dietary block that must not be missed.
+ */
+
+/* Timeline / room / contact side by side on screen and on A4, collapsing to one
+ * column on a narrow viewport. `.form-grid` is a fixed two-column form layout,
+ * which is a different thing. */
+.sheet-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--base-size-16);
+  margin-bottom: var(--base-size-12);
+}
+
+/* The three things read from across a kitchen pass. */
+.sheet-when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.sheet-time {
+  font-size: var(--base-text-size-lg);
+  font-weight: var(--base-text-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-covers {
+  font-weight: var(--base-text-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-date {
+  font-size: var(--base-text-size-lg);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.sheet-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  flex-wrap: wrap;
+  margin-top: var(--base-size-4);
+}
+
+.sheet-course-title {
+  margin: 0 0 var(--base-size-4);
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+}
+
+.sheet-course-list {
+  margin: 0;
+  padding-inline-start: var(--base-size-16);
+}
+
+/* Dietary counts and allergies: the one block a chef must not skim past. */
+.sheet-alert {
+  background: var(--bgColor-attention-muted);
+  border: var(--borderWidth-thin) solid var(--borderColor-attention-muted);
+  border-radius: var(--borderRadius-small);
+  padding: var(--base-size-12);
+  margin-bottom: var(--base-size-12);
+}
+
+@media print {
+  /* An action row with nothing recorded in it is a blank third of a card. The
+     recorded steps stay — they are what happened. */
+  .sheet-steps:not(:has(.badge)) {
+    display: none;
+  }
+}

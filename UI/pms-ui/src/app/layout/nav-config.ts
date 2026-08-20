@@ -210,6 +210,13 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				description: "Meeting rooms by day — who holds which space, and what is still free",
 			},
 			{
+				label: "Day sheet",
+				icon: "print",
+				route: "/events/day-sheet",
+				screenKey: "events",
+				description: "Every function on one day — the sheet the kitchen and the captain work from",
+			},
+			{
 				label: "Meeting rooms",
 				icon: "meeting_room",
 				route: "/events/meeting-rooms",

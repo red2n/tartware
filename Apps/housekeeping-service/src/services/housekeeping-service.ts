@@ -465,7 +465,14 @@ const mapIncidentReportDetailRow = (row: IncidentReportDetailRow): IncidentRepor
     corrective_actions: row.corrective_actions,
     follow_up_required: row.follow_up_required,
     follow_up_actions: row.follow_up_actions,
-    closed_at: toIsoString(row.closed_at),
+    // `toIsoString` answers `undefined` for a null column while the schema
+    // declares `closed_at` as `.nullable()` — which accepts null, not undefined
+    // — so every incident that had not been closed failed its own response
+    // parse with "closed_at Required", *after* the insert had committed. An open
+    // incident has a known absence of a closing time, not a missing field. Same
+    // slip as `cancellation_date` in booking-config/event.ts; found by
+    // http_test/smoke-operations.sh, 2026-08-19.
+    closed_at: toIsoString(row.closed_at) ?? null,
     closure_notes: row.closure_notes,
   });
 };

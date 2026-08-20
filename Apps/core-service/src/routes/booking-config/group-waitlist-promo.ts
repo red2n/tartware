@@ -13,7 +13,7 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { ReferenceCodeConflictError } from "../../services/booking-config/common.js";
 import {
   createPromotionalCode,
   deletePromotionalCode,
@@ -509,18 +509,28 @@ export const registerGroupWaitlistPromoRoutes = (app: FastifyInstance): void => 
     },
     async (request, reply) => {
       const body = PromotionalCodeWriteBodySchema.parse(request.body);
-      const created = await createPromotionalCode(
-        body.tenant_id,
-        {
-          ...toPromoInput(body as PromotionalCodeUpdateBody),
-          promoCode: body.promo_code,
-          promoName: body.promo_name,
-          validFrom: body.valid_from,
-          validTo: body.valid_to,
-          propertyId: body.property_id,
-        },
-        (request as { userId?: string }).userId,
-      );
+      let created: Awaited<ReturnType<typeof createPromotionalCode>>;
+      try {
+        created = await createPromotionalCode(
+          body.tenant_id,
+          {
+            ...toPromoInput(body as PromotionalCodeUpdateBody),
+            promoCode: body.promo_code,
+            promoName: body.promo_name,
+            validFrom: body.valid_from,
+            validTo: body.valid_to,
+            propertyId: body.property_id,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        // The route description already promises codes are "unique per tenant";
+        // this is what makes that a 409 rather than a 500.
+        if (error instanceof ReferenceCodeConflictError) {
+          return reply.conflict(error.message);
+        }
+        throw error;
+      }
 
       if (!created) {
         return reply.internalServerError("Failed to create promotional code");

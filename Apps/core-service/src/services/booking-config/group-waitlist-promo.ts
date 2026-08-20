@@ -34,7 +34,13 @@ import {
   WAITLIST_ENTRY_LIST_SQL,
 } from "../../sql/booking-config/group-waitlist-promo.js";
 
-import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
+import {
+  formatDisplayLabel,
+  isUniqueViolationOn,
+  ReferenceCodeConflictError,
+  toIsoString,
+  toNumber,
+} from "./common.js";
 
 // =====================================================
 // WAITLIST ENTRY SERVICE
@@ -343,8 +349,13 @@ export const createPromotionalCode = async (
   input: PromotionalCodeWriteInput,
   actorId?: string,
 ): Promise<PromotionalCodeListItem | null> => {
-  const { rows } = await query<{ promo_id: string }>(
-    `
+  // `uq_promotional_codes_tenant_code` is the constraint COV-16 added; a code an
+  // operator has already used is a 409, not a 500. Same handling as booking
+  // sources and market segments in booking-config/distribution.ts.
+  let rows: { promo_id: string }[];
+  try {
+    ({ rows } = await query<{ promo_id: string }>(
+      `
       INSERT INTO public.promotional_codes (
         tenant_id, property_id,
         promo_code, promo_name, promo_description,
@@ -370,36 +381,44 @@ export const createPromotionalCode = async (
       )
       RETURNING promo_id
     `,
-    [
-      tenantId,
-      input.propertyId ?? null,
-      input.promoCode,
-      input.promoName,
-      input.promoDescription ?? null,
-      input.promoType ?? null,
-      input.promoStatus ?? null,
-      input.isActive ?? null,
-      input.isPublic ?? null,
-      input.validFrom,
-      input.validTo,
-      input.discountType ?? null,
-      input.discountPercent ?? null,
-      input.discountAmount ?? null,
-      input.discountCurrency ?? null,
-      input.maxDiscountAmount ?? null,
-      input.freeNightsCount ?? null,
-      input.hasUsageLimit ?? null,
-      input.totalUsageLimit ?? null,
-      input.perUserLimit ?? null,
-      input.minimumStayNights ?? null,
-      input.maximumStayNights ?? null,
-      input.minimumBookingAmount ?? null,
-      input.combinableWithOtherPromos ?? null,
-      input.autoApply ?? null,
-      input.displayOnWebsite ?? null,
-      actorId ?? null,
-    ],
-  );
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.promoCode,
+        input.promoName,
+        input.promoDescription ?? null,
+        input.promoType ?? null,
+        input.promoStatus ?? null,
+        input.isActive ?? null,
+        input.isPublic ?? null,
+        input.validFrom,
+        input.validTo,
+        input.discountType ?? null,
+        input.discountPercent ?? null,
+        input.discountAmount ?? null,
+        input.discountCurrency ?? null,
+        input.maxDiscountAmount ?? null,
+        input.freeNightsCount ?? null,
+        input.hasUsageLimit ?? null,
+        input.totalUsageLimit ?? null,
+        input.perUserLimit ?? null,
+        input.minimumStayNights ?? null,
+        input.maximumStayNights ?? null,
+        input.minimumBookingAmount ?? null,
+        input.combinableWithOtherPromos ?? null,
+        input.autoApply ?? null,
+        input.displayOnWebsite ?? null,
+        actorId ?? null,
+      ],
+    ));
+  } catch (error) {
+    if (isUniqueViolationOn(error, "uq_promotional_codes_tenant_code")) {
+      throw new ReferenceCodeConflictError(
+        `Promotional code ${input.promoCode} already exists for this tenant`,
+      );
+    }
+    throw error;
+  }
 
   const promoId = rows[0]?.promo_id;
   if (!promoId) return null;

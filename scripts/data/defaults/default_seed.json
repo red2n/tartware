@@ -11,6 +11,18 @@
       "website": "https://hospitality.tartware.demo",
       "country": "US",
       "config": {
+        "modules": [
+          "core",
+          "finance-automation",
+          "tenant-owner-portal",
+          "facility-maintenance",
+          "analytics-bi",
+          "marketing-channel",
+          "enterprise-api",
+          "revenue-management",
+          "loyalty",
+          "distribution"
+        ],
         "brandingEnabled": true,
         "enableMultiProperty": true,
         "enableChannelManager": true,
@@ -100,12 +112,17 @@
       "passwordHash": "$2a$10$erzSav5dzulZWAtge.vtmexT.PryHC4S7.Fd2jzxI8R1Kg3biyrwq",
       "role": "SYSTEM_ADMIN",
       "mfaEnabled": false,
-      "ipWhitelist": ["127.0.0.1/32", "::1/128"],
+      "ipWhitelist": [
+        "127.0.0.1/32",
+        "::1/128"
+      ],
       "isActive": true,
       "metadata": {
         "seed": "industry_defaults",
-        "trusted_devices": ["*"],
-        "instructions": "Dev-only system admin — rotate password and restrict IP/device in production"
+        "trusted_devices": [
+          "*"
+        ],
+        "instructions": "Dev-only system admin \u2014 rotate password and restrict IP/device in production"
       }
     }
   ],
@@ -141,7 +158,7 @@
       "metadata": {
         "seed": "industry_defaults",
         "oneTimeLogin": true,
-        "instructions": "Platform system administrator — also in system_administrators table"
+        "instructions": "Platform system administrator \u2014 also in system_administrators table"
       }
     }
   ],
@@ -157,7 +174,13 @@
         "canAccessAll": true,
         "restrictions": {}
       },
-      "modules": ["core", "reservations", "housekeeping", "billing", "finance-automation"],
+      "modules": [
+        "core",
+        "reservations",
+        "housekeeping",
+        "billing",
+        "finance-automation"
+      ],
       "metadata": {
         "seed": "industry_defaults",
         "description": "Bootstrap owner access"
@@ -174,7 +197,13 @@
         "canAccessAll": true,
         "restrictions": {}
       },
-      "modules": ["core", "reservations", "housekeeping", "billing", "finance-automation"],
+      "modules": [
+        "core",
+        "reservations",
+        "housekeeping",
+        "billing",
+        "finance-automation"
+      ],
       "metadata": {
         "seed": "industry_defaults",
         "description": "System admin tenant access for UI login"

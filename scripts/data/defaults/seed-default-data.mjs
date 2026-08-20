@@ -223,7 +223,25 @@ const upsertUserTenantAssociations = async (client, associations = []) => {
         association.tenantId,
         association.role ?? "OWNER",
         jsonb(association.permissions),
-        jsonb(association.modules ?? ["core", "reservations", "housekeeping", "billing", "finance-automation"]),
+        // MODULE_IDS from @tartware/schemas. The previous default named
+        // "reservations", "housekeeping" and "billing", none of which are module
+        // ids — so a seeded association carried three entitlements that match
+        // nothing. Note this column is *not* what the auth gate reads: that is
+        // `tenants.config -> 'modules'`, seeded in default_seed.json.
+        jsonb(
+          association.modules ?? [
+            "core",
+            "finance-automation",
+            "tenant-owner-portal",
+            "facility-maintenance",
+            "analytics-bi",
+            "marketing-channel",
+            "enterprise-api",
+            "revenue-management",
+            "loyalty",
+            "distribution",
+          ],
+        ),
         jsonb(association.metadata),
         seedActorId,
       ],

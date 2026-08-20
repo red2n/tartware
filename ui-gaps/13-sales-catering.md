@@ -415,10 +415,16 @@ taking over the 400 case.
 Playwright browser starts on this box (`libnspr4.so`, `libnss3.so`, `libasound.so.2` missing, no sudo
 for `npx playwright install-deps`). `ng build` and the 97 contrast pairings are clean.
 
+> **Superseded 2026-08-19 by item 5's slice:** this box *can* run a browser.
+> `UI/.claude/skills/run-tartware-ui` documents the way round the missing libs —
+> `apt-get download` them as a normal user, unpack into `/tmp`, export
+> `LD_LIBRARY_PATH`. No sudo, nothing installed system-wide. `midnight.spec.ts` is
+> therefore runnable and has still never been run.
+
 **What is still not representable:** an event lasting 24 hours or more, since `end_time = start_time`
 is the one window the convention cannot disambiguate and remains a 400.
 
-**Still open in this module:** item 5 (daily BEO print / kitchen view).
+**Item 5 closed 2026-08-19 — see below. This module's UI list is complete.**
 
 
 ### ✅ UI item 6 — event billing: shipped 2026-08-19
@@ -496,8 +502,10 @@ falls on the discounted base, the balance settles at the derived total, `actual_
 a second post adds nothing, and an unpriced event posts nothing at all. GL pairs were checked directly:
 every event line lands on its new account, and the discount books DR 5300 / CR 1100.
 
-**Not verified in a browser.** `ng build`, the full `pnpm run build` and the gateway/catalog conformance
-suites are green; no Playwright browser starts on this box (unchanged from the midnight slice).
+**Not verified in a browser** at the time of writing — `ng build`, the full `pnpm run build` and the
+gateway/catalog conformance suites were green, and no Playwright browser was believed to start on this
+box. That belief was wrong: see item 5 below, where the skill's recipe made browser verification work.
+The Charges card has still not been driven in a browser.
 
 **What this slice does not do:** deposits and payments (`deposit_paid` is untouched — taking money is
 `billing.payment.*` against the folio this now opens); re-pricing after the charges are posted (edit
@@ -505,6 +513,97 @@ the booking and the folio does not follow — further money goes on the folio as
 surfacing a command failure to the operator, which no command-backed screen in this product does — the
 button is hidden once `charges_posted_at` is set, so the double-post case is prevented at the screen
 rather than reported from the bus.
+
+
+### ✅ UI item 5 — daily BEO / kitchen view: shipped 2026-08-19
+
+The last item on this spec's UI list, and the one the operation actually uses.
+
+**`GET /v1/banquet-orders/day-sheet`** — one property, one date, full BEO detail
+for every function, ordered by the time each room is first *touched* rather than by
+event start, because the sheet is read top to bottom as the day happens and setup
+comes first. It returns detail rather than list rows on purpose: a day sheet is read
+*instead of* opening each BEO, so the menu, the dietary counts and the departmental
+instructions have to be on it, and fetching those one BEO at a time is the N+1 the
+endpoint exists to avoid.
+
+- **Superseded revisions are excluded, drafts are not.** A revised version is
+  paperwork the kitchen has already replaced; printing both is how the wrong menu
+  reaches the pass. An *unpublished* BEO is the opposite case — a function whose
+  paperwork has not been issued is exactly what a morning meeting is for, so it
+  stays on the sheet, is marked "Not issued to the departments", and is counted in
+  the meta.
+- **`property_id` is required** where the list makes it optional: a day sheet is one
+  property's day, and `idx_beo_event_date` leads with `property_id`, so an optional
+  filter would have made the common call the one that cannot use the index.
+- **The 141-column detail SELECT is now shared** between the by-id read and the day
+  sheet rather than copied. A second hand-maintained copy would stop carrying any
+  column added later — the same reasoning that made the revise path copy rows with
+  `to_jsonb`.
+- **The BEO detail gained the booking it details** (`event_name`,
+  `event_organizer_name`, `event_contact_person`, `event_contact_phone`, joined from
+  `event_bookings`). A day sheet that cannot say "Smith Wedding" is a list of room
+  numbers, and the phone number is who the operation calls when something is wrong on
+  the day. The BEO editor gets the same context for free.
+
+**`POST /v1/banquet-orders/:beoId/execution`** — the write half, and the loose end
+slice 3 left deliberately: `setup_completed`, `event_started`, `event_ended` and
+`teardown_completed` were settable on a draft with no route to move them, recorded
+there as belonging with the kitchen view rather than as a fifth paperwork endpoint.
+
+Three rules, each an operational statement rather than a defensive check: a **draft
+is not recorded against** (the crew works from the published document), a
+**superseded version is not recorded against** (its replacement is what is out
+there), and **the day runs in one direction** (an end with no start is a mis-tap).
+`SETUP_COMPLETE` alone has no prerequisite — dressing the room is the first thing
+that happens to it. `EVENT_START` moves the BEO to `IN_PROGRESS`; `TEARDOWN_COMPLETE`
+completes it. **`EVENT_END` deliberately does not**: a sheet reading COMPLETED while
+a crew is still clearing the room is wrong.
+
+**UI:** `/events/day-sheet`, in the Events nav between the calendar and meeting-room
+admin, screen key `events`. A date stepper, a print button, and one card per
+function carrying the timeline, room and setup, contact, menu, dietary block,
+beverage/equipment/AV and the departmental instructions. The four execution steps are
+the card's footer, offered one at a time from the same prerequisite map the service
+enforces — so, as with the booking lifecycle buttons, the screen cannot offer a move
+that would 409.
+
+**This is the app's first printable screen.** The generic half of that — `.no-print`,
+hiding the shell chrome, letting the scroll container run to full document height,
+`.print-block` — went into `styles/shared.scss` because any screen that later grows a
+Print button needs exactly those four things. Colour is deliberately *not* forced to
+black: the tokens already resolve light in print, and flattening them would kill the
+one place a status badge earns its colour.
+
+#### Verified
+
+**`http_test/smoke-events.sh`, 133 assertions green** — 28 new: the sheet's counts and
+totals, a superseded version absent while its replacement is present, the menu and
+dietary counts arriving as detail, the booking named, an empty date reporting zero
+rather than failing, and the whole execution sequence including every refusal
+(end-before-start, a repeated step, teardown before the end, a draft, a completed BEO,
+an unknown id).
+
+**Driven in a real browser this time, not just built.** The previous slice recorded
+that no Playwright browser starts on this box; `UI/.claude/skills/run-tartware-ui`
+documents the way round it (fetch the four missing libs as a normal user, point
+`LD_LIBRARY_PATH` at them), and it works. Light and dark both render from tokens with
+no raw colour, print emulation drops the chrome and the buttons while keeping the
+recorded steps, and clicking *Setup complete* on the one BEO eligible for it recorded
+the step, cleared the button and left the badge — with the draft and completed BEOs on
+the same sheet correctly offering nothing.
+
+Two things the screenshots caught that no test would have: the card header printed the
+BEO number twice whenever the booking had no name (the title falls back to it), and
+`menu_type` / `service_style` frequently hold the same value, so the contact column
+read "Plated · Plated".
+
+**A note on the environment:** the dev database was reset by another process partway
+through this slice. Everything this module has added to the canonical `scripts/tables`
+files came back from a clean setup — the event charge codes, the four GL accounts,
+both `billing.event.*` catalog rows, `charges_posted_at` — which is a stronger check
+of those seeds than the manual inserts that first applied them, and the 133-assertion
+suite passes end to end on a freshly seeded database.
 
 
 ## Current State (Backend ⚠️ read-only → UI ❌)
@@ -583,7 +682,11 @@ whole module and must be made **before** the UI, not after. Also confirm F&B rev
    ✅ **shipped 2026-08-19** — `/events/beos/:beoId`, reached from the booking.
 4. **Meeting room admin** — settings-style CRUD.
 5. **Daily BEO print / kitchen view** — what the operation actually uses each morning.
+   ✅ **shipped 2026-08-19** — `/events/day-sheet`, over a new `GET
+   /v1/banquet-orders/day-sheet`, plus `POST …/:beoId/execution` for the four steps
+   the day is recorded in.
 6. **Event billing** — charges to the folio chosen in step 2.
+   ✅ **shipped 2026-08-19** — `billing.event.setup` and `billing.event.post_charges`.
 
 Ship 1 + 2 + 4 first; a BEO editor without bookings to attach to is unusable.
 

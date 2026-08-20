@@ -75,6 +75,30 @@
 >
 > **Still not exercised against a live stack.**
 
+### ⚠️ Smoke test 2026-08-19: the write path was broken again, differently
+
+`http_test/smoke-operations.sh` covers this domain's create → update → status
+sequence for the first time. Two things it found:
+
+**1. Every `POST /v1/incidents` returned 400 `closed_at Required`** — after the
+insert had committed. The mapper feeds `closed_at` from `toIsoString`, which
+answers `undefined` for a null column, while `IncidentReportDetailSchema`
+declares it `.nullable()` — nullable accepts null, not undefined. So an incident
+that has never been closed failed its own *response* parse. An open incident has
+a known absence of a closing time, not a missing field; the mapper now sends an
+explicit null. Exactly the slip `cancellation_date` made in
+booking-config/event.ts, and the same shape as slice 2's response-schema 500 in
+[13-sales-catering.md](13-sales-catering.md): the row exists, the caller sees a
+failure.
+
+**2. Before that, every call 403ed** — `TENANT_MODULE_NOT_ENABLED` for
+`facility-maintenance`. Not a regression of the module-id bug this spec fixed:
+the *seed* never grants the demo tenant any module. See
+[14-channel-distribution.md](14-channel-distribution.md) for the detail; it is a
+platform-wide finding, not an incidents one. Note the shape of it — this spec
+already recorded that `api_smoke` scores a 403 as a skip, so a whole domain can
+be dark on a fresh database with every suite green.
+
 ## Current State (Backend ⚠️ read-only → UI ❌)
 
 `Apps/housekeeping-service/src/routes/incidents.ts`:

@@ -151,6 +151,17 @@ export const routes: Routes = [
 					),
 			},
 			{
+				// The day sheet — item 5 of ui-gaps/13-sales-catering.md. Screen key
+				// `events` like the calendar: reading the day is STAFF work, and the
+				// four execution steps it records are the operation's own, not
+				// inventory administration.
+				path: "events/day-sheet",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/day-sheet/day-sheet").then((m) => m.DaySheetComponent),
+			},
+			{
 				path: "events/meeting-rooms",
 				canActivate: [propertyGuard, screenGuard("meeting-rooms")],
 				data: { screen: "meeting-rooms" },

@@ -349,6 +349,78 @@ code=$(req GET "$GW/v1/banquet-orders/$(uuid)?tenant_id=$TID")
 check "unknown beo_id → not found" 404 "$code"
 
 echo
+echo "── DAY SHEET AND EXECUTION (UI item 5) ──"
+# The sheet the operation prints each morning, and the four steps it records
+# back. Everything on $D1 was created by this run, so the counts are known.
+
+code=$(req GET "$GW/v1/banquet-orders/day-sheet?tenant_id=$TID&property_id=$PID&event_date=$D1")
+check "GET /v1/banquet-orders/day-sheet" 200 "$code"
+SHEET_COUNT=$(jq -r '.meta.count // 0' "$RESP")
+check "  the day is not empty" 1 "$([[ "$SHEET_COUNT" -gt 0 ]] && echo 1 || echo 0)"
+check "  totals guaranteed covers across the day" 1 \
+  "$(jq -r 'if (.meta.guaranteed_total // 0) > 0 then 1 else 0 end' "$RESP")"
+check "  counts what is not published yet" 1 \
+  "$(jq -r 'if (.meta.unpublished_count // -1) >= 0 then 1 else 0 end' "$RESP")"
+# The revision chain: v1 was revised, so only v2 belongs on the sheet. Printing
+# both is how the wrong menu reaches the pass.
+check "  superseded version excluded" 0 \
+  "$(jq -r --arg id "$BEO_V1" '[.data[] | select(.beo_id == $id)] | length' "$RESP")"
+check "  current version present" 1 \
+  "$(jq -r --arg id "$BEO_V2" '[.data[] | select(.beo_id == $id)] | length' "$RESP")"
+# Detail, not list rows — the sheet is read instead of opening each BEO.
+check "  carries the menu" "Chicken roulade" \
+  "$(jq -r --arg id "$BEO_V2" '.data[] | select(.beo_id == $id) | .entrees[0].name // "null"' "$RESP")"
+check "  carries the dietary counts" 12 \
+  "$(jq -r --arg id "$BEO_V2" '.data[] | select(.beo_id == $id) | .vegetarian_count // "null"' "$RESP")"
+check "  names the booking it details" "Smoke Event A" \
+  "$(jq -r --arg id "$BEO_V2" '.data[] | select(.beo_id == $id) | .event_name // "null"' "$RESP")"
+
+code=$(req GET "$GW/v1/banquet-orders/day-sheet?tenant_id=$TID&property_id=$PID&event_date=$D5")
+check "day sheet for an empty date" 200 "$code"
+check "  reports nothing rather than failing" 0 "$(jq -r '.meta.count // -1' "$RESP")"
+
+# Execution — one step at a time, in the order a day happens.
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"EVENT_END\"}")
+check "ending an event that never started → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"SETUP_COMPLETE\"}")
+check "POST …/:beoId/execution SETUP_COMPLETE" 200 "$code"
+check "  flag set" true "$(jq -r '.data.setup_completed' "$RESP")"
+check "  stamped" 1 "$(jq -r 'if .data.setup_completed_time then 1 else 0 end' "$RESP")"
+check "  status unchanged by setup" APPROVED "$(jq -r '.data.beo_status' "$RESP")"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"SETUP_COMPLETE\"}")
+check "recording the same step twice → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"EVENT_START\"}")
+check "EVENT_START" 200 "$code"
+check "  moves to IN_PROGRESS" IN_PROGRESS "$(jq -r '.data.beo_status' "$RESP")"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"TEARDOWN_COMPLETE\"}")
+check "clearing down before the event ends → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"EVENT_END\"}")
+check "EVENT_END" 200 "$code"
+check "  still IN_PROGRESS until the room is cleared" IN_PROGRESS "$(jq -r '.data.beo_status' "$RESP")"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"TEARDOWN_COMPLETE\"}")
+check "TEARDOWN_COMPLETE" 200 "$code"
+check "  completes the BEO" COMPLETED "$(jq -r '.data.beo_status' "$RESP")"
+
+code=$(req POST "$GW/v1/banquet-orders/$BEO_V2/execution" "{\"tenant_id\":\"$TID\",\"step\":\"SETUP_COMPLETE\"}")
+check "recording against a finished BEO → conflict" 409 "$code"
+
+# A draft has not reached the crew, so there is nothing to record against it.
+code=$(req POST "$GW/v1/banquet-orders" "$(mk_beo '"beo_number":"SMOKE-EXEC-'"$SUFFIX"'"')")
+check "POST a draft BEO for the execution guard" 201 "$code"
+BEO_DRAFT=$(jq -r '.data.beo_id // empty' "$RESP")
+code=$(req POST "$GW/v1/banquet-orders/$BEO_DRAFT/execution" "{\"tenant_id\":\"$TID\",\"step\":\"SETUP_COMPLETE\"}")
+check "recording against a draft → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/banquet-orders/$(uuid)/execution" "{\"tenant_id\":\"$TID\",\"step\":\"SETUP_COMPLETE\"}")
+check "unknown beo_id → not found" 404 "$code"
+
+echo
 echo "── EVENT BILLING (UI item 6) ──"
 # Cross-service, so these are commands rather than HTTP routes: the booking is
 # core-service's and the folio is billing-service's. Dispatch answers 202 and the

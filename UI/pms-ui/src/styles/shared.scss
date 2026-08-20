@@ -297,6 +297,14 @@
   color: var(--fgColor-danger);
 }
 
+/* The missing sibling of .text-success / .text-danger — a caption that needs to
+   be noticed without being an error, e.g. a BEO on the day sheet that has not
+   been issued to the departments yet. The pairing against --bgColor-default is
+   already in check-contrast's PAIRS list. */
+.text-attention {
+  color: var(--fgColor-attention);
+}
+
 .text-xs {
   font-size: var(--base-text-size-xs);
 }
@@ -3242,4 +3250,55 @@ $tl-colors: (
 /* The leading identifier — a BEO number, a version label. */
 .record-row-label {
   font-weight: var(--base-text-weight-semibold);
+}
+
+/* ── Printing ───────────────────────────────────────────────────────────────
+   The app's first printable screen is the banquet day sheet (ui-gaps/13 item
+   5), which is carried around the kitchen on paper. What is generic lives here
+   because any screen that later grows a Print button needs the same three
+   things: the app chrome gone, the content unconstrained by the scroll
+   container, and a way to mark controls that are not part of the document.
+
+   Colour is deliberately *not* forced to black here — the tokens already
+   resolve to a light palette in print (browsers print the light theme unless
+   the page says otherwise) and overriding them would break the one place a
+   status badge earns its colour. */
+
+.no-print {
+  @media print {
+    display: none !important;
+  }
+}
+
+@media print {
+  .shell {
+    display: block;
+  }
+
+  app-topbar,
+  app-sidebar,
+  app-sub-sidebar,
+  .topbar-placeholder,
+  .sidebar-placeholder,
+  .skip-link {
+    display: none !important;
+  }
+
+  /* The content area is a scroll container on screen; on paper it must be
+     allowed to run to whatever length the document is. */
+  .shell-body,
+  .content-area {
+    display: block;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Keep a card whole across a page break where the printer can manage it. */
+  .print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

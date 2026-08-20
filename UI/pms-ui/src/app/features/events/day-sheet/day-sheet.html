@@ -1,0 +1,301 @@
+<app-page-header
+  [title]="'Banquet day sheet' | translate"
+  [description]="'Every function on one day — the timeline, the covers, the menu and who to call' | translate">
+  <div class="toolbar-center no-print">
+    <button class="btn btn-outline btn-sm" (click)="shiftDay(-1)" [attr.aria-label]="'Previous day' | translate">
+      <app-icon name="chevron_left" />
+    </button>
+    <input class="field-input date-nav-input" type="date" [ngModel]="eventDate()"
+           (ngModelChange)="eventDate.set($event)" [attr.aria-label]="'Sheet date' | translate" />
+    <button class="btn btn-outline btn-sm" (click)="shiftDay(1)" [attr.aria-label]="'Next day' | translate">
+      <app-icon name="chevron_right" />
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="today()">{{ 'Today' | translate }}</button>
+    <button class="btn btn-primary btn-sm" (click)="print()">
+      <app-icon name="print" /> {{ 'Print' | translate }}
+    </button>
+  </div>
+</app-page-header>
+
+<!-- The page header does not print, so the date and the day's totals are
+     restated on the sheet itself. -->
+<div class="status-strip">
+  <span class="sheet-date">{{ eventDate() | date: 'EEEE d MMMM y' }}</span>
+  <span class="text-muted">{{ orders().length }} {{ (orders().length === 1 ? 'function' : 'functions') | translate }}</span>
+  <span class="sheet-covers">{{ guaranteedTotal() }} {{ 'covers guaranteed' | translate }}</span>
+  @if (unpublishedCount() > 0) {
+    <span class="badge badge-warning">
+      {{ unpublishedCount() }} {{ 'BEO(s) not yet published' | translate }}
+    </span>
+  }
+</div>
+
+@if (loading()) {
+  <div class="skeleton-stack" aria-busy="true" [attr.aria-label]="'Loading day sheet' | translate">
+    @for (r of skeletonRows; track $index) {
+      <span class="skeleton skeleton-block"></span>
+    }
+  </div>
+} @else if (isEmpty()) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="event_available" />
+    <h3>{{ 'Nothing booked' | translate }}</h3>
+    <p class="text-muted">{{ 'No banquet event orders for this date. A function with no BEO raised will not appear here — check the function space calendar.' | translate }}</p>
+  </div>
+} @else {
+  <div class="detail-layout">
+    @for (order of orders(); track order.beo_id) {
+      <article class="detail-card print-block">
+
+        <div class="card-header card-header-flex">
+          <div>
+            <h3 class="card-title">{{ order.event_name ?? order.beo_number }}</h3>
+            <div class="sheet-card-meta">
+              <!-- The title falls back to the BEO number when the booking has no
+                   name; printing it again underneath just reads as a stutter. -->
+              @if (order.event_name) {
+                <span class="mono">{{ order.beo_number }}</span>
+              }
+              <span class="badge badge-muted badge-sm">v{{ order.beo_version ?? 1 }}</span>
+              <span [class]="statusClass(order.beo_status)">{{ order.beo_status_display }}</span>
+              @if (order.beo_status === 'DRAFT' || order.beo_status === 'PENDING_APPROVAL') {
+                <span class="text-attention text-xs">{{ 'Not issued to the departments' | translate }}</span>
+              }
+            </div>
+          </div>
+          <div class="sheet-when">
+            <span class="sheet-time">{{ shortTime(order.event_start_time) }} – {{ shortTime(order.event_end_time) }}</span>
+            <span class="text-muted">{{ order.meeting_room_name ?? '—' }}</span>
+            <span class="sheet-covers">{{ order.guaranteed_count }} {{ 'covers' | translate }}</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="sheet-columns">
+
+            <section>
+              <h4 class="form-section-title">{{ 'Timeline' | translate }}</h4>
+              <dl class="detail-list">
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Setup from' | translate }}</dt>
+                  <dd class="detail-value mono">{{ shortTime(order.setup_start_time) }}</dd>
+                </div>
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Doors' | translate }}</dt>
+                  <dd class="detail-value mono">{{ shortTime(order.event_start_time) }}</dd>
+                </div>
+                @if (order.meal_service_start_time) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Meal service' | translate }}</dt>
+                    <dd class="detail-value mono">{{ shortTime(order.meal_service_start_time) }}</dd>
+                  </div>
+                }
+                @if (order.bar_start_time) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Bar' | translate }}</dt>
+                    <dd class="detail-value mono">{{ shortTime(order.bar_start_time) }}@if (order.bar_end_time) { – {{ shortTime(order.bar_end_time) }} }</dd>
+                  </div>
+                }
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Ends' | translate }}</dt>
+                  <dd class="detail-value mono">{{ shortTime(order.event_end_time) }}</dd>
+                </div>
+                @if (order.teardown_end_time) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Cleared by' | translate }}</dt>
+                    <dd class="detail-value mono">{{ shortTime(order.teardown_end_time) }}</dd>
+                  </div>
+                }
+                @if (order.staff_arrival_time) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Staff on' | translate }}</dt>
+                    <dd class="detail-value mono">{{ shortTime(order.staff_arrival_time) }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
+            <section>
+              <h4 class="form-section-title">{{ 'Room and setup' | translate }}</h4>
+              <dl class="detail-list">
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Layout' | translate }}</dt>
+                  <dd class="detail-value">{{ order.room_setup_display }}</dd>
+                </div>
+                @if (order.tables_count || order.chairs_count) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Tables / chairs' | translate }}</dt>
+                    <dd class="detail-value">{{ order.tables_count ?? '—' }} / {{ order.chairs_count ?? '—' }}</dd>
+                  </div>
+                }
+                @if (order.linen_color || order.napkin_color) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Linen' | translate }}</dt>
+                    <dd class="detail-value">{{ order.linen_color ?? '—' }}@if (order.napkin_color) { · {{ 'napkins' | translate }} {{ order.napkin_color }} }</dd>
+                  </div>
+                }
+                @if (order.centerpieces) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Centrepieces' | translate }}</dt>
+                    <dd class="detail-value">{{ order.centerpieces }}</dd>
+                  </div>
+                }
+                @if (order.stage_required || order.dance_floor_required || order.podium_required) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Also' | translate }}</dt>
+                    <dd class="detail-value">
+                      @if (order.stage_required) { {{ 'Stage' | translate }} }
+                      @if (order.dance_floor_required) { · {{ 'Dance floor' | translate }} }
+                      @if (order.podium_required) { · {{ 'Podium' | translate }} }
+                    </dd>
+                  </div>
+                }
+                @if (staffingFor(order)) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Staffing' | translate }}</dt>
+                    <dd class="detail-value">{{ staffingFor(order) }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
+            <section>
+              <h4 class="form-section-title">{{ 'Contact' | translate }}</h4>
+              <dl class="detail-list">
+                @if (order.event_organizer_name) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Organizer' | translate }}</dt>
+                    <dd class="detail-value">{{ order.event_organizer_name }}</dd>
+                  </div>
+                }
+                @if (order.event_contact_person) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'On the day' | translate }}</dt>
+                    <dd class="detail-value">{{ order.event_contact_person }}</dd>
+                  </div>
+                }
+                @if (order.event_contact_phone) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Phone' | translate }}</dt>
+                    <dd class="detail-value mono">{{ order.event_contact_phone }}</dd>
+                  </div>
+                }
+                <div class="detail-row">
+                  <dt class="detail-label">{{ 'Expected / actual' | translate }}</dt>
+                  <dd class="detail-value">{{ order.expected_count ?? '—' }} / {{ order.actual_count ?? '—' }}</dd>
+                </div>
+                @if (order.menu_type || order.service_style) {
+                  <div class="detail-row">
+                    <dt class="detail-label">{{ 'Service' | translate }}</dt>
+                    <dd class="detail-value">{{ serviceLabel(order) }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+          </div>
+
+          @if (hasFood(order)) {
+            <section>
+              <h4 class="form-section-title">{{ 'Menu' | translate }}</h4>
+              <div class="sheet-columns">
+                @for (block of foodBlocks; track block.key) {
+                  @if (linesFor(order, block.key).length > 0) {
+                    <div>
+                      <h5 class="sheet-course-title">{{ block.label | translate }}</h5>
+                      <ul class="sheet-course-list">
+                        @for (line of linesFor(order, block.key); track $index) {
+                          <li>
+                            {{ line.name }}
+                            @if (line.quantity) { <span class="text-muted">× {{ line.quantity }}</span> }
+                            @if (line.description) { <span class="cell-sub">{{ line.description }}</span> }
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                }
+              </div>
+            </section>
+          }
+
+          @if (dietaryFor(order).length > 0 || order.allergy_warnings) {
+            <section class="sheet-alert">
+              <h4 class="form-section-title">{{ 'Dietary' | translate }}</h4>
+              <div class="tag-list">
+                @for (entry of dietaryFor(order); track entry.label) {
+                  <span class="badge badge-accent badge-sm">{{ entry.count }} {{ entry.label | translate }}</span>
+                }
+              </div>
+              @if (order.allergy_warnings) {
+                <p><strong>{{ 'Allergies' | translate }}:</strong> {{ order.allergy_warnings }}</p>
+              }
+            </section>
+          }
+
+          @if (hasService(order)) {
+            <section>
+              <h4 class="form-section-title">{{ 'Beverage, equipment and AV' | translate }}</h4>
+              <div class="sheet-columns">
+                @for (block of serviceBlocks; track block.key) {
+                  @if (linesFor(order, block.key).length > 0) {
+                    <div>
+                      <h5 class="sheet-course-title">{{ block.label | translate }}</h5>
+                      <ul class="sheet-course-list">
+                        @for (line of linesFor(order, block.key); track $index) {
+                          <li>
+                            {{ line.name }}
+                            @if (line.quantity) { <span class="text-muted">× {{ line.quantity }}</span> }
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                }
+              </div>
+            </section>
+          }
+
+          @if (order.kitchen_instructions || order.service_instructions || order.setup_instructions || order.audio_visual_instructions) {
+            <section>
+              <h4 class="form-section-title">{{ 'Instructions' | translate }}</h4>
+              @if (order.kitchen_instructions) {
+                <p><strong>{{ 'Kitchen' | translate }}:</strong> {{ order.kitchen_instructions }}</p>
+              }
+              @if (order.service_instructions) {
+                <p><strong>{{ 'Service' | translate }}:</strong> {{ order.service_instructions }}</p>
+              }
+              @if (order.setup_instructions) {
+                <p><strong>{{ 'Setup' | translate }}:</strong> {{ order.setup_instructions }}</p>
+              }
+              @if (order.audio_visual_instructions) {
+                <p><strong>{{ 'AV' | translate }}:</strong> {{ order.audio_visual_instructions }}</p>
+              }
+            </section>
+          }
+
+          <!-- The day, recorded back. What has happened prints; the buttons do not. -->
+          <div class="confirm-actions sheet-steps">
+            @for (entry of stepsFor(order); track entry.step) {
+              @if (entry.done) {
+                <span class="badge badge-muted badge-sm">
+                  <app-icon name="check" /> {{ entry.label | translate }}
+                </span>
+              } @else if (entry.available) {
+                <button class="btn btn-outline btn-sm no-print" (click)="record(order, entry.step)"
+                        [disabled]="recordingBeoId() === order.beo_id">
+                  <app-icon [name]="entry.icon" /> {{ entry.label | translate }}
+                </button>
+              }
+            }
+            <button class="btn btn-ghost btn-sm no-print" (click)="openBeo(order.beo_id)">
+              {{ 'Open BEO' | translate }} <app-icon name="chevron_right" />
+            </button>
+            <button class="btn btn-ghost btn-sm no-print" (click)="openBooking(order.event_booking_id)">
+              {{ 'Booking' | translate }} <app-icon name="chevron_right" />
+            </button>
+          </div>
+        </div>
+      </article>
+    }
+  </div>
+}

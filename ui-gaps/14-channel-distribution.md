@@ -99,6 +99,50 @@
 > `psql -f scripts/tables/01-core/22_role_screen_permissions_seed.sql` (idempotent) before it appears
 > in the sidebar.
 
+### ⚠️ Smoke test 2026-08-19: two defects and a platform-wide seed gap
+
+`http_test/smoke-operations.sh` exercised the booking-source and market-segment
+write paths for the first time since they shipped on 2026-08-13.
+
+**1. `PUT` and `DELETE /v1/booking-sources/:sourceId` both returned 500:**
+`column "updated_at" of relation "booking_sources" does not exist`. The table
+carries `created_by`/`updated_by` but neither timestamp, where every sibling
+reference table (`market_segments`, `promotional_codes`) carries all four and
+AGENTS.md requires them. The write path's `SET updated_at = ...` therefore could
+not run at all. Fixed by adding the columns to the canonical DDL with an
+idempotent `ADD COLUMN IF NOT EXISTS` migration — the missing audit fields are
+the defect, not the statement that names them.
+
+**2. A duplicate code was a 500, on all three reference domains.**
+`booking_sources`, `market_segments` and `promotional_codes` each carry a UNIQUE
+constraint on their human-facing code and none of the three services caught
+`23505`, so the most likely operator mistake — typing a code that already exists
+— surfaced as a Postgres error string. The promo route's own OpenAPI description
+promises codes are "unique per tenant". `ReferenceCodeConflictError` +
+`isUniqueViolationOn` now live in `services/booking-config/common.ts`, lifted
+from the pattern `createMeetingRoom` already used, and all three creates answer
+409. Constraint names are matched exactly and were read from the database, not
+guessed: they are not named after their columns
+(`uk_booking_sources_code`, `uq_promotional_codes_tenant_code`).
+
+**3. The seed grants no modules, so half the product 403s on a fresh database.**
+The auth gate reads `tenants.config -> 'modules'`
+(`tenant-module-service.ts` calls it "the source of truth"), and
+`scripts/data/defaults/default_seed.json` had no `modules` key at all — so
+`COALESCE(t.config -> 'modules', '["core"]')` left the demo tenant with `core`
+only, and every route gated on `facility-maintenance`, `finance-automation`,
+`revenue-management`, `loyalty` or `distribution` answered 403. Meanwhile
+`seed-default-data.mjs` populated `user_tenant_associations.modules` — a
+different column, which that gate does not read — with a list naming
+`reservations`, `housekeeping` and `billing`, none of which are `MODULE_IDS`
+entries. Both are fixed: the demo tenant's config now carries the full
+`MODULE_IDS` list and the seeder's fallback matches it.
+
+This is the third time a module gate has hidden a working domain
+([06-incidents.md](06-incidents.md) was the first two), and the reason it keeps
+happening is in that spec: the E2E sweep scores `403 TENANT_MODULE_NOT_ENABLED`
+as a *skip*.
+
 ## Current State (Backend ⚠️ mostly read-only → UI ❌)
 
 Four related surfaces, none reachable from the UI. None of `ota-connection`, `channel-mapping`,

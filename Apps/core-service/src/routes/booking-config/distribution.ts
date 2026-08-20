@@ -18,7 +18,7 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { ReferenceCodeConflictError } from "../../services/booking-config/common.js";
 import {
   createBookingSource,
   createMarketSegment,
@@ -461,29 +461,38 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = BookingSourceWriteBodySchema.parse(request.body);
-      const created = await createBookingSource(
-        body.tenant_id,
-        {
-          sourceCode: body.source_code,
-          sourceName: body.source_name,
-          sourceType: body.source_type,
-          propertyId: body.property_id,
-          category: body.category,
-          subCategory: body.sub_category,
-          isActive: body.is_active,
-          isBookable: body.is_bookable,
-          channelName: body.channel_name,
-          channelWebsite: body.channel_website,
-          channelManager: body.channel_manager,
-          commissionType: body.commission_type,
-          commissionPercentage: body.commission_percentage,
-          commissionFixedAmount: body.commission_fixed_amount,
-          commissionNotes: body.commission_notes,
-          ranking: body.ranking,
-          isPreferred: body.is_preferred,
-        },
-        (request as { userId?: string }).userId,
-      );
+      let created: Awaited<ReturnType<typeof createBookingSource>>;
+      try {
+        created = await createBookingSource(
+          body.tenant_id,
+          {
+            sourceCode: body.source_code,
+            sourceName: body.source_name,
+            sourceType: body.source_type,
+            propertyId: body.property_id,
+            category: body.category,
+            subCategory: body.sub_category,
+            isActive: body.is_active,
+            isBookable: body.is_bookable,
+            channelName: body.channel_name,
+            channelWebsite: body.channel_website,
+            channelManager: body.channel_manager,
+            commissionType: body.commission_type,
+            commissionPercentage: body.commission_percentage,
+            commissionFixedAmount: body.commission_fixed_amount,
+            commissionNotes: body.commission_notes,
+            ranking: body.ranking,
+            isPreferred: body.is_preferred,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        // A code that is already taken is the operator's most likely mistake.
+        if (error instanceof ReferenceCodeConflictError) {
+          return reply.conflict(error.message);
+        }
+        throw error;
+      }
 
       if (!created) {
         return reply.internalServerError("Failed to create booking source");
@@ -581,20 +590,28 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = MarketSegmentWriteBodySchema.parse(request.body);
-      const created = await createMarketSegment(
-        body.tenant_id,
-        {
-          segmentCode: body.segment_code,
-          segmentName: body.segment_name,
-          segmentType: body.segment_type,
-          propertyId: body.property_id,
-          isActive: body.is_active,
-          isBookable: body.is_bookable,
-          parentSegmentId: body.parent_segment_id,
-          rateMultiplier: body.rate_multiplier,
-        },
-        (request as { userId?: string }).userId,
-      );
+      let created: Awaited<ReturnType<typeof createMarketSegment>>;
+      try {
+        created = await createMarketSegment(
+          body.tenant_id,
+          {
+            segmentCode: body.segment_code,
+            segmentName: body.segment_name,
+            segmentType: body.segment_type,
+            propertyId: body.property_id,
+            isActive: body.is_active,
+            isBookable: body.is_bookable,
+            parentSegmentId: body.parent_segment_id,
+            rateMultiplier: body.rate_multiplier,
+          },
+          (request as { userId?: string }).userId,
+        );
+      } catch (error) {
+        if (error instanceof ReferenceCodeConflictError) {
+          return reply.conflict(error.message);
+        }
+        throw error;
+      }
 
       if (!created) {
         return reply.internalServerError("Failed to create market segment");
