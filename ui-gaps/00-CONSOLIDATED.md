@@ -60,11 +60,11 @@ And two findings the audit did not make at all:
 |---|---|---|---|
 | UI calls hitting a missing route | 0 | 0 | confirmed |
 | Backend endpoints | 428 | 635 raw registrations | raw count includes gateway proxy pairs |
-| Commands total | 199 | **203** | `case` labels across 11 consumers (re-derived 2026-08-18) |
-| Commands reachable from the gateway | 75 | **83** | incl. ternary and wrapper-factory forms a `commandName:` regex misses |
+| Commands total | 199 | **199** | catalogued ∪ validated (re-derived 2026-08-20; `case` labels alone counted event consumers too) |
+| Commands reachable from the gateway | 75 | **87** | incl. ternary, wrapper-factory and `dispatchCommand(…)` forms a `commandName:` regex misses |
 | Commands dispatched directly by UI | 21 | **26** | `/commands/<name>` in `UI/*`, incl. the resolved dynamic dispatch |
-| Commands with **no** wrapper and **no** direct dispatch | — | **95** | structurally unreachable — all classified 2026-08-18 |
-| Commands unreachable *from the UI* | 134 | **95** | was overstated: the scan missed two dispatch forms, see [17](17-command-reachability.md) |
+| Commands with **no** wrapper and **no** direct dispatch | — | **69** | structurally unreachable — classified 2026-08-18, re-derived 2026-08-20 |
+| Commands unreachable *from the UI* | 134 | **69** | re-derived 2026-08-20; the scan had missed five dispatch forms in total, see [17](17-command-reachability.md) |
 | Domains with zero UI presence | 16 | 16 | confirmed by whole-word search |
 | Catalogued commands with no handler anywhere | — | **4** | was 7; three deleted 2026-08-13 rather than implemented |
 
@@ -129,7 +129,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 17 | **✅ classified 2026-08-18**: 95 unreachable (not 108), split a/b/c. Found 3 sweeps with **no invoker at all** and 12 flow-declared commands that are unreachable | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | part |
+| 17 | **✅ re-run 2026-08-20**: **69 unreachable of 195**, down from 95. Two more dispatch forms the scan could not see (`dispatchCommand(…)`, the interpolated UI call), and event-consumer `case` labels were being counted as command handlers. 51 of the 69 are `revenue.*` (COV-05's decision) plus the `accounts-gaps` set; `settings.value.*` ×4 is specified for retirement | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | part |
 
 ---
 

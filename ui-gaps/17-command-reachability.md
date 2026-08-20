@@ -1,6 +1,98 @@
-# COV-17: Command Reachability — 95 of 203 Commands Have No Path From the UI
+# COV-17: Command Reachability — 69 of 195 Commands Have No Path From the UI
 
 **Priority:** P2 (cross-cutting) | **Risk:** 🟠 MEDIUM | **Type:** Audit + UI | **Effort:** L
+
+> ## ✅ Re-run 2026-08-20 — 69 unreachable, and the method got two more corrections
+>
+> Acceptance criterion 3 ("re-run once the write paths land") is discharged. The gap has closed by 26
+> since 18 August, and — as last time — part of that is real work and part was the scan lying.
+>
+> | | 2026-08-11 | 2026-08-18 | **2026-08-20** |
+> |---|---|---|---|
+> | Commands (catalogued ∪ validated) | 202 | 203 | **199** |
+> | With a handler | 202 | 203 | **195** |
+> | Reachable from the gateway | 81 | 83 | **87** |
+> | Dispatched by the UI | 22 | 26 | **26** |
+> | Dispatched by a job or consumer | — | 2 | **59** |
+> | **Unreachable** | 108 | 95 | **69** |
+> | Catalogued with no handler | 7 | 4 | **4** |
+> | Handler with no catalog row | — | — | **0** |
+>
+> ### Two more dispatch forms the scan could not see
+>
+> The 2026-08-18 pass found three (ternary `commandName:`, wrapper factories, direct `submitCommand`).
+> Re-deriving found two more, both of which had been inflating the gap:
+>
+> 1. **`dispatchCommand("ar.city_ledger.transfer", …)`** — a produced envelope that never writes the
+>    words `commandName:`. `ar-event-consumer.ts` fires it on checkout. This spec *said* that command
+>    was machine-dispatched; the scan still counted it unreachable.
+> 2. **`commands/loyalty.points.${kind}`** — the interpolated UI dispatch. Resolving it by reading the
+>    file (kind is only ever `earn` or `redeem`) is what brings the UI count to 26, which is the number
+>    this spec verified by hand in August. That agreement is the check that the method is sound.
+>
+> And one correction in the other direction, which is why "with a handler" *fell* from 203 to 195:
+> **`case` labels in event consumers are not command handlers.** `case "reservation.checked_in":` in an
+> event consumer reads exactly like a command handler to a regex. The universe of commands is now taken
+> from the two authoritative registries — the catalog seed and `command-validators.ts` — and a `case`
+> label naming something in neither is not counted. The machine-dispatch count rising from 2 to 59 is
+> the same correction seen from the other side: most of those 59 were always there, and the earlier
+> pass only counted the two it happened to look at.
+>
+> ### What actually changed in the product
+>
+> - **`metasearch.config.create` / `.update` wired 2026-08-20.** Handlers, catalog rows and validators
+>   existed; no gateway wrapper did, so neither could ever be dispatched. Now at
+>   `/v1/tenants/:tenantId/channels/metasearch-config[-update]` and driven from the distribution screen
+>   ([14](14-channel-distribution.md)).
+> - **`billing.event.setup` / `.post_charges` added and reachable** ([13](13-sales-catering.md) item 6).
+> - **`operations.maintenance.*` ×4 and `inventory.*` ×3 retired**, as this spec classified them.
+> - **`reservation.mobile_checkin.*` ×2 retired** — REST was already the live path.
+>
+> ### 🐛 `guest.gdpr.export` was a command that never existed — removed 2026-08-20
+>
+> A payload schema and a registered validator, with **no catalog row and no handler**. Article 15
+> export is a *read*: the gateway proxies `GET /v1/guests/:guestId/gdpr-export` to guests-service, and
+> [19](19-gateway-proxy-mismatches.md) fixed that path in August. The command surface around it was
+> left behind — a registry entry describing a write that does not exist. Deleted (validator + payload
+> schema) on the precedent that removed `compliance.breach.report` and `operations.incident.report`.
+>
+> ### The retire list, with evidence
+>
+> `settings.value.set` / `.bulk_set` / `.approve` / `.revert` — **four commands, one dead path.**
+> Verified 2026-08-20: each has a handler, a catalog row and a validator, **no gateway wrapper**, and
+> the canonical write is REST — `POST /v1/settings/values` and `PATCH /v1/settings/values/:valueId` on
+> `settings-catalog.ts`, which is what `features/settings/settings.ts:698` calls. The four service
+> functions behind the commands (`setSettingsValue`, `bulkSetSettingsValues`, `approveSettingsValue`,
+> `revertSettingsValue`) are referenced by **nothing but the command consumer**, and that consumer
+> handles these four cases and nothing else.
+>
+> Retiring them means: 4 catalog rows, 4 validators, 4 payload schemas, the consumer file and its
+> startup wiring in `core-service/src/index.ts`, and the four service functions. It is mechanical, but
+> it touches service startup, so it is written down here as the next concrete step rather than tacked
+> onto an audit.
+>
+> ### 🐛 A hot-reload listener with no producer
+>
+> Found while checking the above. `billing-service/src/plugins/business-calendar-settings.ts` subscribes
+> to a `settings.events` topic and expects `{ type: "settings.value.set" }` to hot-reload the business
+> calendar. **Nothing in core-service publishes to that topic** — not the REST path, not the command
+> handler. So a settings change never reaches billing-service, and the business calendar keeps whatever
+> it read at boot. Not a reachability item, but the same shape: a consumer for a message nobody sends.
+>
+> ### What the remaining 69 are blocked on
+>
+> | Namespace | n | Blocked on |
+> |---|--:|---|
+> | `revenue.*` | 27 | [05](05-revenue-module-status.md)'s build-or-retire call — still the single biggest lever |
+> | `billing.*` | 13 | `accounts-gaps/` (deposits, chargebacks, suspense, group billing) |
+> | `ar.*` | 7 | [03](03-ar-account-management.md)'s 9 deferred actions |
+> | `reservation.*` | 7 | quote lifecycle + `walk_guest` need screens; three are machine-side |
+> | `commission.*` | 4 | `accounts-gaps/` |
+> | `settings.value.*` | 4 | **retire** — see above |
+> | `group.*`, `operations.*`, `rooms.*`, `metasearch.click.record` | 7 | mixed: 2 product calls (labour scheduling), keys need a staff revoke path, click tracking is machine-side |
+>
+> **More than half of what remains is one decision and one backlog.** `revenue.*` (27) plus the
+> `billing.*`/`ar.*`/`commission.*` set (24) is 51 of 69; neither is a UI problem.
 
 > ## ✅ Classified 2026-08-18 — 95 unreachable, not 108
 >

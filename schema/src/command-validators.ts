@@ -104,7 +104,6 @@ import {
 import {
 	GuestConsentUpdateCommandSchema,
 	GuestGdprEraseCommandSchema,
-	GuestGdprExportCommandSchema,
 	GuestMergeCommandSchema,
 	GuestPreferenceUpdateCommandSchema,
 	GuestRegisterCommandSchema,
@@ -579,10 +578,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => GuestSetBlacklistCommandSchema.parse(payload),
 	],
 	["guest.gdpr.erase", (payload) => GuestGdprEraseCommandSchema.parse(payload)],
-	[
-		"guest.gdpr.export",
-		(payload) => GuestGdprExportCommandSchema.parse(payload),
-	],
 	[
 		"guest.preference.update",
 		(payload) => GuestPreferenceUpdateCommandSchema.parse(payload),

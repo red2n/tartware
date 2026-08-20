@@ -198,24 +198,16 @@ export const GuestGdprEraseCommandSchema = z.object({
 export type GuestGdprEraseCommand = z.infer<typeof GuestGdprEraseCommandSchema>;
 
 /**
- * GDPR Subject Access Request — export all guest data.
- * Returns a JSON document with all PII and related records
- * per GDPR Article 15 / Article 20 data portability.
+ * There is no `guest.gdpr.export` command.
+ *
+ * Article 15 export is a *read*: the gateway proxies
+ * `GET /v1/guests/:guestId/gdpr-export` straight to guests-service. A command
+ * payload schema and validator survived for it with no catalog row and no
+ * handler — a registry entry describing a write that does not exist. Removed
+ * 2026-08-20 on the same reasoning that deleted `compliance.breach.report` and
+ * `operations.incident.report` on 2026-08-13. See ui-gaps/17-command-reachability.md.
  */
-export const GuestGdprExportCommandSchema = z.object({
-	guest_id: z.string().uuid(),
-	requested_by: z.string().uuid().optional(),
-	format: z.enum(["JSON", "CSV"]).default("JSON"),
-	include_reservations: z.boolean().default(true),
-	include_transactions: z.boolean().default(true),
-	include_communications: z.boolean().default(true),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
 
-export type GuestGdprExportCommand = z.infer<
-	typeof GuestGdprExportCommandSchema
->;
 
 export const GuestPreferenceUpdateCommandSchema = z.object({
 	guest_id: z.string().uuid(),
