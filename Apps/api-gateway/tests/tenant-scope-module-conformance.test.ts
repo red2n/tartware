@@ -25,6 +25,9 @@ import { MODULE_IDS } from "@tartware/schemas";
 import { describe, expect, it } from "vitest";
 
 const APPS_DIR = fileURLToPath(new URL("../../", import.meta.url));
+const SEED_FILE = fileURLToPath(
+  new URL("../../../scripts/data/defaults/default_seed.json", import.meta.url),
+);
 
 /** `requiredModules: "x"` and `requiredModules: ["x", "y"]`, single or double quoted. */
 const REQUIRED_MODULES = /requiredModules:\s*(\[[^\]]*\]|["'][^"']*["'])/g;
@@ -66,9 +69,9 @@ const readModuleGates = (): Gate[] => {
   return gates;
 };
 
-describe("withTenantScope requiredModules ↔ MODULE_IDS", () => {
-  const gates = readModuleGates();
+const gates = readModuleGates();
 
+describe("withTenantScope requiredModules ↔ MODULE_IDS", () => {
   it("finds the module gates it is meant to be checking", () => {
     // A regex that silently matches nothing would make this suite vacuously green.
     expect(gates.length).toBeGreaterThan(50);
@@ -88,6 +91,83 @@ describe("withTenantScope requiredModules ↔ MODULE_IDS", () => {
         `routes answers 403 TENANT_MODULE_NOT_ENABLED regardless of configuration:\n${summary}\n\n` +
         `Fix the id, or add the module to MODULE_IDS in schema/src/api/tenants.ts\n` +
         `and to the registry in core-service/src/modules/module-registry.ts.\n`,
+    ).toEqual([]);
+  });
+});
+
+/**
+ * The auth gate reads the *tenant's* enabled set, and that set comes from
+ * `tenants.config -> 'modules'` — `tenant-module-service.ts` calls it the source
+ * of truth. A seeded tenant with no `modules` key falls back to `["core"]`
+ * through `COALESCE(t.config -> 'modules', '["core"]')`, which is not an empty
+ * edge case: it silently switches off every domain gated on anything else.
+ *
+ * That is the state a fresh database was in on 2026-08-19. Lost & found and the
+ * incident register — both shipped, both smoke-tested — answered 403
+ * TENANT_MODULE_NOT_ENABLED for every call, and the E2E sweep scored each of
+ * those 403s as a *skip* (`test-multi-tenant.sh`, api_smoke), so every suite
+ * stayed green while whole domains were dark. See ui-gaps/14-channel-distribution.md.
+ *
+ * A route may of course be gated on a module a real customer has not bought.
+ * The seed tenant is different: it is the one every developer, every smoke
+ * script and every E2E run works against, so a module it lacks is a domain
+ * nobody can exercise.
+ */
+describe("seed tenant ↔ module gates", () => {
+  const seed = JSON.parse(readFileSync(SEED_FILE, "utf8")) as {
+    tenants?: { id: string; name?: string; config?: { modules?: string[] } }[];
+  };
+
+  it("seeds at least one tenant carrying an explicit module list", () => {
+    // Vacuity guard: no tenants, or a renamed key, would make the check below
+    // pass by having nothing to compare.
+    const withModules = (seed.tenants ?? []).filter((t) => Array.isArray(t.config?.modules));
+    expect(
+      withModules.length,
+      `\nNo seeded tenant declares config.modules in scripts/data/defaults/default_seed.json.\n` +
+        `Without it the auth gate falls back to ["core"] and every route gated on\n` +
+        `another module answers 403 for the tenant all local testing runs against.\n`,
+    ).toBeGreaterThan(0);
+  });
+
+  it("grants the seed tenant every module a route is gated on", () => {
+    const granted = new Set<string>(
+      (seed.tenants ?? []).flatMap((tenant) => tenant.config?.modules ?? []),
+    );
+    // Only ids that are real modules matter here; the suite above owns the rest.
+    const known = new Set<string>(MODULE_IDS);
+    const required = [...new Set(gates.map((gate) => gate.moduleId))].filter((id) => known.has(id));
+    const missing = required.filter((id) => !granted.has(id)).sort();
+
+    const summary = missing
+      .map((id) => {
+        const example = gates.find((gate) => gate.moduleId === id)?.file ?? "";
+        return `  ✗ ${id} — e.g. ${example}`;
+      })
+      .join("\n");
+
+    expect(
+      missing,
+      `\nRoutes are gated on modules the seed tenant does not have, so those domains\n` +
+        `answer 403 TENANT_MODULE_NOT_ENABLED on a freshly seeded database — and the\n` +
+        `E2E sweep records that as a skip, not a failure:\n${summary}\n\n` +
+        `Add them to config.modules for the seed tenant in\n` +
+        `scripts/data/defaults/default_seed.json.\n`,
+    ).toEqual([]);
+  });
+
+  it("grants only modules that exist", () => {
+    const known = new Set<string>(MODULE_IDS);
+    const granted = [
+      ...new Set((seed.tenants ?? []).flatMap((tenant) => tenant.config?.modules ?? [])),
+    ];
+    const bogus = granted.filter((id) => !known.has(id)).sort();
+
+    expect(
+      bogus,
+      `\nThe seed grants module ids that are not in MODULE_IDS. They enable nothing,\n` +
+        `and reading the seed suggests a coverage the tenant does not have:\n` +
+        `${bogus.map((id) => `  ✗ ${id}`).join("\n")}\n`,
     ).toEqual([]);
   });
 });

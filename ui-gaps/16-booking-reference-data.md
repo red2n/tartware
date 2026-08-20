@@ -97,8 +97,52 @@
 > meant a test nobody trusts. The tractable fix is narrower — delete the unused enums, and have the
 > three live ones read the constraint's case directly instead of lower-casing at each use.
 >
-> **Still open:** allotments write path (step 4), which needs the availability-guard decision, and the
-> `ALL /*` proxies for domains that still have no writes (step 5).
+> **Still open:** the `ALL /*` proxies for domains that still have no writes (step 5).
+>
+> ### ✅ Allotments: the availability-guard question, answered 2026-08-19
+>
+> This spec's step 4 says allotments "must go through `availability-guard-service`, since holding
+> inventory is exactly what the guard protects", and that they "belong inside the group detail
+> screen". Checked before building, as COV-13 learned to: **both premises are wrong, and the table
+> says so.**
+>
+> **1. The guard is a booking-funnel lock, not an inventory ledger.** `inventory_locks_shadow` holds
+> `reservation_id`, `room_type_id`, `stay_start`/`stay_end`, `ttl_seconds` and `expires_at` — a
+> seconds-long hold that stops two concurrent quotes taking the last room. Its only caller
+> (`quote-management.ts`) logs "Availability lock failed … proceeding without guard" and continues.
+> An allotment is a contracted block running for weeks with a cutoff date, attrition clause, elastic
+> limit and pickup tracking. Nothing in the lock table can express it. Same finding COV-13 reached
+> about meeting rooms, reached the same way.
+>
+> **2. An allotment is not the inventory side of a group booking, because it cannot point at one.**
+> `allotments` has no `group_booking_id`. Its foreign keys are `users`, `booking_sources`,
+> `market_segments` and `folios`. What *is* the inventory side of a group is **`group_room_blocks`** —
+> `group_booking_id NOT NULL`, one row per room type per date, `available_rooms` GENERATED as
+> `blocked_rooms - picked_rooms` — and it already has live writers in `reservations-command-service`
+> (`group.create`, `group.add_rooms`). The two are not duplicates: one is the agreement, the other is
+> the per-night inventory it consumes.
+>
+> **3. So an allotment is a distribution contract.** `booking_source_id`, `market_segment_id`,
+> `channel`, `commission_percentage`, `attrition_clause`, `elastic_limit`: rooms allocated to a tour
+> operator, wholesaler or corporate account and attributed to a source. That makes it
+> [14-channel-distribution.md](14-channel-distribution.md)'s family, not this spec's group family, and
+> it belongs beside booking sources and market segments rather than inside the group screen.
+>
+> **Mechanism: plain HTTP on core-service**, per [18-write-path-gap.md](18-write-path-gap.md) — one
+> table, one service, no fan-out, exactly like the booking sources and market segments it sits beside
+> in `booking-config`.
+>
+> ### ⚠️ The question this does *not* answer: an allotment still holds nothing
+>
+> `available-rooms-source.ts` computes availability from `reservations` and `rooms` alone. No caller
+> subtracts blocked-but-unsold allotment rooms, so creating an allotment today reserves no inventory —
+> it records a commitment the booking engine will happily sell out from under.
+>
+> Making a block reduce sellable inventory until its cutoff, then release the remainder, is the
+> standard behaviour and is what `cutoff_date`, `cutoff_days_prior` and `rooms_available` exist for.
+> It is also a change to what the booking funnel sells, which is a booking-correctness change rather
+> than a reachability one: it belongs to whoever owns availability, with its own tests. Recorded here
+> with the insertion point rather than bolted onto a reference-data write path.
 >
 > **Not yet built or exercised** — the user is running the build and tests separately. The uniqueness
 > change needs `psql -f scripts/tables/06-integrations/71_promotional_codes.sql`.

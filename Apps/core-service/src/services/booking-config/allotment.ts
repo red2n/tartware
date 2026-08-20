@@ -23,9 +23,14 @@ const mapAllotmentRow = (row: AllotmentRow): AllotmentListItem => {
     property_name: row.property_name ?? undefined,
     allotment_code: row.allotment_code,
     allotment_name: row.allotment_name,
-    allotment_type: row.allotment_type?.toLowerCase() ?? "group",
+    // Stored case, not folded. `allotments_allotment_status_check` holds
+    // 'TENTATIVE'…'CANCELLED' and the type check 'GROUP'…'CONFERENCE'; folding
+    // them to lower case here meant the read model and the table disagreed, so
+    // a status posted back from a screen could never match a transition rule.
+    // One of the 25 fold sites ui-gaps/17-command-reachability.md counts.
+    allotment_type: row.allotment_type ?? "GROUP",
     allotment_type_display: formatDisplayLabel(row.allotment_type),
-    allotment_status: row.allotment_status?.toLowerCase() ?? "tentative",
+    allotment_status: row.allotment_status ?? "TENTATIVE",
     allotment_status_display: formatDisplayLabel(row.allotment_status),
     start_date: (toIsoString(row.start_date) ?? "").split("T")[0],
     end_date: (toIsoString(row.end_date) ?? "").split("T")[0],

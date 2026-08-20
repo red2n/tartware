@@ -278,6 +278,53 @@ The lesson for the remaining write paths (banquet orders, allotments): budget th
 of the slice, not as follow-up hygiene. Both bugs took minutes to find with a stack running and were
 invisible to every gate that ran without one.
 
+**Both guardrail holes closed — 2026-08-19.**
+
+Two changes follow from everything below, and they are the durable half of the day's work:
+
+- **`.github/workflows/ci-guardrails.yml`** runs the cross-cutting checks on **every branch**
+  (`branches: ['**']`, plus unfiltered `pull_request`). Every other workflow triggers on
+  `[main, develop, deployment]`, so a feature branch with no PR ran *nothing* — which is why six days
+  of write paths went unchecked. It carries only what needs neither a database nor a running stack:
+  `sql:contracts`, the gateway conformance suites, the command-catalog suites. A few seconds once the
+  caches are warm; the heavy matrix build stays in `build.yml`.
+- **`tenant-scope-module-conformance.test.ts` now checks the seed, not just the ids.** Three new
+  assertions: at least one seeded tenant declares `config.modules`, every module a route is gated on
+  is granted to it, and no granted id is outside `MODULE_IDS`. Verified against the real defect —
+  removing the `modules` key reproduces the failure and names `facility-maintenance`,
+  `finance-automation`, `revenue-management`, `analytics-bi` and `core` with an example route each.
+
+**The guardrail that was red for the wrong reasons — measured 2026-08-19.**
+
+`pnpm run sql:contracts` binds every SQL string in `Apps/` to the DDL in `scripts/tables/`, runs
+without a database, and is wired into `build.yml`. It was failing — on two false positives:
+
+- **`IS DISTINCT FROM` was read as a `FROM` clause**, so the operand after it was reported as a
+  missing table. `assigned_at = CASE WHEN $6 IS DISTINCT FROM assigned_to` produced
+  "assigned_to does not exist" for a column that plainly does.
+- **Postgres system columns were reported as missing.** No `CREATE TABLE` names `xmax`, and
+  `xmax = 0` is the standard way an upsert's `RETURNING` tells an insert from an update.
+
+Both fixed; the check now reports **0 violations across 247 tables and 762 files**.
+
+**The part worth keeping is why it mattered.** Removing today's `booking_sources` DDL fix makes the
+same check report `booking_sources.updated_at does not exist (UPDATE SET)` — twice, once for the
+update and once for the delete. So the check was never blind to the 500 that
+[14-channel-distribution.md](14-channel-distribution.md) records; it was **shouting about two things
+that were not wrong, which is how a real violation sat unread for six days.** A check that is always
+red is a check nobody reads.
+
+Two things now stop that recurring:
+
+- **The check self-tests before it reports.** Four statements with known answers — the two regressions
+  above, plus a bad column and a bad table that must still be caught — and a failure makes it exit 2
+  with "refusing to report" rather than printing a verdict nobody should trust. Verified by
+  re-introducing the `IS DISTINCT FROM` bug and watching it refuse.
+- **It has to actually run.** Every workflow triggers on `[main, develop]` only, so nothing in
+  `.github/workflows` has run against this branch — six days of write paths, none of them checked.
+  That is a process gap, not a code one, and it is the reason both this and the smoke suites have
+  found so much: **the checks that exist are not reaching the branch the work is on.**
+
 **Seven write paths, first run — measured 2026-08-19.**
 
 `http_test/smoke-operations.sh` (52 assertions) was built to answer one question: what is wrong with

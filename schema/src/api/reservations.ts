@@ -198,9 +198,13 @@ export const AllotmentListItemSchema = z.object({
 	property_name: z.string().optional(),
 	allotment_code: z.string(),
 	allotment_name: z.string(),
-	allotment_type: z.string(),
+	// Typed, not `z.string()`: both CHECK constraints hold exactly these
+	// spellings, and an untyped column is the shape that let the mapper fold
+	// them to lower case unnoticed. Same correction COV-13 made to
+	// `booking_status`.
+	allotment_type: AllotmentTypeEnum,
 	allotment_type_display: z.string(),
-	allotment_status: z.string(),
+	allotment_status: AllotmentStatusEnum,
 	allotment_status_display: z.string(),
 
 	// Date Range
@@ -354,6 +358,204 @@ export type CommissionType = z.infer<typeof CommissionTypeEnum>;
  * `source_code` is unique per (tenant, property) and stored as typed — it is what
  * reservations carry, so folding its case would orphan existing rows.
  */
+// =====================================================
+// ALLOTMENT WRITES
+// ui-gaps/16-booking-reference-data.md, step 4
+// =====================================================
+
+// AllotmentTypeEnum and AllotmentStatusEnum are declared with the read model
+// above; both already match their CHECK constraints exactly, so there is nothing
+// to re-declare here.
+
+/**
+ * Where an allotment may go next.
+ *
+ * The CHECK constrains the value, not the movement, so the ordering lives here —
+ * the same split as `EVENT_BOOKING_LEGAL_TRANSITIONS`, and exported for the same
+ * reason: a screen must not offer a move the service will refuse.
+ *
+ * A block is contracted (TENTATIVE), signed (DEFINITE), open for pickup
+ * (ACTIVE → PICKUP_IN_PROGRESS as reservations are drawn from it) and then
+ * closed out (COMPLETED). CANCELLED is reachable from anything still live,
+ * because a group cancels; COMPLETED and CANCELLED are terminal.
+ */
+export const ALLOTMENT_LEGAL_TRANSITIONS: Readonly<
+	Record<AllotmentStatus, readonly AllotmentStatus[]>
+> = Object.freeze({
+	TENTATIVE: ["DEFINITE", "ACTIVE", "CANCELLED"],
+	DEFINITE: ["ACTIVE", "CANCELLED"],
+	ACTIVE: ["PICKUP_IN_PROGRESS", "COMPLETED", "CANCELLED"],
+	PICKUP_IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+	COMPLETED: [],
+	CANCELLED: [],
+});
+
+const ALLOTMENT_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+
+/**
+ * Create an allotment — a contracted block of rooms.
+ *
+ * Per the 2026-08-19 decision in ui-gaps/16, this is a *distribution contract*,
+ * not the inventory side of a group booking: the table has no `group_booking_id`
+ * and `group_room_blocks` already fills that role. Hence `booking_source_id` and
+ * `market_segment_id` rather than a group link.
+ *
+ * Bounds mirror the table's CHECK constraints so a bad payload is a 400 and not
+ * a 23514.
+ */
+export const AllotmentWriteBodySchema = z
+	.object({
+		tenant_id: uuid,
+		property_id: uuid,
+		allotment_code: z
+			.string()
+			.min(2)
+			.max(50)
+			.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+		allotment_name: z.string().min(1).max(200),
+		allotment_type: AllotmentTypeEnum,
+		allotment_status: AllotmentStatusEnum.optional(),
+		start_date: ALLOTMENT_DATE,
+		end_date: ALLOTMENT_DATE,
+		cutoff_date: ALLOTMENT_DATE.optional(),
+		cutoff_days_prior: z.coerce.number().int().nonnegative().optional(),
+		room_type_id: uuid.optional(),
+		total_rooms_blocked: z.coerce.number().int().positive(),
+		rooms_per_night: z.coerce.number().int().positive().optional(),
+		rate_type: z.string().max(30).optional(),
+		contracted_rate: z.coerce.number().nonnegative().optional(),
+		currency_code: z.string().length(3).optional(),
+		account_name: z.string().max(200).optional(),
+		account_type: z.string().max(30).optional(),
+		billing_type: z.string().max(30).optional(),
+		contact_name: z.string().max(200).optional(),
+		contact_email: z.string().email().max(255).optional(),
+		contact_phone: z.string().max(30).optional(),
+		contact_company: z.string().max(200).optional(),
+		booking_source_id: uuid.optional(),
+		market_segment_id: uuid.optional(),
+		channel: z.string().max(50).optional(),
+		deposit_required: z.boolean().optional(),
+		deposit_amount: z.coerce.number().nonnegative().optional(),
+		attrition_clause: z.boolean().optional(),
+		attrition_percentage: z.coerce.number().min(0).max(100).optional(),
+		guaranteed_rooms: z.coerce.number().int().nonnegative().optional(),
+		elastic_limit: z.coerce.number().int().nonnegative().optional(),
+		commission_percentage: z.coerce.number().min(0).max(100).optional(),
+		is_vip: z.boolean().optional(),
+		priority_level: z.coerce.number().int().optional(),
+		notes: z.string().optional(),
+		internal_notes: z.string().optional(),
+	})
+	.refine((v) => v.end_date >= v.start_date, {
+		message: "end_date cannot fall before start_date",
+		path: ["end_date"],
+	})
+	.refine((v) => !v.cutoff_date || v.cutoff_date <= v.start_date, {
+		// A cutoff after arrival releases rooms nobody can still book.
+		message: "cutoff_date must fall on or before start_date",
+		path: ["cutoff_date"],
+	});
+
+export type AllotmentWriteBody = z.infer<typeof AllotmentWriteBodySchema>;
+
+/**
+ * Edit an allotment. `allotment_code` is fixed: it is the reference the contract
+ * and any channel mapping quote, so rewriting it orphans them. Status moves
+ * through its own route, where the transition can be checked.
+ */
+export const AllotmentUpdateBodySchema = z.object({
+	tenant_id: uuid,
+	allotment_name: z.string().min(1).max(200).optional(),
+	allotment_type: AllotmentTypeEnum.optional(),
+	cutoff_date: ALLOTMENT_DATE.optional(),
+	cutoff_days_prior: z.coerce.number().int().nonnegative().optional(),
+	room_type_id: uuid.optional(),
+	total_rooms_blocked: z.coerce.number().int().positive().optional(),
+	rooms_per_night: z.coerce.number().int().positive().optional(),
+	rooms_picked_up: z.coerce.number().int().nonnegative().optional(),
+	rate_type: z.string().max(30).optional(),
+	contracted_rate: z.coerce.number().nonnegative().optional(),
+	account_name: z.string().max(200).optional(),
+	account_type: z.string().max(30).optional(),
+	billing_type: z.string().max(30).optional(),
+	contact_name: z.string().max(200).optional(),
+	contact_email: z.string().email().max(255).optional(),
+	contact_phone: z.string().max(30).optional(),
+	contact_company: z.string().max(200).optional(),
+	booking_source_id: uuid.optional(),
+	market_segment_id: uuid.optional(),
+	channel: z.string().max(50).optional(),
+	deposit_required: z.boolean().optional(),
+	deposit_amount: z.coerce.number().nonnegative().optional(),
+	attrition_clause: z.boolean().optional(),
+	attrition_percentage: z.coerce.number().min(0).max(100).optional(),
+	guaranteed_rooms: z.coerce.number().int().nonnegative().optional(),
+	elastic_limit: z.coerce.number().int().nonnegative().optional(),
+	commission_percentage: z.coerce.number().min(0).max(100).optional(),
+	is_vip: z.boolean().optional(),
+	priority_level: z.coerce.number().int().optional(),
+	notes: z.string().optional(),
+	internal_notes: z.string().optional(),
+});
+
+export type AllotmentUpdateBody = z.infer<typeof AllotmentUpdateBodySchema>;
+
+/**
+ * Move an allotment through its lifecycle. Confirming stamps `confirmed_at`,
+ * activating `activated_at`, completing `completed_at` and cancelling
+ * `cancelled_at` plus the reason — so "when was this block signed" and "why did
+ * it go away" stay answerable.
+ */
+export const AllotmentStatusBodySchema = z.object({
+	tenant_id: uuid,
+	allotment_status: AllotmentStatusEnum,
+	cancellation_reason: z.string().max(500).optional(),
+});
+
+export type AllotmentStatusBody = z.infer<typeof AllotmentStatusBodySchema>;
+
+/** Service-layer input for an allotment write, per AGENTS.md. */
+export type AllotmentWriteInput = {
+	propertyId?: string;
+	allotmentCode?: string;
+	allotmentName?: string;
+	allotmentType?: string;
+	allotmentStatus?: string;
+	startDate?: string;
+	endDate?: string;
+	cutoffDate?: string;
+	cutoffDaysPrior?: number;
+	roomTypeId?: string;
+	totalRoomsBlocked?: number;
+	roomsPerNight?: number;
+	roomsPickedUp?: number;
+	rateType?: string;
+	contractedRate?: number;
+	currencyCode?: string;
+	accountName?: string;
+	accountType?: string;
+	billingType?: string;
+	contactName?: string;
+	contactEmail?: string;
+	contactPhone?: string;
+	contactCompany?: string;
+	bookingSourceId?: string;
+	marketSegmentId?: string;
+	channel?: string;
+	depositRequired?: boolean;
+	depositAmount?: number;
+	attritionClause?: boolean;
+	attritionPercentage?: number;
+	guaranteedRooms?: number;
+	elasticLimit?: number;
+	commissionPercentage?: number;
+	isVip?: boolean;
+	priorityLevel?: number;
+	notes?: string;
+	internalNotes?: string;
+};
+
 export const BookingSourceWriteBodySchema = z
 	.object({
 		tenant_id: uuid,

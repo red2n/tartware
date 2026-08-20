@@ -42,6 +42,14 @@ const BASELINE = join(__dirname, "sql-contract-baseline.json");
 const UNIVERSAL_COLUMNS = ["tenant_id", "is_deleted", "deleted_at", "deleted_by"];
 
 /**
+ * Postgres system columns. Every table has them and no CREATE TABLE names them,
+ * so a query reading one is correct and was being reported as a missing column
+ * — `fx_rates.xmax` is the live example: `xmax = 0` is the standard way to tell
+ * an INSERT from an UPDATE in an upsert's RETURNING clause.
+ */
+const SYSTEM_COLUMNS = ["xmin", "xmax", "cmin", "cmax", "ctid", "tableoid"];
+
+/**
  * Set-returning functions that appear where a table name would. Most are caught
  * by the trailing "(", but LATERAL and the bare forms need naming.
  */
@@ -162,7 +170,7 @@ function parseCreateTables(sql: string): void {
     const { body, end } = readBalanced(sql, re.lastIndex - 1);
     re.lastIndex = end;
 
-    const columns = new Set<string>(UNIVERSAL_COLUMNS);
+    const columns = new Set<string>([...UNIVERSAL_COLUMNS, ...SYSTEM_COLUMNS]);
     const required = new Set<string>();
     for (const part of splitTopLevel(body)) {
       const tokens = part.trim().split(/\s+/);
@@ -313,6 +321,11 @@ function neutralizeKeywordFunctions(sql: string): string {
       .replace(/\bDO\s+UPDATE\b/gi, blank)
       // Row locks: FOR UPDATE [OF x] [SKIP LOCKED | NOWAIT].
       .replace(/\bFOR\s+(?:NO\s+KEY\s+)?UPDATE\b/gi, blank)
+      // `a IS DISTINCT FROM b` — the FROM belongs to the operator, not to a
+      // clause, so without this the operand after it is read as a table.
+      // `assigned_at = CASE WHEN $6 IS DISTINCT FROM assigned_to` reported
+      // "assigned_to does not exist" for a column that plainly does.
+      .replace(/\bIS\s+(?:NOT\s+)?DISTINCT\s+FROM\b/gi, blank)
   );
 }
 
@@ -570,6 +583,71 @@ function walkTs(dir: string, out: string[]): void {
   }
 }
 
+// ─── Self-test ───────────────────────────────────────────────────────────────
+
+/**
+ * Proves the check still means something before it is believed.
+ *
+ * Two of these cases are regressions this check actually shipped: it read the
+ * `FROM` in `IS DISTINCT FROM` as a clause and reported the operand as a missing
+ * table, and it reported Postgres system columns as missing. Both made the
+ * command fail on every run — and a check that is always red is a check nobody
+ * reads, which is how a genuine violation
+ * (`booking_sources.updated_at does not exist`) sat unnoticed for six days while
+ * every `PUT` and `DELETE` on a booking source returned 500.
+ *
+ * The other two cases are the vacuity guard: if the scanner silently stopped
+ * finding anything, "clean" would be indistinguishable from broken.
+ */
+function selfTest(): boolean {
+  const cases: { name: string; sql: string; expect: "clean" | RegExp }[] = [
+    {
+      name: "IS DISTINCT FROM is an operator, not a clause",
+      sql: `UPDATE public.guest_feedback
+              SET assigned_at = CASE
+                    WHEN $2::uuid IS DISTINCT FROM assigned_to THEN NOW() ELSE assigned_at
+                  END
+            WHERE id = $1::uuid`,
+      expect: "clean",
+    },
+    {
+      name: "system columns exist on every table",
+      sql: `UPDATE public.fx_rates SET rate = $1 WHERE tenant_id = $2::uuid RETURNING xmax`,
+      expect: "clean",
+    },
+    {
+      name: "a column that does not exist is still caught",
+      sql: `UPDATE public.fx_rates SET no_such_column = $1 WHERE tenant_id = $2::uuid`,
+      expect: /no_such_column does not exist/,
+    },
+    {
+      name: "a table that does not exist is still caught",
+      sql: `SELECT id FROM no_such_table_here WHERE tenant_id = $1::uuid`,
+      expect: /no_such_table_here does not exist/,
+    },
+  ];
+
+  let ok = true;
+  for (const c of cases) {
+    const before = violations.length;
+    checkLiteral("<self-test>", c.sql, () => 0);
+    const produced = violations.splice(before).map((v) => v.detail);
+    const passed =
+      c.expect === "clean"
+        ? produced.length === 0
+        : produced.some((d) => (c.expect as RegExp).test(d));
+    if (!passed) {
+      ok = false;
+      console.error(
+        `sql-contract-check: self-test failed — ${c.name}\n` +
+          `  expected ${c.expect === "clean" ? "no violations" : String(c.expect)}\n` +
+          `  got ${produced.length ? produced.join("; ") : "no violations"}`,
+      );
+    }
+  }
+  return ok;
+}
+
 // ─── Baseline ────────────────────────────────────────────────────────────────
 
 const key = (v: Violation) => `${v.file}\t${v.kind}\t${v.detail}`;
@@ -578,6 +656,13 @@ function main(): void {
   buildCatalog();
   if (catalog.size < 100) {
     console.error(`sql-contract-check: parsed only ${catalog.size} tables — the DDL layout changed.`);
+    process.exit(2);
+  }
+
+  // Before trusting a verdict about 762 files, check the scanner against four
+  // statements whose answer is known.
+  if (!selfTest()) {
+    console.error("sql-contract-check: refusing to report — the scanner is wrong about known cases.");
     process.exit(2);
   }
 
