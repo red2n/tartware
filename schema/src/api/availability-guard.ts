@@ -201,12 +201,12 @@ export type LockAuditRecord = {
 
 /** DB row shape for an inventory lock record. Mirrors the `inventory_locks_shadow` table. */
 export type InventoryLock = {
-	id: string,
-	tenant_id: string,
-	property_id: string | null,
-	reservation_id: string | null,
-	room_type_id: string,
-	room_id: string | null,
+	id: string;
+	tenant_id: string;
+	property_id: string | null;
+	reservation_id: string | null;
+	room_type_id: string;
+	room_id: string | null;
 	stay_start: Date;
 	stay_end: Date;
 	reason: string;

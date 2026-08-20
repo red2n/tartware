@@ -493,7 +493,9 @@ export const GlTrialBalanceResponseSchema = z.object({
 	variance: z.number(),
 	is_balanced: z.boolean(),
 });
-export type GlTrialBalanceResponse = z.infer<typeof GlTrialBalanceResponseSchema>;
+export type GlTrialBalanceResponse = z.infer<
+	typeof GlTrialBalanceResponseSchema
+>;
 
 /** AR list item — summary view for list endpoints. */
 export const AccountsReceivableListItemSchema = z.object({
@@ -643,7 +645,9 @@ export const FiscalPeriodListResponseSchema = z.object({
 	}),
 });
 
-export type FiscalPeriodListResponse = z.infer<typeof FiscalPeriodListResponseSchema>;
+export type FiscalPeriodListResponse = z.infer<
+	typeof FiscalPeriodListResponseSchema
+>;
 
 // =====================================================
 // SHIFT SUMMARY (CASHIER HANDOVER)
@@ -974,9 +978,7 @@ export const computeBulkPricingCell = (
 			r.conditions.length === 0
 		)
 			return true;
-		return (r.conditions).every((c) =>
-			evalPricingCondition(c, evalCtx),
-		);
+		return r.conditions.every((c) => evalPricingCondition(c, evalCtx));
 	});
 
 	let adjustedRate = basePrice;
@@ -1292,8 +1294,14 @@ export const LedgerEntryListQuerySchema = z.object({
 	batch_status: z.string().toLowerCase().optional(),
 	gl_account_code: z.string().optional(),
 	department_code: z.string().optional(),
-	start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-	end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	start_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	end_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	offset: z.coerce.number().int().min(0).default(0),
 });
@@ -1312,9 +1320,7 @@ export const BillingPaymentListQuerySchema = z.object({
 		.refine(
 			(value) =>
 				!value ||
-				PaymentStatusEnum.options
-					.map((s) => s.toLowerCase())
-					.includes(value),
+				PaymentStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
 			{ message: "Invalid payment status" },
 		),
 	transaction_type: z
@@ -1324,9 +1330,7 @@ export const BillingPaymentListQuerySchema = z.object({
 		.refine(
 			(value) =>
 				!value ||
-				TransactionTypeEnum.options
-					.map((t) => t.toLowerCase())
-					.includes(value),
+				TransactionTypeEnum.options.map((t) => t.toLowerCase()).includes(value),
 			{ message: "Invalid transaction type" },
 		),
 	payment_method: z
@@ -1336,9 +1340,7 @@ export const BillingPaymentListQuerySchema = z.object({
 		.refine(
 			(value) =>
 				!value ||
-				PaymentMethodEnum.options
-					.map((m) => m.toLowerCase())
-					.includes(value),
+				PaymentMethodEnum.options.map((m) => m.toLowerCase()).includes(value),
 			{ message: "Invalid payment method" },
 		),
 	limit: z.coerce.number().int().positive().max(200).default(100),
@@ -1539,7 +1541,7 @@ export const GlBatchListItemSchema = z.object({
 	gl_batch_id: uuid,
 	property_id: uuid,
 	batch_number: z.string(),
-	batch_date: z.string(),            // ISO date string (YYYY-MM-DD)
+	batch_date: z.string(), // ISO date string (YYYY-MM-DD)
 	accounting_period: z.string(),
 	source_module: z.string(),
 	currency: z.string().default("USD"),
@@ -1609,7 +1611,9 @@ export const GlBatchEntriesResponseSchema = z.object({
 	meta: z.object({ count: z.number().int() }),
 });
 
-export type GlBatchEntriesResponse = z.infer<typeof GlBatchEntriesResponseSchema>;
+export type GlBatchEntriesResponse = z.infer<
+	typeof GlBatchEntriesResponseSchema
+>;
 
 // ============================================================================
 // CHARGEBACK / DISPUTE LIST (GAP-03)
@@ -1649,12 +1653,16 @@ export const ChargebackListResponseSchema = z.object({
 	meta: z.object({ count: z.number().int() }),
 });
 
-export type ChargebackListResponse = z.infer<typeof ChargebackListResponseSchema>;
+export type ChargebackListResponse = z.infer<
+	typeof ChargebackListResponseSchema
+>;
 
 export const ChargebackListQuerySchema = z.object({
 	tenant_id: z.string().uuid(),
 	property_id: z.string().uuid().optional(),
-	chargeback_status: z.enum(["RECEIVED", "EVIDENCE_SUBMITTED", "WON", "LOST"]).optional(),
+	chargeback_status: z
+		.enum(["RECEIVED", "EVIDENCE_SUBMITTED", "WON", "LOST"])
+		.optional(),
 	start_date: z.string().optional(),
 	end_date: z.string().optional(),
 	limit: z.coerce.number().int().positive().max(500).default(100),

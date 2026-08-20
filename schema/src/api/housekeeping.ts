@@ -687,8 +687,6 @@ export type UpdateLostAndFoundBody = z.infer<
 // placeholder.
 // -----------------------------------------------------------------------------
 
-
-
 export const IncidentInjurySeverityEnum = z.enum([
 	"none",
 	"minor",
@@ -697,7 +695,6 @@ export const IncidentInjurySeverityEnum = z.enum([
 	"critical",
 	"fatal",
 ]);
-
 
 /** Report an incident. `incident_number` is generated server-side. */
 export const IncidentWriteBodySchema = z.object({
@@ -724,9 +721,10 @@ export const IncidentWriteBodySchema = z.object({
 
 export type IncidentWriteBody = z.infer<typeof IncidentWriteBodySchema>;
 
-export const IncidentUpdateBodySchema = IncidentWriteBodySchema.partial().extend({
-	tenant_id: uuid,
-});
+export const IncidentUpdateBodySchema =
+	IncidentWriteBodySchema.partial().extend({
+		tenant_id: uuid,
+	});
 
 export type IncidentUpdateBody = z.infer<typeof IncidentUpdateBodySchema>;
 

@@ -48,7 +48,17 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 	compound_order: z.coerce.number().int().min(0).optional(),
 	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
 	calculation_method: z
-		.enum(["inclusive", "exclusive", "compound", "cascading", "additive", "tiered", "progressive", "flat", "custom"])
+		.enum([
+			"inclusive",
+			"exclusive",
+			"compound",
+			"cascading",
+			"additive",
+			"tiered",
+			"progressive",
+			"flat",
+			"custom",
+		])
 		.default("exclusive"),
 	rounding_method: z
 		.enum(["standard", "up", "down", "nearest", "none"])
@@ -99,7 +109,17 @@ export const BillingTaxConfigUpdateCommandSchema = z.object({
 	compound_order: z.coerce.number().int().min(0).optional(),
 	compound_on_tax_codes: z.array(z.string().max(50)).optional(),
 	calculation_method: z
-		.enum(["inclusive", "exclusive", "compound", "cascading", "additive", "tiered", "progressive", "flat", "custom"])
+		.enum([
+			"inclusive",
+			"exclusive",
+			"compound",
+			"cascading",
+			"additive",
+			"tiered",
+			"progressive",
+			"flat",
+			"custom",
+		])
 		.optional(),
 	rounding_method: z
 		.enum(["standard", "up", "down", "nearest", "none"])
@@ -138,7 +158,14 @@ export const BillingTaxExemptionApplyCommandSchema = z
 		property_id: z.string().uuid(),
 		folio_id: z.string().uuid().optional(),
 		reservation_id: z.string().uuid().optional(),
-		exemption_type: z.enum(["DIPLOMATIC", "GOVERNMENT", "NON_PROFIT", "RESALE", "EDUCATIONAL", "OTHER"]),
+		exemption_type: z.enum([
+			"DIPLOMATIC",
+			"GOVERNMENT",
+			"NON_PROFIT",
+			"RESALE",
+			"EDUCATIONAL",
+			"OTHER",
+		]),
 		exemption_certificate: z.string().max(200),
 		exemption_reason: z.string().max(500).optional(),
 		/** ISO date when the certificate expires. */

@@ -257,7 +257,10 @@ export const MeetingRoomWriteBodySchema = z.object({
 		.string()
 		.min(2)
 		.max(50)
-		.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			"Use letters, numbers, hyphen or underscore only",
+		),
 	room_name: z.string().min(1).max(200),
 	room_type: MeetingRoomTypeEnum,
 	room_status: MeetingRoomStatusEnum.optional(),
@@ -692,7 +695,8 @@ export type EventChargeBasis = {
 const toChargeAmount = (
 	value: MoneyInput | null | undefined,
 	currency: string,
-): number => (value === null || value === undefined ? 0 : roundToCurrency(value, currency));
+): number =>
+	value === null || value === undefined ? 0 : roundToCurrency(value, currency);
 
 /** Percent columns are rates, not money — they never round to a minor unit. */
 const toPercent = (value: MoneyInput | null | undefined): number => {
@@ -752,14 +756,32 @@ export const deriveEventChargeQuote = (
 	const equipment = toChargeAmount(booking.equipment_rental_fee, currency);
 	const audioVisual = toChargeAmount(booking.av_equipment_fee, currency);
 	const labor = toChargeAmount(booking.labor_charges, currency);
-	const foodBeverage = toChargeAmount(booking.estimated_food_beverage, currency);
+	const foodBeverage = toChargeAmount(
+		booking.estimated_food_beverage,
+		currency,
+	);
 
 	addLine(EVENT_CHARGE_CODES.rental, "EVENTS", "Function space rental", rental);
 	addLine(EVENT_CHARGE_CODES.setup, "EVENTS", "Event setup", setup);
-	addLine(EVENT_CHARGE_CODES.equipment, "EVENTS", "Equipment rental", equipment);
-	addLine(EVENT_CHARGE_CODES.audioVisual, "EVENTS", "Audio-visual", audioVisual);
+	addLine(
+		EVENT_CHARGE_CODES.equipment,
+		"EVENTS",
+		"Equipment rental",
+		equipment,
+	);
+	addLine(
+		EVENT_CHARGE_CODES.audioVisual,
+		"EVENTS",
+		"Audio-visual",
+		audioVisual,
+	);
 	addLine(EVENT_CHARGE_CODES.labor, "EVENTS", "Event labour", labor);
-	addLine(EVENT_CHARGE_CODES.foodBeverage, "FB", "Banquet food & beverage", foodBeverage);
+	addLine(
+		EVENT_CHARGE_CODES.foodBeverage,
+		"FB",
+		"Banquet food & beverage",
+		foodBeverage,
+	);
 
 	const subtotal = roundToCurrency(
 		rental + setup + equipment + audioVisual + labor + foodBeverage,
@@ -779,7 +801,13 @@ export const deriveEventChargeQuote = (
 	);
 
 	const discount = toChargeAmount(booking.discount_amount, currency);
-	addLine(EVENT_CHARGE_CODES.discount, "EVENTS", "Event discount", discount, "CREDIT");
+	addLine(
+		EVENT_CHARGE_CODES.discount,
+		"EVENTS",
+		"Event discount",
+		discount,
+		"CREDIT",
+	);
 
 	const taxableBase = roundToCurrency(
 		subtotal + serviceCharge - discount,
@@ -1519,7 +1547,10 @@ export const PromotionalCodeWriteBodySchema = z
 			// Codes are typed by guests and pasted from emails; folding case and
 			// rejecting spaces at the edge avoids "SUMMER20" and "summer20 " being
 			// two different rows that both look right in a list.
-			.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only")
+			.regex(
+				/^[A-Za-z0-9_-]+$/,
+				"Use letters, numbers, hyphen or underscore only",
+			)
 			.transform((value) => value.toUpperCase()),
 		promo_name: z.string().min(1).max(255),
 		promo_description: z.string().optional(),
@@ -1550,12 +1581,20 @@ export const PromotionalCodeWriteBodySchema = z
 		path: ["valid_to"],
 	})
 	.refine(
-		(body) => body.discount_type !== "percentage" || body.discount_percent != null,
-		{ message: "discount_percent is required for a percentage discount", path: ["discount_percent"] },
+		(body) =>
+			body.discount_type !== "percentage" || body.discount_percent != null,
+		{
+			message: "discount_percent is required for a percentage discount",
+			path: ["discount_percent"],
+		},
 	)
 	.refine(
-		(body) => body.discount_type !== "fixed_amount" || body.discount_amount != null,
-		{ message: "discount_amount is required for a fixed-amount discount", path: ["discount_amount"] },
+		(body) =>
+			body.discount_type !== "fixed_amount" || body.discount_amount != null,
+		{
+			message: "discount_amount is required for a fixed-amount discount",
+			path: ["discount_amount"],
+		},
 	)
 	.refine((body) => !body.has_usage_limit || body.total_usage_limit != null, {
 		message: "total_usage_limit is required when has_usage_limit is set",
@@ -1579,8 +1618,14 @@ export const PromotionalCodeUpdateBodySchema = z.object({
 	promo_status: PromotionalCodeStatusEnum.optional(),
 	is_active: z.boolean().optional(),
 	is_public: z.boolean().optional(),
-	valid_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-	valid_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	valid_from: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	valid_to: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 	discount_type: PromotionalCodeDiscountTypeEnum.optional(),
 	discount_percent: z.coerce.number().min(0).max(100).optional(),
 	discount_amount: z.coerce.number().nonnegative().optional(),
@@ -1993,7 +2038,9 @@ export const OtaConfigurationListItemSchema = z.object({
 	updated_at: z.string().optional(),
 });
 
-export type OtaConfigurationListItem = z.infer<typeof OtaConfigurationListItemSchema>;
+export type OtaConfigurationListItem = z.infer<
+	typeof OtaConfigurationListItemSchema
+>;
 
 /** Raw row for {@link OtaConfigurationListItemSchema}. */
 export type OtaConfigurationRow = {
@@ -2192,7 +2239,12 @@ export const ShiftHandoverListItemSchema = z.object({
 export type ShiftHandoverListItem = z.infer<typeof ShiftHandoverListItemSchema>;
 
 /** Shifts and departments, matching the table's CHECK constraints (lowercase). */
-export const ShiftNameEnum = z.enum(["morning", "afternoon", "evening", "night"]);
+export const ShiftNameEnum = z.enum([
+	"morning",
+	"afternoon",
+	"evening",
+	"night",
+]);
 
 export type ShiftName = z.infer<typeof ShiftNameEnum>;
 
@@ -2209,7 +2261,9 @@ export const ShiftHandoverDepartmentEnum = z.enum([
 	"other",
 ]);
 
-export type ShiftHandoverDepartment = z.infer<typeof ShiftHandoverDepartmentEnum>;
+export type ShiftHandoverDepartment = z.infer<
+	typeof ShiftHandoverDepartmentEnum
+>;
 
 /**
  * Matches the table's CHECK constraint. The previous definition here was
@@ -2259,7 +2313,9 @@ export const ShiftHandoverWriteBodySchema = z.object({
 	special_situations: z.string().optional(),
 });
 
-export type ShiftHandoverWriteBody = z.infer<typeof ShiftHandoverWriteBodySchema>;
+export type ShiftHandoverWriteBody = z.infer<
+	typeof ShiftHandoverWriteBodySchema
+>;
 
 /**
  * Edit an open handover while the shift runs. Everything is optional so a screen
@@ -2282,7 +2338,9 @@ export const ShiftHandoverUpdateBodySchema = z.object({
 	special_situations: z.string().optional(),
 });
 
-export type ShiftHandoverUpdateBody = z.infer<typeof ShiftHandoverUpdateBodySchema>;
+export type ShiftHandoverUpdateBody = z.infer<
+	typeof ShiftHandoverUpdateBodySchema
+>;
 
 /**
  * The incoming staff member signs off, capturing who and when. A handover list
@@ -2296,7 +2354,9 @@ export const ShiftHandoverAcknowledgeBodySchema = z.object({
 	handover_quality_rating: z.coerce.number().int().min(1).max(5).optional(),
 });
 
-export type ShiftHandoverAcknowledgeBody = z.infer<typeof ShiftHandoverAcknowledgeBodySchema>;
+export type ShiftHandoverAcknowledgeBody = z.infer<
+	typeof ShiftHandoverAcknowledgeBodySchema
+>;
 
 /**
  * Service-layer input for a shift handover write. Camel-cased counterpart of
@@ -2634,7 +2694,11 @@ const BanquetOrderWriteFieldsSchema = z.object({
 	service_style: z.string().max(50).optional(),
 	courses_count: z.coerce.number().int().nonnegative().optional(),
 	meal_service_start_time: BEO_TIME_OF_DAY.optional(),
-	meal_service_duration_minutes: z.coerce.number().int().nonnegative().optional(),
+	meal_service_duration_minutes: z.coerce
+		.number()
+		.int()
+		.nonnegative()
+		.optional(),
 	appetizers: z.array(z.unknown()).optional(),
 	salads: z.array(z.unknown()).optional(),
 	entrees: z.array(z.unknown()).optional(),
@@ -2925,7 +2989,10 @@ export const BEO_EXECUTION_PREREQUISITE: Readonly<
  * BEO it is displaying without a second copy of the mapping.
  */
 export const BEO_EXECUTION_FLAG: Readonly<
-	Record<BeoExecutionStep, "setup_completed" | "event_started" | "event_ended" | "teardown_completed">
+	Record<
+		BeoExecutionStep,
+		"setup_completed" | "event_started" | "event_ended" | "teardown_completed"
+	>
 > = Object.freeze({
 	SETUP_COMPLETE: "setup_completed",
 	EVENT_START: "event_started",
@@ -3235,7 +3302,9 @@ export const GuestFeedbackWriteBodySchema = z.object({
 	language_code: z.string().max(10).optional(),
 });
 
-export type GuestFeedbackWriteBody = z.infer<typeof GuestFeedbackWriteBodySchema>;
+export type GuestFeedbackWriteBody = z.infer<
+	typeof GuestFeedbackWriteBodySchema
+>;
 
 /**
  * Guest-portal feedback intake.
@@ -3261,7 +3330,9 @@ export const SelfServiceFeedbackBodySchema = z.object({
 	would_return: z.boolean().optional(),
 });
 
-export type SelfServiceFeedbackBody = z.infer<typeof SelfServiceFeedbackBodySchema>;
+export type SelfServiceFeedbackBody = z.infer<
+	typeof SelfServiceFeedbackBodySchema
+>;
 
 /** Triage: categorise, set sentiment, assign an owner, adjust publication. */
 export const GuestFeedbackUpdateBodySchema = z.object({
@@ -3275,7 +3346,9 @@ export const GuestFeedbackUpdateBodySchema = z.object({
 	is_verified: z.boolean().optional(),
 });
 
-export type GuestFeedbackUpdateBody = z.infer<typeof GuestFeedbackUpdateBodySchema>;
+export type GuestFeedbackUpdateBody = z.infer<
+	typeof GuestFeedbackUpdateBodySchema
+>;
 
 /** Record the response sent to the guest. Stamps responded_by/responded_at. */
 export const GuestFeedbackRespondBodySchema = z.object({
@@ -3284,7 +3357,9 @@ export const GuestFeedbackRespondBodySchema = z.object({
 	is_public: z.boolean().optional(),
 });
 
-export type GuestFeedbackRespondBody = z.infer<typeof GuestFeedbackRespondBodySchema>;
+export type GuestFeedbackRespondBody = z.infer<
+	typeof GuestFeedbackRespondBodySchema
+>;
 
 /**
  * Close the loop. `service_recovery_reference` carries the comp posting or
@@ -3298,7 +3373,9 @@ export const GuestFeedbackResolveBodySchema = z.object({
 	feedback_status: z.enum(["resolved", "closed"]).optional(),
 });
 
-export type GuestFeedbackResolveBody = z.infer<typeof GuestFeedbackResolveBodySchema>;
+export type GuestFeedbackResolveBody = z.infer<
+	typeof GuestFeedbackResolveBodySchema
+>;
 
 // =====================================================
 // POLICE REPORTS
@@ -3369,10 +3446,14 @@ export const UpsertBusinessDateBodySchema = z.object({
 	property_id: uuid,
 	business_date: z.string(), // YYYY-MM-DD
 	date_status: BusinessDateStatusEnum.default("OPEN"),
-	night_audit_status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"]).default("PENDING"),
+	night_audit_status: z
+		.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"])
+		.default("PENDING"),
 });
 
-export type UpsertBusinessDateBody = z.infer<typeof UpsertBusinessDateBodySchema>;
+export type UpsertBusinessDateBody = z.infer<
+	typeof UpsertBusinessDateBodySchema
+>;
 
 // -----------------------------------------------------------------------------
 // Company write contracts
@@ -3512,7 +3593,10 @@ export const PoliceReportWriteBodySchema = z.object({
 	incident_id: uuid.optional(),
 	incident_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 	incident_time: z.string().min(4).max(8).optional(),
-	reported_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	reported_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 	incident_type: PoliceIncidentTypeEnum.optional(),
 	incident_description: z.string().min(1).max(5000),
 	incident_location: z.string().max(255).optional(),
@@ -3531,11 +3615,14 @@ export const PoliceReportWriteBodySchema = z.object({
 
 export type PoliceReportWriteBody = z.infer<typeof PoliceReportWriteBodySchema>;
 
-export const PoliceReportUpdateBodySchema = PoliceReportWriteBodySchema.partial().extend({
-	tenant_id: uuid,
-});
+export const PoliceReportUpdateBodySchema =
+	PoliceReportWriteBodySchema.partial().extend({
+		tenant_id: uuid,
+	});
 
-export type PoliceReportUpdateBody = z.infer<typeof PoliceReportUpdateBodySchema>;
+export type PoliceReportUpdateBody = z.infer<
+	typeof PoliceReportUpdateBodySchema
+>;
 
 /**
  * Move a report through its status. The police case number is captured with the
@@ -3548,10 +3635,15 @@ export const PoliceReportStatusBodySchema = z.object({
 	police_case_number: z.string().max(100).optional(),
 	lead_investigator_name: z.string().max(255).optional(),
 	follow_up_required: z.boolean().optional(),
-	follow_up_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	follow_up_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 });
 
-export type PoliceReportStatusBody = z.infer<typeof PoliceReportStatusBodySchema>;
+export type PoliceReportStatusBody = z.infer<
+	typeof PoliceReportStatusBodySchema
+>;
 
 /**
  * Service-layer input for a company write. Camel-cased counterpart of

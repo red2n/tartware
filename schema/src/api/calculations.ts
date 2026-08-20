@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { currencyCode } from "../shared/base-schemas.js";
+
 /**
  * DEV DOC
  * Module: api/calculations.ts
@@ -10,7 +11,6 @@ import { currencyCode } from "../shared/base-schemas.js";
  * Stateless financial calculation schemas used by calculation-service.
  * All formulas reference CORE.md sections.
  */
-
 
 // =====================================================
 // SHARED PRIMITIVES

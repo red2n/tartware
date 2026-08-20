@@ -344,7 +344,12 @@ export const BookingSourceListItemSchema = z.object({
 export type BookingSourceListItem = z.infer<typeof BookingSourceListItemSchema>;
 
 /** Commission basis, matching the `commission_type` CHECK constraint. */
-export const CommissionTypeEnum = z.enum(["PERCENTAGE", "FIXED", "TIERED", "NONE"]);
+export const CommissionTypeEnum = z.enum([
+	"PERCENTAGE",
+	"FIXED",
+	"TIERED",
+	"NONE",
+]);
 
 export type CommissionType = z.infer<typeof CommissionTypeEnum>;
 
@@ -390,7 +395,9 @@ export const ALLOTMENT_LEGAL_TRANSITIONS: Readonly<
 	CANCELLED: [],
 });
 
-const ALLOTMENT_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+const ALLOTMENT_DATE = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 
 /**
  * Create an allotment — a contracted block of rooms.
@@ -411,7 +418,10 @@ export const AllotmentWriteBodySchema = z
 			.string()
 			.min(2)
 			.max(50)
-			.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+			.regex(
+				/^[A-Za-z0-9_-]+$/,
+				"Use letters, numbers, hyphen or underscore only",
+			),
 		allotment_name: z.string().min(1).max(200),
 		allotment_type: AllotmentTypeEnum,
 		allotment_status: AllotmentStatusEnum.optional(),
@@ -564,7 +574,10 @@ export const BookingSourceWriteBodySchema = z
 			.string()
 			.min(2)
 			.max(50)
-			.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+			.regex(
+				/^[A-Za-z0-9_-]+$/,
+				"Use letters, numbers, hyphen or underscore only",
+			),
 		source_name: z.string().min(1).max(200),
 		source_type: BookingSourceTypeEnum,
 		category: z.string().max(50).optional(),
@@ -582,18 +595,26 @@ export const BookingSourceWriteBodySchema = z
 		is_preferred: z.boolean().optional(),
 	})
 	.refine(
-		(body) => body.commission_type !== "PERCENTAGE" || body.commission_percentage != null,
+		(body) =>
+			body.commission_type !== "PERCENTAGE" ||
+			body.commission_percentage != null,
 		{
 			message: "commission_percentage is required for a percentage commission",
 			path: ["commission_percentage"],
 		},
 	)
-	.refine((body) => body.commission_type !== "FIXED" || body.commission_fixed_amount != null, {
-		message: "commission_fixed_amount is required for a fixed commission",
-		path: ["commission_fixed_amount"],
-	});
+	.refine(
+		(body) =>
+			body.commission_type !== "FIXED" || body.commission_fixed_amount != null,
+		{
+			message: "commission_fixed_amount is required for a fixed commission",
+			path: ["commission_fixed_amount"],
+		},
+	);
 
-export type BookingSourceWriteBody = z.infer<typeof BookingSourceWriteBodySchema>;
+export type BookingSourceWriteBody = z.infer<
+	typeof BookingSourceWriteBodySchema
+>;
 
 /** Edit a booking source. `source_code` is fixed — reservations reference it. */
 export const BookingSourceUpdateBodySchema = z.object({
@@ -615,7 +636,9 @@ export const BookingSourceUpdateBodySchema = z.object({
 	is_preferred: z.boolean().optional(),
 });
 
-export type BookingSourceUpdateBody = z.infer<typeof BookingSourceUpdateBodySchema>;
+export type BookingSourceUpdateBody = z.infer<
+	typeof BookingSourceUpdateBodySchema
+>;
 
 /** Service-layer input for a booking source write, per AGENTS.md. */
 export type BookingSourceWriteInput = {
@@ -755,7 +778,10 @@ export const MarketSegmentWriteBodySchema = z.object({
 		.string()
 		.min(2)
 		.max(50)
-		.regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			"Use letters, numbers, hyphen or underscore only",
+		),
 	segment_name: z.string().min(1).max(200),
 	segment_type: MarketSegmentTypeEnum,
 	is_active: z.boolean().optional(),
@@ -764,7 +790,9 @@ export const MarketSegmentWriteBodySchema = z.object({
 	rate_multiplier: z.coerce.number().positive().optional(),
 });
 
-export type MarketSegmentWriteBody = z.infer<typeof MarketSegmentWriteBodySchema>;
+export type MarketSegmentWriteBody = z.infer<
+	typeof MarketSegmentWriteBodySchema
+>;
 
 /** Edit a market segment. `segment_code` is fixed — reservations reference it. */
 export const MarketSegmentUpdateBodySchema = z.object({
@@ -777,7 +805,9 @@ export const MarketSegmentUpdateBodySchema = z.object({
 	rate_multiplier: z.coerce.number().positive().optional(),
 });
 
-export type MarketSegmentUpdateBody = z.infer<typeof MarketSegmentUpdateBodySchema>;
+export type MarketSegmentUpdateBody = z.infer<
+	typeof MarketSegmentUpdateBodySchema
+>;
 
 /** Service-layer input for a market segment write, per AGENTS.md. */
 export type MarketSegmentWriteInput = {

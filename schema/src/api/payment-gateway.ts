@@ -38,7 +38,9 @@ export const BillingPaymentGatewayProviderEnum = z.enum([
 	"AUTHORIZE_NET",
 	"MANUAL", // ops-managed offline payments — no external API
 ]);
-export type BillingPaymentGatewayProvider = z.infer<typeof BillingPaymentGatewayProviderEnum>;
+export type BillingPaymentGatewayProvider = z.infer<
+	typeof BillingPaymentGatewayProviderEnum
+>;
 
 /**
  * PSP-side authorization lifecycle. Mirrors the subset of states every major
@@ -56,7 +58,9 @@ export const BillingPaymentGatewayStatusEnum = z.enum([
 	"FAILED", // PSP declined
 	"EXPIRED", // authorization timed out
 ]);
-export type BillingPaymentGatewayStatus = z.infer<typeof BillingPaymentGatewayStatusEnum>;
+export type BillingPaymentGatewayStatus = z.infer<
+	typeof BillingPaymentGatewayStatusEnum
+>;
 
 // ---------------------------------------------------------------------------
 // Money — must match billing service's NUMERIC(19,4) representation
@@ -69,7 +73,10 @@ export type BillingPaymentGatewayStatus = z.infer<typeof BillingPaymentGatewaySt
  */
 export const PaymentAmountSchema = z
 	.string()
-	.regex(/^\d{1,15}(?:\.\d{1,4})?$/, "Amount must be a non-negative decimal with up to 4 fractional digits");
+	.regex(
+		/^\d{1,15}(?:\.\d{1,4})?$/,
+		"Amount must be a non-negative decimal with up to 4 fractional digits",
+	);
 export type PaymentAmount = z.infer<typeof PaymentAmountSchema>;
 
 /** ISO-4217 currency code, normalised to uppercase. */
@@ -100,7 +107,9 @@ export const AuthorizePaymentRequestSchema = z.object({
 	/** Whether to capture immediately (true) or hold (false). */
 	capture: z.boolean().default(false),
 });
-export type AuthorizePaymentRequest = z.infer<typeof AuthorizePaymentRequestSchema>;
+export type AuthorizePaymentRequest = z.infer<
+	typeof AuthorizePaymentRequestSchema
+>;
 
 export const BillingPaymentGatewayResultSchema = z.object({
 	provider: BillingPaymentGatewayProviderEnum,
@@ -128,7 +137,9 @@ export const BillingPaymentGatewayResultSchema = z.object({
 	/** Raw PSP response, JSONB-stored on `payments.gateway_response`. */
 	raw_response: z.record(z.unknown()).optional(),
 });
-export type BillingPaymentGatewayResult = z.infer<typeof BillingPaymentGatewayResultSchema>;
+export type BillingPaymentGatewayResult = z.infer<
+	typeof BillingPaymentGatewayResultSchema
+>;
 
 // ---------------------------------------------------------------------------
 // CAPTURE / VOID / REFUND
@@ -156,7 +167,9 @@ export const RefundPaymentRequestSchema = z.object({
 	gateway_reference: z.string().min(1).max(255),
 	idempotency_key: z.string().min(8).max(128),
 	amount: PaymentAmountSchema.optional(), // full refund if omitted
-	reason: z.enum(["requested_by_customer", "duplicate", "fraudulent", "other"]).default("requested_by_customer"),
+	reason: z
+		.enum(["requested_by_customer", "duplicate", "fraudulent", "other"])
+		.default("requested_by_customer"),
 });
 export type RefundPaymentRequest = z.infer<typeof RefundPaymentRequestSchema>;
 
@@ -175,7 +188,9 @@ export const BillingPaymentGatewayWebhookEventSchema = z.object({
 	occurred_at: z.string(), // ISO-8601 timestamp from PSP
 	payload: z.record(z.unknown()),
 });
-export type BillingPaymentGatewayWebhookEvent = z.infer<typeof BillingPaymentGatewayWebhookEventSchema>;
+export type BillingPaymentGatewayWebhookEvent = z.infer<
+	typeof BillingPaymentGatewayWebhookEventSchema
+>;
 
 // ---------------------------------------------------------------------------
 // Provider interface — the contract every adapter must implement
@@ -200,7 +215,9 @@ export interface BillingPaymentGateway {
 	readonly provider: BillingPaymentGatewayProvider;
 
 	/** Authorize (and optionally capture) a payment. */
-	authorize(request: AuthorizePaymentRequest): Promise<BillingPaymentGatewayResult>;
+	authorize(
+		request: AuthorizePaymentRequest,
+	): Promise<BillingPaymentGatewayResult>;
 
 	/** Capture a previously authorized payment. */
 	capture(request: CapturePaymentRequest): Promise<BillingPaymentGatewayResult>;

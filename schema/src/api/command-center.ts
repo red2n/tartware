@@ -228,7 +228,9 @@ export type CommandContext = {
 // =============================================================================
 
 /** Generic DB query executor used across command dispatch repositories. */
-export type QueryExecutor = <T extends Record<string, unknown> = Record<string, unknown>>(
+export type QueryExecutor = <
+	T extends Record<string, unknown> = Record<string, unknown>,
+>(
 	sql: string,
 	params?: unknown[],
 ) => Promise<{ rows: T[] }>;

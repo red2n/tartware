@@ -70,7 +70,13 @@ export const BillingChargebackRecordCommandSchema = z.object({
 	evidence: z
 		.array(
 			z.object({
-				type: z.enum(["RECEIPT", "CORRESPONDENCE", "CONTRACT", "PHOTO", "OTHER"]),
+				type: z.enum([
+					"RECEIPT",
+					"CORRESPONDENCE",
+					"CONTRACT",
+					"PHOTO",
+					"OTHER",
+				]),
 				description: z.string().max(500).optional(),
 				url: z.string().max(2048).optional(),
 			}),
@@ -95,7 +101,13 @@ export const BillingChargebackUpdateStatusCommandSchema = z.object({
 	evidence: z
 		.array(
 			z.object({
-				type: z.enum(["RECEIPT", "CORRESPONDENCE", "CONTRACT", "PHOTO", "OTHER"]),
+				type: z.enum([
+					"RECEIPT",
+					"CORRESPONDENCE",
+					"CONTRACT",
+					"PHOTO",
+					"OTHER",
+				]),
 				description: z.string().max(500).optional(),
 				url: z.string().max(2048).optional(),
 			}),
@@ -121,7 +133,13 @@ export const BillingCompPostCommandSchema = z
 		property_id: z.string().uuid(),
 		folio_id: z.string().uuid().optional(),
 		reservation_id: z.string().uuid().optional(),
-		comp_type: z.enum(["ROOM", "FOOD_BEVERAGE", "SPA", "ACTIVITY", "MISCELLANEOUS"]),
+		comp_type: z.enum([
+			"ROOM",
+			"FOOD_BEVERAGE",
+			"SPA",
+			"ACTIVITY",
+			"MISCELLANEOUS",
+		]),
 		amount: z.coerce.number().positive(),
 		currency: z.string().length(3).optional(),
 		charge_code: z.string().max(50).optional(),
@@ -136,4 +154,6 @@ export const BillingCompPostCommandSchema = z
 		"folio_id or reservation_id is required",
 	);
 
-export type BillingCompPostCommand = z.infer<typeof BillingCompPostCommandSchema>;
+export type BillingCompPostCommand = z.infer<
+	typeof BillingCompPostCommandSchema
+>;

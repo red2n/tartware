@@ -342,6 +342,78 @@ fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 echo
+echo "── ALLOTMENTS (ui-gaps/16 step 4) ──"
+# Contracted room blocks. Deliberately not through availability-guard-service —
+# see the 2026-08-19 decision in that spec. The lifecycle is what most needs a
+# live run: the CHECK constrains the value, the service constrains the movement.
+
+ALLOT_CODE="SMKBLK$(date +%H%M%S)"
+ALLOT_BODY=$(cat <<JSON
+{"tenant_id":"$TID","property_id":"$PID","allotment_code":"$ALLOT_CODE",
+ "allotment_name":"Smoke tour series $SUFFIX","allotment_type":"TOUR",
+ "start_date":"$TOMORROW","end_date":"$NEXT_WEEK","cutoff_date":"$TODAY",
+ "total_rooms_blocked":40,"rooms_per_night":8,"rate_type":"CONTRACTED",
+ "contracted_rate":129.50,"currency_code":"USD","account_name":"Smoke Tours Ltd",
+ "contact_name":"A. Operator","contact_email":"ops@example.com",
+ "attrition_clause":true,"attrition_percentage":20,"guaranteed_rooms":30,
+ "elastic_limit":5,"commission_percentage":12,"notes":"Created by smoke-operations.sh"}
+JSON
+)
+code=$(req POST "$GW/v1/allotments" "$ALLOT_BODY")
+check "POST /v1/allotments" 201 "$code"
+ALLOT_ID=$(id_from allotment_id)
+check "  starts TENTATIVE" TENTATIVE "$(jq -r '(.data.allotment_status // .allotment_status) // "null"' "$RESP")"
+check "  stored case is not folded" TOUR "$(jq -r '(.data.allotment_type // .allotment_type) // "null"' "$RESP")"
+
+code=$(req POST "$GW/v1/allotments" "$ALLOT_BODY")
+check "duplicate allotment_code → conflict" 409 "$code"
+
+code=$(req POST "$GW/v1/allotments" \
+  "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"allotment_code\":\"SMKBAD$SUFFIX\",\"allotment_name\":\"Backwards\",\"allotment_type\":\"TOUR\",\"start_date\":\"$NEXT_WEEK\",\"end_date\":\"$TOMORROW\",\"total_rooms_blocked\":5}")
+check "end before start → bad request" 400 "$code"
+
+code=$(req POST "$GW/v1/allotments" \
+  "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"allotment_code\":\"SMKBAD2$SUFFIX\",\"allotment_name\":\"No rooms\",\"allotment_type\":\"TOUR\",\"start_date\":\"$TOMORROW\",\"end_date\":\"$NEXT_WEEK\",\"total_rooms_blocked\":0}")
+check "a block of zero rooms → bad request" 400 "$code"
+
+if [[ -n "$ALLOT_ID" ]]; then
+  code=$(req GET "$GW/v1/allotments/$ALLOT_ID?tenant_id=$TID")
+  check "GET /v1/allotments/:allotmentId" 200 "$code"
+
+  # Pickup is re-derived from the block size, not stored twice.
+  code=$(req PUT "$GW/v1/allotments/$ALLOT_ID" \
+    "{\"tenant_id\":\"$TID\",\"rooms_picked_up\":10,\"contracted_rate\":135}")
+  check "PUT /v1/allotments/:allotmentId" 200 "$code"
+  check "  pickup percentage re-derived" 25 "$(jq -r '(.data.pickup_percentage // .pickup_percentage) // "null"' "$RESP")"
+  check "  rooms available re-derived" 30 "$(jq -r '(.data.rooms_available // .rooms_available) // "null"' "$RESP")"
+
+  code=$(req POST "$GW/v1/allotments/$ALLOT_ID/status" \
+    "{\"tenant_id\":\"$TID\",\"allotment_status\":\"COMPLETED\"}")
+  check "skipping straight to COMPLETED → conflict" 409 "$code"
+
+  code=$(req POST "$GW/v1/allotments/$ALLOT_ID/status" \
+    "{\"tenant_id\":\"$TID\",\"allotment_status\":\"DEFINITE\"}")
+  check "POST …/:allotmentId/status DEFINITE" 200 "$code"
+  check "  signed" DEFINITE "$(jq -r '(.data.allotment_status // .allotment_status) // "null"' "$RESP")"
+
+  code=$(req POST "$GW/v1/allotments/$ALLOT_ID/status" \
+    "{\"tenant_id\":\"$TID\",\"allotment_status\":\"ACTIVE\"}")
+  check "  DEFINITE → ACTIVE" 200 "$code"
+
+  code=$(req POST "$GW/v1/allotments/$ALLOT_ID/status" \
+    "{\"tenant_id\":\"$TID\",\"allotment_status\":\"CANCELLED\",\"cancellation_reason\":\"smoke test cleanup\"}")
+  check "  cancelling a live block" 200 "$code"
+
+  code=$(req POST "$GW/v1/allotments/$ALLOT_ID/status" \
+    "{\"tenant_id\":\"$TID\",\"allotment_status\":\"ACTIVE\"}")
+  check "  CANCELLED is terminal" 409 "$code"
+fi
+
+code=$(req GET "$GW/v1/allotments/$(uuid)?tenant_id=$TID")
+check "unknown allotment_id → not found" 404 "$code"
+
+# ─────────────────────────────────────────────────────────────────────────────
+echo
 echo "── POLICE REPORTS (ui-gaps/02) ──"
 # Shipped 2026-08-11 and never run live either. This is a statutory register in
 # some jurisdictions, so a silently broken write is the worst kind here.

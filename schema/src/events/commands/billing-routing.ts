@@ -38,7 +38,9 @@ export const BillingRoutingRuleCreateCommandSchema = z.object({
 		.optional(),
 	min_amount: z.coerce.number().min(0).optional(),
 	max_amount: z.coerce.number().min(0).optional(),
-	routing_type: z.enum(["FULL", "PERCENTAGE", "FIXED_AMOUNT", "REMAINDER"]).default("FULL"),
+	routing_type: z
+		.enum(["FULL", "PERCENTAGE", "FIXED_AMOUNT", "REMAINDER"])
+		.default("FULL"),
 	routing_percentage: z.coerce.number().min(0).max(100).optional(),
 	routing_fixed_amount: z.coerce.number().min(0).optional(),
 	priority: z.coerce.number().int().min(0).default(100),
@@ -82,7 +84,9 @@ export const BillingRoutingRuleUpdateCommandSchema = z.object({
 		.optional(),
 	min_amount: z.coerce.number().min(0).optional(),
 	max_amount: z.coerce.number().min(0).optional(),
-	routing_type: z.enum(["FULL", "PERCENTAGE", "FIXED_AMOUNT", "REMAINDER"]).optional(),
+	routing_type: z
+		.enum(["FULL", "PERCENTAGE", "FIXED_AMOUNT", "REMAINDER"])
+		.optional(),
 	routing_percentage: z.coerce.number().min(0).max(100).optional(),
 	routing_fixed_amount: z.coerce.number().min(0).optional(),
 	priority: z.coerce.number().int().min(0).optional(),

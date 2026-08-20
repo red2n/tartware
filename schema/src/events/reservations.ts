@@ -93,7 +93,8 @@ const ReservationCreatePayloadSchema = z.object({
 	 * Frozen so subsequent rate-plan edits don't retroactively change the
 	 * guest's cancellation terms (consumer-protection requirement).
 	 */
-	cancellation_policy_snapshot: CancellationPolicySnapshotSchema.nullable().optional(),
+	cancellation_policy_snapshot:
+		CancellationPolicySnapshotSchema.nullable().optional(),
 });
 
 export const ReservationCreatedEventSchema = z.object({

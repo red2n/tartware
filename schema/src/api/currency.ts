@@ -40,37 +40,38 @@ export const CurrencyCodeSchema = z
  * maintained, and an unlisted currency degrades to the common case instead of
  * failing.
  */
-const CURRENCY_EXPONENT_OVERRIDES: Readonly<Record<string, number>> = Object.freeze({
-	// Zero-decimal currencies — the major unit is the smallest unit.
-	BIF: 0,
-	CLP: 0,
-	DJF: 0,
-	GNF: 0,
-	ISK: 0,
-	JPY: 0,
-	KMF: 0,
-	KRW: 0,
-	PYG: 0,
-	RWF: 0,
-	UGX: 0,
-	UYI: 0,
-	VND: 0,
-	VUV: 0,
-	XAF: 0,
-	XOF: 0,
-	XPF: 0,
-	// Three-decimal currencies — 1000 fils/millimes to the major unit.
-	BHD: 3,
-	IQD: 3,
-	JOD: 3,
-	KWD: 3,
-	LYD: 3,
-	OMR: 3,
-	TND: 3,
-	// Four-decimal currencies (funds/clearing rates).
-	CLF: 4,
-	UYW: 4,
-});
+const CURRENCY_EXPONENT_OVERRIDES: Readonly<Record<string, number>> =
+	Object.freeze({
+		// Zero-decimal currencies — the major unit is the smallest unit.
+		BIF: 0,
+		CLP: 0,
+		DJF: 0,
+		GNF: 0,
+		ISK: 0,
+		JPY: 0,
+		KMF: 0,
+		KRW: 0,
+		PYG: 0,
+		RWF: 0,
+		UGX: 0,
+		UYI: 0,
+		VND: 0,
+		VUV: 0,
+		XAF: 0,
+		XOF: 0,
+		XPF: 0,
+		// Three-decimal currencies — 1000 fils/millimes to the major unit.
+		BHD: 3,
+		IQD: 3,
+		JOD: 3,
+		KWD: 3,
+		LYD: 3,
+		OMR: 3,
+		TND: 3,
+		// Four-decimal currencies (funds/clearing rates).
+		CLF: 4,
+		UYW: 4,
+	});
 
 /** Exponent assumed for any currency not in the override table. */
 export const DEFAULT_CURRENCY_EXPONENT = 2;
@@ -89,7 +90,9 @@ export const MAX_CURRENCY_EXPONENT = 4;
  *                 (the DB stores `CHAR(3)`, which pads).
  * @returns The exponent, or {@link DEFAULT_CURRENCY_EXPONENT} for unknown codes.
  */
-export const getCurrencyExponent = (currency: string | null | undefined): number => {
+export const getCurrencyExponent = (
+	currency: string | null | undefined,
+): number => {
 	if (!currency) return DEFAULT_CURRENCY_EXPONENT;
 	const code = currency.trim().toUpperCase();
 	return CURRENCY_EXPONENT_OVERRIDES[code] ?? DEFAULT_CURRENCY_EXPONENT;
@@ -145,7 +148,10 @@ const toExactDecimal = (value: MoneyInput): ExactDecimal | null => {
 };
 
 /** Rescale an exact decimal to `targetScale`, rounding half away from zero. */
-const rescale = ({ digits, scale }: ExactDecimal, targetScale: number): bigint => {
+const rescale = (
+	{ digits, scale }: ExactDecimal,
+	targetScale: number,
+): bigint => {
 	if (scale === targetScale) return digits;
 
 	if (scale < targetScale) {
@@ -169,10 +175,14 @@ const rescale = ({ digits, scale }: ExactDecimal, targetScale: number): bigint =
 
 /** Render an integer significand at `scale` back to a JS number. */
 const fromMinorUnits = (units: bigint, scale: number): number =>
-	scale === 0 ? Number(units) : Number(`${units < 0n ? "-" : ""}${formatMagnitude(units, scale)}`);
+	scale === 0
+		? Number(units)
+		: Number(`${units < 0n ? "-" : ""}${formatMagnitude(units, scale)}`);
 
 const formatMagnitude = (units: bigint, scale: number): string => {
-	const text = (units < 0n ? -units : units).toString().padStart(scale + 1, "0");
+	const text = (units < 0n ? -units : units)
+		.toString()
+		.padStart(scale + 1, "0");
 	return `${text.slice(0, text.length - scale)}.${text.slice(text.length - scale)}`;
 };
 
@@ -207,7 +217,10 @@ export const roundToCurrency = (
  * associative and exact, so a column of a million postings totals identically
  * regardless of the order it is accumulated in.
  */
-export const toMinorUnits = (amount: MoneyInput, currency: string | null | undefined): bigint => {
+export const toMinorUnits = (
+	amount: MoneyInput,
+	currency: string | null | undefined,
+): bigint => {
 	const parsed = toExactDecimal(amount);
 	if (!parsed) return 0n;
 	return rescale(parsed, getCurrencyExponent(currency));
@@ -265,5 +278,7 @@ export const isRepresentableInCurrency = (
 	// Exact test: rescaling down and back up must be lossless, i.e. the value
 	// carries no digits finer than the currency can express.
 	const units = rescale(parsed, exponent);
-	return rescale({ digits: units, scale: exponent }, parsed.scale) === parsed.digits;
+	return (
+		rescale({ digits: units, scale: exponent }, parsed.scale) === parsed.digits
+	);
 };

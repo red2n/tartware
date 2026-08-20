@@ -63,10 +63,32 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
-  app.get(
+  /**
+   * Creating an allotment POSTs to the bare path, which `/v1/allotments/*` does
+   * not match — Fastify's wildcard needs one more segment. Every earlier slice
+   * in this family shipped without this registration and 404ed at the gateway
+   * with a working handler downstream; `wildcard-write-conformance.test.ts`
+   * catches the other half.
+   */
+  app.post(
+    "/v1/allotments",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Create an allotment (contracted room block).",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  /** `app.all`, not `app.get`: PUT /:id and POST /:id/status live under here. */
+  app.all(
     "/v1/allotments/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: BOOKING_CONFIG_TAG,
         summary: "Proxy allotment operations to core service.",

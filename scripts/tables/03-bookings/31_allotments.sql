@@ -194,8 +194,14 @@ COMMENT ON COLUMN allotments.attrition_clause IS 'If TRUE, penalty applies if pi
 COMMENT ON COLUMN allotments.guaranteed_rooms IS 'Rooms the group is committed to paying for regardless of pickup';
 COMMENT ON COLUMN allotments.elastic_limit IS 'Additional rooms that can be added beyond initial block';
 
--- Create partial unique index for active allotment codes
-CREATE UNIQUE INDEX idx_uk_allotments_code
+-- Create partial unique index for active allotment codes.
+--
+-- Partial on purpose: a retired block's code becomes reusable once the row is
+-- soft-deleted, which a table constraint could not express. The write path in
+-- services/booking-config/allotment.ts maps a violation of *this index name* to
+-- a 409 — the name is checked here rather than guessed, because it is not
+-- derived from the column and does not appear in `pg_constraint` at all.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uk_allotments_code
     ON allotments(tenant_id, property_id, allotment_code)
     WHERE deleted_at IS NULL;
 

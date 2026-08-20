@@ -613,7 +613,11 @@ export type KeyStatus = z.infer<typeof KeyStatusSchema>;
  */
 export interface PaymentGateway {
 	/** Pre-authorize a payment amount. */
-	authorize(amount: number, currency: string, token: string): Promise<AuthorizationResult>;
+	authorize(
+		amount: number,
+		currency: string,
+		token: string,
+	): Promise<AuthorizationResult>;
 	/** Capture a previously authorized payment. */
 	capture(authorizationId: string): Promise<CaptureResult>;
 	/** Refund a captured payment (full or partial). */
