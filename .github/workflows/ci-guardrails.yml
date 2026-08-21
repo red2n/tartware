@@ -64,6 +64,21 @@ jobs:
       - name: Guardrail coverage
         run: pnpm run check:guardrails
 
+      # Lint, formatting and dead-code checks for every project that has them.
+      # These lived only in the per-package workflows, which fire on
+      # [main, develop, deployment] or a filtered pull_request — so on a feature
+      # branch with no PR they ran on nothing, which is the same gap this
+      # workflow exists to close. Verified to need no build: both pass with
+      # schema/dist absent, so they sit above the schemas step deliberately.
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Biome
+        run: pnpm run biome
+
+      - name: Knip
+        run: pnpm run knip
+
       # The conformance suites import from @tartware/schemas, so its dist has to
       # exist before they run. Nothing else here needs a build.
       - name: Build schemas

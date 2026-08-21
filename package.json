@@ -63,7 +63,8 @@
     "bootstrap:loadtest": "node scripts/bootstrap-loadtest-env.mjs",
     "samples:fetch": "node scripts/fetch-sample-records.mjs",
     "samples:api": "node scripts/fetch-sample-api-records.mjs",
-    "check:guardrails": "node ./scripts/check-guardrail-coverage.mjs"
+    "check:guardrails": "node ./scripts/check-guardrail-coverage.mjs",
+    "prepare": "node ./scripts/install-git-hooks.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.12",

@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Catch what CI would catch, before the push instead of after.
+#
+# Runs the two fast checks only — biome (~7s) and knip (~25s), both usually
+# near-instant once Nx has cached. ESLint (~65s) is left to CI on purpose: a
+# hook slow enough to be resented is a hook that gets bypassed.
+#
+# Bypass deliberately with:  git push --no-verify
+# Disable entirely with:     git config --unset core.hooksPath
+
+set -e
+
+echo "pre-push: biome + knip (skip with --no-verify)"
+
+if ! pnpm run biome; then
+	echo ""
+	echo "pre-push: biome failed. Fix with:"
+	echo "  npx nx run <project>:biome          # see the failures"
+	echo "  cd <project-dir> && npx biome check --write src"
+	exit 1
+fi
+
+if ! pnpm run knip; then
+	echo ""
+	echo "pre-push: knip failed. Fix per-package — never 'knip --fix' from the repo root,"
+	echo "which strips real dependencies and rewrites generated code."
+	exit 1
+fi
+
+echo "pre-push: clean"
