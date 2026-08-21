@@ -613,8 +613,24 @@ if [ "$DB_EXISTS" = "1" ]; then
     " &> /dev/null || true
 
     echo -e "${YELLOW}Dropping existing database...${NC}"
-    # Drop database
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" &> /dev/null
+    # WITH (FORCE) terminates the remaining backends and drops in one statement.
+    # Terminating separately then dropping cannot work while pgbouncer is up:
+    # it holds min_pool_size server connections open and restores that floor the
+    # instant they are killed, so the drop always lost the race and failed with
+    # "database is being accessed by other users". Needs PostgreSQL 13+; the
+    # fallback keeps this working against older servers.
+    DROP_ERR=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
+        -c "DROP DATABASE IF EXISTS $DB_NAME WITH (FORCE);" 2>&1) || {
+        DROP_ERR=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
+            -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>&1) || {
+            echo -e "${RED}✗ Could not drop database '$DB_NAME'${NC}"
+            echo -e "${RED}${DROP_ERR}${NC}"
+            echo ""
+            echo -e "${YELLOW}If a connection pooler is holding sessions open, stop it and retry:${NC}"
+            echo -e "  docker stop tartware-pgbouncer && ./tartware.sh   # restart it afterwards"
+            exit 1
+        }
+    }
 
     echo -e "${GREEN}✓ Database dropped${NC}"
 else

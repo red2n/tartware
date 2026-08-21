@@ -271,6 +271,192 @@ install_nvm_for_user() {
     run_and_log "Install Node LTS for $target_user" "$runner 'export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && nvm install --lts && nvm alias default lts/*'"
 }
 
+# ============================================================================
+# Stop helpers — shut down every locally running Tartware process
+# ============================================================================
+
+# Ports the local dev stack listens on. Backend services first (see the
+# `dev:*` scripts in package.json), then the Angular dev servers.
+# 3700 is the legacy command-center port started by `dev ui`.
+DEV_BACKEND_PORTS=(3000 3010 3015 3020 3025 3030 3045 3055 3060 3700 8080)
+DEV_UI_PORTS=(4200 4300)
+
+# Command-line patterns for processes that can outlive their listening socket.
+# `src/index.ts` is the only substring common to every backend service (they run
+# under three different cmdline shapes). Angular rewrites its own process title
+# to `ng serve --port 4200 (pms-ui)`, so match the bare `ng serve` prefix.
+# Pattern matches are additionally restricted to processes whose cwd is inside
+# this repo, so a checkout in another directory is never touched.
+DEV_PROCESS_PATTERNS=(
+    'src/index.ts'
+    'ng serve'
+    'ensure-otel.mjs'
+    'concurrently --raw -n core,gateway'
+)
+
+# Print PIDs listening on a TCP port, using whichever tool is installed.
+pids_on_port() {
+    local port="$1"
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true
+    elif command -v fuser >/dev/null 2>&1; then
+        fuser -n tcp "$port" 2>/dev/null | tr -s ' ' '\n' | grep -E '^[0-9]+$' || true
+    elif command -v ss >/dev/null 2>&1; then
+        ss -lptnH "sport = :$port" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 || true
+    fi
+}
+
+# This script plus its ancestors: killing those would take down the shell that
+# invoked `stop` (our own cmdline matches some of the patterns above).
+protected_pids() {
+    local pid=$$
+    while [ -n "$pid" ] && [ "$pid" -gt 1 ] 2>/dev/null; do
+        printf '%s\n' "$pid"
+        pid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')"
+    done
+}
+
+# True when the process's working directory is inside this repo.
+pid_in_repo() {
+    local cwd
+    cwd="$(readlink "/proc/$1/cwd" 2>/dev/null || true)"
+    [ -n "$cwd" ] && [ "${cwd#$REPO_ROOT}" != "$cwd" ]
+}
+
+describe_pid() {
+    ps -o args= -p "$1" 2>/dev/null | cut -c1-96
+}
+
+port_is_open() {
+    (echo >"/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1
+}
+
+# Usage: stop_dev_services <dry_run:true|false> <with_docker:true|false>
+stop_dev_services() {
+    local dry_run="${1:-false}"
+    local with_docker="${2:-false}"
+
+    local -a protected=()
+    mapfile -t protected < <(protected_pids)
+
+    declare -A seen=()
+    local -a targets=()
+    local port pat pid p skip
+
+    for port in "${DEV_BACKEND_PORTS[@]}" "${DEV_UI_PORTS[@]}"; do
+        while read -r pid; do
+            [ -n "$pid" ] || continue
+            [ -n "${seen[$pid]:-}" ] && continue
+            seen[$pid]=1
+            targets+=("$pid")
+        done < <(pids_on_port "$port")
+    done
+
+    for pat in "${DEV_PROCESS_PATTERNS[@]}"; do
+        while read -r pid; do
+            [ -n "$pid" ] || continue
+            [ -n "${seen[$pid]:-}" ] && continue
+            pid_in_repo "$pid" || continue
+            seen[$pid]=1
+            targets+=("$pid")
+        done < <(pgrep -f -- "$pat" 2>/dev/null || true)
+    done
+
+    # Drop ourselves and our ancestors from the kill list.
+    local -a victims=()
+    for pid in "${targets[@]}"; do
+        skip=false
+        for p in "${protected[@]}"; do
+            if [ "$pid" = "$p" ]; then
+                skip=true
+                break
+            fi
+        done
+        [ "$skip" = true ] || victims+=("$pid")
+    done
+
+    if [ "${#victims[@]}" -eq 0 ]; then
+        ok "No Tartware dev processes are running."
+    else
+        info "Found ${#victims[@]} Tartware process(es):"
+        for pid in "${victims[@]}"; do
+            printf '  %-8s %s\n' "$pid" "$(describe_pid "$pid")"
+        done
+
+        if [ "$dry_run" = true ]; then
+            info "Dry run — nothing was killed."
+        else
+            info "Sending SIGTERM..."
+            for pid in "${victims[@]}"; do
+                kill -TERM "$pid" 2>/dev/null || true
+            done
+
+            # Give them a few seconds to shut down cleanly.
+            local -a survivors=()
+            local i
+            for i in $(seq 1 10); do
+                survivors=()
+                for pid in "${victims[@]}"; do
+                    kill -0 "$pid" 2>/dev/null && survivors+=("$pid")
+                done
+                [ "${#survivors[@]}" -eq 0 ] && break
+                sleep 1
+            done
+
+            if [ "${#survivors[@]}" -gt 0 ]; then
+                warn "${#survivors[@]} process(es) ignored SIGTERM — sending SIGKILL"
+                for pid in "${survivors[@]}"; do
+                    kill -KILL "$pid" 2>/dev/null || true
+                done
+                sleep 1
+            fi
+            ok "Dev processes stopped."
+        fi
+    fi
+
+    # Report any port still held, so a stale listener is never silently missed.
+    if [ "$dry_run" != true ]; then
+        local -a still_open=()
+        for port in "${DEV_BACKEND_PORTS[@]}" "${DEV_UI_PORTS[@]}"; do
+            port_is_open "$port" && still_open+=("$port")
+        done
+        if [ "${#still_open[@]}" -gt 0 ]; then
+            warn "Ports still in use: ${still_open[*]} (check 'lsof -iTCP:${still_open[0]} -sTCP:LISTEN')"
+        else
+            ok "All dev ports are free."
+        fi
+    fi
+
+    if [ "$with_docker" = true ]; then
+        if ! command -v docker >/dev/null 2>&1; then
+            warn "docker not installed; skipping container shutdown."
+        elif ! docker info >/dev/null 2>&1; then
+            warn "Cannot connect to the Docker daemon; skipping container shutdown."
+        elif [ "$dry_run" = true ]; then
+            info "Dry run — would run: docker compose down"
+        else
+            local compose_cmd
+            compose_cmd="$(docker_compose_cmd)"
+            run_and_log_filtered "Stop Docker Compose" "$compose_cmd -f '$REPO_ROOT/docker-compose.yml' down"
+        fi
+    fi
+}
+
+# Argument parsing shared by `stop` and `dev stop`.
+dev_stop_command() {
+    local dry_run=false
+    local with_docker=false
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --dry-run|-n) dry_run=true ;;
+            --docker|--all) with_docker=true ;;
+            *) fail "Unknown option for stop: $1 (use --docker, --dry-run)" ;;
+        esac
+        shift
+    done
+    stop_dev_services "$dry_run" "$with_docker"
+}
+
 usage() {
         cat <<'USAGE'
 Tartware CLI
@@ -285,6 +471,7 @@ Commands:
     docker   Docker compose helpers
     dev      Developer helpers
     deploy   Deployment helpers
+    stop     Stop all running Tartware services (UI + backend)
     help     Show this help
     exit     Exit immediately
     retry    Re-run the last tartware command
@@ -310,6 +497,14 @@ Dev:
     dev loadtest
     dev mfa-generate
     dev mfa-show
+    dev stop [--docker] [--dry-run]
+
+Stop:
+    stop [--docker] [--dry-run]
+        Kill every locally running Tartware process: the backend services
+        (ports 3000-3060, 8080) and the Angular dev servers (4200, 4300).
+        --docker   also run 'docker compose down' for the container stack
+        --dry-run  list what would be killed without killing anything
 
 Deploy:
     deploy kubernetes
@@ -340,6 +535,9 @@ Deploy:
     -devl          Dev loadtest
     -devg          Dev mfa-generate
     -devs          Dev mfa-show
+    -devx          Dev stop (stop all UI + backend processes)
+
+    -x             Stop all UI + backend processes
 
     -h, --help     Show this help
 
@@ -366,10 +564,11 @@ interactive_menu() {
         echo "║  4) dev      Developer tools (UI, OTel, load test, MFA)      ║"
         echo "║  5) deploy   Deploy to Kubernetes or DuploCloud              ║"
         echo "║  6) retry    Re-run the last tartware command                ║"
+        echo "║  7) stop     Stop all running services (UI + backend)        ║"
         echo "║  0) exit     Quit                                            ║"
         echo "╚══════════════════════════════════════════════════════════════╝"
         echo ""
-        read -r -p "Select option [0-6]: " choice
+        read -r -p "Select option [0-7]: " choice
         case "$choice" in
             1) interactive_env ;;
             2) interactive_db ;;
@@ -377,6 +576,7 @@ interactive_menu() {
             4) interactive_dev ;;
             5) interactive_deploy ;;
             6) "$EXEC_DIR/tartware.sh" retry ;;
+            7) interactive_stop ;;
             0) exit 0 ;;
             *) echo "Invalid option" ;;
         esac
@@ -500,9 +700,10 @@ interactive_dev() {
     echo "║  4) loadtest      Run the k6 load test suite                 ║"
     echo "║  5) mfa-generate  Generate TOTP MFA credentials for a user   ║"
     echo "║  6) mfa-show      Show QR code for an existing MFA secret    ║"
+    echo "║  7) stop          Stop all running services (UI + backend)   ║"
     echo "║  0) back          Return to main menu                        ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
-    read -r -p "Select option [0-6]: " choice
+    read -r -p "Select option [0-7]: " choice
     case "$choice" in
         1) "$EXEC_DIR/tartware.sh" dev ui ;;
         2)
@@ -516,6 +717,27 @@ interactive_dev() {
         4) "$EXEC_DIR/tartware.sh" dev loadtest ;;
         5) "$EXEC_DIR/tartware.sh" dev mfa-generate ;;
         6) "$EXEC_DIR/tartware.sh" dev mfa-show ;;
+        7) interactive_stop ;;
+        0) return ;;
+        *) echo "Invalid option" ;;
+    esac
+}
+
+interactive_stop() {
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║                   Stop Running Services                      ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║  1) processes   Stop backend services + Angular dev servers  ║"
+    echo "║  2) everything  Also run 'docker compose down'               ║"
+    echo "║  3) dry-run     List what would be stopped, kill nothing     ║"
+    echo "║  0) back        Return to main menu                          ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    read -r -p "Select option [0-3]: " choice
+    case "$choice" in
+        1) "$EXEC_DIR/tartware.sh" stop ;;
+        2) "$EXEC_DIR/tartware.sh" stop --docker ;;
+        3) "$EXEC_DIR/tartware.sh" stop --dry-run ;;
         0) return ;;
         *) echo "Invalid option" ;;
     esac
@@ -576,6 +798,7 @@ if [ $# -ge 1 ]; then
                 l) set -- dev loadtest "$@" ;;     # -devl
                 g) set -- dev mfa-generate "$@" ;; # -devg
                 s) set -- dev mfa-show "$@" ;;     # -devs
+                x) set -- dev stop "$@" ;;         # -devx
                 "") set -- dev help "$@" ;;       # -dev defaults to help
                 *) fail "Unknown short option: -${short_opt}" ;;
             esac
@@ -609,6 +832,10 @@ if [ $# -ge 1 ]; then
                         "") set -- env show "$@" ;; # -e defaults to show
                         *) fail "Unknown short option: -${short_opt}" ;;
                     esac
+                    ;;
+                x)
+                    # -x -> stop all running services
+                    set -- stop "$@"
                     ;;
                 h)
                     # -h -> help
@@ -654,6 +881,10 @@ case "$cmd" in
 
     interactive)
         interactive_menu
+        ;;
+
+    stop)
+        dev_stop_command "$@"
         ;;
 
     env)
@@ -928,6 +1159,9 @@ case "$cmd" in
                 ;;
             mfa-show)
                 exec "$EXEC_DIR/show-mfa-qr/show-mfa-qr.sh" "$@"
+                ;;
+            stop)
+                dev_stop_command "$@"
                 ;;
             help|*)
                 usage
