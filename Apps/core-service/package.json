@@ -35,6 +35,7 @@
     "@tartware/config": "workspace:*",
     "@tartware/fastify-server": "workspace:*",
     "@tartware/openapi": "workspace:*",
+    "@tartware/outbox": "workspace:*",
     "@tartware/schemas": "workspace:*",
     "@tartware/telemetry": "workspace:*",
     "bcryptjs": "^2.4.3",

@@ -95,7 +95,7 @@ TOKEN=""
 
 get_token() {
   TOKEN=$(./http_test/get-token.sh 2>/dev/null)
-  if [[ -z "$TOKEN" ]]; then echo "FATAL: Cannot acquire auth token"; exit 1; fi
+  if [[ -z "${TOKEN:-}" ]]; then echo "FATAL: Cannot acquire auth token"; exit 1; fi
 }
 
 RESP_FILE=$(mktemp /tmp/tartware-test-resp.XXXXXX.json)
@@ -401,7 +401,7 @@ preflight() {
   else printf "    ✗ billing-service (HTTP %s)\n" "$billing_code"; ok=false; fi
 
   get_token
-  if [[ -n "$TOKEN" ]]; then printf "    ✓ auth token\n"
+  if [[ -n "${TOKEN:-}" ]]; then printf "    ✓ auth token\n"
   else printf "    ✗ auth token\n"; ok=false; fi
 
   echo ""
@@ -580,6 +580,138 @@ if $CLEAN; then
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 1A — OPERATIONAL INVARIANTS
+#
+#  The properties a PMS is judged on rather than the endpoints it exposes. Each
+#  one here is an invariant a hotel notices being broken within a day, and each
+#  was absent from this suite until 2026-08-20:
+#
+#   1. A contracted room block holds inventory. This is the overbooking
+#      invariant — the most expensive thing a PMS can get wrong — and it *was*
+#      wrong: availability came from reservations and rooms alone, so a 40-room
+#      block stayed fully sellable. See ui-gaps/16-booking-reference-data.md.
+#   2. A CREDIT posting lowers a folio balance. It raised it until 2026-08-19,
+#      so every refund, allowance and comp inflated the bill.
+#   3. Replaying a command with one Idempotency-Key has one effect. The key was
+#      required on every write and never tested for what it is *for*.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  PHASE 1A: OPERATIONAL INVARIANTS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── 1A.1  A room block holds inventory (overbooking prevention) ──────────────
+echo "── 1A.1  Room blocks hold inventory ─────────────────────────────────"
+
+INV_IN="2027-11-02"; INV_OUT="2027-11-05"
+
+avail_count() { # room_type_id -> sellable rooms in the window
+  get "$GW/v1/rooms/availability?tenant_id=$TID&property_id=$PID&check_in_date=$INV_IN&check_out_date=$INV_OUT&room_type_id=$1&limit=200" >/dev/null
+  jq -r '(.available_rooms // []) | length' "$RESP_FILE" 2>/dev/null || echo 0
+}
+
+# Provision the two rooms this needs rather than depending on house state.
+# Earlier runs check guests in, move rooms and take rooms out of order, and the
+# seed does not reset them — on a re-used database every room can be dirty or
+# occupied, and the invariant then has nothing to measure. Both writes go
+# through the product's own commands, not SQL.
+get "$GW/v1/rooms?tenant_id=$TID&property_id=$PID&limit=200" >/dev/null
+INV_ROOMS=$(jq -r '[(if type=="array" then .[] else (.data // [])[] end)] | group_by(.room_type_id) | max_by(length) | .[0:2] | .[] | (.id // .room_id)' "$RESP_FILE" 2>/dev/null || echo "")
+for room in $INV_ROOMS; do
+  post "$GW/v1/tenants/$TID/rooms/$room/status" "{\"status\":\"AVAILABLE\"}" >/dev/null
+  post "$GW/v1/tenants/$TID/rooms/$room/housekeeping-status" "{\"housekeeping_status\":\"CLEAN\"}" >/dev/null
+done
+[[ -n "${INV_ROOMS:-}" ]] && wait_kafka 4
+
+get "$GW/v1/rooms/availability?tenant_id=$TID&property_id=$PID&check_in_date=$INV_IN&check_out_date=$INV_OUT&limit=200" >/dev/null
+INV_RT=$(jq -r '(.available_rooms // []) | group_by(.room_type_id) | max_by(length) | .[0].room_type_id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+INV_BASE=0
+[[ -n "${INV_RT:-}" ]] && INV_BASE=$(avail_count "$INV_RT")
+
+if [[ -z "$INV_RT" || "$INV_BASE" -lt 2 ]]; then
+  skip "Overbooking: a block holds inventory" "no room type with 2+ sellable rooms in $INV_IN..$INV_OUT"
+else
+  INV_CODE="E2E$(date +%H%M%S)"
+  CODE=$(post "$GW/v1/allotments" "{\"tenant_id\":\"$TID\",\"property_id\":\"$PID\",\"allotment_code\":\"$INV_CODE\",\"allotment_name\":\"E2E inventory hold\",\"allotment_type\":\"TOUR\",\"room_type_id\":\"$INV_RT\",\"start_date\":\"$INV_IN\",\"end_date\":\"$INV_OUT\",\"total_rooms_blocked\":2}")
+  assert_eq "API: allotment created" "201" "$CODE"
+  INV_ID=$(jq -r '.data.allotment_id // empty' "$RESP_FILE")
+
+  assert_eq_num "INVARIANT: a 2-room block removes 2 rooms from sale" "$((INV_BASE - 2))" "$(avail_count "$INV_RT")"
+
+  # Pickup turns a held room into a reservation; the hold shrinks by one.
+  put "$GW/v1/allotments/$INV_ID" "{\"tenant_id\":\"$TID\",\"rooms_picked_up\":1}" >/dev/null
+  assert_eq_num "INVARIANT: pickup releases the room it consumed" "$((INV_BASE - 1))" "$(avail_count "$INV_RT")"
+
+  # A cutoff in the past is the contract releasing what nobody took.
+  put "$GW/v1/allotments/$INV_ID" "{\"tenant_id\":\"$TID\",\"cutoff_date\":\"2020-01-01\"}" >/dev/null
+  assert_eq_num "INVARIANT: a lapsed cutoff releases the block" "$INV_BASE" "$(avail_count "$INV_RT")"
+
+  post "$GW/v1/allotments/$INV_ID/status" "{\"tenant_id\":\"$TID\",\"allotment_status\":\"CANCELLED\",\"cancellation_reason\":\"e2e cleanup\"}" >/dev/null
+  assert_eq_num "INVARIANT: a cancelled block holds nothing" "$INV_BASE" "$(avail_count "$INV_RT")"
+fi
+echo ""
+
+# ── 1A.2  A CREDIT posting lowers the folio balance ──────────────────────────
+echo "── 1A.2  Credit postings move the balance the right way ─────────────"
+
+get "$GW/v1/billing/folios?tenant_id=$TID&limit=50" >/dev/null
+CR_FOLIO=$(jq -r '[(if type=="array" then .[] else (.data // [])[] end) | select((.folio_status // "") | ascii_downcase == "open")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
+
+if [[ -z "${CR_FOLIO:-}" ]]; then
+  skip "Credit postings lower the balance" "no open folio to post against"
+else
+  get "$GW/v1/billing/folios?tenant_id=$TID&limit=200" >/dev/null
+  CR_BEFORE=$(jq -r --arg id "$CR_FOLIO" '[(if type=="array" then .[] else (.data // [])[] end) | select(.id == $id)][0].balance // 0' "$RESP_FILE")
+
+  # Amounts carry cents on purpose. A whole-number charge exercises none of the
+  # numeric handling: `CASE WHEN … THEN 0 ELSE $2 END` had made Postgres deduce
+  # the amount parameter as *integer*, so 40 posted fine and 40.50 died with
+  # "invalid input syntax for type integer". Money in this suite has cents.
+  CODE=$(post "$GW/v1/tenants/$TID/billing/charges" "{\"property_id\":\"$PID\",\"folio_id\":\"$CR_FOLIO\",\"amount\":40.50,\"charge_code\":\"MISC\",\"posting_type\":\"DEBIT\",\"description\":\"E2E invariant debit\"}")
+  assert_eq "API: debit accepted" "202" "$CODE"
+  sleep "$KAFKA_WAIT"
+
+  CODE=$(post "$GW/v1/tenants/$TID/billing/charges" "{\"property_id\":\"$PID\",\"folio_id\":\"$CR_FOLIO\",\"amount\":15.25,\"charge_code\":\"ADJUSTMENT\",\"posting_type\":\"CREDIT\",\"description\":\"E2E invariant credit\"}")
+  assert_eq "API: credit accepted" "202" "$CODE"
+  sleep "$KAFKA_WAIT"
+
+  get "$GW/v1/billing/folios?tenant_id=$TID&limit=200" >/dev/null
+  CR_AFTER=$(jq -r --arg id "$CR_FOLIO" '[(if type=="array" then .[] else (.data // [])[] end) | select(.id == $id)][0].balance // 0' "$RESP_FILE")
+  # +40.50 then −15.25 nets +25.25. A credit that *raised* the balance gives
+  # +55.75, which is what this did until 2026-08-19.
+  assert_eq_num "INVARIANT: debit 40.50 then credit 15.25 nets +25.25" "$(echo "$CR_BEFORE + 25.25" | bc)" "$CR_AFTER"
+fi
+echo ""
+
+# ── 1A.3  Replaying a command with one key has one effect ────────────────────
+echo "── 1A.3  Idempotency-Key deduplicates a replay ──────────────────────"
+
+if [[ -z "${CR_FOLIO:-}" ]]; then
+  skip "Idempotent replay" "no open folio to post against"
+else
+  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$CR_FOLIO&limit=200" >/dev/null
+  IDEM_BEFORE=$(resp_count)
+
+  IDEM_KEY=$(gen_uuid)
+  IDEM_BODY="{\"property_id\":\"$PID\",\"folio_id\":\"$CR_FOLIO\",\"amount\":11.11,\"charge_code\":\"MISC\",\"description\":\"E2E idempotent replay\"}"
+  CODE_1=$(post "$GW/v1/tenants/$TID/billing/charges" "$IDEM_BODY" "$IDEM_KEY")
+  CODE_2=$(post "$GW/v1/tenants/$TID/billing/charges" "$IDEM_BODY" "$IDEM_KEY")
+  assert_eq "API: first dispatch accepted" "202" "$CODE_1"
+  assert_eq "API: the replay is accepted too, not rejected" "202" "$CODE_2"
+  sleep "$KAFKA_WAIT"
+
+  get "$GW/v1/billing/charges?tenant_id=$TID&folio_id=$CR_FOLIO&limit=200" >/dev/null
+  assert_eq_num "INVARIANT: one key, one posting" "$((IDEM_BEFORE + 1))" "$(resp_count)"
+fi
+echo ""
+
+# NOTE ON ORDERING: 1A runs *before* the accounting scenarios, not after. Those
+# phases check guests in, move rooms and take rooms out of order, and by the end
+# of a full run the property has no sellable rooms left — the inventory
+# invariant below then has nothing to measure and skips. It needs a fresh house.
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 1 — SEED DATA + DB VERIFICATION
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -611,13 +743,13 @@ GUEST2_ID=$(resp_ffirst '.first_name == "Sarah" and .last_name == "Mitchell"' "i
 POST_GUESTS=$(resp_count)
 assert_gte "DB: guests count increased" "$((PRE_GUESTS + 2))" "$POST_GUESTS"
 
-if [[ -n "$GUEST1_ID" ]]; then
+if [[ -n "${GUEST1_ID:-}" ]]; then
   pass "DB: guest John Anderson found (${GUEST1_ID:0:8}…)"
 else
   fail "DB: guest John Anderson" "not found in guests table"
   echo "FATAL: Cannot seed further"; exit 1
 fi
-if [[ -n "$GUEST2_ID" ]]; then
+if [[ -n "${GUEST2_ID:-}" ]]; then
   pass "DB: guest Sarah Mitchell found (${GUEST2_ID:0:8}…)"
 else
   skip "DB: guest Sarah Mitchell" "not found — single-guest mode"
@@ -684,7 +816,7 @@ seed_rest "POST reservation: John (3 nights)" \
   "$GW/v1/tenants/$TID/reservations" \
   "{\"property_id\":\"$PID\",\"guest_id\":\"$GUEST1_ID\",\"room_type_id\":\"$RTID\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"total_amount\":597.00,\"source\":\"DIRECT\"}"
 
-if [[ -n "$GUEST2_ID" ]]; then
+if [[ -n "${GUEST2_ID:-}" ]]; then
   seed_rest "POST reservation: Sarah (5 nights)" \
     "$GW/v1/tenants/$TID/reservations" \
     "{\"property_id\":\"$PID\",\"guest_id\":\"$GUEST2_ID\",\"room_type_id\":\"$RTID\",\"check_in_date\":\"$TOMORROW\",\"check_out_date\":\"$IN5DAYS\",\"total_amount\":796.00,\"source\":\"WEBSITE\"}"
@@ -695,21 +827,21 @@ wait_kafka 5
 get "$GW/v1/reservations?tenant_id=$TID&guest_id=$GUEST1_ID&limit=10" >/dev/null
 RES1_ID=$(resp_first "id")
 FOLIO1_ID=""
-if [[ -n "$RES1_ID" ]]; then
+if [[ -n "${RES1_ID:-}" ]]; then
   get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
   FOLIO1_ID=$(resp_first "id")
 fi
 RES2_ID=""; FOLIO2_ID=""
-if [[ -n "$GUEST2_ID" ]]; then
+if [[ -n "${GUEST2_ID:-}" ]]; then
   get "$GW/v1/reservations?tenant_id=$TID&guest_id=$GUEST2_ID&limit=10" >/dev/null
   RES2_ID=$(resp_first "id")
-  if [[ -n "$RES2_ID" ]]; then
+  if [[ -n "${RES2_ID:-}" ]]; then
     get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES2_ID" >/dev/null
     FOLIO2_ID=$(resp_first "id")
   fi
 fi
 
-if [[ -n "$RES1_ID" ]]; then
+if [[ -n "${RES1_ID:-}" ]]; then
   pass "DB: reservation 1 created (${RES1_ID:0:8}…)"
 else
   fail "DB: reservation 1" "not found"
@@ -723,7 +855,7 @@ assert_eq_ci "DB: reservation 1 status" "PENDING" "$RES1_STATUS"
 RES1_AMOUNT=$(resp_field "total_amount")
 assert_eq_num "DB: reservation 1 total_amount = 597" "597" "$RES1_AMOUNT"
 
-if [[ -n "$FOLIO1_ID" ]]; then
+if [[ -n "${FOLIO1_ID:-}" ]]; then
   pass "DB: folio auto-created for res 1 (${FOLIO1_ID:0:8}…)"
   get "$GW/v1/billing/folios/$FOLIO1_ID?tenant_id=$TID" >/dev/null
   FOLIO1_STATUS=$(resp_field "folio_status")
@@ -732,7 +864,7 @@ else
   fail "DB: folio for reservation 1" "no folio row found"
 fi
 
-if [[ -n "$RES2_ID" ]]; then
+if [[ -n "${RES2_ID:-}" ]]; then
   pass "DB: reservation 2 created (${RES2_ID:0:8}…)"
 fi
 echo ""
@@ -756,7 +888,7 @@ seed_rest "POST charge: Spa (\$150)" \
   "$GW/v1/tenants/$TID/billing/charges" \
   "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES1_ID\",\"amount\":150.00,\"charge_code\":\"SPA\",\"posting_type\":\"DEBIT\",\"quantity\":1}"
 
-if [[ -n "$RES2_ID" ]]; then
+if [[ -n "${RES2_ID:-}" ]]; then
   seed_rest "POST charge: Room Sarah (\$199)" \
     "$GW/v1/tenants/$TID/billing/charges" \
     "{\"property_id\":\"$PID\",\"reservation_id\":\"$RES2_ID\",\"amount\":199.00,\"charge_code\":\"ROOM\",\"posting_type\":\"DEBIT\",\"quantity\":1}"
@@ -780,7 +912,7 @@ assert_eq_num "DB: MINIBAR charge amount = 24.50" "24.50" "$MINIBAR_CHARGE"
 ROOM_TYPE=$(resp_ffirst '.charge_code == "ROOM"' "posting_type")
 assert_eq_ci "DB: ROOM posting_type = DEBIT" "DEBIT" "$ROOM_TYPE"
 
-if [[ -n "$RES2_ID" ]]; then
+if [[ -n "${RES2_ID:-}" ]]; then
   get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES2_ID&limit=200" >/dev/null
   SARAH_CHARGES=$(resp_count)
   assert_gte "DB: charge_postings for res 2 >= 2" "2" "$SARAH_CHARGES"
@@ -827,7 +959,7 @@ assert_eq_ci "DB: payment 1 status = COMPLETED" "COMPLETED" "$PAY1_STATUS"
 PAY2_METHOD=$(resp_ffirst ".payment_reference == \"$PAYREF2\"" "payment_method")
 assert_eq_ci "DB: payment 2 method = CASH" "CASH" "$PAY2_METHOD"
 
-if [[ -n "$PAYREF3" ]]; then
+if [[ -n "${PAYREF3:-}" ]]; then
   PAY3_EXISTS=$(resp_fcount ".payment_reference == \"$PAYREF3\"")
   assert_eq "DB: payment $PAYREF3 exists" "1" "$PAY3_EXISTS"
 fi
@@ -855,7 +987,7 @@ assert_gte "DB: invoices count >= $((PRE_INVOICES + 1))" "$((PRE_INVOICES + 1))"
 get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
 INV1_AMOUNT=$(resp_ffirst '.invoice_type != "credit_note"' "total_amount")
 INV1_STATUS=$(resp_ffirst '.invoice_type != "credit_note"' "status")
-if [[ -n "$INV1_AMOUNT" ]]; then
+if [[ -n "${INV1_AMOUNT:-}" ]]; then
   assert_eq_num "DB: invoice amount = 458.50" "458.50" "$INV1_AMOUNT"
   assert_eq_ci "DB: invoice status = draft" "draft" "$INV1_STATUS"
 else
@@ -879,9 +1011,9 @@ if [[ "$code" =~ ^2 ]]; then
   if [[ -n "$first_n" ]]; then CASHIER_NAME="$first_n $last_n"; fi
 fi
 # Fallback: use the guest1_id as a UUID placeholder — the command just needs a UUID
-if [[ -z "$CASHIER_ID" ]]; then CASHIER_ID="$GUEST1_ID"; fi
+if [[ -z "${CASHIER_ID:-}" ]]; then CASHIER_ID="$GUEST1_ID"; fi
 
-if [[ -n "$CASHIER_ID" ]]; then
+if [[ -n "${CASHIER_ID:-}" ]]; then
   send_command "CMD cashier open: morning shift" \
     "billing.cashier.open" \
     "{\"property_id\":\"$PID\",\"cashier_id\":\"$CASHIER_ID\",\"cashier_name\":\"$CASHIER_NAME\",\"shift_type\":\"morning\",\"opening_float\":500.00}"
@@ -891,7 +1023,7 @@ if [[ -n "$CASHIER_ID" ]]; then
   SESSION_ID=""
   get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&user_id=$CASHIER_ID&session_status=open&limit=1" >/dev/null
   SESSION_ID=$(resp_first "session_id")
-  if [[ -n "$SESSION_ID" ]]; then
+  if [[ -n "${SESSION_ID:-}" ]]; then
     pass "DB: cashier session opened (${SESSION_ID:0:8}…)"
 
     SESSION_FLOAT=$(resp_first "opening_float_declared")
@@ -930,7 +1062,7 @@ send_command "CMD AR: Corporate DB (\$158.50)" \
   "billing.ar.post" \
   "{\"reservation_id\":\"$RES1_ID\",\"folio_id\":\"${FOLIO1_ID:-}\",\"account_type\":\"corporate\",\"account_id\":\"$GUEST1_ID\",\"account_name\":\"Acme Corp Travel\",\"amount\":158.50,\"payment_terms\":\"net_30\"}"
 
-if [[ -n "$RES2_ID" ]]; then
+if [[ -n "${RES2_ID:-}" ]]; then
   send_command "CMD AR: Travel agent (\$34)" \
     "billing.ar.post" \
     "{\"reservation_id\":\"$RES2_ID\",\"folio_id\":\"${FOLIO2_ID:-}\",\"account_type\":\"travel_agent\",\"account_id\":\"${GUEST2_ID:-$GUEST1_ID}\",\"account_name\":\"Globetrotter Agency\",\"amount\":34.00,\"payment_terms\":\"net_30\"}"
@@ -947,7 +1079,7 @@ AR1_AMOUNT=$(resp_ffirst '.account_type == "corporate"' "original_amount")
 AR1_TYPE=$(resp_ffirst '.account_type == "corporate"' "account_type")
 AR1_STATUS=$(resp_ffirst '.account_type == "corporate"' "ar_status")
 AR1_TERMS=$(resp_ffirst '.account_type == "corporate"' "payment_terms")
-if [[ -n "$AR1_AMOUNT" ]]; then
+if [[ -n "${AR1_AMOUNT:-}" ]]; then
   assert_eq_num "DB: AR amount = 158.50" "158.50" "$AR1_AMOUNT"
   assert_eq_ci "DB: AR account_type = corporate" "corporate" "$AR1_TYPE"
   assert_eq_ci "DB: AR status = open" "open" "$AR1_STATUS"
@@ -995,7 +1127,7 @@ wait_kafka 4
 AUTH_STATUS=""
 get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 AUTH_STATUS=$(resp_ffirst ".payment_reference == \"$FAILPAY_REF\"" "status")
-if [[ -n "$AUTH_STATUS" ]]; then
+if [[ -n "${AUTH_STATUS:-}" ]]; then
   assert_eq_ci "DB: authorized payment status" "authorized" "$AUTH_STATUS"
 else
   fail "DB: authorized payment" "not found"
@@ -1043,7 +1175,7 @@ echo "── 1.11 Cashier Shift Handover ─────────────
 # The handover command atomically closes the outgoing session and opens
 # a new one for the incoming cashier.
 
-if [[ -n "$CASHIER_ID" ]]; then
+if [[ -n "${CASHIER_ID:-}" ]]; then
   # Open an afternoon session first
   send_command "CMD cashier open: afternoon shift" \
     "billing.cashier.open" \
@@ -1053,7 +1185,7 @@ if [[ -n "$CASHIER_ID" ]]; then
 
   get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&session_status=open&shift_type=afternoon&limit=1" >/dev/null
   AFTERNOON_ID=$(resp_first "session_id")
-  if [[ -n "$AFTERNOON_ID" ]]; then
+  if [[ -n "${AFTERNOON_ID:-}" ]]; then
     pass "DB: afternoon session opened (${AFTERNOON_ID:0:8}…)"
 
     AFTERNOON_SHIFT=$(resp_first "shift_type")
@@ -1072,14 +1204,14 @@ if [[ -n "$CASHIER_ID" ]]; then
     assert_eq_ci "DB: afternoon session closed after handover" "closed" "$AFTERNOON_FINAL"
 
     AFTERNOON_VARIANCE=$(resp_field "cash_variance")
-    if [[ -n "$AFTERNOON_VARIANCE" ]]; then
+    if [[ -n "${AFTERNOON_VARIANCE:-}" ]]; then
       assert_eq_num "DB: afternoon cash_variance = 1.50" "1.50" "$AFTERNOON_VARIANCE"
     fi
 
     # Verify incoming session opened
     get "$GW/v1/billing/cashier-sessions?tenant_id=$TID&session_status=open&shift_type=evening&limit=1" >/dev/null
     EVENING_ID=$(resp_first "session_id")
-    if [[ -n "$EVENING_ID" ]]; then
+    if [[ -n "${EVENING_ID:-}" ]]; then
       pass "DB: evening session opened via handover (${EVENING_ID:0:8}…)"
 
       EVENING_FLOAT=$(resp_first "opening_float_declared")
@@ -1122,7 +1254,7 @@ code=$(get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID")
 BD_EXISTS="0"
 if [[ "$code" =~ ^2 ]]; then
   BD_DATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$BD_DATE" ]]; then BD_EXISTS="1"; fi
+  if [[ -n "${BD_DATE:-}" ]]; then BD_EXISTS="1"; fi
 fi
 if [[ "$BD_EXISTS" == "0" ]]; then
   # Seed a business_dates row via PUT API
@@ -1162,7 +1294,7 @@ fi
 # Verify the latest audit log entry
 get "$GW/v1/night-audit/history?tenant_id=$TID&property_id=$PID&limit=1" >/dev/null
 AUDIT_STATUS=$(resp_first "audit_status")
-if [[ -n "$AUDIT_STATUS" ]]; then
+if [[ -n "${AUDIT_STATUS:-}" ]]; then
   assert_eq_ci "DB: audit_status = COMPLETED" "completed" "$AUDIT_STATUS"
 fi
 
@@ -1331,7 +1463,7 @@ echo "  Scenario: Guest overpaid — partial refund of \$50 from CC payment"
 get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
 CC_PAY_ID=$(resp_ffirst ".payment_reference == \"$PAYREF1\"" "id")
 
-if [[ -n "$CC_PAY_ID" ]]; then
+if [[ -n "${CC_PAY_ID:-}" ]]; then
   REFUND_REF="RF-${UNIQUE}-001"
   send_command "CMD refund: partial \$50 from CC" \
     "billing.payment.refund" \
@@ -1371,7 +1503,7 @@ echo "  Scenario: SPA charge (\$150) posted incorrectly — void it"
 get "$GW/v1/billing/charges?tenant_id=$TID&reservation_id=$RES1_ID&limit=200" >/dev/null
 SPA_POSTING_ID=$(resp_ffirst '.charge_code == "SPA" and .is_voided != true' "id")
 
-if [[ -n "$SPA_POSTING_ID" ]]; then
+if [[ -n "${SPA_POSTING_ID:-}" ]]; then
   get "$GW/v1/billing/folios/$FOLIO1_ID?tenant_id=$TID" >/dev/null
   PRE_VOID_BALANCE=$(resp_field "balance")
   PRE_VOID_BALANCE=${PRE_VOID_BALANCE:-0}
@@ -1427,7 +1559,7 @@ wait_kafka 5
 
 get "$GW/v1/billing/folios?tenant_id=$TID&folio_type=HOUSE_ACCOUNT" >/dev/null
 HOUSE_FOLIO_ID=$(resp_ffirst '.folio_type == "house_account"' "id")
-if [[ -n "$HOUSE_FOLIO_ID" ]]; then
+if [[ -n "${HOUSE_FOLIO_ID:-}" ]]; then
   pass "DB: HOUSE_ACCOUNT folio created (${HOUSE_FOLIO_ID:0:8}…)"
   get "$GW/v1/billing/folios/$HOUSE_FOLIO_ID?tenant_id=$TID" >/dev/null
   HOUSE_STATUS=$(resp_field "folio_status")
@@ -1532,7 +1664,7 @@ echo "  Scenario: Draft → Adjust → Finalize → Credit Note + separate invoi
 get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
 INV1_ID=$(resp_ffirst '.status != "voided"' "id")
 
-if [[ -n "$INV1_ID" ]]; then
+if [[ -n "${INV1_ID:-}" ]]; then
   # --- Adjust: add $25 surcharge ---
   get "$GW/v1/billing/invoices/$INV1_ID?tenant_id=$TID" >/dev/null
   INV1_PRE_TOTAL=$(resp_field "total_amount")
@@ -1590,7 +1722,7 @@ wait_kafka 4
 
 get "$GW/v1/billing/invoices?tenant_id=$TID" >/dev/null
 VOID_INV_ID=$(resp_ffirst '.total_amount == 999.99 and .status == "draft"' "id")
-if [[ -n "$VOID_INV_ID" ]]; then
+if [[ -n "${VOID_INV_ID:-}" ]]; then
   send_command "CMD invoice.void: void throwaway invoice" \
     "billing.invoice.void" \
     "{\"invoice_id\":\"$VOID_INV_ID\",\"reason\":\"Duplicate invoice issued in error — QA test\"}"
@@ -1612,7 +1744,7 @@ echo "  Scenario: Corporate AR → partial payment → write-off remainder"
 get "$GW/v1/billing/accounts-receivable?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
 AR1_ID=$(resp_ffirst '.ar_status == "open"' "ar_id")
 
-if [[ -n "$AR1_ID" ]]; then
+if [[ -n "${AR1_ID:-}" ]]; then
   AR1_OUTSTANDING=$(resp_ffirst ".ar_id == \"$AR1_ID\"" "outstanding_balance")
 
   # --- Apply partial payment ($100 of $158.50) ---
@@ -1638,7 +1770,7 @@ if [[ -n "$AR1_ID" ]]; then
   REMAINING=$(resp_field "outstanding_balance")
   echo "  Scenario: Write off remaining \$$REMAINING as bad debt"
 
-  if [[ -n "$REMAINING" ]] && (( $(echo "$REMAINING > 0" | bc -l 2>/dev/null || echo "0") )); then
+  if [[ -n "${REMAINING:-}" ]] && (( $(echo "$REMAINING > 0" | bc -l 2>/dev/null || echo "0") )); then
     send_command "CMD ar.write_off: remaining balance" \
       "billing.ar.write_off" \
       "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
@@ -1887,7 +2019,7 @@ FP_NAME="$(date +%B) $FP_YEAR"
 FP_YEAR_START="$FP_YEAR-01-01"
 FP_YEAR_END="$FP_YEAR-12-31"
 
-if [[ -n "$FP_PERIOD_END" ]]; then
+if [[ -n "${FP_PERIOD_END:-}" ]]; then
   # Seed an OPEN fiscal period using the billing.fiscal_period.create command
   FP_IDEM="FP-${UNIQUE}-$(date +%Y%m)"
   send_command "CMD fiscal_period.create: current month" \
@@ -1901,7 +2033,7 @@ if [[ -n "$FP_PERIOD_END" ]]; then
     '[.data? // . | .[] | select((.fiscal_year | tostring) == $yr and (.period_number | tostring) == $pn and (.period_status | ascii_downcase) == "open")][0].fiscal_period_id // empty' \
     "$RESP_FILE" 2>/dev/null || echo "")
 
-  if [[ -n "$FP_ID" ]]; then
+  if [[ -n "${FP_ID:-}" ]]; then
     send_command "CMD fiscal_period.close: current month" \
       "billing.fiscal_period.close" \
       "{\"period_id\":\"$FP_ID\",\"property_id\":\"$PID\",\"reconciliation_confirmed\":true,\"close_reason\":\"End-of-period close — QA test\"}"
@@ -1936,7 +2068,7 @@ AUDIT_PRE_COUNT=$(resp_count)
 # Get current business date to send audit for (should fail gracefully if already audited)
 get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID" >/dev/null
 CURRENT_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$CURRENT_BDATE" ]]; then
+if [[ -n "${CURRENT_BDATE:-}" ]]; then
   send_command "CMD night audit idempotency: re-audit same date" \
     "billing.night_audit.execute" \
     "{\"property_id\":\"$PID\",\"audit_date\":\"$CURRENT_BDATE\",\"perform_date_roll\":false}"
@@ -2074,14 +2206,14 @@ if [[ -n "${RES1_ID:-}" && -n "${FOLIO1_ID:-}" ]]; then
   for _msrc_attempt in 1 2 3; do
     get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
     MERGE_SRC_ID=$(jq -r --arg fid "$FOLIO1_ID" '[.data? // . | .[] | select(.id != $fid and (.folio_type | ascii_downcase) != "house_account" and ((.folio_status | ascii_downcase) == "open"))][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
-    [[ -n "$MERGE_SRC_ID" ]] && break
+    [[ -n "${MERGE_SRC_ID:-}" ]] && break
     if [[ $_msrc_attempt -lt 3 ]]; then
       printf "  ⏳ Retry %d/3 in %ds: waiting for merge-source folio...\n" "$_msrc_attempt" "$_msrc_wait"
       sleep "$_msrc_wait"; _msrc_wait=$((_msrc_wait * 2))
     fi
   done
 
-  if [[ -n "$MERGE_SRC_ID" ]]; then
+  if [[ -n "${MERGE_SRC_ID:-}" ]]; then
     # Post a small charge to the source folio so merge transfers something
     send_command "CMD charge to merge-source folio" \
       "billing.charge.post" \
@@ -2118,7 +2250,7 @@ if [[ -n "${PAYREF1:-}" ]]; then
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   CB_REFUND_ID=$(resp_ffirst '.transaction_type == "refund"' "id")
 
-  if [[ -n "$CB_REFUND_ID" ]]; then
+  if [[ -n "${CB_REFUND_ID:-}" ]]; then
     send_command "CMD chargeback.update_status: EVIDENCE_SUBMITTED" \
       "billing.chargeback.update_status" \
       "{\"refund_id\":\"$CB_REFUND_ID\",\"chargeback_status\":\"EVIDENCE_SUBMITTED\",\"evidence\":[{\"type\":\"RECEIPT\",\"description\":\"Signed registration card\"}],\"notes\":\"Evidence submitted to acquiring bank — QA test\"}"
@@ -2184,7 +2316,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
   # actual checkout *earlier* than standard and was rejected NOT_LATE_CHECKOUT.
   LATE_CHECKOUT_ISO=$(date -u -d "today 15:00" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
     || date -u -v15H -v0M -v0S +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
-  if [[ -n "$LATE_CHECKOUT_ISO" ]]; then
+  if [[ -n "${LATE_CHECKOUT_ISO:-}" ]]; then
     get "$GW/v1/billing/charges?tenant_id=$TID&limit=200" >/dev/null
     PRE_LATE_CHARGES=$(resp_count)
 
@@ -2309,7 +2441,7 @@ else
   GUEST1_ID=$(resp_first "id")
   get "$GW/v1/reservations?tenant_id=$TID&limit=10" >/dev/null
   RES1_ID=$(resp_first "id")
-  if [[ -n "$RES1_ID" ]]; then
+  if [[ -n "${RES1_ID:-}" ]]; then
     get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
     FOLIO1_ID=$(resp_first "id")
   fi
@@ -2324,7 +2456,7 @@ else
   FAILPAY_REF=$(resp_ffirst '.status == "cancelled"' "payment_reference")
   CASHPAY_REF=$(resp_ffirst '.payment_method == "cash" and .status == "completed"' "payment_reference")
   PAYREF1=$(resp_ffirst '.payment_method == "credit_card" and .status == "completed"' "payment_reference")
-  if [[ -n "$RES2_ID" ]]; then
+  if [[ -n "${RES2_ID:-}" ]]; then
     get "$GW/v1/billing/folios?tenant_id=$TID&reservation_id=$RES2_ID" >/dev/null
     FOLIO2_ID=$(resp_first "id")
   else
@@ -2387,11 +2519,11 @@ api_check "GET tax-configurations count" \
 
 get "$GW/v1/billing/tax-configurations?tenant_id=$TID" >/dev/null
 TAX_CFG_ID=$(resp_first "tax_config_id")
-if [[ -n "$TAX_CFG_ID" ]]; then
+if [[ -n "${TAX_CFG_ID:-}" ]]; then
   code=$(get "$GW/v1/billing/tax-configurations/$TAX_CFG_ID?tenant_id=$TID")
   assert_http "GET tax-config by ID" "200" "$code"
   API_TAXCODE=$(jq -r '.data.tax_code // .tax_code // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$API_TAXCODE" ]]; then
+  if [[ -n "${API_TAXCODE:-}" ]]; then
     pass "XCHECK: tax_code in API response ($API_TAXCODE)"
   fi
 fi
@@ -2443,11 +2575,11 @@ api_check "GET invoices count" \
 if [[ -n "${RES1_ID:-}" ]]; then
   get "$GW/v1/billing/invoices?tenant_id=$TID&reservation_id=$RES1_ID" >/dev/null
   INV_ID=$(resp_first "id")
-  if [[ -n "$INV_ID" ]]; then
+  if [[ -n "${INV_ID:-}" ]]; then
     code=$(get "$GW/v1/billing/invoices/$INV_ID?tenant_id=$TID")
     assert_http "GET invoice by ID" "200" "$code"
     API_INV_AMT=$(jq -r '.data.total_amount // .total_amount // empty' "$RESP_FILE" 2>/dev/null || echo "")
-    if [[ -n "$API_INV_AMT" ]]; then
+    if [[ -n "${API_INV_AMT:-}" ]]; then
       pass "XCHECK: invoice total_amount = $API_INV_AMT"
     fi
   fi
@@ -2466,7 +2598,7 @@ if [[ -n "${FOLIO1_ID:-}" ]]; then
   code=$(get "$GW/v1/billing/folios/$FOLIO1_ID?tenant_id=$TID")
   assert_http "GET folio by ID" "200" "$code"
   API_FSTATUS=$(jq -r '.folio_status // .data.folio_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$API_FSTATUS" ]]; then
+  if [[ -n "${API_FSTATUS:-}" ]]; then
     pass "XCHECK: folio status = $API_FSTATUS"
   fi
 fi
@@ -2484,7 +2616,7 @@ code=$(get "$GW/v1/billing/accounts-receivable/aging-summary?tenant_id=$TID&prop
 assert_http "GET AR aging-summary" "200" "$code"
 
 API_AR_TOT=$(jq -r '[.[] | .total_outstanding | tonumber] | add // 0' "$RESP_FILE" 2>/dev/null || echo "0")
-if [[ -n "$API_AR_TOT" ]]; then
+if [[ -n "${API_AR_TOT:-}" ]]; then
   pass "XCHECK: AR total outstanding = $API_AR_TOT"
 fi
 echo ""
@@ -2501,7 +2633,7 @@ if [[ -n "${SESSION_ID:-}" ]]; then
   code=$(get "$GW/v1/billing/cashier-sessions/$SESSION_ID?tenant_id=$TID")
   assert_http "GET cashier-session by ID" "200" "$code"
   API_SESS_STATUS=$(jq -r '.data.session_status // .session_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$API_SESS_STATUS" ]]; then
+  if [[ -n "${API_SESS_STATUS:-}" ]]; then
     pass "XCHECK: session status = $API_SESS_STATUS"
   fi
 fi
@@ -2531,7 +2663,7 @@ echo "── Night Audit ──────────────────�
 code=$(get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID")
 assert_http "GET night-audit status" "200" "$code"
 API_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$API_BDATE" ]]; then
+if [[ -n "${API_BDATE:-}" ]]; then
   pass "XCHECK: business_date from API = $API_BDATE"
 else
   skip "XCHECK: business_date" "no value in API response"
@@ -2550,12 +2682,12 @@ if [[ -n "${FAILPAY_REF:-}" ]]; then
   assert_http "GET payments (includes voided)" "200" "$code"
 
   API_VOID_STATUS=$(jq -r --arg ref "$FAILPAY_REF" '[.[] | select(.payment_reference == $ref)][0].status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$API_VOID_STATUS" ]]; then
+  if [[ -n "${API_VOID_STATUS:-}" ]]; then
     pass "XCHECK: voided payment status in API = $API_VOID_STATUS"
   fi
 
   API_CASH_STATUS=$(jq -r --arg ref "$CASHPAY_REF" '[.[] | select(.payment_reference == $ref)][0].status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$API_CASH_STATUS" ]]; then
+  if [[ -n "${API_CASH_STATUS:-}" ]]; then
     pass "XCHECK: cash fallback status in API = $API_CASH_STATUS"
   fi
 
@@ -2601,19 +2733,19 @@ code=$(get "$GW/v1/night-audit/status?tenant_id=$TID&property_id=$PID")
 assert_http "GET night-audit status (post-roll)" "200" "$code"
 
 API_POST_BDATE=$(jq -r '.data.business_date // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$API_POST_BDATE" ]]; then
+if [[ -n "${API_POST_BDATE:-}" ]]; then
   pass "XCHECK: business_date post-roll = $API_POST_BDATE"
 else
   skip "XCHECK: business_date post-roll" "no value in API"
 fi
 
 API_DATE_STATUS=$(jq -r '.data.date_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$API_DATE_STATUS" ]]; then
+if [[ -n "${API_DATE_STATUS:-}" ]]; then
   pass "XCHECK: date_status in API = $API_DATE_STATUS"
 fi
 
 API_NA_STATUS=$(jq -r '.data.night_audit_status // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$API_NA_STATUS" ]]; then
+if [[ -n "${API_NA_STATUS:-}" ]]; then
   pass "XCHECK: night_audit_status in API = $API_NA_STATUS"
 fi
 
@@ -2678,7 +2810,7 @@ if [[ "$API_CN_COUNT" -ge 1 ]]; then
   pass "XCHECK: credit notes found ($API_CN_COUNT)"
 
   CN_ID=$(jq -r '[.data? // . | .[] | select(.invoice_type == "credit_note")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$CN_ID" ]]; then
+  if [[ -n "${CN_ID:-}" ]]; then
     code=$(get "$GW/v1/billing/invoices/$CN_ID?tenant_id=$TID")
     assert_http "GET credit note by ID" "200" "$code"
     API_CN_TYPE=$(jq -r '.data.invoice_type // .invoice_type // empty' "$RESP_FILE" 2>/dev/null || echo "")
@@ -2689,7 +2821,7 @@ fi
 # Verify finalized invoice status via API
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
 FINALIZED_ID=$(jq -r '[.data? // . | .[] | select(.status == "finalized")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$FINALIZED_ID" ]]; then
+if [[ -n "${FINALIZED_ID:-}" ]]; then
   code=$(get "$GW/v1/billing/invoices/$FINALIZED_ID?tenant_id=$TID")
   assert_http "GET finalized invoice by ID" "200" "$code"
   API_FIN_STATUS=$(jq -r '.data.status // .status // empty' "$RESP_FILE" 2>/dev/null || echo "")
@@ -2699,7 +2831,7 @@ fi
 # Verify voided invoice status via API
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
 VOIDED_INV_ID=$(jq -r '[.data? // . | .[] | select(.status == "voided")][0].id // empty' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$VOIDED_INV_ID" ]]; then
+if [[ -n "${VOIDED_INV_ID:-}" ]]; then
   code=$(get "$GW/v1/billing/invoices/$VOIDED_INV_ID?tenant_id=$TID")
   assert_http "GET voided invoice by ID" "200" "$code"
   API_VOIDED_STATUS=$(jq -r '.data.status // .status // empty' "$RESP_FILE" 2>/dev/null || echo "")
@@ -2742,7 +2874,7 @@ if [[ -n "${AUTH_INC_REF:-}" ]]; then
   code=$(get "$GW/v1/billing/payments?tenant_id=$TID&limit=200")
   assert_http "GET payments (includes incremented auth)" "200" "$code"
   API_INC_AMT=$(jq -r --arg ref "$AUTH_INC_REF" '[.[] | select(.payment_reference == $ref)][0].amount // empty' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -n "$API_INC_AMT" ]]; then
+  if [[ -n "${API_INC_AMT:-}" ]]; then
     assert_eq_num "XCHECK: incremented auth amount in API = 300" "300" "$API_INC_AMT"
   else
     skip "XCHECK: incremented auth" "not found in API response"
@@ -2766,7 +2898,7 @@ echo "  Verify: Invoice numbers are sequential with no gaps"
 
 get "$GW/v1/billing/invoices?tenant_id=$TID&limit=200" >/dev/null
 INV_NUMBERS=$(jq -r '[.data? // . | .[] | select(.invoice_number != null) | .invoice_number] | sort | .[]' "$RESP_FILE" 2>/dev/null || echo "")
-if [[ -n "$INV_NUMBERS" ]]; then
+if [[ -n "${INV_NUMBERS:-}" ]]; then
   INV_COUNT=$(echo "$INV_NUMBERS" | wc -l | tr -d ' ')
   if [[ "$INV_COUNT" -ge 2 ]]; then
     # Check for gaps: count unique numbers vs range span
@@ -2823,7 +2955,7 @@ echo "── Folio Balance Integrity (v2 §3.1) ──────────�
 echo "  Verify: Folio balance = total_charges - total_payments - total_credits + credit_balance"
 echo "  (stored totals maintained by DB CHECK constraint)"
 
-if [[ -n "$FOLIO1_ID" ]]; then
+if [[ -n "${FOLIO1_ID:-}" ]]; then
   get "$GW/v1/billing/folios/$FOLIO1_ID?tenant_id=$TID" >/dev/null
   FOLIO_BAL=$(jq -r '.balance // .data.balance // empty' "$RESP_FILE" 2>/dev/null || echo "")
   FOLIO_CHARGES=$(jq -r '.total_charges // .data.total_charges // empty' "$RESP_FILE" 2>/dev/null || echo "")
@@ -2835,7 +2967,7 @@ if [[ -n "$FOLIO1_ID" ]]; then
   if [[ -n "$FOLIO_BAL" && -n "$FOLIO_CHARGES" ]]; then
     # DB CHECK: balance = total_charges - total_payments - total_credits + credit_balance
     CALC_BAL=$(echo "$FOLIO_CHARGES - $FOLIO_PAYMENTS - $FOLIO_CREDITS + $FOLIO_CREDIT_BAL" | bc 2>/dev/null || echo "")
-    if [[ -n "$CALC_BAL" ]]; then
+    if [[ -n "${CALC_BAL:-}" ]]; then
       DIFF=$(echo "($FOLIO_BAL) - ($CALC_BAL)" | bc 2>/dev/null || echo "999")
       ABS_DIFF=$(echo "$DIFF" | tr -d '-')
       if [[ $(echo "$ABS_DIFF <= 0.01" | bc 2>/dev/null) == "1" ]]; then
@@ -2895,7 +3027,7 @@ echo "  Verify: Multiple payment methods applied to same reservation"
 if [[ -n "${RES1_ID:-}" ]]; then
   get "$GW/v1/billing/payments?tenant_id=$TID&limit=200" >/dev/null
   PAYMENT_METHODS=$(jq -r --arg rid "$RES1_ID" '[.data? // . | .[] | select(.reservation_id == $rid and (.status == "completed" or .status == "captured" or .status == "authorized")) | .payment_method] | unique | .[]' "$RESP_FILE" 2>/dev/null || echo "")
-  if [[ -z "$PAYMENT_METHODS" ]]; then
+  if [[ -z "${PAYMENT_METHODS:-}" ]]; then
     METHOD_COUNT=0
   else
     METHOD_COUNT=$(echo "$PAYMENT_METHODS" | wc -l | tr -d ' ')
@@ -3053,7 +3185,7 @@ for raw_ccy in "${CURRENCY_MATRIX[@]}"; do
   [[ "${raw_ccy^^}" != "USD" ]] && { CORRECTION_CCY="${raw_ccy^^}"; break; }
 done
 
-if [[ -n "$CORRECTION_CCY" ]]; then
+if [[ -n "${CORRECTION_CCY:-}" ]]; then
   orig_rate="${MC_RATE[$CORRECTION_CCY]}"
   bumped=$(fx_scale "$(echo "$orig_rate * 1.1" | bc -l 2>/dev/null || echo "$orig_rate")")
   code=$(post "$GW/v1/billing/fx-rates" \
@@ -3143,7 +3275,7 @@ echo "  Scenario: a guest is billed in their home currency at a USD property."
 echo "  The rate seeded in 2C.2 must be locked onto the posting."
 
 USD_FOLIO="${MC_FOLIO[USD]:-}"
-if [[ -z "$USD_FOLIO" ]]; then
+if [[ -z "${USD_FOLIO:-}" ]]; then
   # Fall back to the primary property's house account when USD is not in the matrix.
   get "$GW/v1/billing/folios?tenant_id=$TID&property_id=$PID&folio_type=HOUSE_ACCOUNT&limit=200" >/dev/null
   USD_FOLIO=$(resp_first "id")
@@ -3158,7 +3290,7 @@ get "$GW/v1/properties?tenant_id=$TID&limit=100" >/dev/null
 XC_BASE_CCY=$(resp_ffirst ".id == \"$USD_FOLIO_PID\"" "currency")
 XC_BASE_CCY="${XC_BASE_CCY:-USD}"
 
-if [[ -z "$USD_FOLIO" ]]; then
+if [[ -z "${USD_FOLIO:-}" ]]; then
   skip "Cross-currency posting" "no USD-base house folio available"
 elif [[ "$XC_BASE_CCY" != "USD" ]]; then
   # Only the ccy→USD leg is seeded in 2C.2; against a non-USD-base property the
@@ -3386,6 +3518,59 @@ else
   echo "  PHASE 2C: MULTI-CURRENCY & MULTI-LOCATION — not requested"
   echo "  Re-run with --multi-currency (or --currencies=USD,INR,EUR,JPY,CNY,KWD)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 2D — DOMAIN WRITE SUITES
+#
+#  This suite is deep on accounts and broad on *reads*: `api_smoke` walks ~50
+#  GETs. The write paths shipped since 2026-08-11 — events, banquet orders, the
+#  day sheet, event billing, allotments, incidents, lost & found, shift
+#  handovers, guest feedback, promo codes, booking sources, market segments,
+#  police reports — live in two dedicated suites instead.
+#
+#  They are run from here rather than copied into it. One entry point, no second
+#  copy of 200 assertions to drift, and the domain suites stay runnable on their
+#  own while iterating. Set SKIP_DOMAIN_SUITES=1 to leave them out.
+# ═════════════════════════════════════════════════════════════════════════════
+
+if [[ "${SKIP_DOMAIN_SUITES:-0}" == "1" ]]; then
+  echo "  PHASE 2D: DOMAIN WRITE SUITES — skipped (SKIP_DOMAIN_SUITES=1)"
+  echo ""
+else
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  PHASE 2D: DOMAIN WRITE SUITES"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  run_domain_suite() { # label script
+    local label="$1" script="$2" out rc line
+    if [[ ! -x "$REPO_ROOT/$script" && ! -f "$REPO_ROOT/$script" ]]; then
+      skip "$label" "$script not found"
+      return
+    fi
+    out=$(bash "$REPO_ROOT/$script" 2>&1) && rc=0 || rc=$?
+    # Both suites end with "  N passed, M failed".
+    line=$(printf '%s\n' "$out" | grep -oE "[0-9]+ passed, [0-9]+ failed" | tail -1)
+    if [[ -z "$line" ]]; then
+      fail "$label" "suite produced no summary line (exit $rc)"
+      printf '%s\n' "$out" | tail -15
+      return
+    fi
+    local p f
+    p=$(echo "$line" | grep -oE "^[0-9]+")
+    f=$(echo "$line" | grep -oE "[0-9]+ failed" | grep -oE "^[0-9]+")
+    if [[ "$f" == "0" && "$rc" == "0" ]]; then
+      pass "$label ($p assertions)"
+    else
+      fail "$label" "$line"
+      printf '%s\n' "$out" | grep -E "^\s+❌" | head -10
+    fi
+  }
+
+  run_domain_suite "Function space, BEOs and event billing" "http_test/smoke-events.sh"
+  run_domain_suite "Operations write paths and room-block holds" "http_test/smoke-operations.sh"
   echo ""
 fi
 

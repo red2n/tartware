@@ -618,9 +618,9 @@ const applyChargePost = async (
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + CASE WHEN $6::boolean THEN 0 ELSE $2 END,
-              total_credits = total_credits + CASE WHEN $6::boolean THEN $2 ELSE 0 END,
-              balance = balance + CASE WHEN $6::boolean THEN -$2 ELSE $2 END,
+          SET total_charges = total_charges + CASE WHEN $6::boolean THEN 0::numeric ELSE $2::numeric END,
+              total_credits = total_credits + CASE WHEN $6::boolean THEN $2::numeric ELSE 0::numeric END,
+              balance = balance + CASE WHEN $6::boolean THEN -$2::numeric ELSE $2::numeric END,
               version = version + 1,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5
@@ -732,13 +732,21 @@ const applyChargePost = async (
       // raised the bill instead of lowering it, and by twice its own value
       // against the correct figure. Found by http_test/smoke-events.sh when an
       // event's discount line came back +550 rather than −550.
+      //
+      // Every `$2` is cast to numeric and every literal written `0::numeric`.
+      // Without that Postgres deduces the parameter's type from the branch it
+      // sits beside — `CASE WHEN … THEN 0 ELSE $2 END` makes `$2` an *integer*,
+      // and a 24.50 minibar charge dies with "invalid input syntax for type
+      // integer". Whole-number amounts pass, which is why the smoke suites and
+      // two hand probes all missed it; the E2E suite's first decimal charge
+      // found it. Same family as the `CASE WHEN $3` cast in ui-gaps/13.
       await queryWithClient(
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + CASE WHEN $5::boolean THEN 0 ELSE $2 END,
-              total_credits = total_credits + CASE WHEN $5::boolean THEN $2 ELSE 0 END,
-              balance = balance + CASE WHEN $5::boolean THEN -$2 ELSE $2 END,
+          SET total_charges = total_charges + CASE WHEN $5::boolean THEN 0::numeric ELSE $2::numeric END,
+              total_credits = total_credits + CASE WHEN $5::boolean THEN $2::numeric ELSE 0::numeric END,
+              balance = balance + CASE WHEN $5::boolean THEN -$2::numeric ELSE $2::numeric END,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
         `,

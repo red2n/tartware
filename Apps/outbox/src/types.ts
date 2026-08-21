@@ -55,10 +55,15 @@ export type OutboxRepository = {
 	) => Promise<void>;
 	countPendingOutboxRows: () => Promise<number>;
 	releaseExpiredLocks: (lockTimeoutMs: number) => Promise<number>;
+	/**
+	 * Claims a batch for one worker. `aggregateTypeFilter` takes a single type or a
+	 * set of them: a dispatcher owns every aggregate type its service enqueues, and
+	 * naming only one silently strands the rest as PENDING forever.
+	 */
 	claimOutboxBatch: (
 		limit: number,
 		workerId: string,
-		aggregateTypeFilter?: string,
+		aggregateTypeFilter?: string | readonly string[],
 	) => Promise<OutboxRecord[]>;
 	markOutboxDelivered: (id: string) => Promise<void>;
 	markOutboxDeliveredByEventId: (eventId: string) => Promise<void>;

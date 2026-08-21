@@ -481,6 +481,9 @@ importers:
       '@tartware/openapi':
         specifier: workspace:*
         version: link:../openapi-utils
+      '@tartware/outbox':
+        specifier: workspace:*
+        version: link:../outbox
       '@tartware/schemas':
         specifier: workspace:*
         version: link:../../schema
@@ -11497,6 +11500,7 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.1(@types/node@25.2.3)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
+    optional: true
 
   '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -11552,7 +11556,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.16
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -15558,6 +15562,7 @@ snapshots:
       sass: 1.97.1
       tsx: 4.21.0
       yaml: 2.8.2
+    optional: true
 
   vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
@@ -15696,6 +15701,7 @@ snapshots:
       - terser
       - tsx
       - yaml
+    optional: true
 
   vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:

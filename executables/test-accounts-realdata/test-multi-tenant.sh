@@ -2500,7 +2500,21 @@ if [[ "$FULL_API" == true ]]; then
         local err
         err=$(jq -r '.code // .detail // empty' "$RESP_FILE" 2>/dev/null)
         if [[ "$err" == "TENANT_MODULE_NOT_ENABLED" ]]; then
-          skip "$label" "module-not-enabled (HTTP 403)"
+          # This used to be an unconditional skip, and that is how a whole domain
+          # went dark with the suite green: on 2026-08-19 lost & found and the
+          # incident register answered 403 for every call — the seed granted the
+          # demo tenant no modules at all — and every run recorded it as "skip".
+          #
+          # This suite *enables all modules for Tenant A* in preflight, and the
+          # seed now carries the full MODULE_IDS list, so a 403 here means the
+          # entitlement was lost, not that the feature is unlicensed. For Tenant A
+          # it is a failure. It stays a skip for any other tenant, where a module
+          # genuinely may not be enabled.
+          if [[ "$url" == *"$TID_A"* ]]; then
+            fail "$label" "module-not-enabled for the fully-entitled tenant (HTTP 403) — check tenants.config->modules"
+          else
+            skip "$label" "module-not-enabled (HTTP 403)"
+          fi
         elif [[ "$err" == "SYSTEM_ADMIN_SCOPE_REQUIRED" || "$err" == *"System administrator scope"* ]]; then
           skip "$label" "system-admin-required (HTTP 403)"
         elif [[ "$err" == *"Rate limit"* || "$err" == *"rate limit"* ]]; then

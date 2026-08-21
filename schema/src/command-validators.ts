@@ -224,12 +224,6 @@ import {
 	RoomOutOfServiceCommandSchema,
 	RoomStatusUpdateCommandSchema,
 } from "./events/commands/rooms.js";
-import {
-	SettingsValueApproveCommandSchema,
-	SettingsValueBulkSetCommandSchema,
-	SettingsValueRevertCommandSchema,
-	SettingsValueSetCommandSchema,
-} from "./events/commands/settings.js";
 
 type CommandPayloadValidator = (
 	payload: Record<string, unknown>,
@@ -816,22 +810,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	],
 	["rooms.key.issue", (payload) => RoomKeyIssueCommandSchema.parse(payload)],
 	["rooms.key.revoke", (payload) => RoomKeyRevokeCommandSchema.parse(payload)],
-	[
-		"settings.value.set",
-		(payload) => SettingsValueSetCommandSchema.parse(payload),
-	],
-	[
-		"settings.value.bulk_set",
-		(payload) => SettingsValueBulkSetCommandSchema.parse(payload),
-	],
-	[
-		"settings.value.approve",
-		(payload) => SettingsValueApproveCommandSchema.parse(payload),
-	],
-	[
-		"settings.value.revert",
-		(payload) => SettingsValueRevertCommandSchema.parse(payload),
-	],
 	[
 		"notification.send",
 		(payload) => NotificationSendCommandSchema.parse(payload),

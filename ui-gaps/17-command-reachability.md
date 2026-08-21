@@ -612,3 +612,158 @@ building UI.
 
 Owner specs: 03 (ar), 05 (revenue), 12 (billing), 14 (integration/metasearch), 11 (mobile check-in),
 plus `accounts-gaps/` for commission and group billing.
+
+---
+
+## ✅ `settings.value.*` ×4 retired — 2026-08-21
+
+The step this spec named as "the next concrete step" is done. All four commands
+(`settings.value.set` / `.bulk_set` / `.approve` / `.revert`) are gone: 4 catalog rows, 4 validator
+registrations, the payload schema module (`schema/src/events/commands/settings.ts`) and its barrel
+export, the consumer, the command service, the local re-export shim in `core-service/src/schemas/`,
+the consumer metrics module, and the startup wiring in `core-service/src/index.ts`.
+
+**The one capability check worth recording.** `approveSettingsValue` did something the surviving REST
+path does not: it expired the previously-ACTIVE sibling value at the same scope in the same statement.
+That is not a live regression — nothing creates `PENDING` rows (the settings screen PATCHes the row in
+place, and `POST` defaults to `ACTIVE`), the resolver already breaks ties with
+`ORDER BY updated_at DESC`, and `settings_values` has no uniqueness constraint to violate. But if an
+approval workflow is ever wanted for settings, it is a REST concern now, and the sibling-expiry is the
+part to re-implement rather than the command.
+
+Guardrails after the removal: `sql:contracts` 0 violations across 247 tables / 760 files, gateway
+conformance 33/33, command-catalog conformance 11/11 (including "registers a payload validator for
+every catalogued command" and "seeds a catalog entry for every command a consumer handles" — the two
+that would fail on a half-finished retirement), core-service 182/182.
+
+**Unreachable is now 65 of 191.**
+
+### 🐛 The orphan hot-reload listener was worse than "no producer" — fixed 2026-08-21
+
+This spec recorded billing-service subscribing to `settings.events` for a message nobody sends. The
+producer *does* exist: `settings-values-repository.ts` enqueues the exact envelope billing expects into
+`transactional_outbox` inside the write transaction. What was missing is a **relay**. The rows carry
+`aggregate_type = 'setting'`, and the only dispatcher in the system claimed
+`aggregate_type = 'reservation'` — so they were written and never drained.
+
+Fixed with `core-service/src/jobs/settings-outbox-dispatcher.ts`, which claims `setting` rows and
+publishes them to `settings.events`. Core-service's Kafka surface, which existed only to feed the
+retired command consumer, now carries this instead.
+
+**Verified against a running stack**, per the lesson this backlog has now recorded three times:
+outbox row → `DELIVERED` on the first poll → message present on `settings.events` in the expected
+envelope → billing-service's consumer group at offset 1/1, **lag 0**. Every hop observed, not inferred.
+
+### 🐛 Five aggregate types were being enqueued and never dispatched — fixed 2026-08-21
+
+Found while checking the outbox table for the above. `reservations-command-service` enqueues five
+aggregate types and its dispatcher claimed **one**:
+
+| Aggregate type | Events | Consumer that never heard them |
+|---|---|---|
+| `group_booking` | `group.created`, `group.rooms_added` | notification-service → `GROUP_BOOKING_CONFIRMED` |
+| `ota_sync` | `integration.ota.availability_synced`, `.rates_pushed`, `.content_synced` | — |
+| `webhook` | `integration.webhook.retried` | — |
+| `integration_mapping` | `integration.mapping.updated` | — |
+
+**16 rows were sitting PENDING in the dev database, the oldest for a day.** So every group booking
+made through `group.create` — a shipped, reachable flow — silently failed to send its confirmation
+notification. The `integration.*` four are the commands COV-14's distribution screen drives.
+
+`claimOutboxBatch` now takes a set as well as a single type, and the dispatcher names all five in
+`DISPATCHED_AGGREGATE_TYPES` with the rule written next to it. Verified live: on restart the
+dispatcher drained all 16 stranded rows to `DELIVERED`, and a second restart logs zero errors and zero
+warnings.
+
+**The shape to remember:** an outbox row is written inside the business transaction, so the write
+looks completely successful — the command succeeds, the row is committed, the API returns 200. The
+only symptom is a consumer that stays quiet. Nothing in a type checker, a conformance suite or an API
+test can see it; the evidence is `SELECT aggregate_type, status, count(*) FROM transactional_outbox
+GROUP BY 1,2`, which is worth running after any command work.
+
+**A guardrail is possible here and is not yet built.** Every `aggregateType:` literal in a service's
+`enqueueOutboxRecord*` calls must appear in that service's dispatcher filter — both halves are
+literals in the source, so the check needs no judgement, unlike the operator-facing classification
+this spec declined to automate.
+
+### ❓ Open decision: the settings screen and settings enforcement use different stores
+
+Surfaced while trying to drive the settings write path end to end. `core-service` picks its settings
+store from `SETTINGS_DATA_SOURCE`, which defaults to `"seed"` and **is set to `db` nowhere** — not in
+any `dev:*` script, compose file, workflow or manifest; `.env.example` pins it to `seed`. So today:
+
+| | Store |
+|---|---|
+| `GET`/`POST`/`PATCH /v1/settings/values` — what the settings screen uses | in-process array built from `data/settings-values.ts` |
+| `settings-resolver-service` — what enforcement uses | `settings_values` in Postgres, no seed branch |
+| billing-service's business-calendar loader | the REST endpoint, so the seed store |
+
+Two consequences, both verified against the dev database, where `settings_definitions` and
+`settings_values` hold **0 rows each**:
+
+1. **A value saved in the settings screen is lost on restart** and never reaches the resolver.
+   `password-policy-service` is the resolver's only consumer, and it falls back to the PCI defaults
+   with `Math.max(configured, PCI_MIN_LENGTH)` — so this **fails safe, not open**: a tenant hardening
+   its password policy through the UI simply gets no hardening. It is a silently inert setting, not a
+   weakened one.
+2. **The outbox enqueue in `settings-values-repository.ts` only runs in `db` mode**, so the
+   hot-reload path fixed above is correct and proven but dormant under the default configuration.
+
+**This is a product decision, not a bug to fix quietly:** either `settings_values` is canonical and
+the seed store is a fixture (turn `SETTINGS_DATA_SOURCE=db` on and seed the catalogue —
+`settings_definitions` needs `category_id` and `section_id`, so it is three tables, not one), or the
+seed file is canonical and the DB-backed half — repository, resolver, outbox enqueue and the
+`settings_values` table — is dead surface of exactly the kind this spec retires. It cannot be both,
+and it currently is.
+
+### ✅ Guardrail built — `outbox-dispatch-conformance.test.ts`, 2026-08-21
+
+Lives in `Apps/command-consumer-utils/tests/`, so the existing "Command catalog conformance" step in
+`ci-guardrails.yml` already runs it on every branch. Needs no database and no running stack.
+
+Four assertions: the scan finds enqueue sites and dispatchers at all (a scanner matching nothing
+reports green forever); every `aggregateType:` is readable as a **literal**; every service that polls
+declares `DISPATCHED_AGGREGATE_TYPES`; and no enqueued type goes unclaimed.
+
+**Literal-only on both sides, deliberately.** Resolving identifiers and config lookups would mean
+evaluating the code to be right, and this repo has already thrown away one fuzzy matcher for pairing
+`TenantStatusEnum` with `membership_status`. A non-literal `aggregateType` therefore *fails* the check
+rather than being skipped — core-service's own enqueue was changed from a constant back to `"setting"`
+to satisfy it.
+
+**One exemption, and it is self-justifying.** `command` rows are never claimed: api-gateway publishes
+on the request path and settles by event id, so the row is a durability record, not a queue entry.
+`INLINE_SETTLED_AGGREGATE_TYPES` records that with its reason, and a companion test fails if nothing
+calls `markOutboxDeliveredByEventId` any more, or if the exemption names a type nobody enqueues — so
+the exemption cannot outlive its mechanism or quietly become permission.
+
+**Verified to fail in both directions**, by re-introducing each bug it was written for: dropping
+`group_booking` from the reservations list reports *"enqueues "group_booking" but its dispatcher does
+not claim it"*, and emptying core-service's list reports both the missing declaration and the stranded
+`setting` type.
+
+#### Decision: `settings_values` is canonical — recorded 2026-08-21, implementation not started
+
+Delegated back and decided rather than left open. The DB half wins on the evidence:
+
+- **Enforcement already reads it.** `settings-resolver-service` has no seed branch, and it is what
+  `password-policy-service` calls. Making the seed file canonical means either rewriting the resolver
+  or accepting that no tenant can ever override a password policy.
+- **The seed store loses writes on restart** — it is a module-level array. A settings screen that
+  forgets what you saved is not shippable, whichever store is nominally canonical.
+- **The DDL is clearly the designed home**: scope hierarchy, `inheritance_path`,
+  `inherited_from_value_id`, `effective_from`/`_to`, `locked_until` for approvals. The seed store
+  implements a fraction of that.
+- Billing's business-calendar loader reads over REST either way, so it is neutral on the choice — but
+  its hot-reload only functions on the DB path.
+
+**Sizing, so this is not mistaken for a flag flip.** 144 definitions across 13 files
+(`core-service/src/data/catalog/`, ~1,900 lines) plus 14 values, and `settings_definitions` requires
+`category_id` and `section_id`, so `settings_categories` and `settings_sections` have to be seeded
+first. The work is: generate the SQL seed from the existing TS catalogue, set
+`SETTINGS_DATA_SOURCE=db` in the dev scripts / compose / workflows, then verify in a browser that the
+settings screen still renders all 13 categories and that a save survives a restart — the screen is the
+only consumer that would notice a partial migration, and it will not be visible to any API test.
+
+Until that lands, `seed` remains the default and both halves stay as they are: the DB path is correct
+and proven but dormant, exactly as the outbox dispatcher above is.

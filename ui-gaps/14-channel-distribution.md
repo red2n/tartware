@@ -287,3 +287,35 @@ dynamically assembled). Check what it covers before building anything webhook-sh
 - [18-write-path-gap.md](18-write-path-gap.md) — blocking for the CRUD half only, not for step 1.
 - [16-booking-reference-data.md](16-booking-reference-data.md) — same `booking-config` read-only family.
 - [10-reports-coverage.md](10-reports-coverage.md) — market-segment-production report.
+
+---
+
+## 🐛 All four `integration.*` events were enqueued and never published — fixed 2026-08-21
+
+The five commands this spec wrapped are dispatchable, their handlers run, and their writes commit.
+Four of them also emit an event, and **none of those events ever left the database**.
+
+| Command | Event it emits | `aggregate_type` |
+|---|---|---|
+| `integration.ota.sync_request` | `integration.ota.availability_synced` | `ota_sync` |
+| `integration.ota.rate_push` | `integration.ota.rates_pushed` | `ota_sync` |
+| `integration.ota.content_sync` | `integration.ota.content_synced` | `ota_sync` |
+| `integration.webhook.retry` | `integration.webhook.retried` | `webhook` |
+| `integration.mapping.update` | `integration.mapping.updated` | `integration_mapping` |
+
+`reservations-command-service` writes these into `transactional_outbox` inside the command
+transaction, and its dispatcher claimed `aggregate_type = 'reservation'` only — so every one sat
+PENDING indefinitely. Fixed by naming all five types in `DISPATCHED_AGGREGATE_TYPES`; see
+[18](18-write-path-gap.md) for the rule this exposed and
+[17](17-command-reachability.md) for the conformance check now enforcing it.
+
+**No consumer subscribes to the four `integration.*` events today**, so unlike the `group.created`
+case found alongside it, nothing user-visible was lost — the sync itself happens in the handler. What
+was lost is the audit trail and any future consumer: a channel-sync history screen, or a retry/alerting
+consumer, would have been built against a topic that had never carried a message.
+
+**Worth noting against this spec's own history.** This is the third time a distribution surface has
+been shipped, verified and inert: the gateway wildcard demoted to `app.get`, the screen shadowed by
+`settings/:categoryCode`, and now the events. All three passed every check that existed at the time,
+and each needed a different kind of looking — a live request, a browser, and a `SELECT` against the
+outbox.

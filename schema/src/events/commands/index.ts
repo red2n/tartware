@@ -17,4 +17,3 @@ export * from "./operations.js";
 export * from "./reservations.js";
 export * from "./revenue.js";
 export * from "./rooms.js";
-export * from "./settings.js";

@@ -307,3 +307,49 @@ Blocks the UI half of: [02](02-police-reports.md), [06](06-incidents.md), [08](0
 [09](09-guest-feedback.md), [13](13-sales-catering.md), [14](14-channel-distribution.md),
 [16](16-booking-reference-data.md). Related guardrail: [10](10-reports-coverage.md)(a),
 [17](17-command-reachability.md).
+
+---
+
+## 🐛 The rule had a third leg nobody had written down — found and closed 2026-08-21
+
+This spec's rule sends any write with cross-service effects down the **command + consumer + catalog
+row** branch. Everything built on that branch since 2026-08-11 followed it correctly, and four of
+those write paths still delivered nothing.
+
+**Choosing the command branch is not finished when the handler commits.** A command handler that
+publishes an event writes it into `transactional_outbox` inside the business transaction; a
+*dispatcher* polls that table and claims rows **by `aggregate_type`**. If nothing claims the type, the
+row is committed and then claimed by nobody. So the rule has a third leg:
+
+> | Write has… | Mechanism | …and |
+> |---|---|---|
+> | one owning service, one table, no fan-out | HTTP routes on the owning service | — |
+> | cross-service effects, or needs idempotent replay / DLQ | command + consumer + catalog row, with a gateway REST wrapper | **the emitting service's dispatcher must claim the aggregate type the handler enqueues** |
+
+Two live instances, both found on 2026-08-21:
+
+- **`reservations-command-service` enqueued five aggregate types and claimed one.**
+  `group_booking` (`group.created`, `group.rooms_added`), `ota_sync` ×3, `webhook` and
+  `integration_mapping` were all stranded. **16 rows were sitting PENDING in dev, the oldest for a
+  day**, and `group.created` never reached the notification-service handler that turns it into
+  GROUP_BOOKING_CONFIRMED — so every group booking made through the shipped `group.create` flow
+  silently failed to send its confirmation. See [14](14-channel-distribution.md) for the
+  `integration.*` half.
+- **core-service's `setting` events had no dispatcher at all**, which is what
+  [17](17-command-reachability.md) had recorded as "a consumer for a message nobody sends".
+
+**Why it survived every existing guardrail.** This spec's two wildcard-conformance checks both
+police the *edge* — is a write reachable, does the gateway advertise the right methods. Both were
+green, correctly: the write was reachable, the command dispatched, the handler ran, the row
+committed, the API returned 200. The failure is entirely on the far side of a successful write, and
+it is silent by construction — there is no error anywhere, only a consumer that stays quiet.
+
+Closed by `Apps/command-consumer-utils/tests/outbox-dispatch-conformance.test.ts` (details and its
+one self-justifying exemption in [17](17-command-reachability.md)), which runs in `ci-guardrails.yml`
+on every branch. **The check to run by hand after any command work** is one query:
+
+```sql
+SELECT aggregate_type, status, count(*) FROM transactional_outbox GROUP BY 1, 2;
+```
+
+Anything PENDING and older than a poll interval is an event nobody is going to receive.

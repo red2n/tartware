@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   type CreateSettingsValueInput,
   SettingsValuesSchema,
@@ -8,6 +10,7 @@ import type { PoolClient } from "pg";
 import { z } from "zod";
 
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
+import { enqueueOutboxRecordWithClient } from "../outbox/repository.js";
 
 const SettingsValueArraySchema = z.array(SettingsValuesSchema);
 const SettingsValueSchema = SettingsValuesSchema;
@@ -167,39 +170,38 @@ export const updateValue = async (input: UpdateSettingsValueInput) => {
 
 /**
  * Enqueue a settings.value.set event in the transactional outbox.
+ *
+ * `settings-outbox-dispatcher` drains these onto `settings.events`; it claims by
+ * `aggregate_type = 'setting'`, so that literal is the contract between the two.
  */
 async function enqueueSettingsEvent(
   value: z.infer<typeof SettingsValueSchema>,
   client: PoolClient,
 ) {
   // Fetch setting code to include in event for easier consumption
-  const { rows } = await queryWithClient(
+  const { rows } = await queryWithClient<{ code: string }>(
     client,
     "SELECT code FROM settings_definitions WHERE id = $1",
     [value.setting_id],
   );
   const code = rows[0]?.code;
 
-  await queryWithClient(
-    client,
-    `INSERT INTO transactional_outbox (
-      tenant_id, aggregate_id, aggregate_type, event_type, payload, partition_key
-    ) VALUES ($1, $2, $3, $4, $5, $6)`,
-    [
-      value.tenant_id,
-      value.setting_id,
-      "setting",
-      "settings.value.set",
-      JSON.stringify({
-        type: "settings.value.set",
-        payload: {
-          tenant_id: value.tenant_id,
-          property_id: value.property_id ?? null,
-          code,
-          value: value.value,
-        },
-      }),
-      value.tenant_id, // Partition by tenant for consistency
-    ],
-  );
+  await enqueueOutboxRecordWithClient(client, {
+    eventId: randomUUID(),
+    tenantId: value.tenant_id,
+    aggregateId: value.setting_id,
+    aggregateType: "setting",
+    eventType: "settings.value.set",
+    payload: {
+      type: "settings.value.set",
+      payload: {
+        tenant_id: value.tenant_id,
+        property_id: value.property_id ?? null,
+        code,
+        value: value.value,
+      },
+    },
+    headers: {},
+    partitionKey: value.tenant_id, // Partition by tenant for consistency
+  });
 }

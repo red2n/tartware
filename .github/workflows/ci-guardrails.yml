@@ -75,5 +75,10 @@ jobs:
 
       # Command catalog ↔ flow registry ↔ payload validators ↔ consumers: a
       # command missing any one of those links is accepted and silently dropped.
+      #
+      # Also outbox enqueue ↔ dispatcher, added after two live instances of the
+      # same shape: an event committed inside a successful transaction whose
+      # aggregate_type no dispatcher claims. The write succeeds, the API returns
+      # 200, and the consumer never hears anything.
       - name: Command catalog conformance
         run: npx nx run @tartware/command-consumer-utils:test

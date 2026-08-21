@@ -258,3 +258,30 @@ another duplicate; check which surface `features/groups` actually calls before t
 - [14-channel-distribution.md](14-channel-distribution.md) — the rest of the `booking-config` family.
 - [18-write-path-gap.md](18-write-path-gap.md) — root cause and the full duplicate-surface list.
 - [10-reports-coverage.md](10-reports-coverage.md) — the proxy-conformance test.
+
+---
+
+## 🐛 Group bookings sent no confirmation notification — fixed 2026-08-21
+
+`features/groups` dispatches `group.create` and `group.add_rooms`, both fully wired and shipped. Their
+handlers emit `group.created` and `group.rooms_added` into `transactional_outbox` with
+`aggregate_type = 'group_booking'`, and **reservations-command-service's dispatcher claimed
+`'reservation'` only** — so neither event was ever published.
+
+notification-service subscribes to `reservations.events` and maps `group.created` →
+`GROUP_BOOKING_CONFIRMED`. It never received one. **Every group booking made through the product
+silently failed to send its confirmation**, from whenever the mapping shipped until today; 16 stranded
+rows were still in the dev database, the oldest from 2026-08-20.
+
+Nothing surfaced it because nothing was broken in the usual sense: the command succeeded, the group
+booking was created correctly, `group_bookings` and `group_room_blocks` hold the right rows, and the
+API returned 200. Only the notification was missing, and a notification that never arrives looks
+identical to one that was never configured.
+
+Fixed by naming all five aggregate types the service enqueues in `DISPATCHED_AGGREGATE_TYPES`;
+verified live by watching the 16 stranded rows drain to DELIVERED on restart. The rule this exposed is
+in [18](18-write-path-gap.md) and the conformance check in [17](17-command-reachability.md).
+
+**Worth pairing with this spec's other group finding.** The 2026-08-20 show-stopper was that a group
+block held no inventory; this one is that creating the group told nobody. Both are on the same shipped
+flow, and neither was visible from the screen that drives it.

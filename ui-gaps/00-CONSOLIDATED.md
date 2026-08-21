@@ -4,6 +4,9 @@
 > **Verified against:** `main` @ `edbf3e9c` — every count below re-derived from route files, command consumers and the schema package
 > **Audited:** 635 route registrations across `Apps/*/src/routes/**`, 202 commands across 11 command consumers, both Angular front-ends
 > **Date:** 2026-08-11
+> **Last updated:** 2026-08-21 — `settings.value.*` ×4 retired; two outbox-stranding defects fixed
+> (see [17](17-command-reachability.md), [18](18-write-path-gap.md), [14](14-channel-distribution.md),
+> [16](16-booking-reference-data.md))
 > **Commit tag:** `COV-nn`
 
 ---
@@ -60,11 +63,11 @@ And two findings the audit did not make at all:
 |---|---|---|---|
 | UI calls hitting a missing route | 0 | 0 | confirmed |
 | Backend endpoints | 428 | 635 raw registrations | raw count includes gateway proxy pairs |
-| Commands total | 199 | **199** | catalogued ∪ validated (re-derived 2026-08-20; `case` labels alone counted event consumers too) |
+| Commands total | 199 | **195** | catalogued ∪ validated (re-derived 2026-08-20; `settings.value.*` ×4 retired 2026-08-21) |
 | Commands reachable from the gateway | 75 | **87** | incl. ternary, wrapper-factory and `dispatchCommand(…)` forms a `commandName:` regex misses |
 | Commands dispatched directly by UI | 21 | **26** | `/commands/<name>` in `UI/*`, incl. the resolved dynamic dispatch |
-| Commands with **no** wrapper and **no** direct dispatch | — | **69** | structurally unreachable — classified 2026-08-18, re-derived 2026-08-20 |
-| Commands unreachable *from the UI* | 134 | **69** | re-derived 2026-08-20; the scan had missed five dispatch forms in total, see [17](17-command-reachability.md) |
+| Commands with **no** wrapper and **no** direct dispatch | — | **65** | structurally unreachable — classified 2026-08-18, re-derived 2026-08-20, less the 4 retired 2026-08-21 |
+| Commands unreachable *from the UI* | 134 | **65** | re-derived 2026-08-20; the scan had missed five dispatch forms in total, see [17](17-command-reachability.md) |
 | Domains with zero UI presence | 16 | 16 | confirmed by whole-word search |
 | Catalogued commands with no handler anywhere | — | **4** | was 7; three deleted 2026-08-13 rather than implemented |
 
@@ -91,7 +94,7 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
-| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; converse guardrail closed 2026-08-18. Event bookings 2026-08-18, banquet orders 2026-08-19, and event billing 2026-08-19 — the first write to take the **command** branch of the rule rather than plain HTTP. Allotments still lack writes | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
+| 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; converse guardrail closed 2026-08-18. Event bookings 2026-08-18, banquet orders 2026-08-19, and event billing 2026-08-19 — the first write to take the **command** branch of the rule rather than plain HTTP. **The rule gained a third leg 2026-08-21**: taking the command branch is not finished until the emitting service's dispatcher claims the aggregate type its handler enqueues — four shipped write paths delivered nothing because it did not | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
 
@@ -121,15 +124,15 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 13 | Sales & catering — **✅ decided: build 2026-08-17**; meeting-room + event-booking write paths shipped and smoke-tested, event-billing decision **answered 2026-08-18** (`event_bookings.folio_id`), **UI items 1 + 2 + 4 shipped 2026-08-18**, banquet orders + BEO editor **2026-08-19**, the midnight limitation **closed 2026-08-19**, **event billing** and the **daily BEO / kitchen view shipped 2026-08-19**. Acceptance discharged and the UI list complete: function space can be booked, a BEO produced, the day worked from a printed sheet and recorded back, and event revenue lands on a folio | [13-sales-catering.md](13-sales-catering.md) | Backend+UI | **done** |
-| 14 | Channel / distribution — **✅ closed 2026-08-20**: health screen + reference-data CRUD 2026-08-13, then mapping editor, metasearch and allotments into a five-tab `/settings/distribution`. `/v1/ota-connections` is a projection of `channel_mappings`, so connections admin *is* the mapping editor. The screen itself had been unreachable since it shipped — route shadowed by `settings/:categoryCode` | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
+| 14 | Channel / distribution — **✅ closed 2026-08-20**: health screen + reference-data CRUD 2026-08-13, then mapping editor, metasearch and allotments into a five-tab `/settings/distribution`. `/v1/ota-connections` is a projection of `channel_mappings`, so connections admin *is* the mapping editor. The screen itself had been unreachable since it shipped — route shadowed by `settings/:categoryCode`. **Then all four `integration.*` events turned out to be enqueued and never published** (fixed 2026-08-21) — the third time a distribution surface shipped inert, each needing a different kind of looking | [14-channel-distribution.md](14-channel-distribution.md) | Backend+UI | part |
 | 15 | Two booking engines — **✅ closed: `/v1/direct-booking` deleted** (unguarded write path, no callers) | [15-booking-engine-duplication.md](15-booking-engine-duplication.md) | Decision | done |
-| 16 | Booking reference data — **✅ promo code CRUD + waitlist screen 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. **Allotments closed 2026-08-19/20**: the availability-guard premise was wrong (it is a per-reservation TTL lock) and so was "inventory side of a group" (no `group_booking_id` exists; `group_room_blocks` is that). Write path + UI shipped; blocks still do not reduce sellable availability, recorded as the open question | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
+| 16 | Booking reference data — **✅ promo code CRUD + waitlist screen 2026-08-13**; both "duplicates" were misdiagnosed and are load-bearing. **Allotments closed 2026-08-19/20**: the availability-guard premise was wrong (it is a per-reservation TTL lock) and so was "inventory side of a group" (no `group_booking_id` exists; `group_room_blocks` is that). Write path + UI shipped, and **blocks now reduce sellable availability 2026-08-20** — `searchAvailableRooms` subtracts them like unassigned reservations (two gaps left open deliberately: property-level allotments and the recommendation pipeline's own candidate query). **Group creation sent no confirmation notification until 2026-08-21** — the event was enqueued and never dispatched | [16-booking-reference-data.md](16-booking-reference-data.md) | Backend+UI | part |
 
 ### P2 — Cross-Cutting (1 gap)
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 17 | **✅ re-run 2026-08-20**: **69 unreachable of 195**, down from 95. Two more dispatch forms the scan could not see (`dispatchCommand(…)`, the interpolated UI call), and event-consumer `case` labels were being counted as command handlers. 51 of the 69 are `revenue.*` (COV-05's decision) plus the `accounts-gaps` set; `settings.value.*` ×4 is specified for retirement | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | part |
+| 17 | **✅ re-run 2026-08-20**: **69 unreachable of 195**, down from 95. Two more dispatch forms the scan could not see (`dispatchCommand(…)`, the interpolated UI call), and event-consumer `case` labels were being counted as command handlers. 51 of the 69 are `revenue.*` (COV-05's decision) plus the `accounts-gaps` set. **`settings.value.*` ×4 retired 2026-08-21 → 65 of 191**, and the orphan `settings.events` listener it had recorded turned out to be an undrained outbox, not a missing producer — fixed, along with **five aggregate types in reservations-command-service that were enqueued and never dispatched** (group bookings sent no confirmation notification) | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | part |
 
 ---
 
@@ -228,7 +231,14 @@ anywhere and is a genuine unlogged gap if a jurisdiction requires it.
     1 + 2 + 4 on 2026-08-18**, then banquet orders, the BEO editor, the midnight fix, event billing
     and the day sheet on 2026-08-19. Remaining: COV-16's allotments, COV-14's CRUD half, and the UI
     for both
-14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire
+14. COV-17: re-run reachability once the above land; whatever remains is dead surface to retire.
+    **`settings.value.*` ×4 retired 2026-08-21**, discharging the last category (c) item this spec
+    had identified. Chasing the orphan `settings.events` listener it recorded found the real defect
+    class behind it — **outbox rows written inside a successful transaction that no dispatcher
+    claims**, which is invisible to every check that does not query the table. Two instances fixed
+    (settings; five aggregate types in reservations-command-service, including the group-booking
+    confirmation notification). A conformance check for it is specified in
+    [17](17-command-reachability.md) and not yet built.
 
 **`UNIMPLEMENTED` is down from 7 to 4** — `compliance.breach.report`, `.notify` and
 `operations.incident.report` were **deleted** (catalog row, payload schema, validator), because each
@@ -443,6 +453,38 @@ re-derives it. The rule exists in exactly two places — the generated columns a
 the incident write path gated on a module that does not exist, 403ing for every tenant since it
 shipped. Note the E2E sweep *cannot* find this class of bug: `api_smoke` scores
 `403 TENANT_MODULE_NOT_ENABLED` as a skip.
+
+**A committed write that nobody receives — measured 2026-08-21.**
+
+This backlog already records that a command can have a catalog row, a validator, a handler and full
+conformance coverage and still never have executed. The outbox is the same trap one layer down, and
+it hides better.
+
+An event enqueued in `transactional_outbox` inside the business transaction makes the *write* look
+perfect: the command succeeds, the row commits, the caller gets its 200. Delivery is a separate
+concern owned by a dispatcher, and each dispatcher claims by `aggregate_type`. Name one type in that
+filter while the service enqueues five, and four event streams stop dead with no error anywhere —
+`reservations-command-service` had exactly that, and `group.created` never reached the
+notification-service handler that turns it into GROUP_BOOKING_CONFIRMED. 16 rows were sitting PENDING
+in dev, the oldest for a day. Core-service's settings events had the same shape with a count of zero
+dispatchers.
+
+Neither typecheck, nor `sql:contracts`, nor the gateway and catalog conformance suites, nor an API
+test can see it — every one of them passes. **The evidence is one query:**
+
+```sql
+SELECT aggregate_type, status, count(*) FROM transactional_outbox GROUP BY 1, 2;
+```
+
+Anything PENDING and older than a poll interval is an event nobody is going to receive.
+
+**That check now exists** — `outbox-dispatch-conformance.test.ts`, in the suite `ci-guardrails.yml`
+already runs on every branch. Both halves are source literals, so unlike the operator-facing
+classification in [17](17-command-reachability.md), it needs no judgement: it asserts every
+`aggregateType:` is a readable literal, every polling service declares its claim list, and no enqueued
+type goes unclaimed. Verified by re-introducing both of today's bugs. Its single exemption — `command`,
+which api-gateway publishes inline and settles by event id — carries a test that fails if that
+mechanism disappears.
 
 ---
 
