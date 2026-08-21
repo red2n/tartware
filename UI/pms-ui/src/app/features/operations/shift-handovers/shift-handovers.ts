@@ -125,9 +125,7 @@ export class ShiftHandoversComponent {
 	 * is something someone has to read before the day moves on.
 	 */
 	readonly awaitingAcknowledgement = computed(() =>
-		this.handovers().filter(
-			(h) => !h.acknowledged && OPEN_STATUSES.has(h.handover_status),
-		),
+		this.handovers().filter((h) => !h.acknowledged && OPEN_STATUSES.has(h.handover_status)),
 	);
 
 	/** Unresolved items that should carry into the next shift rather than vanish. */

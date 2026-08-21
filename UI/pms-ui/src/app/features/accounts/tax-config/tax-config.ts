@@ -71,6 +71,7 @@ export class TaxConfigComponent {
 	readonly page = signal(1);
 	readonly sort = createSortState();
 	readonly pageSize = 25;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.page.set(1);

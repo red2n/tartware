@@ -1,16 +1,16 @@
-import { Component, signal } from "@angular/core";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
-import { portalConfig } from "../../portal-config";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { MatNativeDateModule } from "@angular/material/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatNativeDateModule } from "@angular/material/core";
+import { MatDatepickerModule } from "@angular/material/datepicker";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { Router } from "@angular/router";
 import type { AvailableRoomType } from "@tartware/schemas";
+import { portalConfig } from "../../portal-config";
 import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
@@ -125,7 +125,7 @@ import { GuestApiService } from "../../services/guest-api.service";
 	`,
 })
 export class SearchPage {
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 	private readonly router: Router;
 
 	today = new Date();

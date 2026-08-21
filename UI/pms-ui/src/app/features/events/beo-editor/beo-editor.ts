@@ -3,11 +3,11 @@ import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import {
+	type BanquetOrderDetail,
+	type BanquetOrderListItem,
 	BEO_EDITABLE_STATUSES,
 	BEO_PUBLISHABLE_STATUSES,
 	eventEndsNextDay,
-	type BanquetOrderDetail,
-	type BanquetOrderListItem,
 } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
@@ -376,12 +376,9 @@ export class BeoEditorComponent {
 				return { name: entry, quantity: null, description: "", rest: {} };
 			}
 			if (entry && typeof entry === "object") {
-				const {
-					name,
-					quantity,
-					description,
-					...rest
-				} = entry as Record<string, unknown> & { name?: unknown };
+				const { name, quantity, description, ...rest } = entry as Record<string, unknown> & {
+					name?: unknown;
+				};
 				return {
 					name: typeof name === "string" ? name : "",
 					quantity: typeof quantity === "number" ? quantity : null,
@@ -451,13 +448,14 @@ export class BeoEditorComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const res = await this.api.get<
-				{ data: BanquetOrderListItem[] } | BanquetOrderListItem[]
-			>("/banquet-orders", {
-				tenant_id: tenantId,
-				event_booking_id: eventBookingId,
-				limit: "200",
-			});
+			const res = await this.api.get<{ data: BanquetOrderListItem[] } | BanquetOrderListItem[]>(
+				"/banquet-orders",
+				{
+					tenant_id: tenantId,
+					event_booking_id: eventBookingId,
+					limit: "200",
+				},
+			);
 			this.versions.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch {
 			// The history is context, not the document — a failure here must not
@@ -695,9 +693,7 @@ export class BeoEditorComponent {
 	/** The saved BEO, for the read-only summary rows. */
 	readonly beoEndsNextDay = computed(() => {
 		const b = this.beo();
-		return Boolean(
-			b && eventEndsNextDay(b.event_start_time, b.event_end_time),
-		);
+		return Boolean(b && eventEndsNextDay(b.event_start_time, b.event_end_time));
 	});
 
 	readonly beoTeardownIsNextDay = computed(() => {
@@ -871,12 +867,13 @@ export class BeoEditorComponent {
 
 		this.submitting.set(true);
 		try {
-			const res = await this.api.post<
-				{ data: BanquetOrderDetail } | BanquetOrderDetail
-			>(`/banquet-orders/${b.beo_id}/revise`, {
-				tenant_id: tenantId,
-				revision_reason: reason,
-			});
+			const res = await this.api.post<{ data: BanquetOrderDetail } | BanquetOrderDetail>(
+				`/banquet-orders/${b.beo_id}/revise`,
+				{
+					tenant_id: tenantId,
+					revision_reason: reason,
+				},
+			);
 			// Revise replies with the *new* version, so follow it rather than
 			// leaving the operator looking at the one they just superseded.
 			const created = "data" in res ? res.data : res;

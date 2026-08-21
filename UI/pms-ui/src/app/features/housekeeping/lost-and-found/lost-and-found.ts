@@ -155,9 +155,7 @@ export class LostAndFoundComponent {
 	});
 
 	/** Items past their hold window and still on the shelf — the daily disposal worklist. */
-	readonly pastRetention = computed(() =>
-		this.items().filter((item) => this.isOverdue(item)),
-	);
+	readonly pastRetention = computed(() => this.items().filter((item) => this.isOverdue(item)));
 
 	readonly visibleItems = computed(() =>
 		this.overdueOnly() ? this.pastRetention() : this.items(),
@@ -174,9 +172,7 @@ export class LostAndFoundComponent {
 	});
 
 	readonly canSubmitClaim = computed(() => this.claimForm().claimed_by_name.trim().length > 0);
-	readonly canSubmitReturn = computed(
-		() => this.returnForm().returned_to_name.trim().length > 0,
-	);
+	readonly canSubmitReturn = computed(() => this.returnForm().returned_to_name.trim().length > 0);
 
 	constructor() {
 		effect(() => {
@@ -367,7 +363,9 @@ export class LostAndFoundComponent {
 					...(optionalText(f.color) ? { color: optionalText(f.color) } : {}),
 					...(f.estimated_value != null ? { estimated_value: f.estimated_value } : {}),
 					...(f.found_time ? { found_time: f.found_time } : {}),
-					...(optionalText(f.found_by_name) ? { found_by_name: optionalText(f.found_by_name) } : {}),
+					...(optionalText(f.found_by_name)
+						? { found_by_name: optionalText(f.found_by_name) }
+						: {}),
 					...(optionalText(f.room_number) ? { room_number: optionalText(f.room_number) } : {}),
 					...(optionalText(f.area_name) ? { area_name: optionalText(f.area_name) } : {}),
 					...(optionalText(f.guest_name) ? { guest_name: optionalText(f.guest_name) } : {}),

@@ -198,8 +198,7 @@ export class GroupDetailComponent implements OnInit {
 				label: "Status",
 				value: g.block_status_display,
 				badge: this.statusClass(g.block_status),
-				description:
-					GroupBlockStatusDescriptions[g.block_status as GroupBlockStatus] ?? "",
+				description: GroupBlockStatusDescriptions[g.block_status as GroupBlockStatus] ?? "",
 			},
 			{ label: "Organization", value: g.organization_name ?? "—" },
 			{ label: "Event", value: g.event_name ?? "—" },

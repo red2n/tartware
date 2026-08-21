@@ -16,7 +16,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({
 	selector: "app-commissions",
@@ -29,7 +28,6 @@ export class CommissionsComponent {
 	private readonly api = inject(ApiService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly toast = inject(ToastService);
 	readonly settings = inject(SettingsService);
 
 	// ── Report data ──

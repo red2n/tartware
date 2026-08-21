@@ -3,7 +3,12 @@ import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-import type { HousekeepingTaskListItem, HousekeepingTaskStatus, RoomItem, UserWithTenants } from "@tartware/schemas";
+import type {
+	HousekeepingTaskListItem,
+	HousekeepingTaskStatus,
+	RoomItem,
+	UserWithTenants,
+} from "@tartware/schemas";
 import { PopoverModule } from "primeng/popover";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
@@ -107,6 +112,7 @@ export class HousekeepingComponent {
 	readonly activeFilter = signal<HkFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 30;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.currentPage.set(1);

@@ -5,7 +5,9 @@
   "scripts": {
     "start": "ng serve --port 4300",
     "build": "ng build",
-    "test": "ng test"
+    "test": "ng test",
+    "biome": "biome check src",
+    "knip": "knip --tsConfig tsconfig.app.json"
   },
   "dependencies": {
     "@angular/animations": "^21.1.0",
@@ -27,6 +29,10 @@
     "@angular/build": "^21.1.0",
     "@angular/cli": "^21.1.0",
     "@angular/compiler-cli": "^21.1.0",
-    "typescript": "~5.9.2"
+    "@biomejs/biome": "^2.2.5",
+    "jsdom": "^27.1.0",
+    "knip": "^5.67.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
   }
 }

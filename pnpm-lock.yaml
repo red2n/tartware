@@ -1319,9 +1319,21 @@ importers:
       '@angular/compiler-cli':
         specifier: ^21.1.0
         version: 21.1.5(@angular/compiler@21.1.5)(typescript@5.9.3)
+      '@biomejs/biome':
+        specifier: ^2.2.5
+        version: 2.3.14
+      jsdom:
+        specifier: ^27.1.0
+        version: 27.4.0(@noble/hashes@2.0.1)
+      knip:
+        specifier: ^5.67.0
+        version: 5.83.1(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.2.3)(typescript@5.9.3)
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
+      vitest:
+        specifier: ^4.0.8
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
 
   UI/pms-ui:
     dependencies:
@@ -1380,6 +1392,9 @@ importers:
       '@angular/compiler-cli':
         specifier: ^21.2.7
         version: 21.2.7(@angular/compiler@21.2.7)(typescript@5.9.3)
+      '@biomejs/biome':
+        specifier: ^2.2.5
+        version: 2.3.14
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1389,6 +1404,9 @@ importers:
       jsdom:
         specifier: ^27.1.0
         version: 27.4.0(@noble/hashes@2.0.1)
+      knip:
+        specifier: ^5.67.0
+        version: 5.83.1(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.2.3)(typescript@5.9.3)
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
@@ -1398,9 +1416,15 @@ importers:
 
   proto:
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.2.5
+        version: 2.3.14
       '@bufbuild/buf':
         specifier: ^1.50.0
         version: 1.68.4
+      knip:
+        specifier: ^5.67.0
+        version: 5.83.1(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.2.3)(typescript@5.9.3)
       ts-proto:
         specifier: ^2.6.1
         version: 2.11.6
@@ -11500,7 +11524,6 @@ snapshots:
       magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.1(@types/node@25.2.3)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
-    optional: true
 
   '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -13552,6 +13575,26 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
+  knip@5.83.1(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.2.3)(typescript@5.9.3):
+    dependencies:
+      '@nodelib/fs.walk': 1.2.8
+      '@types/node': 25.2.3
+      fast-glob: 3.3.3
+      formatly: 0.3.0
+      jiti: 2.6.1
+      js-yaml: 4.1.1
+      minimist: 1.2.8
+      oxc-resolver: 11.17.1(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)
+      picocolors: 1.1.1
+      picomatch: 4.0.3
+      smol-toml: 1.6.0
+      strip-json-comments: 5.0.3
+      typescript: 5.9.3
+      zod: 4.3.6
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
+
   leac@0.6.0: {}
 
   levn@0.4.1:
@@ -15562,7 +15605,6 @@ snapshots:
       sass: 1.97.1
       tsx: 4.21.0
       yaml: 2.8.2
-    optional: true
 
   vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
@@ -15701,7 +15743,6 @@ snapshots:
       - terser
       - tsx
       - yaml
-    optional: true
 
   vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:

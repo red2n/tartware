@@ -59,8 +59,9 @@ export class ActivityLogComponent {
 		for (const item of items) {
 			if (item.type === "reservation") continue;
 			const resId = item.reservation_id;
-			if (resId && parentMap.has(resId)) {
-				parentMap.get(resId)!.children.push(item);
+			const parent = resId ? parentMap.get(resId) : undefined;
+			if (parent) {
+				parent.children.push(item);
 			} else {
 				result.push(item);
 			}

@@ -1,4 +1,4 @@
-import { Component, computed, signal } from "@angular/core";
+import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
@@ -160,7 +160,7 @@ import { GuestApiService } from "../../services/guest-api.service";
 	`,
 })
 export class CheckoutPage {
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 
 	code = "";
 	readonly loading = signal(false);

@@ -1,4 +1,4 @@
-import { Component, signal } from "@angular/core";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
@@ -144,7 +144,7 @@ import { GuestApiService } from "../../services/guest-api.service";
 	`,
 })
 export class RewardsPage {
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 
 	code = "";
 	guestId = "";

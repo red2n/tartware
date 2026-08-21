@@ -90,6 +90,7 @@ export class CashieringComponent {
 	readonly selectedSessionDetail = signal<CashierSessionDetail | null>(null);
 	readonly loadingSessionDetail = signal(false);
 	readonly sessionDetailError = signal<string | null>(null);
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.page.set(1);

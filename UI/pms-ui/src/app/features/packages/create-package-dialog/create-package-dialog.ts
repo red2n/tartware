@@ -31,8 +31,6 @@ export class CreatePackageDialogComponent {
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
 
-	private readonly dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-
 	packageName = "";
 	packageCode = "";
 	packageType: CreatePackageBody["package_type"] = "room_only";

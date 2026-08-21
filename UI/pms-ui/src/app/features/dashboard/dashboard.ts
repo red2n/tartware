@@ -1,7 +1,16 @@
 import { DecimalPipe, NgClass } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { RouterLink } from "@angular/router";
-import type { ActivityItem, DashboardStats, HousekeepingTaskListItem, HousekeepingTaskStatus, PaginatedActivity, RateItem, RoomGridItem, TaskItem } from "@tartware/schemas";
+import type {
+	ActivityItem,
+	DashboardStats,
+	HousekeepingTaskListItem,
+	HousekeepingTaskStatus,
+	PaginatedActivity,
+	RateItem,
+	RoomGridItem,
+	TaskItem,
+} from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
@@ -68,8 +77,9 @@ export class DashboardComponent {
 		for (const item of items) {
 			if (item.type === "reservation") continue;
 			const resId = item.reservation_id;
-			if (resId && parentMap.has(resId)) {
-				parentMap.get(resId)!.children.push(item);
+			const parent = resId ? parentMap.get(resId) : undefined;
+			if (parent) {
+				parent.children.push(item);
 			} else {
 				result.push(item);
 			}

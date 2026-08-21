@@ -1,9 +1,9 @@
-import { Component, OnInit, signal, inject } from "@angular/core";
-import { ActivatedRoute, RouterLink } from "@angular/router";
+import { Component, inject, OnInit, signal } from "@angular/core";
+import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
-import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { ActivatedRoute, RouterLink } from "@angular/router";
 import type { BookingLookupResponse } from "@tartware/schemas";
 import { GuestApiService } from "../../services/guest-api.service";
 
@@ -63,7 +63,7 @@ import { GuestApiService } from "../../services/guest-api.service";
 })
 export class ConfirmationPage implements OnInit {
 	private readonly route = inject(ActivatedRoute);
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 
 	loading = signal(true);
 	booking = signal<BookingLookupResponse | null>(null);

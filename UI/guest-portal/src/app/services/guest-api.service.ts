@@ -97,9 +97,7 @@ export class GuestApiService {
 	 */
 	async getCheckin(checkinId: string, tenantId: string): Promise<CheckinStatusResult | null> {
 		const qs = new URLSearchParams({ tenant_id: tenantId });
-		const res = await fetch(
-			`${this.baseUrl}/check-in/${encodeURIComponent(checkinId)}?${qs}`,
-		);
+		const res = await fetch(`${this.baseUrl}/check-in/${encodeURIComponent(checkinId)}?${qs}`);
 		if (res.status === 404) return null;
 		if (!res.ok) throw new Error(`Check-in lookup failed: ${res.statusText}`);
 		return res.json();
@@ -142,9 +140,7 @@ export class GuestApiService {
 
 	async getKeys(reservationId: string, tenantId: string): Promise<MobileKey[]> {
 		const qs = new URLSearchParams({ tenant_id: tenantId });
-		const res = await fetch(
-			`${this.baseUrl}/keys/${encodeURIComponent(reservationId)}?${qs}`,
-		);
+		const res = await fetch(`${this.baseUrl}/keys/${encodeURIComponent(reservationId)}?${qs}`);
 		if (!res.ok) throw new Error(`Key lookup failed: ${res.statusText}`);
 		const body = await res.json();
 		return Array.isArray(body) ? body : (body?.data ?? body?.keys ?? []);
@@ -225,10 +221,7 @@ export class GuestApiService {
 		return res.json();
 	}
 
-	async getRedemptions(params: {
-		tenant_id: string;
-		guest_id?: string;
-	}): Promise<Redemption[]> {
+	async getRedemptions(params: { tenant_id: string; guest_id?: string }): Promise<Redemption[]> {
 		const qs = new URLSearchParams({ tenant_id: params.tenant_id });
 		if (params.guest_id) qs.set("guest_id", params.guest_id);
 		const res = await fetch(`${this.baseUrl}/rewards/redemptions?${qs}`);

@@ -165,8 +165,7 @@ export class MaintenanceComponent {
 	readonly roomsOutOfService = computed(() =>
 		this.requests().filter(
 			(r) =>
-				(r.room_out_of_service || r.affects_occupancy) &&
-				OPEN_STATUSES.has(norm(r.request_status)),
+				(r.room_out_of_service || r.affects_occupancy) && OPEN_STATUSES.has(norm(r.request_status)),
 		),
 	);
 
@@ -292,9 +291,7 @@ export class MaintenanceComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const data = await this.api.get<UserWithTenants[]>(
-				`/users?tenant_id=${tenantId}&limit=200`,
-			);
+			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=200`);
 			this.staff.set(data ?? []);
 		} catch {
 			// A missing picker must not block raising a fault.

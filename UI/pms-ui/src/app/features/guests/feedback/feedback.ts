@@ -66,14 +66,7 @@ const SOURCES = [
 	"BOOKING_COM",
 ] as const;
 
-const STATUSES = [
-	"new",
-	"acknowledged",
-	"in_progress",
-	"responded",
-	"resolved",
-	"closed",
-] as const;
+const STATUSES = ["new", "acknowledged", "in_progress", "responded", "resolved", "closed"] as const;
 
 const SENTIMENTS = ["POSITIVE", "NEUTRAL", "NEGATIVE"] as const;
 
@@ -140,9 +133,7 @@ export class GuestFeedbackComponent {
 	);
 
 	/** Negative feedback nobody has answered is the queue that costs a guest. */
-	readonly awaitingResponse = computed(() =>
-		this.unresolved().filter((f) => !f.response_text),
-	);
+	readonly awaitingResponse = computed(() => this.unresolved().filter((f) => !f.response_text));
 
 	readonly visibleItems = computed(() =>
 		this.unresolvedOnly() ? this.unresolved() : this.items(),

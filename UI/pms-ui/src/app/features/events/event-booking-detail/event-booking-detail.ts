@@ -3,23 +3,23 @@ import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import {
-	deriveEventChargeQuote,
-	EVENT_BOOKING_LEGAL_TRANSITIONS,
-	eventEndsNextDay,
-	eventSetupStartsPreviousDay,
 	type BanquetOrderDetail,
 	type BanquetOrderListItem,
 	type ChargePostingListItem,
 	type ChargePostingListResponse,
+	deriveEventChargeQuote,
+	EVENT_BOOKING_LEGAL_TRANSITIONS,
 	type EventBookingDetail,
 	type EventBookingStatus,
 	type EventChargeQuote,
+	eventEndsNextDay,
+	eventSetupStartsPreviousDay,
 } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
-import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
+import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -193,17 +193,13 @@ export class EventBookingDetailComponent {
 	/** The same three markers against the edit form, so they move as one types. */
 	readonly formEndsNextDay = computed(() => {
 		const f = this.form();
-		return Boolean(
-			f?.start_time && f.end_time && eventEndsNextDay(f.start_time, f.end_time),
-		);
+		return Boolean(f?.start_time && f.end_time && eventEndsNextDay(f.start_time, f.end_time));
 	});
 
 	readonly formTeardownIsNextDay = computed(() => {
 		const f = this.form();
 		return Boolean(
-			f?.start_time &&
-				f.teardown_end_time &&
-				eventEndsNextDay(f.start_time, f.teardown_end_time),
+			f?.start_time && f.teardown_end_time && eventEndsNextDay(f.start_time, f.teardown_end_time),
 		);
 	});
 
@@ -402,8 +398,7 @@ export class EventBookingDetailComponent {
 		// Not `end <= start`: an end at or before the start is the next morning
 		// under the day-boundary convention, and a setup after the start is the
 		// previous evening. Only a zero-length window is impossible.
-		if (!f.start_time || !f.end_time || f.end_time === f.start_time)
-			return false;
+		if (!f.start_time || !f.end_time || f.end_time === f.start_time) return false;
 		return true;
 	});
 
@@ -445,9 +440,7 @@ export class EventBookingDetailComponent {
 				...(f.final_count_due_date ? { final_count_due_date: f.final_count_due_date } : {}),
 				...(f.rental_rate != null ? { rental_rate: f.rental_rate } : {}),
 				...(f.setup_fee != null ? { setup_fee: f.setup_fee } : {}),
-				...(f.equipment_rental_fee != null
-					? { equipment_rental_fee: f.equipment_rental_fee }
-					: {}),
+				...(f.equipment_rental_fee != null ? { equipment_rental_fee: f.equipment_rental_fee } : {}),
 				...(f.av_equipment_fee != null ? { av_equipment_fee: f.av_equipment_fee } : {}),
 				...(f.labor_charges != null ? { labor_charges: f.labor_charges } : {}),
 				...(f.estimated_food_beverage != null

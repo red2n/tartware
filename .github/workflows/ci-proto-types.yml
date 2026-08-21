@@ -58,6 +58,12 @@ jobs:
             exit 1
           fi
 
+      - name: Biome
+        run: npx nx run @tartware/proto-types:biome
+
+      - name: Knip
+        run: npx nx run @tartware/proto-types:knip
+
       - name: Build proto-types package
         working-directory: proto
         run: pnpm run build

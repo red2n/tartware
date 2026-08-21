@@ -1,19 +1,19 @@
-import { Component, signal, inject } from "@angular/core";
-import { Router } from "@angular/router";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { portalConfig } from "../../portal-config";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
-import { MatStepperModule } from "@angular/material/stepper";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatStepperModule } from "@angular/material/stepper";
+import { Router } from "@angular/router";
+import { portalConfig } from "../../portal-config";
 import {
-	GuestApiService,
-	type CheckinStartResult,
 	type CheckinCompleteResult,
+	type CheckinStartResult,
+	GuestApiService,
 } from "../../services/guest-api.service";
 
 @Component({
@@ -150,7 +150,7 @@ import {
 	`,
 })
 export class CheckinPage {
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 	private readonly router = inject(Router);
 
 	confirmationCode = "";

@@ -14,7 +14,6 @@ import { ToggleSwitchModule } from "primeng/toggleswitch";
 import { TooltipModule } from "primeng/tooltip";
 import { type Subscription } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
-import { AuthService } from "../../core/auth/auth.service";
 import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
@@ -91,7 +90,6 @@ interface JsonFieldGroup {
 })
 export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
-	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly i18n = inject(I18nService);

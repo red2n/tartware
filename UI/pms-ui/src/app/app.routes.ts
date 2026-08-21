@@ -316,9 +316,7 @@ export const routes: Routes = [
 				canActivate: [propertyGuard, screenGuard("accounts-receivable")],
 				data: { screen: "accounts-receivable" },
 				loadComponent: () =>
-					import("./features/accounts/ar-accounts/ar-accounts").then(
-						(m) => m.ArAccountsComponent,
-					),
+					import("./features/accounts/ar-accounts/ar-accounts").then((m) => m.ArAccountsComponent),
 			},
 			{
 				path: "accounts-receivable",

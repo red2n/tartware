@@ -73,13 +73,7 @@ type OtaSyncLog = {
 	triggered_by?: string;
 };
 
-const CONNECTION_STATUSES = [
-	"CONNECTED",
-	"DISCONNECTED",
-	"PENDING",
-	"ERROR",
-	"SUSPENDED",
-] as const;
+const CONNECTION_STATUSES = ["CONNECTED", "DISCONNECTED", "PENDING", "ERROR", "SUSPENDED"] as const;
 
 const CONTENT_TYPES = ["ALL", "PHOTOS", "DESCRIPTIONS", "AMENITIES", "POLICIES", "ROOM_TYPES"];
 

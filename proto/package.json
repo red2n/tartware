@@ -15,10 +15,14 @@
   "scripts": {
     "generate": "buf generate",
     "build": "swc src -d dist --strip-leading-paths --config-file ../.swcrc -q && tsc --project tsconfig.json --emitDeclarationOnly",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "biome": "biome check src",
+    "knip": "knip --tsConfig tsconfig.json"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
     "@bufbuild/buf": "^1.50.0",
+    "knip": "^5.67.0",
     "ts-proto": "^2.6.1",
     "typescript": "^5.3.3"
   },

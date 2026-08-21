@@ -303,7 +303,8 @@ export class PoliceReportsComponent {
 
 	openStatus(report: PoliceReport): void {
 		this.statusForm.set({
-			report_status: report.report_status === "filed" ? "under_investigation" : report.report_status,
+			report_status:
+				report.report_status === "filed" ? "under_investigation" : report.report_status,
 			police_case_number: report.police_case_number ?? "",
 			lead_investigator_name: "",
 			follow_up_required: false,

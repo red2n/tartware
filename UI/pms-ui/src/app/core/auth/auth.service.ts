@@ -1,4 +1,4 @@
-import { computed, Injectable, inject, NgZone, OnDestroy, signal } from "@angular/core";
+import { computed, Injectable, NgZone, OnDestroy, signal } from "@angular/core";
 import type { AuthMembership, LoginResponse, TokenRefreshResponse } from "@tartware/schemas";
 import { generateUUID } from "../../shared/uuid-utils";
 
@@ -38,7 +38,6 @@ export class AuthService implements OnDestroy {
 	private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 	private healthCheckTimerId: ReturnType<typeof setInterval> | null = null;
 	private isRefreshing = false;
-	private consecutiveRefreshFailures = 0;
 
 	readonly user = this._user.asReadonly();
 	readonly tenantId = this._tenantId.asReadonly();
@@ -186,7 +185,6 @@ export class AuthService implements OnDestroy {
 	 */
 	private scheduleTokenRefresh(token: string): void {
 		this.clearRefreshTimer();
-		this.consecutiveRefreshFailures = 0;
 
 		const expiresAt = this.getTokenExpiry(token);
 		if (!expiresAt) return;
@@ -300,7 +298,6 @@ export class AuthService implements OnDestroy {
 					if (response.ok) {
 						const data: TokenRefreshResponse = await response.json();
 						localStorage.setItem("access_token", data.access_token);
-						this.consecutiveRefreshFailures = 0;
 						this.scheduleTokenRefresh(data.access_token);
 						return;
 					}
@@ -325,7 +322,6 @@ export class AuthService implements OnDestroy {
 			}
 
 			// All retries exhausted — check if we still have a usable token
-			this.consecutiveRefreshFailures++;
 			const currentToken = localStorage.getItem("access_token");
 			if (currentToken && !this.isTokenExpired(currentToken)) {
 				// Token is still valid — reschedule and try again later

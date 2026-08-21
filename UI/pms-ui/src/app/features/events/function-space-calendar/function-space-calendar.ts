@@ -3,9 +3,9 @@ import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import {
 	type EventBookingListItem,
-	type MeetingRoomListItem,
 	eventEndsNextDay,
 	eventSetupStartsPreviousDay,
+	type MeetingRoomListItem,
 } from "@tartware/schemas";
 
 import { ApiService } from "../../../core/api/api.service";
@@ -233,8 +233,7 @@ export class FunctionSpaceCalendarComponent {
 		// Not `end <= start`: an end at or before the start is the next morning
 		// under the day-boundary convention, and a setup after the start is the
 		// previous evening. Only a zero-length window is impossible.
-		if (!f.start_time || !f.end_time || f.end_time === f.start_time)
-			return false;
+		if (!f.start_time || !f.end_time || f.end_time === f.start_time) return false;
 		return true;
 	});
 
@@ -247,17 +246,13 @@ export class FunctionSpaceCalendarComponent {
 	 */
 	readonly formEndsNextDay = computed(() => {
 		const f = this.form();
-		return Boolean(
-			f.start_time && f.end_time && eventEndsNextDay(f.start_time, f.end_time),
-		);
+		return Boolean(f.start_time && f.end_time && eventEndsNextDay(f.start_time, f.end_time));
 	});
 
 	readonly formTeardownIsNextDay = computed(() => {
 		const f = this.form();
 		return Boolean(
-			f.start_time &&
-				f.teardown_end_time &&
-				eventEndsNextDay(f.start_time, f.teardown_end_time),
+			f.start_time && f.teardown_end_time && eventEndsNextDay(f.start_time, f.teardown_end_time),
 		);
 	});
 

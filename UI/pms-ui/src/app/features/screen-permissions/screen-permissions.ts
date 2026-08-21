@@ -251,7 +251,7 @@ export class ScreenPermissionsComponent implements OnInit {
 				...row,
 				visibility: {
 					...row.visibility,
-					[role]: row.screen_key === "dashboard" ? true : false,
+					[role]: row.screen_key === "dashboard",
 				},
 			})),
 		);

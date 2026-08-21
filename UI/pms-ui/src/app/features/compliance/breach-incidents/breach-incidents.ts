@@ -230,7 +230,8 @@ export class BreachIncidentsComponent {
 				`/compliance/breach-incidents/${incident.incident_id}`,
 				{ tenant_id: tenantId },
 			);
-			const detail = (res as { data?: BreachIncidentDetail })?.data ?? (res as BreachIncidentDetail);
+			const detail =
+				(res as { data?: BreachIncidentDetail })?.data ?? (res as BreachIncidentDetail);
 			if (detail?.incident_id) this.selected.set(detail);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : "Failed to load incident detail");
@@ -299,7 +300,11 @@ export class BreachIncidentsComponent {
 	}
 
 	openNotify(incident: BreachIncident): void {
-		this.notifyForm.set({ authority_reference: "", notify_subjects: false, notification_notes: "" });
+		this.notifyForm.set({
+			authority_reference: "",
+			notify_subjects: false,
+			notification_notes: "",
+		});
 		this.notifying.set(incident);
 	}
 

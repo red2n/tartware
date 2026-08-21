@@ -56,6 +56,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `nx run-many -t biome` runs the projects that HAVE a biome target and
+      # says nothing about the rest, so a project added without one is invisible:
+      # `pnpm run check` goes green while that code is never inspected. UI/pms-ui
+      # and UI/guest-portal sat unchecked that way. Asserts coverage instead of
+      # inferring it from a green run. Needs no build, so it runs first.
+      - name: Guardrail coverage
+        run: pnpm run check:guardrails
+
       # The conformance suites import from @tartware/schemas, so its dist has to
       # exist before they run. Nothing else here needs a build.
       - name: Build schemas

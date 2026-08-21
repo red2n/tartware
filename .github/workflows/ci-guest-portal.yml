@@ -62,8 +62,17 @@ jobs:
       - name: Build schemas (dependency)
         run: npx nx run @tartware/schemas:build
 
+      - name: Biome
+        run: npx nx run @tartware/guest-portal:biome
+
+      - name: Knip
+        run: npx nx run @tartware/guest-portal:knip
+
       - name: Check palette contrast (WCAG 2.2)
         run: node UI/shared-styles/check-contrast.mjs
+
+      - name: Test
+        run: npx nx run @tartware/guest-portal:test
 
       - name: Build Guest Portal
         run: npx nx run @tartware/guest-portal:build

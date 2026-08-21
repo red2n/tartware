@@ -1,11 +1,10 @@
-import { Component, signal } from "@angular/core";
-import { Router } from "@angular/router";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import type { BookingLookupResponse } from "@tartware/schemas";
 import { GuestApiService } from "../../services/guest-api.service";
@@ -48,6 +47,10 @@ import { GuestApiService } from "../../services/guest-api.service";
 					<p class="warn">No booking found for "{{ searched() }}".</p>
 				}
 
+				@if (error(); as message) {
+					<p class="error" role="alert">{{ message }}</p>
+				}
+
 				@if (booking(); as b) {
 					<div class="details">
 						<h3>{{ b.guestName }}</h3>
@@ -68,6 +71,7 @@ import { GuestApiService } from "../../services/guest-api.service";
 		.search-row { display: flex; gap: 1rem; align-items: center; padding-top: 1rem; }
 		.code-field { flex: 1; }
 		.warn { color: var(--fgColor-attention); margin-top: 1rem; }
+		.error { color: var(--fgColor-danger); margin-top: 1rem; }
 		.details { border-top: 1px solid var(--borderColor-default); margin-top: 1.5rem; padding-top: 1rem; }
 		.details h3 { margin: 0 0 0.75rem; }
 		.row {
@@ -79,34 +83,37 @@ import { GuestApiService } from "../../services/guest-api.service";
 	`,
 })
 export class LookupPage {
-	private readonly api = new GuestApiService();
-	private readonly router: Router;
+	private readonly api = inject(GuestApiService);
 
 	code = "";
 	loading = signal(false);
 	notFound = signal(false);
+	error = signal<string | null>(null);
 	searched = signal("");
 	booking = signal<BookingLookupResponse | null>(null);
 
-	constructor(router: Router) {
-		this.router = router;
-	}
-
 	async lookup() {
-		if (!this.code.trim()) return;
+		const code = this.code.trim();
+		if (!code) return;
 		this.loading.set(true);
 		this.notFound.set(false);
+		this.error.set(null);
 		this.booking.set(null);
-		this.searched.set(this.code.trim());
+		this.searched.set(code);
 		try {
-			const result = await this.api.lookupBooking(this.code.trim());
+			const result = await this.api.lookupBooking(code);
 			if (result) {
 				this.booking.set(result);
 			} else {
 				this.notFound.set(true);
 			}
-		} catch {
-			this.notFound.set(true);
+		} catch (e: unknown) {
+			// A failed request is not a missing booking. Telling a guest their
+			// reservation does not exist because the gateway is down sends them
+			// to the phone; every other page in the portal reports the failure.
+			this.error.set(
+				e instanceof Error ? e.message : "We could not reach the booking system. Please retry.",
+			);
 		} finally {
 			this.loading.set(false);
 		}

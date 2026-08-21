@@ -200,7 +200,8 @@ export class ApprovalsComponent {
 			this.toast.error("Cannot action an approval without a signed-in user.");
 			return;
 		}
-		const actorName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.username;
+		const actorName =
+			[user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.username;
 
 		const reason = this.reason().trim();
 		const { kind, request } = decision;

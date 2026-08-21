@@ -31,7 +31,7 @@
     "build:ui": "npx nx run @tartware/schemas:build && node scripts/stamp-ui-version.mjs && npx nx run @tartware/pms-ui:build",
     "clean": "npx nx run-many -t clean",
     "clean:all": "node ./scripts/clean-all.mjs",
-    "check": "pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast",
+    "check": "pnpm run check:guardrails && pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast",
     "check:contrast": "node UI/shared-styles/check-contrast.mjs",
     "lint": "npx nx run-many -t lint",
     "lint:fix": "npx nx run-many -t lint:fix",
@@ -62,7 +62,8 @@
     "validate:openapi": "node scripts/validate-openapi.mjs",
     "bootstrap:loadtest": "node scripts/bootstrap-loadtest-env.mjs",
     "samples:fetch": "node scripts/fetch-sample-records.mjs",
-    "samples:api": "node scripts/fetch-sample-api-records.mjs"
+    "samples:api": "node scripts/fetch-sample-api-records.mjs",
+    "check:guardrails": "node ./scripts/check-guardrail-coverage.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.12",
