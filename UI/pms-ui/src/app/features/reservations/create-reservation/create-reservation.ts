@@ -92,6 +92,7 @@ type RoomTypeRecommendation = {
 })
 export class CreateReservationComponent implements OnInit {
 	currentStep = 0;
+	/* i18n-keys */
 	readonly steps = ["Stay Details", "Select Rate", "Guest & Booking", "Confirm"];
 
 	private readonly api = inject(ApiService);
@@ -602,6 +603,7 @@ export class CreateReservationComponent implements OnInit {
 	}
 
 	mealPlanLabel(code: string): string {
+		/* i18n-keys */
 		const labels: Record<string, string> = {
 			RO: "Room Only",
 			BB: "Bed & Breakfast",
@@ -609,12 +611,13 @@ export class CreateReservationComponent implements OnInit {
 			FB: "Full Board",
 			AI: "All Inclusive",
 		};
-		return labels[code] || code;
+		const label = labels[code];
+		return label ? this.i18n.t(label) : code;
 	}
 
 	cancellationLabel(policy: { type: string; hours: number }): string {
-		if (policy.type === "non_refundable") return "Non-refundable";
-		return `Free cancellation up to ${policy.hours}h before`;
+		if (policy.type === "non_refundable") return this.i18n.t("Non-refundable");
+		return this.i18n.t("Free cancellation up to {hours}h before", { hours: policy.hours });
 	}
 
 	markTouched(field: string): void {

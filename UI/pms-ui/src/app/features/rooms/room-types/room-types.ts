@@ -131,7 +131,7 @@ export class RoomTypesComponent {
 			const roomTypes = await this.api.get<RoomTypeGridItem[]>("/room-types/grid", params);
 			this.roomTypes.set(roomTypes);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load room types");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load room types"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -172,7 +172,7 @@ export class RoomTypesComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		if (!confirm(`Delete room type "${rt.type_name}"?`)) return;
+		if (!confirm(this.i18n.t('Delete room type "{name}"?', { name: rt.type_name }))) return;
 
 		try {
 			await this.api.delete(`/room-types/${rt.room_type_id}`, {

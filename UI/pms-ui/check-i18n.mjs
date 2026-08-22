@@ -40,8 +40,9 @@ const SELF_TRANSLATING = {
 	"app-page-header": ["title", "description"],
 	"app-stat-card": ["title"],
 	"app-dialog-shell": ["heading"],
-	"app-callout": ["heading"],
+	"app-callout": ["title"],
 	"app-dialog-actions": ["saveLabel", "savingLabel"],
+	"app-tab-strap": ["text"],
 };
 
 /* ── Collect ───────────────────────────────────────────────── */
@@ -77,12 +78,61 @@ const TFN = /i18n\.t\(\s*(['"])((?:\\.|(?!\1).)*)\1/g;
  */
 const DATA_FIELDS = ["label", "description", "section", "title", "detail", "action", "tooltip", "hint"];
 
+/**
+ * Some catalogues are keyed by something meaningless to this script — a theme
+ * mode, a tab id, an ISO currency code — so no field-name rule can find them,
+ * and they are exactly the ones that go missing: piped at the point of use,
+ * with nothing next to the string to show it is translatable. Marking the
+ * declaration `i18n-keys` opts every string literal inside it into the check.
+ */
+const MARKER = /\/[/*]\s*i18n-keys/g;
+
+/** The literals in the declaration that follows an `i18n-keys` marker. */
+function markedLiterals(text) {
+	const out = [];
+	for (const m of text.matchAll(MARKER)) {
+		const open = text.slice(m.index).search(/[[{]/);
+		if (open === -1) continue;
+		let i = m.index + open;
+		let depth = 0;
+		const start = i;
+		for (; i < text.length; i++) {
+			if (text[i] === "[" || text[i] === "{") depth++;
+			else if (text[i] === "]" || text[i] === "}") {
+				depth--;
+				if (depth === 0) break;
+			}
+		}
+		// Template literals are composed at runtime, so neither they nor the
+		// fragments inside their `${...}` are catalogue keys.
+		const body = text
+			.slice(start, i + 1)
+			.replace(/`[^`]*`/g, " ")
+			// Comments would otherwise hide the `{`/`,` that marks the next
+			// property name, so a section header turns keys into false positives.
+			.replace(/\/\*[\s\S]*?\*\//g, " ")
+			.replace(/\/\/[^\n]*/g, " ");
+		// Quoted property names ("analytics-bi": "Analytics & BI") name a lookup,
+		// not a string anyone reads, so they are not catalogue keys either.
+		for (const lit of body.matchAll(/(['"])((?:\\.|(?!\1).)*)\1(\s*:)?/g)) {
+			// A trailing `:` alone does not make it a key — `cond ? "a" : "b"` has one
+			// too. A property name is also preceded by `{` or `,`.
+			const before = body.slice(0, lit.index).trimEnd().slice(-1);
+			if (lit[3] && (before === "{" || before === "," || before === "")) continue;
+			const v = lit[2].replace(/\\(['"])/g, "$1");
+			if (/[A-Za-z]{2}/.test(v)) out.push(v);
+		}
+	}
+	return out;
+}
+
 for (const file of walk(SRC)) {
 	if (file.endsWith("index.html")) continue;
 	const text = readFileSync(file, "utf8");
 	for (const m of text.matchAll(PIPE)) add(m[2].replace(/\\(['"])/g, "$1"), file);
 	for (const m of text.matchAll(TFN)) add(m[2].replace(/\\(['"])/g, "$1"), file);
 	if (file.endsWith(".ts")) {
+		for (const key of markedLiterals(text)) add(key, file);
 		for (const field of DATA_FIELDS) {
 			for (const q of ['"', "'"]) {
 				const re = new RegExp(`(?<![\\w.])${field}:\\s*${q}((?:\\\\.|[^${q}])*)${q}`, "g");

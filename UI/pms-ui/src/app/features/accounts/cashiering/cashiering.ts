@@ -389,7 +389,7 @@ export class CashieringComponent {
 			if (this.selectedSessionId() === sessionId) {
 				this.selectedSessionDetail.set(null);
 				this.sessionDetailError.set(
-					e instanceof Error ? e.message : "Failed to load cashier session detail",
+					e instanceof Error ? e.message : this.i18n.t("Failed to load cashier session detail"),
 				);
 			}
 		} finally {
@@ -413,7 +413,9 @@ export class CashieringComponent {
 			);
 			this.sessions.set(Array.isArray(res) ? res : (res.data ?? []));
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load cashier sessions");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load cashier sessions"),
+			);
 		} finally {
 			this.dataReady.set(true);
 		}

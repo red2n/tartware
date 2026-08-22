@@ -169,7 +169,9 @@ export class CurrencyConfigComponent {
 		} catch (e) {
 			this.rates.set([]);
 			this.error.set(
-				e instanceof Error ? e.message : "FX rate list is not currently available through the API.",
+				e instanceof Error
+					? e.message
+					: this.i18n.t("FX rate list is not currently available through the API."),
 			);
 		} finally {
 			this.dataReady.set(true);

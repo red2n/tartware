@@ -63,6 +63,7 @@ export const COMMON_TIMEZONES: ReadonlyArray<{ value: string; label: string }> =
 ];
 
 /** Common ISO 4217 currencies used in hospitality */
+/* i18n-keys */
 export const COMMON_CURRENCIES: ReadonlyArray<{ code: string; name: string; symbol: string }> = [
 	{ code: "USD", name: "US Dollar", symbol: "$" },
 	{ code: "EUR", name: "Euro", symbol: "€" },
@@ -114,6 +115,7 @@ export const COMMON_CURRENCIES: ReadonlyArray<{ code: string; name: string; symb
 ];
 
 /** Common BCP 47 languages for hospitality */
+/* i18n-keys */
 export const COMMON_LANGUAGES: ReadonlyArray<{ code: string; name: string }> = [
 	{ code: "en", name: "English" },
 	{ code: "es", name: "Español" },

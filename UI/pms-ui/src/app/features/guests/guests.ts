@@ -286,7 +286,7 @@ export class GuestsComponent {
 			const guests = await this.api.get<GuestGridResponse>("/guests/grid", params);
 			this.guests.set(guests.data ?? []);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load guests");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load guests"));
 		} finally {
 			this.dataReady.set(true);
 		}

@@ -309,7 +309,7 @@ export class RoomDetailComponent implements OnInit {
 			// Initialize editable amenities from room data
 			this.editAmenities.set([...(room.amenities ?? room.room_type_amenities ?? [])]);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load room");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load room"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -346,7 +346,7 @@ export class RoomDetailComponent implements OnInit {
 		if (!raw) return;
 		if (!RoomDetailComponent.AMENITY_CODE_PATTERN.test(raw)) {
 			this.amenityError.set(
-				"Amenity code must be 1–50 characters: letters, digits, and underscores only.",
+				this.i18n.t("Amenity code must be 1–50 characters: letters, digits, and underscores only."),
 			);
 			return;
 		}
@@ -511,7 +511,11 @@ export class RoomDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 
 		if (
-			!confirm("Move this room back to Setup mode? It will be removed from booking availability.")
+			!confirm(
+				this.i18n.t(
+					"Move this room back to Setup mode? It will be removed from booking availability.",
+				),
+			)
 		)
 			return;
 

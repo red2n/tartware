@@ -318,7 +318,7 @@ export class GroupDetailComponent implements OnInit {
 			});
 			this.group.set(res);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load group booking");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load group booking"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -441,7 +441,11 @@ export class GroupDetailComponent implements OnInit {
 			});
 
 			this.toast.success(
-				`Blocked ${this.blockRooms()} room(s) across ${blocks.length} night(s) for "${g.group_name}".`,
+				this.i18n.t('Blocked {rooms} room(s) across {nights} night(s) for "{group}".', {
+					rooms: this.blockRooms(),
+					nights: blocks.length,
+					group: g.group_name,
+				}),
 			);
 			this.addingBlock.set(false);
 			await this.pollGroupUntilChanged(
@@ -518,7 +522,10 @@ export class GroupDetailComponent implements OnInit {
 			});
 
 			this.toast.success(
-				`Booking ${guests.length} reservation(s) for "${g.group_name}". Rooms are being picked up from the block.`,
+				this.i18n.t(
+					'Booking {count} reservation(s) for "{group}". Rooms are being picked up from the block.',
+					{ count: guests.length, group: g.group_name },
+				),
 			);
 			this.bookingRoomingList.set(false);
 			await this.pollGroupUntilChanged(

@@ -457,7 +457,15 @@ export class MaintenanceComponent {
 			this.cancelAction();
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : `Failed to ${mode} the request`);
+			this.toast.error(
+				e instanceof Error
+					? e.message
+					: mode === "assign"
+						? this.i18n.t("Failed to assign the request")
+						: mode === "complete"
+							? this.i18n.t("Failed to complete the request")
+							: this.i18n.t("Failed to escalate the request"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

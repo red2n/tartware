@@ -3,6 +3,7 @@ import type { ModuleAccessRequest, ModuleId } from "@tartware/schemas";
 
 import { ApiService } from "../api/api.service";
 import { AuthService } from "../auth/auth.service";
+import { I18nService } from "../i18n/i18n.service";
 
 type RequestListResponse = { requests?: ModuleAccessRequest[] };
 
@@ -21,6 +22,7 @@ const REVIEWER_ROLES = new Set(["OWNER", "ADMIN"]);
 @Injectable({ providedIn: "root" })
 export class ModuleRequestService {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 
 	private readonly _mine = signal<ModuleAccessRequest[]>([]);
@@ -84,7 +86,7 @@ export class ModuleRequestService {
 		reason?: string;
 	}): Promise<ModuleAccessRequest> {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) throw new Error("No property selected.");
+		if (!tenantId) throw new Error(this.i18n.t("No property selected."));
 
 		const created = await this.api.post<ModuleAccessRequest>(
 			`/tenants/${tenantId}/module-requests`,
@@ -110,7 +112,7 @@ export class ModuleRequestService {
 
 	private async decide(requestId: string, verb: "approve" | "reject", notes?: string) {
 		const tenantId = this.auth.tenantId();
-		if (!tenantId) throw new Error("No property selected.");
+		if (!tenantId) throw new Error(this.i18n.t("No property selected."));
 
 		const res = await this.api.post<{ request: ModuleAccessRequest }>(
 			`/tenants/${tenantId}/module-requests/${requestId}/${verb}`,

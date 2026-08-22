@@ -14,6 +14,7 @@ import type {
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * Billing data service — owns all billing list data signals and loading methods.
@@ -23,6 +24,7 @@ import { TenantContextService } from "../../core/context/tenant-context.service"
 @Injectable()
 export class BillingDataService {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 
@@ -172,7 +174,9 @@ export class BillingDataService {
 			);
 			this.payments.set(this.unwrapListResponse(res));
 		} catch (e) {
-			this.paymentsError.set(e instanceof Error ? e.message : "Failed to load payments");
+			this.paymentsError.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load payments"),
+			);
 		} finally {
 			this.paymentsReady.set(true);
 		}
@@ -190,7 +194,9 @@ export class BillingDataService {
 			const res = await this.api.get<InvoiceListResponse>("/billing/invoices", params);
 			this.invoices.set(res.data ?? []);
 		} catch (e) {
-			this.invoicesError.set(e instanceof Error ? e.message : "Failed to load invoices");
+			this.invoicesError.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load invoices"),
+			);
 		} finally {
 			this.invoicesReady.set(true);
 		}
@@ -211,7 +217,7 @@ export class BillingDataService {
 			);
 			this.folios.set(this.unwrapListResponse(res));
 		} catch (e) {
-			this.foliosError.set(e instanceof Error ? e.message : "Failed to load folios");
+			this.foliosError.set(e instanceof Error ? e.message : this.i18n.t("Failed to load folios"));
 		} finally {
 			this.foliosReady.set(true);
 		}
@@ -232,7 +238,7 @@ export class BillingDataService {
 			);
 			this.charges.set(this.unwrapListResponse(res));
 		} catch (e) {
-			this.chargesError.set(e instanceof Error ? e.message : "Failed to load charges");
+			this.chargesError.set(e instanceof Error ? e.message : this.i18n.t("Failed to load charges"));
 		} finally {
 			this.chargesReady.set(true);
 		}

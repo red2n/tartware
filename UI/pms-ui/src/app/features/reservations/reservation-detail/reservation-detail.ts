@@ -271,7 +271,7 @@ export class ReservationDetailComponent implements OnInit {
 			{ label: "Check-out", value: this.formatDate(r.check_out_date) },
 			{ label: "Nights", value: String(r.nights) },
 			{ label: "Room Type", value: r.room_type_name ?? "—" },
-			{ label: "Room", value: r.room_number ?? "Not assigned" },
+			{ label: "Room", value: r.room_number ?? this.i18n.t("Not assigned") },
 			{ label: "Source", value: r.source ?? "—" },
 			{ label: "Type", value: r.reservation_type ?? "—" },
 		];
@@ -293,10 +293,10 @@ export class ReservationDetailComponent implements OnInit {
 			const vip = p.vip_status;
 			const customerType =
 				vip === "NONE"
-					? "Standard"
+					? this.i18n.t("Standard")
 					: vip === "VVIP"
 						? "VVIP"
-						: `VIP Level ${vip.replace("VIP", "")}`;
+						: this.i18n.t("VIP Level {level}", { level: vip.replace("VIP", "") });
 			rows.push({ label: "Customer Type", value: customerType });
 
 			if (p.loyalty_tier) {
@@ -319,13 +319,19 @@ export class ReservationDetailComponent implements OnInit {
 				let hint: string | undefined;
 				if (diff === 0) {
 					icon = "cake";
-					hint = "Birthday today!";
+					hint = this.i18n.t("Birthday today!");
 				} else if (diff > 0 && diff <= 5) {
 					icon = "cake";
-					hint = `Birthday in ${diff} day${diff === 1 ? "" : "s"}`;
+					hint =
+						diff === 1
+							? this.i18n.t("Birthday in 1 day")
+							: this.i18n.t("Birthday in {days} days", { days: diff });
 				} else if (diff < 0 && diff >= -5) {
 					icon = "cake";
-					hint = `Birthday was ${Math.abs(diff)} day${Math.abs(diff) === 1 ? "" : "s"} ago`;
+					hint =
+						Math.abs(diff) === 1
+							? this.i18n.t("Birthday was 1 day ago")
+							: this.i18n.t("Birthday was {days} days ago", { days: Math.abs(diff) });
 				}
 				rows.push({ label: "Date of Birth", value: dobDisplay, icon, hint });
 			}
@@ -386,7 +392,7 @@ export class ReservationDetailComponent implements OnInit {
 			// Always load charges — works via folio_id or reservation_id
 			void this.loadFolioCharges();
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load reservation");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load reservation"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -651,7 +657,7 @@ export class ReservationDetailComponent implements OnInit {
 			this.availableRooms.set(res.available_rooms ?? []);
 		} catch (e) {
 			this.availableRooms.set([]);
-			this.roomLoadError.set(e instanceof Error ? e.message : "Failed to load rooms");
+			this.roomLoadError.set(e instanceof Error ? e.message : this.i18n.t("Failed to load rooms"));
 		} finally {
 			this.loadingRooms.set(false);
 		}

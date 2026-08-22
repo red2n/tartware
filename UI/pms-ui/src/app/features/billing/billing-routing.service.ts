@@ -98,7 +98,9 @@ export class BillingRoutingService {
 			this.routingRules.set(rules ?? []);
 			this.routingTemplates.set(templates ?? []);
 		} catch (e) {
-			this.routingError.set(e instanceof Error ? e.message : "Failed to load routing rules");
+			this.routingError.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load routing rules"),
+			);
 			this.routingRules.set([]);
 			this.routingTemplates.set([]);
 		} finally {

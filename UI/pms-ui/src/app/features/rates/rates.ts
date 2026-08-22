@@ -267,7 +267,7 @@ export class RatesComponent {
 			case "RO":
 				return this.i18n.t("Room only");
 			case "BB":
-				return "Bed & Breakfast";
+				return this.i18n.t("Bed & Breakfast");
 			case "HB":
 				return this.i18n.t("Half board");
 			case "FB":
@@ -323,7 +323,7 @@ export class RatesComponent {
 			const rates = await this.api.get<RateItem[]>("/rates", params);
 			this.rates.set(rates);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load rates");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load rates"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -348,7 +348,10 @@ export class RatesComponent {
 		if (
 			newStatus === "INACTIVE" &&
 			!confirm(
-				`Deactivate rate plan "${rate.rate_name}"? It will no longer be available for new bookings.`,
+				this.i18n.t(
+					'Deactivate rate plan "{name}"? It will no longer be available for new bookings.',
+					{ name: rate.rate_name },
+				),
 			)
 		)
 			return;
@@ -363,7 +366,9 @@ export class RatesComponent {
 				list.map((r) => (r.id === rate.id ? { ...r, status: newStatus } : r)),
 			);
 			this.toast.success(
-				`Rate "${rate.rate_name}" ${newStatus === "ACTIVE" ? "activated" : "deactivated"}.`,
+				newStatus === "ACTIVE"
+					? this.i18n.t('Rate "{name}" activated.', { name: rate.rate_name })
+					: this.i18n.t('Rate "{name}" deactivated.', { name: rate.rate_name }),
 			);
 		} catch (e) {
 			this.toast.error(

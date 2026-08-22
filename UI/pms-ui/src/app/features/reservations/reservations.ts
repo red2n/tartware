@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -42,6 +43,7 @@ type StatusFilter = "ALL" | "CONFIRMED" | "CHECKED_IN" | "PENDING" | "CANCELLED"
 })
 export class ReservationsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -215,7 +217,7 @@ export class ReservationsComponent {
 			const res = await this.api.get<ReservationGridResponse>("/reservations/grid", params);
 			this.reservations.set(res.data ?? []);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load reservations");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load reservations"));
 		} finally {
 			this.dataReady.set(true);
 		}

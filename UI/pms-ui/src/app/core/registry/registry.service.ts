@@ -1,6 +1,7 @@
 import { computed, Injectable, signal } from "@angular/core";
 
 import { ApiService } from "../api/api.service";
+import { I18nService } from "../i18n/i18n.service";
 
 export interface ServiceInstance {
 	instanceId: string;
@@ -48,7 +49,10 @@ export class RegistryService {
 
 	readonly hasIssues = computed(() => this._summary().down > 0 || this._error() !== null);
 
-	constructor(private readonly apiService: ApiService) {}
+	constructor(
+		private readonly apiService: ApiService,
+		private readonly i18n: I18nService,
+	) {}
 
 	async fetchServices(): Promise<void> {
 		this._loading.set(true);
@@ -59,7 +63,7 @@ export class RegistryService {
 			this._summary.set(res.summary);
 			this._lastUpdated.set(new Date());
 		} catch (err) {
-			this._error.set(err instanceof Error ? err.message : "Failed to fetch services");
+			this._error.set(err instanceof Error ? err.message : this.i18n.t("Failed to fetch services"));
 		} finally {
 			this._loading.set(false);
 		}

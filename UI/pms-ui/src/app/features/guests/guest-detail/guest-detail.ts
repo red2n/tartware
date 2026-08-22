@@ -94,6 +94,7 @@ export class GuestDetailComponent implements OnInit {
 	 * preferences vs communications are both "lists about the guest"), so the strap
 	 * states what the tab is actually for and what can be done there.
 	 */
+	/* i18n-keys */
 	private static readonly TAB_OVERVIEWS: Record<DetailTab, string> = {
 		overview:
 			"Identity, contact and stay summary. Update contact details, VIP status and loyalty tier here.",
@@ -361,7 +362,11 @@ export class GuestDetailComponent implements OnInit {
 				is_blacklisted: f.is_blacklisted,
 				reason: f.reason || undefined,
 			});
-			this.toast.success(f.is_blacklisted ? "Guest blacklisted." : "Guest removed from blacklist.");
+			this.toast.success(
+				f.is_blacklisted
+					? this.i18n.t("Guest blacklisted.")
+					: this.i18n.t("Guest removed from blacklist."),
+			);
 			setTimeout(() => this.loadGuest(), 1200);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update blacklist"));
@@ -427,7 +432,10 @@ export class GuestDetailComponent implements OnInit {
 			this.toast.error(this.i18n.t("Enter the duplicate guest ID to merge."));
 			return;
 		}
-		if (!confirm(`Merge guest ${dup} INTO this guest? This cannot be undone.`)) return;
+		if (
+			!confirm(this.i18n.t("Merge guest {id} INTO this guest? This cannot be undone.", { id: dup }))
+		)
+			return;
 		this.processing.set("merge");
 		try {
 			await this.api.post("/guests/merge", {
@@ -471,7 +479,9 @@ export class GuestDetailComponent implements OnInit {
 		if (!url) return;
 		if (
 			!confirm(
-				"Erase this guest's personal data per GDPR Art. 17? Reservations are kept (anonymised). This cannot be undone.",
+				this.i18n.t(
+					"Erase this guest's personal data per GDPR Art. 17? Reservations are kept (anonymised). This cannot be undone.",
+				),
 			)
 		)
 			return;
@@ -519,7 +529,9 @@ export class GuestDetailComponent implements OnInit {
 		this.processing.set("gdpr-restrict");
 		try {
 			await this.api.post(url, { restrict: f.restrict, reason: f.reason || undefined });
-			this.toast.success(f.restrict ? "Processing restricted." : "Restriction lifted.");
+			this.toast.success(
+				f.restrict ? this.i18n.t("Processing restricted.") : this.i18n.t("Restriction lifted."),
+			);
 		} catch (e) {
 			this.toast.error(
 				e instanceof Error ? e.message : this.i18n.t("Failed to update restriction"),
@@ -611,7 +623,7 @@ export class GuestDetailComponent implements OnInit {
 			const guest = await this.api.get<GuestDetail>(`/guests/${guestId}`, params);
 			this.guest.set(guest);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load guest");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load guest"));
 		} finally {
 			this.loading.set(false);
 		}

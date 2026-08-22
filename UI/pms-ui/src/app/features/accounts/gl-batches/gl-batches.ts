@@ -114,7 +114,9 @@ export class GlBatchesComponent {
 		} catch (e) {
 			this.batches.set([]);
 			this.error.set(
-				e instanceof Error ? e.message : "GL batch list endpoint is not currently available.",
+				e instanceof Error
+					? e.message
+					: this.i18n.t("GL batch list endpoint is not currently available."),
 			);
 		} finally {
 			this.dataReady.set(true);
@@ -152,7 +154,9 @@ export class GlBatchesComponent {
 			);
 			this.entries.set(res.data ?? []);
 		} catch (e) {
-			this.entriesError.set(e instanceof Error ? e.message : "Failed to load batch entries.");
+			this.entriesError.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load batch entries."),
+			);
 		} finally {
 			this.entriesLoading.set(false);
 		}

@@ -269,16 +269,25 @@ export class RateCalendarComponent {
 		const parts: string[] = [];
 		if (cell.amount !== null) {
 			const diff = cell.amount - cell.baseRate;
-			if (diff > 0) parts.push(`+${this.fmtCurrency(diff, cell.currency)} vs base`);
-			else if (diff < 0) parts.push(`${this.fmtCurrency(diff, cell.currency)} vs base`);
+			if (diff > 0)
+				parts.push(
+					this.i18n.t("+{amount} vs base", { amount: this.fmtCurrency(diff, cell.currency) }),
+				);
+			else if (diff < 0)
+				parts.push(
+					this.i18n.t("{amount} vs base", { amount: this.fmtCurrency(diff, cell.currency) }),
+				);
 			else parts.push(this.i18n.t("At base rate"));
 		} else {
-			parts.push(`Base: ${this.fmtCurrency(cell.baseRate, cell.currency)}`);
+			parts.push(
+				this.i18n.t("Base: {amount}", { amount: this.fmtCurrency(cell.baseRate, cell.currency) }),
+			);
 		}
 		if (cell.cta) parts.push(this.i18n.t("CTA: Closed to Arrival"));
 		if (cell.ctd) parts.push(this.i18n.t("CTD: Closed to Departure"));
-		if (cell.minLos) parts.push(`Min LOS: ${cell.minLos}`);
-		if (cell.status !== "OPEN") parts.push(`Status: ${cell.status}`);
+		if (cell.minLos) parts.push(this.i18n.t("Min LOS: {nights}", { nights: cell.minLos }));
+		if (cell.status !== "OPEN")
+			parts.push(this.i18n.t("Status: {status}", { status: cell.status }));
 		return parts.join("\n");
 	}
 

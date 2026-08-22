@@ -181,11 +181,11 @@ export class BreachIncidentsComponent {
 	}
 
 	deadlineLabel(incident: BreachIncident): string {
-		if (incident.authority_notified) return "Notified";
+		if (incident.authority_notified) return this.i18n.t("Notified");
 		const hours = this.hoursRemaining(incident);
 		if (hours === null) return this.i18n.t("No deadline recorded");
-		if (hours < 0) return `Overdue by ${Math.abs(hours)}h`;
-		return `${hours}h remaining`;
+		if (hours < 0) return this.i18n.t("Overdue by {hours}h", { hours: Math.abs(hours) });
+		return this.i18n.t("{hours}h remaining", { hours });
 	}
 
 	/** Map onto the shared badge palette rather than inventing severity colours. */

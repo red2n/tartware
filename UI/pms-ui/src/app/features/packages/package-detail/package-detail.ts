@@ -104,9 +104,15 @@ export class PackageDetailComponent {
 		if (!p) return [];
 		return [
 			{ label: "Min nights", value: String(p.min_nights) },
-			{ label: "Max nights", value: p.max_nights != null ? String(p.max_nights) : "No limit" },
+			{
+				label: "Max nights",
+				value: p.max_nights != null ? String(p.max_nights) : this.i18n.t("No limit"),
+			},
 			{ label: "Min guests", value: String(p.min_guests) },
-			{ label: "Max guests", value: p.max_guests != null ? String(p.max_guests) : "No limit" },
+			{
+				label: "Max guests",
+				value: p.max_guests != null ? String(p.max_guests) : this.i18n.t("No limit"),
+			},
 		];
 	});
 
@@ -207,7 +213,7 @@ export class PackageDetailComponent {
 			this.pkg.set(pkgRes);
 			this.components.set(compRes.data);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load package");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load package"));
 		} finally {
 			this.loading.set(false);
 		}

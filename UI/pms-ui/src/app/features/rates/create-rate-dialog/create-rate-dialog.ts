@@ -42,7 +42,7 @@ export class CreateRateDialogComponent implements OnInit {
 
 	private readonly dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
-	rateName = `New Rate Plan ${this.dateSuffix}`;
+	rateName = this.i18n.t("New Rate Plan {date}", { date: this.dateSuffix });
 	rateCode = `NRP${this.dateSuffix}`;
 	description = "";
 	rateType = "BAR";

@@ -160,7 +160,7 @@ export class GuestFormComponent implements OnInit {
 			const g = await this.api.get<EditableGuest>(`/guests/${id}`, { tenant_id: tenantId });
 			this.hydrate(g);
 		} catch (e) {
-			this.loadError.set(e instanceof Error ? e.message : "Failed to load guest");
+			this.loadError.set(e instanceof Error ? e.message : this.i18n.t("Failed to load guest"));
 		} finally {
 			this.loading.set(false);
 		}

@@ -164,7 +164,9 @@ export class ReportsComponent {
 				this.error.set(
 					e instanceof Error
 						? e.message
-						: `Report endpoint ${def.path} is not currently available.`,
+						: this.i18n.t("Report endpoint {path} is not currently available.", {
+								path: def.path,
+							}),
 				);
 			}
 		} finally {

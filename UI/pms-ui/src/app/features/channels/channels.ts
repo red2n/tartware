@@ -284,7 +284,7 @@ export class ChannelsComponent {
 		await this.dispatch(
 			"sync",
 			{ property_id: propertyId, ota_code: connection.channel_code },
-			`Sync requested for ${connection.channel_name}.`,
+			this.i18n.t("Sync requested for {channel}.", { channel: connection.channel_name }),
 		);
 	}
 
@@ -302,7 +302,7 @@ export class ChannelsComponent {
 				...(f.effective_from ? { effective_from: f.effective_from } : {}),
 				...(f.effective_to ? { effective_to: f.effective_to } : {}),
 			},
-			`Rate push queued for ${connection.channel_name}.`,
+			this.i18n.t("Rate push queued for {channel}.", { channel: connection.channel_name }),
 		);
 	}
 
@@ -313,7 +313,9 @@ export class ChannelsComponent {
 		const f = this.contentSyncForm();
 		if (!f.ota_config_id) {
 			this.toast.error(
-				`No OTA configuration found for ${connection.channel_code}. Content sync needs one.`,
+				this.i18n.t("No OTA configuration found for {channel}. Content sync needs one.", {
+					channel: connection.channel_code,
+				}),
 			);
 			return;
 		}
@@ -324,7 +326,7 @@ export class ChannelsComponent {
 				ota_config_id: f.ota_config_id,
 				content_types: [f.content_types],
 			},
-			`Content sync queued for ${connection.channel_name}.`,
+			this.i18n.t("Content sync queued for {channel}.", { channel: connection.channel_name }),
 		);
 	}
 
@@ -338,7 +340,7 @@ export class ChannelsComponent {
 				...(f.event_id.trim() ? { event_id: f.event_id.trim() } : {}),
 				...(f.reason.trim() ? { reason: f.reason.trim() } : {}),
 			},
-			"Webhook retry queued.",
+			this.i18n.t("Webhook retry queued."),
 		);
 	}
 }

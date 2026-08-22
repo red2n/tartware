@@ -82,6 +82,7 @@ export class NightAuditComponent {
 	 * screen in the product — "Bucket check" and "Pre-audit" mean nothing until
 	 * someone has run one — so each tab states its job and what blocks the close.
 	 */
+	/* i18n-keys */
 	private static readonly TAB_OVERVIEWS: Record<AuditTab, string> = {
 		status:
 			"Readiness for the current business date — occupancy, revenue and the checks standing between you and closing the day.",
@@ -427,7 +428,7 @@ export class NightAuditComponent {
 			);
 			this.trialBalance.set(res);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load trial balance");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load trial balance"));
 		} finally {
 			this.dataReady.set(true);
 		}

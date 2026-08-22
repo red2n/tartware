@@ -100,7 +100,9 @@ export class LedgerComponent {
 			this.items.set(response.data ?? []);
 		} catch (e) {
 			this.items.set([]);
-			this.error.set(e instanceof Error ? e.message : "Failed to load ledger entries.");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load ledger entries."),
+			);
 		} finally {
 			this.dataReady.set(true);
 		}

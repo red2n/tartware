@@ -166,7 +166,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 				this.selectCategoryByCode(code);
 			}
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to load settings");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to load settings"));
 		} finally {
 			this.loadingCategories.set(false);
 		}
@@ -195,7 +195,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			this.options.set(res.data.options);
 			await this.loadValues();
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to load category");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to load category"));
 		} finally {
 			this.loadingCatalog.set(false);
 		}
@@ -673,7 +673,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			} catch {
 				this.editStates.update((s) => ({
 					...s,
-					[def.id]: { ...state, errorMessage: "Invalid JSON" },
+					[def.id]: { ...state, errorMessage: this.i18n.t("Invalid JSON") },
 				}));
 				return;
 			}
@@ -684,7 +684,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			if (Number.isNaN(parsedValue)) {
 				this.editStates.update((s) => ({
 					...s,
-					[def.id]: { ...state, errorMessage: "Invalid number" },
+					[def.id]: { ...state, errorMessage: this.i18n.t("Invalid number") },
 				}));
 				return;
 			}
@@ -736,7 +736,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 				[def.id]: {
 					...this.getEditState(def.id),
 					saving: false,
-					errorMessage: err instanceof Error ? err.message : "Failed to save",
+					errorMessage: err instanceof Error ? err.message : this.i18n.t("Failed to save"),
 				},
 			}));
 		}
@@ -749,6 +749,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	}
 
 	controlTypeLabel(type: string): string {
+		/* i18n-keys */
 		const labels: Record<string, string> = {
 			TOGGLE: "Toggle",
 			TEXT_INPUT: "Text",
@@ -765,7 +766,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			TAGS: "Tags",
 			FILE_UPLOAD: "File Upload",
 		};
-		return labels[type] ?? type;
+		const label = labels[type];
+		return label ? this.i18n.t(label) : type;
 	}
 
 	sensitivityClass(sensitivity: string): string {
@@ -791,6 +793,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	// ── Industry-standard tooltips ──────────────────────────────────────────
 
 	/** PMS-industry tooltip text keyed by setting code. */
+	/* i18n-keys */
 	private static readonly TOOLTIPS: Record<string, string> = {
 		// Admin & Users
 		"admin.max_staff_users":

@@ -1,5 +1,6 @@
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import { generateUUID } from "../../shared/uuid-utils";
+import { I18nService } from "../i18n/i18n.service";
 
 const API_BASE = "/v1";
 
@@ -35,6 +36,17 @@ export class ModuleNotEnabledError extends Error {
 	readonly detail: string;
 	/** How to get it switched on. */
 	readonly action: string;
+	/**
+	 * `title`/`detail` again as translation keys, with the module names left as a
+	 * `{modules}` placeholder — the composed English above cannot be a key,
+	 * because the names vary per call. The screen renders these; the plain
+	 * strings stay for `Error.message`, logs, and any caller that only has an
+	 * `Error` to show.
+	 */
+	readonly titleKey: string;
+	readonly detailKey: string;
+	/** Substitutions for `titleKey`/`detailKey`. */
+	readonly messageParams: Record<string, string>;
 
 	constructor(parts: {
 		moduleIds: string[];
@@ -42,6 +54,9 @@ export class ModuleNotEnabledError extends Error {
 		title: string;
 		detail: string;
 		action: string;
+		titleKey: string;
+		detailKey: string;
+		messageParams: Record<string, string>;
 	}) {
 		super(`${parts.title}. ${parts.action}`);
 		this.name = "ModuleNotEnabledError";
@@ -50,11 +65,17 @@ export class ModuleNotEnabledError extends Error {
 		this.title = parts.title;
 		this.detail = parts.detail;
 		this.action = parts.action;
+		this.titleKey = parts.titleKey;
+		this.detailKey = parts.detailKey;
+		this.messageParams = parts.messageParams;
 	}
 }
 
 @Injectable({ providedIn: "root" })
 export class ApiService {
+	/** Error-code wording is shown to the user verbatim, so it is translated here. */
+	private readonly i18n = inject(I18nService);
+
 	private buildUrl(path: string, params?: Record<string, string>): string {
 		const url = new URL(`${API_BASE}${path}`, window.location.origin);
 		if (params) {
@@ -146,6 +167,7 @@ export class ApiService {
 	 * The server rejects by module id ("analytics-bi"); staff only ever see the
 	 * names printed on the Modules screen, so the ids never reach the message.
 	 */
+	/* i18n-keys */
 	private static readonly MODULE_LABELS: Record<string, string> = {
 		core: "Core / Base",
 		"finance-automation": "Finance & Automation",
@@ -161,6 +183,7 @@ export class ApiService {
 	 * tells a front-desk user nothing and hides the fact that an admin can fix it
 	 * from the Modules screen.
 	 */
+	/* i18n-keys */
 	private static readonly ERROR_CODE_MESSAGES: Record<string, string> = {
 		TENANT_ACCESS_DENIED: "You don't have access to this property.",
 		TENANT_INACTIVE: "This property is inactive. Contact your administrator.",
@@ -182,6 +205,7 @@ export class ApiService {
 					? names[0]
 					: `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
+		/* i18n-keys */
 		return new ModuleNotEnabledError({
 			moduleIds: ids,
 			moduleNames: names,
@@ -191,6 +215,15 @@ export class ApiService {
 			detail: subject
 				? `This screen needs ${subject}, which your property hasn't switched on yet.`
 				: "This screen needs a feature your property hasn't switched on yet.",
+			titleKey: subject
+				? names.length > 1
+					? "{modules} aren't switched on"
+					: "{modules} isn't switched on"
+				: "This feature isn't switched on",
+			detailKey: subject
+				? "This screen needs {modules}, which your property hasn't switched on yet."
+				: "This screen needs a feature your property hasn't switched on yet.",
+			messageParams: { modules: subject ?? "" },
 			action:
 				"An administrator at your property can switch it on under Settings → Modules. Everything here starts working as soon as they do.",
 		});
@@ -206,7 +239,8 @@ export class ApiService {
 			if (code === "TENANT_MODULE_NOT_ENABLED") {
 				return ApiService.moduleNotEnabledError(body.missingModules);
 			}
-			message = ApiService.ERROR_CODE_MESSAGES[code] ?? code;
+			const known = ApiService.ERROR_CODE_MESSAGES[code];
+			message = known ? this.i18n.t(known) : code;
 			if (Array.isArray(body.errors) && body.errors.length > 0) {
 				return new ApiValidationError(message, body.errors);
 			}

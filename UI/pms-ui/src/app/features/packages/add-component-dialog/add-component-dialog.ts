@@ -10,6 +10,7 @@ export interface AddComponentDialogData {
 	packageId: string;
 }
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
@@ -28,6 +29,7 @@ import { DialogShellComponent } from "../../../shared/components/dialog-shell/di
 })
 export class AddComponentDialogComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly data: AddComponentDialogData = inject(DynamicDialogConfig).data;
@@ -143,7 +145,7 @@ export class AddComponentDialogComponent {
 			if (e instanceof ApiValidationError) {
 				this.error.set(e.message);
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to add component");
+				this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to add component"));
 			}
 		} finally {
 			this.saving.set(false);

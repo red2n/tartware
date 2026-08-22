@@ -172,7 +172,7 @@ export class ScreenPermissionsComponent implements OnInit {
 			this.screenRows.set(rows);
 			this.serverSnapshot = JSON.stringify(rows.map((r) => ({ k: r.screen_key, v: r.visibility })));
 		} catch {
-			this.error.set("Failed to load screen permissions");
+			this.error.set(this.i18n.t("Failed to load screen permissions"));
 		} finally {
 			this.loading.set(false);
 		}

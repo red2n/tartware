@@ -130,7 +130,7 @@ export class BuildingsComponent {
 			const buildings = await this.api.get<BuildingGridItem[]>("/buildings/grid", params);
 			this.buildings.set(buildings);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load buildings");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load buildings"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -171,7 +171,8 @@ export class BuildingsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		if (!confirm(`Delete building "${building.building_name}"?`)) return;
+		if (!confirm(this.i18n.t('Delete building "{name}"?', { name: building.building_name })))
+			return;
 
 		try {
 			await this.api.delete(`/buildings/${building.building_id}`, {

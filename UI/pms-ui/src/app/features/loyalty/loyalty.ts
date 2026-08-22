@@ -143,7 +143,15 @@ export class LoyaltyComponent {
 			// Commands are async (Kafka); give the projection a moment before reloading.
 			setTimeout(() => this.loadTransactions(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : `Loyalty ${kind} failed`);
+			this.toast.error(
+				e instanceof Error
+					? e.message
+					: kind === "enroll"
+						? this.i18n.t("Loyalty enrolment failed")
+						: kind === "earn"
+							? this.i18n.t("Loyalty points accrual failed")
+							: this.i18n.t("Loyalty redemption failed"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

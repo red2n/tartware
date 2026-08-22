@@ -47,6 +47,7 @@ const THEME_ICON: Record<ThemeMode, string> = {
 
 /* Whole phrases, not composed fragments — the translate pipe keys off the
    complete English string. */
+/* i18n-keys */
 const THEME_ACTION: Record<ThemeMode, string> = {
 	LIGHT: "Switch to dark theme",
 	DARK: "Switch to system theme",

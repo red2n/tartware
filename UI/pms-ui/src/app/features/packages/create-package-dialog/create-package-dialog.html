@@ -12,7 +12,7 @@
 				<label class="field-label" for="packageName">{{ 'Name' | translate }} <span class="required">*</span></label>
 				<input class="field-input" id="packageName" type="text" [(ngModel)]="packageName" [placeholder]="'e.g. Weekend Getaway' | translate" />
 				@if (validationErrors['packageName']) {
-					<span class="field-error">{{ validationErrors['packageName'] }}</span>
+					<span class="field-error">{{ validationErrors['packageName'] | translate }}</span>
 				}
 			</div>
 
@@ -20,7 +20,7 @@
 				<label class="field-label" for="packageCode">{{ 'Code' | translate }} <span class="required">*</span></label>
 				<input class="field-input" id="packageCode" type="text" [ngModel]="packageCode" (ngModelChange)="onCodeInput($event)" [placeholder]="'e.g. WKD-GETAWAY' | translate" />
 				@if (validationErrors['packageCode']) {
-					<span class="field-error">{{ validationErrors['packageCode'] }}</span>
+					<span class="field-error">{{ validationErrors['packageCode'] | translate }}</span>
 				}
 			</div>
 		</div>
@@ -51,7 +51,7 @@
 				<label class="field-label" for="basePrice">{{ 'Base Price' | translate }} <span class="required">*</span></label>
 				<input class="field-input" id="basePrice" type="number" [(ngModel)]="basePrice" min="0" step="0.01" placeholder="0.00" />
 				@if (validationErrors['basePrice']) {
-					<span class="field-error">{{ validationErrors['basePrice'] }}</span>
+					<span class="field-error">{{ validationErrors['basePrice'] | translate }}</span>
 				}
 			</div>
 
@@ -75,7 +75,7 @@
 				<label class="field-label" for="validFrom">{{ 'Valid From' | translate }} <span class="required">*</span></label>
 				<input class="field-input" id="validFrom" type="date" [(ngModel)]="validFrom" />
 				@if (validationErrors['validFrom']) {
-					<span class="field-error">{{ validationErrors['validFrom'] }}</span>
+					<span class="field-error">{{ validationErrors['validFrom'] | translate }}</span>
 				}
 			</div>
 
@@ -83,7 +83,7 @@
 				<label class="field-label" for="validTo">{{ 'Valid To' | translate }} <span class="required">*</span></label>
 				<input class="field-input" id="validTo" type="date" [(ngModel)]="validTo" />
 				@if (validationErrors['validTo']) {
-					<span class="field-error">{{ validationErrors['validTo'] }}</span>
+					<span class="field-error">{{ validationErrors['validTo'] | translate }}</span>
 				}
 			</div>
 		</div>
@@ -102,7 +102,7 @@
 				<label class="field-label" for="maxNights">{{ 'Max Nights' | translate }}</label>
 				<input class="field-input" id="maxNights" type="number" [(ngModel)]="maxNights" min="1" [placeholder]="'No limit' | translate" />
 				@if (validationErrors['maxNights']) {
-					<span class="field-error">{{ validationErrors['maxNights'] }}</span>
+					<span class="field-error">{{ validationErrors['maxNights'] | translate }}</span>
 				}
 			</div>
 		</div>
@@ -116,7 +116,7 @@
 				<label class="field-label" for="maxGuests">{{ 'Max Guests' | translate }}</label>
 				<input class="field-input" id="maxGuests" type="number" [(ngModel)]="maxGuests" min="1" [placeholder]="'No limit' | translate" />
 				@if (validationErrors['maxGuests']) {
-					<span class="field-error">{{ validationErrors['maxGuests'] }}</span>
+					<span class="field-error">{{ validationErrors['maxGuests'] | translate }}</span>
 				}
 			</div>
 		</div>

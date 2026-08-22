@@ -260,7 +260,7 @@ export class PackagesComponent {
 			const res = await this.api.get<{ data: PackageListItem[] }>("/packages", params);
 			this.packages.set(res.data);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load packages");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load packages"));
 		} finally {
 			this.dataReady.set(true);
 		}

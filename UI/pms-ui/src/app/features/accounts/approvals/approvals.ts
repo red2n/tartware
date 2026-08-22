@@ -233,12 +233,24 @@ export class ApprovalsComponent {
 
 			await this.api.post(`/billing/approvals/${request.approval_id}/${kind}`, body);
 			this.toast.success(
-				kind === "approve" ? "Approved." : kind === "reject" ? "Rejected." : "Request cancelled.",
+				kind === "approve"
+					? this.i18n.t("Approved.")
+					: kind === "reject"
+						? this.i18n.t("Rejected.")
+						: this.i18n.t("Request cancelled."),
 			);
 			this.decision.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : `Failed to ${kind} the request`);
+			this.toast.error(
+				e instanceof Error
+					? e.message
+					: kind === "approve"
+						? this.i18n.t("Failed to approve the request")
+						: kind === "reject"
+							? this.i18n.t("Failed to reject the request")
+							: this.i18n.t("Failed to cancel the request"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

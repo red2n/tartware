@@ -223,7 +223,7 @@ export class RoomsComponent {
 			const rooms = await this.api.get<RoomGridItem[]>("/rooms/grid", params);
 			this.rooms.set(rooms);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load rooms");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load rooms"));
 		} finally {
 			this.dataReady.set(true);
 		}

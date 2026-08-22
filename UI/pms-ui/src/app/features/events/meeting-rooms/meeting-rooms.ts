@@ -214,12 +214,15 @@ export class MeetingRoomsComponent {
 	/** The layout capacities that are actually filled in, as one line. */
 	capacitySummary(room: MeetingRoomListItem): string {
 		const parts: string[] = [];
-		if (room.theater_capacity) parts.push(`Theater ${room.theater_capacity}`);
-		if (room.classroom_capacity) parts.push(`Classroom ${room.classroom_capacity}`);
-		if (room.banquet_capacity) parts.push(`Banquet ${room.banquet_capacity}`);
-		if (room.reception_capacity) parts.push(`Reception ${room.reception_capacity}`);
-		if (room.u_shape_capacity) parts.push(`U-shape ${room.u_shape_capacity}`);
-		if (room.boardroom_capacity) parts.push(`Boardroom ${room.boardroom_capacity}`);
+		if (room.theater_capacity) parts.push(this.i18n.t("Theater {n}", { n: room.theater_capacity }));
+		if (room.classroom_capacity)
+			parts.push(this.i18n.t("Classroom {n}", { n: room.classroom_capacity }));
+		if (room.banquet_capacity) parts.push(this.i18n.t("Banquet {n}", { n: room.banquet_capacity }));
+		if (room.reception_capacity)
+			parts.push(this.i18n.t("Reception {n}", { n: room.reception_capacity }));
+		if (room.u_shape_capacity) parts.push(this.i18n.t("U-shape {n}", { n: room.u_shape_capacity }));
+		if (room.boardroom_capacity)
+			parts.push(this.i18n.t("Boardroom {n}", { n: room.boardroom_capacity }));
 		return parts.length > 0 ? parts.join(" · ") : "—";
 	}
 

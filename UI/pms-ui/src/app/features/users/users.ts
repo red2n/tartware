@@ -140,7 +140,7 @@ export class UsersComponent {
 			const data = await this.api.get<UserRow[]>(`/users?tenant_id=${tenantId}&limit=100`);
 			this.users.set(data);
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to load users");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to load users"));
 		} finally {
 			this.dataReady.set(true);
 		}

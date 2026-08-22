@@ -203,7 +203,7 @@ export class InvoicesComponent {
 		} catch (e) {
 			this.invoices.set([]);
 			this.totalCount.set(0);
-			this.error.set(e instanceof Error ? e.message : "Failed to load invoices.");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load invoices."));
 		} finally {
 			this.dataReady.set(true);
 		}

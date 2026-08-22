@@ -115,7 +115,9 @@ export class ChargebacksComponent {
 		} catch (e) {
 			this.chargebacks.set([]);
 			this.error.set(
-				e instanceof Error ? e.message : "Chargeback list endpoint is not currently available.",
+				e instanceof Error
+					? e.message
+					: this.i18n.t("Chargeback list endpoint is not currently available."),
 			);
 		} finally {
 			this.dataReady.set(true);

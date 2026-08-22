@@ -11,7 +11,7 @@
                 [placeholder]="'Best Available Rate' | translate"
                 [(ngModel)]="rateName" />
           @if (validationErrors['rateName']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
         </div>
 
@@ -24,7 +24,7 @@
                 maxlength="50"
                 style="text-transform: uppercase" />
           @if (validationErrors['rateCode']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
         </div>
       </div>
@@ -68,7 +68,7 @@
             }
           </select>
           @if (validationErrors['roomType']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
           @if (roomTypes().length === 0) {
             <span class="field-hint">{{ 'No room types found for this property' | translate }}</span>
@@ -89,7 +89,7 @@
                 placeholder="0.00"
                 [(ngModel)]="baseRate" />
           @if (validationErrors['baseRate']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
         </div>
 
@@ -108,7 +108,7 @@
                 [placeholder]="'Optional' | translate"
                 [(ngModel)]="singleOccupancyRate" />
           @if (validationErrors['sglRate']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
         </div>
 
@@ -119,7 +119,7 @@
                 [placeholder]="'Optional' | translate"
                 [(ngModel)]="doubleOccupancyRate" />
           @if (validationErrors['dblRate']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
         </div>
       </div>
@@ -154,7 +154,7 @@
           <input class="field-input" id="validFrom" type="date"
                 [(ngModel)]="validFrom" />
           @if (validationErrors['validFrom']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
         </div>
 
@@ -163,7 +163,7 @@
           <input class="field-input" id="validUntil" type="date"
                 [(ngModel)]="validUntil" />
           @if (validationErrors['validUntil']; as msg) {
-            <span class="field-hint-error">{{ msg }}</span>
+            <span class="field-hint-error">{{ msg | translate }}</span>
           }
           <span class="field-hint">{{ 'Leave empty for no end date' | translate }}</span>
         </div>

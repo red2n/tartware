@@ -437,7 +437,7 @@ export class AccountsReceivableComponent {
 			this.arItems.set(items);
 			this.agingSummary.set(aging);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load AR data");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load AR data"));
 		} finally {
 			this.dataReady.set(true);
 		}

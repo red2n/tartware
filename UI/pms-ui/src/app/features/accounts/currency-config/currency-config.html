@@ -98,7 +98,7 @@
           <label class="field-label" for="fx-from">{{ 'From' | translate }}</label>
           <select id="fx-from" class="field-input field-sm" [ngModel]="formFrom()" (ngModelChange)="formFrom.set($event)">
             @for (c of currencies; track c.code) {
-              <option [value]="c.code">{{ c.code }} — {{ c.name }}</option>
+              <option [value]="c.code">{{ c.code }} — {{ c.name | translate }}</option>
             }
           </select>
         </div>
@@ -107,7 +107,7 @@
           <label class="field-label" for="fx-to">{{ 'To' | translate }}</label>
           <select id="fx-to" class="field-input field-sm" [ngModel]="formTo()" (ngModelChange)="formTo.set($event)">
             @for (c of currencies; track c.code) {
-              <option [value]="c.code">{{ c.code }} — {{ c.name }}</option>
+              <option [value]="c.code">{{ c.code }} — {{ c.name | translate }}</option>
             }
           </select>
           <button class="btn btn-invisible btn-sm" (click)="swapPair()" [pTooltip]="'Swap and invert' | translate">

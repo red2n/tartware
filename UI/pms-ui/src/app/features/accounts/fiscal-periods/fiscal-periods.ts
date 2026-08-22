@@ -94,7 +94,7 @@ export class FiscalPeriodsComponent {
 			this.error.set(
 				e instanceof Error
 					? e.message
-					: "Fiscal period list endpoint is not currently available through the API.",
+					: this.i18n.t("Fiscal period list endpoint is not currently available through the API."),
 			);
 		} finally {
 			this.dataReady.set(true);

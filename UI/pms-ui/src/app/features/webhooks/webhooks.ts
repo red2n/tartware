@@ -180,7 +180,7 @@ export class WebhooksComponent {
 	async deleteWebhook(w: WebhookSubscription): Promise<void> {
 		const url = this.tenantUrl();
 		if (!url) return;
-		if (!confirm(`Delete webhook "${w.webhook_name}"?`)) return;
+		if (!confirm(this.i18n.t('Delete webhook "{name}"?', { name: w.webhook_name }))) return;
 		this.processing.set(w.subscription_id);
 		try {
 			await this.api.delete(`${url}/${w.subscription_id}`);
@@ -196,7 +196,8 @@ export class WebhooksComponent {
 	async rotateSecret(w: WebhookSubscription): Promise<void> {
 		const url = this.tenantUrl();
 		if (!url) return;
-		if (!confirm(`Rotate signing secret for "${w.webhook_name}"?`)) return;
+		if (!confirm(this.i18n.t('Rotate signing secret for "{name}"?', { name: w.webhook_name })))
+			return;
 		this.processing.set(`rotate-${w.subscription_id}`);
 		try {
 			await this.api.post(`${url}/${w.subscription_id}/rotate-secret`, {});
@@ -225,7 +226,8 @@ export class WebhooksComponent {
 	async replayFailures(w: WebhookSubscription): Promise<void> {
 		const url = this.tenantUrl();
 		if (!url) return;
-		if (!confirm(`Replay failed deliveries for "${w.webhook_name}"?`)) return;
+		if (!confirm(this.i18n.t('Replay failed deliveries for "{name}"?', { name: w.webhook_name })))
+			return;
 		this.processing.set(`replay-${w.subscription_id}`);
 		try {
 			await this.api.post(`${url}/${w.subscription_id}/replay`, {});

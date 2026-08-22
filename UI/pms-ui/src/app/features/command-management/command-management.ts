@@ -12,6 +12,7 @@ import { ToggleSwitchModule } from "primeng/toggleswitch";
 import { TooltipModule } from "primeng/tooltip";
 import { type Subscription } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -38,6 +39,7 @@ type ServiceTab = "all" | string;
 })
 export class CommandManagementComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly route = inject(ActivatedRoute);
 	readonly globalSearch = inject(GlobalSearchService);
 	private paramSub?: Subscription;
@@ -115,7 +117,7 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 			this.serverStatuses = new Map(data.map((c) => [c.command_name, c.status]));
 			this.pendingChanges.set(new Map());
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to load commands");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to load commands"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -194,7 +196,7 @@ export class CommandManagementComponent implements OnInit, OnDestroy {
 				);
 			}
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to save changes");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to save changes"));
 		} finally {
 			this.saving.set(false);
 		}

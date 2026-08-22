@@ -402,7 +402,9 @@ export class TaxConfigComponent {
 			);
 			this.taxConfigs.set(res.data ?? []);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load tax configurations");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load tax configurations"),
+			);
 		} finally {
 			this.dataReady.set(true);
 		}
