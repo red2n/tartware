@@ -3,6 +3,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { BUILD_VERSION } from "../../../environments/build-version";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { RegistryService } from "../../core/registry/registry.service";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -17,6 +18,7 @@ import { ServiceDashboardComponent } from "./service-dashboard";
 })
 export class StatusBarComponent implements OnInit, OnDestroy {
 	readonly registry = inject(RegistryService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly tenantCtx = inject(TenantContextService);
 
@@ -83,11 +85,11 @@ export class StatusBarComponent implements OnInit, OnDestroy {
 
 	readonly lastUpdatedText = computed(() => {
 		const d = this.registry.lastUpdated();
-		if (!d) return "never";
+		if (!d) return this.i18n.t("never");
 		const secs = Math.round((this.now() - d.getTime()) / 1000);
-		if (secs < 5) return "just now";
-		if (secs < 60) return `${secs}s ago`;
-		return `${Math.floor(secs / 60)}m ago`;
+		if (secs < 5) return this.i18n.t("just now");
+		if (secs < 60) return this.i18n.t("{secs}s ago", { secs });
+		return this.i18n.t("{mins}m ago", { mins: Math.floor(secs / 60) });
 	});
 
 	private readonly onOnline = () => this.online.set(true);

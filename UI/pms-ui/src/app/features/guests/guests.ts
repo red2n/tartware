@@ -8,6 +8,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -46,6 +47,7 @@ type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 })
 export class GuestsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly router = inject(Router);
 	readonly globalSearch = inject(GlobalSearchService);
@@ -135,7 +137,10 @@ export class GuestsComponent {
 	);
 	readonly segmentSummary = computed(() => {
 		const count = this.filterCounts()[this.activeFilter()] ?? 0;
-		return `${count} ${count === 1 ? "guest" : "guests"} in this segment`;
+		return this.i18n.t(
+			count === 1 ? "{count} guest in this segment" : "{count} guests in this segment",
+			{ count },
+		);
 	});
 
 	readonly filterCounts = computed(() => {

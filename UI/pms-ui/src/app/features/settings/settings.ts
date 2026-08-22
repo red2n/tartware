@@ -224,8 +224,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
 	formatDisplayValue(def: SettingsDefinition): string {
 		const val = this.getDisplayValue(def);
-		if (val === null || val === undefined) return "Not configured";
-		if (typeof val === "boolean") return val ? "Enabled" : "Disabled";
+		if (val === null || val === undefined) return this.i18n.t("Not configured");
+		if (typeof val === "boolean") return this.i18n.t(val ? "Enabled" : "Disabled");
 		if (typeof val === "object") {
 			try {
 				return JSON.stringify(val, null, 2);
@@ -423,17 +423,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	}
 
 	/** Convert camelCase or SCREAMING_CASE key to human-readable label */
+	/**
+	 * Turn a setting key or enum value into the label the user reads.
+	 *
+	 * The humanized English is the translation key — these are derived at runtime
+	 * from whatever the settings API returns, so they cannot be listed statically;
+	 * anything without an entry falls back to the English, which is the old behaviour.
+	 */
 	humanizeKey(key: string): string {
 		if (key === key.toUpperCase() && key.includes("_")) {
-			return key
-				.split("_")
-				.map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-				.join(" ");
+			return this.i18n.t(
+				key
+					.split("_")
+					.map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+					.join(" "),
+			);
 		}
-		return key
-			.replace(/([a-z])([A-Z])/g, "$1 $2")
-			.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-			.replace(/^./, (c) => c.toUpperCase());
+		return this.i18n.t(
+			key
+				.replace(/([a-z])([A-Z])/g, "$1 $2")
+				.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+				.replace(/^./, (c) => c.toUpperCase()),
+		);
 	}
 
 	/** Format a table cell or child value for display */

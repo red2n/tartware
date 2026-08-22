@@ -11,6 +11,7 @@ import {
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
@@ -141,6 +142,7 @@ const emptyForm = (): BookingForm => ({
 })
 export class FunctionSpaceCalendarComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -389,7 +391,9 @@ export class FunctionSpaceCalendarComponent {
 			this.rooms.set(Array.isArray(res) ? res : (res?.data ?? []));
 			await this.loadBookings();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load meeting rooms");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load meeting rooms"),
+			);
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -414,7 +418,9 @@ export class FunctionSpaceCalendarComponent {
 			);
 			this.bookings.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load event bookings");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load event bookings"),
+			);
 		}
 	}
 
@@ -486,13 +492,15 @@ export class FunctionSpaceCalendarComponent {
 				...(f.special_requests.trim() ? { special_requests: f.special_requests.trim() } : {}),
 				...(f.rental_rate != null ? { rental_rate: f.rental_rate } : {}),
 			});
-			this.toast.success("Event booking created.");
+			this.toast.success(this.i18n.t("Event booking created."));
 			this.editorOpen.set(false);
 			await this.loadBookings();
 		} catch (e) {
 			// A 409 here is the overlap check doing its job — the room is already
 			// held for part of that window, setup and teardown included.
-			this.toast.error(e instanceof Error ? e.message : "Failed to create event booking");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to create event booking"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

@@ -71,6 +71,9 @@ jobs:
       - name: Check palette contrast (WCAG 2.2)
         run: node UI/shared-styles/check-contrast.mjs
 
+      - name: Check translation coverage
+        run: node UI/pms-ui/check-i18n.mjs
+
       - name: Test
         run: npx nx run @tartware/pms-ui:test
 

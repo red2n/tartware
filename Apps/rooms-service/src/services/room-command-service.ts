@@ -189,9 +189,9 @@ export const handleRoomHousekeepingStatusUpdate = async (
       SET
         housekeeping_status = $3::housekeeping_status,
         housekeeping_notes = CASE
-          WHEN $4 IS NULL THEN housekeeping_notes
-          WHEN housekeeping_notes IS NULL THEN $4
-          ELSE CONCAT_WS(E'\\n', housekeeping_notes, $4)
+          WHEN $4::text IS NULL THEN housekeeping_notes
+          WHEN housekeeping_notes IS NULL THEN $4::text
+          ELSE CONCAT_WS(E'\\n', housekeeping_notes, $4::text)
         END,
         version = version + 1,
         updated_at = NOW(),

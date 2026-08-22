@@ -1,6 +1,6 @@
 <div class="reports-page">
   <!-- The sub-sidebar owns report selection, so the header names the open one. -->
-  <app-page-header [title]="active().label" [description]="active().description">
+  <app-page-header [title]="active().label | translate" [description]="active().description | translate">
     <button class="btn btn-invisible" (click)="loadReport()" [pTooltip]="'Refresh' | translate">
       <app-icon name="refresh" />
     </button>

@@ -5,14 +5,15 @@ import type { InvoiceListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { settleCommandReadModel } from "../../shared/command-refresh";
 import { ToastService } from "../../shared/toast/toast.service";
-
 import { BillingDataService } from "./billing-data.service";
 
 @Injectable()
 export class BillingInvoicesService {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -48,10 +49,10 @@ export class BillingInvoicesService {
 		this.processingInvoiceAction.set(invoice.id);
 		try {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoice.id}/finalize`, {});
-			this.toast.success("Invoice finalize submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice finalize submitted. Refreshing invoices..."));
 			await settleCommandReadModel(() => this.data.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to finalize invoice");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to finalize invoice"));
 		} finally {
 			this.processingInvoiceAction.set(null);
 		}
@@ -75,11 +76,11 @@ export class BillingInvoicesService {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`, {
 				reason: this.voidInvoiceReason() || undefined,
 			});
-			this.toast.success("Invoice void submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice void submitted. Refreshing invoices..."));
 			this.voidInvoiceId.set(null);
 			await settleCommandReadModel(() => this.data.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to void invoice");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to void invoice"));
 		} finally {
 			this.processingInvoiceVoid.set(false);
 		}
@@ -106,11 +107,13 @@ export class BillingInvoicesService {
 				credit_amount: form.credit_amount,
 				reason: form.reason,
 			});
-			this.toast.success("Credit note submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Credit note submitted. Refreshing invoices..."));
 			this.creditNoteInvoiceId.set(null);
 			await settleCommandReadModel(() => this.data.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create credit note");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to create credit note"),
+			);
 		} finally {
 			this.processingCreditNote.set(false);
 		}
@@ -134,11 +137,11 @@ export class BillingInvoicesService {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/reopen`, {
 				reason: this.reopenInvoiceReason().trim(),
 			});
-			this.toast.success("Invoice reopen submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice reopen submitted. Refreshing invoices..."));
 			this.reopenInvoiceId.set(null);
 			await settleCommandReadModel(() => this.data.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to reopen invoice");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to reopen invoice"));
 		} finally {
 			this.processingInvoiceReopen.set(false);
 		}
@@ -176,7 +179,7 @@ export class BillingInvoicesService {
 				due_date: form.due_date || undefined,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Invoice create submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice create submitted. Refreshing invoices..."));
 			this.showCreateInvoiceForm.set(false);
 			this.createInvoiceForm.set({
 				reservation_id: "",
@@ -187,7 +190,7 @@ export class BillingInvoicesService {
 			});
 			await settleCommandReadModel(() => this.data.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create invoice");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create invoice"));
 		} finally {
 			this.creatingInvoice.set(false);
 		}

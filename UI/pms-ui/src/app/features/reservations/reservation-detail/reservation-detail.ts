@@ -21,6 +21,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
@@ -79,6 +80,7 @@ const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
 })
 export class ReservationDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly route = inject(ActivatedRoute);
@@ -520,12 +522,12 @@ export class ReservationDetailComponent implements OnInit {
 				body["reservation_id"] = r.id;
 			}
 			await this.api.post(`/tenants/${tenantId}/billing/charges`, body);
-			this.toast.success("Charge posted. Refreshing folio...");
+			this.toast.success(this.i18n.t("Charge posted. Refreshing folio..."));
 			this.showPostChargeForm.set(false);
 			this.postChargeForm.set({ charge_code: "MISC", amount: 0, quantity: 1, description: "" });
 			await settleCommandReadModel(() => this.loadFolioCharges());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to post charge");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to post charge"));
 		} finally {
 			this.postingCharge.set(false);
 		}
@@ -730,11 +732,13 @@ export class ReservationDetailComponent implements OnInit {
 				? (this.availableRooms().find((rm) => rm.room_id === roomId)?.room_number ??
 					"selected room")
 				: "auto-assigned room";
-			this.toast.success(`Guest checked in successfully. Room: ${roomLabel}.`);
+			this.toast.success(
+				this.i18n.t("Guest checked in successfully. Room: {p0}.", { p0: roomLabel }),
+			);
 			this.confirmingCheckIn.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Check-in failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Check-in failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -751,11 +755,11 @@ export class ReservationDetailComponent implements OnInit {
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/check-out`, {});
-			this.toast.success("Guest checked out. Room status set to Vacant Dirty.");
+			this.toast.success(this.i18n.t("Guest checked out. Room status set to Vacant Dirty."));
 			this.confirmingCheckOut.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Check-out failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Check-out failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -775,11 +779,13 @@ export class ReservationDetailComponent implements OnInit {
 				reservation_id: r.id,
 				property_id: r.property_id,
 			});
-			this.toast.success("Express checkout completed. Folio closed and room released.");
+			this.toast.success(
+				this.i18n.t("Express checkout completed. Folio closed and room released."),
+			);
 			this.confirmingExpressCheckout.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Express checkout failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Express checkout failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -796,11 +802,11 @@ export class ReservationDetailComponent implements OnInit {
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/cancel`, {});
-			this.toast.success("Reservation cancelled.");
+			this.toast.success(this.i18n.t("Reservation cancelled."));
 			this.confirmingCancel.set(false);
 			await this.pollUntilStatusChanged(r.id, r.status);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Cancellation failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Cancellation failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -813,7 +819,7 @@ export class ReservationDetailComponent implements OnInit {
 
 		const chargeAmount = this.parseOptionalPositiveNumber(this.noShowChargeForm().charge_amount);
 		if (this.noShowChargeForm().charge_amount && chargeAmount == null) {
-			this.toast.error("No-show charge amount must be greater than 0.");
+			this.toast.error(this.i18n.t("No-show charge amount must be greater than 0."));
 			return;
 		}
 
@@ -828,14 +834,14 @@ export class ReservationDetailComponent implements OnInit {
 				currency: this.optionalTrimmedValue(this.noShowChargeForm().currency),
 				reason_code: this.optionalTrimmedValue(this.noShowChargeForm().reason_code),
 			});
-			this.toast.success("No-show charge command accepted.");
+			this.toast.success(this.i18n.t("No-show charge command accepted."));
 			this.confirmingNoShowCharge.set(false);
 			await this.refreshReservationAfterCommand(
 				r.id,
 				r.status === "CONFIRMED" ? "NO_SHOW" : undefined,
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "No-show charge failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("No-show charge failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -850,7 +856,7 @@ export class ReservationDetailComponent implements OnInit {
 			this.lateCheckoutChargeForm().actual_checkout_time,
 		);
 		if (!actualCheckoutTime) {
-			this.toast.error("Actual checkout time is required.");
+			this.toast.error(this.i18n.t("Actual checkout time is required."));
 			return;
 		}
 
@@ -858,7 +864,7 @@ export class ReservationDetailComponent implements OnInit {
 			this.lateCheckoutChargeForm().override_amount,
 		);
 		if (this.lateCheckoutChargeForm().override_amount && overrideAmount == null) {
-			this.toast.error("Late checkout override amount must be greater than 0.");
+			this.toast.error(this.i18n.t("Late checkout override amount must be greater than 0."));
 			return;
 		}
 
@@ -879,11 +885,11 @@ export class ReservationDetailComponent implements OnInit {
 					currency: this.optionalTrimmedValue(this.lateCheckoutChargeForm().currency),
 				},
 			);
-			this.toast.success("Late checkout charge command accepted.");
+			this.toast.success(this.i18n.t("Late checkout charge command accepted."));
 			this.confirmingLateCheckoutCharge.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Late checkout charge failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Late checkout charge failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -898,7 +904,7 @@ export class ReservationDetailComponent implements OnInit {
 			this.cancellationPenaltyForm().penalty_amount_override,
 		);
 		if (this.cancellationPenaltyForm().penalty_amount_override && penaltyAmountOverride == null) {
-			this.toast.error("Penalty override amount must be greater than 0.");
+			this.toast.error(this.i18n.t("Penalty override amount must be greater than 0."));
 			return;
 		}
 
@@ -916,11 +922,11 @@ export class ReservationDetailComponent implements OnInit {
 					reason: this.optionalTrimmedValue(this.cancellationPenaltyForm().reason),
 				},
 			);
-			this.toast.success("Cancellation penalty command accepted.");
+			this.toast.success(this.i18n.t("Cancellation penalty command accepted."));
 			this.confirmingCancellationPenalty.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Cancellation penalty failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Cancellation penalty failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -933,11 +939,11 @@ export class ReservationDetailComponent implements OnInit {
 
 		const form = this.modifyDatesForm();
 		if (!form.check_in_date || !form.check_out_date) {
-			this.toast.error("Both check-in and check-out dates are required.");
+			this.toast.error(this.i18n.t("Both check-in and check-out dates are required."));
 			return;
 		}
 		if (form.check_out_date <= form.check_in_date) {
-			this.toast.error("Check-out date must be after check-in date.");
+			this.toast.error(this.i18n.t("Check-out date must be after check-in date."));
 			return;
 		}
 
@@ -953,23 +959,25 @@ export class ReservationDetailComponent implements OnInit {
 		// reaches this method must not move an in-house guest's arrival.
 		if (status === "CHECKED_IN") {
 			if (form.check_in_date !== origIn) {
-				this.toast.error("Cannot change check-in date for an in-house guest.");
+				this.toast.error(this.i18n.t("Cannot change check-in date for an in-house guest."));
 				return;
 			}
 			if (form.check_out_date < origOut) {
-				this.toast.error("Cannot advance checkout for an in-house guest. You may only postpone.");
+				this.toast.error(
+					this.i18n.t("Cannot advance checkout for an in-house guest. You may only postpone."),
+				);
 				return;
 			}
 		}
 
 		// Pre-arrival: cannot advance check-in to before today
 		if (status !== "CHECKED_IN" && form.check_in_date < today) {
-			this.toast.error("Cannot set check-in date in the past.");
+			this.toast.error(this.i18n.t("Cannot set check-in date in the past."));
 			return;
 		}
 
 		if (form.check_in_date === origIn && form.check_out_date === origOut) {
-			this.toast.error("No date changes detected.");
+			this.toast.error(this.i18n.t("No date changes detected."));
 			return;
 		}
 
@@ -986,11 +994,13 @@ export class ReservationDetailComponent implements OnInit {
 			if (form.check_out_date !== origOut) payload["check_out_date"] = form.check_out_date;
 
 			await this.api.post(`/tenants/${tenantId}/commands/reservation.modify`, payload);
-			this.toast.success("Reservation dates updated.");
+			this.toast.success(this.i18n.t("Reservation dates updated."));
 			this.confirmingModifyDates.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to modify reservation dates");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to modify reservation dates"),
+			);
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -1069,7 +1079,7 @@ export class ReservationDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 		const roomId = this.assignRoomForm().room_id;
 		if (!roomId) {
-			this.toast.error("Select a room to assign.");
+			this.toast.error(this.i18n.t("Select a room to assign."));
 			return;
 		}
 		this.actionLoading.set(true);
@@ -1077,11 +1087,11 @@ export class ReservationDetailComponent implements OnInit {
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/assign-room`, {
 				room_id: roomId,
 			});
-			this.toast.success("Room assigned.");
+			this.toast.success(this.i18n.t("Room assigned."));
 			this.confirmingAssignRoom.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to assign room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to assign room"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -1096,11 +1106,11 @@ export class ReservationDetailComponent implements OnInit {
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/unassign-room`, {
 				reason: "Unassigned from reservation detail",
 			});
-			this.toast.success("Room unassigned.");
+			this.toast.success(this.i18n.t("Room unassigned."));
 			this.confirmingUnassignRoom.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to unassign room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to unassign room"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -1112,11 +1122,11 @@ export class ReservationDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 		const f = this.extendForm();
 		if (!f.new_check_out_date) {
-			this.toast.error("New check-out date is required.");
+			this.toast.error(this.i18n.t("New check-out date is required."));
 			return;
 		}
 		if (f.new_check_out_date <= r.check_out_date.substring(0, 10)) {
-			this.toast.error("Extended check-out must be after current check-out.");
+			this.toast.error(this.i18n.t("Extended check-out must be after current check-out."));
 			return;
 		}
 		this.actionLoading.set(true);
@@ -1125,11 +1135,11 @@ export class ReservationDetailComponent implements OnInit {
 				new_check_out_date: f.new_check_out_date,
 				reason: f.reason || undefined,
 			});
-			this.toast.success("Stay extended.");
+			this.toast.success(this.i18n.t("Stay extended."));
 			this.confirmingExtend.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to extend stay");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to extend stay"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -1142,11 +1152,11 @@ export class ReservationDetailComponent implements OnInit {
 		const f = this.rateOverrideForm();
 		const rate = Number(f.new_rate);
 		if (!Number.isFinite(rate) || rate < 0) {
-			this.toast.error("Enter a valid rate.");
+			this.toast.error(this.i18n.t("Enter a valid rate."));
 			return;
 		}
 		if (!f.reason.trim()) {
-			this.toast.error("Reason is required for rate override.");
+			this.toast.error(this.i18n.t("Reason is required for rate override."));
 			return;
 		}
 		this.actionLoading.set(true);
@@ -1155,11 +1165,11 @@ export class ReservationDetailComponent implements OnInit {
 				new_rate: rate,
 				reason: f.reason.trim(),
 			});
-			this.toast.success("Rate overridden.");
+			this.toast.success(this.i18n.t("Rate overridden."));
 			this.confirmingRateOverride.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to override rate");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to override rate"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -1172,7 +1182,7 @@ export class ReservationDetailComponent implements OnInit {
 		const f = this.addDepositForm();
 		const amount = Number(f.amount);
 		if (!Number.isFinite(amount) || amount <= 0) {
-			this.toast.error("Enter a positive deposit amount.");
+			this.toast.error(this.i18n.t("Enter a positive deposit amount."));
 			return;
 		}
 		this.actionLoading.set(true);
@@ -1182,12 +1192,12 @@ export class ReservationDetailComponent implements OnInit {
 				payment_method: f.method,
 				reference: f.reference || undefined,
 			});
-			this.toast.success("Deposit added.");
+			this.toast.success(this.i18n.t("Deposit added."));
 			this.confirmingAddDeposit.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 			await this.loadFolioCharges();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to add deposit");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to add deposit"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -1200,7 +1210,7 @@ export class ReservationDetailComponent implements OnInit {
 		const f = this.releaseDepositForm();
 		const amount = Number(f.amount);
 		if (!Number.isFinite(amount) || amount <= 0) {
-			this.toast.error("Enter a positive release amount.");
+			this.toast.error(this.i18n.t("Enter a positive release amount."));
 			return;
 		}
 		this.actionLoading.set(true);
@@ -1209,12 +1219,12 @@ export class ReservationDetailComponent implements OnInit {
 				amount,
 				reason: f.reason || undefined,
 			});
-			this.toast.success("Deposit released.");
+			this.toast.success(this.i18n.t("Deposit released."));
 			this.confirmingReleaseDeposit.set(false);
 			await this.refreshReservationAfterCommand(r.id);
 			await this.loadFolioCharges();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to release deposit");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to release deposit"));
 		} finally {
 			this.actionLoading.set(false);
 		}

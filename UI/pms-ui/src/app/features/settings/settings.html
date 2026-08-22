@@ -22,10 +22,10 @@
       <div class="settings-heading">
         <h2 class="settings-heading-title">
           <app-icon class="settings-heading-icon" [name]="categoryIcon(cat)" />
-          {{ cat.name }}
+          {{ cat.name | translate }}
         </h2>
         @if (cat.description) {
-          <p class="settings-heading-desc">{{ cat.description }}</p>
+          <p class="settings-heading-desc">{{ cat.description | translate }}</p>
         }
       </div>
 
@@ -56,9 +56,9 @@
             @for (group of sectionDefinitions(); track group.section.id) {
               <section class="settings-section" [attr.aria-label]="group.section.name">
                 <div class="settings-section-header">
-                  <h3 class="settings-section-title">{{ group.section.name }}</h3>
+                  <h3 class="settings-section-title">{{ group.section.name | translate }}</h3>
                   @if (group.section.description) {
-                    <p class="settings-section-desc">{{ group.section.description }}</p>
+                    <p class="settings-section-desc">{{ group.section.description | translate }}</p>
                   }
                 </div>
 
@@ -71,7 +71,7 @@
                         <div class="settings-item-body">
                           <div class="settings-item-info">
                             <div class="settings-item-label">
-                              {{ def.name }}
+                              {{ def.name | translate }}
                               @if (hasTooltip(def)) {
                                 <app-icon
                                   class="settings-item-tip"
@@ -87,7 +87,7 @@
                               }
                             </div>
                             @if (def.description) {
-                              <p class="settings-item-desc">{{ def.description }}</p>
+                              <p class="settings-item-desc">{{ def.description | translate }}</p>
                             }
                           </div>
 
@@ -105,7 +105,7 @@
                               <!-- Simple inline value (non-JSON, non-array) -->
                               @if (!isJsonValue(def) && !isArrayDisplayValue(def)) {
                                 <span class="settings-item-value" [class.text-muted]="getDisplayValue(def) === null">
-                                  {{ formatDisplayValue(def) }}
+                                  {{ formatDisplayValue(def) | translate }}
                                 </span>
                               }
                               @if (!def.is_readonly) {
@@ -212,9 +212,9 @@
                       } @else {
                         <div class="settings-item-body">
                           <div class="settings-item-info">
-                            <div class="settings-item-label">{{ def.name }}</div>
+                            <div class="settings-item-label">{{ def.name | translate }}</div>
                             @if (def.description) {
-                              <p class="settings-item-desc">{{ def.description }}</p>
+                              <p class="settings-item-desc">{{ def.description | translate }}</p>
                             }
                           </div>
                         </div>

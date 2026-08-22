@@ -145,7 +145,7 @@
                     <div class="guest-name-info">
                       <span class="guest-name">
                         @if (guest.title) {
-                          <span class="text-muted">{{ guest.title }}</span>
+                          <span class="text-muted">{{ guest.title | translate }}</span>
                         }
                         {{ guest.first_name }} {{ guest.last_name }}
                       </span>
@@ -154,7 +154,7 @@
                       }
                     </div>
                     @if (guest.is_blacklisted) {
-                      <span class="badge badge-danger">BL</span>
+                      <span class="badge badge-danger">{{ 'BL' | translate }}</span>
                     }
                   </div>
                 </td>
@@ -163,7 +163,7 @@
                 <td>
                   <div class="status-badges">
                     @if (guest.vip_status) {
-                      <span class="badge" [ngClass]="vipClass(guest.vip_status)">VIP</span>
+                      <span class="badge" [ngClass]="vipClass(guest.vip_status)">{{ 'VIP' | translate }}</span>
                     }
                     @if (guest.loyalty_tier) {
                       <span class="badge" [ngClass]="loyaltyClass(guest.loyalty_tier)">

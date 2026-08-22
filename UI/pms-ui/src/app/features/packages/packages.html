@@ -129,7 +129,7 @@
                   <span class="pkg-name text-muted">{{ pkg.package_name }}</span>
                 </td>
                 <td>
-                  <span class="badge badge-muted">{{ pkg.package_type_display }}</span>
+                  <span class="badge badge-muted">{{ pkg.package_type_display | translate }}</span>
                 </td>
                 <td class="col-right cell-amount">
                   {{ formatCurrency(pkg.base_price, pkg.currency_code) }}
@@ -138,11 +138,11 @@
                   }
                 </td>
                 <td>
-                  <span class="text-muted">{{ pkg.pricing_model_display }}</span>
+                  <span class="text-muted">{{ pkg.pricing_model_display | translate }}</span>
                 </td>
                 <td class="cell-inclusions">
                   @for (inc of inclusionIcons(pkg); track inc.icon) {
-                    <app-icon class="inclusion-icon" [pTooltip]="inc.label" [name]="inc.icon" />
+                    <app-icon class="inclusion-icon" [pTooltip]="inc.label | translate" [name]="inc.icon" />
                   }
                   @if (inclusionIcons(pkg).length === 0) {
                     <span class="text-muted">—</span>
@@ -162,7 +162,7 @@
                 </td>
                 <td class="cell-status">
                   <span class="badge" [ngClass]="statusClass(pkg)">
-                    {{ statusLabel(pkg) }}
+                    {{ statusLabel(pkg) | translate }}
                   </span>
                   @if (pkg.is_featured) {
                     <app-icon class="featured-icon" [pTooltip]="'Featured package' | translate" name="star" />

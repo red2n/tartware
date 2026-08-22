@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
@@ -16,6 +16,7 @@ import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { LocaleDatePipe } from "../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -36,17 +37,17 @@ type SortDir = "asc" | "desc";
 	selector: "app-housekeeping",
 	standalone: true,
 	imports: [
-		DatePipe,
-		NgClass,
-		NgTemplateOutlet,
 		FormsModule,
 		IconComponent,
+		LocaleDatePipe,
+		NgClass,
+		NgTemplateOutlet,
+		PageHeaderComponent,
+		PaginationComponent,
 		PopoverModule,
 		ProgressSpinnerModule,
-		TooltipModule,
 		RouterLink,
-		PaginationComponent,
-		PageHeaderComponent,
+		TooltipModule,
 		TranslatePipe,
 	],
 	templateUrl: "./housekeeping.html",
@@ -486,7 +487,9 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=200`);
+			// 100 is the cap UserListQuerySchema enforces; asking for more is a 400,
+			// which the catch below turns into an empty picker.
+			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=100`);
 			this.staff.set(data ?? []);
 		} catch {
 			this.staff.set([]);

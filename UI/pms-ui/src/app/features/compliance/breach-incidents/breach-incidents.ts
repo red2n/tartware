@@ -1,8 +1,10 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -69,12 +71,20 @@ const HOUR_MS = 60 * 60 * 1000;
 @Component({
 	selector: "app-breach-incidents",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./breach-incidents.html",
 	styleUrl: "./breach-incidents.scss",
 })
 export class BreachIncidentsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
@@ -173,7 +183,7 @@ export class BreachIncidentsComponent {
 	deadlineLabel(incident: BreachIncident): string {
 		if (incident.authority_notified) return "Notified";
 		const hours = this.hoursRemaining(incident);
-		if (hours === null) return "No deadline recorded";
+		if (hours === null) return this.i18n.t("No deadline recorded");
 		if (hours < 0) return `Overdue by ${Math.abs(hours)}h`;
 		return `${hours}h remaining`;
 	}
@@ -213,7 +223,9 @@ export class BreachIncidentsComponent {
 			);
 			this.incidents.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load breach incidents");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load breach incidents"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -234,7 +246,9 @@ export class BreachIncidentsComponent {
 				(res as { data?: BreachIncidentDetail })?.data ?? (res as BreachIncidentDetail);
 			if (detail?.incident_id) this.selected.set(detail);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load incident detail");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load incident detail"),
+			);
 		} finally {
 			this.loadingDetail.set(false);
 		}
@@ -289,11 +303,15 @@ export class BreachIncidentsComponent {
 					? { subjects_affected_count: f.subjects_affected_count }
 					: {}),
 			});
-			this.toast.success("Breach incident recorded. The 72-hour notification clock has started.");
+			this.toast.success(
+				this.i18n.t("Breach incident recorded. The 72-hour notification clock has started."),
+			);
 			this.reporting.set(false);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to record breach incident");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to record breach incident"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -325,12 +343,14 @@ export class BreachIncidentsComponent {
 				notify_subjects: f.notify_subjects,
 				...(f.notification_notes.trim() ? { notification_notes: f.notification_notes.trim() } : {}),
 			});
-			this.toast.success("Regulator notification recorded.");
+			this.toast.success(this.i18n.t("Regulator notification recorded."));
 			this.notifying.set(null);
 			this.selected.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to record notification");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to record notification"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

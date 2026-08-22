@@ -1,4 +1,3 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
@@ -14,6 +13,8 @@ import {
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
@@ -83,12 +84,13 @@ const EXECUTION_STEPS: readonly { step: BeoExecutionStep; label: string; icon: s
 @Component({
 	selector: "app-day-sheet",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, TranslatePipe],
+	imports: [FormsModule, IconComponent, LocaleDatePipe, PageHeaderComponent, TranslatePipe],
 	templateUrl: "./day-sheet.html",
 	styleUrl: "./day-sheet.scss",
 })
 export class DaySheetComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -136,7 +138,9 @@ export class DaySheetComponent {
 			this.sheet.set(res);
 		} catch (e) {
 			this.sheet.set(null);
-			this.toast.error(e instanceof Error ? e.message : "Failed to load the day sheet");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load the day sheet"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -310,10 +314,12 @@ export class DaySheetComponent {
 			// The step's own label, not a re-cased enum: the toast should read like
 			// the button that was pressed ("Setup complete", not "Setup Complete").
 			const label = EXECUTION_STEPS.find((entry) => entry.step === step)?.label ?? step;
-			this.toast.success(`${label} recorded on ${order.beo_number}.`);
+			this.toast.success(
+				this.i18n.t("{p0} recorded on {p1}.", { p0: label, p1: order.beo_number }),
+			);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to record the step");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to record the step"));
 		} finally {
 			this.recordingBeoId.set(null);
 		}

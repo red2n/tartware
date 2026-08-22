@@ -30,7 +30,7 @@
 
   <!-- ═══ MISSING RATE WARNING ═══ -->
   @if (missingRates().length > 0) {
-    <app-callout variant="warning" title="Missing exchange rates">
+    <app-callout variant="warning" [title]="'Missing exchange rates' | translate">
       <p>
         {{ 'These property currencies have no rate to' | translate }} {{ baseCurrency() }}
         {{ 'for' | translate }} {{ rateDate() }}.

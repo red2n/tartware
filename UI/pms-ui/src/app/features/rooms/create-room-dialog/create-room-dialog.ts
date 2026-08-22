@@ -12,6 +12,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 type RoomType = Pick<RoomTypeItem, "room_type_id" | "type_name">;
 type Building = Pick<BuildingItem, "building_id" | "building_code" | "building_name">;
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
@@ -29,6 +30,7 @@ import { DialogShellComponent } from "../../../shared/components/dialog-shell/di
 })
 export class CreateRoomDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(DynamicDialogRef);
@@ -64,7 +66,7 @@ export class CreateRoomDialogComponent implements OnInit {
 			this.roomTypes.set(roomTypes);
 			this.buildings.set(buildings);
 		} catch {
-			this.toast.error("Failed to load reference data");
+			this.toast.error(this.i18n.t("Failed to load reference data"));
 		}
 	}
 
@@ -101,7 +103,7 @@ export class CreateRoomDialogComponent implements OnInit {
 			if (e instanceof ApiValidationError) {
 				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.toast.error(e instanceof Error ? e.message : "Failed to create room");
+				this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create room"));
 			}
 		} finally {
 			this.saving.set(false);

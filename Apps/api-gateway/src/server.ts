@@ -58,7 +58,12 @@ export const buildServer = () => {
     timeWindow: gatewayConfig.rateLimit.timeWindow,
     keyGenerator: (request: FastifyRequest) =>
       (request.headers["x-api-key"] as string | undefined) ?? request.ip ?? "anonymous",
-    ban: 0,
+    // -1 disables banning, so a throttled caller gets 429 + Retry-After and can
+    // back off. `ban: 0` does NOT mean "no ban": @fastify/rate-limit bans once
+    // `current - max > ban`, so 0 banned on the second over-limit request and
+    // answered 403 from then on — indistinguishable from an authorization
+    // failure to every client, and to anyone reading the logs.
+    ban: -1,
   };
 
   if (gatewayConfig.redis.enabled) {

@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -69,11 +71,19 @@ const OPEN_STATUSES = new Set(["pending", "in_progress", "completed", "escalated
 @Component({
 	selector: "app-shift-handovers",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./shift-handovers.html",
 })
 export class ShiftHandoversComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -191,7 +201,9 @@ export class ShiftHandoversComponent {
 			);
 			this.handovers.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load shift handovers");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load shift handovers"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -263,7 +275,7 @@ export class ShiftHandoversComponent {
 
 		const existing = this.editing();
 		if (!existing && !propertyId) {
-			this.toast.error("Select a property before opening a handover.");
+			this.toast.error(this.i18n.t("Select a property before opening a handover."));
 			return;
 		}
 
@@ -292,7 +304,7 @@ export class ShiftHandoversComponent {
 					...shared,
 					handover_status: f.handover_status,
 				});
-				this.toast.success("Handover updated.");
+				this.toast.success(this.i18n.t("Handover updated."));
 			} else {
 				await this.api.post("/shift-handovers", {
 					...shared,
@@ -310,13 +322,13 @@ export class ShiftHandoversComponent {
 						? { incoming_user_name: optional(f.incoming_user_name) }
 						: {}),
 				});
-				this.toast.success("Handover opened.");
+				this.toast.success(this.i18n.t("Handover opened."));
 			}
 			this.opening.set(false);
 			this.editing.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save handover");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save handover"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -352,11 +364,13 @@ export class ShiftHandoversComponent {
 					? { handover_quality_rating: f.handover_quality_rating }
 					: {}),
 			});
-			this.toast.success("Handover acknowledged.");
+			this.toast.success(this.i18n.t("Handover acknowledged."));
 			this.ackTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to acknowledge handover");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to acknowledge handover"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

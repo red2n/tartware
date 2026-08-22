@@ -1,4 +1,3 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { WebhookDeliveryRow, WebhookSubscriptions } from "@tartware/schemas";
@@ -7,6 +6,8 @@ import { TooltipModule } from "primeng/tooltip";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
@@ -46,12 +47,12 @@ const DEFAULT_FORM: WebhookForm = {
 	selector: "app-webhooks",
 	standalone: true,
 	imports: [
-		DatePipe,
 		FormsModule,
 		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
 		ProgressSpinnerModule,
 		TooltipModule,
-		PageHeaderComponent,
 		TranslatePipe,
 	],
 	templateUrl: "./webhooks.html",
@@ -59,6 +60,7 @@ const DEFAULT_FORM: WebhookForm = {
 })
 export class WebhooksComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
@@ -97,7 +99,7 @@ export class WebhooksComponent {
 			const list = Array.isArray(res) ? res : (res.data ?? res.items ?? []);
 			this.subscriptions.set(list);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load webhooks");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load webhooks"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -136,7 +138,7 @@ export class WebhooksComponent {
 		if (!url) return;
 		const f = this.form();
 		if (!f.webhook_name.trim() || !f.webhook_url.trim()) {
-			this.toast.error("Name and URL are required.");
+			this.toast.error(this.i18n.t("Name and URL are required."));
 			return;
 		}
 		const eventTypes = f.event_types_csv
@@ -144,7 +146,7 @@ export class WebhooksComponent {
 			.map((e) => e.trim())
 			.filter(Boolean);
 		if (eventTypes.length === 0) {
-			this.toast.error("At least one event type is required.");
+			this.toast.error(this.i18n.t("At least one event type is required."));
 			return;
 		}
 		const payload: Record<string, unknown> = {
@@ -160,16 +162,16 @@ export class WebhooksComponent {
 		try {
 			if (editingId) {
 				await this.api.put(`${url}/${editingId}`, payload);
-				this.toast.success("Webhook update dispatched.");
+				this.toast.success(this.i18n.t("Webhook update dispatched."));
 			} else {
 				await this.api.post(url, payload);
-				this.toast.success("Webhook create dispatched.");
+				this.toast.success(this.i18n.t("Webhook create dispatched."));
 			}
 			this.showCreate.set(false);
 			this.editingId.set(null);
 			setTimeout(() => this.load(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save webhook");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save webhook"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -182,10 +184,10 @@ export class WebhooksComponent {
 		this.processing.set(w.subscription_id);
 		try {
 			await this.api.delete(`${url}/${w.subscription_id}`);
-			this.toast.success("Webhook delete dispatched.");
+			this.toast.success(this.i18n.t("Webhook delete dispatched."));
 			setTimeout(() => this.load(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to delete webhook");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to delete webhook"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -198,9 +200,9 @@ export class WebhooksComponent {
 		this.processing.set(`rotate-${w.subscription_id}`);
 		try {
 			await this.api.post(`${url}/${w.subscription_id}/rotate-secret`, {});
-			this.toast.success("Secret rotation dispatched.");
+			this.toast.success(this.i18n.t("Secret rotation dispatched."));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to rotate secret");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to rotate secret"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -212,9 +214,9 @@ export class WebhooksComponent {
 		this.processing.set(`test-${w.subscription_id}`);
 		try {
 			await this.api.post(`${url}/${w.subscription_id}/test`, {});
-			this.toast.success("Test event sent.");
+			this.toast.success(this.i18n.t("Test event sent."));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to send test event");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to send test event"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -227,9 +229,9 @@ export class WebhooksComponent {
 		this.processing.set(`replay-${w.subscription_id}`);
 		try {
 			await this.api.post(`${url}/${w.subscription_id}/replay`, {});
-			this.toast.success("Replay dispatched.");
+			this.toast.success(this.i18n.t("Replay dispatched."));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to replay deliveries");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to replay deliveries"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -248,7 +250,7 @@ export class WebhooksComponent {
 			const list = Array.isArray(res) ? res : (res.data ?? res.items ?? []);
 			this.deliveries.set(list);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load deliveries");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load deliveries"));
 		} finally {
 			this.loadingDeliveries.set(false);
 		}

@@ -1,4 +1,3 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
@@ -18,6 +17,8 @@ import {
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
@@ -106,9 +107,9 @@ type EditForm = {
 	selector: "app-event-booking-detail",
 	standalone: true,
 	imports: [
-		DatePipe,
 		FormsModule,
 		IconComponent,
+		LocaleDatePipe,
 		PageHeaderComponent,
 		RouterLink,
 		SubmitOnEnterDirective,
@@ -121,6 +122,7 @@ type EditForm = {
 })
 export class EventBookingDetailComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
@@ -316,7 +318,9 @@ export class EventBookingDetailComponent {
 			else this.folioCharges.set([]);
 		} catch (e) {
 			this.notFound.set(true);
-			this.toast.error(e instanceof Error ? e.message : "Failed to load event booking");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load event booking"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -463,13 +467,15 @@ export class EventBookingDetailComponent {
 					? { billing_contact_email: f.billing_contact_email.trim() }
 					: {}),
 			});
-			this.toast.success("Event booking updated.");
+			this.toast.success(this.i18n.t("Event booking updated."));
 			this.editing.set(false);
 			this.form.set(null);
 			await this.reload();
 		} catch (e) {
 			// A 409 means the edit moved the booking onto space someone else holds.
-			this.toast.error(e instanceof Error ? e.message : "Failed to update event booking");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update event booking"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -518,7 +524,9 @@ export class EventBookingDetailComponent {
 
 		const guaranteed = b.guarantee_number ?? b.confirmed_attendees ?? b.expected_attendees;
 		if (!guaranteed || guaranteed <= 0) {
-			this.toast.error("Set an expected or guaranteed head count on the booking first.");
+			this.toast.error(
+				this.i18n.t("Set an expected or guaranteed head count on the booking first."),
+			);
 			return;
 		}
 
@@ -545,10 +553,10 @@ export class EventBookingDetailComponent {
 				},
 			);
 			const created = "data" in res ? res.data : res;
-			this.toast.success(`${created.beo_number} created as a draft.`);
+			this.toast.success(this.i18n.t("{p0} created as a draft.", { p0: created.beo_number }));
 			void this.router.navigate(["/events/beos", created.beo_id]);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create the BEO");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create the BEO"));
 		} finally {
 			this.creatingBeo.set(false);
 		}
@@ -595,10 +603,12 @@ export class EventBookingDetailComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/events/${b.event_id}/folio`, {
 				property_id: b.property_id,
 			});
-			this.toast.success("Opening the event folio…");
+			this.toast.success(this.i18n.t("Opening the event folio…"));
 			await settleCommandReadModel(() => this.reload());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to open the event folio");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to open the event folio"),
+			);
 		} finally {
 			this.openingFolio.set(false);
 		}
@@ -622,10 +632,12 @@ export class EventBookingDetailComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/events/${b.event_id}/charges`, {
 				property_id: b.property_id,
 			});
-			this.toast.success("Posting event charges to the folio…");
+			this.toast.success(this.i18n.t("Posting event charges to the folio…"));
 			await settleCommandReadModel(() => this.reload());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to post the event charges");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to post the event charges"),
+			);
 		} finally {
 			this.postingCharges.set(false);
 		}
@@ -661,11 +673,11 @@ export class EventBookingDetailComponent {
 					? { cancellation_reason: this.cancellationReason().trim() }
 					: {}),
 			});
-			this.toast.success(`Booking moved to ${this.labelFor(next)}.`);
+			this.toast.success(this.i18n.t("Booking moved to {p0}.", { p0: this.labelFor(next) }));
 			this.pendingStatus.set(null);
 			await this.reload();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to change status");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to change status"));
 		} finally {
 			this.submitting.set(false);
 		}

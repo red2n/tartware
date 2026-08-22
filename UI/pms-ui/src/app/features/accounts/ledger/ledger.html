@@ -155,8 +155,8 @@
               <td>{{ item.source_table ?? "—" }}</td>
               <td class="text-right">{{ formatCurrency(item.debit_amount, item.currency ?? totals().currency) }}</td>
               <td class="text-right">{{ formatCurrency(item.credit_amount, item.currency ?? totals().currency) }}</td>
-              <td><span [class]="statusBadge(item.status)">{{ item.status_display }}</span></td>
-              <td><span [class]="batchBadge(item.batch_status)">{{ item.batch_status_display ?? "—" }}</span></td>
+              <td><span [class]="statusBadge(item.status)">{{ item.status_display | translate }}</span></td>
+              <td><span [class]="batchBadge(item.batch_status)">{{ (item.batch_status_display ?? "—") | translate }}</span></td>
             </tr>
           }
         </tbody>

@@ -1,4 +1,3 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
@@ -12,6 +11,8 @@ import {
 
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
@@ -200,9 +201,9 @@ type EditForm = {
 	selector: "app-beo-editor",
 	standalone: true,
 	imports: [
-		DatePipe,
 		FormsModule,
 		IconComponent,
+		LocaleDatePipe,
 		PageHeaderComponent,
 		RouterLink,
 		SubmitOnEnterDirective,
@@ -214,6 +215,7 @@ type EditForm = {
 })
 export class BeoEditorComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
@@ -432,7 +434,7 @@ export class BeoEditorComponent {
 			await this.loadVersions(detail.event_booking_id);
 		} catch (e) {
 			this.notFound.set(true);
-			this.toast.error(e instanceof Error ? e.message : "Failed to load the BEO");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load the BEO"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -797,14 +799,14 @@ export class BeoEditorComponent {
 				...this.optionalNumber("price_per_person", f.price_per_person),
 				...this.optionalNumber("children_price", f.children_price),
 			});
-			this.toast.success("BEO updated.");
+			this.toast.success(this.i18n.t("BEO updated."));
 			this.editing.set(false);
 			this.form.set(null);
 			await this.reload();
 		} catch (e) {
 			// A 409 here means the BEO was published from another screen while this
 			// one was open — it is frozen and the edit has to become a revision.
-			this.toast.error(e instanceof Error ? e.message : "Failed to update the BEO");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update the BEO"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -849,11 +851,13 @@ export class BeoEditorComponent {
 				tenant_id: tenantId,
 				notify_client: this.notifyClient(),
 			});
-			this.toast.success("BEO published — it is now frozen for the kitchen and setup.");
+			this.toast.success(
+				this.i18n.t("BEO published — it is now frozen for the kitchen and setup."),
+			);
 			this.pendingAction.set(null);
 			await this.reload();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to publish the BEO");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to publish the BEO"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -877,12 +881,14 @@ export class BeoEditorComponent {
 			// Revise replies with the *new* version, so follow it rather than
 			// leaving the operator looking at the one they just superseded.
 			const created = "data" in res ? res.data : res;
-			this.toast.success(`Revision v${created.beo_version} created as a draft.`);
+			this.toast.success(
+				this.i18n.t("Revision v{p0} created as a draft.", { p0: created.beo_version }),
+			);
 			this.pendingAction.set(null);
 			await this.router.navigate(["/events/beos", created.beo_id]);
 			await this.load(created.beo_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to revise the BEO");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to revise the BEO"));
 		} finally {
 			this.submitting.set(false);
 		}

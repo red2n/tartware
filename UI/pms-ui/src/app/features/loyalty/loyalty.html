@@ -124,8 +124,8 @@
               <td>{{ t.points_expiry_months ?? '—' }}</td>
               <td>{{ t.welcome_bonus_points ?? '—' }}</td>
               <td>
-                @if (t.is_active) { <span class="badge badge-success">Active</span> }
-                @else { <span class="badge">Inactive</span> }
+                @if (t.is_active) { <span class="badge badge-success">{{ 'Active' | translate }}</span> }
+                @else { <span class="badge">{{ 'Inactive' | translate }}</span> }
               </td>
             </tr>
           }
@@ -147,13 +147,13 @@
         <label class="field-label">{{ 'Type' | translate }}</label>
         <select class="field-input"
           [ngModel]="txnTypeFilter()" (ngModelChange)="txnTypeFilter.set($event ?? '')">
-          <option value="">All</option>
-          <option value="EARN">Earn</option>
-          <option value="REDEEM">Redeem</option>
-          <option value="EXPIRE">Expire</option>
-          <option value="ADJUST">Adjust</option>
-          <option value="BONUS">Bonus</option>
-          <option value="TRANSFER">Transfer</option>
+          <option value="">{{ 'All' | translate }}</option>
+          <option value="EARN">{{ 'Earn' | translate }}</option>
+          <option value="REDEEM">{{ 'Redeem' | translate }}</option>
+          <option value="EXPIRE">{{ 'Expire' | translate }}</option>
+          <option value="ADJUST">{{ 'Adjust' | translate }}</option>
+          <option value="BONUS">{{ 'Bonus' | translate }}</option>
+          <option value="TRANSFER">{{ 'Transfer' | translate }}</option>
         </select>
       </div>
       <div class="form-group">
@@ -188,7 +188,7 @@
         <tbody>
           @for (x of txns(); track x.transaction_id) {
             <tr>
-              <td>{{ x.created_at | date:'short' }}</td>
+              <td>{{ x.created_at | localeDate:'short' }}</td>
               <td><strong>{{ x.transaction_type }}</strong></td>
               <td [class.badge-success]="x.points >= 0" [class.badge-error]="x.points < 0">
                 {{ x.points > 0 ? '+' : '' }}{{ x.points }}
@@ -199,7 +199,7 @@
                 @else { — }
               </td>
               <td class="cell-notes">{{ x.description ?? '' }}</td>
-              <td>{{ x.expires_at ? (x.expires_at | date:'shortDate') : '—' }}</td>
+              <td>{{ x.expires_at ? (x.expires_at | localeDate:'shortDate') : '—' }}</td>
             </tr>
           }
         </tbody>

@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -56,11 +58,19 @@ const CONVERTIBLE_STATUSES = new Set(["ACTIVE", "OFFERED"]);
 @Component({
 	selector: "app-waitlist",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./waitlist.html",
 })
 export class WaitlistComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -168,7 +178,7 @@ export class WaitlistComponent {
 			);
 			this.entries.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load the waitlist");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load the waitlist"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -206,7 +216,7 @@ export class WaitlistComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !this.canSubmit() || this.submitting()) return;
 		if (!propertyId) {
-			this.toast.error("Select a property before adding to the waitlist.");
+			this.toast.error(this.i18n.t("Select a property before adding to the waitlist."));
 			return;
 		}
 		const f = this.form();
@@ -225,11 +235,13 @@ export class WaitlistComponent {
 				vip_flag: f.vip_flag,
 				...(f.notes.trim() ? { notes: f.notes.trim() } : {}),
 			});
-			this.toast.success("Waitlist request accepted.");
+			this.toast.success(this.i18n.t("Waitlist request accepted."));
 			this.adding.set(false);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to add to the waitlist");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to add to the waitlist"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -254,7 +266,7 @@ export class WaitlistComponent {
 		// operator is told what is missing instead of the request failing.
 		const totalAmount = Number(this.convertAmount());
 		if (!this.convertAmount().trim() || Number.isNaN(totalAmount) || totalAmount < 0) {
-			this.toast.error("Enter the total amount for the booking before converting.");
+			this.toast.error(this.i18n.t("Enter the total amount for the booking before converting."));
 			return;
 		}
 
@@ -264,12 +276,14 @@ export class WaitlistComponent {
 				`/tenants/${tenantId}/reservations/waitlist/${entry.waitlist_id}/convert`,
 				{ property_id: entry.property_id, total_amount: totalAmount },
 			);
-			this.toast.success("Conversion accepted — the reservation will appear shortly.");
+			this.toast.success(this.i18n.t("Conversion accepted — the reservation will appear shortly."));
 			this.convertTarget.set(null);
 			this.convertAmount.set("");
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to convert the waitlist entry");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to convert the waitlist entry"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

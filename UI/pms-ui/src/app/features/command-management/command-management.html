@@ -82,7 +82,7 @@
               <span class="command-name">{{ cmd.label | translate }}</span>
               <code class="command-code">{{ cmd.command_name }}</code>
               @if (cmd.description && cmd.description !== cmd.command_name) {
-              <span class="command-description">{{ cmd.description }}</span>
+              <span class="command-description">{{ cmd.description | translate }}</span>
               }
             </div>
           </td>

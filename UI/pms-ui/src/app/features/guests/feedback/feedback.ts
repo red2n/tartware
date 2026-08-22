@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -76,11 +78,19 @@ const OPEN_STATUSES = new Set(["new", "acknowledged", "in_progress"]);
 @Component({
 	selector: "app-guest-feedback",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./feedback.html",
 })
 export class GuestFeedbackComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -200,7 +210,9 @@ export class GuestFeedbackComponent {
 			const res = await this.api.get<{ data: Feedback[] } | Feedback[]>("/guest-feedback", params);
 			this.items.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load guest feedback");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load guest feedback"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -231,7 +243,7 @@ export class GuestFeedbackComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !this.canLog() || this.submitting()) return;
 		if (!propertyId) {
-			this.toast.error("Select a property before logging feedback.");
+			this.toast.error(this.i18n.t("Select a property before logging feedback."));
 			return;
 		}
 		const f = this.form();
@@ -250,11 +262,11 @@ export class GuestFeedbackComponent {
 				...(f.guest_id.trim() ? { guest_id: f.guest_id.trim() } : {}),
 				...(f.reservation_id.trim() ? { reservation_id: f.reservation_id.trim() } : {}),
 			});
-			this.toast.success("Feedback logged.");
+			this.toast.success(this.i18n.t("Feedback logged."));
 			this.logging.set(false);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to log feedback");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to log feedback"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -288,11 +300,11 @@ export class GuestFeedbackComponent {
 				...(f.feedback_status.trim() ? { feedback_status: f.feedback_status.trim() } : {}),
 				...(f.assigned_to.trim() ? { assigned_to: f.assigned_to.trim() } : {}),
 			});
-			this.toast.success("Feedback updated.");
+			this.toast.success(this.i18n.t("Feedback updated."));
 			this.triageTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update feedback");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update feedback"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -322,11 +334,11 @@ export class GuestFeedbackComponent {
 				response_text: f.response_text.trim(),
 				is_public: f.is_public,
 			});
-			this.toast.success("Response recorded.");
+			this.toast.success(this.i18n.t("Response recorded."));
 			this.respondTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to record response");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to record response"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -360,11 +372,11 @@ export class GuestFeedbackComponent {
 					? { service_recovery_reference: f.service_recovery_reference.trim() }
 					: {}),
 			});
-			this.toast.success("Feedback resolved.");
+			this.toast.success(this.i18n.t("Feedback resolved."));
 			this.resolveTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to resolve feedback");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to resolve feedback"));
 		} finally {
 			this.submitting.set(false);
 		}

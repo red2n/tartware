@@ -8,6 +8,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { housekeepingStatusClass, roomStatusClass } from "../../shared/badge-utils";
@@ -47,6 +48,7 @@ type StatusFilter = "ALL" | "SETUP" | "VACANT" | "OCCUPIED" | "OUT_OF_ORDER" | "
 })
 export class RoomsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -232,7 +234,7 @@ export class RoomsComponent {
 			const ref = this.dialog.open(CreateRoomDialogComponent);
 			ref?.onClose.subscribe((created: boolean) => {
 				if (created) {
-					this.toast.success("Room created successfully.");
+					this.toast.success(this.i18n.t("Room created successfully."));
 					this.loadRooms();
 				}
 			});

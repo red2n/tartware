@@ -5,6 +5,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
@@ -31,6 +32,7 @@ type BatchStatusFilter = "ALL" | "open" | "review" | "posted" | "error";
 })
 export class LedgerComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -126,10 +128,12 @@ export class LedgerComponent {
 				property_id: propertyId,
 				business_date: businessDate,
 			});
-			this.toast.success(`Ledger post submitted for ${businessDate}. Refreshing ledger...`);
+			this.toast.success(
+				this.i18n.t("Ledger post submitted for {p0}. Refreshing ledger...", { p0: businessDate }),
+			);
 			await settleCommandReadModel(() => this.loadLedger());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to post ledger");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to post ledger"));
 		} finally {
 			this.posting.set(false);
 		}

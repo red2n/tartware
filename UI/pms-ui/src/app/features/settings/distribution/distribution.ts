@@ -14,6 +14,8 @@ import {
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
@@ -99,11 +101,12 @@ const SEGMENT_TYPES = [
 @Component({
 	selector: "app-distribution-settings",
 	standalone: true,
-	imports: [FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective, TranslatePipe],
 	templateUrl: "./distribution.html",
 })
 export class DistributionSettingsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -273,7 +276,9 @@ export class DistributionSettingsComponent {
 			this.mappings.set(unwrap(mappingRes));
 			this.metasearch.set(unwrap(metasearchRes));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load distribution settings");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load distribution settings"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -355,7 +360,7 @@ export class DistributionSettingsComponent {
 		try {
 			if (existing) {
 				await this.api.put(`/booking-sources/${existing.source_id}`, body);
-				this.toast.success("Booking source updated.");
+				this.toast.success(this.i18n.t("Booking source updated."));
 			} else {
 				const propertyId = this.ctx.propertyId();
 				await this.api.post("/booking-sources", {
@@ -363,12 +368,14 @@ export class DistributionSettingsComponent {
 					source_code: f.source_code.trim(),
 					...(propertyId ? { property_id: propertyId } : {}),
 				});
-				this.toast.success("Booking source created.");
+				this.toast.success(this.i18n.t("Booking source created."));
 			}
 			this.cancelSourceEditor();
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save booking source");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to save booking source"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -427,7 +434,7 @@ export class DistributionSettingsComponent {
 		try {
 			if (existing) {
 				await this.api.put(`/market-segments/${existing.segment_id}`, body);
-				this.toast.success("Market segment updated.");
+				this.toast.success(this.i18n.t("Market segment updated."));
 			} else {
 				const propertyId = this.ctx.propertyId();
 				await this.api.post("/market-segments", {
@@ -438,12 +445,14 @@ export class DistributionSettingsComponent {
 					...(f.parent_segment_id ? { parent_segment_id: f.parent_segment_id } : {}),
 					...(propertyId ? { property_id: propertyId } : {}),
 				});
-				this.toast.success("Market segment created.");
+				this.toast.success(this.i18n.t("Market segment created."));
 			}
 			this.cancelSegmentEditor();
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save market segment");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to save market segment"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -467,11 +476,11 @@ export class DistributionSettingsComponent {
 		this.submitting.set(true);
 		try {
 			await this.api.delete(`/${path}/${target.id}?tenant_id=${tenantId}`);
-			this.toast.success(`${target.label} retired.`);
+			this.toast.success(this.i18n.t("{p0} retired.", { p0: target.label }));
 			this.retireTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to retire");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to retire"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -620,7 +629,7 @@ export class DistributionSettingsComponent {
 					...shared,
 					...(f.rooms_picked_up != null ? { rooms_picked_up: f.rooms_picked_up } : {}),
 				});
-				this.toast.success("Allotment updated.");
+				this.toast.success(this.i18n.t("Allotment updated."));
 			} else {
 				await this.api.post("/allotments", {
 					...shared,
@@ -630,14 +639,16 @@ export class DistributionSettingsComponent {
 					end_date: f.end_date,
 					total_rooms_blocked: f.total_rooms_blocked ?? 1,
 				});
-				this.toast.success("Allotment created.");
+				this.toast.success(this.i18n.t("Allotment created."));
 			}
 			this.allotmentEditorOpen.set(false);
 			this.editingAllotment.set(null);
 			await this.load();
 		} catch (e) {
 			// A 409 is a code that is already taken.
-			this.toast.error(e instanceof Error ? e.message : "Failed to save the allotment");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to save the allotment"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -655,12 +666,19 @@ export class DistributionSettingsComponent {
 					? { cancellation_reason: "Cancelled from distribution settings" }
 					: {}),
 			});
-			this.toast.success(`${allotment.allotment_code} moved to ${this.labelFor(next)}.`);
+			this.toast.success(
+				this.i18n.t("{p0} moved to {p1}.", {
+					p0: allotment.allotment_code,
+					p1: this.labelFor(next),
+				}),
+			);
 			this.allotmentEditorOpen.set(false);
 			this.editingAllotment.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to move the allotment");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to move the allotment"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -724,12 +742,14 @@ export class DistributionSettingsComponent {
 				...(f.external_code.trim() ? { external_code: f.external_code.trim() } : {}),
 				is_active: f.is_active,
 			});
-			this.toast.success("Mapping update submitted. Refreshing…");
+			this.toast.success(this.i18n.t("Mapping update submitted. Refreshing…"));
 			this.mappingEditorOpen.set(false);
 			this.editingMapping.set(null);
 			await settleCommandReadModel(() => this.load());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update the mapping");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update the mapping"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -859,7 +879,7 @@ export class DistributionSettingsComponent {
 					config_id: editing.config_id,
 					...bids,
 				});
-				this.toast.success("Bid configuration update submitted. Refreshing…");
+				this.toast.success(this.i18n.t("Bid configuration update submitted. Refreshing…"));
 			} else {
 				await this.api.post(`/tenants/${tenantId}/channels/metasearch-config`, {
 					property_id: propertyId,
@@ -869,13 +889,15 @@ export class DistributionSettingsComponent {
 						: {}),
 					...bids,
 				});
-				this.toast.success("Metasearch configuration submitted. Refreshing…");
+				this.toast.success(this.i18n.t("Metasearch configuration submitted. Refreshing…"));
 			}
 			this.metasearchEditorOpen.set(false);
 			this.editingMetasearch.set(null);
 			await settleCommandReadModel(() => this.load());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save the configuration");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to save the configuration"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

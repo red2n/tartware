@@ -14,7 +14,7 @@
               [class.btn-outline]="next !== 'CONFIRMED' && next !== 'DEFINITE' && next !== 'CANCELLED'"
               [class.btn-danger]="next === 'CANCELLED'"
               (click)="askStatus(next)" [disabled]="submitting()">
-        {{ labelFor(next) }}
+        {{ labelFor(next) | translate }}
       </button>
     }
   </app-page-header>
@@ -22,13 +22,13 @@
   <!-- A plain status strip, not `.notice`: that style is the attention colour
        and a booking simply being Definite is not something to warn about. -->
   <p class="status-strip">
-    <span [class]="statusClass(b.booking_status)">{{ b.booking_status_display }}</span>
+    <span [class]="statusClass(b.booking_status)">{{ b.booking_status_display | translate }}</span>
     @if (b.event_number) {
       <span class="text-muted">{{ 'Event' | translate }} {{ b.event_number }}</span>
     }
-    <span class="text-muted">{{ 'Booked' | translate }} {{ b.booked_date | date: 'mediumDate' }}</span>
+    <span class="text-muted">{{ 'Booked' | translate }} {{ b.booked_date | localeDate: 'mediumDate' }}</span>
     @if (b.confirmed_date) {
-      <span class="text-muted">{{ 'Confirmed' | translate }} {{ b.confirmed_date | date: 'mediumDate' }}</span>
+      <span class="text-muted">{{ 'Confirmed' | translate }} {{ b.confirmed_date | localeDate: 'mediumDate' }}</span>
     }
     @if (isTerminal()) {
       <span class="text-muted">{{ 'Closed — no further status changes are possible.' | translate }}</span>
@@ -38,7 +38,7 @@
   @if (b.booking_status === 'CANCELLED') {
     <p class="notice">
       <app-icon class="notice-icon" name="event_busy" />
-      {{ 'Cancelled' | translate }}@if (b.cancellation_date) { {{ b.cancellation_date | date: 'medium' }} }.
+      {{ 'Cancelled' | translate }}@if (b.cancellation_date) { {{ b.cancellation_date | localeDate: 'medium' }} }.
       {{ 'The space is released and can be rebooked.' | translate }}
       @if (b.cancellation_notes) { {{ b.cancellation_notes }} }
     </p>
@@ -50,7 +50,7 @@
       <div class="confirm-header">
         <app-icon class="confirm-icon" [name]="next === 'CANCELLED' ? 'event_busy' : 'check_circle'" />
         <h3 class="confirm-title">
-          {{ 'Move to' | translate }} {{ labelFor(next) }}?
+          {{ 'Move to' | translate }} {{ labelFor(next) | translate }}?
         </h3>
       </div>
       <div class="confirm-body">
@@ -62,7 +62,7 @@
             <label class="field-label" for="eb-cancel-reason">{{ 'Reason' | translate }}</label>
             <input class="field-input" id="eb-cancel-reason" type="text" [ngModel]="cancellationReason()"
                    (ngModelChange)="cancellationReason.set($event ?? '')"
-                   placeholder="Client postponed" />
+                   [placeholder]="'Client postponed' | translate" />
           </div>
         } @else if (next === 'CONFIRMED') {
           <p class="confirm-note">{{ 'Confirming stamps the confirmation date on the booking.' | translate }}</p>
@@ -77,7 +77,7 @@
         <button class="btn btn-sm" [class.btn-danger]="next === 'CANCELLED'"
                 [class.btn-primary]="next !== 'CANCELLED'"
                 (click)="confirmStatus()" [disabled]="submitting()">
-          {{ (submitting() ? 'Working…' : 'Confirm') | translate }}
+          {{ (submitting() ? ('Working…' | translate) : ('Confirm' | translate)) | translate }}
         </button>
       </div>
     </div>
@@ -106,7 +106,7 @@
             <select class="field-input" id="eb-type" [ngModel]="f.event_type"
                     (ngModelChange)="patchForm({ event_type: $event })">
               @for (t of eventTypes; track t) {
-                <option [value]="t">{{ labelFor(t) }}</option>
+                <option [value]="t">{{ labelFor(t) | translate }}</option>
               }
             </select>
           </div>
@@ -210,7 +210,7 @@
               <select class="field-input" id="eb-setup-type" [ngModel]="f.setup_type"
                       (ngModelChange)="patchForm({ setup_type: $event })">
                 @for (s of setupTypes; track s) {
-                  <option [value]="s">{{ labelFor(s) }}</option>
+                  <option [value]="s">{{ labelFor(s) | translate }}</option>
                 }
               </select>
             </div>
@@ -332,7 +332,7 @@
           {{ 'Cancel' | translate }}
         </button>
         <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="!canSave() || submitting()">
-          {{ (submitting() ? 'Saving…' : 'Save changes') | translate }}
+          {{ (submitting() ? ('Saving…' | translate) : ('Save changes' | translate)) | translate }}
         </button>
       </div>
     </div>
@@ -352,7 +352,7 @@
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'Date' | translate }}</dt>
-            <dd class="detail-value">{{ b.event_date | date: 'fullDate' }}</dd>
+            <dd class="detail-value">{{ b.event_date | localeDate: 'fullDate' }}</dd>
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'Event runs' | translate }}</dt>
@@ -381,7 +381,7 @@
           <div class="detail-row">
             <dt class="detail-label">{{ 'Setup' | translate }}</dt>
             <dd class="detail-value">
-              {{ b.setup_type_display }}
+              {{ b.setup_type_display | translate }}
               @if (b.setup_details) { <div class="cell-sub">{{ b.setup_details }}</div> }
             </dd>
           </div>
@@ -470,13 +470,13 @@
           <div class="detail-row">
             <dt class="detail-label">{{ 'Final count due' | translate }}</dt>
             <dd class="detail-value">
-              {{ b.final_count_due_date ? (b.final_count_due_date | date: 'mediumDate') : '—' }}
+              {{ b.final_count_due_date ? (b.final_count_due_date | localeDate: 'mediumDate') : '—' }}
             </dd>
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'BEO due' | translate }}</dt>
             <dd class="detail-value">
-              {{ b.beo_due_date ? (b.beo_due_date | date: 'mediumDate') : '—' }}
+              {{ b.beo_due_date ? (b.beo_due_date | localeDate: 'mediumDate') : '—' }}
             </dd>
           </div>
         </dl>
@@ -491,7 +491,7 @@
         <h3 class="card-title">{{ 'Banquet event orders' | translate }}</h3>
         @if (beos().length === 0) {
           <button class="btn btn-primary btn-sm" (click)="createBeo()" [disabled]="creatingBeo()">
-            <app-icon name="add" /> {{ (creatingBeo() ? 'Creating…' : 'Create BEO') | translate }}
+            <app-icon name="add" /> {{ (creatingBeo() ? ('Creating…' | translate) : ('Create BEO' | translate)) | translate }}
           </button>
         }
       </div>
@@ -503,13 +503,13 @@
                 <button type="button" class="record-row-btn" (click)="openBeo(beo.beo_id)">
                   <span class="record-row-label">{{ beo.beo_number }}</span>
                   <span class="badge badge-muted badge-sm">v{{ beo.beo_version ?? 1 }}</span>
-                  <span [class]="statusClass(beo.beo_status)">{{ beo.beo_status_display }}</span>
+                  <span [class]="statusClass(beo.beo_status)">{{ beo.beo_status_display | translate }}</span>
                   @if (beo.is_superseded) {
                     <span class="badge badge-muted badge-sm">{{ 'Superseded' | translate }}</span>
                   }
                   <span class="text-muted text-xs">
                     {{ beo.guaranteed_count }} {{ 'covers' | translate }}
-                    @if (beo.menu_type) { · {{ labelFor(beo.menu_type) }} }
+                    @if (beo.menu_type) { · {{ labelFor(beo.menu_type) | translate }} }
                   </span>
                   <app-icon class="cell-chevron" name="chevron_right" />
                 </button>
@@ -555,7 +555,7 @@
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'Payment status' | translate }}</dt>
-            <dd class="detail-value">{{ b.payment_status_display }}</dd>
+            <dd class="detail-value">{{ b.payment_status_display | translate }}</dd>
           </div>
           <div class="detail-row">
             <dt class="detail-label">{{ 'Folio' | translate }}</dt>
@@ -563,7 +563,7 @@
               @if (b.folio_id) {
                 <span class="mono">{{ b.folio_number ?? '—' }}</span>
                 @if (b.folio_status) {
-                  <span [class]="statusClass(b.folio_status.toUpperCase())">{{ labelFor(b.folio_status) }}</span>
+                  <span [class]="statusClass(b.folio_status.toUpperCase())">{{ labelFor(b.folio_status) | translate }}</span>
                 }
                 <div class="cell-sub">
                   {{ 'Balance' | translate }}: <span class="mono">{{ b.folio_balance ?? 0 }} {{ b.currency_code }}</span>
@@ -597,17 +597,17 @@
         <h3 class="card-title">{{ 'Charges' | translate }}</h3>
         @if (chargesPosted()) {
           <span class="badge badge-accent badge-sm">
-            {{ 'Posted' | translate }} {{ b.charges_posted_at | date: 'd MMM y' }}
+            {{ 'Posted' | translate }} {{ b.charges_posted_at | localeDate: 'd MMM y' }}
           </span>
         } @else if (hasChargesToPost()) {
           <button class="btn btn-primary btn-sm" (click)="postCharges()" [disabled]="postingCharges()">
             <app-icon name="receipt_long" />
-            {{ (postingCharges() ? 'Posting…' : 'Post to folio') | translate }}
+            {{ (postingCharges() ? ('Posting…' | translate) : ('Post to folio' | translate)) | translate }}
           </button>
         } @else if (!b.folio_id) {
           <button class="btn btn-outline btn-sm" (click)="openFolio()" [disabled]="openingFolio()">
             <app-icon name="folder_open" />
-            {{ (openingFolio() ? 'Opening…' : 'Open folio') | translate }}
+            {{ (openingFolio() ? ('Opening…' | translate) : ('Open folio' | translate)) | translate }}
           </button>
         }
       </div>
@@ -669,7 +669,7 @@
                   <button type="button" class="record-row-btn" (click)="openFolioInBilling()">
                     <span class="record-row-label">{{ charge.charge_description }}</span>
                     <span class="badge badge-muted badge-sm">{{ charge.charge_code }}</span>
-                    <span class="text-muted text-xs">{{ charge.posting_date | date: 'd MMM' }}</span>
+                    <span class="text-muted text-xs">{{ charge.posting_date | localeDate: 'd MMM' }}</span>
                     <span class="mono cell-chevron">{{ charge.total_amount }} {{ charge.currency }}</span>
                   </button>
                 </li>

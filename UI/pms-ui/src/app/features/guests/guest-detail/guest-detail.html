@@ -29,7 +29,7 @@
       <div class="guest-header-info">
         <h2 class="guest-header-name">
           @if (g.title) {
-            <span class="text-muted">{{ g.title }}</span>
+            <span class="text-muted">{{ g.title | translate }}</span>
           }
           {{ g.first_name }} {{ g.last_name }}
         </h2>
@@ -55,7 +55,7 @@
         </div>
         <div class="guest-badges">
           @if (g.vip_status) {
-            <span class="badge badge-warning">VIP</span>
+            <span class="badge badge-warning">{{ 'VIP' | translate }}</span>
           }
           @if (g.loyalty_tier) {
             <span class="badge" [ngClass]="loyaltyTierClass(g.loyalty_tier)">
@@ -299,11 +299,11 @@
         <div class="form-group"><label class="field-label">{{ 'VIP level' | translate }}</label>
           <select class="field-input" [ngModel]="vipForm().vip_status"
             (ngModelChange)="vipForm.set({ ...vipForm(), vip_status: $event })">
-            <option value="NONE">None</option>
-            <option value="VIP1">VIP 1</option>
-            <option value="VIP2">VIP 2</option>
-            <option value="VIP3">VIP 3</option>
-            <option value="VVIP">VVIP</option>
+            <option value="NONE">{{ 'None' | translate }}</option>
+            <option value="VIP1">{{ 'VIP 1' | translate }}</option>
+            <option value="VIP2">{{ 'VIP 2' | translate }}</option>
+            <option value="VIP3">{{ 'VIP 3' | translate }}</option>
+            <option value="VVIP">{{ 'VVIP' | translate }}</option>
           </select>
         </div>
         <div class="form-group"><label class="field-label">{{ 'Reason' | translate }}</label>
@@ -324,12 +324,12 @@
         <div class="form-group"><label class="field-label">{{ 'Tier' | translate }}</label>
           <select class="field-input" [ngModel]="loyaltyForm().loyalty_tier"
             (ngModelChange)="loyaltyForm.set({ ...loyaltyForm(), loyalty_tier: $event })">
-            <option value="">— None —</option>
-            <option value="BRONZE">Bronze</option>
-            <option value="SILVER">Silver</option>
-            <option value="GOLD">Gold</option>
-            <option value="PLATINUM">Platinum</option>
-            <option value="DIAMOND">Diamond</option>
+            <option value="">{{ '— None —' | translate }}</option>
+            <option value="BRONZE">{{ 'Bronze' | translate }}</option>
+            <option value="SILVER">{{ 'Silver' | translate }}</option>
+            <option value="GOLD">{{ 'Gold' | translate }}</option>
+            <option value="PLATINUM">{{ 'Platinum' | translate }}</option>
+            <option value="DIAMOND">{{ 'Diamond' | translate }}</option>
           </select>
         </div>
         <div class="form-group"><label class="field-label">{{ 'Loyalty number' | translate }}</label>
@@ -397,7 +397,7 @@
                           <td>{{ formatDate(r.check_in_date) }}</td>
                           <td>{{ formatDate(r.check_out_date) }}</td>
                           <td>{{ r.nights }}</td>
-                          <td><span class="badge" [ngClass]="reservationStatusBadge(r.status)">{{ r.status_display }}</span></td>
+                          <td><span class="badge" [ngClass]="reservationStatusBadge(r.status)">{{ r.status_display | translate }}</span></td>
                           <td>{{ formatCurrency(r.total_amount) }}</td>
                         </tr>
                       }
@@ -469,12 +469,12 @@
           <tbody>
             @for (comm of communications(); track comm.id) {
               <tr>
-                <td>{{ comm.communication_type_display }}</td>
-                <td>{{ comm.direction_display }}</td>
+                <td>{{ comm.communication_type_display | translate }}</td>
+                <td>{{ comm.direction_display | translate }}</td>
                 <td>{{ comm.subject ?? comm.message }}</td>
                 <td>
                   <span class="badge" [ngClass]="comm.status_display === 'Sent' || comm.status_display === 'Delivered' ? 'badge-success' : 'badge-muted'">
-                    {{ comm.status_display }}
+                    {{ comm.status_display | translate }}
                   </span>
                 </td>
                 <td>{{ formatDate(comm.created_at) }}</td>

@@ -28,7 +28,7 @@
       @if (filteredActiveChildren(); as children) {
         @if (children.length > 0) {
           <app-sub-sidebar
-            [parentLabel]="parent.label"
+            [parentLabel]="parent.label | translate"
             [parentIcon]="parent.icon"
             [items]="children"
             [collapsed]="rightDockCollapsed()"

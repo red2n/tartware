@@ -18,6 +18,7 @@ type DialogData = {
 
 const VALID_ROLES = new Set<string>(["VIEWER", "STAFF", "MANAGER", "ADMIN", "OWNER"]);
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
@@ -36,6 +37,7 @@ import { DialogShellComponent } from "../../../shared/components/dialog-shell/di
 })
 export class EditUserDialogComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
 	readonly data: DialogData = inject(DynamicDialogConfig).data;
@@ -96,10 +98,10 @@ export class EditUserDialogComponent {
 			const changes: string[] = [];
 			if (this.roleChanged) changes.push("role updated");
 			if (this.statusChanged) changes.push(this.isActive ? "activated" : "deactivated");
-			this.toast.success(`User ${changes.join(" and ")}`);
+			this.toast.success(this.i18n.t("User {p0}", { p0: changes.join(" and ") }));
 			this.dialogRef.close(true);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update user");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update user"));
 		} finally {
 			this.saving.set(false);
 		}
@@ -113,9 +115,11 @@ export class EditUserDialogComponent {
 				tenant_id: this.data.tenantId,
 				user_id: this.data.user.id,
 			});
-			this.toast.success("Password reset to default. User will need to change it on next login.");
+			this.toast.success(
+				this.i18n.t("Password reset to default. User will need to change it on next login."),
+			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to reset password");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to reset password"));
 		} finally {
 			this.saving.set(false);
 		}

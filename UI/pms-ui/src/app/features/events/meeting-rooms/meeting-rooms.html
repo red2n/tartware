@@ -9,7 +9,7 @@
 @if (unbookable().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="event_busy" />
-    {{ unbookable().length }} {{ (unbookable().length === 1 ? 'room cannot take a booking right now' : 'rooms cannot take a booking right now') | translate }}
+    {{ unbookable().length }} {{ (unbookable().length === 1 ? ('room cannot take a booking right now' | translate) : ('rooms cannot take a booking right now' | translate)) | translate }}
   </p>
 }
 
@@ -29,7 +29,7 @@
         {{ 'Cancel' | translate }}
       </button>
       <button class="btn btn-primary btn-sm" (click)="confirmRetire()" [disabled]="submitting()">
-        {{ (submitting() ? 'Retiring…' : 'Retire room') | translate }}
+        {{ (submitting() ? ('Retiring…' | translate) : ('Retire room' | translate)) | translate }}
       </button>
     </div>
   </div>
@@ -64,14 +64,14 @@
           <label class="field-label" for="mr-name">{{ 'Name' | translate }}</label>
           <input class="field-input" id="mr-name" type="text" [ngModel]="form().room_name"
                  (ngModelChange)="patchForm({ room_name: $event ?? '' })"
-                 placeholder="Grand Ballroom" />
+                 [placeholder]="'Grand Ballroom' | translate" />
         </div>
         <div class="form-field">
           <label class="field-label" for="mr-type">{{ 'Room type' | translate }}</label>
           <select class="field-input" id="mr-type" [ngModel]="form().room_type"
                   (ngModelChange)="patchForm({ room_type: $event })">
             @for (t of roomTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
@@ -80,7 +80,7 @@
           <select class="field-input" id="mr-status" [ngModel]="form().room_status"
                   (ngModelChange)="patchForm({ room_status: $event })">
             @for (s of roomStatuses; track s) {
-              <option [value]="s">{{ labelFor(s) }}</option>
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
             }
           </select>
         </div>
@@ -151,7 +151,7 @@
                     (ngModelChange)="patchForm({ default_setup: $event })">
               <option value="">{{ 'Not set' | translate }}</option>
               @for (s of setups; track s) {
-                <option [value]="s">{{ labelFor(s) }}</option>
+                <option [value]="s">{{ labelFor(s) | translate }}</option>
               }
             </select>
           </div>
@@ -261,7 +261,7 @@
         {{ 'Cancel' | translate }}
       </button>
       <button class="btn btn-primary btn-sm" (click)="submitForm()" [disabled]="!canSubmit() || submitting()">
-        {{ (submitting() ? 'Saving…' : (editing() ? 'Save changes' : 'Create room')) | translate }}
+        {{ (submitting() ? ('Saving…' | translate) : (editing() ? ('Save changes' | translate) : ('Create room' | translate))) | translate }}
       </button>
     </div>
   </div>
@@ -275,7 +275,7 @@
             (ngModelChange)="typeFilter.set($event ?? ''); load()">
       <option value="">{{ 'All' | translate }}</option>
       @for (t of roomTypes; track t) {
-        <option [value]="t">{{ labelFor(t) }}</option>
+        <option [value]="t">{{ labelFor(t) | translate }}</option>
       }
     </select>
   </div>
@@ -285,7 +285,7 @@
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
       <option value="">{{ 'All' | translate }}</option>
       @for (s of roomStatuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
@@ -340,7 +340,7 @@
               }
             </td>
             <td>
-              {{ room.room_type_display }}
+              {{ room.room_type_display | translate }}
               @if (room.area_sqm) {
                 <div class="cell-sub">{{ room.area_sqm }} m²</div>
               }
@@ -364,7 +364,7 @@
               }
             </td>
             <td>
-              <span [class]="statusClass(room.room_status)">{{ room.room_status_display }}</span>
+              <span [class]="statusClass(room.room_status)">{{ room.room_status_display | translate }}</span>
               @if (!room.is_active) {
                 <span class="badge badge-muted badge-sm">{{ 'Retired' | translate }}</span>
               }

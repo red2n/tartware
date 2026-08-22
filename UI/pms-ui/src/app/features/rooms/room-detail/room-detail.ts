@@ -19,6 +19,7 @@ type CatalogItem = AmenityCatalogItem;
 
 type DetailRow = { label: string; value: string; badge?: string };
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-room-detail",
@@ -38,6 +39,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 })
 export class RoomDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
@@ -263,11 +265,11 @@ export class RoomDetailComponent implements OnInit {
 				floor: this.editFloor() || undefined,
 				wing: this.editWing() || undefined,
 			});
-			this.toast.success("Room information updated.");
+			this.toast.success(this.i18n.t("Room information updated."));
 			this.editingInfo.set(false);
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update room"));
 		} finally {
 			this.savingInfo.set(false);
 		}
@@ -387,11 +389,11 @@ export class RoomDetailComponent implements OnInit {
 				tenant_id: tenantId,
 				amenities: this.editAmenities(),
 			});
-			this.toast.success("Amenities updated.");
+			this.toast.success(this.i18n.t("Amenities updated."));
 			this.editingAmenities.set(false);
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update amenities");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update amenities"));
 		} finally {
 			this.savingAmenities.set(false);
 		}
@@ -413,18 +415,18 @@ export class RoomDetailComponent implements OnInit {
 					reason: this.editOooReason() || undefined,
 					expected_ready_date: this.editExpectedReady() || undefined,
 				});
-				this.toast.success("Room marked as Out of Order.");
+				this.toast.success(this.i18n.t("Room marked as Out of Order."));
 			} else {
 				// Clear out of order → set status to AVAILABLE
 				await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/status`, {
 					status: "AVAILABLE",
 				});
-				this.toast.success("Room restored to Available.");
+				this.toast.success(this.i18n.t("Room restored to Available."));
 			}
 			// Reload room data — poll until status reflects the change (command is async via Kafka)
 			await this.pollRoomUntilChanged(r.room_id, r.is_out_of_order !== this.editOoo());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update room"));
 		} finally {
 			this.saving.set(false);
 		}
@@ -443,10 +445,10 @@ export class RoomDetailComponent implements OnInit {
 			await this.api.post(`/rooms/${r.room_id}/activate`, {
 				tenant_id: tenantId,
 			});
-			this.toast.success("Room activated and ready for booking.");
+			this.toast.success(this.i18n.t("Room activated and ready for booking."));
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to activate room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to activate room"));
 		} finally {
 			this.activating.set(false);
 		}
@@ -470,10 +472,12 @@ export class RoomDetailComponent implements OnInit {
 				housekeeping_status: newStatus,
 			});
 			const label = this.housekeepingOptions.find((o) => o.value === newStatus)?.label ?? newStatus;
-			this.toast.success(`Housekeeping status updated to ${label}.`);
+			this.toast.success(this.i18n.t("Housekeeping status updated to {p0}.", { p0: label }));
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update housekeeping status");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update housekeeping status"),
+			);
 		} finally {
 			this.updatingHousekeeping.set(false);
 		}
@@ -519,10 +523,10 @@ export class RoomDetailComponent implements OnInit {
 			await this.api.post(`/rooms/${r.room_id}/deactivate`, {
 				tenant_id: tenantId,
 			});
-			this.toast.success("Room moved back to Setup mode.");
+			this.toast.success(this.i18n.t("Room moved back to Setup mode."));
 			await this.loadRoom(r.room_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to deactivate room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to deactivate room"));
 		} finally {
 			this.deactivating.set(false);
 		}
@@ -534,7 +538,7 @@ export class RoomDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 		const reason = this.oosReason().trim();
 		if (!reason) {
-			this.toast.error("Reason is required for Out of Service");
+			this.toast.error(this.i18n.t("Reason is required for Out of Service"));
 			return;
 		}
 		this.processingOps.set("oos");
@@ -543,12 +547,14 @@ export class RoomDetailComponent implements OnInit {
 				reason,
 				expected_ready_date: this.oosUntil() || undefined,
 			});
-			this.toast.success("Room marked Out of Service.");
+			this.toast.success(this.i18n.t("Room marked Out of Service."));
 			this.oosReason.set("");
 			this.oosUntil.set("");
 			await this.pollRoomUntilChanged(r.room_id, true);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to mark out of service");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to mark out of service"),
+			);
 		} finally {
 			this.processingOps.set(null);
 		}
@@ -560,7 +566,7 @@ export class RoomDetailComponent implements OnInit {
 		if (!r || !tenantId) return;
 		const reason = this.blockReason().trim();
 		if (!reason) {
-			this.toast.error("Reason is required to block a room");
+			this.toast.error(this.i18n.t("Reason is required to block a room"));
 			return;
 		}
 		this.processingOps.set("block");
@@ -569,12 +575,12 @@ export class RoomDetailComponent implements OnInit {
 				reason,
 				expires_at: this.blockUntil() || undefined,
 			});
-			this.toast.success("Room blocked from inventory.");
+			this.toast.success(this.i18n.t("Room blocked from inventory."));
 			this.blockReason.set("");
 			this.blockUntil.set("");
 			await this.pollRoomUntilChanged(r.room_id, true);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to block room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to block room"));
 		} finally {
 			this.processingOps.set(null);
 		}
@@ -589,10 +595,10 @@ export class RoomDetailComponent implements OnInit {
 			await this.api.post(`/tenants/${tenantId}/rooms/${r.room_id}/release`, {
 				reason: "Released from room detail screen",
 			});
-			this.toast.success("Room block released.");
+			this.toast.success(this.i18n.t("Room block released."));
 			await this.pollRoomUntilChanged(r.room_id, true);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to release room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to release room"));
 		} finally {
 			this.processingOps.set(null);
 		}

@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
@@ -32,6 +33,7 @@ type StatusFilter = "ALL" | "OPEN" | "REVIEW" | "POSTED" | "ERROR";
 })
 export class GlBatchesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -169,10 +171,12 @@ export class GlBatchesComponent {
 					business_date: batch.batch_date,
 				},
 			});
-			this.toast.success(`Export submitted for batch ${batch.batch_number}.`);
+			this.toast.success(
+				this.i18n.t("Export submitted for batch {p0}.", { p0: batch.batch_number }),
+			);
 			await settleCommandReadModel(() => this.loadBatches());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to export batch");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to export batch"));
 		} finally {
 			this.exporting.set(null);
 		}
@@ -190,7 +194,7 @@ export class GlBatchesComponent {
 	downloadCsv(batch: GlBatchListItem): void {
 		const rows = this.entries();
 		if (!rows.length) {
-			this.toast.error("No entries loaded — open the batch first.");
+			this.toast.error(this.i18n.t("No entries loaded — open the batch first."));
 			return;
 		}
 		const headers = [

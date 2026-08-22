@@ -5,6 +5,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
@@ -38,6 +39,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 })
 export class RoomTypesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	readonly settings = inject(SettingsService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
@@ -141,7 +143,7 @@ export class RoomTypesComponent {
 				const ref = this.dialog.open(CreateRoomTypeDialogComponent);
 				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
-						this.toast.success("Room type created successfully.");
+						this.toast.success(this.i18n.t("Room type created successfully."));
 						this.loadRoomTypes();
 					}
 				});
@@ -157,7 +159,7 @@ export class RoomTypesComponent {
 				});
 				ref?.onClose.subscribe((saved: boolean) => {
 					if (saved) {
-						this.toast.success("Room type updated successfully.");
+						this.toast.success(this.i18n.t("Room type updated successfully."));
 						this.loadRoomTypes();
 					}
 				});
@@ -176,10 +178,10 @@ export class RoomTypesComponent {
 			await this.api.delete(`/room-types/${rt.room_type_id}`, {
 				tenant_id: tenantId,
 			});
-			this.toast.success("Room type deleted.");
+			this.toast.success(this.i18n.t("Room type deleted."));
 			this.loadRoomTypes();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to delete room type");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to delete room type"));
 		}
 	}
 

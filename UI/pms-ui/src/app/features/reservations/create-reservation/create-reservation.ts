@@ -61,6 +61,7 @@ type GuestOption = {
 };
 
 import type { RoomRecommendationResponse } from "@tartware/schemas";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 
@@ -94,6 +95,7 @@ export class CreateReservationComponent implements OnInit {
 	readonly steps = ["Stay Details", "Select Rate", "Guest & Booking", "Confirm"];
 
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -520,7 +522,7 @@ export class CreateReservationComponent implements OnInit {
 			);
 			this.allRates.set(Array.isArray(rates) ? rates : []);
 		} catch {
-			this.toast.error("Failed to load reference data");
+			this.toast.error(this.i18n.t("Failed to load reference data"));
 		} finally {
 			this.loadingRef.set(false);
 		}
@@ -569,9 +571,9 @@ export class CreateReservationComponent implements OnInit {
 	guestBirthdayHint(g: GuestOption): string | null {
 		const d = this.guestBirthdayOffset(g);
 		if (d === null) return null;
-		if (d === 0) return "🎂 Birthday today!";
-		if (d > 0 && d <= 5) return `🎂 Birthday in ${d}d`;
-		if (d < 0 && d >= -5) return `🎂 Birthday ${Math.abs(d)}d ago`;
+		if (d === 0) return this.i18n.t("🎂 Birthday today!");
+		if (d > 0 && d <= 5) return this.i18n.t("🎂 Birthday in {days}d", { days: d });
+		if (d < 0 && d >= -5) return this.i18n.t("🎂 Birthday {days}d ago", { days: Math.abs(d) });
 		return null;
 	}
 
@@ -624,7 +626,7 @@ export class CreateReservationComponent implements OnInit {
 		const tenantId = this.auth.tenantId();
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) {
-			this.toast.error("No property selected");
+			this.toast.error(this.i18n.t("No property selected"));
 			return;
 		}
 
@@ -651,13 +653,15 @@ export class CreateReservationComponent implements OnInit {
 				// with RATE_FALLBACK_NOT_ALLOWED and the screen offers no way to retry.
 				allow_rate_fallback: true,
 			});
-			this.toast.success("Reservation created successfully.");
+			this.toast.success(this.i18n.t("Reservation created successfully."));
 			this.router.navigate(["/reservations"]);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
 				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.toast.error(e instanceof Error ? e.message : "Failed to create reservation");
+				this.toast.error(
+					e instanceof Error ? e.message : this.i18n.t("Failed to create reservation"),
+				);
 			}
 		} finally {
 			this.saving.set(false);

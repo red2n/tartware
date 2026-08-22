@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -97,11 +99,19 @@ const RETURNABLE_STATUSES = new Set([...HELD_STATUSES, "claimed"]);
 @Component({
 	selector: "app-lost-and-found",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./lost-and-found.html",
 })
 export class LostAndFoundComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -246,7 +256,9 @@ export class LostAndFoundComponent {
 			);
 			this.items.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load lost & found items");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load lost & found items"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -319,7 +331,7 @@ export class LostAndFoundComponent {
 
 		const existing = this.editing();
 		if (!existing && !propertyId) {
-			this.toast.error("Select a property before registering an item.");
+			this.toast.error(this.i18n.t("Select a property before registering an item."));
 			return;
 		}
 
@@ -349,7 +361,7 @@ export class LostAndFoundComponent {
 					is_valuable: f.is_valuable,
 					requires_secure_storage: f.requires_secure_storage,
 				});
-				this.toast.success("Item updated.");
+				this.toast.success(this.i18n.t("Item updated."));
 			} else {
 				await this.api.post("/lost-and-found", {
 					tenant_id: tenantId,
@@ -383,13 +395,13 @@ export class LostAndFoundComponent {
 						? { internal_notes: optionalText(f.internal_notes) }
 						: {}),
 				});
-				this.toast.success("Item registered.");
+				this.toast.success(this.i18n.t("Item registered."));
 			}
 			this.registering.set(false);
 			this.editing.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save item");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save item"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -416,11 +428,11 @@ export class LostAndFoundComponent {
 				claimed_by_name: f.claimed_by_name.trim(),
 				...(f.verification_notes.trim() ? { verification_notes: f.verification_notes.trim() } : {}),
 			});
-			this.toast.success("Claim recorded.");
+			this.toast.success(this.i18n.t("Claim recorded."));
 			this.claimTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to record claim");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to record claim"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -452,11 +464,11 @@ export class LostAndFoundComponent {
 				returned_to_name: f.returned_to_name.trim(),
 				...(f.notes.trim() ? { notes: f.notes.trim() } : {}),
 			});
-			this.toast.success("Return recorded.");
+			this.toast.success(this.i18n.t("Return recorded."));
 			this.returnTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to record return");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to record return"));
 		} finally {
 			this.submitting.set(false);
 		}

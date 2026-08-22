@@ -5,6 +5,7 @@ import type { UserWithTenants } from "@tartware/schemas";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -36,6 +37,7 @@ type UserRow = UserWithTenants & { version: string };
 })
 export class UsersComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly dialog = inject(AppDialogService);
 	private readonly toast = inject(ToastService);
@@ -200,7 +202,7 @@ export class UsersComponent {
 		});
 		dialogRef?.onClose.subscribe((result) => {
 			if (result) {
-				this.toast.success("User created successfully");
+				this.toast.success(this.i18n.t("User created successfully"));
 				this.loadUsers();
 			}
 		});

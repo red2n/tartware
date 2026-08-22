@@ -1,6 +1,7 @@
 import { Component, computed, inject, output } from "@angular/core";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { RegistryService, type ServiceInstance } from "../../core/registry/registry.service";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -29,6 +30,7 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
 export class ServiceDashboardComponent {
 	readonly close = output<void>();
 	private readonly registry = inject(RegistryService);
+	private readonly i18n = inject(I18nService);
 
 	readonly services = this.registry.services;
 	readonly summary = this.registry.summary;
@@ -73,10 +75,10 @@ export class ServiceDashboardComponent {
 	relativeTime(iso: string): string {
 		const ms = Date.now() - new Date(iso).getTime();
 		const secs = Math.round(ms / 1000);
-		if (secs < 5) return "just now";
-		if (secs < 60) return `${secs}s ago`;
-		if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-		return `${Math.floor(secs / 3600)}h ago`;
+		if (secs < 5) return this.i18n.t("just now");
+		if (secs < 60) return this.i18n.t("{secs}s ago", { secs });
+		if (secs < 3600) return this.i18n.t("{mins}m ago", { mins: Math.floor(secs / 60) });
+		return this.i18n.t("{hours}h ago", { hours: Math.floor(secs / 3600) });
 	}
 
 	formatPort(instance: ServiceInstance): string {

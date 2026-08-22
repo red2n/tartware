@@ -20,6 +20,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
@@ -55,6 +56,7 @@ type AuditTab = "status" | "trial-balance" | "pre-audit" | "bucket-check" | "rep
 })
 export class NightAuditComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -332,10 +334,12 @@ export class NightAuditComponent {
 				property_id: propertyId,
 				advance_date: this.advanceDate(),
 			});
-			this.toast.success("Night audit initiated. Processing in background...");
+			this.toast.success(this.i18n.t("Night audit initiated. Processing in background..."));
 			await this.pollAuditCompletion();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to execute night audit");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to execute night audit"),
+			);
 		} finally {
 			this.executing.set(false);
 		}
@@ -364,11 +368,11 @@ export class NightAuditComponent {
 				property_id: propertyId,
 				reason: this.dateRollReason() || "Manual date advance from UI",
 			});
-			this.toast.success("Business date advanced successfully.");
+			this.toast.success(this.i18n.t("Business date advanced successfully."));
 			this.dateRollReason.set("");
 			await Promise.all([this.loadBusinessDateStatus(), this.loadTrialBalance()]);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to advance date");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to advance date"));
 		} finally {
 			this.dateRolling.set(false);
 		}
@@ -478,12 +482,12 @@ export class NightAuditComponent {
 			await Promise.all([this.loadBusinessDateStatus(), this.loadHistory()]);
 			const status = this.businessDateStatus();
 			if (status?.date_status === "CLOSED" || status?.night_audit_status === "COMPLETED") {
-				this.toast.success("Night audit completed successfully.");
+				this.toast.success(this.i18n.t("Night audit completed successfully."));
 				await this.loadTrialBalance();
 				return;
 			}
 			if (status?.night_audit_status === "FAILED") {
-				this.toast.error("Night audit failed. Check history for details.");
+				this.toast.error(this.i18n.t("Night audit failed. Check history for details."));
 				return;
 			}
 		}

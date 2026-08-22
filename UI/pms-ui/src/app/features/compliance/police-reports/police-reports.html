@@ -2,16 +2,16 @@
   title="Police reports"
   description="Crimes reported to the police — agency, responding officer and case number.">
   <button class="btn btn-primary btn-sm" (click)="openFile()" [disabled]="submitting()">
-    <app-icon name="local_police" /> File report
+    <app-icon name="local_police" /> {{ 'File report' | translate }}
   </button>
 </app-page-header>
 
 @if (awaitingCaseNumber().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="pending_actions" />
-    {{ awaitingCaseNumber().length }} open report{{ awaitingCaseNumber().length === 1 ? '' : 's' }} with
-    no police case number recorded
-  </p>
+    {{ (awaitingCaseNumber().length === 1
+          ? '{count} open report with no police case number recorded'
+          : '{count} open reports with no police case number recorded') | translate:{ count: awaitingCaseNumber().length } }}</p>
 }
 
 @if (filing()) {
@@ -19,117 +19,117 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="local_police" />
       <h3 class="confirm-title">
-        {{ editing() ? 'Correct report ' + editing()!.report_number : 'File a police report' }}
+        {{ editing() ? ('Correct report ' | translate) + editing()!.report_number : ('File a police report' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="pr-date">Incident date</label>
+          <label class="field-label" for="pr-date">{{ 'Incident date' | translate }}</label>
           <input class="field-input" id="pr-date" type="date" [ngModel]="form().incident_date"
                  (ngModelChange)="form.set({ ...form(), incident_date: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-time">Incident time</label>
+          <label class="field-label" for="pr-time">{{ 'Incident time' | translate }}</label>
           <input class="field-input" id="pr-time" type="time" [ngModel]="form().incident_time"
                  (ngModelChange)="form.set({ ...form(), incident_time: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-type">Incident type</label>
+          <label class="field-label" for="pr-type">{{ 'Incident type' | translate }}</label>
           <select class="field-input" id="pr-type" [ngModel]="form().incident_type"
                   (ngModelChange)="form.set({ ...form(), incident_type: $event })">
             @for (t of incidentTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-location">Location</label>
+          <label class="field-label" for="pr-location">{{ 'Location' | translate }}</label>
           <input class="field-input" id="pr-location" type="text" [ngModel]="form().incident_location"
                  (ngModelChange)="form.set({ ...form(), incident_location: $event ?? '' })"
-                 placeholder="e.g. Lobby, Car park level 2" />
+                 [placeholder]="'e.g. Lobby, Car park level 2' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-room">Room number</label>
+          <label class="field-label" for="pr-room">{{ 'Room number' | translate }}</label>
           <input class="field-input" id="pr-room" type="text" [ngModel]="form().room_number"
                  (ngModelChange)="form.set({ ...form(), room_number: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-agency">Police agency</label>
+          <label class="field-label" for="pr-agency">{{ 'Police agency' | translate }}</label>
           <input class="field-input" id="pr-agency" type="text" [ngModel]="form().agency_name"
                  (ngModelChange)="form.set({ ...form(), agency_name: $event ?? '' })"
-                 placeholder="Force the report was made to" />
+                 [placeholder]="'Force the report was made to' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-jurisdiction">Jurisdiction</label>
+          <label class="field-label" for="pr-jurisdiction">{{ 'Jurisdiction' | translate }}</label>
           <input class="field-input" id="pr-jurisdiction" type="text" [ngModel]="form().agency_jurisdiction"
                  (ngModelChange)="form.set({ ...form(), agency_jurisdiction: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-agency-tel">Agency contact</label>
+          <label class="field-label" for="pr-agency-tel">{{ 'Agency contact' | translate }}</label>
           <input class="field-input" id="pr-agency-tel" type="text" [ngModel]="form().agency_contact_number"
                  (ngModelChange)="form.set({ ...form(), agency_contact_number: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-officer">Responding officer</label>
+          <label class="field-label" for="pr-officer">{{ 'Responding officer' | translate }}</label>
           <input class="field-input" id="pr-officer" type="text" [ngModel]="form().responding_officer_name"
                  (ngModelChange)="form.set({ ...form(), responding_officer_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-badge">Officer badge</label>
+          <label class="field-label" for="pr-badge">{{ 'Officer badge' | translate }}</label>
           <input class="field-input" id="pr-badge" type="text" [ngModel]="form().responding_officer_badge"
                  (ngModelChange)="form.set({ ...form(), responding_officer_badge: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-loss">Total loss value</label>
+          <label class="field-label" for="pr-loss">{{ 'Total loss value' | translate }}</label>
           <input class="field-input" id="pr-loss" type="number" min="0" step="0.01" [ngModel]="form().total_loss_value"
                  (ngModelChange)="form.set({ ...form(), total_loss_value: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-guest">Guest involved</label>
+          <label class="field-label" for="pr-guest">{{ 'Guest involved' | translate }}</label>
           <select class="field-input" id="pr-guest" [ngModel]="form().guest_involved"
                   (ngModelChange)="form.set({ ...form(), guest_involved: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-staff">Staff involved</label>
+          <label class="field-label" for="pr-staff">{{ 'Staff involved' | translate }}</label>
           <select class="field-input" id="pr-staff" [ngModel]="form().staff_involved"
                   (ngModelChange)="form.set({ ...form(), staff_involved: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-stolen">Property stolen</label>
+          <label class="field-label" for="pr-stolen">{{ 'Property stolen' | translate }}</label>
           <select class="field-input" id="pr-stolen" [ngModel]="form().property_stolen"
                   (ngModelChange)="form.set({ ...form(), property_stolen: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-injuries">Injuries reported</label>
+          <label class="field-label" for="pr-injuries">{{ 'Injuries reported' | translate }}</label>
           <select class="field-input" id="pr-injuries" [ngModel]="form().injuries_reported"
                   (ngModelChange)="form.set({ ...form(), injuries_reported: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="pr-desc">What happened</label>
+          <label class="field-label" for="pr-desc">{{ 'What happened' | translate }}</label>
           <textarea class="field-input" id="pr-desc" rows="4" [ngModel]="form().incident_description"
                     (ngModelChange)="form.set({ ...form(), incident_description: $event ?? '' })"
-                    placeholder="Facts as reported, in the words used to the police"></textarea>
+                    [placeholder]="'Facts as reported, in the words used to the police' | translate"></textarea>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitForm()"
               [disabled]="submitting() || !canSubmitForm()">
-        {{ submitting() ? 'Saving…' : (editing() ? 'Save correction' : 'File report') }}
+        {{ submitting() ? ('Saving…' | translate) : (editing() ? ('Save correction' | translate) : ('File report' | translate)) }}
       </button>
     </div>
   </div>
@@ -139,50 +139,50 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="gavel" />
-      <h3 class="confirm-title">Update status — {{ report.report_number }}</h3>
+      <h3 class="confirm-title">{{ 'Update status — {report}' | translate:{ report: report.report_number } }}</h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="pr-status">Status</label>
+          <label class="field-label" for="pr-status">{{ 'Status' | translate }}</label>
           <select class="field-input" id="pr-status" [ngModel]="statusForm().report_status"
                   (ngModelChange)="statusForm.set({ ...statusForm(), report_status: $event })">
             @for (s of reportStatuses; track s) {
-              <option [value]="s">{{ labelFor(s) }}</option>
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-case">Police case number</label>
+          <label class="field-label" for="pr-case">{{ 'Police case number' | translate }}</label>
           <input class="field-input" id="pr-case" type="text" [ngModel]="statusForm().police_case_number"
                  (ngModelChange)="statusForm.set({ ...statusForm(), police_case_number: $event ?? '' })"
-                 placeholder="Reference the force issued" />
+                 [placeholder]="'Reference the force issued' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-investigator">Lead investigator</label>
+          <label class="field-label" for="pr-investigator">{{ 'Lead investigator' | translate }}</label>
           <input class="field-input" id="pr-investigator" type="text" [ngModel]="statusForm().lead_investigator_name"
                  (ngModelChange)="statusForm.set({ ...statusForm(), lead_investigator_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-follow">Follow-up required</label>
+          <label class="field-label" for="pr-follow">{{ 'Follow-up required' | translate }}</label>
           <select class="field-input" id="pr-follow" [ngModel]="statusForm().follow_up_required"
                   (ngModelChange)="statusForm.set({ ...statusForm(), follow_up_required: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="pr-follow-date">Follow-up date</label>
+          <label class="field-label" for="pr-follow-date">{{ 'Follow-up date' | translate }}</label>
           <input class="field-input" id="pr-follow-date" type="date" [ngModel]="statusForm().follow_up_date"
                  (ngModelChange)="statusForm.set({ ...statusForm(), follow_up_date: $event ?? '' })" />
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelStatus()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelStatus()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitStatus()"
               [disabled]="submitting() || !canSubmitStatus()">
-        {{ submitting() ? 'Saving…' : 'Update status' }}
+        {{ submitting() ? ('Saving…' | translate) : ('Update status' | translate) }}
       </button>
     </div>
   </div>
@@ -190,68 +190,68 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label class="field-label" for="pr-f-status">Status</label>
+    <label class="field-label" for="pr-f-status">{{ 'Status' | translate }}</label>
     <select class="field-input" id="pr-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of reportStatuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="pr-f-type">Incident type</label>
+    <label class="field-label" for="pr-f-type">{{ 'Incident type' | translate }}</label>
     <select class="field-input" id="pr-f-type" [ngModel]="typeFilter()"
             (ngModelChange)="typeFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (t of incidentTypes; track t) {
-        <option [value]="t">{{ labelFor(t) }}</option>
+        <option [value]="t">{{ labelFor(t) | translate }}</option>
       }
     </select>
   </div>
 </div>
 
 @if (loading()) {
-  <div class="loading-state">Loading…</div>
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
 } @else if (reports().length === 0) {
   <div class="empty-state">
     <app-icon class="empty-icon" name="local_police" />
-    <h3>No police reports on record</h3>
+    <h3>{{ 'No police reports on record' | translate }}</h3>
   </div>
 } @else {
   <div class="table-container">
     <table class="table data-table">
       <thead>
         <tr>
-          <th>Report</th>
-          <th>Incident date</th>
-          <th>Type</th>
-          <th>Location</th>
-          <th>Agency</th>
-          <th>Case number</th>
-          <th>Status</th>
-          <th class="cell-actions">Actions</th>
+          <th>{{ 'Report' | translate }}</th>
+          <th>{{ 'Incident date' | translate }}</th>
+          <th>{{ 'Type' | translate }}</th>
+          <th>{{ 'Location' | translate }}</th>
+          <th>{{ 'Agency' | translate }}</th>
+          <th>{{ 'Case number' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
         @for (r of reports(); track r.report_id) {
           <tr>
             <td class="cell-primary"><strong>{{ r.report_number }}</strong></td>
-            <td>{{ r.incident_date | date: 'mediumDate' }}{{ r.incident_time ? ' ' + r.incident_time : '' }}</td>
-            <td>{{ labelFor(r.incident_type) }}</td>
+            <td>{{ r.incident_date | localeDate: 'mediumDate' }}{{ r.incident_time ? ' ' + r.incident_time : '' }}</td>
+            <td>{{ labelFor(r.incident_type) | translate }}</td>
             <td>{{ r.room_number || r.incident_location || '—' }}</td>
             <td>{{ r.agency_name }}{{ r.responding_officer_name ? ' · ' + r.responding_officer_name : '' }}</td>
             <td>
               @if (r.police_case_number) {
                 {{ r.police_case_number }}
               } @else {
-                <span class="badge badge-muted badge-sm">Not recorded</span>
+                <span class="badge badge-muted badge-sm">{{ 'Not recorded' | translate }}</span>
               }
             </td>
-            <td><span [class]="statusClass(r.report_status)">{{ r.report_status_display || labelFor(r.report_status) }}</span></td>
+            <td><span [class]="statusClass(r.report_status)">{{ (r.report_status_display || labelFor(r.report_status)) | translate }}</span></td>
             <td class="cell-actions">
-              <button class="btn btn-outline btn-sm" (click)="openEdit(r)">Correct</button>
-              <button class="btn btn-outline btn-sm" (click)="openStatus(r)">Status</button>
+              <button class="btn btn-outline btn-sm" (click)="openEdit(r)">{{ 'Correct' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openStatus(r)">{{ 'Status' | translate }}</button>
             </td>
           </tr>
         }

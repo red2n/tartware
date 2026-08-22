@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -82,11 +84,19 @@ const LIVE_STATUSES = new Set(["scheduled", "active"]);
 @Component({
 	selector: "app-promo-codes",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./promo-codes.html",
 })
 export class PromoCodesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -227,7 +237,9 @@ export class PromoCodesComponent {
 			const res = await this.api.get<{ data: PromoCode[] } | PromoCode[]>("/promo-codes", params);
 			this.codes.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load promotional codes");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load promotional codes"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -343,7 +355,7 @@ export class PromoCodesComponent {
 		try {
 			if (existing) {
 				await this.api.put(`/promo-codes/${existing.promo_id}`, body);
-				this.toast.success("Promotional code updated.");
+				this.toast.success(this.i18n.t("Promotional code updated."));
 			} else {
 				const propertyId = this.ctx.propertyId();
 				await this.api.post("/promo-codes", {
@@ -351,13 +363,15 @@ export class PromoCodesComponent {
 					promo_code: f.promo_code.trim().toUpperCase(),
 					...(propertyId ? { property_id: propertyId } : {}),
 				});
-				this.toast.success("Promotional code created.");
+				this.toast.success(this.i18n.t("Promotional code created."));
 			}
 			this.editorOpen.set(false);
 			this.editing.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save promotional code");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to save promotional code"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -378,11 +392,11 @@ export class PromoCodesComponent {
 		this.submitting.set(true);
 		try {
 			await this.api.delete(`/promo-codes/${code.promo_id}?tenant_id=${tenantId}`);
-			this.toast.success(`${code.promo_code} withdrawn.`);
+			this.toast.success(this.i18n.t("{p0} withdrawn.", { p0: code.promo_code }));
 			this.withdrawTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to withdraw code");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to withdraw code"));
 		} finally {
 			this.submitting.set(false);
 		}

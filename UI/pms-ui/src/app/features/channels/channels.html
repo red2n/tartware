@@ -2,22 +2,24 @@
   title="Channel health"
   description="OTA and channel-manager connections — status, last sync, and the recovery actions.">
   <button class="btn btn-outline btn-sm" (click)="load()" [disabled]="loading()">
-    <app-icon name="refresh" /> Refresh
+    <app-icon name="refresh" /> {{ 'Refresh' | translate }}
   </button>
 </app-page-header>
 
 @if (unhealthy().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="error" />
-    {{ unhealthy().length }} channel{{ unhealthy().length === 1 ? '' : 's' }} in error or with a
-    failed last sync
+    {{ (unhealthy().length === 1
+          ? '{count} channel in error or with a failed last sync'
+          : '{count} channels in error or with a failed last sync') | translate:{ count: unhealthy().length } }}
   </p>
 }
 @if (unmapped().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="link_off" />
-    {{ unmapped().length }} active channel{{ unmapped().length === 1 ? '' : 's' }} with no mapped
-    rooms or rates — these cannot sell
+    {{ (unmapped().length === 1
+          ? '{count} active channel with no mapped rooms or rates — these cannot sell'
+          : '{count} active channels with no mapped rooms or rates — these cannot sell') | translate:{ count: unmapped().length } }}
   </p>
 }
 
@@ -25,32 +27,32 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="sell" />
-      <h3 class="confirm-title">Push rates — {{ connection.channel_name }}</h3>
+      <h3 class="confirm-title">{{ 'Push rates — {channel}' | translate:{ channel: connection.channel_name } }}</h3>
     </div>
     <div class="confirm-body">
-      <p class="confirm-note">Leave the rate plan blank to push every mapped plan.</p>
+      <p class="confirm-note">{{ 'Leave the rate plan blank to push every mapped plan.' | translate }}</p>
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="ch-rate-plan">Rate plan ID</label>
+          <label class="field-label" for="ch-rate-plan">{{ 'Rate plan ID' | translate }}</label>
           <input class="field-input" id="ch-rate-plan" type="text" [ngModel]="ratePushForm().rate_plan_id"
                  (ngModelChange)="ratePushForm.set({ ...ratePushForm(), rate_plan_id: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ch-rate-from">Effective from</label>
+          <label class="field-label" for="ch-rate-from">{{ 'Effective from' | translate }}</label>
           <input class="field-input" id="ch-rate-from" type="date" [ngModel]="ratePushForm().effective_from"
                  (ngModelChange)="ratePushForm.set({ ...ratePushForm(), effective_from: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ch-rate-to">Effective to</label>
+          <label class="field-label" for="ch-rate-to">{{ 'Effective to' | translate }}</label>
           <input class="field-input" id="ch-rate-to" type="date" [ngModel]="ratePushForm().effective_to"
                  (ngModelChange)="ratePushForm.set({ ...ratePushForm(), effective_to: $event ?? '' })" />
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitRatePush()" [disabled]="submitting()">
-        {{ submitting() ? 'Queueing…' : 'Push rates' }}
+        {{ submitting() ? ('Queueing…' | translate) : ('Push rates' | translate) }}
       </button>
     </div>
   </div>
@@ -60,27 +62,27 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="cloud_upload" />
-      <h3 class="confirm-title">Sync content — {{ connection.channel_name }}</h3>
+      <h3 class="confirm-title">{{ 'Sync content — {channel}' | translate:{ channel: connection.channel_name } }}</h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="ch-content-type">Content</label>
+          <label class="field-label" for="ch-content-type">{{ 'Content' | translate }}</label>
           <select class="field-input" id="ch-content-type" [ngModel]="contentSyncForm().content_types"
                   (ngModelChange)="contentSyncForm.set({ ...contentSyncForm(), content_types: $event })">
             @for (t of contentTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="ch-content-config">OTA configuration</label>
+          <label class="field-label" for="ch-content-config">{{ 'OTA configuration' | translate }}</label>
           <select class="field-input" id="ch-content-config" [ngModel]="contentSyncForm().ota_config_id"
                   (ngModelChange)="contentSyncForm.set({ ...contentSyncForm(), ota_config_id: $event })">
-            <option value="">Select a configuration…</option>
+            <option value="">{{ 'Select a configuration…' | translate }}</option>
             @for (c of configurations(); track c.ota_config_id) {
               <option [value]="c.ota_config_id">
-                {{ c.ota_name }} ({{ c.ota_code }}){{ c.has_credentials ? '' : ' — no credentials' }}
+                {{ c.ota_name }} ({{ c.ota_code }}){{ c.has_credentials ? '' : (' — no credentials' | translate) }}
               </option>
             }
           </select>
@@ -88,9 +90,9 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitContentSync()" [disabled]="submitting()">
-        {{ submitting() ? 'Queueing…' : 'Sync content' }}
+        {{ submitting() ? ('Queueing…' | translate) : ('Sync content' | translate) }}
       </button>
     </div>
   </div>
@@ -100,37 +102,36 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="replay" />
-      <h3 class="confirm-title">Retry a webhook delivery</h3>
+      <h3 class="confirm-title">{{ 'Retry a webhook delivery' | translate }}</h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        Retries an inbound delivery that failed. The subscription and event IDs are on the
-        Webhooks screen.
+        {{ 'Retries an inbound delivery that failed. The subscription and event IDs are on the Webhooks screen.' | translate }}
       </p>
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="ch-wh-sub">Subscription ID</label>
+          <label class="field-label" for="ch-wh-sub">{{ 'Subscription ID' | translate }}</label>
           <input class="field-input" id="ch-wh-sub" type="text" [ngModel]="webhookRetryForm().subscription_id"
                  (ngModelChange)="webhookRetryForm.set({ ...webhookRetryForm(), subscription_id: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ch-wh-event">Event ID</label>
+          <label class="field-label" for="ch-wh-event">{{ 'Event ID' | translate }}</label>
           <input class="field-input" id="ch-wh-event" type="text" [ngModel]="webhookRetryForm().event_id"
                  (ngModelChange)="webhookRetryForm.set({ ...webhookRetryForm(), event_id: $event ?? '' })" />
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="ch-wh-reason">Reason</label>
+          <label class="field-label" for="ch-wh-reason">{{ 'Reason' | translate }}</label>
           <input class="field-input" id="ch-wh-reason" type="text" [ngModel]="webhookRetryForm().reason"
                  (ngModelChange)="webhookRetryForm.set({ ...webhookRetryForm(), reason: $event ?? '' })"
-                 placeholder="Why this is being replayed" />
+                 [placeholder]="'Why this is being replayed' | translate" />
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAction()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitWebhookRetry()"
               [disabled]="submitting() || !webhookRetryForm().subscription_id.trim()">
-        {{ submitting() ? 'Queueing…' : 'Retry delivery' }}
+        {{ submitting() ? ('Queueing…' | translate) : ('Retry delivery' | translate) }}
       </button>
     </div>
   </div>
@@ -138,42 +139,42 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label class="field-label" for="ch-f-status">Connection status</label>
+    <label class="field-label" for="ch-f-status">{{ 'Connection status' | translate }}</label>
     <select class="field-input" id="ch-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of connectionStatuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="ch-f-retry">Webhooks</label>
+    <label class="field-label" for="ch-f-retry">{{ 'Webhooks' | translate }}</label>
     <button class="btn btn-outline btn-sm" id="ch-f-retry" (click)="openWebhookRetry()">
-      Retry a delivery
+      {{ 'Retry a delivery' | translate }}
     </button>
   </div>
 </div>
 
 @if (loading()) {
-  <div class="loading-state">Loading…</div>
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
 } @else if (connections().length === 0) {
   <div class="empty-state">
     <app-icon class="empty-icon" name="hub" />
-    <h3>No channel connections configured</h3>
+    <h3>{{ 'No channel connections configured' | translate }}</h3>
   </div>
 } @else {
   <div class="table-container">
     <table class="table data-table">
       <thead>
         <tr>
-          <th>Channel</th>
-          <th>Status</th>
-          <th>Last sync</th>
-          <th>Mapped</th>
-          <th>Pending</th>
-          <th>Last error</th>
-          <th class="cell-actions">Actions</th>
+          <th>{{ 'Channel' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th>{{ 'Last sync' | translate }}</th>
+          <th>{{ 'Mapped' | translate }}</th>
+          <th>{{ 'Pending' | translate }}</th>
+          <th>{{ 'Last error' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -182,40 +183,40 @@
             <td class="cell-primary">
               <strong>{{ c.channel_name }}</strong>
               <div class="cell-sub">
-                {{ c.channel_code }}{{ c.is_two_way_sync ? ' · two-way' : '' }}
+                {{ c.channel_code }}{{ c.is_two_way_sync ? (' · two-way' | translate) : '' }}
               </div>
             </td>
             <td>
-              <span [class]="statusClass(c.connection_status)">{{ c.connection_status_display }}</span>
+              <span [class]="statusClass(c.connection_status)">{{ c.connection_status_display | translate }}</span>
               @if (!c.is_active) {
-                <span class="badge badge-muted badge-sm">Inactive</span>
+                <span class="badge badge-muted badge-sm">{{ 'Inactive' | translate }}</span>
               }
             </td>
             <td>
               @if (c.last_sync_at) {
-                {{ c.last_sync_at | date: 'short' }}
+                {{ c.last_sync_at | localeDate: 'short' }}
                 <span [class]="statusClass(c.last_sync_status)">
-                  {{ c.last_sync_status_display || labelFor(c.last_sync_status) }}
+                  {{ (c.last_sync_status_display || labelFor(c.last_sync_status)) | translate }}
                 </span>
               } @else {
-                <span class="badge badge-muted badge-sm">Never</span>
+                <span class="badge badge-muted badge-sm">{{ 'Never' | translate }}</span>
               }
             </td>
             <td>
-              {{ c.rooms_mapped ?? 0 }} rooms / {{ c.rates_mapped ?? 0 }} rates
+              {{ '{rooms} rooms / {rates} rates' | translate:{ rooms: c.rooms_mapped ?? 0, rates: c.rates_mapped ?? 0 } }}
               @if (c.is_active && (!c.rooms_mapped || !c.rates_mapped)) {
-                <span class="badge badge-attention badge-sm">Unmapped</span>
+                <span class="badge badge-attention badge-sm">{{ 'Unmapped' | translate }}</span>
               }
             </td>
             <td>{{ c.pending_reservations ?? 0 }}</td>
             <td>{{ c.last_error_message || '—' }}</td>
             <td class="cell-actions">
               <button class="btn btn-outline btn-sm" (click)="syncNow(c)" [disabled]="submitting()">
-                Sync now
+                {{ 'Sync now' | translate }}
               </button>
-              <button class="btn btn-outline btn-sm" (click)="openAction('rate-push', c)">Rates</button>
-              <button class="btn btn-outline btn-sm" (click)="openAction('content-sync', c)">Content</button>
-              <button class="btn btn-outline btn-sm" (click)="openHistory(c)">History</button>
+              <button class="btn btn-outline btn-sm" (click)="openAction('rate-push', c)">{{ 'Rates' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openAction('content-sync', c)">{{ 'Content' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openHistory(c)">{{ 'History' | translate }}</button>
             </td>
           </tr>
         }
@@ -228,52 +229,52 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="history" />
-      <h3 class="confirm-title">Sync history — {{ connection.channel_name }}</h3>
+      <h3 class="confirm-title">{{ 'Sync history — {channel}' | translate:{ channel: connection.channel_name } }}</h3>
       <button class="btn btn-outline btn-sm" (click)="failedOnly.set(!failedOnly())">
-        {{ failedOnly() ? 'Show all' : 'Failures only' }}
+        {{ failedOnly() ? ('Show all' | translate) : ('Failures only' | translate) }}
       </button>
-      <button class="btn btn-outline btn-sm" (click)="closeHistory()">Close</button>
+      <button class="btn btn-outline btn-sm" (click)="closeHistory()">{{ 'Close' | translate }}</button>
     </div>
     <div class="confirm-body">
       @if (historyLoading()) {
-        <div class="loading-state">Loading…</div>
+        <div class="loading-state">{{ 'Loading…' | translate }}</div>
       } @else if (visibleHistory().length === 0) {
         <p class="confirm-note">
-          {{ failedOnly() ? 'No failed syncs recorded.' : 'No syncs recorded for this channel.' }}
+          {{ failedOnly() ? ('No failed syncs recorded.' | translate) : ('No syncs recorded for this channel.' | translate) }}
         </p>
       } @else {
         <div class="table-container">
           <table class="table data-table">
             <thead>
               <tr>
-                <th>Started</th>
-                <th>Type</th>
-                <th>Direction</th>
-                <th>Outcome</th>
-                <th>Records</th>
-                <th>Duration</th>
-                <th>Error</th>
+                <th>{{ 'Started' | translate }}</th>
+                <th>{{ 'Type' | translate }}</th>
+                <th>{{ 'Direction' | translate }}</th>
+                <th>{{ 'Outcome' | translate }}</th>
+                <th>{{ 'Records' | translate }}</th>
+                <th>{{ 'Duration' | translate }}</th>
+                <th>{{ 'Error' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @for (h of visibleHistory(); track h.sync_log_id) {
                 <tr>
-                  <td>{{ h.started_at | date: 'short' }}</td>
-                  <td>{{ labelFor(h.sync_type) }}</td>
-                  <td>{{ labelFor(h.sync_direction) }}</td>
+                  <td>{{ h.started_at | localeDate: 'short' }}</td>
+                  <td>{{ labelFor(h.sync_type) | translate }}</td>
+                  <td>{{ labelFor(h.sync_direction) | translate }}</td>
                   <td>
-                    <span [class]="statusClass(h.sync_status)">{{ h.sync_status_display }}</span>
+                    <span [class]="statusClass(h.sync_status)">{{ h.sync_status_display | translate }}</span>
                     @if (h.triggered_by) {
-                      <span class="badge badge-muted badge-sm">{{ labelFor(h.triggered_by) }}</span>
+                      <span class="badge badge-muted badge-sm">{{ labelFor(h.triggered_by) | translate }}</span>
                     }
                   </td>
                   <td>
-                    {{ h.records_processed ?? 0 }} processed
+                    {{ '{count} processed' | translate:{ count: h.records_processed ?? 0 } }}
                     @if (h.records_failed) {
-                      <span class="badge badge-attention badge-sm">{{ h.records_failed }} failed</span>
+                      <span class="badge badge-attention badge-sm">{{ '{count} failed' | translate:{ count: h.records_failed } }}</span>
                     }
                   </td>
-                  <td>{{ h.duration_ms != null ? h.duration_ms + ' ms' : '—' }}</td>
+                  <td>{{ h.duration_ms != null ? h.duration_ms + (' ms' | translate) : '—' }}</td>
                   <td>{{ h.error_message || '—' }}</td>
                 </tr>
               }

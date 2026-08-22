@@ -4,22 +4,22 @@
   @switch (tab()) {
     @case ('sources') {
       <button class="btn btn-primary btn-sm" (click)="openCreateSource()" [disabled]="submitting()">
-        <app-icon name="add" /> New source
+        <app-icon name="add" /> {{ 'New source' | translate }}
       </button>
     }
     @case ('segments') {
       <button class="btn btn-primary btn-sm" (click)="openCreateSegment()" [disabled]="submitting()">
-        <app-icon name="add" /> New segment
+        <app-icon name="add" /> {{ 'New segment' | translate }}
       </button>
     }
     @case ('allotments') {
       <button class="btn btn-primary btn-sm" (click)="openCreateAllotment()" [disabled]="submitting()">
-        <app-icon name="add" /> New allotment
+        <app-icon name="add" /> {{ 'New allotment' | translate }}
       </button>
     }
     @case ('metasearch') {
       <button class="btn btn-primary btn-sm" (click)="openCreateMetasearch()" [disabled]="submitting()">
-        <app-icon name="add" /> New platform
+        <app-icon name="add" /> {{ 'New platform' | translate }}
       </button>
     }
   }
@@ -27,13 +27,13 @@
 
 <!-- Five surfaces, one screen: a select was fine for two. -->
 <div class="filter-bar">
-  <nav class="filter-tabs" aria-label="Distribution areas">
+  <nav class="filter-tabs" [aria-label]="'Distribution areas' | translate">
     @for (t of tabs; track t.key) {
       <button type="button" class="filter-tab"
               [attr.aria-pressed]="tab() === t.key"
               [class.filter-tab-active]="tab() === t.key"
               (click)="tab.set(t.key)">
-        {{ t.label }}
+        {{ t.label | translate }}
       </button>
     }
   </nav>
@@ -43,18 +43,17 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="block" />
-      <h3 class="confirm-title">Retire {{ target.label }}?</h3>
+      <h3 class="confirm-title">{{ 'Retire {target}?' | translate:{ target: target.label } }}</h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        It stops being selectable for new bookings. Existing reservations keep referencing it, so
-        production reporting stays intact.
+        {{ 'It stops being selectable for new bookings. Existing reservations keep referencing it, so production reporting stays intact.' | translate }}
       </p>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelRetire()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelRetire()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="confirmRetire()" [disabled]="submitting()">
-        {{ submitting() ? 'Retiring…' : 'Retire' }}
+        {{ submitting() ? ('Retiring…' | translate) : ('Retire' | translate) }}
       </button>
     </div>
   </div>
@@ -65,66 +64,65 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="hub" />
       <h3 class="confirm-title">
-        {{ editingSource() ? 'Edit ' + editingSource()!.source_code : 'New booking source' }}
+        {{ editingSource() ? ('Edit ' | translate) + editingSource()!.source_code : ('New booking source' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       @if (editingSource()) {
         <p class="confirm-note">
-          The code cannot be changed — reservations reference it, and production reporting groups on
-          it.
+          {{ 'The code cannot be changed — reservations reference it, and production reporting groups on it.' | translate }}
         </p>
       }
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="bs-code">Code</label>
+          <label class="field-label" for="bs-code">{{ 'Code' | translate }}</label>
           <input class="field-input" id="bs-code" type="text" [ngModel]="sourceForm().source_code"
                  (ngModelChange)="sourceForm.set({ ...sourceForm(), source_code: $event ?? '' })"
                  [disabled]="editingSource() !== null" placeholder="BOOKINGCOM" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-name">Name</label>
+          <label class="field-label" for="bs-name">{{ 'Name' | translate }}</label>
           <input class="field-input" id="bs-name" type="text" [ngModel]="sourceForm().source_name"
                  (ngModelChange)="sourceForm.set({ ...sourceForm(), source_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-type">Type</label>
+          <label class="field-label" for="bs-type">{{ 'Type' | translate }}</label>
           <select class="field-input" id="bs-type" [ngModel]="sourceForm().source_type"
                   (ngModelChange)="sourceForm.set({ ...sourceForm(), source_type: $event })">
             @for (t of sourceTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-category">Category</label>
+          <label class="field-label" for="bs-category">{{ 'Category' | translate }}</label>
           <input class="field-input" id="bs-category" type="text" [ngModel]="sourceForm().category"
                  (ngModelChange)="sourceForm.set({ ...sourceForm(), category: $event ?? '' })"
                  placeholder="ONLINE / OFFLINE" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-channel">Channel name</label>
+          <label class="field-label" for="bs-channel">{{ 'Channel name' | translate }}</label>
           <input class="field-input" id="bs-channel" type="text" [ngModel]="sourceForm().channel_name"
                  (ngModelChange)="sourceForm.set({ ...sourceForm(), channel_name: $event ?? '' })"
-                 placeholder="Booking.com" />
+                 [placeholder]="'Booking.com' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-website">Channel website</label>
+          <label class="field-label" for="bs-website">{{ 'Channel website' | translate }}</label>
           <input class="field-input" id="bs-website" type="text" [ngModel]="sourceForm().channel_website"
                  (ngModelChange)="sourceForm.set({ ...sourceForm(), channel_website: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-comm-type">Commission</label>
+          <label class="field-label" for="bs-comm-type">{{ 'Commission' | translate }}</label>
           <select class="field-input" id="bs-comm-type" [ngModel]="sourceForm().commission_type"
                   (ngModelChange)="sourceForm.set({ ...sourceForm(), commission_type: $event })">
             @for (c of commissionTypes; track c) {
-              <option [value]="c">{{ labelFor(c) }}</option>
+              <option [value]="c">{{ labelFor(c) | translate }}</option>
             }
           </select>
         </div>
         @if (sourceForm().commission_type === 'PERCENTAGE') {
           <div class="form-field">
-            <label class="field-label" for="bs-comm-pct">Commission %</label>
+            <label class="field-label" for="bs-comm-pct">{{ 'Commission %' | translate }}</label>
             <input class="field-input" id="bs-comm-pct" type="number" min="0" max="100" step="0.01"
                    [ngModel]="sourceForm().commission_percentage"
                    (ngModelChange)="sourceForm.set({ ...sourceForm(), commission_percentage: $event })" />
@@ -132,40 +130,40 @@
         }
         @if (sourceForm().commission_type === 'FIXED') {
           <div class="form-field">
-            <label class="field-label" for="bs-comm-amt">Commission amount</label>
+            <label class="field-label" for="bs-comm-amt">{{ 'Commission amount' | translate }}</label>
             <input class="field-input" id="bs-comm-amt" type="number" min="0" step="0.01"
                    [ngModel]="sourceForm().commission_fixed_amount"
                    (ngModelChange)="sourceForm.set({ ...sourceForm(), commission_fixed_amount: $event })" />
           </div>
         }
         <div class="form-field">
-          <label class="field-label" for="bs-ranking">Display order</label>
+          <label class="field-label" for="bs-ranking">{{ 'Display order' | translate }}</label>
           <input class="field-input" id="bs-ranking" type="number" [ngModel]="sourceForm().ranking"
                  (ngModelChange)="sourceForm.set({ ...sourceForm(), ranking: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-bookable">Bookable</label>
+          <label class="field-label" for="bs-bookable">{{ 'Bookable' | translate }}</label>
           <select class="field-input" id="bs-bookable" [ngModel]="sourceForm().is_bookable"
                   (ngModelChange)="sourceForm.set({ ...sourceForm(), is_bookable: $event })">
-            <option [ngValue]="true">Accepts new bookings</option>
-            <option [ngValue]="false">Reporting only</option>
+            <option [ngValue]="true">{{ 'Accepts new bookings' | translate }}</option>
+            <option [ngValue]="false">{{ 'Reporting only' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="bs-preferred">Preferred</label>
+          <label class="field-label" for="bs-preferred">{{ 'Preferred' | translate }}</label>
           <select class="field-input" id="bs-preferred" [ngModel]="sourceForm().is_preferred"
                   (ngModelChange)="sourceForm.set({ ...sourceForm(), is_preferred: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelSourceEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelSourceEditor()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitSource()"
               [disabled]="submitting() || !canSubmitSource()">
-        {{ submitting() ? 'Saving…' : (editingSource() ? 'Save changes' : 'Create source') }}
+        {{ submitting() ? ('Saving…' | translate) : (editingSource() ? ('Save changes' | translate) : ('Create source' | translate)) }}
       </button>
     </div>
   </div>
@@ -176,93 +174,91 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="inventory_2" />
       <h3 class="confirm-title">
-        {{ editingAllotment() ? 'Edit ' + editingAllotment()!.allotment_code : 'New allotment' }}
+        {{ editingAllotment() ? ('Edit ' | translate) + editingAllotment()!.allotment_code : ('New allotment' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       @if (editingAllotment()) {
         <p class="confirm-note">
-          The code and the date window are fixed: the code is what the contract quotes, and moving the
-          window is a new agreement rather than an edit.
+          {{ 'The code and the date window are fixed: the code is what the contract quotes, and moving the window is a new agreement rather than an edit.' | translate }}
         </p>
       } @else {
         <p class="confirm-note">
-          A block does not yet reduce sellable availability — the booking engine can still sell these
-          rooms. It records the commitment, the cutoff and the pickup against it.
+          {{ 'A block does not yet reduce sellable availability — the booking engine can still sell these rooms. It records the commitment, the cutoff and the pickup against it.' | translate }}
         </p>
       }
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="al-code">Code</label>
+          <label class="field-label" for="al-code">{{ 'Code' | translate }}</label>
           <input class="field-input" id="al-code" type="text" [ngModel]="allotmentForm().allotment_code"
                  (ngModelChange)="patchAllotmentForm({ allotment_code: $event ?? '' })"
                  [disabled]="editingAllotment() !== null" placeholder="ACME-MAR" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-name">Name</label>
+          <label class="field-label" for="al-name">{{ 'Name' | translate }}</label>
           <input class="field-input" id="al-name" type="text" [ngModel]="allotmentForm().allotment_name"
                  (ngModelChange)="patchAllotmentForm({ allotment_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-type">Type</label>
+          <label class="field-label" for="al-type">{{ 'Type' | translate }}</label>
           <select class="field-input" id="al-type" [ngModel]="allotmentForm().allotment_type"
                   (ngModelChange)="patchAllotmentForm({ allotment_type: $event })">
             @for (t of allotmentTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-start">From</label>
+          <label class="field-label" for="al-start">{{ 'From' | translate }}</label>
           <input class="field-input" id="al-start" type="date" [ngModel]="allotmentForm().start_date"
                  (ngModelChange)="patchAllotmentForm({ start_date: $event ?? '' })"
                  [disabled]="editingAllotment() !== null" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-end">To</label>
+          <label class="field-label" for="al-end">{{ 'To' | translate }}</label>
           <input class="field-input" id="al-end" type="date" [ngModel]="allotmentForm().end_date"
                  (ngModelChange)="patchAllotmentForm({ end_date: $event ?? '' })"
                  [disabled]="editingAllotment() !== null" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-cutoff">Cutoff</label>
+          <label class="field-label" for="al-cutoff">{{ 'Cutoff' | translate }}</label>
           <input class="field-input" id="al-cutoff" type="date" [ngModel]="allotmentForm().cutoff_date"
                  (ngModelChange)="patchAllotmentForm({ cutoff_date: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-rooms">Rooms blocked</label>
+          <label class="field-label" for="al-rooms">{{ 'Rooms blocked' | translate }}</label>
           <input class="field-input" id="al-rooms" type="number" min="1"
                  [ngModel]="allotmentForm().total_rooms_blocked"
                  (ngModelChange)="patchAllotmentForm({ total_rooms_blocked: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-per-night">Rooms per night</label>
+          <label class="field-label" for="al-per-night">{{ 'Rooms per night' | translate }}</label>
           <input class="field-input" id="al-per-night" type="number" min="1"
                  [ngModel]="allotmentForm().rooms_per_night"
                  (ngModelChange)="patchAllotmentForm({ rooms_per_night: $event })" />
         </div>
         @if (editingAllotment()) {
           <div class="form-field">
-            <label class="field-label" for="al-pickup">Rooms picked up</label>
+            <label class="field-label" for="al-pickup">{{ 'Rooms picked up' | translate }}</label>
             <input class="field-input" id="al-pickup" type="number" min="0"
                    [ngModel]="allotmentForm().rooms_picked_up"
                    (ngModelChange)="patchAllotmentForm({ rooms_picked_up: $event })" />
           </div>
         }
         <div class="form-field">
-          <label class="field-label" for="al-rate">Contracted rate</label>
+          <label class="field-label" for="al-rate">{{ 'Contracted rate' | translate }}</label>
           <input class="field-input" id="al-rate" type="number" min="0" step="0.01"
                  [ngModel]="allotmentForm().contracted_rate"
                  (ngModelChange)="patchAllotmentForm({ contracted_rate: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-account">Account</label>
+          <label class="field-label" for="al-account">{{ 'Account' | translate }}</label>
           <input class="field-input" id="al-account" type="text" [ngModel]="allotmentForm().account_name"
                  (ngModelChange)="patchAllotmentForm({ account_name: $event ?? '' })"
-                 placeholder="Acme Tours Ltd" />
+                 [placeholder]="'Acme Tours Ltd' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-source">Booking source</label>
+          <label class="field-label" for="al-source">{{ 'Booking source' | translate }}</label>
           <select class="field-input" id="al-source" [ngModel]="allotmentForm().booking_source_id"
                   (ngModelChange)="patchAllotmentForm({ booking_source_id: $event })">
             <option value="">—</option>
@@ -272,7 +268,7 @@
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-segment">Market segment</label>
+          <label class="field-label" for="al-segment">{{ 'Market segment' | translate }}</label>
           <select class="field-input" id="al-segment" [ngModel]="allotmentForm().market_segment_id"
                   (ngModelChange)="patchAllotmentForm({ market_segment_id: $event })">
             <option value="">—</option>
@@ -282,33 +278,33 @@
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-contact">Contact</label>
+          <label class="field-label" for="al-contact">{{ 'Contact' | translate }}</label>
           <input class="field-input" id="al-contact" type="text" [ngModel]="allotmentForm().contact_name"
                  (ngModelChange)="patchAllotmentForm({ contact_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-email">Contact email</label>
+          <label class="field-label" for="al-email">{{ 'Contact email' | translate }}</label>
           <input class="field-input" id="al-email" type="email" [ngModel]="allotmentForm().contact_email"
                  (ngModelChange)="patchAllotmentForm({ contact_email: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="al-attrition">Attrition clause</label>
+          <label class="field-label" for="al-attrition">{{ 'Attrition clause' | translate }}</label>
           <select class="field-input" id="al-attrition" [ngModel]="allotmentForm().attrition_clause"
                   (ngModelChange)="patchAllotmentForm({ attrition_clause: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         @if (allotmentForm().attrition_clause) {
           <div class="form-field">
-            <label class="field-label" for="al-attrition-pct">Attrition %</label>
+            <label class="field-label" for="al-attrition-pct">{{ 'Attrition %' | translate }}</label>
             <input class="field-input" id="al-attrition-pct" type="number" min="0" max="100"
                    [ngModel]="allotmentForm().attrition_percentage"
                    (ngModelChange)="patchAllotmentForm({ attrition_percentage: $event })" />
           </div>
         }
         <div class="form-field">
-          <label class="field-label" for="al-commission">Commission %</label>
+          <label class="field-label" for="al-commission">{{ 'Commission %' | translate }}</label>
           <input class="field-input" id="al-commission" type="number" min="0" max="100"
                  [ngModel]="allotmentForm().commission_percentage"
                  (ngModelChange)="patchAllotmentForm({ commission_percentage: $event })" />
@@ -319,25 +315,25 @@
         <!-- Only the moves the service will accept: the map is the one it
              enforces, so a button here can never come back 409. -->
         @if (allotmentNextStatuses().length > 0) {
-          <h4 class="form-section-title">Move this block</h4>
+          <h4 class="form-section-title">{{ 'Move this block' | translate }}</h4>
           <div class="tag-list">
             @for (next of allotmentNextStatuses(); track next) {
               <button class="btn btn-outline btn-sm" (click)="moveAllotment(current, next)"
                       [disabled]="submitting()">
-                {{ labelFor(next) }}
+                {{ labelFor(next) | translate }}
               </button>
             }
           </div>
         } @else {
-          <p class="confirm-note">This block is {{ labelFor(current.allotment_status) }} — nothing follows it.</p>
+          <p class="confirm-note">{{ 'This block is {status} — nothing follows it.' | translate:{ status: labelFor(current.allotment_status) } }}</p>
         }
       }
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAllotmentEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAllotmentEditor()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitAllotment()"
               [disabled]="submitting() || !canSubmitAllotment()">
-        {{ submitting() ? 'Saving…' : (editingAllotment() ? 'Save changes' : 'Create allotment') }}
+        {{ submitting() ? ('Saving…' | translate) : (editingAllotment() ? ('Save changes' | translate) : ('Create allotment' | translate)) }}
       </button>
     </div>
   </div>
@@ -347,38 +343,37 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="sync_alt" />
-      <h3 class="confirm-title">Edit {{ editingMapping()!.channel_name }} mapping</h3>
+      <h3 class="confirm-title">{{ 'Edit {channel} mapping' | translate:{ channel: editingMapping()!.channel_name } }}</h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        Editing a mapping fans out to channel sync, so this goes through the command bus: the change is
-        accepted here and applied a moment later. The list refreshes itself.
+        {{ 'Editing a mapping fans out to channel sync, so this goes through the command bus: the change is accepted here and applied a moment later. The list refreshes itself.' | translate }}
       </p>
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="cm-external">External id</label>
+          <label class="field-label" for="cm-external">{{ 'External id' | translate }}</label>
           <input class="field-input" id="cm-external" type="text" [ngModel]="mappingForm().external_id"
                  (ngModelChange)="patchMappingForm({ external_id: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="cm-code">External code</label>
+          <label class="field-label" for="cm-code">{{ 'External code' | translate }}</label>
           <input class="field-input" id="cm-code" type="text" [ngModel]="mappingForm().external_code"
                  (ngModelChange)="patchMappingForm({ external_code: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="cm-active">Active</label>
+          <label class="field-label" for="cm-active">{{ 'Active' | translate }}</label>
           <select class="field-input" id="cm-active" [ngModel]="mappingForm().is_active"
                   (ngModelChange)="patchMappingForm({ is_active: $event })">
-            <option [ngValue]="true">Yes</option>
-            <option [ngValue]="false">Paused</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
+            <option [ngValue]="false">{{ 'Paused' | translate }}</option>
           </select>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelMappingEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelMappingEditor()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitMapping()" [disabled]="submitting()">
-        {{ submitting() ? 'Submitting…' : 'Update mapping' }}
+        {{ submitting() ? ('Submitting…' | translate) : ('Update mapping' | translate) }}
       </button>
     </div>
   </div>
@@ -389,33 +384,33 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="ads_click" />
       <h3 class="confirm-title">
-        {{ editingMetasearch() ? 'Edit ' + labelFor(editingMetasearch()!.platform) : 'New metasearch platform' }}
+        {{ editingMetasearch() ? ('Edit ' | translate) + labelFor(editingMetasearch()!.platform) : ('New metasearch platform' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        Bid changes fan out to the platform's feed, so these go through the command bus too.
+        {{ 'Bid changes fan out to the platform\'s feed, so these go through the command bus too.' | translate }}
       </p>
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="ms-platform">Platform</label>
+          <label class="field-label" for="ms-platform">{{ 'Platform' | translate }}</label>
           <select class="field-input" id="ms-platform" [ngModel]="metasearchForm().platform"
                   (ngModelChange)="patchMetasearchForm({ platform: $event })"
                   [disabled]="editingMetasearch() !== null">
             @for (p of metasearchPlatforms; track p) {
-              <option [value]="p">{{ labelFor(p) }}</option>
+              <option [value]="p">{{ labelFor(p) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-account">Account id</label>
+          <label class="field-label" for="ms-account">{{ 'Account id' | translate }}</label>
           <input class="field-input" id="ms-account" type="text"
                  [ngModel]="metasearchForm().platform_account_id"
                  (ngModelChange)="patchMetasearchForm({ platform_account_id: $event ?? '' })"
                  [disabled]="editingMetasearch() !== null" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-strategy">Bid strategy</label>
+          <label class="field-label" for="ms-strategy">{{ 'Bid strategy' | translate }}</label>
           <select class="field-input" id="ms-strategy" [ngModel]="metasearchForm().bid_strategy"
                   (ngModelChange)="patchMetasearchForm({ bid_strategy: $event })">
             @for (b of bidStrategies; track b) {
@@ -424,50 +419,50 @@
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-default-cpc">Default CPC</label>
+          <label class="field-label" for="ms-default-cpc">{{ 'Default CPC' | translate }}</label>
           <input class="field-input" id="ms-default-cpc" type="number" min="0" step="0.01"
                  [ngModel]="metasearchForm().default_cpc"
                  (ngModelChange)="patchMetasearchForm({ default_cpc: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-max-cpc">Max CPC</label>
+          <label class="field-label" for="ms-max-cpc">{{ 'Max CPC' | translate }}</label>
           <input class="field-input" id="ms-max-cpc" type="number" min="0" step="0.01"
                  [ngModel]="metasearchForm().max_cpc"
                  (ngModelChange)="patchMetasearchForm({ max_cpc: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-cpa">Target CPA</label>
+          <label class="field-label" for="ms-cpa">{{ 'Target CPA' | translate }}</label>
           <input class="field-input" id="ms-cpa" type="number" min="0" step="0.01"
                  [ngModel]="metasearchForm().target_cpa"
                  (ngModelChange)="patchMetasearchForm({ target_cpa: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-budget-day">Daily budget</label>
+          <label class="field-label" for="ms-budget-day">{{ 'Daily budget' | translate }}</label>
           <input class="field-input" id="ms-budget-day" type="number" min="0" step="0.01"
                  [ngModel]="metasearchForm().budget_daily"
                  (ngModelChange)="patchMetasearchForm({ budget_daily: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-budget-month">Monthly budget</label>
+          <label class="field-label" for="ms-budget-month">{{ 'Monthly budget' | translate }}</label>
           <input class="field-input" id="ms-budget-month" type="number" min="0" step="0.01"
                  [ngModel]="metasearchForm().budget_monthly"
                  (ngModelChange)="patchMetasearchForm({ budget_monthly: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-active">Live</label>
+          <label class="field-label" for="ms-active">{{ 'Live' | translate }}</label>
           <select class="field-input" id="ms-active" [ngModel]="metasearchForm().is_active"
                   (ngModelChange)="patchMetasearchForm({ is_active: $event })">
-            <option [ngValue]="true">Yes</option>
-            <option [ngValue]="false">Paused</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
+            <option [ngValue]="false">{{ 'Paused' | translate }}</option>
           </select>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelMetasearchEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelMetasearchEditor()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitMetasearch()"
               [disabled]="submitting() || !canSubmitMetasearch()">
-        {{ submitting() ? 'Submitting…' : (editingMetasearch() ? 'Save changes' : 'Create configuration') }}
+        {{ submitting() ? ('Submitting…' | translate) : (editingMetasearch() ? ('Save changes' | translate) : ('Create configuration' | translate)) }}
       </button>
     </div>
   </div>
@@ -478,37 +473,37 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="donut_small" />
       <h3 class="confirm-title">
-        {{ editingSegment() ? 'Edit ' + editingSegment()!.segment_code : 'New market segment' }}
+        {{ editingSegment() ? ('Edit ' | translate) + editingSegment()!.segment_code : ('New market segment' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="ms-code">Code</label>
+          <label class="field-label" for="ms-code">{{ 'Code' | translate }}</label>
           <input class="field-input" id="ms-code" type="text" [ngModel]="segmentForm().segment_code"
                  (ngModelChange)="segmentForm.set({ ...segmentForm(), segment_code: $event ?? '' })"
                  [disabled]="editingSegment() !== null" placeholder="CORP" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-name">Name</label>
+          <label class="field-label" for="ms-name">{{ 'Name' | translate }}</label>
           <input class="field-input" id="ms-name" type="text" [ngModel]="segmentForm().segment_name"
                  (ngModelChange)="segmentForm.set({ ...segmentForm(), segment_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-type">Type</label>
+          <label class="field-label" for="ms-type">{{ 'Type' | translate }}</label>
           <select class="field-input" id="ms-type" [ngModel]="segmentForm().segment_type"
                   (ngModelChange)="segmentForm.set({ ...segmentForm(), segment_type: $event })">
             @for (t of segmentTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         @if (!editingSegment()) {
           <div class="form-field">
-            <label class="field-label" for="ms-parent">Parent segment</label>
+            <label class="field-label" for="ms-parent">{{ 'Parent segment' | translate }}</label>
             <select class="field-input" id="ms-parent" [ngModel]="segmentForm().parent_segment_id"
                     (ngModelChange)="segmentForm.set({ ...segmentForm(), parent_segment_id: $event ?? '' })">
-              <option value="">None — top level</option>
+              <option value="">{{ 'None — top level' | translate }}</option>
               @for (p of parentCandidates(); track p.segment_id) {
                 <option [value]="p.segment_id">{{ p.segment_code }} — {{ p.segment_name }}</option>
               }
@@ -516,51 +511,51 @@
           </div>
         }
         <div class="form-field">
-          <label class="field-label" for="ms-multiplier">Rate multiplier</label>
+          <label class="field-label" for="ms-multiplier">{{ 'Rate multiplier' | translate }}</label>
           <input class="field-input" id="ms-multiplier" type="number" min="0.01" step="0.01"
                  [ngModel]="segmentForm().rate_multiplier"
                  (ngModelChange)="segmentForm.set({ ...segmentForm(), rate_multiplier: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="ms-bookable">Bookable</label>
+          <label class="field-label" for="ms-bookable">{{ 'Bookable' | translate }}</label>
           <select class="field-input" id="ms-bookable" [ngModel]="segmentForm().is_bookable"
                   (ngModelChange)="segmentForm.set({ ...segmentForm(), is_bookable: $event })">
-            <option [ngValue]="true">Accepts new bookings</option>
-            <option [ngValue]="false">Reporting only</option>
+            <option [ngValue]="true">{{ 'Accepts new bookings' | translate }}</option>
+            <option [ngValue]="false">{{ 'Reporting only' | translate }}</option>
           </select>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelSegmentEditor()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelSegmentEditor()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitSegment()"
               [disabled]="submitting() || !canSubmitSegment()">
-        {{ submitting() ? 'Saving…' : (editingSegment() ? 'Save changes' : 'Create segment') }}
+        {{ submitting() ? ('Saving…' | translate) : (editingSegment() ? ('Save changes' | translate) : ('Create segment' | translate)) }}
       </button>
     </div>
   </div>
 }
 
 @if (loading()) {
-  <div class="loading-state">Loading…</div>
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
 } @else if (tab() === 'sources') {
   @if (sources().length === 0) {
     <div class="empty-state">
       <app-icon class="empty-icon" name="hub" />
-      <h3>No booking sources configured</h3>
+      <h3>{{ 'No booking sources configured' | translate }}</h3>
     </div>
   } @else {
     <div class="table-container">
       <table class="table data-table">
         <thead>
           <tr>
-            <th>Code</th>
-            <th>Type</th>
-            <th>Channel</th>
-            <th>Commission</th>
-            <th>Production</th>
-            <th>Status</th>
-            <th class="cell-actions">Actions</th>
+            <th>{{ 'Code' | translate }}</th>
+            <th>{{ 'Type' | translate }}</th>
+            <th>{{ 'Channel' | translate }}</th>
+            <th>{{ 'Commission' | translate }}</th>
+            <th>{{ 'Production' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th class="cell-actions">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -570,27 +565,27 @@
                 <strong>{{ s.source_code }}</strong>
                 <div class="cell-sub">{{ s.source_name }}</div>
                 @if (s.is_preferred) {
-                  <span class="badge badge-accent badge-sm">Preferred</span>
+                  <span class="badge badge-accent badge-sm">{{ 'Preferred' | translate }}</span>
                 }
               </td>
-              <td>{{ s.source_type_display }}</td>
+              <td>{{ s.source_type_display | translate }}</td>
               <td>{{ s.channel_name || '—' }}</td>
               <td>{{ commissionSummary(s) }}</td>
-              <td>{{ s.total_bookings }} bookings</td>
+              <td>{{ '{count} bookings' | translate:{ count: s.total_bookings } }}</td>
               <td>
                 @if (s.is_bookable) {
-                  <span class="badge badge-accent badge-sm">Bookable</span>
+                  <span class="badge badge-accent badge-sm">{{ 'Bookable' | translate }}</span>
                 } @else {
-                  <span class="badge badge-muted badge-sm">Reporting only</span>
+                  <span class="badge badge-muted badge-sm">{{ 'Reporting only' | translate }}</span>
                 }
                 @if (!s.is_active) {
-                  <span class="badge badge-muted badge-sm">Inactive</span>
+                  <span class="badge badge-muted badge-sm">{{ 'Inactive' | translate }}</span>
                 }
               </td>
               <td class="cell-actions">
-                <button class="btn btn-outline btn-sm" (click)="openEditSource(s)">Edit</button>
+                <button class="btn btn-outline btn-sm" (click)="openEditSource(s)">{{ 'Edit' | translate }}</button>
                 <button class="btn btn-outline btn-sm"
-                        (click)="openRetire('source', s.source_id, s.source_code)">Retire</button>
+                        (click)="openRetire('source', s.source_id, s.source_code)">{{ 'Retire' | translate }}</button>
               </td>
             </tr>
           }
@@ -602,21 +597,21 @@
   @if (segments().length === 0) {
     <div class="empty-state">
       <app-icon class="empty-icon" name="donut_small" />
-      <h3>No market segments configured</h3>
-      <span>Market-segment production reporting groups on these.</span>
+      <h3>{{ 'No market segments configured' | translate }}</h3>
+      <span>{{ 'Market-segment production reporting groups on these.' | translate }}</span>
     </div>
   } @else {
     <div class="table-container">
       <table class="table data-table">
         <thead>
           <tr>
-            <th>Code</th>
-            <th>Type</th>
-            <th>Level</th>
-            <th>Rate multiplier</th>
-            <th>Production</th>
-            <th>Status</th>
-            <th class="cell-actions">Actions</th>
+            <th>{{ 'Code' | translate }}</th>
+            <th>{{ 'Type' | translate }}</th>
+            <th>{{ 'Level' | translate }}</th>
+            <th>{{ 'Rate multiplier' | translate }}</th>
+            <th>{{ 'Production' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th class="cell-actions">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -626,24 +621,24 @@
                 <strong>{{ m.segment_code }}</strong>
                 <div class="cell-sub">{{ m.segment_name }}</div>
               </td>
-              <td>{{ m.segment_type_display }}</td>
-              <td>{{ m.segment_level === 1 ? 'Top level' : 'Sub-segment' }}</td>
+              <td>{{ m.segment_type_display | translate }}</td>
+              <td>{{ m.segment_level === 1 ? ('Top level' | translate) : ('Sub-segment' | translate) }}</td>
               <td>{{ m.rate_multiplier }}×</td>
-              <td>{{ m.total_bookings }} bookings</td>
+              <td>{{ '{count} bookings' | translate:{ count: m.total_bookings } }}</td>
               <td>
                 @if (m.is_bookable) {
-                  <span class="badge badge-accent badge-sm">Bookable</span>
+                  <span class="badge badge-accent badge-sm">{{ 'Bookable' | translate }}</span>
                 } @else {
-                  <span class="badge badge-muted badge-sm">Reporting only</span>
+                  <span class="badge badge-muted badge-sm">{{ 'Reporting only' | translate }}</span>
                 }
                 @if (!m.is_active) {
-                  <span class="badge badge-muted badge-sm">Inactive</span>
+                  <span class="badge badge-muted badge-sm">{{ 'Inactive' | translate }}</span>
                 }
               </td>
               <td class="cell-actions">
-                <button class="btn btn-outline btn-sm" (click)="openEditSegment(m)">Edit</button>
+                <button class="btn btn-outline btn-sm" (click)="openEditSegment(m)">{{ 'Edit' | translate }}</button>
                 <button class="btn btn-outline btn-sm"
-                        (click)="openRetire('segment', m.segment_id, m.segment_code)">Retire</button>
+                        (click)="openRetire('segment', m.segment_id, m.segment_code)">{{ 'Retire' | translate }}</button>
               </td>
             </tr>
           }
@@ -658,21 +653,21 @@
   @if (allotments().length === 0) {
     <div class="empty-state">
       <app-icon class="empty-icon" name="inventory_2" />
-      <h3>No allotments contracted</h3>
-      <span>Blocks held for a tour operator, wholesaler or corporate account.</span>
+      <h3>{{ 'No allotments contracted' | translate }}</h3>
+      <span>{{ 'Blocks held for a tour operator, wholesaler or corporate account.' | translate }}</span>
     </div>
   } @else {
     <div class="table-container">
       <table class="table data-table">
         <thead>
           <tr>
-            <th>Code</th>
-            <th>Window</th>
-            <th>Rooms</th>
-            <th>Pickup</th>
-            <th>Rate</th>
-            <th>Status</th>
-            <th class="cell-actions">Actions</th>
+            <th>{{ 'Code' | translate }}</th>
+            <th>{{ 'Window' | translate }}</th>
+            <th>{{ 'Rooms' | translate }}</th>
+            <th>{{ 'Pickup' | translate }}</th>
+            <th>{{ 'Rate' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th class="cell-actions">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -681,27 +676,27 @@
               <td class="cell-primary">
                 <strong>{{ a.allotment_code }}</strong>
                 <div class="cell-sub">{{ a.allotment_name }}</div>
-                <span class="badge badge-muted badge-sm">{{ a.allotment_type_display }}</span>
-                @if (a.is_vip) { <span class="badge badge-accent badge-sm">VIP</span> }
+                <span class="badge badge-muted badge-sm">{{ a.allotment_type_display | translate }}</span>
+                @if (a.is_vip) { <span class="badge badge-accent badge-sm">{{ 'VIP' | translate }}</span> }
               </td>
               <td>
                 {{ a.start_date }} → {{ a.end_date }}
-                @if (a.cutoff_date) { <div class="cell-sub">Cutoff {{ a.cutoff_date }}</div> }
+                @if (a.cutoff_date) { <div class="cell-sub">{{ 'Cutoff {date}' | translate:{ date: a.cutoff_date } }}</div> }
               </td>
               <td>
-                {{ a.total_rooms_blocked }} blocked
-                <div class="cell-sub">{{ allotmentRemaining(a) }} still to sell</div>
+                {{ '{count} blocked' | translate:{ count: a.total_rooms_blocked } }}
+                <div class="cell-sub">{{ '{count} still to sell' | translate:{ count: allotmentRemaining(a) } }}</div>
               </td>
               <td>
                 {{ a.rooms_picked_up }} ({{ a.pickup_percentage }}%)
                 @if (a.attrition_clause) {
-                  <div class="cell-sub">Attrition {{ a.attrition_percentage ?? '—' }}%</div>
+                  <div class="cell-sub">{{ 'Attrition {percent}%' | translate:{ percent: a.attrition_percentage ?? '—' } }}</div>
                 }
               </td>
               <td>{{ a.contracted_rate ?? '—' }} {{ a.currency_code }}</td>
-              <td><span class="badge badge-muted badge-sm">{{ a.allotment_status_display }}</span></td>
+              <td><span class="badge badge-muted badge-sm">{{ a.allotment_status_display | translate }}</span></td>
               <td class="cell-actions">
-                <button class="btn btn-outline btn-sm" (click)="openEditAllotment(a)">Edit</button>
+                <button class="btn btn-outline btn-sm" (click)="openEditAllotment(a)">{{ 'Edit' | translate }}</button>
               </td>
             </tr>
           }
@@ -716,20 +711,20 @@
   @if (mappings().length === 0) {
     <div class="empty-state">
       <app-icon class="empty-icon" name="sync_alt" />
-      <h3>No channel mappings</h3>
-      <span>A mapping ties one of your room types or rate plans to the identifier a channel knows it by.</span>
+      <h3>{{ 'No channel mappings' | translate }}</h3>
+      <span>{{ 'A mapping ties one of your room types or rate plans to the identifier a channel knows it by.' | translate }}</span>
     </div>
   } @else {
     <div class="table-container">
       <table class="table data-table">
         <thead>
           <tr>
-            <th>Channel</th>
-            <th>Maps</th>
-            <th>External id</th>
-            <th>Last sync</th>
-            <th>Status</th>
-            <th class="cell-actions">Actions</th>
+            <th>{{ 'Channel' | translate }}</th>
+            <th>{{ 'Maps' | translate }}</th>
+            <th>{{ 'External id' | translate }}</th>
+            <th>{{ 'Last sync' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th class="cell-actions">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -739,24 +734,24 @@
                 <strong>{{ m.channel_name }}</strong>
                 <div class="cell-sub">{{ m.channel_code }}</div>
               </td>
-              <td>{{ labelFor(m.entity_type) }}</td>
+              <td>{{ labelFor(m.entity_type) | translate }}</td>
               <td class="mono">
                 {{ m.external_id }}
                 @if (m.external_code) { <div class="cell-sub">{{ m.external_code }}</div> }
               </td>
               <td>
-                <span [class]="syncBadgeClass(m.last_sync_status)">{{ m.last_sync_status ?? 'never' }}</span>
+                <span [class]="syncBadgeClass(m.last_sync_status)">{{ m.last_sync_status ?? ('never' | translate) }}</span>
                 @if (m.last_sync_error) { <div class="cell-sub">{{ m.last_sync_error }}</div> }
               </td>
               <td>
                 @if (m.is_active) {
-                  <span class="badge badge-accent badge-sm">Active</span>
+                  <span class="badge badge-accent badge-sm">{{ 'Active' | translate }}</span>
                 } @else {
-                  <span class="badge badge-muted badge-sm">Paused</span>
+                  <span class="badge badge-muted badge-sm">{{ 'Paused' | translate }}</span>
                 }
               </td>
               <td class="cell-actions">
-                <button class="btn btn-outline btn-sm" (click)="openEditMapping(m)">Edit</button>
+                <button class="btn btn-outline btn-sm" (click)="openEditMapping(m)">{{ 'Edit' | translate }}</button>
               </td>
             </tr>
           }
@@ -769,41 +764,41 @@
   @if (metasearch().length === 0) {
     <div class="empty-state">
       <app-icon class="empty-icon" name="ads_click" />
-      <h3>No metasearch platforms configured</h3>
-      <span>Bid settings for Google Hotel Ads, Trivago and the rest.</span>
+      <h3>{{ 'No metasearch platforms configured' | translate }}</h3>
+      <span>{{ 'Bid settings for Google Hotel Ads, Trivago and the rest.' | translate }}</span>
     </div>
   } @else {
     <div class="table-container">
       <table class="table data-table">
         <thead>
           <tr>
-            <th>Platform</th>
-            <th>Strategy</th>
-            <th>Bids</th>
-            <th>Budget</th>
-            <th>Status</th>
-            <th class="cell-actions">Actions</th>
+            <th>{{ 'Platform' | translate }}</th>
+            <th>{{ 'Strategy' | translate }}</th>
+            <th>{{ 'Bids' | translate }}</th>
+            <th>{{ 'Budget' | translate }}</th>
+            <th>{{ 'Status' | translate }}</th>
+            <th class="cell-actions">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
           @for (c of metasearch(); track c.config_id) {
             <tr>
               <td class="cell-primary">
-                <strong>{{ labelFor(c.platform) }}</strong>
+                <strong>{{ labelFor(c.platform) | translate }}</strong>
                 @if (c.platform_account_id) { <div class="cell-sub">{{ c.platform_account_id }}</div> }
               </td>
-              <td>{{ labelFor(c.bid_strategy) }}</td>
+              <td>{{ labelFor(c.bid_strategy) | translate }}</td>
               <td>{{ bidSummary(c) }}</td>
               <td>{{ c.budget_monthly ?? '—' }} {{ c.currency ?? '' }}</td>
               <td>
                 @if (c.is_active) {
-                  <span class="badge badge-accent badge-sm">Live</span>
+                  <span class="badge badge-accent badge-sm">{{ 'Live' | translate }}</span>
                 } @else {
-                  <span class="badge badge-muted badge-sm">Paused</span>
+                  <span class="badge badge-muted badge-sm">{{ 'Paused' | translate }}</span>
                 }
               </td>
               <td class="cell-actions">
-                <button class="btn btn-outline btn-sm" (click)="openEditMetasearch(c)">Edit</button>
+                <button class="btn btn-outline btn-sm" (click)="openEditMetasearch(c)">{{ 'Edit' | translate }}</button>
               </td>
             </tr>
           }

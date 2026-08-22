@@ -4,6 +4,8 @@ import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
@@ -91,12 +93,20 @@ const COMPANY_TYPES = [
 @Component({
 	selector: "app-ar-accounts",
 	standalone: true,
-	imports: [DecimalPipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		DecimalPipe,
+		FormsModule,
+		IconComponent,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./ar-accounts.html",
 	styleUrl: "./ar-accounts.scss",
 })
 export class ArAccountsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -210,7 +220,7 @@ export class ArAccountsComponent {
 			const res = await this.api.get<{ data: ArAccount[] }>("/billing/ar/accounts", params);
 			this.accounts.set(res?.data ?? []);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load AR accounts");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load AR accounts"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -275,7 +285,7 @@ export class ArAccountsComponent {
 			);
 			this.statement.set(res?.data ?? []);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load statement");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load statement"));
 		} finally {
 			this.loadingStatement.set(false);
 		}
@@ -386,13 +396,13 @@ export class ArAccountsComponent {
 					? { primary_contact_email: f.primary_contact_email.trim() }
 					: {}),
 			});
-			this.toast.success("Company created.");
+			this.toast.success(this.i18n.t("Company created."));
 			this.addingCompany.set(false);
 			await this.loadCompanies();
 			// Select it straight away — the operator created it to use it.
 			if (created?.company_id) this.onCompanyPicked(created.company_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create company");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create company"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -403,7 +413,7 @@ export class ArAccountsComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !this.canSubmitCreate() || this.submitting()) return;
 		if (!propertyId) {
-			this.toast.error("Select a property before opening an AR account.");
+			this.toast.error(this.i18n.t("Select a property before opening an AR account."));
 			return;
 		}
 		const f = this.createForm();
@@ -421,12 +431,14 @@ export class ArAccountsComponent {
 				...(f.billing_address.trim() ? { billing_address: f.billing_address.trim() } : {}),
 				...(f.notes.trim() ? { notes: f.notes.trim() } : {}),
 			});
-			this.toast.success("AR account requested. It appears once the command is processed.");
+			this.toast.success(
+				this.i18n.t("AR account requested. It appears once the command is processed."),
+			);
 			this.creating.set(false);
 			// Command dispatch is async through Kafka; give the handler a moment.
 			setTimeout(() => this.load(), 1500);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create AR account");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create AR account"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -457,11 +469,13 @@ export class ArAccountsComponent {
 				...(f.status ? { status: f.status } : {}),
 				...(f.notes.trim() ? { notes: f.notes.trim() } : {}),
 			});
-			this.toast.success("Credit terms update requested.");
+			this.toast.success(this.i18n.t("Credit terms update requested."));
 			this.editing.set(null);
 			setTimeout(() => this.load(), 1500);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update credit terms");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update credit terms"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

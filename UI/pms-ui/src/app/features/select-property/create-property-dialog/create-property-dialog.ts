@@ -14,6 +14,7 @@ import { DynamicDialogModule, DynamicDialogRef } from "primeng/dynamicdialog";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogActionsComponent } from "../../../shared/components/dialog-actions/dialog-actions";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
@@ -36,6 +37,7 @@ import { COMMON_CURRENCIES, COMMON_LANGUAGES, COMMON_TIMEZONES } from "./referen
 })
 export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly toast = inject(ToastService);
@@ -160,7 +162,7 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) {
-			this.toast.error("No tenant context available");
+			this.toast.error(this.i18n.t("No tenant context available"));
 			this.saving.set(false);
 			return;
 		}
@@ -193,7 +195,9 @@ export class CreatePropertyDialogComponent implements AfterViewInit, OnDestroy {
 			if (err instanceof ApiValidationError) {
 				this.toast.error(err.fieldErrors.map((e) => e.message).join(", "));
 			} else {
-				this.toast.error(err instanceof Error ? err.message : "Failed to create property");
+				this.toast.error(
+					err instanceof Error ? err.message : this.i18n.t("Failed to create property"),
+				);
 			}
 		} finally {
 			this.saving.set(false);

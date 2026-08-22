@@ -1,4 +1,4 @@
-<app-callout variant="warning" icon="lock" [block]="true" [title]="error().title">
+<app-callout variant="warning" icon="lock" [block]="true" [title]="error().title | translate">
   <p>{{ error().detail | translate }}</p>
 
   @if (openRequest(); as open) {
@@ -54,7 +54,7 @@
         class="btn btn-sm btn-primary"
         [disabled]="submitting()"
         (click)="submit()">
-        {{ (submitting() ? 'Sending…' : 'Send request') | translate }}
+        {{ (submitting() ? ('Sending…' | translate) : ('Send request' | translate)) | translate }}
       </button>
     </div>
   </div>

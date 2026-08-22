@@ -6,6 +6,7 @@ import { ToggleSwitchModule } from "primeng/toggleswitch";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
@@ -96,6 +97,7 @@ type ScreenRow = {
 })
 export class ScreenPermissionsComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
@@ -226,9 +228,11 @@ export class ScreenPermissionsComponent implements OnInit {
 			}
 
 			this.serverSnapshot = JSON.stringify(rows.map((r) => ({ k: r.screen_key, v: r.visibility })));
-			this.toast.success(`Permissions saved for ${changedRoles.size} role(s)`);
+			this.toast.success(
+				this.i18n.t("Permissions saved for {p0} role(s)", { p0: changedRoles.size }),
+			);
 		} catch {
-			this.toast.error("Failed to save screen permissions");
+			this.toast.error(this.i18n.t("Failed to save screen permissions"));
 		} finally {
 			this.saving.set(false);
 		}

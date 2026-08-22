@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -64,12 +66,20 @@ const HOUR_MS = 60 * 60 * 1000;
 @Component({
 	selector: "app-approvals",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./approvals.html",
 	styleUrl: "./approvals.scss",
 })
 export class ApprovalsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -124,7 +134,7 @@ export class ApprovalsComponent {
 	expiryLabel(request: ApprovalRequest): string {
 		const hours = this.hoursToExpiry(request);
 		if (hours < 0) return "Expired";
-		if (hours === 0) return "Under an hour";
+		if (hours === 0) return this.i18n.t("Under an hour");
 		return `${hours}h`;
 	}
 
@@ -157,7 +167,9 @@ export class ApprovalsComponent {
 			);
 			this.pending.set(res?.data ?? []);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load pending approvals");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load pending approvals"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -197,7 +209,7 @@ export class ApprovalsComponent {
 		const user = this.auth.user();
 		const actorId = user?.id ?? "";
 		if (!actorId) {
-			this.toast.error("Cannot action an approval without a signed-in user.");
+			this.toast.error(this.i18n.t("Cannot action an approval without a signed-in user."));
 			return;
 		}
 		const actorName =

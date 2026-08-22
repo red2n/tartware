@@ -162,7 +162,7 @@
                   · {{ room.housekeeping_status }}
                 </span>
                 <span class="room-option-details">
-                  @if (room.bed_type) { {{ room.bed_type }} · {{ room.number_of_beds }} bed{{ room.number_of_beds > 1 ? 's' : '' }} }
+                  @if (room.bed_type) { {{ room.bed_type }} · {{ (room.number_of_beds > 1 ? '{count} beds' : '{count} bed') | translate:{ count: room.number_of_beds } }} }
                   · {{ 'Max' | translate }} {{ room.max_occupancy }} {{ 'guests' | translate }}
                   @if (room.size_sqm) { · {{ room.size_sqm }} m² }
                   · {{ formatCurrency(room.base_rate, room.currency) }}/{{ 'night' | translate }}
@@ -575,9 +575,9 @@
               <dd class="detail-value guest-detail-value">
                 {{ row.value }}
                 @if (row.icon) {
-                  <app-icon class="birthday-icon" [pTooltip]="row.hint ?? ''" [name]="row.icon" />
+                  <app-icon class="birthday-icon" [pTooltip]="(row.hint ?? '') | translate" [name]="row.icon" />
                   @if (row.hint) {
-                    <span class="birthday-hint">{{ row.hint }}</span>
+                    <span class="birthday-hint">{{ row.hint | translate }}</span>
                   }
                 }
               </dd>
@@ -921,10 +921,10 @@
         <label class="field-label">{{ 'Payment method' | translate }}</label>
         <select class="field-input" [ngModel]="addDepositForm().method"
           (ngModelChange)="addDepositForm.set({ ...addDepositForm(), method: $event })">
-          <option value="CARD">Card</option>
-          <option value="CASH">Cash</option>
-          <option value="BANK_TRANSFER">Bank Transfer</option>
-          <option value="OTHER">Other</option>
+          <option value="CARD">{{ 'Card' | translate }}</option>
+          <option value="CASH">{{ 'Cash' | translate }}</option>
+          <option value="BANK_TRANSFER">{{ 'Bank Transfer' | translate }}</option>
+          <option value="OTHER">{{ 'Other' | translate }}</option>
         </select>
       </div>
       <div class="form-group">

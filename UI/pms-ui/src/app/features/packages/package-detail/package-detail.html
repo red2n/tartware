@@ -30,9 +30,9 @@
         <h1 class="pkg-title">{{ p.package_name }}</h1>
         <span class="pkg-code">{{ p.package_code }}</span>
         <div class="pkg-badges">
-          <span class="badge" [ngClass]="statusBadge().cls">{{ statusBadge().label }}</span>
+          <span class="badge" [ngClass]="statusBadge().cls">{{ statusBadge().label | translate }}</span>
           @if (p.is_featured) {
-            <span class="badge badge-attention"><app-icon class="badge-icon" name="star" /> Featured</span>
+            <span class="badge badge-attention"><app-icon class="badge-icon" name="star" /> {{ 'Featured' | translate }}</span>
           }
           @if (p.is_published) {
             <span class="badge badge-accent">{{ 'Published' | translate }}</span>
@@ -168,9 +168,9 @@
     <!-- Components section -->
     <div class="detail-card">
       <div class="card-header-flex">
-        <h3 class="card-title">Components @if (components().length) { <span class="counter">{{ components().length }}</span> }</h3>
+        <h3 class="card-title">{{ 'Components' | translate }} @if (components().length) { <span class="counter">{{ components().length }}</span> }</h3>
         <button class="btn btn-sm btn-outline" (click)="openAddComponent()">
-          <app-icon name="add" /> Add
+          <app-icon name="add" /> {{ 'Add' | translate }}
         </button>
       </div>
       @if (components().length > 0) {
@@ -187,7 +187,7 @@
                 }
               </div>
               <div class="comp-meta">
-                <span class="badge badge-muted">{{ comp.component_type_display }}</span>
+                <span class="badge badge-muted">{{ comp.component_type_display | translate }}</span>
                 <span class="badge" [ngClass]="componentBadgeClass(comp)">{{ pricingLabel(comp) }}</span>
                 @if (comp.quantity > 1) {
                   <span class="text-muted">×{{ comp.quantity }}</span>
@@ -201,7 +201,7 @@
           <div class="empty-state empty-state-sm">
             <app-icon class="empty-icon" name="extension" />
             <p>{{ 'No components configured yet.' | translate }}</p>
-            <p class="empty-hint">Add services, amenities, or meals to this package.</p>
+            <p class="empty-hint">{{ 'Add services, amenities, or meals to this package.' | translate }}</p>
           </div>
         </div>
       }
@@ -215,7 +215,7 @@
     } @loading (minimum 200ms) {
       <div class="loading-state">
         <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
-        <span class="text-muted">Rendering details…</span>
+        <span class="text-muted">{{ 'Rendering details…' | translate }}</span>
       </div>
     }
   </div>

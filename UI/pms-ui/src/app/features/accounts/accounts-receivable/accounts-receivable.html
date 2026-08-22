@@ -149,16 +149,16 @@
                     }
                   </div>
                 </td>
-                <td><span class="badge badge-muted">{{ ar.account_type_display }}</span></td>
+                <td><span class="badge badge-muted">{{ ar.account_type_display | translate }}</span></td>
                 <td class="mono right">{{ fmtMoney(+ar.original_amount) }}</td>
                 <td class="mono right bold">{{ fmtMoney(+ar.outstanding_balance) }}</td>
                 <td>{{ formatDate(ar.transaction_date) }}</td>
                 <td>
                   @if (ar.aging_bucket_display) {
-                    <span class="badge" [ngClass]="agingBadgeClass(ar.aging_bucket)">{{ ar.aging_bucket_display }}</span>
+                    <span class="badge" [ngClass]="agingBadgeClass(ar.aging_bucket)">{{ ar.aging_bucket_display | translate }}</span>
                   }
                 </td>
-                <td><span class="badge" [ngClass]="statusClass(ar.ar_status)">{{ ar.ar_status_display }}</span></td>
+                <td><span class="badge" [ngClass]="statusClass(ar.ar_status)">{{ ar.ar_status_display | translate }}</span></td>
                 <td><app-icon class="chevron-icon" name="chevron_right" /></td>
               </tr>
             }
@@ -224,11 +224,11 @@
           </div>
           <div class="detail-field">
             <label>{{ 'Type' | translate }}</label>
-            <span>{{ detail.account_type_display }}</span>
+            <span>{{ detail.account_type_display | translate }}</span>
           </div>
           <div class="detail-field">
             <label>{{ 'Status' | translate }}</label>
-            <span class="badge" [ngClass]="statusClass(detail.ar_status)">{{ detail.ar_status_display }}</span>
+            <span class="badge" [ngClass]="statusClass(detail.ar_status)">{{ detail.ar_status_display | translate }}</span>
           </div>
           <div class="detail-field">
             <label>{{ 'Original Amount' | translate }}</label>
@@ -253,7 +253,7 @@
           @if (detail.aging_bucket_display) {
             <div class="detail-field">
               <label>{{ 'Aging' | translate }}</label>
-              <span class="badge" [ngClass]="agingBadgeClass(detail.aging_bucket)">{{ detail.aging_bucket_display }}</span>
+              <span class="badge" [ngClass]="agingBadgeClass(detail.aging_bucket)">{{ detail.aging_bucket_display | translate }}</span>
             </div>
           }
           @if (detail.days_overdue != null) {

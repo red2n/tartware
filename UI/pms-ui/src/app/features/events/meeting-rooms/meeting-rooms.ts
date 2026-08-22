@@ -5,6 +5,7 @@ import type { MeetingRoomListItem } from "@tartware/schemas";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
@@ -135,6 +136,7 @@ const emptyForm = (): RoomForm => ({
 })
 export class MeetingRoomsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -261,7 +263,9 @@ export class MeetingRoomsComponent {
 			);
 			this.rooms.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load meeting rooms");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load meeting rooms"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -371,11 +375,11 @@ export class MeetingRoomsComponent {
 		try {
 			if (existing) {
 				await this.api.put(`/meeting-rooms/${existing.room_id}`, body);
-				this.toast.success("Meeting room updated.");
+				this.toast.success(this.i18n.t("Meeting room updated."));
 			} else {
 				const propertyId = this.ctx.propertyId();
 				if (!propertyId) {
-					this.toast.error("Select a property before creating a meeting room.");
+					this.toast.error(this.i18n.t("Select a property before creating a meeting room."));
 					return;
 				}
 				await this.api.post("/meeting-rooms", {
@@ -383,13 +387,13 @@ export class MeetingRoomsComponent {
 					property_id: propertyId,
 					room_code: f.room_code.trim().toUpperCase(),
 				});
-				this.toast.success("Meeting room created.");
+				this.toast.success(this.i18n.t("Meeting room created."));
 			}
 			this.editorOpen.set(false);
 			this.editing.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save meeting room");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save meeting room"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -410,11 +414,13 @@ export class MeetingRoomsComponent {
 		this.submitting.set(true);
 		try {
 			await this.api.delete(`/meeting-rooms/${room.room_id}?tenant_id=${tenantId}`);
-			this.toast.success(`${room.room_code} retired.`);
+			this.toast.success(this.i18n.t("{p0} retired.", { p0: room.room_code }));
 			this.retireTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to retire meeting room");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to retire meeting room"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}

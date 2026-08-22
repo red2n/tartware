@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -121,11 +123,19 @@ const SAFETY_SEVERITIES = new Set(["serious", "critical", "catastrophic"]);
 @Component({
 	selector: "app-incidents",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./incidents.html",
 })
 export class IncidentsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -261,7 +271,7 @@ export class IncidentsComponent {
 			const res = await this.api.get<{ data: Incident[] } | Incident[]>("/incidents", params);
 			this.incidents.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load incidents");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load incidents"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -278,7 +288,7 @@ export class IncidentsComponent {
 			});
 			this.detail.set(res);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load incident");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load incident"));
 		} finally {
 			this.detailLoading.set(false);
 		}
@@ -348,7 +358,9 @@ export class IncidentsComponent {
 			});
 			this.filing.set(true);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load incident for editing");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load incident for editing"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -366,7 +378,7 @@ export class IncidentsComponent {
 
 		const existing = this.editing();
 		if (!existing && !propertyId) {
-			this.toast.error("Select a property before filing an incident.");
+			this.toast.error(this.i18n.t("Select a property before filing an incident."));
 			return;
 		}
 
@@ -397,16 +409,16 @@ export class IncidentsComponent {
 		try {
 			if (existing) {
 				await this.api.put(`/incidents/${existing.incident_id}`, body);
-				this.toast.success("Incident amended.");
+				this.toast.success(this.i18n.t("Incident amended."));
 			} else {
 				await this.api.post("/incidents", body);
-				this.toast.success("Incident filed.");
+				this.toast.success(this.i18n.t("Incident filed."));
 			}
 			this.filing.set(false);
 			this.editing.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save incident");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save incident"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -437,12 +449,12 @@ export class IncidentsComponent {
 				incident_status: f.incident_status,
 				...(f.closure_notes.trim() ? { closure_notes: f.closure_notes.trim() } : {}),
 			});
-			this.toast.success("Incident status updated.");
+			this.toast.success(this.i18n.t("Incident status updated."));
 			this.statusTarget.set(null);
 			if (this.detail()?.incident_id === incident.incident_id) await this.openDetail(incident);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update status");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update status"));
 		} finally {
 			this.submitting.set(false);
 		}

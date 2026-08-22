@@ -2,16 +2,16 @@
   title="Incident log"
   description="Guest and property incidents — the liability record behind an insurance or legal request.">
   <button class="btn btn-primary btn-sm" (click)="openFile()" [disabled]="submitting()">
-    <app-icon name="report" /> Report incident
+    <app-icon name="report" /> {{ 'Report incident' | translate }}
   </button>
 </app-page-header>
 
 @if (openSafetyIncidents().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="warning" />
-    {{ openSafetyIncidents().length }} unresolved incident{{ openSafetyIncidents().length === 1 ? '' : 's' }}
-    at serious severity or above
-  </p>
+    {{ (openSafetyIncidents().length === 1
+          ? '{count} unresolved incident at serious severity or above'
+          : '{count} unresolved incidents at serious severity or above') | translate:{ count: openSafetyIncidents().length } }}</p>
 }
 
 @if (filing()) {
@@ -19,129 +19,129 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="report" />
       <h3 class="confirm-title">
-        {{ editing() ? 'Amend ' + editing()!.incident_number : 'Report an incident' }}
+        {{ editing() ? ('Amend ' | translate) + editing()!.incident_number : ('Report an incident' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field full-width">
-          <label class="field-label" for="in-title">Title</label>
+          <label class="field-label" for="in-title">{{ 'Title' | translate }}</label>
           <input class="field-input" id="in-title" type="text" [ngModel]="form().incident_title"
                  (ngModelChange)="form.set({ ...form(), incident_title: $event ?? '' })"
-                 placeholder="One line — what happened" />
+                 [placeholder]="'One line — what happened' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-type">Type</label>
+          <label class="field-label" for="in-type">{{ 'Type' | translate }}</label>
           <select class="field-input" id="in-type" [ngModel]="form().incident_type"
                   (ngModelChange)="form.set({ ...form(), incident_type: $event })">
             @for (t of incidentTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-severity">Severity</label>
+          <label class="field-label" for="in-severity">{{ 'Severity' | translate }}</label>
           <select class="field-input" id="in-severity" [ngModel]="form().severity"
                   (ngModelChange)="form.set({ ...form(), severity: $event })">
             @for (s of severities; track s) {
-              <option [value]="s">{{ labelFor(s) }}</option>
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-category">Category</label>
+          <label class="field-label" for="in-category">{{ 'Category' | translate }}</label>
           <input class="field-input" id="in-category" type="text" [ngModel]="form().incident_category"
                  (ngModelChange)="form.set({ ...form(), incident_category: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-date">Date</label>
+          <label class="field-label" for="in-date">{{ 'Date' | translate }}</label>
           <input class="field-input" id="in-date" type="date" [ngModel]="form().incident_date"
                  (ngModelChange)="form.set({ ...form(), incident_date: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-time">Time</label>
+          <label class="field-label" for="in-time">{{ 'Time' | translate }}</label>
           <input class="field-input" id="in-time" type="time" [ngModel]="form().incident_time"
                  (ngModelChange)="form.set({ ...form(), incident_time: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-location">Location</label>
+          <label class="field-label" for="in-location">{{ 'Location' | translate }}</label>
           <input class="field-input" id="in-location" type="text" [ngModel]="form().incident_location"
                  (ngModelChange)="form.set({ ...form(), incident_location: $event ?? '' })"
-                 placeholder="e.g. Pool deck, Lobby stairs" />
+                 [placeholder]="'e.g. Pool deck, Lobby stairs' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-room">Room number</label>
+          <label class="field-label" for="in-room">{{ 'Room number' | translate }}</label>
           <input class="field-input" id="in-room" type="text" [ngModel]="form().room_number"
                  (ngModelChange)="form.set({ ...form(), room_number: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-area">Area</label>
+          <label class="field-label" for="in-area">{{ 'Area' | translate }}</label>
           <input class="field-input" id="in-area" type="text" [ngModel]="form().area_name"
                  (ngModelChange)="form.set({ ...form(), area_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-discovered">Discovered by</label>
+          <label class="field-label" for="in-discovered">{{ 'Discovered by' | translate }}</label>
           <input class="field-input" id="in-discovered" type="text" [ngModel]="form().discovered_by_name"
                  (ngModelChange)="form.set({ ...form(), discovered_by_name: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-guest">Guest involved</label>
+          <label class="field-label" for="in-guest">{{ 'Guest involved' | translate }}</label>
           <select class="field-input" id="in-guest" [ngModel]="form().guest_involved"
                   (ngModelChange)="form.set({ ...form(), guest_involved: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-staff">Staff involved</label>
+          <label class="field-label" for="in-staff">{{ 'Staff involved' | translate }}</label>
           <select class="field-input" id="in-staff" [ngModel]="form().staff_involved"
                   (ngModelChange)="form.set({ ...form(), staff_involved: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-injury">Injury severity</label>
+          <label class="field-label" for="in-injury">{{ 'Injury severity' | translate }}</label>
           <select class="field-input" id="in-injury" [ngModel]="form().injury_severity"
                   (ngModelChange)="form.set({ ...form(), injury_severity: $event })">
             @for (s of injurySeverities; track s) {
-              <option [value]="s">{{ labelFor(s) }}</option>
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-police">Police notified</label>
+          <label class="field-label" for="in-police">{{ 'Police notified' | translate }}</label>
           <select class="field-input" id="in-police" [ngModel]="form().police_notified"
                   (ngModelChange)="form.set({ ...form(), police_notified: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="in-score">Severity score (1–10)</label>
+          <label class="field-label" for="in-score">{{ 'Severity score (1–10)' | translate }}</label>
           <input class="field-input" id="in-score" type="number" min="1" max="10"
                  [ngModel]="form().severity_score"
                  (ngModelChange)="form.set({ ...form(), severity_score: $event })" />
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="in-desc">What happened</label>
+          <label class="field-label" for="in-desc">{{ 'What happened' | translate }}</label>
           <textarea class="field-input" id="in-desc" rows="4" [ngModel]="form().incident_description"
                     (ngModelChange)="form.set({ ...form(), incident_description: $event ?? '' })"
-                    placeholder="Facts only — this record may be read by an insurer or a court"></textarea>
+                    [placeholder]="'Facts only — this record may be read by an insurer or a court' | translate"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="in-actions">Immediate actions taken</label>
+          <label class="field-label" for="in-actions">{{ 'Immediate actions taken' | translate }}</label>
           <textarea class="field-input" id="in-actions" rows="3" [ngModel]="form().immediate_actions_taken"
                     (ngModelChange)="form.set({ ...form(), immediate_actions_taken: $event ?? '' })"
-                    placeholder="First aid given, area closed off, guest relocated…"></textarea>
+                    [placeholder]="'First aid given, area closed off, guest relocated…' | translate"></textarea>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitForm()"
               [disabled]="submitting() || !canSubmitForm()">
-        {{ submitting() ? 'Saving…' : (editing() ? 'Save amendment' : 'File incident') }}
+        {{ submitting() ? ('Saving…' | translate) : (editing() ? ('Save amendment' | translate) : ('File incident' | translate)) }}
       </button>
     </div>
   </div>
@@ -151,98 +151,98 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="fact_check" />
-      <h3 class="confirm-title">Update status — {{ incident.incident_number }}</h3>
+      <h3 class="confirm-title">{{ 'Update status — {incident}' | translate:{ incident: incident.incident_number } }}</h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="in-status">Status</label>
+          <label class="field-label" for="in-status">{{ 'Status' | translate }}</label>
           <select class="field-input" id="in-status" [ngModel]="statusForm().incident_status"
                   (ngModelChange)="statusForm.set({ ...statusForm(), incident_status: $event })">
             @for (s of statuses; track s) {
-              <option [value]="s">{{ labelFor(s) }}</option>
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="in-closure">Closure notes</label>
+          <label class="field-label" for="in-closure">{{ 'Closure notes' | translate }}</label>
           <textarea class="field-input" id="in-closure" rows="3" [ngModel]="statusForm().closure_notes"
                     (ngModelChange)="statusForm.set({ ...statusForm(), closure_notes: $event ?? '' })"
-                    placeholder="How it was resolved — recorded against the closure"></textarea>
+                    [placeholder]="'How it was resolved — recorded against the closure' | translate"></textarea>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelStatus()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelStatus()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitStatus()" [disabled]="submitting()">
-        {{ submitting() ? 'Saving…' : 'Update status' }}
+        {{ submitting() ? ('Saving…' | translate) : ('Update status' | translate) }}
       </button>
     </div>
   </div>
 }
 
 @if (detailLoading()) {
-  <div class="loading-state">Loading incident…</div>
+  <div class="loading-state">{{ 'Loading incident…' | translate }}</div>
 } @else if (detail(); as d) {
   <div class="action-confirm-card">
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="description" />
       <h3 class="confirm-title">{{ d.incident_number }} — {{ d.incident_title }}</h3>
-      <button class="btn btn-outline btn-sm" (click)="closeDetail()">Close</button>
+      <button class="btn btn-outline btn-sm" (click)="closeDetail()">{{ 'Close' | translate }}</button>
     </div>
     <div class="confirm-body">
       <div class="record-grid">
-        <div><span class="field-label">Type</span> {{ d.incident_type_display }}</div>
-        <div><span class="field-label">Severity</span>
-          <span [class]="severityClass(d.severity)">{{ d.severity_display }}</span>
+        <div><span class="field-label">{{ 'Type' | translate }}</span> {{ d.incident_type_display | translate }}</div>
+        <div><span class="field-label">{{ 'Severity' | translate }}</span>
+          <span [class]="severityClass(d.severity)">{{ d.severity_display | translate }}</span>
         </div>
-        <div><span class="field-label">Status</span>
-          <span [class]="statusClass(d.incident_status)">{{ d.incident_status_display }}</span>
+        <div><span class="field-label">{{ 'Status' | translate }}</span>
+          <span [class]="statusClass(d.incident_status)">{{ d.incident_status_display | translate }}</span>
         </div>
-        <div><span class="field-label">When</span>
-          {{ d.incident_date | date: 'mediumDate' }} {{ d.incident_time }}
+        <div><span class="field-label">{{ 'When' | translate }}</span>
+          {{ d.incident_date | localeDate: 'mediumDate' }} {{ d.incident_time }}
         </div>
-        <div><span class="field-label">Where</span>
+        <div><span class="field-label">{{ 'Where' | translate }}</span>
           {{ d.room_number || d.area_name || d.incident_location }}
         </div>
-        <div><span class="field-label">Discovered by</span> {{ d.discovered_by_name || '—' }}</div>
-        <div><span class="field-label">Guest</span> {{ d.guest_name || (d.guest_involved ? 'Yes' : 'No') }}</div>
-        <div><span class="field-label">Staff involved</span> {{ d.staff_involved ? 'Yes' : 'No' }}</div>
-        <div><span class="field-label">Injury</span> {{ labelFor(d.injury_severity) }}</div>
-        <div><span class="field-label">Police</span>
-          {{ d.police_notified ? (d.police_report_number || 'Notified') : 'Not notified' }}
+        <div><span class="field-label">{{ 'Discovered by' | translate }}</span> {{ d.discovered_by_name || '—' }}</div>
+        <div><span class="field-label">{{ 'Guest' | translate }}</span> {{ d.guest_name || (d.guest_involved ? ('Yes' | translate) : ('No' | translate)) }}</div>
+        <div><span class="field-label">{{ 'Staff involved' | translate }}</span> {{ d.staff_involved ? ('Yes' | translate) : ('No' | translate) }}</div>
+        <div><span class="field-label">{{ 'Injury' | translate }}</span> {{ labelFor(d.injury_severity) | translate }}</div>
+        <div><span class="field-label">{{ 'Police' | translate }}</span>
+          {{ d.police_notified ? (d.police_report_number || ('Notified' | translate)) : ('Not notified' | translate) }}
         </div>
       </div>
 
-      <h4 class="record-heading">What happened</h4>
+      <h4 class="record-heading">{{ 'What happened' | translate }}</h4>
       <p class="record-text">{{ d.incident_description }}</p>
 
       @if (d.immediate_actions_taken) {
-        <h4 class="record-heading">Immediate actions taken</h4>
+        <h4 class="record-heading">{{ 'Immediate actions taken' | translate }}</h4>
         <p class="record-text">{{ d.immediate_actions_taken }}</p>
       }
       @if (d.injury_details) {
-        <h4 class="record-heading">Injury details</h4>
+        <h4 class="record-heading">{{ 'Injury details' | translate }}</h4>
         <p class="record-text">{{ d.injury_details }}</p>
       }
       @if (d.damage_description) {
-        <h4 class="record-heading">Damage</h4>
+        <h4 class="record-heading">{{ 'Damage' | translate }}</h4>
         <p class="record-text">{{ d.damage_description }}</p>
       }
       @if (d.investigation_findings) {
-        <h4 class="record-heading">Investigation findings</h4>
+        <h4 class="record-heading">{{ 'Investigation findings' | translate }}</h4>
         <p class="record-text">{{ d.investigation_findings }}</p>
       }
       @if (d.corrective_actions) {
-        <h4 class="record-heading">Corrective actions</h4>
+        <h4 class="record-heading">{{ 'Corrective actions' | translate }}</h4>
         <p class="record-text">{{ d.corrective_actions }}</p>
       }
       @if (d.follow_up_required && d.follow_up_actions) {
-        <h4 class="record-heading">Follow-up</h4>
+        <h4 class="record-heading">{{ 'Follow-up' | translate }}</h4>
         <p class="record-text">{{ d.follow_up_actions }}</p>
       }
       @if (d.closed_at) {
-        <h4 class="record-heading">Closed {{ d.closed_at | date: 'medium' }}</h4>
+        <h4 class="record-heading">{{ 'Closed {date}' | translate:{ date: (d.closed_at | localeDate: 'medium') ?? '' } }}</h4>
         <p class="record-text">{{ d.closure_notes || '—' }}</p>
       }
     </div>
@@ -251,70 +251,70 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label class="field-label" for="in-f-severity">Severity</label>
+    <label class="field-label" for="in-f-severity">{{ 'Severity' | translate }}</label>
     <select class="field-input" id="in-f-severity" [ngModel]="severityFilter()"
             (ngModelChange)="severityFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of severities; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="in-f-type">Type</label>
+    <label class="field-label" for="in-f-type">{{ 'Type' | translate }}</label>
     <select class="field-input" id="in-f-type" [ngModel]="typeFilter()"
             (ngModelChange)="typeFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (t of incidentTypes; track t) {
-        <option [value]="t">{{ labelFor(t) }}</option>
+        <option [value]="t">{{ labelFor(t) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="in-f-status">Status</label>
+    <label class="field-label" for="in-f-status">{{ 'Status' | translate }}</label>
     <select class="field-input" id="in-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of statuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="in-f-from">From date</label>
+    <label class="field-label" for="in-f-from">{{ 'From date' | translate }}</label>
     <input class="field-input" id="in-f-from" type="date" [ngModel]="dateFromFilter()"
            (ngModelChange)="dateFromFilter.set($event ?? ''); load()" />
   </div>
   <div class="form-field">
-    <label class="field-label" for="in-f-open">Show</label>
+    <label class="field-label" for="in-f-open">{{ 'Show' | translate }}</label>
     <select class="field-input" id="in-f-open" [ngModel]="openOnly()"
             (ngModelChange)="openOnly.set($event)">
-      <option [ngValue]="false">All incidents</option>
-      <option [ngValue]="true">Open only</option>
+      <option [ngValue]="false">{{ 'All incidents' | translate }}</option>
+      <option [ngValue]="true">{{ 'Open only' | translate }}</option>
     </select>
   </div>
 </div>
 
 @if (loading()) {
-  <div class="loading-state">Loading…</div>
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
 } @else if (visibleIncidents().length === 0) {
   <div class="empty-state">
     <app-icon class="empty-icon" name="report" />
-    <h3>No incidents on record</h3>
+    <h3>{{ 'No incidents on record' | translate }}</h3>
   </div>
 } @else {
   <div class="table-container">
     <table class="table data-table">
       <thead>
         <tr>
-          <th>Incident</th>
-          <th>When</th>
-          <th>Type</th>
-          <th>Severity</th>
-          <th>Where</th>
-          <th>Flags</th>
-          <th>Status</th>
-          <th class="cell-actions">Actions</th>
+          <th>{{ 'Incident' | translate }}</th>
+          <th>{{ 'When' | translate }}</th>
+          <th>{{ 'Type' | translate }}</th>
+          <th>{{ 'Severity' | translate }}</th>
+          <th>{{ 'Where' | translate }}</th>
+          <th>{{ 'Flags' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -324,29 +324,29 @@
               <strong>{{ i.incident_number }}</strong>
               <div class="cell-sub">{{ i.incident_title }}</div>
             </td>
-            <td>{{ i.incident_date | date: 'mediumDate' }} {{ i.incident_time }}</td>
-            <td>{{ i.incident_type_display }}</td>
-            <td><span [class]="severityClass(i.severity)">{{ i.severity_display }}</span></td>
+            <td>{{ i.incident_date | localeDate: 'mediumDate' }} {{ i.incident_time }}</td>
+            <td>{{ i.incident_type_display | translate }}</td>
+            <td><span [class]="severityClass(i.severity)">{{ i.severity_display | translate }}</span></td>
             <td>{{ i.room_number || i.area_name || i.incident_location }}</td>
             <td>
               @if (i.injuries_sustained) {
-                <span class="badge badge-attention badge-sm">Injury</span>
+                <span class="badge badge-attention badge-sm">{{ 'Injury' | translate }}</span>
               }
               @if (i.property_damage) {
-                <span class="badge badge-warning badge-sm">Damage</span>
+                <span class="badge badge-warning badge-sm">{{ 'Damage' | translate }}</span>
               }
               @if (i.police_notified) {
-                <span class="badge badge-accent badge-sm">Police</span>
+                <span class="badge badge-accent badge-sm">{{ 'Police' | translate }}</span>
               }
               @if (i.investigation_required && !i.investigation_completed) {
-                <span class="badge badge-warning badge-sm">Investigating</span>
+                <span class="badge badge-warning badge-sm">{{ 'Investigating' | translate }}</span>
               }
             </td>
-            <td><span [class]="statusClass(i.incident_status)">{{ i.incident_status_display }}</span></td>
+            <td><span [class]="statusClass(i.incident_status)">{{ i.incident_status_display | translate }}</span></td>
             <td class="cell-actions">
-              <button class="btn btn-outline btn-sm" (click)="openDetail(i)">View</button>
-              <button class="btn btn-outline btn-sm" (click)="openEdit(i)">Amend</button>
-              <button class="btn btn-outline btn-sm" (click)="openStatus(i)">Status</button>
+              <button class="btn btn-outline btn-sm" (click)="openDetail(i)">{{ 'View' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openEdit(i)">{{ 'Amend' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openStatus(i)">{{ 'Status' | translate }}</button>
             </td>
           </tr>
         }

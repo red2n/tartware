@@ -6,6 +6,7 @@ import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
@@ -21,6 +22,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 })
 export class CreateGroupComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -163,7 +165,7 @@ export class CreateGroupComponent {
 		const tenantId = this.auth.tenantId();
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !propertyId) {
-			this.toast.error("No property selected");
+			this.toast.error(this.i18n.t("No property selected"));
 			return;
 		}
 
@@ -205,13 +207,15 @@ export class CreateGroupComponent {
 
 		try {
 			await this.api.post(`/tenants/${tenantId}/commands/group.create`, payload);
-			this.toast.success("Group booking created successfully.");
+			this.toast.success(this.i18n.t("Group booking created successfully."));
 			this.router.navigate(["/groups"]);
 		} catch (e) {
 			if (e instanceof ApiValidationError) {
 				this.toast.error(e.fieldErrors.map((fe) => fe.message).join("; "));
 			} else {
-				this.toast.error(e instanceof Error ? e.message : "Failed to create group booking");
+				this.toast.error(
+					e instanceof Error ? e.message : this.i18n.t("Failed to create group booking"),
+				);
 			}
 		} finally {
 			this.saving.set(false);

@@ -62,11 +62,11 @@
               </div>
               <div class="service-info">
                 <div class="service-name-row">
-                  <span class="service-name">{{ displayName(svc) }}</span>
+                  <span class="service-name">{{ displayName(svc) | translate }}</span>
                   <code class="service-tag">{{ svc.name }}</code>
                 </div>
                 @if (description(svc); as desc) {
-                  <span class="service-description">{{ desc }}</span>
+                  <span class="service-description">{{ desc | translate }}</span>
                 }
                 <span class="service-meta">
                   <code class="service-port">{{ formatPort(svc) }}</code>
@@ -95,11 +95,11 @@
               </div>
               <div class="service-info">
                 <div class="service-name-row">
-                  <span class="service-name">{{ displayName(svc) }}</span>
+                  <span class="service-name">{{ displayName(svc) | translate }}</span>
                   <code class="service-tag">{{ svc.name }}</code>
                 </div>
                 @if (description(svc); as desc) {
-                  <span class="service-description">{{ desc }}</span>
+                  <span class="service-description">{{ desc | translate }}</span>
                 }
                 <span class="service-meta">
                   <code class="service-port">{{ formatPort(svc) }}</code>

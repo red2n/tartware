@@ -194,7 +194,7 @@
                   }
                 </div>
               </td>
-              <td><span class="badge badge-muted">{{ tax.tax_type_display }}</span></td>
+              <td><span class="badge badge-muted">{{ tax.tax_type_display | translate }}</span></td>
               <td>
                 <div class="jurisdiction-cell">
                   <span>{{ tax.jurisdiction_name ?? tax.country_code }}</span>
@@ -208,7 +208,7 @@
               <td>{{ formatDate(tax.effective_from) }}</td>
               <td>
                 <span class="badge" [ngClass]="tax.is_active ? 'badge-success' : 'badge-muted'">
-                  {{ tax.is_active ? 'Active' : 'Inactive' }}
+                  {{ tax.is_active ? ('Active' | translate) : ('Inactive' | translate) }}
                 </span>
               </td>
               <td class="cell-actions">

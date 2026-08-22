@@ -5,6 +5,7 @@ import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
@@ -73,6 +74,7 @@ const asText = (value: unknown): string => (typeof value === "string" ? value : 
 })
 export class GuestFormComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
@@ -258,7 +260,7 @@ export class GuestFormComponent implements OnInit {
 			const id = this.guestId();
 			if (id) {
 				await this.api.post(`/tenants/${tenantId}/guests/${id}/profile`, body);
-				this.toast.success("Guest profile updated.");
+				this.toast.success(this.i18n.t("Guest profile updated."));
 				this.router.navigate(["/guests", id]);
 			} else {
 				await this.api.post("/guests", {
@@ -266,7 +268,7 @@ export class GuestFormComponent implements OnInit {
 					...body,
 					loyalty_tier: this.loyaltyTier || undefined,
 				});
-				this.toast.success("Guest created.");
+				this.toast.success(this.i18n.t("Guest created."));
 				this.router.navigate(["/guests"]);
 			}
 		} catch (e) {
@@ -279,7 +281,7 @@ export class GuestFormComponent implements OnInit {
 				this.fieldErrors.set(errors);
 				this.toast.error(e.message);
 			} else {
-				this.toast.error(e instanceof Error ? e.message : "Failed to save guest");
+				this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save guest"));
 			}
 		} finally {
 			this.saving.set(false);

@@ -126,7 +126,7 @@
               }
             </div>
             <div class="rt-price">
-              from {{ fmtCurrency(rt.base_price, rt.currency) }}<span class="text-muted">/{{ 'night' | translate }}</span>
+              {{ 'from {amount}' | translate:{ amount: fmtCurrency(rt.base_price, rt.currency) } }}<span class="text-muted">/{{ 'night' | translate }}</span>
             </div>
             @if (roomTypeId === rt.room_type_id) {
               <app-icon class="rt-check" name="check_circle" />

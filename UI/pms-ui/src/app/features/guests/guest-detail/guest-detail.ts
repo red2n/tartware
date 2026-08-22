@@ -50,6 +50,7 @@ type GuestReservationItem = {
 	balance_due?: number;
 };
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 @Component({
 	selector: "app-guest-detail",
@@ -69,6 +70,7 @@ import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 })
 export class GuestDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
@@ -336,10 +338,10 @@ export class GuestDetailComponent implements OnInit {
 		this.processing.set("vip");
 		try {
 			await this.api.post(url, { vip_status: f.vip_status, reason: f.reason || undefined });
-			this.toast.success("VIP status updated.");
+			this.toast.success(this.i18n.t("VIP status updated."));
 			setTimeout(() => this.loadGuest(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update VIP status");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update VIP status"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -350,7 +352,7 @@ export class GuestDetailComponent implements OnInit {
 		if (!url) return;
 		const f = this.blacklistForm();
 		if (f.is_blacklisted && !f.reason.trim()) {
-			this.toast.error("Reason is required when blacklisting a guest.");
+			this.toast.error(this.i18n.t("Reason is required when blacklisting a guest."));
 			return;
 		}
 		this.processing.set("blacklist");
@@ -362,7 +364,7 @@ export class GuestDetailComponent implements OnInit {
 			this.toast.success(f.is_blacklisted ? "Guest blacklisted." : "Guest removed from blacklist.");
 			setTimeout(() => this.loadGuest(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update blacklist");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update blacklist"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -379,7 +381,7 @@ export class GuestDetailComponent implements OnInit {
 		if (f.points_adjustment) {
 			const delta = Number(f.points_adjustment);
 			if (!Number.isFinite(delta)) {
-				this.toast.error("Points adjustment must be numeric.");
+				this.toast.error(this.i18n.t("Points adjustment must be numeric."));
 				return;
 			}
 			body["points_adjustment"] = delta;
@@ -387,10 +389,10 @@ export class GuestDetailComponent implements OnInit {
 		this.processing.set("loyalty");
 		try {
 			await this.api.post(url, body);
-			this.toast.success("Loyalty enrollment updated.");
+			this.toast.success(this.i18n.t("Loyalty enrollment updated."));
 			setTimeout(() => this.loadGuest(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update loyalty");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update loyalty"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -407,10 +409,10 @@ export class GuestDetailComponent implements OnInit {
 				phone: f.phone || undefined,
 				secondary_phone: f.secondary_phone || undefined,
 			});
-			this.toast.success("Contact details updated.");
+			this.toast.success(this.i18n.t("Contact details updated."));
 			setTimeout(() => this.loadGuest(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update contact");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update contact"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -422,7 +424,7 @@ export class GuestDetailComponent implements OnInit {
 		if (!tenantId || !g) return;
 		const dup = this.mergeForm().duplicate_guest_id.trim();
 		if (!dup) {
-			this.toast.error("Enter the duplicate guest ID to merge.");
+			this.toast.error(this.i18n.t("Enter the duplicate guest ID to merge."));
 			return;
 		}
 		if (!confirm(`Merge guest ${dup} INTO this guest? This cannot be undone.`)) return;
@@ -433,11 +435,11 @@ export class GuestDetailComponent implements OnInit {
 				primary_guest_id: g.id,
 				duplicate_guest_id: dup,
 			});
-			this.toast.success("Guest merge submitted.");
+			this.toast.success(this.i18n.t("Guest merge submitted."));
 			this.mergeForm.set({ duplicate_guest_id: "" });
 			setTimeout(() => this.loadGuest(), 1500);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to merge guests");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to merge guests"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -456,9 +458,9 @@ export class GuestDetailComponent implements OnInit {
 			link.download = `guest-${this.guest()?.id}-gdpr-export.json`;
 			link.click();
 			URL.revokeObjectURL(href);
-			this.toast.success("GDPR data export downloaded.");
+			this.toast.success(this.i18n.t("GDPR data export downloaded."));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to export guest data");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to export guest data"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -476,10 +478,10 @@ export class GuestDetailComponent implements OnInit {
 		this.processing.set("gdpr-erase");
 		try {
 			await this.api.post(url, { reason: "Right to erasure request" });
-			this.toast.success("Erasure request submitted.");
+			this.toast.success(this.i18n.t("Erasure request submitted."));
 			setTimeout(() => this.loadGuest(), 1500);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to erase guest data");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to erase guest data"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -490,7 +492,7 @@ export class GuestDetailComponent implements OnInit {
 		if (!url) return;
 		const f = this.gdprRectifyForm();
 		if (!f.field.trim() || !f.new_value.trim()) {
-			this.toast.error("Field and new value are required.");
+			this.toast.error(this.i18n.t("Field and new value are required."));
 			return;
 		}
 		this.processing.set("gdpr-rectify");
@@ -500,11 +502,11 @@ export class GuestDetailComponent implements OnInit {
 				new_value: f.new_value.trim(),
 				reason: f.reason || undefined,
 			});
-			this.toast.success("Rectification submitted.");
+			this.toast.success(this.i18n.t("Rectification submitted."));
 			this.gdprRectifyForm.set({ field: "", new_value: "", reason: "" });
 			setTimeout(() => this.loadGuest(), 1500);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to rectify");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to rectify"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -519,7 +521,9 @@ export class GuestDetailComponent implements OnInit {
 			await this.api.post(url, { restrict: f.restrict, reason: f.reason || undefined });
 			this.toast.success(f.restrict ? "Processing restricted." : "Restriction lifted.");
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update restriction");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update restriction"),
+			);
 		} finally {
 			this.processing.set(null);
 		}
@@ -546,10 +550,10 @@ export class GuestDetailComponent implements OnInit {
 		const { updated_at: _recordedAt, ...toggles } = this.consentForm();
 		try {
 			await this.api.post(url, toggles);
-			this.toast.success("Consent preferences updated.");
+			this.toast.success(this.i18n.t("Consent preferences updated."));
 			setTimeout(() => this.loadConsent(), 800);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update consent");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update consent"));
 		} finally {
 			this.processing.set(null);
 		}
@@ -643,7 +647,7 @@ export class GuestDetailComponent implements OnInit {
 			);
 			this.reservationsLoaded.set(true);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load reservations");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load reservations"));
 		} finally {
 			this.loadingTab.set(false);
 		}

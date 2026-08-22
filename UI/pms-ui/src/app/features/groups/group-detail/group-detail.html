@@ -222,7 +222,7 @@
       <div class="card-header">
         <h3 class="card-title">
           @if (groupTypeIcon[g.group_type.toUpperCase()]; as typeInfo) {
-            <app-icon class="card-title-icon" [pTooltip]="typeInfo.tooltip" [name]="typeInfo.icon" />
+            <app-icon class="card-title-icon" [pTooltip]="typeInfo.tooltip | translate" [name]="typeInfo.icon" />
           }
           {{ 'Group Information' | translate }}
         </h3>
@@ -234,9 +234,9 @@
               <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
-                  <span class="badge" [ngClass]="row.badge" [pTooltip]="row.description ?? ''">{{ row.value }}</span>
+                  <span class="badge" [ngClass]="row.badge" [pTooltip]="(row.description ?? '') | translate">{{ row.value }}</span>
                   @if (row.description) {
-                    <span class="detail-hint text-muted">{{ row.description }}</span>
+                    <span class="detail-hint text-muted">{{ row.description | translate }}</span>
                   }
                 } @else {
                   {{ row.value }}

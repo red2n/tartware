@@ -16,7 +16,7 @@
 } @else if (loadError(); as err) {
   <div class="flash flash-error">
     <app-icon class="flash-icon" name="error_outline" />
-    {{ err }}
+    {{ err | translate }}
     <button class="btn btn-invisible" (click)="cancel()">{{ 'Go back' | translate }}</button>
   </div>
 } @else {
@@ -36,11 +36,11 @@
           <label class="field-label" for="gf-title">{{ 'Title' | translate }}</label>
           <select class="field-input" id="gf-title" name="title" [(ngModel)]="title">
             <option value="">{{ 'None' | translate }}</option>
-            <option value="Mr">Mr</option>
-            <option value="Mrs">Mrs</option>
-            <option value="Ms">Ms</option>
-            <option value="Dr">Dr</option>
-            <option value="Prof">Prof</option>
+            <option value="Mr">{{ 'Mr' | translate }}</option>
+            <option value="Mrs">{{ 'Mrs' | translate }}</option>
+            <option value="Ms">{{ 'Ms' | translate }}</option>
+            <option value="Dr">{{ 'Dr' | translate }}</option>
+            <option value="Prof">{{ 'Prof' | translate }}</option>
           </select>
         </div>
         <div class="form-field span-5">
@@ -61,7 +61,7 @@
           <label class="field-label" for="gf-dob">{{ 'Date of birth' | translate }}</label>
           <input class="field-input" id="gf-dob" name="dateOfBirth" type="date" [(ngModel)]="dateOfBirth" />
           @if (fieldErrors()['date_of_birth']; as err) {
-            <span class="field-error">{{ err }}</span>
+            <span class="field-error">{{ err | translate }}</span>
           }
         </div>
         <div class="form-field span-4">
@@ -94,14 +94,14 @@
           <label class="field-label" for="gf-email">{{ 'Email address' | translate }}</label>
           <input class="field-input" id="gf-email" name="email" type="email" [(ngModel)]="email" (blur)="markTouched('email')" [class.invalid]="touched['email'] && emailError" />
           @if (touched['email'] && emailError; as err) {
-            <span class="field-error">{{ err }}</span>
+            <span class="field-error">{{ err | translate }}</span>
           }
         </div>
         <div class="form-field span-6">
           <label class="field-label" for="gf-phone">{{ 'Phone number' | translate }}</label>
           <input class="field-input" id="gf-phone" name="phone" type="tel" [(ngModel)]="phone" (blur)="markTouched('phone')" [class.invalid]="touched['phone'] && phoneError" />
           @if (touched['phone'] && phoneError; as err) {
-            <span class="field-error">{{ err }}</span>
+            <span class="field-error">{{ err | translate }}</span>
           }
         </div>
       </div>
@@ -152,26 +152,26 @@
       <div class="field-grid">
         <div class="form-field span-6">
           <label class="field-label" for="gf-company">{{ 'Company name' | translate }}</label>
-          <input class="field-input" id="gf-company" name="companyName" type="text" [(ngModel)]="companyName" placeholder="Acme Corp" />
+          <input class="field-input" id="gf-company" name="companyName" type="text" [(ngModel)]="companyName" [placeholder]="'Acme Corp' | translate" />
         </div>
         <div class="form-field span-3">
           <label class="field-label" for="gf-tier">{{ 'Loyalty tier' | translate }}</label>
           <select class="field-input" id="gf-tier" name="loyaltyTier" [(ngModel)]="loyaltyTier">
             <option value="">{{ 'None' | translate }}</option>
-            <option value="bronze">Bronze</option>
-            <option value="silver">Silver</option>
-            <option value="gold">Gold</option>
-            <option value="platinum">Platinum</option>
-            <option value="diamond">Diamond</option>
+            <option value="bronze">{{ 'Bronze' | translate }}</option>
+            <option value="silver">{{ 'Silver' | translate }}</option>
+            <option value="gold">{{ 'Gold' | translate }}</option>
+            <option value="platinum">{{ 'Platinum' | translate }}</option>
+            <option value="diamond">{{ 'Diamond' | translate }}</option>
           </select>
         </div>
         <div class="form-field span-3">
           <label class="field-label" for="gf-vip">{{ 'VIP status' | translate }}</label>
           <select class="field-input" id="gf-vip" name="vipStatus" [(ngModel)]="vipStatus">
             <option value="">{{ 'None' | translate }}</option>
-            <option value="VIP">VIP</option>
-            <option value="VVIP">VVIP</option>
-            <option value="CELEBRITY">Celebrity</option>
+            <option value="VIP">{{ 'VIP' | translate }}</option>
+            <option value="VVIP">{{ 'VVIP' | translate }}</option>
+            <option value="CELEBRITY">{{ 'Celebrity' | translate }}</option>
           </select>
         </div>
       </div>
@@ -189,15 +189,15 @@
       <div class="field-grid">
         <div class="form-field span-3">
           <label class="field-label" for="gf-roomtype">{{ 'Room type' | translate }}</label>
-          <input class="field-input" id="gf-roomtype" name="prefRoomType" type="text" [(ngModel)]="prefRoomType" placeholder="Deluxe King" />
+          <input class="field-input" id="gf-roomtype" name="prefRoomType" type="text" [(ngModel)]="prefRoomType" [placeholder]="'Deluxe King' | translate" />
         </div>
         <div class="form-field span-3">
           <label class="field-label" for="gf-bed">{{ 'Bed type' | translate }}</label>
-          <input class="field-input" id="gf-bed" name="prefBedType" type="text" [(ngModel)]="prefBedType" placeholder="King" />
+          <input class="field-input" id="gf-bed" name="prefBedType" type="text" [(ngModel)]="prefBedType" [placeholder]="'King' | translate" />
         </div>
         <div class="form-field span-3">
           <label class="field-label" for="gf-floor">{{ 'Floor' | translate }}</label>
-          <input class="field-input" id="gf-floor" name="prefFloor" type="text" [(ngModel)]="prefFloor" placeholder="High floor" />
+          <input class="field-input" id="gf-floor" name="prefFloor" type="text" [(ngModel)]="prefFloor" [placeholder]="'High floor' | translate" />
         </div>
         <div class="form-field span-3">
           <label class="field-label" for="gf-lang">{{ 'Language' | translate }}</label>

@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
@@ -56,6 +57,7 @@ type ActiveFilter = "ALL" | "active" | "inactive";
 })
 export class TaxConfigComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -267,7 +269,9 @@ export class TaxConfigComponent {
 				calculation_method: form.calculation_method.toLowerCase(),
 				is_active: form.is_active,
 			});
-			this.toast.success("Tax configuration create submitted. Refreshing tax settings...");
+			this.toast.success(
+				this.i18n.t("Tax configuration create submitted. Refreshing tax settings..."),
+			);
 			this.showCreateForm.set(false);
 			this.createForm.set({
 				tax_code: "",
@@ -285,7 +289,7 @@ export class TaxConfigComponent {
 			});
 			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create tax config");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create tax config"));
 		} finally {
 			this.creating.set(false);
 		}
@@ -338,11 +342,13 @@ export class TaxConfigComponent {
 				calculation_method: form.calculation_method.toLowerCase(),
 				is_active: form.is_active,
 			});
-			this.toast.success("Tax configuration update submitted. Refreshing tax settings...");
+			this.toast.success(
+				this.i18n.t("Tax configuration update submitted. Refreshing tax settings..."),
+			);
 			this.editingTaxId.set(null);
 			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update tax config");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update tax config"));
 		} finally {
 			this.editing.set(false);
 		}
@@ -368,11 +374,13 @@ export class TaxConfigComponent {
 				property_id: propertyId,
 				reason: this.deleteReason() || undefined,
 			});
-			this.toast.success("Tax configuration delete submitted. Refreshing tax settings...");
+			this.toast.success(
+				this.i18n.t("Tax configuration delete submitted. Refreshing tax settings..."),
+			);
 			this.deletingTaxId.set(null);
 			await settleCommandReadModel(() => this.loadTaxConfigs());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to delete tax config");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to delete tax config"));
 		} finally {
 			this.deleting.set(false);
 		}

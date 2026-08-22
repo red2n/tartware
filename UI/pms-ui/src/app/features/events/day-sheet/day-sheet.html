@@ -20,8 +20,8 @@
 <!-- The page header does not print, so the date and the day's totals are
      restated on the sheet itself. -->
 <div class="status-strip">
-  <span class="sheet-date">{{ eventDate() | date: 'EEEE d MMMM y' }}</span>
-  <span class="text-muted">{{ orders().length }} {{ (orders().length === 1 ? 'function' : 'functions') | translate }}</span>
+  <span class="sheet-date">{{ eventDate() | localeDate: 'EEEE d MMMM y' }}</span>
+  <span class="text-muted">{{ (orders().length === 1 ? '{count} function' : '{count} functions') | translate:{ count: orders().length } }}</span>
   <span class="sheet-covers">{{ guaranteedTotal() }} {{ 'covers guaranteed' | translate }}</span>
   @if (unpublishedCount() > 0) {
     <span class="badge badge-warning">
@@ -57,7 +57,7 @@
                 <span class="mono">{{ order.beo_number }}</span>
               }
               <span class="badge badge-muted badge-sm">v{{ order.beo_version ?? 1 }}</span>
-              <span [class]="statusClass(order.beo_status)">{{ order.beo_status_display }}</span>
+              <span [class]="statusClass(order.beo_status)">{{ order.beo_status_display | translate }}</span>
               @if (order.beo_status === 'DRAFT' || order.beo_status === 'PENDING_APPROVAL') {
                 <span class="text-attention text-xs">{{ 'Not issued to the departments' | translate }}</span>
               }
@@ -120,7 +120,7 @@
               <dl class="detail-list">
                 <div class="detail-row">
                   <dt class="detail-label">{{ 'Layout' | translate }}</dt>
-                  <dd class="detail-value">{{ order.room_setup_display }}</dd>
+                  <dd class="detail-value">{{ order.room_setup_display | translate }}</dd>
                 </div>
                 @if (order.tables_count || order.chairs_count) {
                   <div class="detail-row">

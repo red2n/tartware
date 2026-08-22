@@ -12,6 +12,35 @@ export type LangCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
 const STORAGE_KEY = "tartware-lang";
 
+/** BCP-47 tag Angular's date/number/currency formatters want, per UI language. */
+const ANGULAR_LOCALE: Record<LangCode, string> = {
+	en: "en-US",
+	es: "es",
+	fr: "fr",
+	"zh-TW": "zh-Hant",
+};
+
+/**
+ * LOCALE_ID factory for `app.config.ts`, read straight from storage.
+ *
+ * Angular resolves LOCALE_ID once at bootstrap and `DatePipe` captures it, so
+ * this cannot be a signal — switching language reloads instead (see `setLanguage`).
+ */
+/** The Angular locale for a UI language — used by `LocaleDatePipe`. */
+export function angularLocaleFor(lang: LangCode): string {
+	return ANGULAR_LOCALE[lang] ?? ANGULAR_LOCALE.en;
+}
+
+export function storedLocaleId(): string {
+	try {
+		const stored = localStorage.getItem(STORAGE_KEY);
+		if (stored && stored in ANGULAR_LOCALE) return ANGULAR_LOCALE[stored as LangCode];
+	} catch {
+		// private mode / storage disabled — fall through to the default
+	}
+	return ANGULAR_LOCALE.en;
+}
+
 /**
  * Lightweight i18n service for menu labels and page descriptions.
  *
@@ -32,14 +61,27 @@ export class I18nService {
 		}
 	}
 
-	/** Translate an English string to the current language. */
-	t(key: string): string {
-		if (!key || this.currentLang() === "en") return key;
-		return this.translations()[key] ?? key;
+	/**
+	 * Translate an English string to the current language.
+	 *
+	 * Placeholders are written `{name}` in the key and substituted from
+	 * `params`. Keeping the values out of the key is what lets a sentence
+	 * whose word order differs per language still be translated as one
+	 * unit — `"{count} rooms left"` becomes `"quedan {count} habitaciones"`
+	 * rather than three fragments the caller has to reassemble.
+	 */
+	t(key: string, params?: Record<string, string | number | null | undefined>): string {
+		if (!key) return key;
+		const template = this.currentLang() === "en" ? key : (this.translations()[key] ?? key);
+		if (!params) return template;
+		return template.replace(/\{(\w+)\}/g, (whole, name) =>
+			name in params ? (params[name] ?? "").toString() : whole,
+		);
 	}
 
-	/** Switch UI language and persist the choice. */
+	/** Switch UI language and persist the choice. Applies in place — no reload. */
 	setLanguage(lang: LangCode): void {
+		if (lang === this.currentLang()) return;
 		this.currentLang.set(lang);
 		localStorage.setItem(STORAGE_KEY, lang);
 		this.loadTranslations(lang);

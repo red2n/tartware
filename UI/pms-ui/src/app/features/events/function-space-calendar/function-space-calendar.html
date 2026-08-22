@@ -9,13 +9,13 @@
 @if (tentativeCount() > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="hourglass_bottom" />
-    {{ tentativeCount() }} {{ (tentativeCount() === 1 ? 'tentative hold in this window' : 'tentative holds in this window') | translate }}
+    {{ tentativeCount() }} {{ (tentativeCount() === 1 ? ('tentative hold in this window' | translate) : ('tentative holds in this window' | translate)) | translate }}
   </p>
 }
 @if (beoDueSoon().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="assignment_late" />
-    {{ beoDueSoon().length }} {{ (beoDueSoon().length === 1 ? 'booking is past its BEO due date' : 'bookings are past their BEO due date') | translate }}
+    {{ beoDueSoon().length }} {{ (beoDueSoon().length === 1 ? ('booking is past its BEO due date' | translate) : ('bookings are past their BEO due date' | translate)) | translate }}
   </p>
 }
 
@@ -49,14 +49,14 @@
           <label class="field-label" for="fs-name">{{ 'Event name' | translate }}</label>
           <input class="field-input" id="fs-name" type="text" [ngModel]="form().event_name"
                  (ngModelChange)="patchForm({ event_name: $event ?? '' })"
-                 placeholder="Q3 Sales Kickoff" />
+                 [placeholder]="'Q3 Sales Kickoff' | translate" />
         </div>
         <div class="form-field">
           <label class="field-label" for="fs-type">{{ 'Event type' | translate }}</label>
           <select class="field-input" id="fs-type" [ngModel]="form().event_type"
                   (ngModelChange)="patchForm({ event_type: $event })">
             @for (t of eventTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
@@ -136,7 +136,7 @@
             <select class="field-input" id="fs-setup" [ngModel]="form().setup_type"
                     (ngModelChange)="patchForm({ setup_type: $event })">
               @for (s of setupTypes; track s) {
-                <option [value]="s">{{ labelFor(s) }}</option>
+                <option [value]="s">{{ labelFor(s) | translate }}</option>
               }
             </select>
           </div>
@@ -177,7 +177,7 @@
         {{ 'Cancel' | translate }}
       </button>
       <button class="btn btn-primary btn-sm" (click)="submitForm()" [disabled]="!canSubmit() || submitting()">
-        {{ (submitting() ? 'Booking…' : 'Book the space') | translate }}
+        {{ (submitting() ? ('Booking…' | translate) : ('Book the space' | translate)) | translate }}
       </button>
     </div>
   </div>
@@ -191,7 +191,7 @@
               (ngModelChange)="statusFilter.set($event ?? '')">
         <option value="">{{ 'All statuses' | translate }}</option>
         @for (s of bookingStatuses; track s) {
-          <option [value]="s">{{ labelFor(s) }}</option>
+          <option [value]="s">{{ labelFor(s) | translate }}</option>
         }
       </select>
     </div>
@@ -274,7 +274,7 @@
             <td class="td-row-head">
               <span class="room-name">{{ room.room_name }}</span>
               <span class="room-meta">
-                {{ room.room_type_display }} · {{ 'max' | translate }} {{ room.max_capacity }}
+                {{ room.room_type_display | translate }} · {{ 'max' | translate }} {{ room.max_capacity }}
               </span>
             </td>
             @for (date of dateColumns(); track date) {

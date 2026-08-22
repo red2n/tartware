@@ -2,21 +2,24 @@
   title="Waitlist"
   description="Guests waiting on inventory — priority, offers, and conversion to a booking.">
   <button class="btn btn-primary btn-sm" (click)="openAdd()" [disabled]="submitting()">
-    <app-icon name="playlist_add" /> Add to waitlist
+    <app-icon name="playlist_add" /> {{ 'Add to waitlist' | translate }}
   </button>
 </app-page-header>
 
 @if (expiredOffers().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="timer_off" />
-    {{ expiredOffers().length }} offer{{ expiredOffers().length === 1 ? '' : 's' }} lapsed with no
-    response from the guest
+    {{ (expiredOffers().length === 1
+          ? '{count} offer lapsed with no response from the guest'
+          : '{count} offers lapsed with no response from the guest') | translate:{ count: expiredOffers().length } }}
   </p>
 }
 @if (vipWaiting().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="star" />
-    {{ vipWaiting().length }} VIP guest{{ vipWaiting().length === 1 ? '' : 's' }} still waiting
+    {{ (vipWaiting().length === 1
+          ? '{count} VIP guest still waiting'
+          : '{count} VIP guests still waiting') | translate:{ count: vipWaiting().length } }}
   </p>
 }
 
@@ -24,82 +27,82 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="playlist_add" />
-      <h3 class="confirm-title">Add a guest to the waitlist</h3>
+      <h3 class="confirm-title">{{ 'Add a guest to the waitlist' | translate }}</h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        This dispatches a command, so the entry appears once it has been processed.
+        {{ 'This dispatches a command, so the entry appears once it has been processed.' | translate }}
       </p>
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label" for="wl-guest">Guest ID</label>
+          <label class="field-label" for="wl-guest">{{ 'Guest ID' | translate }}</label>
           <input class="field-input" id="wl-guest" type="text" [ngModel]="form().guest_id"
                  (ngModelChange)="form.set({ ...form(), guest_id: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-roomtype">Requested room type ID</label>
+          <label class="field-label" for="wl-roomtype">{{ 'Requested room type ID' | translate }}</label>
           <input class="field-input" id="wl-roomtype" type="text"
                  [ngModel]="form().requested_room_type_id"
                  (ngModelChange)="form.set({ ...form(), requested_room_type_id: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-arrival">Arrival</label>
+          <label class="field-label" for="wl-arrival">{{ 'Arrival' | translate }}</label>
           <input class="field-input" id="wl-arrival" type="date" [ngModel]="form().arrival_date"
                  (ngModelChange)="form.set({ ...form(), arrival_date: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-departure">Departure</label>
+          <label class="field-label" for="wl-departure">{{ 'Departure' | translate }}</label>
           <input class="field-input" id="wl-departure" type="date" [ngModel]="form().departure_date"
                  (ngModelChange)="form.set({ ...form(), departure_date: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-rooms">Rooms</label>
+          <label class="field-label" for="wl-rooms">{{ 'Rooms' | translate }}</label>
           <input class="field-input" id="wl-rooms" type="number" min="1"
                  [ngModel]="form().number_of_rooms"
                  (ngModelChange)="form.set({ ...form(), number_of_rooms: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-adults">Adults</label>
+          <label class="field-label" for="wl-adults">{{ 'Adults' | translate }}</label>
           <input class="field-input" id="wl-adults" type="number" min="1"
                  [ngModel]="form().number_of_adults"
                  (ngModelChange)="form.set({ ...form(), number_of_adults: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-children">Children</label>
+          <label class="field-label" for="wl-children">{{ 'Children' | translate }}</label>
           <input class="field-input" id="wl-children" type="number" min="0"
                  [ngModel]="form().number_of_children"
                  (ngModelChange)="form.set({ ...form(), number_of_children: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-flex">Flexibility</label>
+          <label class="field-label" for="wl-flex">{{ 'Flexibility' | translate }}</label>
           <select class="field-input" id="wl-flex" [ngModel]="form().flexibility"
                   (ngModelChange)="form.set({ ...form(), flexibility: $event })">
             @for (f of flexibilityOptions; track f) {
-              <option [value]="f">{{ labelFor(f) }}</option>
+              <option [value]="f">{{ labelFor(f) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="wl-vip">VIP</label>
+          <label class="field-label" for="wl-vip">{{ 'VIP' | translate }}</label>
           <select class="field-input" id="wl-vip" [ngModel]="form().vip_flag"
                   (ngModelChange)="form.set({ ...form(), vip_flag: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="wl-notes">Notes</label>
+          <label class="field-label" for="wl-notes">{{ 'Notes' | translate }}</label>
           <textarea class="field-input" id="wl-notes" rows="2" [ngModel]="form().notes"
                     (ngModelChange)="form.set({ ...form(), notes: $event ?? '' })"
-                    placeholder="What the guest is holding out for"></textarea>
+                    [placeholder]="'What the guest is holding out for' | translate"></textarea>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAdd()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAdd()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitAdd()"
               [disabled]="submitting() || !canSubmit()">
-        {{ submitting() ? 'Submitting…' : 'Add to waitlist' }}
+        {{ submitting() ? ('Submitting…' | translate) : ('Add to waitlist' | translate) }}
       </button>
     </div>
   </div>
@@ -109,14 +112,19 @@
   <div class="action-confirm-card">
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="event_available" />
-      <h3 class="confirm-title">Convert {{ entry.guest_name || 'this entry' }} to a booking?</h3>
+      <h3 class="confirm-title">{{ 'Convert {guest} to a booking?' | translate:{ guest: entry.guest_name || ('this entry' | translate) } }}</h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">
-        {{ entry.arrival_date | date: 'mediumDate' }} – {{ entry.departure_date | date: 'mediumDate' }},
-        {{ entry.number_of_rooms }} room{{ entry.number_of_rooms === 1 ? '' : 's' }},
-        {{ entry.room_type_name || 'requested room type' }}. Inventory is checked when the command is
-        processed, so this can still fail if the room has gone.
+        {{ (entry.number_of_rooms === 1
+              ? '{arrival} – {departure}, {rooms} room, {roomType}. Inventory is checked when the command is processed, so this can still fail if the room has gone.'
+              : '{arrival} – {departure}, {rooms} rooms, {roomType}. Inventory is checked when the command is processed, so this can still fail if the room has gone.')
+            | translate:{
+                arrival: (entry.arrival_date | localeDate: 'mediumDate') ?? '',
+                departure: (entry.departure_date | localeDate: 'mediumDate') ?? '',
+                rooms: entry.number_of_rooms,
+                roomType: entry.room_type_name || ('requested room type' | translate)
+              } }}
       </p>
       <!--
         The waitlist entry records what the guest asked for, never a price, and
@@ -124,7 +132,7 @@
         has to be entered here. Converting without it is rejected outright.
       -->
       <label class="field">
-        <span class="field-label">Total amount ({{ entry.nights }} night{{ entry.nights === 1 ? '' : 's' }})</span>
+        <span class="field-label">{{ (entry.nights === 1 ? 'Total amount ({count} night)' : 'Total amount ({count} nights)') | translate:{ count: entry.nights } }}</span>
         <input
           class="input"
           type="number"
@@ -138,9 +146,9 @@
       </label>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelConvert()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelConvert()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="confirmConvert()" [disabled]="submitting()">
-        {{ submitting() ? 'Converting…' : 'Convert to booking' }}
+        {{ submitting() ? ('Converting…' | translate) : ('Convert to booking' | translate) }}
       </button>
     </div>
   </div>
@@ -148,37 +156,37 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label class="field-label" for="wl-f-status">Status</label>
+    <label class="field-label" for="wl-f-status">{{ 'Status' | translate }}</label>
     <select class="field-input" id="wl-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of statuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
 </div>
 
 @if (loading()) {
-  <div class="loading-state">Loading…</div>
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
 } @else if (entries().length === 0) {
   <div class="empty-state">
     <app-icon class="empty-icon" name="playlist_add" />
-    <h3>Nobody on the waitlist</h3>
+    <h3>{{ 'Nobody on the waitlist' | translate }}</h3>
   </div>
 } @else {
   <div class="table-container">
     <table class="table data-table">
       <thead>
         <tr>
-          <th>Guest</th>
-          <th>Stay</th>
-          <th>Room type</th>
-          <th>Party</th>
-          <th>Flexibility</th>
-          <th>Priority</th>
-          <th>Status</th>
-          <th class="cell-actions">Actions</th>
+          <th>{{ 'Guest' | translate }}</th>
+          <th>{{ 'Stay' | translate }}</th>
+          <th>{{ 'Room type' | translate }}</th>
+          <th>{{ 'Party' | translate }}</th>
+          <th>{{ 'Flexibility' | translate }}</th>
+          <th>{{ 'Priority' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -187,32 +195,32 @@
             <td class="cell-primary">
               <strong>{{ e.guest_name || '—' }}</strong>
               @if (e.vip_flag) {
-                <span class="badge badge-warning badge-sm">VIP</span>
+                <span class="badge badge-warning badge-sm">{{ 'VIP' | translate }}</span>
               }
               @if (e.notes) {
                 <div class="cell-sub">{{ e.notes }}</div>
               }
             </td>
             <td>
-              {{ e.arrival_date | date: 'mediumDate' }} – {{ e.departure_date | date: 'mediumDate' }}
-              <div class="cell-sub">{{ e.nights }} night{{ e.nights === 1 ? '' : 's' }}</div>
+              {{ e.arrival_date | localeDate: 'mediumDate' }} – {{ e.departure_date | localeDate: 'mediumDate' }}
+              <div class="cell-sub">{{ (e.nights === 1 ? '{count} night' : '{count} nights') | translate:{ count: e.nights } }}</div>
             </td>
             <td>{{ e.room_type_name || '—' }}</td>
             <td>
               {{ e.number_of_rooms }}× · {{ e.number_of_adults }}A
               @if (e.number_of_children) { / {{ e.number_of_children }}C }
             </td>
-            <td>{{ e.flexibility_display }}</td>
+            <td>{{ e.flexibility_display | translate }}</td>
             <td>{{ e.priority_score }}</td>
             <td>
-              <span [class]="statusClass(e.waitlist_status)">{{ e.waitlist_status_display }}</span>
+              <span [class]="statusClass(e.waitlist_status)">{{ e.waitlist_status_display | translate }}</span>
               @if (e.offer_expiration_at && !e.offer_response) {
-                <div class="cell-sub">offer to {{ e.offer_expiration_at | date: 'short' }}</div>
+                <div class="cell-sub">{{ 'offer to {expiry}' | translate:{ expiry: (e.offer_expiration_at | localeDate: 'short') ?? '' } }}</div>
               }
             </td>
             <td class="cell-actions">
               @if (canConvert(e)) {
-                <button class="btn btn-outline btn-sm" (click)="openConvert(e)">Convert</button>
+                <button class="btn btn-outline btn-sm" (click)="openConvert(e)">{{ 'Convert' | translate }}</button>
               }
             </td>
           </tr>

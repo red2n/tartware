@@ -89,7 +89,7 @@
                 <span class="ref-code">{{ rate.rate_code }}</span>
                 <span class="rate-name text-muted">{{ rate.rate_name }}</span>
                 <span class="rate-base text-xs text-muted">
-                  Base: {{ fmtCurrency(rate.base_rate, rate.currency) }}
+                  {{ 'Base: {amount}' | translate:{ amount: fmtCurrency(rate.base_rate, rate.currency) } }}
                 </span>
               </td>
               @for (date of dateColumns(); track date) {
@@ -112,10 +112,10 @@
                             (contextmenu)="$event.preventDefault(); toggleCellStatus(rate.id, date)">
                       <span class="cell-amount">{{ cellDisplay(rate.id, date) }}</span>
                       @if (getCell(rate.id, date)?.cta) {
-                        <span class="cell-flag">CTA</span>
+                        <span class="cell-flag">{{ 'CTA' | translate }}</span>
                       }
                       @if (getCell(rate.id, date)?.ctd) {
-                        <span class="cell-flag">CTD</span>
+                        <span class="cell-flag">{{ 'CTD' | translate }}</span>
                       }
                     </button>
                   }

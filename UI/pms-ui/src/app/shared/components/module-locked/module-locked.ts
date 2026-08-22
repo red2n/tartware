@@ -4,6 +4,7 @@ import { RouterLink } from "@angular/router";
 
 import type { ModuleNotEnabledError } from "../../../core/api/api.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { ModuleRequestService } from "../../../core/modules/module-request.service";
 import { ToastService } from "../../toast/toast.service";
@@ -70,6 +71,7 @@ import { IconComponent } from "../icon/icon";
 })
 export class ModuleLockedComponent implements OnInit {
 	private readonly requests = inject(ModuleRequestService);
+	private readonly i18n = inject(I18nService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
 
@@ -122,9 +124,9 @@ export class ModuleLockedComponent implements OnInit {
 			});
 			this.composing.set(false);
 			this.reason.set("");
-			this.toast.success("Your request has been sent to your administrator.");
+			this.toast.success(this.i18n.t("Your request has been sent to your administrator."));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Could not send the request.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Could not send the request."));
 		} finally {
 			this.submitting.set(false);
 		}

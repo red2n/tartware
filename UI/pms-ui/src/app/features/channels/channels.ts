@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../shared/forms/submit-on-enter.directive";
@@ -83,11 +85,19 @@ const FAILED_SYNC_STATUSES = new Set(["ERROR", "PARTIAL"]);
 @Component({
 	selector: "app-channels",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./channels.html",
 })
 export class ChannelsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -185,7 +195,9 @@ export class ChannelsComponent {
 			this.connections.set(Array.isArray(res) ? res : (res?.data ?? []));
 			this.configurations.set(Array.isArray(configRes) ? configRes : (configRes?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load channel connections");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load channel connections"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -204,7 +216,7 @@ export class ChannelsComponent {
 			);
 			this.history.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load sync history");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load sync history"));
 		} finally {
 			this.historyLoading.set(false);
 		}
@@ -257,7 +269,7 @@ export class ChannelsComponent {
 			this.toast.success(done);
 			this.cancelAction();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Command was not accepted");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Command was not accepted"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -266,7 +278,7 @@ export class ChannelsComponent {
 	async syncNow(connection: OtaConnection): Promise<void> {
 		const propertyId = connection.property_id ?? this.ctx.propertyId();
 		if (!propertyId) {
-			this.toast.error("Select a property before triggering a sync.");
+			this.toast.error(this.i18n.t("Select a property before triggering a sync."));
 			return;
 		}
 		await this.dispatch(

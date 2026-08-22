@@ -19,6 +19,7 @@ type InclusionKey =
 	| "includes_wifi"
 	| "includes_airport_transfer";
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 @Component({
@@ -37,6 +38,7 @@ import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 })
 export class PackageDetailComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly dialog = inject(AppDialogService);
 	private readonly route = inject(ActivatedRoute);
@@ -276,7 +278,7 @@ export class PackageDetailComponent {
 
 		ref?.onClose.subscribe((created) => {
 			if (created) {
-				this.toast.success("Component added to package.");
+				this.toast.success(this.i18n.t("Component added to package."));
 				this.loadDetail();
 			}
 		});
@@ -304,10 +306,10 @@ export class PackageDetailComponent {
 				tenant_id: tenantId,
 				...fields,
 			});
-			this.toast.success("Package updated");
+			this.toast.success(this.i18n.t("Package updated"));
 			await this.loadDetail();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update package");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update package"));
 		} finally {
 			this.updating.set(false);
 		}

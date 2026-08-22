@@ -2,21 +2,21 @@
   title="Shift handovers"
   description="Open issues carried across a shift change — and the sign-off that they were read.">
   <button class="btn btn-primary btn-sm" (click)="openHandover()" [disabled]="submitting()">
-    <app-icon name="swap_horiz" /> Open handover
+    <app-icon name="swap_horiz" /> {{ 'Open handover' | translate }}
   </button>
 </app-page-header>
 
 @if (awaitingAcknowledgement().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="pending_actions" />
-    {{ awaitingAcknowledgement().length }} handover{{ awaitingAcknowledgement().length === 1 ? '' : 's' }}
-    not yet acknowledged by the incoming shift
-  </p>
+    {{ (awaitingAcknowledgement().length === 1
+          ? '{count} handover not yet acknowledged by the incoming shift'
+          : '{count} handovers not yet acknowledged by the incoming shift') | translate:{ count: awaitingAcknowledgement().length } }}</p>
 }
 @if (needingFollowUp().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="flag" />
-    {{ needingFollowUp().length }} with open items to carry forward
+    {{ '{count} with open items to carry forward' | translate:{ count: needingFollowUp().length } }}
   </p>
 }
 
@@ -25,144 +25,143 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="swap_horiz" />
       <h3 class="confirm-title">
-        {{ editing() ? 'Update ' + (editing()!.handover_number || 'handover') : 'Open a shift handover' }}
+        {{ editing() ? ('Update ' | translate) + (editing()!.handover_number || ('handover' | translate)) : ('Open a shift handover' | translate) }}
       </h3>
     </div>
     <div class="confirm-body">
       @if (!editing()) {
         <p class="confirm-note">
-          Open this at the start of the outgoing shift and fill it as the shift runs. The incoming
-          user must be named — a handover addressed to nobody has no one to acknowledge it.
+          {{ 'Open this at the start of the outgoing shift and fill it as the shift runs. The incoming user must be named — a handover addressed to nobody has no one to acknowledge it.' | translate }}
         </p>
       }
       <div class="form-grid">
         @if (!editing()) {
           <div class="form-field">
-            <label class="field-label" for="sh-date">Shift date</label>
+            <label class="field-label" for="sh-date">{{ 'Shift date' | translate }}</label>
             <input class="field-input" id="sh-date" type="date" [ngModel]="form().shift_date"
                    (ngModelChange)="form.set({ ...form(), shift_date: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-dept">Department</label>
+            <label class="field-label" for="sh-dept">{{ 'Department' | translate }}</label>
             <select class="field-input" id="sh-dept" [ngModel]="form().department"
                     (ngModelChange)="form.set({ ...form(), department: $event })">
               @for (d of departments; track d) {
-                <option [value]="d">{{ labelFor(d) }}</option>
+                <option [value]="d">{{ labelFor(d) | translate }}</option>
               }
             </select>
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-out-shift">Outgoing shift</label>
+            <label class="field-label" for="sh-out-shift">{{ 'Outgoing shift' | translate }}</label>
             <select class="field-input" id="sh-out-shift" [ngModel]="form().outgoing_shift"
                     (ngModelChange)="form.set({ ...form(), outgoing_shift: $event })">
               @for (s of shifts; track s) {
-                <option [value]="s">{{ labelFor(s) }}</option>
+                <option [value]="s">{{ labelFor(s) | translate }}</option>
               }
             </select>
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-in-shift">Incoming shift</label>
+            <label class="field-label" for="sh-in-shift">{{ 'Incoming shift' | translate }}</label>
             <select class="field-input" id="sh-in-shift" [ngModel]="form().incoming_shift"
                     (ngModelChange)="form.set({ ...form(), incoming_shift: $event })">
               @for (s of shifts; track s) {
-                <option [value]="s">{{ labelFor(s) }}</option>
+                <option [value]="s">{{ labelFor(s) | translate }}</option>
               }
             </select>
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-out-user">Outgoing user ID</label>
+            <label class="field-label" for="sh-out-user">{{ 'Outgoing user ID' | translate }}</label>
             <input class="field-input" id="sh-out-user" type="text" [ngModel]="form().outgoing_user_id"
                    (ngModelChange)="form.set({ ...form(), outgoing_user_id: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-out-name">Outgoing user name</label>
+            <label class="field-label" for="sh-out-name">{{ 'Outgoing user name' | translate }}</label>
             <input class="field-input" id="sh-out-name" type="text" [ngModel]="form().outgoing_user_name"
                    (ngModelChange)="form.set({ ...form(), outgoing_user_name: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-in-user">Incoming user ID</label>
+            <label class="field-label" for="sh-in-user">{{ 'Incoming user ID' | translate }}</label>
             <input class="field-input" id="sh-in-user" type="text" [ngModel]="form().incoming_user_id"
                    (ngModelChange)="form.set({ ...form(), incoming_user_id: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="sh-in-name">Incoming user name</label>
+            <label class="field-label" for="sh-in-name">{{ 'Incoming user name' | translate }}</label>
             <input class="field-input" id="sh-in-name" type="text" [ngModel]="form().incoming_user_name"
                    (ngModelChange)="form.set({ ...form(), incoming_user_name: $event ?? '' })" />
           </div>
         } @else {
           <div class="form-field">
-            <label class="field-label" for="sh-status">Status</label>
+            <label class="field-label" for="sh-status">{{ 'Status' | translate }}</label>
             <select class="field-input" id="sh-status" [ngModel]="form().handover_status"
                     (ngModelChange)="form.set({ ...form(), handover_status: $event })">
               @for (s of statuses; track s) {
-                <option [value]="s">{{ labelFor(s) }}</option>
+                <option [value]="s">{{ labelFor(s) | translate }}</option>
               }
             </select>
           </div>
         }
         <div class="form-field">
-          <label class="field-label" for="sh-title">Title</label>
+          <label class="field-label" for="sh-title">{{ 'Title' | translate }}</label>
           <input class="field-input" id="sh-title" type="text" [ngModel]="form().handover_title"
                  (ngModelChange)="form.set({ ...form(), handover_title: $event ?? '' })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="sh-followup">Open items to carry forward</label>
+          <label class="field-label" for="sh-followup">{{ 'Open items to carry forward' | translate }}</label>
           <select class="field-input" id="sh-followup" [ngModel]="form().requires_follow_up"
                   (ngModelChange)="form.set({ ...form(), requires_follow_up: $event })">
-            <option [ngValue]="false">No</option>
-            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="sh-cash">Cash on hand</label>
+          <label class="field-label" for="sh-cash">{{ 'Cash on hand' | translate }}</label>
           <input class="field-input" id="sh-cash" type="number" step="0.01" [ngModel]="form().cash_on_hand"
                  (ngModelChange)="form.set({ ...form(), cash_on_hand: $event })" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="sh-deposits">Deposits to make</label>
+          <label class="field-label" for="sh-deposits">{{ 'Deposits to make' | translate }}</label>
           <input class="field-input" id="sh-deposits" type="number" step="0.01"
                  [ngModel]="form().deposits_to_make"
                  (ngModelChange)="form.set({ ...form(), deposits_to_make: $event })" />
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-key">Key points</label>
+          <label class="field-label" for="sh-key">{{ 'Key points' | translate }}</label>
           <textarea class="field-input" id="sh-key" rows="4" [ngModel]="form().key_points"
                     (ngModelChange)="form.set({ ...form(), key_points: $event ?? '' })"
-                    placeholder="What the next shift must know before they start"></textarea>
+                    [placeholder]="'What the next shift must know before they start' | translate"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-urgent">Urgent matters</label>
+          <label class="field-label" for="sh-urgent">{{ 'Urgent matters' | translate }}</label>
           <textarea class="field-input" id="sh-urgent" rows="2" [ngModel]="form().urgent_matters"
                     (ngModelChange)="form.set({ ...form(), urgent_matters: $event ?? '' })"
-                    placeholder="Anything that cannot wait"></textarea>
+                    [placeholder]="'Anything that cannot wait' | translate"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-notes">Important notes</label>
+          <label class="field-label" for="sh-notes">{{ 'Important notes' | translate }}</label>
           <textarea class="field-input" id="sh-notes" rows="2" [ngModel]="form().important_notes"
                     (ngModelChange)="form.set({ ...form(), important_notes: $event ?? '' })"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-payments">Payment issues</label>
+          <label class="field-label" for="sh-payments">{{ 'Payment issues' | translate }}</label>
           <textarea class="field-input" id="sh-payments" rows="2" [ngModel]="form().payment_issues"
                     (ngModelChange)="form.set({ ...form(), payment_issues: $event ?? '' })"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-staff">Staff issues</label>
+          <label class="field-label" for="sh-staff">{{ 'Staff issues' | translate }}</label>
           <textarea class="field-input" id="sh-staff" rows="2" [ngModel]="form().staff_issues"
                     (ngModelChange)="form.set({ ...form(), staff_issues: $event ?? '' })"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-special">Special situations</label>
+          <label class="field-label" for="sh-special">{{ 'Special situations' | translate }}</label>
           <textarea class="field-input" id="sh-special" rows="2" [ngModel]="form().special_situations"
                     (ngModelChange)="form.set({ ...form(), special_situations: $event ?? '' })"></textarea>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitForm()"
               [disabled]="submitting() || !canSubmitForm()">
-        {{ submitting() ? 'Saving…' : (editing() ? 'Save' : 'Open handover') }}
+        {{ submitting() ? ('Saving…' | translate) : (editing() ? ('Save' | translate) : ('Open handover' | translate)) }}
       </button>
     </div>
   </div>
@@ -172,23 +171,23 @@
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="how_to_reg" />
-      <h3 class="confirm-title">Acknowledge — {{ handover.handover_number || 'handover' }}</h3>
+      <h3 class="confirm-title">{{ 'Acknowledge — {handover}' | translate:{ handover: handover.handover_number || ('handover' | translate) } }}</h3>
     </div>
     <div class="confirm-body">
       <p class="confirm-note">{{ handover.key_points }}</p>
       <div class="form-grid">
         <div class="form-field full-width">
-          <label class="field-label" for="sh-ack-notes">Acknowledgment notes</label>
+          <label class="field-label" for="sh-ack-notes">{{ 'Acknowledgment notes' | translate }}</label>
           <textarea class="field-input" id="sh-ack-notes" rows="2" [ngModel]="ackForm().acknowledgment_notes"
                     (ngModelChange)="ackForm.set({ ...ackForm(), acknowledgment_notes: $event ?? '' })"></textarea>
         </div>
         <div class="form-field full-width">
-          <label class="field-label" for="sh-ack-questions">Questions raised</label>
+          <label class="field-label" for="sh-ack-questions">{{ 'Questions raised' | translate }}</label>
           <textarea class="field-input" id="sh-ack-questions" rows="2" [ngModel]="ackForm().questions_asked"
                     (ngModelChange)="ackForm.set({ ...ackForm(), questions_asked: $event ?? '' })"></textarea>
         </div>
         <div class="form-field">
-          <label class="field-label" for="sh-ack-rating">Handover quality (1–5)</label>
+          <label class="field-label" for="sh-ack-rating">{{ 'Handover quality (1–5)' | translate }}</label>
           <input class="field-input" id="sh-ack-rating" type="number" min="1" max="5"
                  [ngModel]="ackForm().handover_quality_rating"
                  (ngModelChange)="ackForm.set({ ...ackForm(), handover_quality_rating: $event })" />
@@ -196,9 +195,9 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-outline btn-sm" (click)="cancelAcknowledge()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-outline btn-sm" (click)="cancelAcknowledge()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitAcknowledge()" [disabled]="submitting()">
-        {{ submitting() ? 'Saving…' : 'Acknowledge' }}
+        {{ submitting() ? ('Saving…' | translate) : ('Acknowledge' | translate) }}
       </button>
     </div>
   </div>
@@ -206,51 +205,51 @@
 
 <div class="filter-form">
   <div class="form-field">
-    <label class="field-label" for="sh-f-status">Status</label>
+    <label class="field-label" for="sh-f-status">{{ 'Status' | translate }}</label>
     <select class="field-input" id="sh-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of statuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="sh-f-dept">Department</label>
+    <label class="field-label" for="sh-f-dept">{{ 'Department' | translate }}</label>
     <select class="field-input" id="sh-f-dept" [ngModel]="departmentFilter()"
             (ngModelChange)="departmentFilter.set($event ?? ''); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (d of departments; track d) {
-        <option [value]="d">{{ labelFor(d) }}</option>
+        <option [value]="d">{{ labelFor(d) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="sh-f-date">Shift date</label>
+    <label class="field-label" for="sh-f-date">{{ 'Shift date' | translate }}</label>
     <input class="field-input" id="sh-f-date" type="date" [ngModel]="dateFilter()"
            (ngModelChange)="dateFilter.set($event ?? ''); load()" />
   </div>
 </div>
 
 @if (loading()) {
-  <div class="loading-state">Loading…</div>
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
 } @else if (handovers().length === 0) {
   <div class="empty-state">
     <app-icon class="empty-icon" name="swap_horiz" />
-    <h3>No shift handovers recorded</h3>
+    <h3>{{ 'No shift handovers recorded' | translate }}</h3>
   </div>
 } @else {
   <div class="table-container">
     <table class="table data-table">
       <thead>
         <tr>
-          <th>Handover</th>
-          <th>Shift</th>
-          <th>Department</th>
-          <th>From → to</th>
-          <th>Key points</th>
-          <th>Status</th>
-          <th class="cell-actions">Actions</th>
+          <th>{{ 'Handover' | translate }}</th>
+          <th>{{ 'Shift' | translate }}</th>
+          <th>{{ 'Department' | translate }}</th>
+          <th>{{ 'From → to' | translate }}</th>
+          <th>{{ 'Key points' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -263,25 +262,25 @@
               }
             </td>
             <td>
-              {{ h.shift_date | date: 'mediumDate' }}
-              <div class="cell-sub">{{ labelFor(h.outgoing_shift) }} → {{ labelFor(h.incoming_shift) }}</div>
+              {{ h.shift_date | localeDate: 'mediumDate' }}
+              <div class="cell-sub">{{ labelFor(h.outgoing_shift) | translate }} → {{ labelFor(h.incoming_shift) | translate }}</div>
             </td>
-            <td>{{ h.department_display }}</td>
+            <td>{{ h.department_display | translate }}</td>
             <td>{{ h.outgoing_user_name || '—' }} → {{ h.incoming_user_name || '—' }}</td>
             <td class="cell-sub">{{ h.key_points }}</td>
             <td>
-              <span [class]="statusClass(h.handover_status)">{{ h.handover_status_display }}</span>
+              <span [class]="statusClass(h.handover_status)">{{ h.handover_status_display | translate }}</span>
               @if (h.requires_follow_up) {
-                <span class="badge badge-warning badge-sm">Follow-up</span>
+                <span class="badge badge-warning badge-sm">{{ 'Follow-up' | translate }}</span>
               }
               @if (h.acknowledged) {
-                <span class="badge badge-accent badge-sm">Signed off</span>
+                <span class="badge badge-accent badge-sm">{{ 'Signed off' | translate }}</span>
               }
             </td>
             <td class="cell-actions">
               @if (!h.acknowledged) {
-                <button class="btn btn-outline btn-sm" (click)="openEdit(h)">Edit</button>
-                <button class="btn btn-outline btn-sm" (click)="openAcknowledge(h)">Acknowledge</button>
+                <button class="btn btn-outline btn-sm" (click)="openEdit(h)">{{ 'Edit' | translate }}</button>
+                <button class="btn btn-outline btn-sm" (click)="openAcknowledge(h)">{{ 'Acknowledge' | translate }}</button>
               }
             </td>
           </tr>

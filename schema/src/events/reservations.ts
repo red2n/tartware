@@ -65,6 +65,16 @@ const ReservationCreatePayloadSchema = z.object({
 	guest_id: ReservationsSchema.shape.guest_id,
 	room_type_id: ReservationsSchema.shape.room_type_id,
 	rate_code: RateCodeSchema.optional(),
+	/**
+	 * Guest identity carried on the event so consumers do not have to resolve it
+	 * themselves. notification-service dispatches BOOKING_CONFIRMED off this
+	 * event and has no access to the guests table: without an address here the
+	 * EMAIL channel fails with "No recipient email address provided" while the
+	 * in-app notification still succeeds. The publisher fills these from the
+	 * guest row when the command omits them.
+	 */
+	guest_name: ReservationsSchema.shape.guest_name.optional(),
+	guest_email: ReservationsSchema.shape.guest_email.optional(),
 	check_in_date: z.coerce.date(),
 	check_out_date: z.coerce.date(),
 	booking_date: z.coerce.date().optional(),

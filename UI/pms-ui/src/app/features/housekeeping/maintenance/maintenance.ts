@@ -1,10 +1,12 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type { MaintenanceRequestListItem, UserWithTenants } from "@tartware/schemas";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -93,11 +95,19 @@ type ActionMode = "assign" | "complete" | "escalate";
 @Component({
 	selector: "app-maintenance",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./maintenance.html",
 })
 export class MaintenanceComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -221,7 +231,7 @@ export class MaintenanceComponent {
 	}
 
 	staffName(userId: string | undefined | null): string {
-		if (!userId) return "Unassigned";
+		if (!userId) return this.i18n.t("Unassigned");
 		const user = this.staff().find((s) => s.id === userId);
 		if (!user) return userId.slice(0, 8);
 		const name = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
@@ -280,7 +290,9 @@ export class MaintenanceComponent {
 			);
 			this.requests.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load maintenance requests");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load maintenance requests"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -291,7 +303,9 @@ export class MaintenanceComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=200`);
+			// 100 is the cap UserListQuerySchema enforces; asking for more is a 400,
+			// which the catch below turns into an empty picker.
+			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=100`);
 			this.staff.set(data ?? []);
 		} catch {
 			// A missing picker must not block raising a fault.
@@ -322,7 +336,7 @@ export class MaintenanceComponent {
 		const propertyId = this.ctx.propertyId();
 		if (!tenantId || !this.canSubmitForm()) return;
 		if (!propertyId) {
-			this.toast.error("Select a property before raising a maintenance request.");
+			this.toast.error(this.i18n.t("Select a property before raising a maintenance request."));
 			return;
 		}
 
@@ -343,11 +357,11 @@ export class MaintenanceComponent {
 				...(f.reporter_role.trim() ? { reporter_role: f.reporter_role.trim() } : {}),
 				affects_occupancy: f.affects_occupancy,
 			});
-			this.toast.success("Maintenance request raised.");
+			this.toast.success(this.i18n.t("Maintenance request raised."));
 			this.raising.set(false);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to raise the request");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to raise the request"));
 		} finally {
 			this.submitting.set(false);
 		}
@@ -415,7 +429,7 @@ export class MaintenanceComponent {
 						: {}),
 					...(f.notes.trim() ? { notes: f.notes.trim() } : {}),
 				});
-				this.toast.success(`Assigned to ${this.staffName(f.assigned_to)}.`);
+				this.toast.success(this.i18n.t("Assigned to {p0}.", { p0: this.staffName(f.assigned_to) }));
 			} else if (mode === "complete") {
 				await this.api.post(`${base}/complete`, {
 					tenant_id: tenantId,
@@ -429,7 +443,7 @@ export class MaintenanceComponent {
 					is_satisfactory: f.is_satisfactory,
 					...(f.completion_notes.trim() ? { completion_notes: f.completion_notes.trim() } : {}),
 				});
-				this.toast.success("Marked complete.");
+				this.toast.success(this.i18n.t("Marked complete."));
 			} else {
 				await this.api.post(`${base}/escalate`, {
 					tenant_id: tenantId,
@@ -437,7 +451,7 @@ export class MaintenanceComponent {
 					escalation_reason: f.escalation_reason.trim(),
 					...(f.new_priority ? { new_priority: f.new_priority } : {}),
 				});
-				this.toast.success("Escalated.");
+				this.toast.success(this.i18n.t("Escalated."));
 			}
 
 			this.cancelAction();

@@ -8,6 +8,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { CalloutComponent } from "../../../shared/components/callout/callout";
@@ -48,6 +49,7 @@ interface PropertyCurrencyRow {
 })
 export class CurrencyConfigComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -219,11 +221,13 @@ export class CurrencyConfigComponent {
 			});
 			// Re-posting the same pair on the same date corrects it in place rather
 			// than creating a second row, so save and edit are the same call.
-			this.toast.success(`Rate ${this.formFrom()} → ${this.formTo()} saved.`);
+			this.toast.success(
+				this.i18n.t("Rate {p0} → {p1} saved.", { p0: this.formFrom(), p1: this.formTo() }),
+			);
 			this.showForm.set(false);
 			await this.loadRates();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save FX rate.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save FX rate."));
 		} finally {
 			this.saving.set(false);
 		}
@@ -253,7 +257,7 @@ export class CurrencyConfigComponent {
 	/** "2 decimals" / "no decimals" / "3 decimals" — plain language for the table. */
 	exponentLabel(code: string): string {
 		const dp = getCurrencyExponent(code);
-		if (dp === 0) return "no decimals";
+		if (dp === 0) return this.i18n.t("no decimals");
 		return `${dp} decimals`;
 	}
 

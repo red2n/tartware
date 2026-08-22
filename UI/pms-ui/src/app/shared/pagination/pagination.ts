@@ -1,42 +1,43 @@
 import { Component, computed, input, output } from "@angular/core";
+import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../components/icon/icon";
 
 @Component({
 	selector: "app-pagination",
 	standalone: true,
-	imports: [IconComponent],
+	imports: [IconComponent, TranslatePipe],
 	template: `
 		@if (totalPages() > 1) {
-			<nav class="pagination" aria-label="Table pagination">
+			<nav class="pagination" [aria-label]="'Table pagination' | translate">
 				<span class="pagination-info">
-					{{ startItem() }}–{{ endItem() }} of {{ totalItems() }}
+					{{ '{start}–{end} of {total}' | translate:{ start: startItem(), end: endItem(), total: totalItems() } }}
 				</span>
 				<div class="pagination-controls">
 					<button type="button" class="btn btn-invisible btn-sm"
 							[disabled]="currentPage() <= 1"
 							(click)="pageChange.emit(1)"
-							aria-label="First page">
+							[aria-label]="'First page' | translate">
 					<app-icon name="first_page" />
 					</button>
 					<button type="button" class="btn btn-invisible btn-sm"
 							[disabled]="currentPage() <= 1"
 							(click)="pageChange.emit(currentPage() - 1)"
-							aria-label="Previous page">
+							[aria-label]="'Previous page' | translate">
 					<app-icon name="chevron_left" />
 					</button>
 					<span class="pagination-page">
-						Page {{ currentPage() }} of {{ totalPages() }}
+						{{ 'Page {current} of {total}' | translate:{ current: currentPage(), total: totalPages() } }}
 					</span>
 					<button type="button" class="btn btn-invisible btn-sm"
 							[disabled]="currentPage() >= totalPages()"
 							(click)="pageChange.emit(currentPage() + 1)"
-							aria-label="Next page">
+							[aria-label]="'Next page' | translate">
 					<app-icon name="chevron_right" />
 					</button>
 					<button type="button" class="btn btn-invisible btn-sm"
 							[disabled]="currentPage() >= totalPages()"
 							(click)="pageChange.emit(totalPages())"
-							aria-label="Last page">
+							[aria-label]="'Last page' | translate">
 					<app-icon name="last_page" />
 					</button>
 				</div>

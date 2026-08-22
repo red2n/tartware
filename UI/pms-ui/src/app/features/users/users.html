@@ -27,7 +27,7 @@
   <div class="hk-policy-flags">
     <span class="hk-policy-flag">
       <app-icon name="timer" />
-      {{ 'Session timeout' | translate }}: <strong>{{ sessionIdleTimeoutMins() }}min</strong>
+      {{ 'Session timeout' | translate }}: <strong>{{ '{mins}min' | translate:{ mins: sessionIdleTimeoutMins() } }}</strong>
     </span>
     <span class="hk-policy-flag">
       <app-icon name="password" />

@@ -1,9 +1,11 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../../core/i18n/locale-date.pipe";
+import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
@@ -71,12 +73,20 @@ const OPEN_STATUSES = new Set(["filed", "pending", "under_investigation", "refer
 @Component({
 	selector: "app-police-reports",
 	standalone: true,
-	imports: [DatePipe, FormsModule, IconComponent, PageHeaderComponent, SubmitOnEnterDirective],
+	imports: [
+		FormsModule,
+		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
+		SubmitOnEnterDirective,
+		TranslatePipe,
+	],
 	templateUrl: "./police-reports.html",
 	styleUrl: "./police-reports.scss",
 })
 export class PoliceReportsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	// Tenant lives on auth; the active property lives on the tenant context.
 	private readonly ctx = inject(TenantContextService);
@@ -184,7 +194,9 @@ export class PoliceReportsComponent {
 			);
 			this.reports.set(Array.isArray(res) ? res : (res?.data ?? []));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load police reports");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load police reports"),
+			);
 		} finally {
 			this.loading.set(false);
 		}
@@ -249,7 +261,7 @@ export class PoliceReportsComponent {
 
 		const existing = this.editing();
 		if (!existing && !propertyId) {
-			this.toast.error("Select a property before filing a report.");
+			this.toast.error(this.i18n.t("Select a property before filing a report."));
 			return;
 		}
 
@@ -286,16 +298,18 @@ export class PoliceReportsComponent {
 		try {
 			if (existing) {
 				await this.api.put(`/police-reports/${existing.report_id}`, body);
-				this.toast.success("Report corrected.");
+				this.toast.success(this.i18n.t("Report corrected."));
 			} else {
 				await this.api.post("/police-reports", { ...body, property_id: propertyId });
-				this.toast.success("Police report filed.");
+				this.toast.success(this.i18n.t("Police report filed."));
 			}
 			this.filing.set(false);
 			this.editing.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save police report");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to save police report"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -334,11 +348,11 @@ export class PoliceReportsComponent {
 				follow_up_required: f.follow_up_required,
 				...(f.follow_up_date ? { follow_up_date: f.follow_up_date } : {}),
 			});
-			this.toast.success("Report status updated.");
+			this.toast.success(this.i18n.t("Report status updated."));
 			this.statusTarget.set(null);
 			await this.load();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update status");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update status"));
 		} finally {
 			this.submitting.set(false);
 		}

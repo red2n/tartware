@@ -2,103 +2,105 @@
   title="Maintenance"
   description="Property faults — what is broken, who is fixing it, and which rooms it is holding out of sale.">
   <button class="btn btn-primary btn-sm" (click)="openRaise()" [disabled]="submitting()">
-    <app-icon name="build" /> Raise request
+    <app-icon name="build" /> {{ 'Raise request' | translate }}
   </button>
 </app-page-header>
 
 @if (roomsOutOfService().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="do_not_disturb_on" />
-    {{ roomsOutOfService().length }} room{{ roomsOutOfService().length === 1 ? '' : 's' }}
-    out of service on an unresolved fault
-  </p>
+    {{ (roomsOutOfService().length === 1
+          ? '{count} room out of service on an unresolved fault'
+          : '{count} rooms out of service on an unresolved fault') | translate:{ count: roomsOutOfService().length } }}</p>
 }
 @if (safetyOpen().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="warning" />
-    {{ safetyOpen().length }} open safety or health issue{{ safetyOpen().length === 1 ? '' : 's' }}
-  </p>
+    {{ (safetyOpen().length === 1
+          ? '{count} open safety or health issue'
+          : '{count} open safety or health issues') | translate:{ count: safetyOpen().length } }}</p>
 }
 @if (urgentOpen().length > 0) {
   <p class="notice">
     <app-icon class="notice-icon" name="priority_high" />
-    {{ urgentOpen().length }} open request{{ urgentOpen().length === 1 ? '' : 's' }} at urgent or above
-  </p>
+    {{ (urgentOpen().length === 1
+          ? '{count} open request at urgent or above'
+          : '{count} open requests at urgent or above') | translate:{ count: urgentOpen().length } }}</p>
 }
 
 @if (raising()) {
   <div class="action-confirm-card" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="build" />
-      <h3 class="confirm-title">Raise a maintenance request</h3>
+      <h3 class="confirm-title">{{ 'Raise a maintenance request' | translate }}</h3>
     </div>
     <div class="confirm-body">
       <div class="form-grid">
         <div class="form-field full-width">
-          <label class="field-label" for="mt-desc">What is wrong</label>
+          <label class="field-label" for="mt-desc">{{ 'What is wrong' | translate }}</label>
           <textarea class="field-input" id="mt-desc" rows="3" [ngModel]="form().issue_description"
                     (ngModelChange)="form.set({ ...form(), issue_description: $event ?? '' })"
-                    placeholder="e.g. Bathroom tap will not shut off, water pooling"></textarea>
+                    [placeholder]="'e.g. Bathroom tap will not shut off, water pooling' | translate"></textarea>
         </div>
         <div class="form-field">
-          <label class="field-label" for="mt-category">Category</label>
+          <label class="field-label" for="mt-category">{{ 'Category' | translate }}</label>
           <select class="field-input" id="mt-category" [ngModel]="form().issue_category"
                   (ngModelChange)="form.set({ ...form(), issue_category: $event })">
             @for (c of issueCategories; track c) {
-              <option [value]="c">{{ labelFor(c) }}</option>
+              <option [value]="c">{{ labelFor(c) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="mt-type">Type</label>
+          <label class="field-label" for="mt-type">{{ 'Type' | translate }}</label>
           <select class="field-input" id="mt-type" [ngModel]="form().request_type"
                   (ngModelChange)="form.set({ ...form(), request_type: $event })">
             @for (t of requestTypes; track t) {
-              <option [value]="t">{{ labelFor(t) }}</option>
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="mt-priority">Priority</label>
+          <label class="field-label" for="mt-priority">{{ 'Priority' | translate }}</label>
           <select class="field-input" id="mt-priority" [ngModel]="form().priority"
                   (ngModelChange)="form.set({ ...form(), priority: $event })">
             @for (p of priorities; track p) {
-              <option [value]="p">{{ labelFor(p) }}</option>
+              <option [value]="p">{{ labelFor(p) | translate }}</option>
             }
           </select>
         </div>
         <div class="form-field">
-          <label class="field-label" for="mt-room">Room</label>
+          <label class="field-label" for="mt-room">{{ 'Room' | translate }}</label>
           <input class="field-input" id="mt-room" type="text" [ngModel]="form().room_number"
                  (ngModelChange)="form.set({ ...form(), room_number: $event ?? '' })"
-                 placeholder="Leave blank for a common area" />
+                 [placeholder]="'Leave blank for a common area' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="mt-location">Location</label>
+          <label class="field-label" for="mt-location">{{ 'Location' | translate }}</label>
           <input class="field-input" id="mt-location" type="text" [ngModel]="form().location_description"
                  (ngModelChange)="form.set({ ...form(), location_description: $event ?? '' })"
-                 placeholder="e.g. Pool plant room" />
+                 [placeholder]="'e.g. Pool plant room' | translate" />
         </div>
         <div class="form-field">
-          <label class="field-label" for="mt-role">Reported by (role)</label>
+          <label class="field-label" for="mt-role">{{ 'Reported by (role)' | translate }}</label>
           <input class="field-input" id="mt-role" type="text" [ngModel]="form().reporter_role"
                  (ngModelChange)="form.set({ ...form(), reporter_role: $event ?? '' })"
-                 placeholder="e.g. Housekeeper, Front desk" />
+                 [placeholder]="'e.g. Housekeeper, Front desk' | translate" />
         </div>
         <div class="form-field full-width">
           <label class="toggle-label">
             <input type="checkbox" [ngModel]="form().affects_occupancy"
                    (ngModelChange)="form.set({ ...form(), affects_occupancy: $event })" />
-            <span>This fault stops the room being sold</span>
+            <span>{{ 'This fault stops the room being sold' | translate }}</span>
           </label>
         </div>
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-sm" (click)="cancelRaise()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-sm" (click)="cancelRaise()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitRaise()"
               [disabled]="submitting() || !canSubmitForm()">
-        {{ submitting() ? 'Raising…' : 'Raise request' }}
+        {{ submitting() ? ('Raising…' | translate) : ('Raise request' | translate) }}
       </button>
     </div>
   </div>
@@ -109,7 +111,7 @@
     <div class="confirm-header">
       <app-icon class="confirm-icon" name="handyman" />
       <h3 class="confirm-title">
-        {{ labelFor(actionMode()) }} — {{ target.request_number ?? target.issue_category_display }}
+        {{ labelFor(actionMode()) | translate }} — {{ (target.request_number ?? target.issue_category_display) | translate }}
       </h3>
     </div>
     <div class="confirm-body">
@@ -117,62 +119,62 @@
       <div class="form-grid">
         @if (actionMode() === 'assign') {
           <div class="form-field">
-            <label class="field-label" for="mt-assignee">Technician</label>
+            <label class="field-label" for="mt-assignee">{{ 'Technician' | translate }}</label>
             <select class="field-input" id="mt-assignee" [ngModel]="actionForm().assigned_to"
                     (ngModelChange)="actionForm.set({ ...actionForm(), assigned_to: $event })">
-              <option value="">Select a technician…</option>
+              <option value="">{{ 'Select a technician…' | translate }}</option>
               @for (s of staff(); track s.id) {
                 <option [value]="s.id">{{ staffName(s.id) }}</option>
               }
             </select>
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-team">Team</label>
+            <label class="field-label" for="mt-team">{{ 'Team' | translate }}</label>
             <input class="field-input" id="mt-team" type="text" [ngModel]="actionForm().maintenance_team"
                    (ngModelChange)="actionForm.set({ ...actionForm(), maintenance_team: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-sched">Scheduled date</label>
+            <label class="field-label" for="mt-sched">{{ 'Scheduled date' | translate }}</label>
             <input class="field-input" id="mt-sched" type="date" [ngModel]="actionForm().scheduled_date"
                    (ngModelChange)="actionForm.set({ ...actionForm(), scheduled_date: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-est">Estimated minutes</label>
+            <label class="field-label" for="mt-est">{{ 'Estimated minutes' | translate }}</label>
             <input class="field-input" id="mt-est" type="number" min="1"
                    [ngModel]="actionForm().estimated_duration_minutes"
                    (ngModelChange)="actionForm.set({ ...actionForm(), estimated_duration_minutes: $event })" />
           </div>
           <div class="form-field full-width">
-            <label class="field-label" for="mt-notes">Notes</label>
+            <label class="field-label" for="mt-notes">{{ 'Notes' | translate }}</label>
             <input class="field-input" id="mt-notes" type="text" [ngModel]="actionForm().notes"
                    (ngModelChange)="actionForm.set({ ...actionForm(), notes: $event ?? '' })" />
           </div>
         }
         @if (actionMode() === 'complete') {
           <div class="form-field full-width">
-            <label class="field-label" for="mt-work">Work performed</label>
+            <label class="field-label" for="mt-work">{{ 'Work performed' | translate }}</label>
             <textarea class="field-input" id="mt-work" rows="2" [ngModel]="actionForm().work_performed"
                       (ngModelChange)="actionForm.set({ ...actionForm(), work_performed: $event ?? '' })"></textarea>
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-parts">Parts used</label>
+            <label class="field-label" for="mt-parts">{{ 'Parts used' | translate }}</label>
             <input class="field-input" id="mt-parts" type="text" [ngModel]="actionForm().parts_used"
                    (ngModelChange)="actionForm.set({ ...actionForm(), parts_used: $event ?? '' })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-actual">Actual minutes</label>
+            <label class="field-label" for="mt-actual">{{ 'Actual minutes' | translate }}</label>
             <input class="field-input" id="mt-actual" type="number" min="1"
                    [ngModel]="actionForm().actual_duration_minutes"
                    (ngModelChange)="actionForm.set({ ...actionForm(), actual_duration_minutes: $event })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-labor">Labour cost</label>
+            <label class="field-label" for="mt-labor">{{ 'Labour cost' | translate }}</label>
             <input class="field-input" id="mt-labor" type="number" min="0" step="0.01"
                    [ngModel]="actionForm().labor_cost"
                    (ngModelChange)="actionForm.set({ ...actionForm(), labor_cost: $event })" />
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-partscost">Parts cost</label>
+            <label class="field-label" for="mt-partscost">{{ 'Parts cost' | translate }}</label>
             <input class="field-input" id="mt-partscost" type="number" min="0" step="0.01"
                    [ngModel]="actionForm().parts_cost"
                    (ngModelChange)="actionForm.set({ ...actionForm(), parts_cost: $event })" />
@@ -181,38 +183,38 @@
             <label class="toggle-label">
               <input type="checkbox" [ngModel]="actionForm().is_satisfactory"
                      (ngModelChange)="actionForm.set({ ...actionForm(), is_satisfactory: $event })" />
-              <span>Work is satisfactory</span>
+              <span>{{ 'Work is satisfactory' | translate }}</span>
             </label>
           </div>
           <div class="form-field full-width">
-            <label class="field-label" for="mt-cnotes">Completion notes</label>
+            <label class="field-label" for="mt-cnotes">{{ 'Completion notes' | translate }}</label>
             <input class="field-input" id="mt-cnotes" type="text" [ngModel]="actionForm().completion_notes"
                    (ngModelChange)="actionForm.set({ ...actionForm(), completion_notes: $event ?? '' })" />
           </div>
         }
         @if (actionMode() === 'escalate') {
           <div class="form-field">
-            <label class="field-label" for="mt-escto">Escalate to</label>
+            <label class="field-label" for="mt-escto">{{ 'Escalate to' | translate }}</label>
             <select class="field-input" id="mt-escto" [ngModel]="actionForm().escalated_to"
                     (ngModelChange)="actionForm.set({ ...actionForm(), escalated_to: $event })">
-              <option value="">Select a person…</option>
+              <option value="">{{ 'Select a person…' | translate }}</option>
               @for (s of staff(); track s.id) {
                 <option [value]="s.id">{{ staffName(s.id) }}</option>
               }
             </select>
           </div>
           <div class="form-field">
-            <label class="field-label" for="mt-newpri">New priority</label>
+            <label class="field-label" for="mt-newpri">{{ 'New priority' | translate }}</label>
             <select class="field-input" id="mt-newpri" [ngModel]="actionForm().new_priority"
                     (ngModelChange)="actionForm.set({ ...actionForm(), new_priority: $event })">
-              <option value="">Leave unchanged</option>
+              <option value="">{{ 'Leave unchanged' | translate }}</option>
               @for (p of priorities; track p) {
-                <option [value]="p">{{ labelFor(p) }}</option>
+                <option [value]="p">{{ labelFor(p) | translate }}</option>
               }
             </select>
           </div>
           <div class="form-field full-width">
-            <label class="field-label" for="mt-reason">Reason</label>
+            <label class="field-label" for="mt-reason">{{ 'Reason' | translate }}</label>
             <textarea class="field-input" id="mt-reason" rows="2" [ngModel]="actionForm().escalation_reason"
                       (ngModelChange)="actionForm.set({ ...actionForm(), escalation_reason: $event ?? '' })"></textarea>
           </div>
@@ -220,10 +222,10 @@
       </div>
     </div>
     <div class="confirm-actions">
-      <button class="btn btn-sm" (click)="cancelAction()" [disabled]="submitting()">Cancel</button>
+      <button class="btn btn-sm" (click)="cancelAction()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
       <button class="btn btn-primary btn-sm" (click)="submitAction()"
               [disabled]="submitting() || !canSubmitAction()">
-        {{ submitting() ? 'Saving…' : labelFor(actionMode()) }}
+        {{ submitting() ? ('Saving…' | translate) : labelFor(actionMode()) }}
       </button>
     </div>
   </div>
@@ -231,58 +233,58 @@
 
 <div class="filter-bar">
   <div class="form-field">
-    <label class="field-label" for="mt-f-status">Status</label>
+    <label class="field-label" for="mt-f-status">{{ 'Status' | translate }}</label>
     <select class="field-input" id="mt-f-status" [ngModel]="statusFilter()"
             (ngModelChange)="statusFilter.set($event); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (s of statuses; track s) {
-        <option [value]="s">{{ labelFor(s) }}</option>
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="mt-f-priority">Priority</label>
+    <label class="field-label" for="mt-f-priority">{{ 'Priority' | translate }}</label>
     <select class="field-input" id="mt-f-priority" [ngModel]="priorityFilter()"
             (ngModelChange)="priorityFilter.set($event); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (p of priorities; track p) {
-        <option [value]="p">{{ labelFor(p) }}</option>
+        <option [value]="p">{{ labelFor(p) | translate }}</option>
       }
     </select>
   </div>
   <div class="form-field">
-    <label class="field-label" for="mt-f-category">Category</label>
+    <label class="field-label" for="mt-f-category">{{ 'Category' | translate }}</label>
     <select class="field-input" id="mt-f-category" [ngModel]="categoryFilter()"
             (ngModelChange)="categoryFilter.set($event); load()">
-      <option value="">All</option>
+      <option value="">{{ 'All' | translate }}</option>
       @for (c of issueCategories; track c) {
-        <option [value]="c">{{ labelFor(c) }}</option>
+        <option [value]="c">{{ labelFor(c) | translate }}</option>
       }
     </select>
   </div>
   <label class="toggle-label">
     <input type="checkbox" [ngModel]="openOnly()" (ngModelChange)="openOnly.set($event)" />
-    <span>Open only</span>
+    <span>{{ 'Open only' | translate }}</span>
   </label>
 </div>
 
 @if (loading()) {
-  <p class="loading-state">Loading maintenance requests…</p>
+  <p class="loading-state">{{ 'Loading maintenance requests…' | translate }}</p>
 } @else if (visibleRequests().length === 0) {
-  <p class="empty-state">No maintenance requests match these filters.</p>
+  <p class="empty-state">{{ 'No maintenance requests match these filters.' | translate }}</p>
 } @else {
   <div class="table-container">
     <table class="data-table">
       <thead>
         <tr>
-          <th scope="col">Request</th>
-          <th scope="col">Issue</th>
-          <th scope="col">Location</th>
-          <th scope="col">Priority</th>
-          <th scope="col">Status</th>
-          <th scope="col">Assigned</th>
-          <th scope="col">Reported</th>
-          <th scope="col">Actions</th>
+          <th scope="col">{{ 'Request' | translate }}</th>
+          <th scope="col">{{ 'Issue' | translate }}</th>
+          <th scope="col">{{ 'Location' | translate }}</th>
+          <th scope="col">{{ 'Priority' | translate }}</th>
+          <th scope="col">{{ 'Status' | translate }}</th>
+          <th scope="col">{{ 'Assigned' | translate }}</th>
+          <th scope="col">{{ 'Reported' | translate }}</th>
+          <th scope="col">{{ 'Actions' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -291,32 +293,32 @@
             <td>
               {{ r.request_number ?? '—' }}
               @if (r.room_out_of_service) {
-                <span class="badge badge-danger badge-sm">Out of service</span>
+                <span class="badge badge-danger badge-sm">{{ 'Out of service' | translate }}</span>
               }
               @if (r.is_safety_issue || r.is_health_issue) {
-                <span class="badge badge-warning badge-sm">Safety</span>
+                <span class="badge badge-warning badge-sm">{{ 'Safety' | translate }}</span>
               }
             </td>
             <td>
-              <span class="badge badge-muted badge-sm">{{ r.issue_category_display }}</span>
+              <span class="badge badge-muted badge-sm">{{ r.issue_category_display | translate }}</span>
               <div class="cell-sub">{{ r.issue_description }}</div>
             </td>
             <td>{{ r.room_number ?? r.location_description ?? '—' }}</td>
-            <td><span [class]="priorityClass(r.priority)">{{ r.priority_display }}</span></td>
-            <td><span [class]="statusClass(r.request_status)">{{ r.request_status_display }}</span></td>
+            <td><span [class]="priorityClass(r.priority)">{{ r.priority_display | translate }}</span></td>
+            <td><span [class]="statusClass(r.request_status)">{{ r.request_status_display | translate }}</span></td>
             <td>{{ staffName(r.assigned_to) }}</td>
-            <td>{{ r.reported_at | date: 'dd MMM, HH:mm' }}</td>
+            <td>{{ r.reported_at | localeDate: 'dd MMM, HH:mm' }}</td>
             <td class="cell-actions">
               @if (canAssign(r)) {
                 <button class="btn btn-sm" (click)="showAction(r, 'assign')">
-                  {{ r.assigned_to ? 'Reassign' : 'Assign' }}
+                  {{ r.assigned_to ? ('Reassign' | translate) : ('Assign' | translate) }}
                 </button>
               }
               @if (canComplete(r)) {
-                <button class="btn btn-sm" (click)="showAction(r, 'complete')">Complete</button>
+                <button class="btn btn-sm" (click)="showAction(r, 'complete')">{{ 'Complete' | translate }}</button>
               }
               @if (canEscalate(r)) {
-                <button class="btn btn-sm" (click)="showAction(r, 'escalate')">Escalate</button>
+                <button class="btn btn-sm" (click)="showAction(r, 'escalate')">{{ 'Escalate' | translate }}</button>
               }
             </td>
           </tr>
