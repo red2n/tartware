@@ -1,4 +1,4 @@
-import { buildRouteSchema } from "@tartware/openapi";
+import { buildRouteSchema, jsonArraySchema } from "@tartware/openapi";
 import {
   type BookingPaceQuery,
   BookingPaceQuerySchema,
@@ -53,6 +53,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
         summary: "List revenue forecasts",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -81,6 +82,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
         summary: "List revenue goals with budget vs actual tracking",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -191,6 +193,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
         summary: "Budget vs actual variance report by department, segment, and goal type",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -247,6 +250,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
         tag: REPORTS_TAG,
         summary:
           "Booking pace report — OTB rooms/revenue vs same-time last year for each future date",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {

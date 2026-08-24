@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 import { buildServer } from '../src/server.js';
@@ -125,12 +125,33 @@ describe('Tenants Endpoint', () => {
   // The email format "owner-xxx@example.com" is valid per RFC but being rejected.
   // Skip for now until root cause is identified.
   describe.skip('POST /v1/tenants/bootstrap - Self Serve Onboarding', () => {
-    it('creates a tenant, property, and owner without authentication', async () => {
+    // The route fails closed: with TENANT_BOOTSTRAP_TOKEN unset it answers 503 and never
+    // reaches the handler, so every case here must configure and send the token. The
+    // disabled-by-default behaviour is asserted separately below.
+    const SELF_SERVE_TOKEN = 'test-onboarding-token';
+    const onboardingHeaders = { 'x-onboarding-token': SELF_SERVE_TOKEN };
+    let previousToken: string | undefined;
+
+    beforeEach(() => {
+      previousToken = process.env.TENANT_BOOTSTRAP_TOKEN;
+      process.env.TENANT_BOOTSTRAP_TOKEN = SELF_SERVE_TOKEN;
+    });
+
+    afterEach(() => {
+      if (previousToken === undefined) {
+        delete process.env.TENANT_BOOTSTRAP_TOKEN;
+      } else {
+        process.env.TENANT_BOOTSTRAP_TOKEN = previousToken;
+      }
+    });
+
+    it('creates a tenant, property, and owner with a valid onboarding token', async () => {
       const unique = randomUUID().slice(0, 8);
       const slug = `onboarding-${unique}`;
       const response = await app.inject({
         method: 'POST',
         url: '/v1/tenants/bootstrap',
+        headers: onboardingHeaders,
         payload: buildBootstrapPayload(unique, {
           tenant: { slug },
         }),
@@ -150,6 +171,7 @@ describe('Tenants Endpoint', () => {
       const firstResponse = await app.inject({
         method: 'POST',
         url: '/v1/tenants/bootstrap',
+        headers: onboardingHeaders,
         payload: buildBootstrapPayload(unique, {
           tenant: { slug },
         }),
@@ -159,6 +181,7 @@ describe('Tenants Endpoint', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/v1/tenants/bootstrap',
+        headers: onboardingHeaders,
         payload: buildBootstrapPayload(`${unique}-two`, {
           tenant: {
             name: `Onboarding Tenant ${unique} Two`,
@@ -185,6 +208,7 @@ describe('Tenants Endpoint', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/v1/tenants/bootstrap',
+        headers: onboardingHeaders,
         payload: buildBootstrapPayload(unique, {
           owner: {
             username: TEST_USER_USERNAME,
@@ -195,36 +219,6 @@ describe('Tenants Endpoint', () => {
       expect(response.statusCode).toBe(409);
     });
 
-    it('requires onboarding token when configured', async () => {
-      const previousToken = process.env.TENANT_BOOTSTRAP_TOKEN;
-      process.env.TENANT_BOOTSTRAP_TOKEN = 'test-onboarding-token';
-
-      try {
-        const missingToken = await app.inject({
-          method: 'POST',
-          url: '/v1/tenants/bootstrap',
-          payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
-        });
-        expect(missingToken.statusCode).toBe(401);
-
-        const okResponse = await app.inject({
-          method: 'POST',
-          url: '/v1/tenants/bootstrap',
-          headers: {
-            'x-onboarding-token': 'test-onboarding-token',
-          },
-          payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
-        });
-        expect(okResponse.statusCode).toBe(201);
-      } finally {
-        if (previousToken === undefined) {
-          delete process.env.TENANT_BOOTSTRAP_TOKEN;
-        } else {
-          process.env.TENANT_BOOTSTRAP_TOKEN = previousToken;
-        }
-      }
-    });
-
     it('enforces onboarding rate limits', async () => {
       const rateLimitedIp = '10.10.10.10';
       let lastResponse = null as null | Awaited<ReturnType<typeof app.inject>>;
@@ -233,6 +227,7 @@ describe('Tenants Endpoint', () => {
         lastResponse = await app.inject({
           method: 'POST',
           url: '/v1/tenants/bootstrap',
+          headers: onboardingHeaders,
           remoteAddress: rateLimitedIp,
           payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
         });
@@ -241,6 +236,67 @@ describe('Tenants Endpoint', () => {
       expect(lastResponse?.statusCode).toBe(429);
       const retryAfter = Number(lastResponse?.headers['retry-after']);
       expect(retryAfter).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // Runs for real: these assert the guard, not the bootstrap data path, so they do not
+  // depend on the db-mock gaps that keep the suite above skipped.
+  describe('POST /v1/tenants/bootstrap - onboarding guard', () => {
+    const SELF_SERVE_TOKEN = 'test-onboarding-token';
+    const onboardingHeaders = { 'x-onboarding-token': SELF_SERVE_TOKEN };
+    let previousToken: string | undefined;
+
+    beforeEach(() => {
+      previousToken = process.env.TENANT_BOOTSTRAP_TOKEN;
+      process.env.TENANT_BOOTSTRAP_TOKEN = SELF_SERVE_TOKEN;
+    });
+
+    afterEach(() => {
+      if (previousToken === undefined) {
+        delete process.env.TENANT_BOOTSTRAP_TOKEN;
+      } else {
+        process.env.TENANT_BOOTSTRAP_TOKEN = previousToken;
+      }
+    });
+
+    it('rejects a missing or wrong onboarding token', async () => {
+      const missingToken = await app.inject({
+        method: 'POST',
+        url: '/v1/tenants/bootstrap',
+        payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
+      });
+      expect(missingToken.statusCode).toBe(401);
+
+      const wrongToken = await app.inject({
+        method: 'POST',
+        url: '/v1/tenants/bootstrap',
+        headers: { 'x-onboarding-token': 'not-the-token' },
+        payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
+      });
+      expect(wrongToken.statusCode).toBe(401);
+
+      const okResponse = await app.inject({
+        method: 'POST',
+        url: '/v1/tenants/bootstrap',
+        headers: onboardingHeaders,
+        payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
+      });
+      expect(okResponse.statusCode).toBe(201);
+    });
+
+    it('fails closed with 503 when no onboarding token is configured', async () => {
+      // Regression guard. This route creates a tenant, a property and an owner user with
+      // caller-supplied credentials; an unset env var previously skipped the check entirely
+      // and left it unauthenticated. Absent configuration must disable the feature, not its guard.
+      delete process.env.TENANT_BOOTSTRAP_TOKEN;
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/tenants/bootstrap',
+        payload: buildBootstrapPayload(randomUUID().slice(0, 8)),
+      });
+
+      expect(response.statusCode).toBe(503);
     });
   });
 });

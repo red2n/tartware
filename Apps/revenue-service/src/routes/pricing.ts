@@ -1,4 +1,4 @@
-import { buildRouteSchema } from "@tartware/openapi";
+import { buildRouteSchema, jsonArraySchema } from "@tartware/openapi";
 import {
   type CompetitiveResponseRuleQuery,
   CompetitiveResponseRuleQuerySchema,
@@ -44,6 +44,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List dynamic pricing rules",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -80,8 +81,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
 
       const rule = await getPricingRuleById(ruleId, tenant_id);
       if (!rule) {
-        reply.notFound("PRICING_RULE_NOT_FOUND");
-        return;
+        return reply.notFound("PRICING_RULE_NOT_FOUND");
       }
       return rule;
     },
@@ -98,6 +98,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List rate recommendations",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -126,6 +127,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List competitor rate intelligence",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -153,6 +155,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List demand calendar entries",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -181,6 +184,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List rate restrictions (CTA/CTD/LOS/Closed)",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -223,6 +227,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List hurdle rates (minimum acceptable rates)",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -265,6 +270,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "Rate shopping comparison — own vs competitor rates",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -296,6 +302,7 @@ const pricingRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: PRICING_TAG,
         summary: "List competitive response pricing rules",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {

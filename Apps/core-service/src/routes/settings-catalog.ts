@@ -505,8 +505,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
           metadata: body.metadata ?? null,
           createdBy: request.authUser?.sub ?? null,
         });
-        reply.status(201).send({ data: created });
-        return;
+        return reply.status(201).send({ data: created });
       }
       const tenantId = request.authUser?.tenantId;
       if (!tenantId) {
@@ -574,8 +573,7 @@ const catalogRoutes: FastifyPluginAsync = async (app) => {
         if (!updated) {
           return reply.notFound("Settings value not found");
         }
-        reply.send({ data: updated });
-        return;
+        return reply.send({ data: updated });
       }
       const tenantId = request.authUser?.tenantId;
       if (!tenantId) {

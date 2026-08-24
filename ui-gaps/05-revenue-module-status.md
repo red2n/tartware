@@ -198,3 +198,175 @@ reachable. If Option B: service, routes, catalog rows and schemas removed in one
 - [10-reports-coverage.md](10-reports-coverage.md) — the read-only revenue reports may belong there
   instead of in bespoke screens.
 - `accounts-gaps/13-multi-currency-fx-locking.md` — independent.
+
+---
+
+## 🐛 The four "shipped" analyses had never worked — measured and fixed 2026-08-24
+
+This spec's 2026-08-13 entry claimed "the working fifth of revenue-service is now product" and set the
+decision test as *if the analyses get used, fund the recommendation chain; if not, retire.* **That test
+could never have run.** The first time a running stack touched the four report-defs entries, none of
+them returned usable data:
+
+| Report | HTTP | What the Reports screen rendered |
+|---|---|---|
+| Segment Analysis | **500** | error callout |
+| Channel Profitability | **500** | error callout |
+| Booking Pace | 200 | one row, columns `0`,`1`,`2`…, every cell `[object Object]` |
+| Displacement Analysis | 200 | correct empty state |
+
+So their non-use was never evidence about demand — it was evidence they were unreachable. **No
+automated test has ever hit a revenue endpoint**: `run-api-tests.sh` never mentions revenue,
+`revenue.http` is not in the runner, and `displacement-analysis` does not appear in `revenue.http` at
+all. That is why six months of "shipped" survived unexamined.
+
+### Defect 1 — a type declaration that lies about what the driver returns
+
+`Apps/config/src/db.ts:44` registers a **global** parser mapping Postgres `int8` to a JS `BigInt`, so
+any bare `COUNT(*)` reaching a client is a 500 — `JSON.stringify` throws on BigInt. Both failing
+services *did* guard every field with a `toNumber`:
+
+```ts
+const toNumber = (v: string | number | null): number =>
+  v == null ? 0 : typeof v === "string" ? Number(v) : v;
+```
+
+A `BigInt` is neither `string` nor `number`, so the ternary falls through and **returns the BigInt
+unchanged**. The guard looks correct and does nothing. TypeScript cannot see it because the row type
+declares the column `string | number | null`, which is not what `pg` hands back once the type parser is
+installed — *the annotation, not the logic, is the defect.*
+
+The repo already had the right helper (`toNumberOrFallback` in `Apps/config/src/numbers.ts`, explicit
+about `bigint`, used by seven services). Three files had hand-rolled a narrower copy:
+`segment-analysis-service.ts`, `channel-profitability-service.ts`, `group-evaluate-service.ts`. All
+three now import the shared one. Note `lib/row-mappers.ts`'s `toNumber` was never affected — it takes
+`unknown` and calls `Number(value)`, which handles BigInt incidentally.
+
+### Defect 2 — the default response schema turns arrays into objects
+
+`buildRouteSchema` (`Apps/openapi-utils/src/index.ts:204`) defaults `response` to
+`{ 200: jsonObjectSchema }`. A handler returning a **bare array** is then serialized against an object
+schema and emitted as `{"0":…,"1":…}`. The UI's `extractRows` finds no `data`/`rows`/`items`/`results`
+array, falls to its scalar branch and wraps the whole thing as **one row whose column names are the
+array indices**.
+
+**70 of 590** route registrations omit an explicit `response`. Twelve of them returned bare arrays,
+**all twelve in revenue-service** — including `booking-pace` and `demand-calendar`, both confirmed
+live. Each now declares `response: { 200: jsonArraySchema }`, the helper that already existed beside
+`jsonObjectSchema`. The rest of the 70 return objects and are unaffected; an accurate per-route sweep
+of every other service found **0** cases, self-checked by confirming it re-identifies all 12
+revenue routes.
+
+### After the fix — verified through the gateway
+
+All 20 revenue reads return well-formed payloads. `segment-analysis` → 18 rooms sold, 58 room nights,
+4791.00 revenue, ADR 87.72. `channel-profitability` → DIRECT, 4791.00 gross, 4647.27 net, net ADR
+80.13. `booking-pace` → a 61-element array. `demand-calendar` → a 15-element array. Typecheck,
+`sql:contracts` (247 tables / 762 files / 0 violations), biome, lint, knip, gateway conformance (33)
+and command-catalog conformance (16) all pass.
+
+### What the evidence now says about build-or-retire
+
+Measured against the dev database, not inferred:
+
+- **8 of the 9 revenue-owned tables hold exactly 0 rows** — `pricing_rules`, `rate_recommendations`,
+  `competitor_rates`, `competitor_properties`, `rate_restrictions`, `hurdle_rates`,
+  `revenue_forecasts`, `revenue_goals`. Empty by construction, as this spec predicted statically.
+- **`demand_calendar` is genuinely alive** — 60 rows, 274 room-nights across 4 properties, written by
+  `reservation-event-consumer`. It is the one revenue-owned table with a real producer.
+- **`demand_calendar.rooms_available` is 0 in every row.** `event-queries.ts:13` says "the periodic
+  inventory sync job overwrites it with the property's actual sellable room count" — **that job does
+  not exist anywhere in `Apps/`.** Nothing writes a real value. Every metric derived from it
+  (occupancy forecast, RevPAR, rooms remaining) is therefore uncomputable, and `booking-pace` returns
+  it as a permanent 0 alongside `pickup_last_7_days` / `pickup_last_30_days`, which only
+  `revenue.booking_pace.snapshot` writes — an unreachable command.
+- **Displacement Analysis is empty for a data reason, not a structural one.** It joins
+  `reservations.group_booking_id`, which *is* written — by `group.upload_rooming_list`, dispatched
+  from the UI at `group-detail.ts:518`. Dev has 96 rooms blocked and 0 picked up, so the join finds
+  nothing. Pick up a rooming list and the report populates.
+- `revenue.daily_close.process` is still in `NIGHT_AUDIT.requiredCommands`
+  (`flow-registry.ts:125`) and dispatched by nothing; it is carried in the
+  `KNOWN_UNREACHABLE` allowlist in `flow-command-catalog.test.ts`.
+
+**The decision is still open, but it is now decidable.** The four analyses work for the first time, so
+whether they get used is finally a question the product can answer.
+
+### The lesson, which is not new here
+
+This backlog already records that a command can have a catalog row, a validator, a handler and full
+conformance coverage and still never have executed; and that a screen can be shipped, seeded,
+navigable and unreachable. This is the same shape one layer over: **a report can be shipped, wired,
+module-gated, role-gated and correct in SQL, and still have never returned a row to anyone.** Every
+gate passed — typecheck, `sql:contracts`, both conformance suites — because not one of them serializes
+a response. The cheapest thing that would have caught it is a single authenticated `GET`.
+
+**No guardrail was added for either class and both are cheap to regrow.** The array/response-schema
+mismatch is statically detectable — handler return type vs. declared response — and the sweep written
+for this pass found all 12 with no false positives, so a conformance test is buildable and is the
+obvious next step. The BigInt class is narrower now that the three local copies are gone, but nothing
+stops the fourth from being written.
+
+---
+
+## ✅ Guardrails + smoke built 2026-08-24 — and the smoke found a crash on its first run
+
+The two defects above were fixed but nothing stopped them recurring, and the root cause — *no
+automated test has ever called a revenue endpoint* — was untouched. Both are now closed.
+
+**`response-schema-conformance.test.ts`** (`Apps/api-gateway/tests/`, already the home for the
+cross-service route scanners and already run by `ci-guardrails.yml` on every branch). It pairs each
+route's handler with that function's **declared** return type and fails when a bare `T[]` relies on
+`buildRouteSchema`'s default object response. Detection is deliberately narrow — only a direct
+`return someFunction(...)`, only an unambiguous `T[]` or `Array<T>`; a wrapped result or a union is
+skipped. It under-reports rather than over-reports. Verified by re-introducing the `booking-pace`
+defect and watching it name the route, the function and the file.
+
+**`smoke-revenue.sh`** (`pnpm run smoke:revenue`) — 44 assertions over all 20 reads. It asserts
+**shape, not just status**, because a status-only check would have passed `booking-pace` for the whole
+eleven days it was broken: every payload is classified `array` / `items` / `object` / `INDEX-KEYED`,
+and the last is always a failure. It also asserts the aggregate fields are JSON numbers, since a 200
+carrying a stringified count is still the BigInt defect. Verified by re-introducing both original
+defects and watching it report `expected 200 got 500` and `expected array got INDEX-KEYED`.
+
+All four smoke suites now have entry points (`pnpm run smoke`, `smoke:revenue`, `smoke:operations`,
+`smoke:events`, `smoke:accounts`). They had none — no script, no workflow, no mention in
+`http_test/AGENTS.md` — which is the same "the check exists but nothing runs it" gap this backlog keeps
+recording. They stay out of `ci-guardrails.yml` deliberately: that workflow carries only what needs
+neither a database nor a running stack.
+
+### 🐛 One authenticated GET on a missing record killed the service
+
+`smoke-revenue.sh`'s last assertion — *unknown pricing rule id → not found* — returned its 404 and
+then **revenue-service exited**. Health went 200 → connection refused, reproducibly, on a single
+request. `GET /v1/billing/invoices/<unknown-uuid>` did the same to billing-service.
+
+```ts
+reply.notFound("PRICING_RULE_NOT_FOUND");
+return;                                   // ← resolves with undefined
+```
+
+Fastify treats an async handler's resolved value as the payload. The 404 is written, the handler then
+resolves `undefined`, and Fastify sends **again** on a socket whose headers are already out — logging
+*"Reply was already sent, did you forget to `return reply`?"* and throwing `ERR_HTTP_HEADERS_SENT`.
+That throw happens after the reply lifecycle has ended, so the route's error handler never sees it and
+it reaches the process.
+
+**Ten call sites across four services** were in that state — billing-service ×7, core-service ×2,
+revenue-service ×1 — every one of them on the most ordinary path a client has: asking for a record
+that is not there. Any authenticated user could stop billing-service by requesting an invoice id that
+does not exist. All ten now `return reply.…`; verified by five consecutive 404s against both services
+with health checked between each.
+
+**Why nothing found it.** `run-api-tests.sh` only requests ids it has just created, so it never asks
+for a missing one. Typecheck cannot see it — `reply.notFound()` returns a value the handler is free to
+discard. `sql:contracts` reads SQL. The conformance suites never start a server. It took one `GET` for
+an absent row, which is the cheapest test there is and the one nobody had written.
+
+`reply-lifecycle-conformance.test.ts` now asserts the shape can never return. Detection is exact
+rather than heuristic — a `reply.<sender>(…)` statement followed immediately by a bare `return;` is
+unambiguous — so unlike the operator-facing classifications elsewhere in this backlog it needs no
+judgement. Verified by re-introducing the crash and watching the check name it.
+
+**The pattern worth carrying forward:** the smoke suite paid for itself on its first execution, and
+not on the defect it was written for. The two bugs it was built to catch were already fixed; what it
+actually found was a remote crash that had been reachable in four services the whole time.

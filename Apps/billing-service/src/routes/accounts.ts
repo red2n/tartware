@@ -107,8 +107,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       const invoice = await getInvoiceById(invoiceId, tenant_id);
 
       if (!invoice) {
-        reply.notFound("INVOICE_NOT_FOUND");
-        return;
+        return reply.notFound("INVOICE_NOT_FOUND");
       }
 
       return invoice;
@@ -247,8 +246,7 @@ export const registerAccountsRoutes = (app: FastifyInstance): void => {
       const ar = await getAccountsReceivableById({ arId, tenantId: tenant_id });
 
       if (!ar) {
-        reply.notFound("AR_ACCOUNT_NOT_FOUND");
-        return;
+        return reply.notFound("AR_ACCOUNT_NOT_FOUND");
       }
 
       return ar;

@@ -160,8 +160,7 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       });
 
       if (!config) {
-        reply.notFound("TAX_CONFIGURATION_NOT_FOUND");
-        return;
+        return reply.notFound("TAX_CONFIGURATION_NOT_FOUND");
       }
 
       return TaxConfigurationListItemSchema.parse(config);

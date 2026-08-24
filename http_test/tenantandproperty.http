@@ -48,10 +48,13 @@ Authorization: Bearer {{authToken}}
 ###############################################################################
 
 # Self-serve tenant onboarding (creates tenant + property + owner user)
-# NOTE: May require x-onboarding-token header if TENANT_BOOTSTRAP_TOKEN is set
+# REQUIRES x-onboarding-token. The route fails closed: if TENANT_BOOTSTRAP_TOKEN is
+# unset the server returns 503 (feature disabled); if it is set and the header does
+# not match, 401. Value below must match TENANT_BOOTSTRAP_TOKEN in .env.
 # @name bootstrapTenant
 POST {{baseUrl}}/v1/tenants/bootstrap
 Content-Type: application/json
+x-onboarding-token: dev-only-onboarding-token-change-me
 
 {
   "tenant": {

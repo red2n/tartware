@@ -188,8 +188,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       const folio = await getFolioById(folioId, tenant_id);
 
       if (!folio) {
-        reply.notFound("FOLIO_NOT_FOUND");
-        return;
+        return reply.notFound("FOLIO_NOT_FOUND");
       }
 
       return FolioListItemSchema.parse(folio);
@@ -362,8 +361,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       const session = await getCashierSessionById(sessionId, tenant_id);
 
       if (!session) {
-        reply.notFound("CASHIER_SESSION_NOT_FOUND");
-        return;
+        return reply.notFound("CASHIER_SESSION_NOT_FOUND");
       }
 
       return session;
@@ -396,8 +394,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       const summary = await getShiftSummary(sessionId, tenant_id);
 
       if (!summary) {
-        reply.notFound("CASHIER_SESSION_NOT_FOUND");
-        return;
+        return reply.notFound("CASHIER_SESSION_NOT_FOUND");
       }
 
       return ShiftSummaryResponseSchema.parse(summary);
@@ -491,8 +488,7 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       const rule = await getRoutingRuleById(ruleId, tenant_id);
 
       if (!rule) {
-        reply.notFound("ROUTING_RULE_NOT_FOUND");
-        return;
+        return reply.notFound("ROUTING_RULE_NOT_FOUND");
       }
 
       return RoutingRuleListItemSchema.parse(rule);

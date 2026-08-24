@@ -150,6 +150,92 @@ export interface BuildFastifyServerOptions {
 const PROBLEM_JSON = "application/problem+json";
 
 /**
+ * Whether the caller wants full error detail (stack, cause chain, zod issues)
+ * attached to client-error records. Driven entirely by LOG_LEVEL: set it to
+ * `debug` or `trace` and 4xx records carry the same `err` object 5xx always has.
+ *
+ * Fastify types `request.log` as a Pick<> of pino's BaseLogger that omits
+ * isLevelEnabled, so probe for it and fall back to comparing the level string.
+ */
+const wantsErrorDetail = (log: FastifyBaseLogger): boolean => {
+	const maybePino = log as unknown as {
+		isLevelEnabled?: (level: string) => boolean;
+	};
+	if (typeof maybePino.isLevelEnabled === "function") {
+		return maybePino.isLevelEnabled("debug");
+	}
+	return log.level === "debug" || log.level === "trace";
+};
+
+/** Status this error will be answered with — mirrors the reply branches below. */
+const resolveStatusCode = (error: FastifyError): number => {
+	if (isZodError(error) || error.validation) {
+		return 400;
+	}
+	return error.statusCode ?? 500;
+};
+
+/** Flatten Ajv/zod issues into one compact "path: message" line each. */
+const formatValidationIssues = (error: FastifyError): string[] | undefined => {
+	if (isZodError(error)) {
+		return error.errors.map(
+			(issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`,
+		);
+	}
+	if (error.validation) {
+		return error.validation.map((issue) => {
+			const path =
+				issue.instancePath?.replace(/^\//, "").replace(/\//g, ".") ||
+				issue.params?.missingProperty ||
+				"(root)";
+			return `${path}: ${issue.message ?? "validation error"}`;
+		});
+	}
+	return undefined;
+};
+
+/**
+ * Log a failed request once, at a level that reflects whose fault it is.
+ *
+ * 4xx is expected traffic — a malformed payload or a booking conflict is the
+ * caller's problem, not a service fault — so it logs at warn with no stack,
+ * keeping `error` meaningful as an alerting signal. 5xx always logs at error
+ * with the full serialized error. LOG_LEVEL=debug restores full detail on 4xx.
+ */
+const logRequestError = (
+	error: FastifyError,
+	request: FastifyRequest,
+	statusCode: number,
+): void => {
+	const payload: Record<string, unknown> = {
+		method: request.method,
+		url: request.url,
+		statusCode,
+	};
+
+	if (statusCode >= 500) {
+		payload.err = error;
+		request.log.error(payload, error.message);
+		return;
+	}
+
+	if (wantsErrorDetail(request.log)) {
+		payload.err = error;
+	}
+
+	const validation = formatValidationIssues(error);
+	if (validation) {
+		payload.validation = validation;
+		// ZodError.message is a multi-line JSON dump of every issue — never use it
+		// as the log message; `validation` above carries the same facts on one line.
+		request.log.warn(payload, "request validation failed");
+		return;
+	}
+
+	request.log.warn(payload, error.message);
+};
+
+/**
  * Centralized error handler for all services.
  * Produces RFC 9457 Problem Details responses:
  *   { type, title, status, detail, instance?, code?, errors? }
@@ -160,10 +246,8 @@ const defaultErrorHandler = (
 	request: FastifyRequest,
 	reply: FastifyReply,
 ): void => {
-	request.log.error(
-		{ err: error, method: request.method, url: request.url },
-		error.message,
-	);
+	const resolvedStatus = resolveStatusCode(error);
+	logRequestError(error, request, resolvedStatus);
 
 	const instance = request.url;
 
@@ -226,14 +310,13 @@ const defaultErrorHandler = (
 	}
 
 	// Unexpected 500 errors — hide details in production
-	const statusCode = error.statusCode ?? 500;
 	reply
-		.status(statusCode)
+		.status(resolvedStatus)
 		.header("content-type", PROBLEM_JSON)
 		.send({
 			type: "about:blank",
 			title: "Internal Server Error",
-			status: statusCode,
+			status: resolvedStatus,
 			detail:
 				process.env.NODE_ENV === "production"
 					? "An unexpected error occurred"

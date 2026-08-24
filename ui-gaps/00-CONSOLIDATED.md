@@ -4,9 +4,13 @@
 > **Verified against:** `main` @ `edbf3e9c` — every count below re-derived from route files, command consumers and the schema package
 > **Audited:** 635 route registrations across `Apps/*/src/routes/**`, 202 commands across 11 command consumers, both Angular front-ends
 > **Date:** 2026-08-11
-> **Last updated:** 2026-08-21 — `settings.value.*` ×4 retired; two outbox-stranding defects fixed
+> **Last updated:** 2026-08-24 — COV-05's four shipped analyses found broken and fixed (BigInt serialization; array
+> responses emitted as index-keyed objects), then a smoke suite built for them found a **remote crash**
+> in four services on its first run
 > (see [17](17-command-reachability.md), [18](18-write-path-gap.md), [14](14-channel-distribution.md),
-> [16](16-booking-reference-data.md))
+> [16](16-booking-reference-data.md)). Then a question the audit never asked — *where is tenant
+> onboarding?* — exposed **two blind spots in the method itself** and an unauthenticated bootstrap
+> route, now fixed (see [20](20-tenant-onboarding.md))
 > **Commit tag:** `COV-nn`
 
 ---
@@ -33,6 +37,13 @@ Beyond that, the gap is one-directional as reported: backend surface that no scr
 
 And two findings the audit did not make at all:
 
+- **Tenant onboarding was never examined at all.** The product is multi-tenant and has no screen that
+  creates a tenant — but the audit's own verification step *confirmed the domain as covered*, because
+  `tenant` appears 1,586 times in `pms-ui` as a scoping key. Recorded, with the method fix, in
+  [20-tenant-onboarding.md](20-tenant-onboarding.md). **The decision is not to build the screen**; the
+  finding that mattered is that the self-serve bootstrap route's auth guard was disabled by default —
+  `if (secret)` around the check means a forgotten env var removes the guard rather than the feature.
+  **Fixed 2026-08-24**: absent config now returns 503, and CI asserts it.
 - **8 gateway report endpoints proxied to core-service paths that do not exist** — they 404ed
   regardless of UI. **Fixed 2026-08-11**, with a conformance test to prevent recurrence. See
   [10-reports-coverage.md](10-reports-coverage.md).
@@ -93,7 +104,7 @@ And two findings the audit did not make at all:
 
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
-| 05 | revenue-service — **✅ investigated + 4 working analyses shipped 2026-08-13**; only 5 of 20 reads return data, decision on the other 15 open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
+| 05 | revenue-service — **the 4 analyses "shipped" 2026-08-13 had never worked; fixed 2026-08-24** (two 500s, one array serialized as an index-keyed object). All 20 reads now return well-formed payloads, so the build-or-retire test this spec set — *do the analyses get used* — is finally answerable. Only 5 of 20 reads have data; decision on the other 15 still open | [05-revenue-module-status.md](05-revenue-module-status.md) | Decision | part |
 | 18 | Read-only domains have no write path — **✅ mechanism decided, 13 phantom-write proxies closed + guardrail 2026-08-13**; converse guardrail closed 2026-08-18. Event bookings 2026-08-18, banquet orders 2026-08-19, and event billing 2026-08-19 — the first write to take the **command** branch of the rule rather than plain HTTP. **The rule gained a third leg 2026-08-21**: taking the command branch is not finished until the emitting service's dispatcher claims the aggregate type its handler enqueues — four shipped write paths delivered nothing because it did not | [18-write-path-gap.md](18-write-path-gap.md) | Backend | part |
 
 ### P0 — Live Broken Endpoints (✅ closed 2026-08-11)
@@ -133,6 +144,12 @@ And two findings the audit did not make at all:
 | # | Gap | File | Type | Effort |
 |---|-----|------|------|--------|
 | 17 | **✅ re-run 2026-08-20**: **69 unreachable of 195**, down from 95. Two more dispatch forms the scan could not see (`dispatchCommand(…)`, the interpolated UI call), and event-consumer `case` labels were being counted as command handlers. 51 of the 69 are `revenue.*` (COV-05's decision) plus the `accounts-gaps` set. **`settings.value.*` ×4 retired 2026-08-21 → 65 of 191**, and the orphan `settings.events` listener it had recorded turned out to be an undrained outbox, not a missing producer — fixed, along with **five aggregate types in reservations-command-service that were enqueued and never dispatched** (group bookings sent no confirmation notification) | [17-command-reachability.md](17-command-reachability.md) | Audit+UI | part |
+
+### P2 — Recorded, Deliberately Not Built (1 gap)
+
+| # | Gap | File | Type | Effort |
+|---|-----|------|------|--------|
+| 20 | Tenant onboarding has no UI — **✅ decided 2026-08-24: do not build the screen.** Five provisioning endpoints, four unproxied, zero UI; the flow is scripted and is the most-exercised write path in the repo. **The audit could not see this domain** — whole-word verification counted 1,586 `tenant` hits (scoping key, not managed entity), `/v1/system/*` was excluded by scope, and an unproxied route is invisible to gateway diffing. Method corrected below. **Separately: `TENANT_BOOTSTRAP_TOKEN` was unset, so the bootstrap auth guard was a no-op and the route unauthenticated — ✅ fixed 2026-08-24**: fails closed (503) on absent config, constant-time token compare, two regression tests in CI | [20-tenant-onboarding.md](20-tenant-onboarding.md) | Decision+Method | done |
 
 ---
 
@@ -486,6 +503,71 @@ type goes unclaimed. Verified by re-introducing both of today's bugs. Its single
 which api-gateway publishes inline and settles by event id — carries a test that fails if that
 mechanism disappears.
 
+**A report can pass every gate and never have returned a row — measured 2026-08-24.**
+
+The four revenue analyses [05](05-revenue-module-status.md) recorded as shipped on 2026-08-13 were
+exercised against a running stack for the first time on 2026-08-24. Two returned **500**, one returned
+its array serialized as `{"0":…,"1":…}` — which the Reports screen renders as a single row whose column
+names are the array indices — and the fourth was correctly empty. **None had ever shown a number to
+anyone.** Two root causes, both invisible to every check this repo runs:
+
+- **A global type parser makes a correct-looking guard do nothing.** `Apps/config/src/db.ts:44` maps
+  Postgres `int8` to a JS `BigInt`, and `JSON.stringify` throws on BigInt. Three services guarded every
+  field with a local `toNumber` typed `(v: string | number | null)` — a `BigInt` is neither, so the
+  ternary falls through and returns it unchanged. The type checker cannot see it because **the row
+  type, not the logic, is what is wrong**: it declares a shape `pg` stopped returning the moment the
+  parser was installed. The repo already had the correct helper in `Apps/config/src/numbers.ts`.
+- **The default response schema silently reshapes arrays.** `buildRouteSchema` defaults `response` to
+  an *object* schema, so a handler returning a bare array is serialized into an index-keyed object.
+  **70 of 590 route registrations omit an explicit `response`**; 12 returned bare arrays, all in
+  revenue-service. A per-route sweep of every other service found 0, self-checked by confirming it
+  re-identifies all 12.
+
+**The general point.** This backlog already records that a command can have a catalog row, a validator,
+a handler and full conformance coverage and still never have executed; that a screen can be shipped,
+seeded, navigable and unreachable; and that an event can be enqueued and never dispatched. This is the
+same shape one layer over. Typecheck, `sql:contracts`, the gateway and command-catalog suites all pass
+on a route that 500s, **because not one of them serializes a response.** The cheapest check that finds
+it is a single authenticated `GET`, and **no automated test has ever hit a revenue endpoint** —
+`run-api-tests.sh` does not mention revenue, and `revenue.http` is not in the runner. That is the gap
+worth closing, not the two bugs.
+
+---
+
+**A 404 that killed the service — found 2026-08-24 by the smoke suite's cheapest assertion.**
+
+`smoke-revenue.sh` was written to stop the two serialization defects above recurring. Both were already
+fixed, so it should have been a formality. Its last assertion — *unknown pricing rule id → not found* —
+returned 404 and then **revenue-service exited**: health 200 → connection refused, reproducibly, on one
+authenticated request. `GET /v1/billing/invoices/<unknown-uuid>` did the same to billing-service.
+
+```ts
+reply.notFound("PRICING_RULE_NOT_FOUND");
+return;                                   // ← resolves with undefined
+```
+
+Fastify treats an async handler's resolved value as the payload to send. The 404 goes out, the handler
+resolves `undefined`, Fastify sends again on an already-written socket and throws
+`ERR_HTTP_HEADERS_SENT` — **after** the reply lifecycle has ended, so the route error handler never
+sees it and the exception reaches the process. **Ten call sites across four services**, every one on
+the most ordinary path a client has: asking for a record that is not there. All ten now
+`return reply.…`, guarded by `reply-lifecycle-conformance.test.ts`.
+
+**Why every existing check was blind.** `run-api-tests.sh` only requests ids it just created, so it
+never asks for a missing one. Typecheck cannot see it — `reply.notFound()` returns a value a handler
+may legitimately discard. `sql:contracts` reads SQL. The conformance suites never start a server.
+
+**The lesson is about the shape of our coverage, not the bug.** This backlog has now recorded, in
+order: a command with a catalog row, validator, handler and conformance coverage that had never
+executed; a screen shipped, seeded, navigable and unreachable; an event enqueued and never dispatched;
+a report shipped, gated and correct in SQL that had never returned a row; and now a 404 path that kills
+the process. Every one was found by *running the thing*, and every one was invisible to the gates that
+do not. **The suites that exist test success paths against data they created themselves.** The absent
+record, the empty result, the second call — that is where the defects have been living, and it is the
+cheapest place left to look.
+
+---
+
 ---
 
 ## Method & Known Weakness
@@ -506,3 +588,20 @@ presence", the word itself does not occur.
 
 Infrastructure surfaces — `/v1/registry`, `/v1/locks`, `/v1/system`, service health — are out of
 scope and are not expected to have UI.
+
+**Two further weaknesses found 2026-08-24, both via [20-tenant-onboarding.md](20-tenant-onboarding.md):**
+
+**Whole-word search is invalid for a domain whose name is also a scoping key.** The re-verification
+above asks whether the domain word occurs in the front-end. For `tenant` it occurs **1,586 times
+across 79 files** — every screen is tenant-*scoped* — so the domain read as maximally covered while
+nothing in the UI could *create* a tenant. The check cannot separate **noun-as-scope-parameter** from
+**noun-as-managed-entity**. Domains of this shape (`tenant`, and check `property` and `user` the same
+way) need a capability-level question — *is there a UI path that creates one?* — not a word count.
+
+**The `/v1/system` exclusion needs per-route triage, not a blanket rule.** `POST /v1/system/tenants`
+and `/v1/system/tenants/bootstrap` are tenant provisioning: a business capability wearing an
+infrastructure prefix. Path prefix is not a reliable proxy for "infrastructure".
+
+And a limit of the gateway-diffing work (COV-17/19): it inventories proxied routes and asks which the
+UI reaches. A route with **no** gateway entry at all is invisible to it — the opposite failure from
+COV-19's proxies-pointing-at-nothing. `POST /v1/tenants/bootstrap` is the worked example.
