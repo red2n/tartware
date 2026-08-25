@@ -1,6 +1,6 @@
+import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { appLogger } from "../lib/logger.js";
-
 import {
   createAutomatedMessage,
   deleteAutomatedMessage,
@@ -10,12 +10,6 @@ import { sendNotification } from "./notification-dispatch-service.js";
 import { createTemplate, deleteTemplate, updateTemplate } from "./template-service.js";
 
 const logger = appLogger.child({ module: "notification-command-service" });
-
-const SYSTEM_ACTOR = "NOTIFICATION_SERVICE";
-
-/** Extract a scalar actor id from the initiatedBy envelope field. */
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? SYSTEM_ACTOR;
 
 /**
  * Handle notification.send command — render template and dispatch notification.

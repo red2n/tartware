@@ -10,7 +10,7 @@ const logger = appLogger.child({ module: "hurdle-rate-handlers" });
 export const handleHurdleRateSet = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ upserted: number; roomTypeId: unknown }> => {
   const upserted = await forEachDateInRange(
     payload.start_date as string,
@@ -130,7 +130,7 @@ const FORECAST_FOR_DATE_SQL = `
 export const handleHurdleRateCalculate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ calculated: number; roomTypes: number }> => {
   const tenantId = metadata.tenantId;
   const propertyId = payload.property_id as string;

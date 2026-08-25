@@ -1,5 +1,5 @@
+import { SYSTEM_ACTOR_ID } from "@tartware/command-consumer-utils/command-utils";
 import type { PoolClient } from "pg";
-
 import { auditAsync } from "../lib/audit-logger.js";
 import { query, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
@@ -55,9 +55,6 @@ type NightAuditRunOutcome = {
   errorMessage?: string;
   errorStep?: string;
 };
-
-/** Sentinel UUID used when no actor is supplied. */
-const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
 
 /**
  * Pre-flight: ensure no other run is in flight or already completed for this

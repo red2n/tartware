@@ -50,6 +50,18 @@ const RULES = [
       "prints unformatted JSON to stdout and skips redaction and OTLP export",
   },
   {
+    id: "actor-resolution",
+    pattern: /\bconst resolveActorId\s*=|\bconst SYSTEM_ACTOR(_ID)?\s*=/,
+    // command-utils re-exports the sentinel; @tartware/config defines it, and cannot
+    // import from command-consumer-utils (which depends on config) without a cycle.
+    allow: ["Apps/command-consumer-utils/src/command-utils.ts", "Apps/config/src/audit.ts"],
+    use: 'resolveActorId() / SYSTEM_ACTOR_ID from "@tartware/command-consumer-utils/command-utils"',
+    why:
+      "local copies skipped UUID validation and fell back to strings like \"COMMAND_CENTER\", " +
+      "which Postgres rejects on the UUID audit columns (22P02) and which disagree with the " +
+      "seeded system.actor row every other service writes",
+  },
+  {
     id: "pino-logger",
     pattern: /from ["']pino["']|require\(["']pino["']\)/,
     allow: ["Apps/telemetry/src/", "Apps/candidate-pipeline/src/__tests__/"],

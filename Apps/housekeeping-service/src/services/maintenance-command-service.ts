@@ -1,3 +1,4 @@
+import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import {
   type OperationsMaintenanceAssignCommand,
@@ -9,7 +10,6 @@ import {
   type OperationsMaintenanceRequestCommand,
   OperationsMaintenanceRequestCommandSchema,
 } from "@tartware/schemas/events/commands/operations";
-
 import { query } from "../lib/db.js";
 
 class MaintenanceCommandError extends Error {
@@ -19,10 +19,6 @@ class MaintenanceCommandError extends Error {
     this.code = code;
   }
 }
-
-const APP_ACTOR = "COMMAND_CENTER";
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? APP_ACTOR;
 
 /**
  * Create a new maintenance request / work order.

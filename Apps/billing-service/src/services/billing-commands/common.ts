@@ -1,7 +1,16 @@
+import {
+  asUuid,
+  resolveActorId,
+  SYSTEM_ACTOR_ID,
+} from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../../lib/db.js";
 
 export type { CommandContext };
+
+// Actor resolution is shared infrastructure — re-exported here so billing's
+// command modules keep importing it from one place.
+export { asUuid, resolveActorId, SYSTEM_ACTOR_ID };
 
 export class BillingCommandError extends Error {
   code: string;
@@ -24,15 +33,6 @@ export class BillingCommandError extends Error {
     return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
   }
 }
-
-export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export const asUuid = (value: string | undefined | null): string | null =>
-  value && UUID_REGEX.test(value) ? value : null;
-
-export const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  asUuid(initiatedBy?.userId) ?? SYSTEM_ACTOR_ID;
 
 /**
  * Resolves the folio a charge for this reservation should post to.

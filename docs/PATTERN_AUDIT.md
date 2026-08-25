@@ -48,7 +48,7 @@ preceded by a doc comment.
 
 ---
 
-## 01 — Non-UUID actor written into UUID audit columns · CRITICAL
+## 01 — Non-UUID actor written into UUID audit columns · CRITICAL · FIXED 25 Aug 2026
 
 Six services define a local `resolveActorId`, with five different fallbacks:
 
@@ -81,8 +81,14 @@ housekeeping 2 (`incident_reports`, `staff_schedules`). Each needs per-site conf
 `VARCHAR(120)` in 3 — which is why the same bad value passes silently in `rooms` and fails in
 `mobile_keys`.
 
-**Fix.** Delete the local copies, import from `command-utils`. Separately decide UUID vs text for
-audit columns and align the 24 outliers.
+**Fixed 25 Aug 2026.** All ten local copies deleted; every service now imports `resolveActorId`
+from `command-utils`, which validates the UUID and falls back to `SYSTEM_ACTOR_ID`. The sentinel
+now has one definition repo-wide (`@tartware/config`, re-exported by `command-utils` — config
+cannot import from command-consumer-utils, which depends on it). Guardrail rule
+`actor-resolution` blocks new copies. `reservations`' `APP_ACTOR` survives deliberately: it is a
+label inside event `metadata` JSON, never an actor id, and is now documented as such.
+
+**Still open.** The DDL split — decide UUID vs text for audit columns and align the 24 outliers.
 
 ---
 

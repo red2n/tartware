@@ -1,3 +1,4 @@
+import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type {
   GuestAddress,
   GuestCommandRow,
@@ -27,11 +28,6 @@ import { updateGuestConsent } from "./privacy-service.js";
 const guestCommandLogger = appLogger.child({
   module: "guest-command-service",
 });
-
-const APP_ACTOR = "COMMAND_CENTER";
-
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? APP_ACTOR;
 
 // GuestAddress imported from @tartware/schemas
 

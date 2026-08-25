@@ -1,3 +1,4 @@
+import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
@@ -15,11 +16,6 @@ class ScheduleCommandError extends Error {
     this.code = code;
   }
 }
-
-const APP_ACTOR = "COMMAND_CENTER";
-
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? APP_ACTOR;
 
 const dayOfWeek = (dateStr: string): string => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

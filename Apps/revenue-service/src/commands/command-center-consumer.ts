@@ -1,4 +1,5 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
@@ -26,7 +27,6 @@ import {
   handleForecastAdjust,
   handleForecastCompute,
   handleForecastEvaluate,
-  resolveActorId,
 } from "./handlers/forecast-handlers.js";
 import {
   handleGoalCreate,

@@ -1,8 +1,15 @@
 /**
  * Sentinel UUID used when no authenticated actor is available
- * (e.g. system-initiated commands from scheduler jobs).
+ * (e.g. system-initiated commands from scheduler jobs). Defined once in
+ * `@tartware/config` — the lowest layer that needs it — and re-exported here so
+ * command handlers have a single import for actor resolution.
+ *
+ * It matches the seeded `system.actor` row in `users`, so it satisfies the
+ * foreign keys on the `created_by` / `updated_by` audit columns.
  */
-export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+export { SYSTEM_ACTOR_ID } from "@tartware/config";
+
+import { SYSTEM_ACTOR_ID } from "@tartware/config";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

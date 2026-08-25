@@ -6,7 +6,7 @@ import { evaluateGroupBlock } from "../../services/group-evaluate-service.js";
 export const handleGroupEvaluate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ evaluation: unknown }> => {
   const p = payload as { property_id: string; group_id: string };
   return evaluateGroupBlock({

@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR_ID } from "@tartware/command-consumer-utils/command-utils";
 import type { CreateReservationResult, ReservationUpdatedEvent } from "@tartware/schemas";
 import { ReservationUpdatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
@@ -39,8 +40,14 @@ export class ReservationCommandError extends Error {
 export type { CreateReservationResult };
 
 export const DEFAULT_CURRENCY = "USD";
+
+/**
+ * Human-readable label recorded inside event `metadata` JSON (not an actor id —
+ * never write this to a `created_by` / `updated_by` column).
+ */
 export const APP_ACTOR = "COMMAND_CENTER";
-export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+
+export { SYSTEM_ACTOR_ID };
 
 export type ReservationUpdatePayload = ReservationUpdatedEvent["payload"];
 

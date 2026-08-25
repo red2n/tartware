@@ -17,7 +17,7 @@ const logger = appLogger.child({ module: "recommendation-handlers" });
 export const handleRecommendationGenerate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ generated: number; autoApplied: number }> => {
   const result = await generateRecommendations({
     tenantId: metadata.tenantId,
@@ -41,7 +41,7 @@ export const handleRecommendationGenerate = async (
 export const handleRecommendationApprove = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ recommendationId: string; approved: boolean }> => {
   const recommendationId = payload.recommendation_id as string;
   const reviewNotes = (payload.review_notes as string) ?? null;
@@ -79,7 +79,7 @@ export const handleRecommendationApprove = async (
 export const handleRecommendationReject = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ recommendationId: string; rejected: boolean }> => {
   const recommendationId = payload.recommendation_id as string;
   const rejectionReason = payload.rejection_reason as string;
@@ -117,7 +117,7 @@ export const handleRecommendationReject = async (
 export const handleRecommendationApply = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ recommendationId: string; implementedRate: number }> => {
   const recommendationId = payload.recommendation_id as string;
   const implementationNotes = (payload.implementation_notes as string) ?? null;
@@ -161,7 +161,7 @@ export const handleRecommendationApply = async (
 export const handleRecommendationBulkApprove = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ approved: number }> => {
   const recommendationIds = payload.recommendation_ids as string[];
   const reviewNotes = (payload.review_notes as string) ?? null;

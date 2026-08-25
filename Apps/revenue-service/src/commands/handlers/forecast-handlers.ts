@@ -6,14 +6,10 @@ import {
 } from "../../services/forecast-accuracy-service.js";
 import { computeForecasts } from "../../services/forecast-engine.js";
 
-/** Resolves the actor ID from command metadata. */
-export const resolveActorId = (initiatedBy: CommandMetadata["initiatedBy"]): string | null =>
-  typeof initiatedBy === "string" ? initiatedBy : (initiatedBy?.userId ?? null);
-
 export const handleForecastCompute = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<void> => {
   const p = payload as {
     property_id: string;
@@ -29,7 +25,7 @@ export const handleForecastCompute = async (
     horizonDays: p.horizon_days ?? 30,
     trainingDays: p.training_days ?? 90,
     scenarios: p.scenarios ?? ["base", "optimistic", "pessimistic"],
-    actorId: actorId ?? "system",
+    actorId,
   });
 };
 
@@ -37,7 +33,7 @@ export const handleForecastCompute = async (
 export const handleBookingPaceSnapshot = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ daysUpdated: number }> => {
   const p = payload as { property_id: string; horizon_days?: number };
   return snapshotBookingPace({
@@ -52,7 +48,7 @@ export const handleBookingPaceSnapshot = async (
 export const handleForecastAdjust = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ adjusted: boolean }> => {
   const p = payload as {
     property_id: string;
@@ -80,7 +76,7 @@ export const handleForecastAdjust = async (
 export const handleForecastEvaluate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ evaluated: boolean }> => {
   const p = payload as { property_id: string; business_date: string };
   return evaluateForecastAccuracy({

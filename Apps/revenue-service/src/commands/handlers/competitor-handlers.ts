@@ -8,7 +8,7 @@ import { getProvider } from "../../services/rate-shopping-service.js";
 export const handleCompetitorRecord = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ competitorRateId: string }> => {
   const result = await createCompetitorRate(
     metadata.tenantId,
@@ -37,7 +37,7 @@ export const handleCompetitorRecord = async (
 export const handleCompetitorBulkImport = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ imported: number }> => {
   const rates = payload.rates as Array<{
     competitor_name: string;
@@ -83,7 +83,7 @@ export const handleCompetitorBulkImport = async (
 export const handleCompetitorConfigureCompset = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ upserted: number }> => {
   const rawCompetitors = payload.competitors as Array<Record<string, unknown>>;
 
@@ -121,7 +121,7 @@ export const handleCompetitorConfigureCompset = async (
 export const handleCompetitorAutoCollect = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ collected: number }> => {
   const propertyId = payload.property_id as string;
   const startDate = payload.start_date as string;
@@ -159,7 +159,7 @@ export const handleCompetitorAutoCollect = async (
 export const handleCompetitiveResponseConfigure = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ ruleId: string }> => {
   const data: CompetitiveResponseRuleInput = {
     trackCompetitor: payload.track_competitor as string,
