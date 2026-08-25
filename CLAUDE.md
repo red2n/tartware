@@ -113,8 +113,9 @@ Underlying scripts live in `executables/<name>/`. If `stop` leaves anything behi
 - **DB access:** each service builds one pool in `src/lib/db.ts` and re-exports
   `query` / `queryWithClient` / `withTransaction` / `pool`. ~220 files import those directly
   (module singleton, not injected). Tests isolate it with `vi.mock("../src/lib/db.js")`.
-- **SQL placement:** `repositories/` exists only in billing, core, reservations,
-  availability-guard. The other seven put SQL in `services/` and `routes/` (84 files).
+- **SQL placement:** every service now has a `repositories/` layer. What is left inline is
+  deliberate: `SELECT 1` health probes, and statements whose WHERE/SET clause is assembled from
+  supplied filters (reward catalogue, lost-and-found update, staff schedule update).
 - **Consumers:** 9 command consumers, all wiring `createIdempotencyHandlers` + `fail-open`.
   Retry policy is `isRetryableByDefault` inside `createConsumerLifecycle` — honours
   `CommandError.retryable`; consumers only pass `isRetryable` to override it.
@@ -138,8 +139,8 @@ Working through these one at a time. Update the status column when one lands.
 | 01 | Critical | 6 services define a local `resolveActorId` falling back to non-UUID strings (`"COMMAND_CENTER"`, `"NOTIFICATION_SERVICE"`); `rooms` writes it into `mobile_keys.created_by UUID` → 22P02. Use the shared helper. | **done 25 Aug** |
 | 02 | Critical | 5 of 9 consumers omit `isRetryable`, so deterministic failures burn the 1s/5s/30s ladder and stall the partition. | **done 25 Aug** |
 | 03 | Critical | `CommandError` reinvented as 5 `*CommandError` classes; only 2 carry `retryable` — the root cause of 02. | **done 25 Aug** |
-| 04 | High | Repository layer in 4 of 11 services; 84 files hold SQL in services/routes. `checkin-checkout.ts` = 1,229 lines / 25 statements / 14 tables. | open |
-| 05 | High | N+1 writes inside loops in 10 files (group-booking, compset-service, night-audit, commission, ota-integration, waitlist, …). | open |
+| 04 | High | Repository layer in 4 of 11 services; 84 files hold SQL in services/routes. | **done 25 Aug** — all 5 services without one now have it (revenue, rooms, notification, housekeeping, guests). Billing/core/reservations already had partial layers; deepening those is separate. |
+| 05 | High | N+1 writes inside loops. | **partial** — revenue done (compset upsert batched, 3 demand-calendar loops set-based). 9 loops remain: group-booking ×3, ota-integration, waitlist, commission, tenant-reference-data ×3. |
 | 06 | High | `business-calendar-settings-service.ts:45` fetches with no `AbortSignal` on the startup path; 6 files hand-roll the same timeout dance → needs a shared `fetchWithTimeout`. | open |
 | 07 | Medium | DB singleton imported by ~220 files instead of injected (DIP). Fix forward on new code, pair with 04. | open |
 | 08 | Medium | TSDoc coverage 8%–100%; weakest in shared packages (telemetry 8%, availability-guard 11%, core 37%). | open |

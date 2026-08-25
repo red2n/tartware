@@ -154,7 +154,7 @@ mapped to HTTP responses by routes, never seen by a consumer.
 
 ---
 
-## 04 — Repository layer in 4 of 11 services · HIGH
+## 04 — Repository layer in 4 of 11 services · HIGH · FIXED 25 Aug 2026
 
 `repositories/` exists in billing, core, reservations and availability-guard. The other seven put
 SQL directly in service and route modules — 84 files.
@@ -168,12 +168,28 @@ SQL directly in service and route modules — 84 files.
 
 53 source files exceed 500 lines, 18 of them in core-service.
 
-**Fix.** Not a rewrite. Lift SQL into a repository module for the handlers you touch anyway —
-that alone makes them unit-testable without a database, which is the real cost today.
+**Fixed 25 Aug 2026.** All five services that had no `repositories/` directory now have one:
+revenue (1 module), rooms (3), notification (4), housekeeping (5), guests (12). 171 statements
+moved out of service modules.
+
+Every extraction was scripted rather than retyped, and each service was verified by set-comparing
+its statements before and after — none lost, none added — because these paths carry almost no
+test coverage.
+
+**Deliberately left inline:** `SELECT 1` liveness probes, and the handful of statements whose
+WHERE or SET clause is assembled from whichever fields the caller supplied (reward catalogue
+listing, lost-and-found partial update, staff schedule partial update). Those are built, not
+stored, and splitting them across two files would have split one thought.
+
+**Also corrected:** the 84-file count above included those health probes and files that merely
+import SQL constants. The real inline-SQL surface in the five services was 27 files.
+
+**Still open.** billing, core and reservations have partial repository layers — the biggest
+remaining offender is `checkin-checkout.ts` at 1,229 lines / 25 statements / 14 tables.
 
 ---
 
-## 05 — N+1 writes inside command loops · HIGH
+## 05 — N+1 writes inside command loops · HIGH · PARTIALLY FIXED
 
 One statement per iteration where a multi-row insert or `UNNEST` would do:
 
@@ -186,6 +202,18 @@ One statement per iteration where a multi-row insert or `UNNEST` would do:
   `revenue-service/consumers/reservation-event-consumer.ts`
 
 `AGENTS.md` § Data & Query Discipline forbids this, and these are write paths.
+
+**Fixed 25 Aug 2026 (revenue).** `configureCompset` now issues one batched upsert instead of one
+INSERT per competitor, and the three demand-calendar handlers are set-based over
+`UNNEST($3::date[])` instead of walking every night of a stay.
+
+**Still open — 9 loops:** `group-booking.ts` (blocks at :208, expired groups at :531, routing
+rules at :687), `ota-integration.ts:451`, `waitlist.ts:295`, `commission.ts:416`,
+`tenant-reference-data.ts` (:112, :133, :153).
+
+Two of those need more than mechanical batching: the expired-group loop branches on each row's
+`rowCount`, and the OTA loop reads before deciding — so each needs its per-row logic restated as
+a set operation rather than wrapped in one.
 
 ---
 
