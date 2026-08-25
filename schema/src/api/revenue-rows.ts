@@ -445,3 +445,37 @@ export type CompetitiveResponseRuleRow = {
 	created_at: string | Date;
 	updated_at: string | Date | null;
 };
+
+/** Daily occupancy and revenue aggregate over the forecast training window. */
+export type ForecastTrainingDayRow = {
+	business_date: string;
+	occupied: string;
+	room_revenue: string;
+	adr: string;
+};
+
+/** Demand-calendar factors for one day inside the forecast horizon. */
+export type ForecastDemandFactorRow = {
+	calendar_date: string;
+	event_impact_score: string | null;
+	season_factor: string | null;
+	events: unknown;
+};
+
+/** One computed forecast ready to persist to `revenue_forecasts`. */
+export type ForecastInsertInput = {
+	tenantId: string;
+	propertyId: string;
+	forecastDate: string;
+	forecastPeriod: string;
+	periodStart: string;
+	periodEnd: string;
+	scenario: string;
+	roomRevenue: number;
+	totalRevenue: number;
+	confidence: number;
+	occupancyPercent: number;
+	adr: number;
+	revpar: number;
+	actorId: string;
+};
