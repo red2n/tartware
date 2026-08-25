@@ -37,8 +37,28 @@ const GATEWAY_URLS = (__ENV.GATEWAY_URLS || __ENV.GATEWAY_URL || "http://localho
   .map((url) => url.trim())
   .filter(Boolean);
 
-const TENANT_ID = __ENV.TENANT_ID || "11111111-1111-1111-1111-111111111111";
-const PROPERTY_ID = __ENV.PROPERTY_ID || "22222222-2222-2222-2222-222222222222";
+/**
+ * `TENANT_PAIRS` is a comma-separated list of `tenantId:propertyId`.
+ *
+ * Paired rather than two independent lists because a property belongs to
+ * exactly one tenant: drawing them separately would send most commands with a
+ * property the tenant does not own, and the run would measure authorisation
+ * failures instead of throughput. Falls back to the single seeded tenant.
+ */
+const TENANT_PAIRS = (__ENV.TENANT_PAIRS || "")
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean)
+  .map((entry) => {
+    const [tenantId, propertyId] = entry.split(":");
+    return { tenantId, propertyId };
+  });
+
+const FALLBACK_PAIR = {
+  tenantId: __ENV.TENANT_ID || "11111111-1111-1111-1111-111111111111",
+  propertyId: __ENV.PROPERTY_ID || "22222222-2222-2222-2222-222222222222",
+};
+
 const ROOM_TYPE_ID = __ENV.ROOM_TYPE_ID || "44444444-4444-4444-4444-444444444444";
 
 const GUEST_IDS = (__ENV.GUEST_IDS || "").split(",").filter(Boolean);
@@ -97,14 +117,16 @@ const buildCommand = () => {
   const roll = Math.random();
   const guestId = GUEST_IDS.length > 0 ? pick(GUEST_IDS) : uuid();
   const reservationId = RESERVATION_IDS.length > 0 ? pick(RESERVATION_IDS) : uuid();
+  const { tenantId, propertyId } = TENANT_PAIRS.length > 0 ? pick(TENANT_PAIRS) : FALLBACK_PAIR;
 
   if (roll < 0.24) {
     const checkIn = 1 + Math.floor(Math.random() * 60);
     return {
+      tenantId,
       family: "reservation.create",
       name: "reservation.create",
       payload: {
-        property_id: PROPERTY_ID,
+        property_id: propertyId,
         room_type_id: ROOM_TYPE_ID,
         guest_id: guestId,
         check_in_date: futureDay(checkIn),
@@ -119,10 +141,11 @@ const buildCommand = () => {
 
   if (roll < 0.34) {
     return {
+      tenantId,
       family: "billing.charge.post",
       name: "billing.charge.post",
       payload: {
-        property_id: PROPERTY_ID,
+        property_id: propertyId,
         reservation_id: reservationId,
         amount: Math.round((10 + Math.random() * 250) * 100) / 100,
         charge_code: pick(["ROOM", "FNB", "MINIBAR", "SPA", "PARKING"]),
@@ -135,11 +158,12 @@ const buildCommand = () => {
 
   if (roll < 0.44) {
     return {
+      tenantId,
       family: "billing.payment.authorize",
       name: "billing.payment.authorize",
       payload: {
         payment_reference: `LT-${uuid().slice(0, 12)}`,
-        property_id: PROPERTY_ID,
+        property_id: propertyId,
         reservation_id: reservationId,
         guest_id: guestId,
         amount: Math.round((50 + Math.random() * 500) * 100) / 100,
@@ -150,6 +174,7 @@ const buildCommand = () => {
 
   if (roll < 0.56) {
     return {
+      tenantId,
       family: "reservation.check_in",
       name: "reservation.check_in",
       payload: {
@@ -161,6 +186,7 @@ const buildCommand = () => {
 
   if (roll < 0.66) {
     return {
+      tenantId,
       family: "reservation.check_out",
       name: "reservation.check_out",
       payload: { reservation_id: reservationId },
@@ -169,11 +195,12 @@ const buildCommand = () => {
 
   if (roll < 0.74) {
     return {
+      tenantId,
       family: "reservation.modify",
       name: "reservation.modify",
       payload: {
         reservation_id: reservationId,
-        property_id: PROPERTY_ID,
+        property_id: propertyId,
         adults: 1 + Math.floor(Math.random() * 3),
       },
     };
@@ -181,11 +208,12 @@ const buildCommand = () => {
 
   if (roll < 0.80) {
     return {
+      tenantId,
       family: "reservation.cancel",
       name: "reservation.cancel",
       payload: {
         reservation_id: reservationId,
-        property_id: PROPERTY_ID,
+        property_id: propertyId,
         reason: "GUEST_REQUEST",
       },
     };
@@ -193,10 +221,11 @@ const buildCommand = () => {
 
   if (roll < 0.90) {
     return {
+      tenantId,
       family: "housekeeping.task.create",
       name: "housekeeping.task.create",
       payload: {
-        property_id: PROPERTY_ID,
+        property_id: propertyId,
         ...(ROOM_IDS.length > 0 ? { room_id: pick(ROOM_IDS) } : {}),
         task_type: pick(["STAYOVER", "DEPARTURE", "DEEP_CLEAN", "INSPECTION"]),
         priority: pick(["LOW", "NORMAL", "HIGH"]),
@@ -205,6 +234,7 @@ const buildCommand = () => {
   }
 
   return {
+    tenantId,
     family: "guest.register",
     name: "guest.register",
     payload: {
@@ -244,7 +274,7 @@ export default function (data) {
 
   const response = http.post(
     `${base}/v1/commands/${command.name}/execute`,
-    JSON.stringify({ tenant_id: TENANT_ID, payload: command.payload }),
+    JSON.stringify({ tenant_id: command.tenantId, payload: command.payload }),
     {
       headers: {
         "Content-Type": "application/json",
