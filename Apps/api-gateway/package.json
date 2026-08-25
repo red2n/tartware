@@ -27,6 +27,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/sensible": "^6.0.4",
     "@tartware/command-center-shared": "workspace:*",
+    "@tartware/command-consumer-utils": "workspace:*",
     "@tartware/config": "workspace:*",
     "@tartware/fastify-server": "workspace:*",
     "@tartware/openapi": "workspace:*",

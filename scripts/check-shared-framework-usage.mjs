@@ -115,6 +115,55 @@ for (const file of tracked) {
   }
 }
 
+// A workspace import that the package does not declare resolves locally through
+// pnpm's store but not in a clean CI install, where it surfaces as an
+// unresolvable type and a wall of no-unsafe-* lint errors far from the cause.
+// Adding an import without the dependency is easy to do and hard to read back,
+// so it is asserted here.
+const undeclared = [];
+for (const file of tracked) {
+  const pkgDir = file.split("/").slice(0, 2).join("/");
+  let meta;
+  try {
+    meta = JSON.parse(readFileSync(`${pkgDir}/package.json`, "utf8"));
+  } catch {
+    continue;
+  }
+  const declared = new Set([
+    ...Object.keys(meta.dependencies ?? {}),
+    ...Object.keys(meta.devDependencies ?? {}),
+    meta.name,
+  ]);
+  let source;
+  try {
+    source = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
+  for (const match of source.matchAll(/from ["'](@tartware\/[a-z0-9-]+)/g)) {
+    if (!declared.has(match[1])) {
+      undeclared.push({ file, pkg: meta.name, dep: match[1] });
+    }
+  }
+}
+
+if (undeclared.length > 0) {
+  console.error("\nWorkspace import without a declared dependency:\n");
+  const seen = new Set();
+  for (const { file, pkg, dep } of undeclared) {
+    const key = `${pkg} ${dep}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    console.error(`  ${pkg} imports ${dep} (e.g. ${file})`);
+  }
+  console.error(
+    `\nAdd it to that package's dependencies as "workspace:*", run pnpm install, and\n` +
+      `list it in the package's knip.json "ignoreDependencies" (knip cannot resolve\n` +
+      `workspace links). Without this it builds locally and fails on a clean CI install.\n`,
+  );
+  process.exit(1);
+}
+
 if (violations.length > 0) {
   console.error("\nShared framework bypassed:\n");
   for (const { file, line, rule, source } of violations) {

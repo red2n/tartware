@@ -13,7 +13,8 @@
     "p-retry",
     "uuid",
     "@fastify/helmet",
-    "@tartware/fastify-server"
+    "@tartware/fastify-server",
+    "@tartware/command-consumer-utils"
   ],
   "ignoreBinaries": [
     "swc"

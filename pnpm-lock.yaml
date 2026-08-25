@@ -85,6 +85,9 @@ importers:
       '@tartware/command-center-shared':
         specifier: workspace:*
         version: link:../command-center-shared
+      '@tartware/command-consumer-utils':
+        specifier: workspace:*
+        version: link:../command-consumer-utils
       '@tartware/config':
         specifier: workspace:*
         version: link:../config
@@ -191,6 +194,9 @@ importers:
       '@grpc/proto-loader':
         specifier: ^0.7.10
         version: 0.7.15
+      '@tartware/command-consumer-utils':
+        specifier: workspace:*
+        version: link:../command-consumer-utils
       '@tartware/config':
         specifier: workspace:*
         version: link:../config

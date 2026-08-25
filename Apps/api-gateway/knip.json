@@ -13,7 +13,8 @@
     "@fastify/helmet",
     "@tartware/fastify-server",
     "@tartware/tenant-auth",
-    "pg"
+    "pg",
+    "@tartware/command-consumer-utils"
   ],
   "ignoreBinaries": [
     "swc"
