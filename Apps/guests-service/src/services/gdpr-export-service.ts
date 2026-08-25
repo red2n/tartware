@@ -1,4 +1,11 @@
-import { query } from "../lib/db.js";
+import {
+  selectGuestConsents,
+  selectGuestLoyaltyTransactions,
+  selectGuestNotifications,
+  selectGuestPayments,
+  selectGuestProfile,
+  selectGuestReservations,
+} from "../repositories/gdpr-export-repository.js";
 
 /**
  * GDPR Subject Access Request (SAR) — Article 15 / Article 20 data export.
@@ -11,87 +18,27 @@ export async function exportGuestData(params: {
   const { guestId, tenantId } = params;
 
   // 1. Guest profile
-  const { rows: guestRows } = await query<Record<string, unknown>>(
-    `SELECT id, first_name, last_name, middle_name, title,
-            date_of_birth, gender, nationality,
-            email, phone, secondary_phone, address,
-            id_type, id_number, passport_number, passport_expiry,
-            company_name, company_tax_id,
-            loyalty_tier, loyalty_points, vip_status,
-            preferences, marketing_consent, communication_preferences,
-            total_bookings, total_nights, total_revenue,
-            last_stay_date, member_since, first_stay_date,
-            is_blacklisted, blacklist_reason, notes,
-            created_at, updated_at
-     FROM public.guests
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
-       AND COALESCE(is_deleted, false) = false`,
-    [tenantId, guestId],
-  );
+  const { rows: guestRows } = await selectGuestProfile(tenantId, guestId);
 
   if (guestRows.length === 0) return null;
 
   // 2. Reservations
-  const { rows: reservations } = await query<Record<string, unknown>>(
-    `SELECT id, property_id, room_type_id, room_id,
-            check_in_date, check_out_date, status,
-            number_of_adults, number_of_children, total_amount, currency,
-            source AS booking_source, reservation_type, special_requests,
-            created_at, updated_at
-     FROM public.reservations
-     WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
-     ORDER BY created_at DESC`,
-    [tenantId, guestId],
-  );
+  const { rows: reservations } = await selectGuestReservations(tenantId, guestId);
 
   // 3. Payment transactions
-  const { rows: payments } = await query<Record<string, unknown>>(
-    `SELECT id, payment_reference, transaction_type, payment_method,
-            amount, currency, status, processed_at,
-            created_at
-     FROM public.payments
-     WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
-     ORDER BY created_at DESC`,
-    [tenantId, guestId],
-  );
+  const { rows: payments } = await selectGuestPayments(tenantId, guestId);
 
   // 4. GDPR consent logs
-  const { rows: consents } = await query<Record<string, unknown>>(
-    `SELECT consent_type, consent_status, consent_date,
-            ip_address, consent_source, withdrawal_date
-     FROM public.gdpr_consent_logs
-     -- The consent log keys on subject_id (a guest is one kind of data subject),
-     -- not guest_id. Every other table in this export uses guest_id.
-     WHERE tenant_id = $1::uuid AND subject_id = $2::uuid
-     ORDER BY consent_date DESC`,
-    [tenantId, guestId],
-  );
+  const { rows: consents } = await selectGuestConsents(tenantId, guestId);
 
   // 5. Loyalty transactions
-  const { rows: loyaltyTxns } = await query<Record<string, unknown>>(
-    `SELECT transaction_id AS id, transaction_type, points, balance_after,
-            reference_type, reference_id, description,
-            expires_at, created_at
-     FROM public.loyalty_point_transactions
-     WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
-     ORDER BY created_at DESC`,
-    [tenantId, guestId],
-  );
+  const { rows: loyaltyTxns } = await selectGuestLoyaltyTransactions(tenantId, guestId);
 
   // 6. In-app notifications (communications sent).
   // This table has no channel/subject/status/sent_at columns — it stores
   // notification_id, category, title and a read flag. Aliased so the export's
   // field names stay stable for anything already consuming them.
-  const { rows: notifications } = await query<Record<string, unknown>>(
-    `SELECT notification_id AS id, category AS channel, title AS subject,
-            is_read, read_at, created_at
-     FROM public.in_app_notifications
-     WHERE tenant_id = $1::uuid
-       AND source_type = 'guest'
-       AND source_id = $2::uuid
-     ORDER BY created_at DESC`,
-    [tenantId, guestId],
-  );
+  const { rows: notifications } = await selectGuestNotifications(tenantId, guestId);
 
   return {
     personal_data: guestRows[0],

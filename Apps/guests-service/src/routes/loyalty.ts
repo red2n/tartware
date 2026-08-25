@@ -7,7 +7,12 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { query } from "../lib/db.js";
+import {
+  findLoyaltyProgram,
+  insertTierRule,
+  listPointTransactions,
+  listTierRules,
+} from "../repositories/loyalty-read-repository.js";
 
 // =====================================================
 // LOCAL QUERY / PARAM SCHEMAS
@@ -155,22 +160,12 @@ export const registerLoyaltyRoutes = (app: FastifyInstance): void => {
       const { tenant_id, program_id, transaction_type, limit, offset } =
         LoyaltyTransactionListQuerySchema.parse(request.query);
 
-      const { rows } = await query(
-        `
-          SELECT
-            transaction_id, tenant_id, program_id, guest_id,
-            transaction_type, points, balance_after,
-            currency_value, reference_type, reference_id,
-            description, expires_at, expired,
-            performed_by, created_at
-          FROM loyalty_point_transactions
-          WHERE tenant_id = $1::uuid
-            AND program_id = $2::uuid
-            AND ($3::text IS NULL OR transaction_type = $3::text)
-          ORDER BY created_at DESC
-          LIMIT $4 OFFSET $5
-        `,
-        [tenant_id, program_id, transaction_type ?? null, limit, offset],
+      const { rows } = await listPointTransactions(
+        tenant_id,
+        program_id,
+        transaction_type ?? null,
+        limit,
+        offset,
       );
 
       return LoyaltyTransactionListResponseSchema.parse(
@@ -205,25 +200,7 @@ export const registerLoyaltyRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const { tenant_id, property_id, is_active } = TierRulesQuerySchema.parse(request.query);
 
-      const { rows } = await query(
-        `
-          SELECT
-            rule_id, tenant_id, property_id,
-            tier_name, tier_rank, display_name,
-            min_nights, min_stays, min_points, min_spend,
-            qualification_period_months,
-            points_per_dollar, bonus_multiplier, points_expiry_months,
-            benefits, welcome_bonus_points,
-            is_active,
-            created_at, updated_at, created_by, updated_by
-          FROM loyalty_tier_rules
-          WHERE tenant_id = $1::uuid
-            AND ($2::uuid IS NULL OR property_id = $2::uuid OR property_id IS NULL)
-            AND ($3::boolean IS NULL OR is_active = $3::boolean)
-          ORDER BY tier_rank ASC
-        `,
-        [tenant_id, property_id ?? null, is_active ?? null],
-      );
+      const { rows } = await listTierRules(tenant_id, property_id ?? null, is_active ?? null);
 
       return TierRulesResponseSchema.parse(
         rows.map((row) => normalizeRow(row, TIER_RULE_NUMERIC_FIELDS)),
@@ -265,63 +242,7 @@ export const registerLoyaltyRoutes = (app: FastifyInstance): void => {
         ? "(tenant_id, property_id, tier_name) WHERE property_id IS NOT NULL"
         : "(tenant_id, tier_name) WHERE property_id IS NULL";
 
-      const { rows } = await query(
-        `
-          INSERT INTO loyalty_tier_rules (
-            tenant_id, property_id, tier_name, tier_rank, display_name,
-            min_nights, min_stays, min_points, min_spend,
-            qualification_period_months, points_per_dollar, bonus_multiplier,
-            points_expiry_months, benefits, welcome_bonus_points, is_active
-          ) VALUES (
-            $1::uuid, $2::uuid, $3, $4, $5,
-            $6, $7, $8, $9,
-            $10, $11, $12,
-            $13, $14::jsonb, $15, $16
-          )
-          ON CONFLICT ${conflictTarget} DO UPDATE SET
-            tier_rank                   = EXCLUDED.tier_rank,
-            display_name                = EXCLUDED.display_name,
-            min_nights                  = EXCLUDED.min_nights,
-            min_stays                   = EXCLUDED.min_stays,
-            min_points                  = EXCLUDED.min_points,
-            min_spend                   = EXCLUDED.min_spend,
-            qualification_period_months = EXCLUDED.qualification_period_months,
-            points_per_dollar           = EXCLUDED.points_per_dollar,
-            bonus_multiplier            = EXCLUDED.bonus_multiplier,
-            points_expiry_months        = EXCLUDED.points_expiry_months,
-            benefits                    = EXCLUDED.benefits,
-            welcome_bonus_points        = EXCLUDED.welcome_bonus_points,
-            is_active                   = EXCLUDED.is_active,
-            updated_at                  = NOW()
-          RETURNING
-            rule_id, tenant_id, property_id,
-            tier_name, tier_rank, display_name,
-            min_nights, min_stays, min_points, min_spend,
-            qualification_period_months,
-            points_per_dollar, bonus_multiplier, points_expiry_months,
-            benefits, welcome_bonus_points,
-            is_active,
-            created_at, updated_at, created_by, updated_by
-        `,
-        [
-          body.tenant_id,
-          body.property_id ?? null,
-          body.tier_name,
-          body.tier_rank,
-          body.display_name ?? null,
-          body.min_nights,
-          body.min_stays,
-          body.min_points,
-          body.min_spend,
-          body.qualification_period_months,
-          body.points_per_dollar,
-          body.bonus_multiplier,
-          body.points_expiry_months ?? null,
-          JSON.stringify(body.benefits),
-          body.welcome_bonus_points,
-          body.is_active,
-        ],
-      );
+      const { rows } = await insertTierRule(body, conflictTarget);
 
       const [created] = rows;
       if (!created) {
@@ -366,21 +287,7 @@ export const registerLoyaltyRoutes = (app: FastifyInstance): void => {
       const { programId } = ProgramBalanceParamsSchema.parse(request.params);
       const { tenant_id } = ProgramBalanceQuerySchema.parse(request.query);
 
-      const { rows } = await query(
-        `
-          SELECT
-            program_id, guest_id, tier_name,
-            COALESCE(points_balance, 0) AS points_balance,
-            COALESCE(points_earned_lifetime, 0) AS points_earned_lifetime,
-            COALESCE(points_redeemed_lifetime, 0) AS points_redeemed_lifetime,
-            last_activity_date
-          FROM guest_loyalty_programs
-          WHERE tenant_id = $1::uuid
-            AND program_id = $2::uuid
-            AND COALESCE(is_deleted, false) = false
-        `,
-        [tenant_id, programId],
-      );
+      const { rows } = await findLoyaltyProgram(tenant_id, programId);
 
       if (rows.length === 0) {
         return reply.notFound("Loyalty program not found");

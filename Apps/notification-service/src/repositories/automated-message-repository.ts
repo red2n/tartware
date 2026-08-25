@@ -8,7 +8,7 @@
  * Statements moved verbatim out of `services/automated-message-service.ts`.
  */
 
-export const SELECT_COLUMNS = `
+const SELECT_COLUMNS = `
   message_id, tenant_id, property_id, message_name, message_code, description,
   trigger_type, trigger_event, is_active, is_paused, priority,
   send_timing, delay_minutes, delay_hours, delay_days,

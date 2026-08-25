@@ -1,6 +1,15 @@
 import type { GuestConsentLedger } from "@tartware/schemas";
 
-import { query, queryWithClient, withTransaction } from "../lib/db.js";
+import { queryWithClient, withTransaction } from "../lib/db.js";
+import {
+  applyCommunicationPreferences,
+  applyMarketingOptOut,
+  findGuestForConsent,
+  insertConsentLog,
+  selectConsentDecisions,
+  selectConsentLedger,
+  selectMarketingConsent,
+} from "../repositories/privacy-repository.js";
 
 /**
  * Consent ledger key → `gdpr_consent_logs.consent_type`.
@@ -42,34 +51,13 @@ export async function getGuestPrivacyState(params: { guestId: string; tenantId: 
   }>;
 } | null> {
   // Guest base record
-  const guestResult = await query<{
-    marketing_consent: boolean;
-    communication_preferences: Record<string, boolean>;
-    metadata: Record<string, unknown> | null;
-  }>(
-    `SELECT marketing_consent, communication_preferences, metadata
-     FROM guests
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false`,
-    [params.guestId, params.tenantId],
-  );
+  const guestResult = await selectMarketingConsent(params.guestId, params.tenantId);
 
   const guest = guestResult.rows[0];
   if (!guest) return null;
 
   // Active consent records
-  const consentResult = await query<{
-    consent_type: string;
-    consent_status: string;
-    consent_date: string;
-  }>(
-    `SELECT consent_type, consent_status, consent_date::text
-     FROM gdpr_consent_logs
-     WHERE subject_id = $1 AND tenant_id = $2
-       AND is_active = true
-       AND COALESCE(is_deleted, false) = false
-     ORDER BY consent_date DESC`,
-    [params.guestId, params.tenantId],
-  );
+  const consentResult = await selectConsentDecisions(params.guestId, params.tenantId);
 
   const ccpaOptOut =
     (guest.metadata as Record<string, unknown> | null)?.ccpa_opt_out_of_sale === true;
@@ -95,43 +83,10 @@ export async function setCcpaOptOut(params: {
   userAgent?: string;
 }): Promise<void> {
   // Update guest metadata with ccpa_opt_out_of_sale flag
-  await query(
-    `UPDATE guests
-     SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('ccpa_opt_out_of_sale', $3::boolean),
-         marketing_consent = CASE WHEN $3 = true THEN false ELSE marketing_consent END,
-         updated_at = NOW(),
-         updated_by = $4
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false`,
-    [params.guestId, params.tenantId, params.optOut, params.requestedBy ?? "SYSTEM"],
-  );
+  await applyMarketingOptOut(params);
 
   // Log the consent change
-  await query(
-    `INSERT INTO gdpr_consent_logs (
-       tenant_id, subject_type, subject_id,
-       consent_type, consent_given, consent_status,
-       consent_method, purpose_description, legal_basis,
-       ccpa_compliant, ip_address, user_agent,
-       recorded_by
-     ) VALUES (
-       $1, 'guest', $2,
-       'data_sharing', $3, $4,
-       'opt_out', 'CCPA Do Not Sell My Personal Information opt-' || CASE WHEN $5 THEN 'out' ELSE 'in' END,
-       'consent',
-       true, $6, $7,
-       $8
-     )`,
-    [
-      params.tenantId,
-      params.guestId,
-      !params.optOut, // consent_given = false when opting out
-      params.optOut ? "withdrawn" : "given",
-      params.optOut,
-      params.ipAddress ?? null,
-      params.userAgent ?? null,
-      params.requestedBy ?? null,
-    ],
-  );
+  await insertConsentLog(params);
 }
 
 /**
@@ -150,30 +105,13 @@ export async function getGuestConsentLedger(params: {
   guestId: string;
   tenantId: string;
 }): Promise<GuestConsentLedger | null> {
-  const guestResult = await query<{ id: string }>(
-    `SELECT id FROM guests
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false`,
-    [params.guestId, params.tenantId],
-  );
+  const guestResult = await findGuestForConsent(params.guestId, params.tenantId);
   if (!guestResult.rows[0]) return null;
 
-  const consentResult = await query<{
-    consent_type: string;
-    consent_given: boolean;
-    consent_date: Date;
-  }>(
-    `SELECT DISTINCT ON (consent_type) consent_type, consent_given, consent_date
-     FROM gdpr_consent_logs
-     WHERE subject_id = $1 AND tenant_id = $2
-       AND consent_type = ANY($3::text[])
-       AND is_active = true
-       AND COALESCE(is_deleted, false) = false
-     ORDER BY consent_type, consent_date DESC`,
-    [
-      params.guestId,
-      params.tenantId,
-      CONSENT_LEDGER_KEYS.map((k) => CONSENT_TYPE_BY_LEDGER_KEY[k]),
-    ],
+  const consentResult = await selectConsentLedger(
+    params.guestId,
+    params.tenantId,
+    CONSENT_LEDGER_KEYS.map((k) => CONSENT_TYPE_BY_LEDGER_KEY[k]),
   );
 
   const ledger: GuestConsentLedger = {};
@@ -221,11 +159,7 @@ export async function updateGuestConsent(params: {
     return getGuestConsentLedger({ guestId: params.guestId, tenantId: params.tenantId });
   }
 
-  const guestResult = await query<{ id: string }>(
-    `SELECT id FROM guests
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false`,
-    [params.guestId, params.tenantId],
-  );
+  const guestResult = await findGuestForConsent(params.guestId, params.tenantId);
   if (!guestResult.rows[0]) return null;
 
   await withTransaction(async (client) => {
@@ -307,18 +241,5 @@ export async function updateCommunicationPreferences(params: {
   preferences: Record<string, boolean>;
   updatedBy?: string;
 }): Promise<void> {
-  await query(
-    `UPDATE guests
-     SET communication_preferences = $3::jsonb,
-         marketing_consent = COALESCE(($3::jsonb->>'email')::boolean, false),
-         updated_at = NOW(),
-         updated_by = $4
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false`,
-    [
-      params.guestId,
-      params.tenantId,
-      JSON.stringify(params.preferences),
-      params.updatedBy ?? "SYSTEM",
-    ],
-  );
+  await applyCommunicationPreferences(params);
 }

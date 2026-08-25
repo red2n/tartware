@@ -2,6 +2,7 @@ import { enterTenantScope } from "@tartware/config/db";
 
 import { pool } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import { listTenantsWithExpiringPoints } from "../repositories/loyalty-sweep-repository.js";
 import { expireLoyaltyPoints } from "../services/loyalty-command-service.js";
 
 const logger = appLogger.child({ module: "loyalty-expiry-sweep-job" });
@@ -40,15 +41,7 @@ const runSweep = async (): Promise<void> => {
   const client = await pool.connect();
   let tenantIds: string[];
   try {
-    const result = await client.query<{ tenant_id: string }>(
-      `SELECT DISTINCT tenant_id
-       FROM loyalty_point_transactions
-       WHERE expired = FALSE
-         AND expires_at IS NOT NULL
-         AND expires_at <= NOW()
-         AND transaction_type IN ('earn', 'bonus', 'adjust', 'transfer_in')
-         AND points > 0`,
-    );
+    const result = await listTenantsWithExpiringPoints(client);
     tenantIds = result.rows.map((row) => row.tenant_id);
   } finally {
     client.release();
