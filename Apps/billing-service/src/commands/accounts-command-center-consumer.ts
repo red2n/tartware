@@ -8,7 +8,7 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
-import { enterTenantScope } from "@tartware/config/db";
+import { runWithTenantScope } from "@tartware/config/db";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -179,7 +179,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
-  onTenantResolved: enterTenantScope,
+  withTenantScope: runWithTenantScope,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
   metrics: {

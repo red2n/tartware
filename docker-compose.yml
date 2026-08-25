@@ -75,24 +75,33 @@ services:
   # Transaction-mode pooling allows 300 real PG connections to serve 2000+
   # app connections. All services should connect via pgbouncer:5433.
   # Direct port 5432 is kept for DBA/admin access only.
+  #
+  # PGBOUNCER_DEFAULT_POOL_SIZE is the throughput-limiting number in this whole
+  # stack. It is the count of *server* connections PgBouncer opens per
+  # (database, user) pair, and every service shares one pair here — so it caps
+  # how many statements Postgres executes at once, no matter how large the app
+  # pools or how many replicas run. Raising it is not free: past roughly 2-4x
+  # the database's core count, added concurrency costs more in context switching
+  # and lock contention than it returns. Tune it against `loadtest/k6` on the
+  # real hardware; do not guess it upward.
   pgbouncer:
     image: pgbouncer/pgbouncer:latest
     container_name: tartware-pgbouncer
     restart: always
     environment:
-      DATABASES_HOST: postgres
+      DATABASES_HOST: ${PGBOUNCER_DATABASES_HOST:-postgres}
       DATABASES_PORT: "5432"
       DATABASES_USER: postgres
       DATABASES_PASSWORD: postgres
       DATABASES_DBNAME: tartware
       # Transaction pooling is essential for 20K ops/sec with RLS SET LOCAL
       PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: "2000"
-      PGBOUNCER_DEFAULT_POOL_SIZE: "60"
-      PGBOUNCER_MIN_POOL_SIZE: "10"
-      PGBOUNCER_RESERVE_POOL_SIZE: "15"
+      PGBOUNCER_MAX_CLIENT_CONN: "${PGBOUNCER_MAX_CLIENT_CONN:-2000}"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "${PGBOUNCER_DEFAULT_POOL_SIZE:-60}"
+      PGBOUNCER_MIN_POOL_SIZE: "${PGBOUNCER_MIN_POOL_SIZE:-10}"
+      PGBOUNCER_RESERVE_POOL_SIZE: "${PGBOUNCER_RESERVE_POOL_SIZE:-15}"
       PGBOUNCER_RESERVE_POOL_TIMEOUT: "3"
-      PGBOUNCER_MAX_DB_CONNECTIONS: "250"
+      PGBOUNCER_MAX_DB_CONNECTIONS: "${PGBOUNCER_MAX_DB_CONNECTIONS:-250}"
       PGBOUNCER_SERVER_LIFETIME: "3600"
       PGBOUNCER_SERVER_IDLE_TIMEOUT: "300"
       PGBOUNCER_CLIENT_IDLE_TIMEOUT: "0"

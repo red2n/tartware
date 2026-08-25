@@ -30,6 +30,16 @@ type CommandCenterConfig = {
   maxRetries: number;
   retryBackoffMs: number;
   retryScheduleMs: number[];
+  /**
+   * How many assigned partitions this process drains at once.
+   *
+   * Commands within a partition stay strictly ordered whatever this is set to;
+   * raising it only lets *different* partitions make progress while one waits
+   * on its database round trips. Left at 1, a consumer's ceiling is a single
+   * command's latency — roughly 200/sec against a 5 ms handler, no matter how
+   * many partitions it owns or how many replicas are running.
+   */
+  partitionsConsumedConcurrently: number;
 };
 
 type CommandConsumerMetrics = {
@@ -73,8 +83,22 @@ export type CreateConsumerLifecycleInput = {
    * override only for a failure mode that contract cannot express.
    */
   isRetryable?: (error: unknown) => boolean;
-  /** Called before routing a command — wire `enterTenantScope` here for RLS. */
+  /**
+   * Called before routing a command — wire `enterTenantScope` here for RLS.
+   *
+   * @deprecated Prefer {@link CreateConsumerLifecycleInput.withTenantScope}. This
+   * sets ambient scope that outlives the command and is unsafe once
+   * `partitionsConsumedConcurrently` exceeds 1.
+   */
   onTenantResolved?: (tenantId: string) => void;
+  /**
+   * Runs a command inside its RLS tenant scope — wire `runWithTenantScope` here.
+   *
+   * Preferred over {@link CreateConsumerLifecycleInput.onTenantResolved}: the
+   * scope covers exactly one command instead of leaking into the batch runner,
+   * which is what makes concurrent partition consumption safe.
+   */
+  withTenantScope?: <T>(tenantId: string, fn: () => Promise<T>) => Promise<T>;
 };
 
 /**
@@ -116,10 +140,16 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
       fromBeginning: false,
     });
 
-    // Wrap routeCommand to set RLS tenant scope before each command.
+    // Wrap routeCommand so each command runs inside its own RLS tenant scope.
+    // `withTenantScope` confines the scope to the command; `onTenantResolved`
+    // is the older ambient form, kept for consumers that still pass it.
     const wrappedRouteCommand: typeof input.routeCommand = async (envelope, metadata) => {
+      const route = () => input.routeCommand(envelope, metadata);
+      if (input.withTenantScope) {
+        return input.withTenantScope(metadata.tenantId, route);
+      }
       input.onTenantResolved?.(metadata.tenantId);
-      return input.routeCommand(envelope, metadata);
+      return route();
     };
 
     const { handleBatch } = createCommandCenterHandlers({
@@ -149,9 +179,23 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
       }),
     });
 
+    // Concurrency is only safe when the tenant scope is confined to a single
+    // command. With the ambient `onTenantResolved` form, interleaved partitions
+    // would leave one tenant's scope visible to another's queries, so hold the
+    // consumer at 1 and say why rather than risking a cross-tenant read.
+    let concurrency = Math.max(1, input.commandCenterConfig.partitionsConsumedConcurrently);
+    if (concurrency > 1 && input.onTenantResolved && !input.withTenantScope) {
+      input.logger.warn(
+        { requested: concurrency, serviceName: input.serviceName },
+        `${input.commandLabel} consumer pinned to 1 partition: partitionsConsumedConcurrently > 1 requires withTenantScope (runWithTenantScope), not onTenantResolved`,
+      );
+      concurrency = 1;
+    }
+
     await consumer.run({
       autoCommit: false,
       eachBatchAutoResolve: false,
+      partitionsConsumedConcurrently: concurrency,
       eachBatch: handleBatch,
     });
 
@@ -160,6 +204,7 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
         topic: input.commandCenterConfig.topic,
         groupId: input.commandCenterConfig.consumerGroupId,
         targetService: input.commandCenterConfig.targetServiceId,
+        partitionsConsumedConcurrently: concurrency,
       },
       `${input.commandLabel} command consumer started`,
     );

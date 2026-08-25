@@ -18,12 +18,32 @@ const tenantContextStore = new AsyncLocalStorage<{ tenantId: string }>();
 
 /**
  * Set the RLS tenant scope for the current async execution chain.
- * Call this from auth middleware / Kafka consumer before any DB access.
- * Uses `enterWith` so the scope persists for all downstream awaits.
+ * Call this from auth middleware before any DB access — a Fastify request
+ * already owns its execution context, so mutating it in place is safe.
+ *
+ * Uses `enterWith`, which persists through downstream awaits but also writes
+ * the scope back into the *calling* context. On a request that is harmless.
+ * On a shared driver loop — a Kafka batch runner processing many tenants — it
+ * leaves the last tenant's scope behind as ambient state, so any later query
+ * that forgets to set its own scope silently runs as the wrong tenant. Use
+ * {@link runWithTenantScope} on those paths instead.
  */
 export const enterTenantScope = (tenantId: string): void => {
   tenantContextStore.enterWith({ tenantId });
 };
+
+/**
+ * Run `fn` with the RLS tenant scope bound for exactly its duration.
+ *
+ * The containment `enterTenantScope` cannot give: the scope is visible to
+ * everything `fn` awaits and to nothing outside it, so concurrent callers on a
+ * shared loop cannot observe each other's tenant and none of them leaves a
+ * stale scope behind. Required wherever one execution context serves multiple
+ * tenants — Kafka consumers above all, where partitions for different tenants
+ * are processed concurrently.
+ */
+export const runWithTenantScope = <T>(tenantId: string, fn: () => Promise<T>): Promise<T> =>
+  tenantContextStore.run({ tenantId }, fn);
 
 /** Read the current tenant scope (or `undefined` when unset). */
 export const getTenantScope = (): string | undefined => tenantContextStore.getStore()?.tenantId;

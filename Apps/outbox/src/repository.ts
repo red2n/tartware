@@ -194,6 +194,41 @@ export const createOutboxRepository = ({
 		);
 	};
 
+	/**
+	 * Mark a whole published batch delivered in one statement.
+	 *
+	 * A dispatcher draining thousands of rows a second cannot afford one UPDATE
+	 * per record: with an RLS tenant scope active each of those carries its own
+	 * connect / BEGIN / `set_config` / COMMIT, so the bookkeeping costs more
+	 * round trips than the publish it is recording.
+	 */
+	const markOutboxDeliveredBatch = async (ids: string[]): Promise<number> => {
+		if (ids.length === 0) {
+			return 0;
+		}
+		const result = await query(
+			`
+        UPDATE transactional_outbox
+        SET
+          status = 'DELIVERED',
+          delivered_at = NOW(),
+          locked_at = NULL,
+          locked_by = NULL,
+          last_error = NULL,
+          updated_at = NOW(),
+          metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+            'lifecycleState',
+            'PUBLISHED',
+            'publishedAt',
+            NOW()
+          )
+        WHERE id = ANY($1::uuid[])
+      `,
+			[ids],
+		);
+		return result.rowCount ?? 0;
+	};
+
 	const markOutboxDeliveredByEventId = async (
 		eventId: string,
 	): Promise<void> => {
@@ -328,6 +363,7 @@ export const createOutboxRepository = ({
 		releaseExpiredLocks,
 		claimOutboxBatch,
 		markOutboxDelivered,
+		markOutboxDeliveredBatch,
 		markOutboxDeliveredByEventId,
 		markOutboxFailed,
 		markOutboxFailedByEventId,

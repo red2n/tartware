@@ -173,6 +173,32 @@ export const kafkaConfig = {
   commandTopic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
 };
 
+/**
+ * Command outbox dispatcher.
+ *
+ * `idlePollIntervalMs` is the delay only when a cycle came back empty; a cycle
+ * that filled its batch reschedules immediately, so a backlog drains at the
+ * speed of the database and broker rather than at the poll rate. That is why
+ * the idle value can stay low without becoming a busy loop — it governs how
+ * quickly the first command after a quiet spell is picked up, which is the
+ * latency a caller actually perceives now that publishing is asynchronous.
+ */
+export const commandOutboxConfig = {
+  enabled: (process.env.COMMAND_OUTBOX_DISPATCHER_ENABLED ?? "true") !== "false",
+  batchSize: parseNumberEnv(process.env.COMMAND_OUTBOX_BATCH_SIZE, 500),
+  idlePollIntervalMs: Math.max(10, parseNumberEnv(process.env.COMMAND_OUTBOX_IDLE_POLL_MS, 50)),
+  lockTimeoutMs: parseNumberEnv(process.env.COMMAND_OUTBOX_LOCK_TIMEOUT_MS, 30_000),
+  /** How many cycles between sweeps for locks left behind by a crashed worker. */
+  lockSweepEveryCycles: Math.max(
+    1,
+    parseNumberEnv(process.env.COMMAND_OUTBOX_LOCK_SWEEP_CYCLES, 200),
+  ),
+  maxRetries: parseNumberEnv(process.env.COMMAND_OUTBOX_MAX_RETRIES, 5),
+  retryBackoffMs: parseNumberEnv(process.env.COMMAND_OUTBOX_RETRY_BACKOFF_MS, 1000),
+  workerId:
+    process.env.COMMAND_OUTBOX_WORKER_ID ?? `api-gateway-${process.env.HOSTNAME ?? process.pid}`,
+};
+
 export const commandRegistryConfig = {
   refreshIntervalMs: parseNumberEnv(env.COMMAND_REGISTRY_REFRESH_MS, 30000),
   startupMaxRetries: toRetryCount(env.COMMAND_REGISTRY_STARTUP_RETRIES, 12),

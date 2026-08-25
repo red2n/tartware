@@ -2,8 +2,11 @@ import process from "node:process";
 
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
-
 import { shutdownCommandRegistry, startCommandRegistry } from "./command-center/index.js";
+import {
+  shutdownCommandOutboxDispatcher,
+  startCommandOutboxDispatcher,
+} from "./command-center/outbox-dispatcher.js";
 import { dbConfig, gatewayConfig, kafkaConfig } from "./config.js";
 import { shutdownProducer, startProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
@@ -50,6 +53,9 @@ const start = async () => {
     }
     await startCommandRegistry();
     await startProducer();
+    // After the producer connects: the dispatcher publishes as soon as it claims
+    // a batch, so it must not run before it has somewhere to publish to.
+    startCommandOutboxDispatcher();
     await app.listen({ port: gatewayConfig.port, host: gatewayConfig.host });
     app.log.info(
       {
@@ -62,6 +68,9 @@ const start = async () => {
   } catch (error) {
     app.log.error(error, "Failed to start API gateway");
     await app.close();
+    await shutdownCommandOutboxDispatcher().catch((dispatcherError: unknown) =>
+      app.log.error(dispatcherError, "Failed to stop command outbox dispatcher"),
+    );
     await shutdownProducer().catch((producerError: unknown) =>
       app.log.error(producerError, "Failed to shutdown Kafka producer"),
     );
@@ -89,6 +98,9 @@ if (proc && "on" in proc && typeof proc.on === "function") {
       .close()
       .catch((error: unknown) => app.log.error(error, "Error while shutting down server (SIGTERM)"))
       .finally(async () => {
+        await shutdownCommandOutboxDispatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while stopping command outbox dispatcher"),
+        );
         await Promise.allSettled([
           shutdownProducer().catch((error: unknown) =>
             app.log.error(error, "Error while shutting down Kafka producer"),
@@ -114,6 +126,9 @@ if (proc && "on" in proc && typeof proc.on === "function") {
       .close()
       .catch((error: unknown) => app.log.error(error, "Error while shutting down server (SIGINT)"))
       .finally(async () => {
+        await shutdownCommandOutboxDispatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while stopping command outbox dispatcher"),
+        );
         await Promise.allSettled([
           shutdownProducer().catch((error: unknown) =>
             app.log.error(error, "Error while shutting down Kafka producer"),

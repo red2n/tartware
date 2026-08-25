@@ -7,11 +7,7 @@ import {
   type AcceptedCommand,
   acceptCommand,
   CommandDispatchError,
-  markCommandDelivered,
-  markCommandFailed,
 } from "../command-center/index.js";
-import { kafkaConfig } from "../config.js";
-import { publishRecord } from "../kafka/producer.js";
 import { commandsAcceptedTotal } from "../lib/metrics.js";
 import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
@@ -175,42 +171,12 @@ export const submitCommand = async ({
     throw error;
   }
 
-  try {
-    await publishRecord({
-      topic: acceptance.envelope.targetTopic ?? kafkaConfig.commandTopic,
-      messages: [
-        {
-          key: acceptance.commandId,
-          value: JSON.stringify({
-            metadata: acceptance.envelope.metadata,
-            payload: acceptance.envelope.payload,
-          }),
-          headers: acceptance.envelope.headers,
-        },
-      ],
-    });
-    await markCommandDelivered(acceptance.outboxEventId);
-    commandsAcceptedTotal.inc({ command_name: commandName });
-  } catch (error) {
-    await markCommandFailed(acceptance.outboxEventId, error).catch((failureError) => {
-      logger.error(
-        {
-          err: failureError,
-          commandId: acceptance.commandId,
-        },
-        "failed to mark command failure",
-      );
-    });
-    logger.error(
-      {
-        err: error,
-        commandId: acceptance.commandId,
-        commandName: acceptance.commandName,
-      },
-      "failed to publish command",
-    );
-    return reply.badGateway("Unable to publish command to Kafka.");
-  }
+  // The command is durable in the outbox now, inside the same transaction that
+  // recorded its dispatch row. Publishing is the outbox dispatcher's job, so the
+  // request no longer pays a broker round trip plus two status UPDATEs, and a
+  // broker outage no longer turns an accepted command into a 502 the caller has
+  // to retry — the row is already committed and delivers when Kafka returns.
+  commandsAcceptedTotal.inc({ command_name: commandName });
 
   if (idempotencyKey) {
     reply.header("Idempotency-Key", idempotencyKey);

@@ -1,8 +1,10 @@
 # Tartware — start here
 
 Command-driven Property Management System. TypeScript monorepo, pnpm + Nx, targeting 20K ops/sec.
-All writes go through the API Gateway's Command Center → Kafka → domain consumers. Reads are
-proxied straight to services. Postgres per-tenant scoped; OTLP telemetry throughout.
+All writes go through the API Gateway's Command Center → transactional outbox → dispatcher →
+Kafka → domain consumers; a command is durable at the outbox commit, and `202` means recorded,
+not published. Reads are proxied straight to services. Postgres per-tenant scoped; OTLP
+telemetry throughout.
 
 **This file is the orientation. Read it before scanning the repo — the facts below are verified,
 so use them instead of re-deriving them.** Depth lives in `AGENTS.md` (rules), `README.md`
@@ -66,6 +68,7 @@ table; this is the working set.
 | Logger | `createServiceLogger()` — `@tartware/telemetry` | `pino()` directly |
 | Kafka client | `createKafkaClient()` — `@tartware/command-consumer-utils/producer` | `new Kafka(...)` |
 | Consumer lifecycle | `createConsumerLifecycle()` — `.../lifecycle` | bespoke run/disconnect |
+| Tenant scope (consumers/loops) | `runWithTenantScope()` — `@tartware/config/db` | `enterTenantScope` off a request |
 | Command helpers | `resolveActorId`, `asUuid`, `SYSTEM_ACTOR_ID`, `CommandError` — `.../command-utils` | local copies (see backlog 01–03) |
 | DB pool / tenant scope | `createDbPool()`, `enterTenantScope()` — `@tartware/config/db` | local `new Pool(...)` |
 | Outbox | `createOutboxRepository()` — `@tartware/outbox` | producing inside a transaction |
@@ -149,6 +152,21 @@ Working through these one at a time. Update the status column when one lands.
 | 08 | Medium | TSDoc coverage 8%–100%; weakest in shared packages (telemetry 8%, availability-guard 11%, core 37%). | open |
 | 09 | Medium | Tests run in no local gate: `test` missing from `REQUIRED_TARGETS` and from `pnpm run build`. | open |
 | 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | 01, 03 done; 02 needs no rule (safe by default); 06 open |
+
+### Throughput (20K ops/sec target)
+
+Derived from reading the hot paths, **not measured** — `loadtest/k6` has never been run against
+this stack. Treat the numbers as arithmetic until a k6 run says otherwise.
+
+| # | Finding | Status |
+|---|---------|--------|
+| T1 | Consumers drained one partition at a time (`partitionsConsumedConcurrently` unset → 1), capping a process at one command's latency, ~200/sec. | **done 25 Aug** — now configurable via `KAFKA_PARTITION_CONCURRENCY`, default 4. Required `runWithTenantScope` first: `enterWith` writes tenant scope back into the calling context, so a shared batch runner leaked the last tenant's scope. |
+| T2 | Gateway accept path ran 5 standalone statements + a synchronous Kafka ack. With an RLS scope active each statement pays its own connect/BEGIN/`set_config`/COMMIT → ~25 round trips, 5 pool checkouts per command. | **done 25 Aug** — one transaction (~6 round trips, 1 checkout); publish moved to the outbox dispatcher. |
+| T3 | Outbox was written then published inline and marked delivered in-request — full cost of a durable log, none of the benefit. | **done 25 Aug** — `Apps/api-gateway/src/command-center/dispatcher.ts` drains it with `sendBatch` + batched marking, adaptive polling, `FOR UPDATE SKIP LOCKED` so every replica can run one. |
+| T4 | `DB_POOL_MAX` defaults to 15 per pod — the binding limit once T1–T3 land. Raising it needs PgBouncer, which is referenced in docs/health checks but has no deployment manifest. | open |
+| T5 | Kafka message keying: commands are keyed by command id, so there is **no ordering guarantee** between two commands on the same reservation or folio. Pre-existing, preserved deliberately through T3. Keying by tenant would fix ordering but hot-partition the largest tenants. Needs a decision. | open |
+| T6 | Nothing here is measured. Run `loadtest/k6` and replace the arithmetic above with real numbers. | open |
+| T7 | `reservations-command-service` outbox dispatcher publishes one record per `send()`, serially, on a 2s poll, and uses `enterTenantScope` in its loop (same hazard as T1). | open |
 
 ---
 

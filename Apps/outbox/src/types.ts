@@ -66,6 +66,8 @@ export type OutboxRepository = {
 		aggregateTypeFilter?: string | readonly string[],
 	) => Promise<OutboxRecord[]>;
 	markOutboxDelivered: (id: string) => Promise<void>;
+	/** Mark many published rows delivered in one statement; returns rows updated. */
+	markOutboxDeliveredBatch: (ids: string[]) => Promise<number>;
 	markOutboxDeliveredByEventId: (eventId: string) => Promise<void>;
 	markOutboxFailed: (
 		id: string,

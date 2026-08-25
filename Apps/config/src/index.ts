@@ -40,7 +40,20 @@ export const databaseSchema = z.object({
       "DB_PASSWORD is required in non-test environments",
     ),
   DB_SSL: booleanString,
-  DB_POOL_MAX: z.coerce.number().int().default(15),
+  /**
+   * Concurrent statements one process may have in flight.
+   *
+   * `DB_PORT` defaults to PgBouncer (5433), not Postgres, and PgBouncer runs in
+   * transaction mode — so a connection here is a cheap client connection that is
+   * multiplexed onto a shared server pool, not a Postgres backend. Sizing this
+   * like a direct pool throttles the service without protecting the database:
+   * the real Postgres-side limit is PgBouncer's `default_pool_size`.
+   *
+   * The ceiling that matters is PgBouncer's `max_client_conn` (2000 by default
+   * here), which this must stay under across *every* pod of *every* service:
+   * `pods × DB_POOL_MAX < max_client_conn`. Raise both together.
+   */
+  DB_POOL_MAX: z.coerce.number().int().default(50),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().default(20000),
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().default(15000),
   DB_QUERY_TIMEOUT_MS: z.coerce.number().int().default(20000),

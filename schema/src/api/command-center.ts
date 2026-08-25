@@ -340,18 +340,57 @@ export interface CommandOutboxRecord {
 	metadata?: Record<string, unknown>;
 }
 
+/**
+ * The reads and writes that accepting a command performs, as one unit.
+ *
+ * `command_dispatches.outbox_event_id` is `NOT NULL REFERENCES
+ * transactional_outbox (event_id)`, so the outbox row has to exist before the
+ * dispatch row and the two only make sense together: an outbox row without its
+ * dispatch row still publishes, and the command executes with no audit record.
+ * Binding all three operations to one transaction is what stops a crash between
+ * them from producing that orphan.
+ */
+export interface CommandDispatchWriter {
+	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
+	/**
+	 * Returns `false` when a dispatch for this (tenant, command, request) already
+	 * exists — two identical requests racing, which a prior lookup cannot rule
+	 * out. Callers treat `false` as "replay" rather than letting the unique
+	 * index surface as a 500.
+	 */
+	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<boolean>;
+	findCommandDispatchByRequest: (
+		tenantId: string,
+		commandName: string,
+		requestId: string,
+	) => Promise<CommandDispatchLookup | null>;
+}
+
 /** Dependency injection contract for the command dispatch service factory. */
 export interface CommandDispatchDependencies<Membership = unknown> {
 	resolveCommandForTenant: (
 		args: Omit<AcceptCommandInput<Membership>, "payload" | "initiatedBy">,
 	) => CommandResolution<Membership>;
 	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
-	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<void>;
+	/** See {@link CommandDispatchWriter.insertCommandDispatch} for the `false` case. */
+	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<boolean>;
 	findCommandDispatchByRequest: (
 		tenantId: string,
 		commandName: string,
 		requestId: string,
 	) => Promise<CommandDispatchLookup | null>;
+	/**
+	 * Runs the accept-command reads and writes inside one transaction.
+	 *
+	 * Supplying it also collapses the per-statement cost: with an RLS tenant
+	 * scope active, every standalone `query()` pays its own connect / BEGIN /
+	 * `set_config` / COMMIT, so three separate statements cost fifteen round
+	 * trips where one transaction costs six. Omit it and the individual
+	 * dependencies above are used unchanged, without atomicity.
+	 */
+	withDispatchTransaction?: <T>(
+		fn: (writer: CommandDispatchWriter) => Promise<T>,
+	) => Promise<T>;
 	throttleCommand?: (input: {
 		commandName: string;
 		tenantId: string;
