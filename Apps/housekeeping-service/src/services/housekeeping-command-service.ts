@@ -1,4 +1,4 @@
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
@@ -18,14 +18,11 @@ import {
   HousekeepingTaskReopenCommandSchema,
 } from "../schemas/housekeeping-commands.js";
 
-class HousekeepingCommandError extends Error {
-  code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
+/**
+ * HousekeepingCommandError — see {@link CommandError} for the `retryable` contract the
+ * command consumer reads when deciding retry vs DLQ.
+ */
+class HousekeepingCommandError extends CommandError {}
 
 /**
  * Assign a housekeeping task to a staff member.

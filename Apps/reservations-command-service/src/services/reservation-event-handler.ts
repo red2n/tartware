@@ -1,3 +1,4 @@
+import { CommandError } from "@tartware/command-consumer-utils/command-utils";
 import type {
   CreateFolioParams,
   ReservationCancelledEvent,
@@ -11,13 +12,11 @@ import { query } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
 import { dispatchNotificationCommand } from "./reservation-commands/notification-dispatch.js";
 
-class ReservationEventError extends Error {
-  code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
+/**
+ * ReservationEventError — see {@link CommandError} for the `retryable` contract
+ * the command consumer reads when deciding retry vs DLQ.
+ */
+class ReservationEventError extends CommandError {}
 
 /**
  * MED-008 + N+1 elimination: Validate property belongs to tenant AND fetch

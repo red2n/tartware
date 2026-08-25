@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { config } from "../config.js";
 import { publishEvent } from "../kafka/producer.js";
@@ -23,14 +23,11 @@ import { findArrivingReservation, publishNotificationCommand } from "./room-noti
 
 const logger = appLogger.child({ module: "room-command-service" });
 
-class RoomCommandError extends Error {
-  code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
+/**
+ * RoomCommandError — see {@link CommandError} for the `retryable` contract the
+ * command consumer reads when deciding retry vs DLQ.
+ */
+class RoomCommandError extends CommandError {}
 
 /**
  * Handle room inventory block or release commands.

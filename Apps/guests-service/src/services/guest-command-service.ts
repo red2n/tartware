@@ -1,4 +1,4 @@
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type {
   GuestAddress,
   GuestCommandRow,
@@ -195,7 +195,10 @@ export const mergeGuestProfiles = async ({
   const duplicate = guests.rows.find((guest) => guest.id === command.duplicate_guest_id);
 
   if (!primary || !duplicate) {
-    throw new Error("GUEST_MERGE_TARGETS_NOT_FOUND");
+    throw new CommandError(
+      "GUEST_MERGE_TARGETS_NOT_FOUND",
+      "Merge source or target guest not found",
+    );
   }
 
   const merged = mergeGuestRows(primary, duplicate, command);
@@ -358,7 +361,7 @@ export const updateGuestProfile = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info("guest.update_profile command applied");
@@ -421,7 +424,7 @@ export const updateGuestContact = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info("guest.update_contact command applied");
@@ -465,8 +468,9 @@ export const setGuestLoyalty = async ({
     );
     const currentPoints = Number(currentRows[0]?.loyalty_points ?? 0);
     if (currentPoints + delta < 0) {
-      throw new Error(
-        `INSUFFICIENT_LOYALTY_POINTS: Cannot deduct ${Math.abs(delta)} points from balance of ${currentPoints}`,
+      throw new CommandError(
+        "INSUFFICIENT_LOYALTY_POINTS",
+        `Cannot deduct ${Math.abs(delta)} points from a balance of ${currentPoints}`,
       );
     }
   }
@@ -504,7 +508,7 @@ export const setGuestLoyalty = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info("guest.set_loyalty command applied");
@@ -560,7 +564,7 @@ export const setGuestVip = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info("guest.set_vip command applied");
@@ -611,7 +615,7 @@ export const setGuestBlacklist = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info("guest.set_blacklist command applied");
@@ -654,7 +658,7 @@ export const eraseGuestForGdpr = async ({
   );
 
   if (!existingGuest.rowCount || existingGuest.rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   // Idempotent: if already deleted, log and return success
@@ -707,7 +711,7 @@ export const eraseGuestForGdpr = async ({
     );
 
     if (!rowCount || rowCount === 0) {
-      throw new Error("GUEST_NOT_FOUND");
+      throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
     }
     cascadeAudit.guests = rowCount;
 
@@ -939,7 +943,7 @@ export const updateGuestPreferences = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info(
@@ -978,7 +982,7 @@ export const updateGuestConsentDecision = async ({
   });
 
   if (!ledger) {
-    throw new Error("GUEST_NOT_FOUND");
+    throw new CommandError("GUEST_NOT_FOUND", "Guest not found");
   }
 
   guestCommandLogger.info(

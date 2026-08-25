@@ -4,7 +4,7 @@
  * Maintains the loyalty_point_transactions ledger and updates program balance
  */
 
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
@@ -77,7 +77,7 @@ export const earnLoyaltyPoints = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("LOYALTY_PROGRAM_NOT_FOUND");
+    throw new CommandError("LOYALTY_PROGRAM_NOT_FOUND", "Loyalty program not found");
   }
 
   loyaltyLogger.info(
@@ -156,7 +156,10 @@ export const redeemLoyaltyPoints = async ({
   );
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("INSUFFICIENT_POINTS_OR_PROGRAM_NOT_FOUND");
+    throw new CommandError(
+      "INSUFFICIENT_POINTS_OR_PROGRAM_NOT_FOUND",
+      "Loyalty program not found, or the member has too few points",
+    );
   }
 
   loyaltyLogger.info(

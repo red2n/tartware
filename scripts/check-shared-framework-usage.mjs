@@ -62,6 +62,16 @@ const RULES = [
       "seeded system.actor row every other service writes",
   },
   {
+    id: "command-error",
+    pattern: /class \w*(Command|Event)Error extends Error\b/,
+    allow: ["Apps/command-consumer-utils/src/command-utils.ts"],
+    use: 'a subclass of CommandError from "@tartware/command-consumer-utils/command-utils"',
+    why:
+      "the consumer's retry predicate reads `retryable` off the error; a command error that " +
+      "extends bare Error has no such field, so a deterministic rejection is retried through " +
+      "the whole backoff ladder and stalls its partition before reaching the DLQ anyway",
+  },
+  {
     id: "pino-logger",
     pattern: /from ["']pino["']|require\(["']pino["']\)/,
     allow: ["Apps/telemetry/src/", "Apps/candidate-pipeline/src/__tests__/"],

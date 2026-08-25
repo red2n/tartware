@@ -1,4 +1,5 @@
 import type { CommandMetadata } from "@tartware/command-consumer-utils";
+import { CommandError } from "@tartware/command-consumer-utils/command-utils";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { generateRecommendations } from "../../services/recommendation-engine.js";
@@ -52,7 +53,10 @@ export const handleRecommendationApprove = async (
   ]);
 
   if (rows.length === 0) {
-    throw new Error(`Recommendation ${recommendationId} not found`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_FOUND",
+      `Recommendation ${recommendationId} not found`,
+    );
   }
 
   const rec = rows[0];
@@ -60,7 +64,10 @@ export const handleRecommendationApprove = async (
     (rec as Record<string, unknown>).status !== "pending" &&
     (rec as Record<string, unknown>).status !== "reviewed"
   ) {
-    throw new Error(`Recommendation ${recommendationId} is not in pending/reviewed status`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_ACTIONABLE",
+      `Recommendation ${recommendationId} is not in pending/reviewed status`,
+    );
   }
 
   await query(APPROVE_RECOMMENDATION_SQL, [
@@ -90,7 +97,10 @@ export const handleRecommendationReject = async (
   ]);
 
   if (rows.length === 0) {
-    throw new Error(`Recommendation ${recommendationId} not found`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_FOUND",
+      `Recommendation ${recommendationId} not found`,
+    );
   }
 
   const rec = rows[0];
@@ -98,7 +108,10 @@ export const handleRecommendationReject = async (
     (rec as Record<string, unknown>).status !== "pending" &&
     (rec as Record<string, unknown>).status !== "reviewed"
   ) {
-    throw new Error(`Recommendation ${recommendationId} is not in pending/reviewed status`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_ACTIONABLE",
+      `Recommendation ${recommendationId} is not in pending/reviewed status`,
+    );
   }
 
   await query(REJECT_RECOMMENDATION_SQL, [
@@ -130,11 +143,15 @@ export const handleRecommendationApply = async (
 
   const rec = rows[0];
   if (!rec) {
-    throw new Error(`Recommendation ${recommendationId} not found`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_FOUND",
+      `Recommendation ${recommendationId} not found`,
+    );
   }
 
   if (rec.status !== "accepted") {
-    throw new Error(
+    throw new CommandError(
+      "RECOMMENDATION_NOT_ACCEPTED",
       `Recommendation ${recommendationId} must be accepted before applying (current: ${rec.status})`,
     );
   }

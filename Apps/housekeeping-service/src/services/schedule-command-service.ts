@@ -1,4 +1,4 @@
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
 import {
@@ -8,14 +8,11 @@ import {
   OperationsScheduleUpdateCommandSchema,
 } from "../schemas/schedule-commands.js";
 
-class ScheduleCommandError extends Error {
-  code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
+/**
+ * ScheduleCommandError — see {@link CommandError} for the `retryable` contract the
+ * command consumer reads when deciding retry vs DLQ.
+ */
+class ScheduleCommandError extends CommandError {}
 
 const dayOfWeek = (dateStr: string): string => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

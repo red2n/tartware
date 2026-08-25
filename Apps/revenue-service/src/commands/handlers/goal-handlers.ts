@@ -1,4 +1,5 @@
 import type { CommandMetadata } from "@tartware/command-consumer-utils";
+import { CommandError } from "@tartware/command-consumer-utils/command-utils";
 import type {
   RevenueGoalCreateCommand,
   RevenueGoalDeleteCommand,
@@ -46,7 +47,7 @@ export const createRevenueGoal = async (
   ]);
   const created = rows[0];
   if (!created) {
-    throw new Error("Failed to create revenue goal");
+    throw new CommandError("GOAL_CREATE_FAILED", "Revenue goal insert returned no row");
   }
   return { goalId: created.goal_id };
 };
@@ -76,11 +77,17 @@ export const updateRevenueGoal = async (
     actorId,
   ]);
   if (rows.length === 0) {
-    throw new Error(`Goal ${payload.goal_id} not found or already deleted`);
+    throw new CommandError(
+      "GOAL_NOT_FOUND",
+      `Goal ${payload.goal_id} not found or already deleted`,
+    );
   }
   const updated = rows[0];
   if (!updated) {
-    throw new Error(`Goal ${payload.goal_id} not found or already deleted`);
+    throw new CommandError(
+      "GOAL_NOT_FOUND",
+      `Goal ${payload.goal_id} not found or already deleted`,
+    );
   }
   return { goalId: updated.goal_id };
 };
@@ -96,11 +103,17 @@ export const deleteRevenueGoal = async (
     actorId,
   ]);
   if (rows.length === 0) {
-    throw new Error(`Goal ${payload.goal_id} not found or already deleted`);
+    throw new CommandError(
+      "GOAL_NOT_FOUND",
+      `Goal ${payload.goal_id} not found or already deleted`,
+    );
   }
   const deleted = rows[0];
   if (!deleted) {
-    throw new Error(`Goal ${payload.goal_id} not found or already deleted`);
+    throw new CommandError(
+      "GOAL_NOT_FOUND",
+      `Goal ${payload.goal_id} not found or already deleted`,
+    );
   }
   return { goalId: deleted.goal_id };
 };

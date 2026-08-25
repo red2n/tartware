@@ -1,4 +1,4 @@
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import {
   type OperationsMaintenanceAssignCommand,
@@ -12,13 +12,11 @@ import {
 } from "@tartware/schemas/events/commands/operations";
 import { query } from "../lib/db.js";
 
-class MaintenanceCommandError extends Error {
-  code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
+/**
+ * MaintenanceCommandError — see {@link CommandError} for the `retryable` contract the
+ * command consumer reads when deciding retry vs DLQ.
+ */
+class MaintenanceCommandError extends CommandError {}
 
 /**
  * Create a new maintenance request / work order.

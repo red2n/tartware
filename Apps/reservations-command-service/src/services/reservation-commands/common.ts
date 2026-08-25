@@ -1,4 +1,4 @@
-import { SYSTEM_ACTOR_ID } from "@tartware/command-consumer-utils/command-utils";
+import { CommandError, SYSTEM_ACTOR_ID } from "@tartware/command-consumer-utils/command-utils";
 import type { CreateReservationResult, ReservationUpdatedEvent } from "@tartware/schemas";
 import { ReservationUpdatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
@@ -10,32 +10,12 @@ import { recordLifecyclePersisted } from "../../repositories/lifecycle-repositor
 import type { ReservationModifyCommand } from "../../schemas/reservation-command.js";
 import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 
-export class ReservationCommandError extends Error {
-  code: string;
-  /**
-   * When true the command consumer will retry this error rather than routing
-   * immediately to the DLQ. Set to true only for transient failures (e.g.
-   * unexpected DB write failures) that may succeed on a subsequent attempt.
-   * Business-logic validation errors (wrong status, missing FK) should leave
-   * this false — retrying them wastes attempts and delays DLQ diagnosis.
-   *
-   * These commands are consumed in partition order, so a retried error also
-   * stalls every command queued behind it for the length of the backoff
-   * ladder. Defaulting to false keeps a deterministic rejection from blocking
-   * unrelated work.
-   */
-  retryable: boolean;
-
-  constructor(code: string, message: string, retryable = false) {
-    super(message);
-    this.code = code;
-    this.retryable = retryable;
-  }
-
-  toJSON() {
-    return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
-  }
-}
+/**
+ * Reservation command failure. `retryable` defaults to false — see
+ * {@link CommandError} for why a retried business rejection is worse than an
+ * immediate DLQ routing.
+ */
+export class ReservationCommandError extends CommandError {}
 
 export type { CreateReservationResult };
 

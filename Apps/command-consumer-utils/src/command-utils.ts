@@ -29,13 +29,36 @@ export const resolveActorId = (initiatedBy?: { userId?: string } | null): string
 /**
  * Domain error for command handler failures.
  * Carries a machine-readable `code` alongside the human message.
+ *
+ * Every service's command error should extend this rather than `Error`: the
+ * consumer's retry predicate reads `retryable` off it, so an error that does
+ * not carry the field is treated as an unknown failure and retried.
  */
 export class CommandError extends Error {
   readonly code: string;
 
-  constructor(code: string, message: string) {
+  /**
+   * When true the command consumer retries this error rather than routing
+   * immediately to the DLQ. Set it only for transient failures (e.g. an
+   * unexpected DB write failure) that may succeed on a later attempt.
+   *
+   * Business-logic rejections — wrong status, missing FK, failed validation —
+   * must leave it false. Commands are consumed in partition order, so a
+   * retried error stalls every command queued behind it for the length of the
+   * backoff ladder, and still lands in the DLQ at the end of it.
+   */
+  readonly retryable: boolean;
+
+  constructor(code: string, message: string, retryable = false) {
     super(message);
-    this.name = "CommandError";
+    // Report the concrete subclass name so a DLQ entry says which service and
+    // which error type produced it, not just "CommandError".
+    this.name = new.target.name;
     this.code = code;
+    this.retryable = retryable;
+  }
+
+  toJSON() {
+    return { name: this.name, code: this.code, message: this.message, retryable: this.retryable };
   }
 }

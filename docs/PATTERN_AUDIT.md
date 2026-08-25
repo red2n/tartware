@@ -113,7 +113,7 @@ Commands are consumed in partition order, so everything queued behind it waits t
 
 ---
 
-## 03 — One error type, five incompatible copies · CRITICAL
+## 03 — One error type, five incompatible copies · CRITICAL · FIXED 25 Aug 2026
 
 `CommandError` ships in `command-utils` with `code`. Nobody imports it. Instead:
 `BillingCommandError`, `ReservationCommandError`, `RoomCommandError`,
@@ -123,8 +123,20 @@ Billing and reservations added a `retryable` field with a careful comment explai
 business-logic failures must not consume retry budget. The others carry only `code` — which is
 exactly why they cannot wire 02.
 
-**Fix.** Add `retryable` to the shared `CommandError`; have each service's class extend it rather
-than `Error`. Service-specific names can stay; the contract the consumer reads becomes shared.
+**Fixed 25 Aug 2026.** The shared `CommandError` gained `retryable` (default false), a `toJSON`
+for DLQ payloads, and `this.name = new.target.name` so a DLQ entry still names the concrete
+subclass. All seven service classes now extend it and declare no members of their own.
+
+The fix went further than the audit described, because the audit undercounted: **guests,
+notification and revenue threw bare `Error` from their command handlers** — 29 throws such as
+`throw new Error("GUEST_NOT_FOUND")`. A bare `Error` carries no `retryable`, so finding 02's
+predicate would still have retried every one of them. All 29 are now `CommandError` with an
+explicit code. Nothing branched on the old message text, so the conversion is behaviour-neutral
+apart from the retry decision it enables.
+
+Guardrail rule `command-error` blocks a `*CommandError` / `*EventError` that extends bare `Error`.
+`CheckoutServiceError` and `RewardServiceError` in guests are deliberately untouched — they are
+mapped to HTTP responses by routes, never seen by a consumer.
 
 ---
 
