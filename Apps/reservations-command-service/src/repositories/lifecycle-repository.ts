@@ -130,3 +130,43 @@ export const updateLifecycleState = async (input: LifecycleUpdateInput): Promise
     throw new Error(`reservation_command_lifecycle missing for event ${input.eventId}`);
   }
 };
+
+/**
+ * Move many lifecycle rows to one state in a single statement.
+ *
+ * The dispatcher publishes hundreds of records per batch, so a per-record
+ * update here would reintroduce exactly the round trips batching removed — the
+ * bookkeeping would cost more than the publish it records.
+ *
+ * Unlike {@link updateLifecycleState} this does not throw on a missing row:
+ * only reservation events carry lifecycle rows, and a batch legitimately mixes
+ * aggregate types that never had one.
+ */
+export const updateLifecycleStateBatch = async (
+  eventIds: string[],
+  state: ReservationCommandLifecycleState,
+  details?: Record<string, unknown>,
+): Promise<number> => {
+  if (eventIds.length === 0) {
+    return 0;
+  }
+  const result = await query(
+    `
+      UPDATE reservation_command_lifecycle
+      SET
+        current_state = $2::reservation_command_lifecycle_state,
+        updated_at = NOW(),
+        state_transitions = state_transitions || jsonb_build_array(
+          jsonb_build_object(
+            'state', $2::text,
+            'timestamp', NOW(),
+            'actor', $3::text,
+            'details', COALESCE($4::jsonb, '{}'::jsonb)
+          )
+        )
+      WHERE event_id = ANY($1::uuid[])
+    `,
+    [eventIds, state, ACTOR, toJson(details)],
+  );
+  return result.rowCount ?? 0;
+};

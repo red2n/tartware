@@ -9,6 +9,6 @@ export const {
   countPendingOutboxRows,
   releaseExpiredLocks,
   claimOutboxBatch,
-  markOutboxDelivered,
+  markOutboxDeliveredBatch,
   markOutboxFailed,
 } = repository;

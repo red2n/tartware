@@ -49,11 +49,11 @@ const DISPATCH_LIST_NAME = "DISPATCHED_AGGREGATE_TYPES";
  * list only with the settling call to point at.
  */
 const INLINE_SETTLED_AGGREGATE_TYPES = new Map<string, string>([
-  [
-    "command",
-    "api-gateway/src/command-center/command-dispatch-service.ts publishes on the request path " +
-      "and calls markOutboxDeliveredByEventId",
-  ],
+  // `command` used to live here: the gateway published inline on the request
+  // path and settled the row by event id. It now commits the row and returns,
+  // with `api-gateway/src/command-center/outbox-dispatcher.ts` claiming it like
+  // any other queue entry — so the exemption is gone and the normal
+  // enqueue-must-be-dispatched rule applies to commands again.
 ]);
 
 const listTsFiles = (dir: string): string[] => {
@@ -128,7 +128,17 @@ const scanService = (dir: string): ServiceScan => {
       }
     }
 
-    if (source.includes("claimOutboxBatch(")) {
+    // Two shapes count as polling the outbox: calling the claim directly, or
+    // wiring the shared `createOutboxDispatcher`, which calls it on the
+    // service's behalf. Only matching the direct call silently dropped every
+    // service that moved onto the shared loop.
+    //
+    // `@tartware/outbox` itself is excluded: it contains the claim call but
+    // owns no aggregate types — its callers declare what they drain — so
+    // counting the framework would demand a list it cannot have.
+    const pollsOutbox =
+      source.includes("claimOutboxBatch(") || source.includes("createOutboxDispatcher(");
+    if (pollsOutbox && scan.name !== "outbox") {
       scan.hasDispatcher = true;
     }
     if (source.includes("markOutboxDeliveredByEventId")) {
