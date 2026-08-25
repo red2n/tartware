@@ -1,3 +1,4 @@
+import { buildValuesRows } from "@tartware/config/sql-batch";
 import {
   type ScreenPermissionEntry,
   ScreenPermissionEntrySchema,
@@ -62,24 +63,34 @@ export const upsertScreenPermissions = async (
 ): Promise<void> => {
   if (screens.length === 0) return;
 
-  const values: unknown[] = [];
-  const placeholders: string[] = [];
-  let idx = 1;
-
+  // Postgres rejects an ON CONFLICT DO UPDATE that would touch the same row
+  // twice in one statement, so collapse repeated screen keys first — last wins.
+  const byScreenKey = new Map<string, ScreenPermissionEntry>();
   for (const screen of screens) {
-    placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4})`);
-    values.push(tenantId, role, screen.screen_key, screen.is_visible, updatedBy ?? null);
-    idx += 5;
+    byScreenKey.set(screen.screen_key, screen);
   }
+  const entries = [...byScreenKey.values()];
 
+  // tenant, role and actor are the same for every row, so they stay scalar and
+  // only the per-screen values repeat.
   await query(
     `INSERT INTO role_screen_permissions (tenant_id, role, screen_key, is_visible, updated_by)
-     VALUES ${placeholders.join(", ")}
+     VALUES ${buildValuesRows({
+       rowCount: entries.length,
+       columnsPerRow: 2,
+       scalarCount: 3,
+       render: (p) => `($1, $2, ${p(1)}, ${p(2)}, $3)`,
+     })}
      ON CONFLICT (tenant_id, role, screen_key)
      DO UPDATE SET
        is_visible = EXCLUDED.is_visible,
        updated_by = EXCLUDED.updated_by,
        updated_at = CURRENT_TIMESTAMP`,
-    values,
+    [
+      tenantId,
+      role,
+      updatedBy ?? null,
+      ...entries.flatMap((screen) => [screen.screen_key, screen.is_visible]),
+    ],
   );
 };

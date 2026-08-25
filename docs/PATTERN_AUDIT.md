@@ -189,7 +189,7 @@ remaining offender is `checkin-checkout.ts` at 1,229 lines / 25 statements / 14 
 
 ---
 
-## 05 — N+1 writes inside command loops · HIGH · PARTIALLY FIXED
+## 05 — N+1 writes inside command loops · HIGH · FIXED 25 Aug 2026
 
 One statement per iteration where a multi-row insert or `UNNEST` would do:
 
@@ -203,19 +203,41 @@ One statement per iteration where a multi-row insert or `UNNEST` would do:
 
 `AGENTS.md` § Data & Query Discipline forbids this, and these are write paths.
 
-**Fixed 25 Aug 2026 (revenue).** `configureCompset` now issues one batched upsert instead of one
-INSERT per competitor, and the three demand-calendar handlers are set-based over
-`UNNEST($3::date[])` instead of walking every night of a stay.
+**Fixed 25 Aug 2026.** Ten loops are now single statements:
 
-**Still open — 9 loops:** `group-booking.ts` (blocks at :208, expired groups at :531, routing
-rules at :687), `ota-integration.ts:451`, `waitlist.ts:295`, `commission.ts:416`,
-`tenant-reference-data.ts` (:112, :133, :153).
+| Where | Was | Now |
+|-------|-----|-----|
+| `compset-service.ts` | one INSERT per competitor | one batched upsert |
+| `revenue reservation-event-consumer` ×3 | one statement per night of a stay | set-based over `UNNEST($3::date[])` |
+| `tenant-reference-data.ts` ×3 | one INSERT per reference row when seeding a tenant | one per table |
+| `commission.ts` | one INSERT per agent statement | one batched insert |
+| `waitlist.ts` | one UPDATE per expiring entry | `WHERE waitlist_id = ANY($1::uuid[])` |
+| `group-booking.ts` blocks | one upsert per block | one batched upsert |
+| `group-booking.ts` routing rules | one INSERT per rule | one batched insert |
+| `night-audit.ts` | one UPDATE per stale tentative | one UPDATE joined against a `VALUES` list, keeping each row's optimistic version check |
 
-Two of those need more than mechanical batching: the expired-group loop branches on each row's
-`rowCount`, and the OTA loop reads before deciding — so each needs its per-row logic restated as
-a set operation rather than wrapped in one.
+The placeholder arithmetic now lives in `buildValuesRows` (`@tartware/config/sql-batch`) with 12
+tests, rather than being re-derived at each call site. That was not academic: the first
+hand-rolled version declared 19 values per row where the caller pushed 18, which would have bound
+every competitor after the first to the wrong column. `screen-permissions-repository.ts` and the
+comp-set builder — both of which had already hand-rolled it — now use the helper too.
 
----
+Two ON CONFLICT DO UPDATE batches needed de-duplication first, since Postgres rejects a statement
+that would touch the same row twice where the row-at-a-time loop simply let the later entry win:
+comp-set competitors by name, group blocks by (room type, date), screen permissions by screen key.
+
+**Two loops stay per-row, deliberately:**
+
+- `group-booking.ts:553` — group cutoff enforcement opens one transaction per group so a failure
+  cannot roll back the groups already enforced, and each group's outbox event carries its own
+  `blocks_released` count. Collapsing it would merge those boundaries: a durability trade, not a
+  performance one.
+- `ota-integration.ts:456` — the duplicate check reads state earlier iterations write. Two pending
+  entries with the same `ota_reservation_id` are resolved by the first marking itself
+  `processing`. Hoisting the check out of the loop would let both through.
+
+**Correction:** `screen-permissions-repository.ts` was never an N+1 — it already batched by
+hand-rolling its placeholders, and the original scan mistook that loop for a per-row query.
 
 ## 06 — Cross-service fetch with no timeout · HIGH
 

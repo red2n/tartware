@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
 import type { NightAuditCheckpointStatus } from "@tartware/schemas";
 import { roundToCurrency } from "@tartware/schemas";
 import type { PoolClient } from "pg";
@@ -634,17 +635,28 @@ export const executeNightAudit = async (
            AND is_deleted = false`,
         [context.tenantId, command.property_id, auditDate],
       );
-      for (const row of staleTentatives) {
+      // One UPDATE for the whole sweep. Each row keeps its own optimistic
+      // version check by joining against a VALUES list, so a block edited since
+      // the SELECT is still skipped rather than overwritten.
+      for (const batch of chunkForBatch(staleTentatives, 2, 1)) {
         await query(
-          `UPDATE group_bookings
+          `UPDATE group_bookings g
            SET block_status = 'cancelled',
                internal_notes = CONCAT_WS(
-                 E'\\n', internal_notes, 'AUTO_DEPOSIT_DEADLINE: cancelled by night audit'
+                 E'\\n', g.internal_notes, 'AUTO_DEPOSIT_DEADLINE: cancelled by night audit'
                ),
-               version = version + 1, updated_at = NOW()
-           WHERE group_booking_id = $1::uuid AND tenant_id = $2::uuid
-             AND block_status = 'tentative' AND version = $3`,
-          [row.group_booking_id, context.tenantId, row.version],
+               version = g.version + 1, updated_at = NOW()
+           FROM (VALUES ${buildValuesRows({
+             rowCount: batch.length,
+             columnsPerRow: 2,
+             scalarCount: 1,
+             render: (p) => `(${p(1)}::uuid, ${p(2)}::int)`,
+           })}) AS stale(group_booking_id, version)
+           WHERE g.group_booking_id = stale.group_booking_id
+             AND g.tenant_id = $1::uuid
+             AND g.block_status = 'tentative'
+             AND g.version = stale.version`,
+          [context.tenantId, ...batch.flatMap((row) => [row.group_booking_id, row.version])],
         );
       }
       tentativesCancelled = staleTentatives.length;

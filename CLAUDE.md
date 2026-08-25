@@ -123,6 +123,9 @@ Underlying scripts live in `executables/<name>/`. If `stop` leaves anything behi
 - **Tests:** 70 test files; ~20 cover domain logic. Runner is vitest. `test` is not a required
   Nx target and `pnpm run build` does not run it.
 - **Type safety:** 23 uses of `any` repo-wide, zero TODO/FIXME/HACK markers.
+- **Batched writes:** `buildValuesRows` / `chunkForBatch` in `@tartware/config/sql-batch` own the
+  placeholder arithmetic for multi-row INSERTs. Never hand-roll it — an off-by-one binds every
+  row after the first to the wrong column, which has happened here twice.
 - **Audit columns:** `created_by`/`updated_by` are UUID in 155 tables, VARCHAR(100) in 21,
   VARCHAR(120) in 3 — the split matters, see backlog 01.
 - Full findings: `docs/PATTERN_AUDIT.md` and the published report
@@ -140,7 +143,7 @@ Working through these one at a time. Update the status column when one lands.
 | 02 | Critical | 5 of 9 consumers omit `isRetryable`, so deterministic failures burn the 1s/5s/30s ladder and stall the partition. | **done 25 Aug** |
 | 03 | Critical | `CommandError` reinvented as 5 `*CommandError` classes; only 2 carry `retryable` — the root cause of 02. | **done 25 Aug** |
 | 04 | High | Repository layer in 4 of 11 services; 84 files hold SQL in services/routes. | **done 25 Aug** — all 5 services without one now have it (revenue, rooms, notification, housekeeping, guests). Billing/core/reservations already had partial layers; deepening those is separate. |
-| 05 | High | N+1 writes inside loops. | **partial** — revenue done (compset upsert batched, 3 demand-calendar loops set-based). 9 loops remain: group-booking ×3, ota-integration, waitlist, commission, tenant-reference-data ×3. |
+| 05 | High | N+1 writes inside loops. | **done 25 Aug** — 10 loops batched via `buildValuesRows` (`@tartware/config/sql-batch`). Two stay per-row deliberately: group cutoff (per-group transaction isolation) and OTA intake (duplicate check reads state earlier iterations write). |
 | 06 | High | `business-calendar-settings-service.ts:45` fetches with no `AbortSignal` on the startup path; 6 files hand-roll the same timeout dance → needs a shared `fetchWithTimeout`. | open |
 | 07 | Medium | DB singleton imported by ~220 files instead of injected (DIP). Fix forward on new code, pair with 04. | open |
 | 08 | Medium | TSDoc coverage 8%–100%; weakest in shared packages (telemetry 8%, availability-guard 11%, core 37%). | open |

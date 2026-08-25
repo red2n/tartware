@@ -448,6 +448,11 @@ export const processOtaReservationQueue = async (
   let failed = 0;
   let duplicates = 0;
 
+  // Deliberately sequential rather than batched: the duplicate check reads
+  // state that earlier iterations write. Two pending entries carrying the same
+  // ota_reservation_id are resolved by the first marking itself 'processing',
+  // which is what makes the second a duplicate. Hoisting the check out of the
+  // loop would let both through.
   for (const entry of pending) {
     try {
       await withTransaction(async (client) => {

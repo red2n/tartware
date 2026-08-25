@@ -1,3 +1,4 @@
+import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../../config.js";
@@ -204,18 +205,32 @@ export const addGroupRooms = async (
       );
     }
 
-    // Upsert each block entry
+    // Upsert every block in one statement — a 30-night group block was 30 round
+    // trips. Postgres rejects an ON CONFLICT DO UPDATE that would touch the same
+    // row twice in one statement, so de-duplicate on the conflict key first and
+    // keep the last entry, which is what the row-at-a-time loop did.
+    const blocksByKey = new Map<string, (typeof command.blocks)[number]>();
     for (const block of command.blocks) {
+      const blockDate = new Date(block.block_date).toISOString().slice(0, 10);
+      blocksByKey.set(`${block.room_type_id}|${blockDate}`, block);
+    }
+    const blocks = [...blocksByKey.values()];
+
+    for (const batch of chunkForBatch(blocks, 6, 3)) {
       await client.query(
         `INSERT INTO group_room_blocks (
           block_id, tenant_id, group_booking_id, room_type_id, block_date,
           blocked_rooms, negotiated_rate, rack_rate, discount_percentage,
           block_status, created_by, updated_by
-        ) VALUES (
-          uuid_generate_v4(), $9::uuid, $1, $2, $3,
-          $4, $5, $6, $7,
-          'active', $8, $8
-        )
+        ) VALUES ${buildValuesRows({
+          rowCount: batch.length,
+          columnsPerRow: 6,
+          scalarCount: 3,
+          render: (p) =>
+            `(uuid_generate_v4(), $3::uuid, $1, ${p(1)}, ${p(2)}, ` +
+            `${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, ` +
+            `'active', $2, $2)`,
+        })}
         ON CONFLICT (tenant_id, group_booking_id, room_type_id, block_date)
         DO UPDATE SET
           blocked_rooms = EXCLUDED.blocked_rooms,
@@ -223,17 +238,19 @@ export const addGroupRooms = async (
           rack_rate = COALESCE(EXCLUDED.rack_rate, group_room_blocks.rack_rate),
           discount_percentage = COALESCE(EXCLUDED.discount_percentage, group_room_blocks.discount_percentage),
           updated_at = NOW(),
-          updated_by = $8`,
+          updated_by = $2`,
         [
           command.group_booking_id,
-          block.room_type_id,
-          new Date(block.block_date).toISOString().slice(0, 10),
-          block.blocked_rooms,
-          block.negotiated_rate,
-          block.rack_rate ?? null,
-          block.discount_percentage ?? null,
           SYSTEM_ACTOR_ID,
           tenantId,
+          ...batch.flatMap((block) => [
+            block.room_type_id,
+            new Date(block.block_date).toISOString().slice(0, 10),
+            block.blocked_rooms,
+            block.negotiated_rate,
+            block.rack_rate ?? null,
+            block.discount_percentage ?? null,
+          ]),
         ],
       );
     }
@@ -528,6 +545,11 @@ export const enforceGroupCutoff = async (
 
   let totalBlocksReleased = 0;
 
+  // Deliberately one transaction per group rather than a set operation over all
+  // of them: a group whose release fails must not roll back the groups already
+  // enforced, and each group's outbox event carries its own blocks_released
+  // count. Collapsing the two UPDATEs across groups would merge those
+  // boundaries, which is a durability trade, not a performance one.
   for (const group of expiredGroups) {
     await withTransaction(async (client) => {
       // Release unsold blocks
@@ -684,10 +706,11 @@ export const setupGroupBilling = async (
     // source_folio_id = NULL: rule applies to all member folios (matched via group_booking_id).
     // When target is "master": destination_folio_id = master folio.
     // When target is "individual": destination_folio_id = NULL, destination_folio_type = 'GUEST'.
-    for (let i = 0; i < routingRules.length; i++) {
-      const rule = routingRules[i];
-      const ruleId = uuid();
-      const isToMaster = rule.target === "master";
+    for (const batch of chunkForBatch(
+      routingRules.map((rule, index) => ({ rule, priority: (index + 1) * 10 })),
+      6,
+      4,
+    )) {
       await client.query(
         `INSERT INTO folio_routing_rules (
           rule_id, tenant_id, property_id,
@@ -700,30 +723,38 @@ export const setupGroupBilling = async (
           group_booking_id,
           is_active,
           created_by, updated_by
-        ) VALUES (
-          $1, $2, $3,
-          $4, $5,
-          FALSE,
-          NULL,
-          $6, $7,
-          $8,
-          'FULL', $9,
-          $10,
-          TRUE,
-          $11, $11
-        )`,
+        ) VALUES ${buildValuesRows({
+          rowCount: batch.length,
+          columnsPerRow: 6,
+          scalarCount: 4,
+          render: (p) =>
+            `(${p(1)}, $1, $2, ` +
+            `${p(2)}, NULL, ` +
+            `FALSE, ` +
+            `NULL, ` +
+            `${p(3)}, ${p(4)}, ` +
+            `${p(5)}, ` +
+            `'FULL', ${p(6)}, ` +
+            `$3, ` +
+            `TRUE, ` +
+            `$4, $4)`,
+        })}`,
         [
-          ruleId,
           tenantId,
           group.property_id,
-          `${group.group_code ?? group.group_booking_id.slice(0, 8).toUpperCase()} — ${rule.charge_type} → ${rule.target}`,
-          null, // rule_code — left NULL for auto-generated rows (unique constraint allows multiple NULLs)
-          isToMaster ? folioId : null, // destination_folio_id
-          isToMaster ? null : "GUEST", // destination_folio_type
-          rule.charge_type, // transaction_type
-          (i + 1) * 10, // priority (10, 20, 30…)
           command.group_booking_id,
           SYSTEM_ACTOR_ID,
+          ...batch.flatMap(({ rule, priority }) => {
+            const isToMaster = rule.target === "master";
+            return [
+              uuid(), // rule_id
+              `${group.group_code ?? group.group_booking_id.slice(0, 8).toUpperCase()} — ${rule.charge_type} → ${rule.target}`,
+              isToMaster ? folioId : null, // destination_folio_id
+              isToMaster ? null : "GUEST", // destination_folio_type
+              rule.charge_type, // transaction_type
+              priority, // 10, 20, 30…
+            ];
+          }),
         ],
       );
     }

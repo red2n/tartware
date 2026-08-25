@@ -285,27 +285,28 @@ export const waitlistExpireSweep = async (
     [tenantId, command.property_id],
   );
 
-  if (command.dry_run) {
+  if (command.dry_run || expiredRows.length === 0) {
     return { expired: expiredRows.length, reoffered: 0 };
   }
 
-  let expired = 0;
   let reoffered = 0;
 
-  for (const row of expiredRows) {
-    // 2. Mark as EXPIRED
-    await query(
-      `UPDATE waitlist_entries
+  // 2. Mark the whole sweep EXPIRED in one statement rather than one per entry.
+  await query(
+    `UPDATE waitlist_entries
        SET waitlist_status = 'EXPIRED',
            offer_response = 'EXPIRED',
            offer_response_at = NOW(),
            updated_at = NOW()
-       WHERE waitlist_id = $1 AND tenant_id = $2`,
-      [row.waitlist_id, tenantId],
-    );
-    expired++;
+     WHERE waitlist_id = ANY($1::uuid[]) AND tenant_id = $2`,
+    [expiredRows.map((row) => row.waitlist_id), tenantId],
+  );
+  const expired = expiredRows.length;
 
-    // 3. Auto-reoffer to next highest-priority ACTIVE entry
+  // 3. Re-offering stays per entry on purpose: each offer changes who the next
+  //    highest-priority candidate is, so collapsing the lookups would risk
+  //    offering the same entry to two expiring guests.
+  for (const row of expiredRows) {
     if (command.auto_reoffer) {
       const { rows: nextRows } = await query<Record<string, unknown>>(
         `SELECT waitlist_id FROM waitlist_entries

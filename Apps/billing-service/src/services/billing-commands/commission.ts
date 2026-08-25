@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+
+import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
@@ -411,12 +413,19 @@ export const generateCommissionStatement = async (
     return "NO_COMMISSIONS";
   }
 
-  const statementsCreated: string[] = [];
-
-  for (const stats of statsResult.rows) {
+  // One INSERT per agent turned a statement run for a large property into one
+  // round trip per agent. The ids and numbers are generated up front so the
+  // whole run is a single statement.
+  const statements = statsResult.rows.map((stats) => {
     const statementId = randomUUID();
-    const statementNumber = `CS-${new Date().getFullYear()}-${statementId.slice(0, 8).toUpperCase()}`;
+    return {
+      stats,
+      statementId,
+      statementNumber: `CS-${new Date().getFullYear()}-${statementId.slice(0, 8).toUpperCase()}`,
+    };
+  });
 
+  for (const batch of chunkForBatch(statements, 8, 6)) {
     await query(
       // A new statement is unpaid, so payment_status carries its state; the
       // table has no separate statement_status.
@@ -427,32 +436,38 @@ export const generateCommissionStatement = async (
          total_gross_commission, total_net_commission,
          currency_code, payment_status,
          created_by, updated_by
-       ) VALUES (
-         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
-         $6, CURRENT_DATE, $7, $8,
-         $9, $10, $11, $12, $12,
-         $13, 'PENDING',
-         $14::uuid, $14::uuid
-       )`,
+       ) VALUES ${buildValuesRows({
+         rowCount: batch.length,
+         columnsPerRow: 8,
+         scalarCount: 6,
+         render: (p) =>
+           `(${p(1)}::uuid, $1::uuid, $2::uuid, ${p(2)}::uuid, ${p(3)}::uuid, ` +
+           `${p(4)}, CURRENT_DATE, $3, $4, ` +
+           `${p(5)}, ${p(6)}, ${p(7)}, ${p(8)}, ${p(8)}, ` +
+           `$5, 'PENDING', $6::uuid, $6::uuid)`,
+       })}`,
       [
-        statementId,
         tenantId,
         command.property_id,
-        stats.company_id,
-        stats.agent_id,
-        statementNumber,
         command.period_start,
         command.period_end,
-        stats.total_bookings,
-        stats.total_room_nights,
-        stats.total_revenue,
-        stats.total_gross,
         command.metadata?.currency ?? "USD",
         actorId,
+        ...batch.flatMap(({ stats, statementId, statementNumber }) => [
+          statementId,
+          stats.company_id,
+          stats.agent_id,
+          statementNumber,
+          stats.total_bookings,
+          stats.total_room_nights,
+          stats.total_revenue,
+          stats.total_gross,
+        ]),
       ],
     );
-    statementsCreated.push(statementId);
   }
+
+  const statementsCreated = statements.map(({ statementId }) => statementId);
 
   appLogger.info(
     {
