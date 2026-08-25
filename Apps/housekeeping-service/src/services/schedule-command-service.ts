@@ -1,6 +1,7 @@
 import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../lib/db.js";
+import { insertStaffSchedule } from "../repositories/staff-schedule-repository.js";
 import {
   type OperationsScheduleCreateCommand,
   OperationsScheduleCreateCommandSchema,
@@ -48,74 +49,11 @@ const applyCreate = async (
 ): Promise<string> => {
   const actor = resolveActorId(context.initiatedBy);
 
-  const { rows } = await query<{ schedule_id: string }>(
-    `
-      INSERT INTO public.staff_schedules (
-        tenant_id,
-        property_id,
-        user_id,
-        department,
-        role,
-        schedule_date,
-        day_of_week,
-        shift_type,
-        shift_name,
-        scheduled_start_time,
-        scheduled_end_time,
-        scheduled_hours,
-        work_location,
-        assigned_area,
-        schedule_status,
-        notes,
-        metadata,
-        created_at,
-        updated_at,
-        created_by,
-        updated_by
-      ) VALUES (
-        $1::uuid,
-        $2::uuid,
-        $3::uuid,
-        $4,
-        $5,
-        $6::date,
-        $7,
-        $8,
-        $9,
-        $10::time,
-        $11::time,
-        $12,
-        $13,
-        $14,
-        'scheduled',
-        $15,
-        COALESCE($16::jsonb, '{}'::jsonb),
-        NOW(),
-        NOW(),
-        $17,
-        $17
-      )
-      RETURNING schedule_id
-    `,
-    [
-      context.tenantId,
-      command.property_id,
-      command.user_id,
-      command.department,
-      command.role ?? null,
-      command.schedule_date,
-      dayOfWeek(command.schedule_date),
-      command.shift_type,
-      command.shift_name ?? null,
-      command.scheduled_start_time,
-      command.scheduled_end_time,
-      command.scheduled_hours,
-      command.work_location ?? null,
-      command.assigned_area ?? null,
-      command.notes ?? null,
-      command.metadata ? JSON.stringify(command.metadata) : null,
-      actor,
-    ],
+  const { rows } = await insertStaffSchedule(
+    context,
+    command,
+    actor,
+    dayOfWeek(command.schedule_date),
   );
 
   const scheduleId = rows[0]?.schedule_id;

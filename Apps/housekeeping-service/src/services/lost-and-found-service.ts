@@ -1,5 +1,12 @@
 import { query } from "../lib/db.js";
 
+import {
+  findLostAndFoundItem,
+  insertLostAndFoundItem,
+  markItemClaimed,
+  markItemReturned,
+} from "../repositories/lost-and-found-repository.js";
+
 /**
  * List lost & found items with filtering and pagination.
  */
@@ -72,29 +79,7 @@ export async function getLostAndFoundItem(params: {
   itemId: string;
   tenantId: string;
 }): Promise<unknown | null> {
-  const result = await query(
-    `SELECT
-       item_id, tenant_id, property_id, item_number,
-       item_name, item_description, item_category, item_subcategory,
-       brand, model, color, size, distinguishing_features, serial_number,
-       estimated_value, currency, is_valuable, is_perishable,
-       found_date::text, found_time::text, found_by, found_by_name,
-       found_location, room_number, room_id, floor_number, area_name, specific_location,
-       guest_id, guest_name, guest_email, guest_phone, reservation_id, checkout_date::text,
-       item_status,
-       storage_location, storage_shelf, storage_bin, storage_date::text, stored_by,
-       requires_secure_storage, secure_storage_location, is_locked, access_log,
-       has_photos, photo_urls, photo_count,
-       has_documents, document_urls,
-       claim_count, claimed, claimed_by_guest_id, claimed_by_name, claim_date::text,
-       hold_until_date::text, days_in_storage,
-       returned, return_date::text, return_method,
-       internal_notes,
-       created_at, updated_at
-     FROM lost_and_found
-     WHERE item_id = $1 AND tenant_id = $2 AND is_deleted = false`,
-    [params.itemId, params.tenantId],
-  );
+  const result = await findLostAndFoundItem(params.itemId, params.tenantId);
   return result.rows[0] ?? null;
 }
 
@@ -131,54 +116,7 @@ export async function createLostAndFoundItem(params: {
 }): Promise<{ item_id: string }> {
   const holdDays = params.holdDays ?? 90;
 
-  const result = await query<{ item_id: string }>(
-    `INSERT INTO lost_and_found (
-       tenant_id, property_id, item_name, item_description, item_category,
-       item_subcategory, brand, color, estimated_value,
-       found_date, found_time, found_by_name, found_location,
-       room_number, area_name, guest_id, guest_name, guest_email, reservation_id,
-       storage_location, hold_until_date, is_valuable, requires_secure_storage,
-       special_handling_instructions, internal_notes, created_by,
-       item_status
-     ) VALUES (
-       $1, $2, $3, $4, $5,
-       $6, $7, $8, $9,
-       $10::date, $11, $12, $13,
-       $14, $15, $16, $17, $18, $19,
-       $20, $10::date + $21 * interval '1 day', $22, $23,
-       $24, $25, $26,
-       'registered'
-     )
-     RETURNING item_id`,
-    [
-      params.tenantId,
-      params.propertyId,
-      params.itemName,
-      params.itemDescription,
-      params.itemCategory,
-      params.itemSubcategory ?? null,
-      params.brand ?? null,
-      params.color ?? null,
-      params.estimatedValue ?? null,
-      params.foundDate,
-      params.foundTime ?? null,
-      params.foundByName ?? null,
-      params.foundLocation,
-      params.roomNumber ?? null,
-      params.areaName ?? null,
-      params.guestId ?? null,
-      params.guestName ?? null,
-      params.guestEmail ?? null,
-      params.reservationId ?? null,
-      params.storageLocation ?? null,
-      holdDays,
-      params.isValuable ?? false,
-      params.requiresSecureStorage ?? false,
-      params.specialHandlingInstructions ?? null,
-      params.internalNotes ?? null,
-      params.createdBy ?? null,
-    ],
-  );
+  const result = await insertLostAndFoundItem(params, holdDays);
 
   const row = result.rows[0];
   if (!row) throw new Error("Failed to create lost and found item");
@@ -265,29 +203,7 @@ export async function claimLostAndFoundItem(params: {
   verificationNotes?: string;
   verifiedBy?: string;
 }): Promise<unknown | null> {
-  const result = await query(
-    `UPDATE lost_and_found
-     SET claimed = true,
-         claimed_by_guest_id = $3,
-         claimed_by_name = $4,
-         claim_date = CURRENT_DATE,
-         claim_time = CURRENT_TIME,
-         claim_count = claim_count + 1,
-         item_status = 'claimed',
-         verification_notes = $5,
-         verified_by = $6,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE item_id = $1 AND tenant_id = $2 AND is_deleted = false
-     RETURNING *`,
-    [
-      params.itemId,
-      params.tenantId,
-      params.claimedByGuestId ?? null,
-      params.claimedByName,
-      params.verificationNotes ?? null,
-      params.verifiedBy ?? null,
-    ],
-  );
+  const result = await markItemClaimed(params);
 
   return result.rows[0] ?? null;
 }
@@ -303,29 +219,7 @@ export async function returnLostAndFoundItem(params: {
   returnedBy?: string;
   notes?: string;
 }): Promise<unknown | null> {
-  const result = await query(
-    `UPDATE lost_and_found
-     SET returned = true,
-         return_date = CURRENT_DATE,
-         return_time = CURRENT_TIME,
-         return_method = $3,
-         returned_to_name = $4,
-         returned_by = $5,
-         item_status = 'returned',
-         internal_notes = COALESCE(internal_notes || E'\\n', '') || COALESCE($6, ''),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE item_id = $1 AND tenant_id = $2 AND is_deleted = false
-       AND item_status IN ('claimed', 'registered', 'stored', 'pending_claim')
-     RETURNING *`,
-    [
-      params.itemId,
-      params.tenantId,
-      params.returnMethod,
-      params.returnedToName,
-      params.returnedBy ?? null,
-      params.notes ?? null,
-    ],
-  );
+  const result = await markItemReturned(params);
 
   return result.rows[0] ?? null;
 }
