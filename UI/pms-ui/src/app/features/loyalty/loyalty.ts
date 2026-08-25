@@ -1,4 +1,3 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
@@ -9,6 +8,8 @@ import { TooltipModule } from "primeng/tooltip";
 import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
@@ -25,21 +26,22 @@ type Tab = "tiers" | "transactions";
 	selector: "app-loyalty",
 	standalone: true,
 	imports: [
-		DatePipe,
 		FormsModule,
 		IconComponent,
-		ProgressSpinnerModule,
-		TooltipModule,
+		LocaleDatePipe,
 		PageHeaderComponent,
+		ProgressSpinnerModule,
+		SubmitOnEnterDirective,
+		TooltipModule,
 		TranslatePipe,
 		UnsavedGuardDirective,
-		SubmitOnEnterDirective,
 	],
 	templateUrl: "./loyalty.html",
 	styleUrl: "./loyalty.scss",
 })
 export class LoyaltyComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
@@ -119,7 +121,9 @@ export class LoyaltyComponent {
 					...(f.program_tier.trim() ? { program_tier: f.program_tier.trim() } : {}),
 				});
 				this.programIdInput.set(programId);
-				this.toast.success(`Enrolled. Program id ${programId} — kept for the ledger lookup.`);
+				this.toast.success(
+					this.i18n.t("Enrolled. Program id {p0} — kept for the ledger lookup.", { p0: programId }),
+				);
 			} else {
 				await this.api.post(`/tenants/${tenantId}/commands/loyalty.points.${kind}`, {
 					guest_id: f.guest_id.trim(),
@@ -128,13 +132,26 @@ export class LoyaltyComponent {
 					reference_type: kind === "earn" ? "stay" : "reward",
 					...(f.description.trim() ? { description: f.description.trim() } : {}),
 				});
-				this.toast.success(`${f.points} points ${kind === "earn" ? "credited" : "redeemed"}.`);
+				this.toast.success(
+					this.i18n.t("{p0} points {p1}.", {
+						p0: f.points,
+						p1: kind === "earn" ? "credited" : "redeemed",
+					}),
+				);
 			}
 			this.action.set(null);
 			// Commands are async (Kafka); give the projection a moment before reloading.
 			setTimeout(() => this.loadTransactions(), 1200);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : `Loyalty ${kind} failed`);
+			this.toast.error(
+				e instanceof Error
+					? e.message
+					: kind === "enroll"
+						? this.i18n.t("Loyalty enrolment failed")
+						: kind === "earn"
+							? this.i18n.t("Loyalty points accrual failed")
+							: this.i18n.t("Loyalty redemption failed"),
+			);
 		} finally {
 			this.submitting.set(false);
 		}
@@ -160,7 +177,7 @@ export class LoyaltyComponent {
 			});
 			this.tiers.set(Array.isArray(rows) ? rows : []);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load tier rules");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load tier rules"));
 		} finally {
 			this.loadingTiers.set(false);
 		}
@@ -170,7 +187,7 @@ export class LoyaltyComponent {
 		const tenantId = this.auth.tenantId();
 		const programId = this.programIdInput().trim();
 		if (!tenantId || !programId) {
-			this.toast.error("Enter a program ID to load transactions.");
+			this.toast.error(this.i18n.t("Enter a program ID to load transactions."));
 			return;
 		}
 		this.loadingTxns.set(true);
@@ -184,7 +201,7 @@ export class LoyaltyComponent {
 			const rows = await this.api.get<LoyaltyTxn[]>("/loyalty/transactions", params);
 			this.txns.set(Array.isArray(rows) ? rows : []);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load transactions");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load transactions"));
 		} finally {
 			this.loadingTxns.set(false);
 		}

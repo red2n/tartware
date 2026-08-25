@@ -111,7 +111,7 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
   );
 
   // Dashboard routes - proxy to core service
-  app.all(
+  app.get(
     "/v1/dashboard/*",
     {
       preHandler: tenantScopeFromQuery,
@@ -284,21 +284,9 @@ export const registerCoreProxyRoutes = (app: FastifyInstance): void => {
     },
   };
 
-  app.all(
-    "/v1/auth",
-    {
-      ...authRateLimit,
-      schema: buildRouteSchema({
-        tag: CORE_PROXY_TAG,
-        summary: "Proxy auth calls to core service.",
-        response: {
-          200: jsonObjectSchema,
-        },
-      }),
-    },
-    proxyCore,
-  );
-
+  // core-service owns the sub-paths (`/v1/auth/login`, `/v1/auth/context`, …) and
+  // nothing at `/v1/auth` itself, so a bare registration here only published an
+  // endpoint that 404s. The catch-all below carries every real auth call.
   app.all(
     "/v1/auth/*",
     {

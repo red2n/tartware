@@ -11,7 +11,7 @@
  *  ├─ OTA           — OTA sync, rate push, webhooks
  *  ├─ Waitlist      — add, convert, offer, expire
  *  ├─ Quote         — send, convert, expire quotes
- *  └─ Mobile        — registration card, mobile check-in flow
+ *  └─ Mobile        — registration card
  */
 
 export {
@@ -45,11 +45,7 @@ export {
   recordMetasearchClick,
   updateMetasearchConfig,
 } from "./metasearch.js";
-export {
-  completeMobileCheckin,
-  generateRegistrationCard,
-  startMobileCheckin,
-} from "./mobile-checkin.js";
+export { generateRegistrationCard } from "./mobile-checkin.js";
 export {
   otaContentSync,
   otaRatePush,

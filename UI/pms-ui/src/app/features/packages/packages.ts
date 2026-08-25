@@ -8,6 +8,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -49,6 +50,7 @@ type TypeFilter = "ALL" | string;
 })
 export class PackagesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(AppDialogService);
@@ -64,6 +66,7 @@ export class PackagesComponent {
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.currentPage.set(1);
@@ -226,7 +229,7 @@ export class PackagesComponent {
 	}
 
 	inventoryLabel(pkg: PackageListItem): string {
-		if (pkg.total_inventory == null) return "Unlimited";
+		if (pkg.total_inventory == null) return this.i18n.t("Unlimited");
 		return `${pkg.available_inventory ?? 0} / ${pkg.total_inventory}`;
 	}
 
@@ -237,7 +240,7 @@ export class PackagesComponent {
 		const ref = this.dialog.open(CreatePackageDialogComponent);
 		ref?.onClose.subscribe((created) => {
 			if (created) {
-				this.toast.success("Package created successfully");
+				this.toast.success(this.i18n.t("Package created successfully"));
 				this.loadPackages();
 			}
 		});
@@ -257,7 +260,7 @@ export class PackagesComponent {
 			const res = await this.api.get<{ data: PackageListItem[] }>("/packages", params);
 			this.packages.set(res.data);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load packages");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load packages"));
 		} finally {
 			this.dataReady.set(true);
 		}

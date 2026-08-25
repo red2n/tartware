@@ -20,7 +20,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS market_segments CASCADE;
 
-CREATE TABLE market_segments (
+CREATE TABLE IF NOT EXISTS market_segments (
     -- Primary Key
     segment_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

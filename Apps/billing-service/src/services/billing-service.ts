@@ -12,6 +12,7 @@ import {
   type FolioRow,
   formatEnumDisplay,
   type PreAuditCheckItem,
+  type ShiftSummaryResponse,
   toIsoString,
 } from "@tartware/schemas";
 import { applyBillingRetentionPolicy } from "../lib/compliance-policies.js";
@@ -23,6 +24,7 @@ import {
   CHARGE_POSTING_LIST_SQL,
   FOLIO_BY_ID_SQL,
   FOLIO_LIST_SQL,
+  SHIFT_SUMMARY_SQL,
 } from "../sql/billing-queries.js";
 
 /**
@@ -71,6 +73,9 @@ const mapRowToPayment = (row: BillingPaymentRow): BillingPayment => {
     status_display: statusDisplay,
     amount: toNumberOrFallback(row.amount),
     currency: row.currency ?? "USD",
+    exchange_rate: row.exchange_rate === null ? undefined : toNumberOrFallback(row.exchange_rate),
+    base_amount: row.base_amount === null ? undefined : toNumberOrFallback(row.base_amount),
+    base_currency: row.base_currency ?? undefined,
     processed_at: toIsoString(row.processed_at),
     created_at: toIsoString(row.created_at) ?? "",
     updated_at: toIsoString(row.updated_at),
@@ -253,6 +258,9 @@ const mapRowToChargePosting = (row: ChargePostingRow): ChargePostingListItem => 
     discount_amount: toNumberOrFallback(row.discount_amount),
     total_amount: toNumberOrFallback(row.total_amount),
     currency: row.currency ?? "USD",
+    exchange_rate: row.exchange_rate === null ? undefined : toNumberOrFallback(row.exchange_rate),
+    base_amount: row.base_amount === null ? undefined : toNumberOrFallback(row.base_amount),
+    base_currency: row.base_currency ?? undefined,
     payment_method: row.payment_method ?? undefined,
     source_system: row.source_system ?? undefined,
     outlet: row.outlet ?? undefined,
@@ -615,10 +623,77 @@ export const listCashierSessions = async (options: {
     shiftType,
   ]);
 
-  return rows;
+  return rows.map(normalizeCashierSessionRow);
+};
+
+/**
+ * Convert the NUMERIC columns of a raw cashier-session row to JS numbers.
+ *
+ * `pg` returns NUMERIC as a string that preserves the column's declared scale,
+ * so a DECIMAL(19,4) float reads as "500.0000". Passing that straight to a
+ * client leaks the storage scale into the API: the UI renders four decimals on
+ * a two-decimal currency, and any consumer comparing values as strings breaks.
+ *
+ * Money is emitted as a number and formatted per-currency at the edge, the same
+ * way every other billing list endpoint behaves.
+ */
+const normalizeCashierSessionRow = <T extends Record<string, unknown>>(row: T): T => {
+  const out: Record<string, unknown> = { ...row };
+  for (const [key, value] of Object.entries(out)) {
+    // pg only stringifies NUMERIC/DECIMAL; a numeric-looking string on any other
+    // column (session_number, terminal_id) would not round-trip, so restrict the
+    // coercion to values that are exactly a decimal literal.
+    if (typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value)) {
+      out[key] = Number(value);
+    }
+  }
+  return out as T;
 };
 
 export const getCashierSessionById = async (sessionId: string, tenantId: string) => {
   const { rows } = await query(CASHIER_SESSION_BY_ID_SQL, [sessionId, tenantId]);
-  return rows[0] ?? null;
+  return rows[0] ? normalizeCashierSessionRow(rows[0]) : null;
+};
+
+/**
+ * Shift handover summary for a cashier session — reconciliation figures plus the
+ * posting totals behind them.
+ */
+export const getShiftSummary = async (
+  sessionId: string,
+  tenantId: string,
+): Promise<ShiftSummaryResponse | null> => {
+  const { rows } = await query<Record<string, unknown>>(SHIFT_SUMMARY_SQL, [sessionId, tenantId]);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const metadata = row.metadata as Record<string, unknown> | null;
+
+  return {
+    session_id: row.session_id as string,
+    session_number: row.session_number as string,
+    cashier_name: row.cashier_name as string,
+    terminal_id: (row.terminal_id as string) ?? null,
+    shift_type: row.shift_type as string,
+    session_status: row.session_status as string,
+    business_date: String(row.business_date).slice(0, 10),
+    opened_at: String(row.opened_at),
+    closed_at: row.closed_at ? String(row.closed_at) : null,
+    opening_float: toNumberOrFallback(row.opening_float_declared, 0),
+    closing_cash_counted:
+      row.closing_cash_counted != null ? toNumberOrFallback(row.closing_cash_counted, 0) : null,
+    cash_variance: row.cash_variance != null ? toNumberOrFallback(row.cash_variance, 0) : null,
+    has_variance: Boolean(row.has_variance),
+    reconciled: Boolean(row.reconciled),
+    total_transactions: Number(row.total_transactions ?? 0),
+    total_revenue: toNumberOrFallback(row.total_revenue, 0),
+    total_refunds: toNumberOrFallback(row.total_refunds, 0),
+    net_revenue: toNumberOrFallback(row.net_revenue, 0),
+    charge_count: Number(row.charge_count ?? 0),
+    charge_total: toNumberOrFallback(row.charge_total, 0),
+    payment_count: Number(row.payment_count ?? 0),
+    payment_total: toNumberOrFallback(row.payment_total, 0),
+    handover_notes: (metadata?.handover_notes as string) ?? null,
+  };
 };

@@ -221,13 +221,13 @@
       }
     </p-popover>
 
-    <!-- Theme toggle (light / dark) -->
+    <!-- Theme: cycles light → dark → system -->
     <button class="title-bar-btn"
-            (click)="toggleTheme()"
-            [pTooltip]="(isDark() ? 'Switch to light mode' : 'Switch to dark mode') | translate"
+            (click)="cycleTheme()"
+            [pTooltip]="themeAction() | translate"
             tooltipPosition="bottom"
-            [attr.aria-label]="(isDark() ? 'Switch to light mode' : 'Switch to dark mode') | translate">
-      <app-icon [name]="isDark() ? 'light_mode' : 'dark_mode'" />
+            [attr.aria-label]="themeAction() | translate">
+      <app-icon [name]="themeIcon()" />
     </button>
 
     <!-- User menu -->

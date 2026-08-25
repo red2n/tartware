@@ -13,6 +13,7 @@ type RoomTypeOption = {
 	type_code: string;
 };
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
@@ -29,6 +30,7 @@ import { DialogShellComponent } from "../../../shared/components/dialog-shell/di
 })
 export class CreateRateDialogComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(DynamicDialogRef);
@@ -40,7 +42,7 @@ export class CreateRateDialogComponent implements OnInit {
 
 	private readonly dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
-	rateName = `New Rate Plan ${this.dateSuffix}`;
+	rateName = this.i18n.t("New Rate Plan {date}", { date: this.dateSuffix });
 	rateCode = `NRP${this.dateSuffix}`;
 	description = "";
 	rateType = "BAR";
@@ -108,7 +110,7 @@ export class CreateRateDialogComponent implements OnInit {
 				this.selectedRoomTypeId = types[0].room_type_id;
 			}
 		} catch {
-			this.toast.error("Failed to load room types");
+			this.toast.error(this.i18n.t("Failed to load room types"));
 		} finally {
 			this.loadingRoomTypes.set(false);
 		}
@@ -193,7 +195,7 @@ export class CreateRateDialogComponent implements OnInit {
 		try {
 			const propertyId = this.ctx.propertyId();
 			if (!propertyId) {
-				this.toast.error("No property selected");
+				this.toast.error(this.i18n.t("No property selected"));
 				return;
 			}
 
@@ -224,7 +226,7 @@ export class CreateRateDialogComponent implements OnInit {
 			if (e instanceof ApiValidationError) {
 				this.toast.error(e.message);
 			} else {
-				this.toast.error(e instanceof Error ? e.message : "Failed to create rate");
+				this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create rate"));
 			}
 		} finally {
 			this.saving.set(false);

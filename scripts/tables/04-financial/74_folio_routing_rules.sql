@@ -46,15 +46,15 @@ CREATE TABLE IF NOT EXISTS folio_routing_rules (
     charge_code_pattern VARCHAR(100),                             -- Charge code match: exact code, wildcard ("RM%"), or comma-separated list
     transaction_type VARCHAR(50),                                 -- Filter by type: ROOM, TAX, FB, MINIBAR, PHONE, LAUNDRY, PARKING, SPA, etc.
     charge_category VARCHAR(50),                                  -- Higher-level category: ACCOMMODATION, FOOD_BEVERAGE, SERVICES, TAXES_FEES, INCIDENTALS
-    min_amount DECIMAL(12,2),                                     -- Only route charges >= this amount (NULL = no minimum)
-    max_amount DECIMAL(12,2),                                     -- Only route charges <= this amount (NULL = no maximum)
+    min_amount DECIMAL(19,4),                                     -- Only route charges >= this amount (NULL = no minimum)
+    max_amount DECIMAL(19,4),                                     -- Only route charges <= this amount (NULL = no maximum)
 
     -- Routing Action
     routing_type VARCHAR(20) NOT NULL DEFAULT 'FULL' CHECK (
         routing_type IN ('FULL', 'PERCENTAGE', 'FIXED_AMOUNT', 'REMAINDER')
     ),                                                            -- How to split the charge
     routing_percentage DECIMAL(5,2),                              -- Percentage to route (for PERCENTAGE type, 0-100)
-    routing_fixed_amount DECIMAL(12,2),                           -- Fixed amount to route (for FIXED_AMOUNT type)
+    routing_fixed_amount DECIMAL(19,4),                           -- Fixed amount to route (for FIXED_AMOUNT type)
 
     -- Priority & Evaluation
     priority INTEGER NOT NULL DEFAULT 100,                        -- Lower = evaluated first; ties resolved by created_at
@@ -167,5 +167,7 @@ ON CONFLICT ON CONSTRAINT uq_routing_rule_code DO NOTHING;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_folio_routing_rule_target
     ON folio_routing_rules (tenant_id, source_reservation_id, charge_code_pattern, destination_folio_id)
     WHERE is_deleted = FALSE AND source_reservation_id IS NOT NULL;
+
+
 
 \echo 'folio_routing_rules table created successfully!'

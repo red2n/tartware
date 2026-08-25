@@ -205,16 +205,10 @@
   white-space: nowrap;
 }
 
+/* Chrome comes from .field-input .field-sm; only the cap on width is local, so
+   a long building name cannot push the filter bar wide. */
 .building-filter-select {
-  font-size: var(--text-body-size-small);
-  padding: var(--control-small-paddingBlock) var(--control-small-paddingInline-condensed);
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-small);
-  background: var(--bgColor-default);
-  color: var(--fgColor-default);
-  cursor: pointer;
   max-width: 220px;
-  min-height: var(--control-small-size);
 }
 
 /* ── Reservation billing action forms ── */

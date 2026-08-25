@@ -1,9 +1,14 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import { CcpaOptOutBodySchema, CommunicationPrefsBodySchema } from "@tartware/schemas";
+import {
+  CcpaOptOutBodySchema,
+  CommunicationPrefsBodySchema,
+  GuestConsentLedgerSchema,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { exportGuestData } from "../services/gdpr-export-service.js";
 import {
+  getGuestConsentLedger,
   getGuestPrivacyState,
   setCcpaOptOut,
   updateCommunicationPreferences,
@@ -16,6 +21,10 @@ const TenantQuerySchema = z.object({ tenant_id: z.string().uuid() });
 
 const GuestIdParamJsonSchema = schemaFromZod(GuestIdParamSchema, "PrivacyGuestIdParam");
 const TenantQueryJsonSchema = schemaFromZod(TenantQuerySchema, "PrivacyTenantQuery");
+const GuestConsentLedgerJsonSchema = schemaFromZod(
+  GuestConsentLedgerSchema,
+  "GuestConsentLedgerResponse",
+);
 
 export const registerPrivacyRoutes = (app: FastifyInstance): void => {
   /**
@@ -49,6 +58,45 @@ export const registerPrivacyRoutes = (app: FastifyInstance): void => {
       const state = await getGuestPrivacyState({ guestId, tenantId: tenant_id });
       if (!state) return reply.notFound("Guest not found");
       return state;
+    },
+  );
+
+  /**
+   * GET /v1/guests/:guestId/consent
+   * The four-toggle consent ledger — current state of each consent type.
+   *
+   * `…/privacy` above returns the whole privacy state including the raw consent
+   * records; this is the projection the consent form binds to, so the screen does
+   * not have to reduce a log into toggles itself.
+   */
+  app.get<{
+    Params: { guestId: string };
+    Querystring: { tenant_id: string };
+  }>(
+    "/v1/guests/:guestId/consent",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: PRIVACY_TAG,
+        summary: "Get guest consent ledger",
+        description:
+          "Current state of each consent toggle (marketing email/SMS, analytics, third-party sharing), projected from the active GDPR consent log rows",
+        params: GuestIdParamJsonSchema,
+        querystring: TenantQueryJsonSchema,
+        response: { 200: GuestConsentLedgerJsonSchema },
+      }),
+    },
+    async (request, reply) => {
+      const { guestId } = GuestIdParamSchema.parse(request.params);
+      const { tenant_id } = TenantQuerySchema.parse(request.query);
+
+      const ledger = await getGuestConsentLedger({ guestId, tenantId: tenant_id });
+      if (!ledger) return reply.notFound("Guest not found");
+      return ledger;
     },
   );
 

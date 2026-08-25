@@ -22,6 +22,8 @@ import {
 } from "./command-helpers.js";
 import {
   chargebackListResponse,
+  fxRateListResponse,
+  fxRateUpsertResponse,
   glBatchEntriesResponse,
   glBatchListResponse,
   invoiceListResponse,
@@ -35,6 +37,7 @@ import {
   paginationQuerySchema,
   reservationParamsSchema,
   tenantChargeParamsSchema,
+  tenantEventParamsSchema,
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
   tenantPaymentParamsSchema,
@@ -70,9 +73,31 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
+  /**
+   * Writes proxied through the billing catch-all. Tenant comes from the body on
+   * a write, not the query. STAFF is the floor, deliberately the least
+   * restrictive role any of these routes accepts — billing-service enforces the
+   * stricter role per route (MANAGER on approve/reject), so raising it here
+   * would only lock STAFF out of the writes it is entitled to.
+   */
+  const billingWriteScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "core",
+  });
+
   const financeTenantScopeFromQuery = app.withTenantScope({
     resolveTenantId: (request) => (request.query as { tenant_id?: string }).tenant_id,
     minRole: "ADMIN",
+    requiredModules: "finance-automation",
+  });
+
+  /** FX rates are finance config — writes require MANAGER, tenant comes from the body. */
+  const fxRateWriteScopeFromBody = app.withTenantScope({
+    resolveTenantId: (request) => (request.body as { tenant_id?: string }).tenant_id,
+    minRole: "MANAGER",
     requiredModules: "finance-automation",
   });
 
@@ -191,6 +216,58 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "billing.charge.post",
+      }),
+  );
+
+  // ── Event billing — ui-gaps/13-sales-catering.md, UI item 6 ────────────────
+  // The event lives in core-service and the folio in billing-service, so the
+  // write crosses services and goes on the command bus per COV-18's rule.
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/events/:eventId/folio",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Open the event booking's own folio via the Command Center.",
+        params: tenantEventParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.event.setup",
+        paramKey: "eventId",
+        payloadKey: "event_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/events/:eventId/charges",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Post an event booking's derived charges to its folio via the Command Center.",
+        params: tenantEventParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.event.post_charges",
+        paramKey: "eventId",
+        payloadKey: "event_id",
       }),
   );
 
@@ -784,6 +861,37 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   );
 
   // ============================================================================
+  // FX REFERENCE RATES (ACCT-13 multi-currency rate locking)
+  // ============================================================================
+
+  app.get(
+    "/v1/billing/fx-rates",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy FX reference rate list to the billing service.",
+        response: { 200: fxRateListResponse },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.post(
+    "/v1/billing/fx-rates",
+    {
+      preHandler: fxRateWriteScopeFromBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Set or correct an FX reference rate via the billing service.",
+        body: jsonObjectSchema,
+        response: { 200: fxRateUpsertResponse, 201: fxRateUpsertResponse },
+      }),
+    },
+    proxyBilling,
+  );
+
+  // ============================================================================
   // CASHIER HANDOVER (shift transition)
   // ============================================================================
 
@@ -1186,6 +1294,53 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: BILLING_PROXY_TAG,
         summary: "Proxy nested billing routes to the billing service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.post(
+    "/v1/billing/*",
+    {
+      preHandler: billingWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing writes to the billing service.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.patch(
+    "/v1/billing/*",
+    {
+      preHandler: billingWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing partial updates to the billing service.",
+        body: jsonObjectSchema,
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyBilling,
+  );
+
+  app.delete(
+    "/v1/billing/*",
+    {
+      preHandler: billingWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BILLING_PROXY_TAG,
+        summary: "Proxy nested billing deletions to the billing service.",
         response: {
           200: jsonObjectSchema,
         },

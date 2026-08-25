@@ -1,5 +1,5 @@
-<app-callout variant="warning" icon="lock" [block]="true" [title]="error().title">
-  <p>{{ error().detail | translate }}</p>
+<app-callout variant="warning" icon="lock" [block]="true" [title]="error().titleKey | translate: error().messageParams">
+  <p>{{ error().detailKey | translate: error().messageParams }}</p>
 
   @if (openRequest(); as open) {
     <!-- Already asked — say who is holding it rather than inviting a second ask. -->
@@ -54,7 +54,7 @@
         class="btn btn-sm btn-primary"
         [disabled]="submitting()"
         (click)="submit()">
-        {{ (submitting() ? 'Sending…' : 'Send request') | translate }}
+        {{ (submitting() ? ('Sending…' | translate) : ('Send request' | translate)) | translate }}
       </button>
     </div>
   </div>

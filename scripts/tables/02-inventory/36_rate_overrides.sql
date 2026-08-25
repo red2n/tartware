@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS rate_overrides CASCADE;
 
-CREATE TABLE rate_overrides (
+CREATE TABLE IF NOT EXISTS rate_overrides (
     -- Primary Key
     override_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique override identifier
 

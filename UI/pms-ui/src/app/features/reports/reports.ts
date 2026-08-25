@@ -9,6 +9,7 @@ import { map } from "rxjs";
 import { ApiService, ModuleNotEnabledError } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { CalloutComponent } from "../../shared/components/callout/callout";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -37,6 +38,7 @@ type ReportRow = Record<string, unknown>;
 })
 export class ReportsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -162,7 +164,9 @@ export class ReportsComponent {
 				this.error.set(
 					e instanceof Error
 						? e.message
-						: `Report endpoint ${def.path} is not currently available.`,
+						: this.i18n.t("Report endpoint {path} is not currently available.", {
+								path: def.path,
+							}),
 				);
 			}
 		} finally {
@@ -174,7 +178,7 @@ export class ReportsComponent {
 	exportCsv(): void {
 		const rows = this.rows();
 		if (rows.length === 0) {
-			this.toast.error("No rows to export");
+			this.toast.error(this.i18n.t("No rows to export"));
 			return;
 		}
 		const cols = this.columns();
@@ -190,7 +194,7 @@ export class ReportsComponent {
 		link.click();
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
-		this.toast.success("Report exported");
+		this.toast.success(this.i18n.t("Report exported"));
 	}
 
 	formatCell(value: unknown): string {

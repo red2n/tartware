@@ -1,0 +1,318 @@
+<app-page-header
+  title="Promotional codes"
+  description="Discount codes guests type at booking — validity, discount, limits and redemptions.">
+  <button class="btn btn-primary btn-sm" (click)="openCreate()" [disabled]="submitting()">
+    <app-icon name="local_offer" /> {{ 'New code' | translate }}
+  </button>
+</app-page-header>
+
+@if (expiredButActive().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="event_busy" />
+    {{ (expiredButActive().length === 1
+          ? '{count} code still marked live but past the valid-to date'
+          : '{count} codes still marked live but past the valid-to date') | translate:{ count: expiredButActive().length } }}</p>
+}
+@if (nearlyDepleted().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="hourglass_bottom" />
+    {{ (nearlyDepleted().length === 1
+          ? '{count} live code with 5 or fewer redemptions left'
+          : '{count} live codes with 5 or fewer redemptions left') | translate:{ count: nearlyDepleted().length } }}</p>
+}
+
+@if (withdrawTarget(); as code) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="block" />
+      <h3 class="confirm-title">{{ 'Withdraw {code}?' | translate:{ code: code.promo_code } }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'The code stops validating immediately. It is not erased —' | translate }} {{ (code.times_redeemed === 1
+          ? '{count} redemption reference it, so the record stays.'
+          : '{count} redemptions reference it, so the record stays.') | translate:{ count: code.times_redeemed } }}</p>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelWithdraw()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="confirmWithdraw()" [disabled]="submitting()">
+        {{ submitting() ? ('Withdrawing…' | translate) : ('Withdraw code' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (editorOpen()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="local_offer" />
+      <h3 class="confirm-title">
+        {{ editing() ? ('Edit ' | translate) + editing()!.promo_code : ('New promotional code' | translate) }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      @if (editing()) {
+        <p class="confirm-note">
+          {{ 'The code itself cannot be changed — guests already hold it. Withdraw it and issue a new one instead.' | translate }}
+        </p>
+      }
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="pc-code">{{ 'Code' | translate }}</label>
+          <input class="field-input" id="pc-code" type="text" [ngModel]="form().promo_code"
+                 (ngModelChange)="form.set({ ...form(), promo_code: $event ?? '' })"
+                 [disabled]="editing() !== null"
+                 placeholder="SUMMER20" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-name">{{ 'Name' | translate }}</label>
+          <input class="field-input" id="pc-name" type="text" [ngModel]="form().promo_name"
+                 (ngModelChange)="form.set({ ...form(), promo_name: $event ?? '' })"
+                 [placeholder]="'Summer campaign 2026' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-type">{{ 'Promo type' | translate }}</label>
+          <select class="field-input" id="pc-type" [ngModel]="form().promo_type"
+                  (ngModelChange)="form.set({ ...form(), promo_type: $event })">
+            @for (t of promoTypes; track t) {
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-status">{{ 'Status' | translate }}</label>
+          <select class="field-input" id="pc-status" [ngModel]="form().promo_status"
+                  (ngModelChange)="form.set({ ...form(), promo_status: $event })">
+            @for (s of promoStatuses; track s) {
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-from">{{ 'Valid from' | translate }}</label>
+          <input class="field-input" id="pc-from" type="date" [ngModel]="form().valid_from"
+                 (ngModelChange)="form.set({ ...form(), valid_from: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-to">{{ 'Valid to' | translate }}</label>
+          <input class="field-input" id="pc-to" type="date" [ngModel]="form().valid_to"
+                 (ngModelChange)="form.set({ ...form(), valid_to: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-disc-type">{{ 'Discount type' | translate }}</label>
+          <select class="field-input" id="pc-disc-type" [ngModel]="form().discount_type"
+                  (ngModelChange)="form.set({ ...form(), discount_type: $event })">
+            @for (d of discountTypes; track d) {
+              <option [value]="d">{{ labelFor(d) | translate }}</option>
+            }
+          </select>
+        </div>
+        @if (form().discount_type === 'percentage') {
+          <div class="form-field">
+            <label class="field-label" for="pc-pct">{{ 'Discount %' | translate }}</label>
+            <input class="field-input" id="pc-pct" type="number" min="0" max="100" step="0.01"
+                   [ngModel]="form().discount_percent"
+                   (ngModelChange)="form.set({ ...form(), discount_percent: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="pc-cap">{{ 'Maximum discount' | translate }}</label>
+            <input class="field-input" id="pc-cap" type="number" min="0" step="0.01"
+                   [ngModel]="form().max_discount_amount"
+                   (ngModelChange)="form.set({ ...form(), max_discount_amount: $event })" />
+          </div>
+        }
+        @if (form().discount_type === 'fixed_amount') {
+          <div class="form-field">
+            <label class="field-label" for="pc-amt">{{ 'Discount amount' | translate }}</label>
+            <input class="field-input" id="pc-amt" type="number" min="0" step="0.01"
+                   [ngModel]="form().discount_amount"
+                   (ngModelChange)="form.set({ ...form(), discount_amount: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="pc-cur">{{ 'Currency' | translate }}</label>
+            <input class="field-input" id="pc-cur" type="text" maxlength="3"
+                   [ngModel]="form().discount_currency"
+                   (ngModelChange)="form.set({ ...form(), discount_currency: $event ?? '' })" />
+          </div>
+        }
+        @if (form().discount_type === 'free_night') {
+          <div class="form-field">
+            <label class="field-label" for="pc-nights">{{ 'Free nights' | translate }}</label>
+            <input class="field-input" id="pc-nights" type="number" min="1"
+                   [ngModel]="form().free_nights_count"
+                   (ngModelChange)="form.set({ ...form(), free_nights_count: $event })" />
+          </div>
+        }
+        <div class="form-field">
+          <label class="field-label" for="pc-limited">{{ 'Limit total redemptions' | translate }}</label>
+          <select class="field-input" id="pc-limited" [ngModel]="form().has_usage_limit"
+                  (ngModelChange)="form.set({ ...form(), has_usage_limit: $event })">
+            <option [ngValue]="false">{{ 'Unlimited' | translate }}</option>
+            <option [ngValue]="true">{{ 'Limited' | translate }}</option>
+          </select>
+        </div>
+        @if (form().has_usage_limit) {
+          <div class="form-field">
+            <label class="field-label" for="pc-total">{{ 'Total redemptions' | translate }}</label>
+            <input class="field-input" id="pc-total" type="number" min="1"
+                   [ngModel]="form().total_usage_limit"
+                   (ngModelChange)="form.set({ ...form(), total_usage_limit: $event })" />
+          </div>
+        }
+        <div class="form-field">
+          <label class="field-label" for="pc-per-user">{{ 'Per-guest limit' | translate }}</label>
+          <input class="field-input" id="pc-per-user" type="number" min="1"
+                 [ngModel]="form().per_user_limit"
+                 (ngModelChange)="form.set({ ...form(), per_user_limit: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-min-nights">{{ 'Minimum nights' | translate }}</label>
+          <input class="field-input" id="pc-min-nights" type="number" min="1"
+                 [ngModel]="form().minimum_stay_nights"
+                 (ngModelChange)="form.set({ ...form(), minimum_stay_nights: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-max-nights">{{ 'Maximum nights' | translate }}</label>
+          <input class="field-input" id="pc-max-nights" type="number" min="1"
+                 [ngModel]="form().maximum_stay_nights"
+                 (ngModelChange)="form.set({ ...form(), maximum_stay_nights: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-min-amount">{{ 'Minimum booking amount' | translate }}</label>
+          <input class="field-input" id="pc-min-amount" type="number" min="0" step="0.01"
+                 [ngModel]="form().minimum_booking_amount"
+                 (ngModelChange)="form.set({ ...form(), minimum_booking_amount: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-public">{{ 'Visible to guests' | translate }}</label>
+          <select class="field-input" id="pc-public" [ngModel]="form().is_public"
+                  (ngModelChange)="form.set({ ...form(), is_public: $event })">
+            <option [ngValue]="false">{{ 'Private' | translate }}</option>
+            <option [ngValue]="true">{{ 'Public' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-website">{{ 'Show on website' | translate }}</label>
+          <select class="field-input" id="pc-website" [ngModel]="form().display_on_website"
+                  (ngModelChange)="form.set({ ...form(), display_on_website: $event })">
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-combine">{{ 'Stackable' | translate }}</label>
+          <select class="field-input" id="pc-combine" [ngModel]="form().combinable_with_other_promos"
+                  (ngModelChange)="form.set({ ...form(), combinable_with_other_promos: $event })">
+            <option [ngValue]="false">{{ 'Cannot combine' | translate }}</option>
+            <option [ngValue]="true">{{ 'Combines with others' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="pc-auto">{{ 'Auto-apply' | translate }}</label>
+          <select class="field-input" id="pc-auto" [ngModel]="form().auto_apply"
+                  (ngModelChange)="form.set({ ...form(), auto_apply: $event })">
+            <option [ngValue]="false">{{ 'Guest must enter it' | translate }}</option>
+            <option [ngValue]="true">{{ 'Applied automatically' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="pc-desc">{{ 'Description' | translate }}</label>
+          <textarea class="field-input" id="pc-desc" rows="2" [ngModel]="form().promo_description"
+                    (ngModelChange)="form.set({ ...form(), promo_description: $event ?? '' })"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelEditor()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitForm()"
+              [disabled]="submitting() || !canSubmit()">
+        {{ submitting() ? ('Saving…' | translate) : (editing() ? ('Save changes' | translate) : ('Create code' | translate)) }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="pc-f-status">{{ 'Status' | translate }}</label>
+    <select class="field-input" id="pc-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (s of promoStatuses; track s) {
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="pc-f-search">{{ 'Search code' | translate }}</label>
+    <input class="field-input" id="pc-f-search" type="text" [ngModel]="searchFilter()"
+           (ngModelChange)="searchFilter.set($event ?? '')" (change)="load()"
+           [placeholder]="'Partial code' | translate" />
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
+} @else if (codes().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="local_offer" />
+    <h3>{{ 'No promotional codes yet' | translate }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Code' | translate }}</th>
+          <th>{{ 'Discount' | translate }}</th>
+          <th>{{ 'Valid' | translate }}</th>
+          <th>{{ 'Usage' | translate }}</th>
+          <th>{{ 'Restrictions' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of codes(); track c.promo_id) {
+          <tr>
+            <td class="cell-primary">
+              <strong>{{ c.promo_code }}</strong>
+              <div class="cell-sub">{{ c.promo_name }}</div>
+              @if (c.auto_apply) {
+                <span class="badge badge-accent badge-sm">{{ 'Auto' | translate }}</span>
+              }
+              @if (c.is_public) {
+                <span class="badge badge-muted badge-sm">{{ 'Public' | translate }}</span>
+              }
+            </td>
+            <td>{{ discountSummary(c) }}</td>
+            <td>
+              {{ c.valid_from | localeDate: 'mediumDate' }} – {{ c.valid_to | localeDate: 'mediumDate' }}
+            </td>
+            <td>
+              {{ usageSummary(c) }}
+              @if (c.has_usage_limit && c.remaining_uses !== null && c.remaining_uses <= 5) {
+                <span class="badge badge-warning badge-sm">{{ '{count} left' | translate:{ count: c.remaining_uses } }}</span>
+              }
+            </td>
+            <td class="cell-sub">
+              @if (c.minimum_stay_nights) { {{ 'min {nights}n' | translate:{ nights: c.minimum_stay_nights } }} }
+              @if (c.minimum_booking_amount) { · {{ 'min {amount}' | translate:{ amount: c.minimum_booking_amount } }} }
+              @if (!c.minimum_stay_nights && !c.minimum_booking_amount) { — }
+            </td>
+            <td>
+              <span [class]="statusClass(c.promo_status)">{{ c.promo_status_display | translate }}</span>
+              @if (!c.is_active) {
+                <span class="badge badge-muted badge-sm">{{ 'Inactive' | translate }}</span>
+              }
+            </td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openEdit(c)">{{ 'Edit' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openWithdraw(c)">{{ 'Withdraw' | translate }}</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

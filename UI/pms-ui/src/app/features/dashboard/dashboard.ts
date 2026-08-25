@@ -5,6 +5,7 @@ import type {
 	ActivityItem,
 	DashboardStats,
 	HousekeepingTaskListItem,
+	HousekeepingTaskStatus,
 	PaginatedActivity,
 	RateItem,
 	RoomGridItem,
@@ -15,6 +16,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -41,6 +43,7 @@ import { relativeTime } from "../../shared/format-utils";
 })
 export class DashboardComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	readonly settings = inject(SettingsService);
@@ -76,8 +79,9 @@ export class DashboardComponent {
 		for (const item of items) {
 			if (item.type === "reservation") continue;
 			const resId = item.reservation_id;
-			if (resId && parentMap.has(resId)) {
-				parentMap.get(resId)!.children.push(item);
+			const parent = resId ? parentMap.get(resId) : undefined;
+			if (parent) {
+				parent.children.push(item);
 			} else {
 				result.push(item);
 			}
@@ -204,15 +208,34 @@ export class DashboardComponent {
 		};
 	});
 
-	/** Housekeeping summary computed from tasks data. */
+	/**
+	 * Housekeeping summary computed from tasks data.
+	 *
+	 * `status` and `priority` are compared upper-cased because housekeeping-service
+	 * lowercases both in its row mapper while the column stores them upper — the
+	 * same drift `features/housekeeping/housekeeping.ts` already works around at
+	 * `canComplete`/`canReopen`. Comparing raw made **every tile below read zero**
+	 * regardless of the data.
+	 *
+	 * The vocabulary is the Postgres enum `housekeeping_status` — CLEAN, DIRTY,
+	 * INSPECTED, IN_PROGRESS, DO_NOT_DISTURB. There is no CHECK constraint because
+	 * the type itself constrains it, which is why the drift was invisible. The
+	 * PENDING / ASSIGNED / COMPLETED values this summary used to count are not
+	 * storable at all, so those tiles could only ever read zero.
+	 *
+	 * DIRTY is "waiting to be cleaned" and DO_NOT_DISTURB is waiting on the guest;
+	 * both are outstanding work, so both count as pending.
+	 */
 	readonly hkSummary = computed(() => {
 		const all = this.hkTasks();
-		const pending = all.filter((t) => t.status === "PENDING" || t.status === "ASSIGNED").length;
-		const inProgress = all.filter((t) => t.status === "IN_PROGRESS").length;
-		const completed = all.filter(
-			(t) => t.status === "COMPLETED" || t.status === "INSPECTED",
-		).length;
-		const urgent = all.filter((t) => t.priority === "URGENT" || t.priority === "HIGH").length;
+		const status = (t: { status?: string | null }): string => (t.status ?? "").toUpperCase();
+		const priority = (t: { priority?: string | null }): string => (t.priority ?? "").toUpperCase();
+		const is = (t: { status?: string | null }, ...want: HousekeepingTaskStatus[]): boolean =>
+			(want as string[]).includes(status(t));
+		const pending = all.filter((t) => is(t, "DIRTY", "DO_NOT_DISTURB")).length;
+		const inProgress = all.filter((t) => is(t, "IN_PROGRESS")).length;
+		const completed = all.filter((t) => is(t, "CLEAN", "INSPECTED")).length;
+		const urgent = all.filter((t) => ["URGENT", "HIGH"].includes(priority(t))).length;
 		return { total: all.length, pending, inProgress, completed, urgent };
 	});
 
@@ -258,7 +281,9 @@ export class DashboardComponent {
 			const stats = await this.api.get<DashboardStats>("/dashboard/stats", params);
 			this.stats.set(stats);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load dashboard stats");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load dashboard stats"),
+			);
 		} finally {
 			this.statsReady.set(true);
 		}

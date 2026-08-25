@@ -1,0 +1,144 @@
+/* =====================================================
+ * Accessibility layer — high contrast & forced colours
+ *
+ * Two independent user settings, handled separately because
+ * they need opposite treatments:
+ *
+ *   prefers-contrast: more   the user still wants OUR palette,
+ *                            just with more separation. We swap
+ *                            token values and change nothing else.
+ *
+ *   forced-colors: active    the OS REPLACES our palette outright
+ *                            (Windows High Contrast). Token values
+ *                            are ignored here, so anything that
+ *                            encoded meaning in a background tint
+ *                            loses it. The fix is structural: give
+ *                            those elements a real border.
+ *
+ * Loaded after primer-light/primer-dark so these win by source
+ * order at equal specificity.
+ * ===================================================== */
+
+/* ── prefers-contrast: more — light ──
+   Text tokens move to AAA (7:1+) and the two border tokens clear
+   4.5:1, comfortably above the 3:1 that 1.4.11 asks of a control. */
+@media (prefers-contrast: more) {
+	[data-theme="light"] {
+		--fgColor-muted: #4a5160;
+		--fgColor-accent: #0f4d85;
+		--fgColor-success: #136129;
+		--fgColor-danger: #a3161f;
+		--fgColor-attention: #6f4a00;
+		--fgColor-done: #5b21b6;
+		--fgColor-open: #136129;
+
+		/* The status washes lift with the text. contrast.css darkened
+		   --fgColor-success/-danger for the 7:1 tier but left the muted fills
+		   they sit on, so the success, danger and open badges landed at 6.81:1
+		   against a 7:1 floor. --bgColor-open-muted is var(--bgColor-success-muted)
+		   and follows automatically. */
+		--bgColor-success-muted: #e8fdee;
+		--bgColor-danger-muted: #fff2f1;
+
+		--borderColor-default: #6e7687;
+		--borderColor-muted: #6e7687;
+		--borderColor-control: #5c6470;
+
+		/* The CTA darkens with the text so a white label keeps its margin. */
+		--bgColor-accent-emphasis: #0f4d85;
+		--button-primary-bgColor-rest: #0f4d85;
+		--button-primary-bgColor-hover: #0c3f6d;
+		--button-primary-bgColor-active: #0a3358;
+	}
+
+	/* ── prefers-contrast: more — dark ── */
+	[data-theme="dark"] {
+		--fgColor-muted: #c2c9d6;
+		--fgColor-accent: #9ecbff;
+		--fgColor-success: #6fdc82;
+		--fgColor-danger: #ff938c;
+		--fgColor-attention: #e8bb45;
+		--fgColor-done: #c9a8ff;
+		--fgColor-open: #6fdc82;
+
+		--borderColor-default: #7c85a8;
+		--borderColor-muted: #7c85a8;
+		--borderColor-control: #9aa2bd;
+
+		/* The CTA darkens in dark mode too. It carries a white label either way,
+		   so it needs the same 7:1 the light theme gets — leaving it at the base
+		   #1a6fc7 stalls at 5.07:1. */
+		--bgColor-accent-emphasis: #0f4d85;
+		--button-primary-bgColor-rest: #0f4d85;
+		--button-primary-bgColor-hover: #0c3f6d;
+		--button-primary-bgColor-active: #0a3358;
+	}
+
+	/* Muted badges and cards lean on a tint alone at rest; at this setting
+	   the tint is not enough on its own. */
+	.badge,
+	.counter {
+		border: 1px solid currentColor;
+	}
+}
+
+/* ── forced-colors: active ──
+   Every colour below is a CSS system colour, which is the only kind the
+   OS leaves alone here. Backgrounds are flattened by the platform, so
+   state that was carried by a tint is re-encoded as a border. */
+@media (forced-colors: active) {
+	/* Status badges: all seven variants collapse to the same flat fill
+	   without this, which erases the distinction they exist to draw. */
+	.badge,
+	.counter,
+	.flash,
+	.avatar {
+		border: 1px solid CanvasText;
+	}
+
+	/* Panels and fields need their edges back for the same reason. */
+	.card,
+	.detail-card,
+	.field-input {
+		border: 1px solid CanvasText;
+	}
+
+	/* Highlight is the OS's own focus colour — using anything else here
+	   is the one thing guaranteed to be invisible in some HCM palette. */
+	:focus-visible {
+		outline: 2px solid Highlight;
+		outline-offset: 2px;
+	}
+
+	/* Component-scoped rules below need !important.
+	   Angular's emulated encapsulation rewrites a component selector to
+	   `.foo[_ngcontent-abc]`, which is (0,2,0) and outranks anything a global
+	   stylesheet can say with a single class. Rules targeting classes defined
+	   in shared.scss (badges, cards, fields, skeletons) are global too, so
+	   they win on source order alone and need none of this. */
+
+	/* The selected nav item is a ::before bar tinted with --fgColor-accent,
+	   plus a background wash. The OS flattens both, so the bar is repainted in
+	   the system highlight colour rather than given a border it never had. */
+	.nav-item-active::before {
+		background: Highlight !important;
+		width: 3px !important;
+	}
+
+	/* The watermark scene is pure decoration and only adds noise once the
+	   palette is overridden. */
+	.title-bar-motif {
+		display: none !important;
+	}
+
+	/* Skeletons stay — they are the only "still loading" signal on screen.
+	   Their sweep is a gradient the OS flattens to a solid bar, so drop the
+	   animation and outline them instead, which still reads as a placeholder. */
+	.skeleton-block,
+	.skeleton-row,
+	.skeleton-text {
+		background: none;
+		animation: none;
+		border: 1px solid GrayText;
+	}
+}

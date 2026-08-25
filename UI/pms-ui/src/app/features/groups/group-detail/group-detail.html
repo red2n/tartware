@@ -45,8 +45,8 @@
 
       <div class="form-grid">
         <div class="form-field">
-          <label for="blockRoomType">{{ 'Room Type' | translate }}</label>
-          <select id="blockRoomType" [ngModel]="blockRoomTypeId()" (ngModelChange)="blockRoomTypeId.set($event)">
+          <label class="field-label" for="blockRoomType">{{ 'Room Type' | translate }}</label>
+          <select class="field-input" id="blockRoomType" [ngModel]="blockRoomTypeId()" (ngModelChange)="blockRoomTypeId.set($event)">
             <option value="">{{ 'Select a room type' | translate }}</option>
             @for (rt of roomTypes(); track rt.room_type_id) {
               <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
@@ -54,20 +54,20 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="blockRooms">{{ 'Rooms per night' | translate }}</label>
-          <input id="blockRooms" type="number" min="1" [ngModel]="blockRooms()" (ngModelChange)="blockRooms.set($event)" />
+          <label class="field-label" for="blockRooms">{{ 'Rooms per night' | translate }}</label>
+          <input class="field-input" id="blockRooms" type="number" min="1" [ngModel]="blockRooms()" (ngModelChange)="blockRooms.set($event)" />
         </div>
         <div class="form-field">
-          <label for="blockStart">{{ 'First night' | translate }}</label>
-          <input id="blockStart" type="date" [ngModel]="blockStartDate()" (ngModelChange)="blockStartDate.set($event)" />
+          <label class="field-label" for="blockStart">{{ 'First night' | translate }}</label>
+          <input class="field-input" id="blockStart" type="date" [ngModel]="blockStartDate()" (ngModelChange)="blockStartDate.set($event)" />
         </div>
         <div class="form-field">
-          <label for="blockEnd">{{ 'Departure' | translate }}</label>
-          <input id="blockEnd" type="date" [ngModel]="blockEndDate()" (ngModelChange)="blockEndDate.set($event)" />
+          <label class="field-label" for="blockEnd">{{ 'Departure' | translate }}</label>
+          <input class="field-input" id="blockEnd" type="date" [ngModel]="blockEndDate()" (ngModelChange)="blockEndDate.set($event)" />
         </div>
         <div class="form-field">
-          <label for="blockRate">{{ 'Negotiated Rate' | translate }}</label>
-          <input id="blockRate" type="number" min="0" step="0.01" [ngModel]="blockRate()" (ngModelChange)="blockRate.set($event)" />
+          <label class="field-label" for="blockRate">{{ 'Negotiated Rate' | translate }}</label>
+          <input class="field-input" id="blockRate" type="number" min="0" step="0.01" [ngModel]="blockRate()" (ngModelChange)="blockRate.set($event)" />
         </div>
       </div>
 
@@ -117,18 +117,18 @@
           <tbody>
             @for (row of roomingGuests(); track $index) {
               <tr>
-                <td><input type="text" [ngModel]="row.guest_name" (ngModelChange)="updateGuestRow($index, 'guest_name', $event)" [placeholder]="'Full name' | translate" /></td>
-                <td><input type="email" [ngModel]="row.guest_email" (ngModelChange)="updateGuestRow($index, 'guest_email', $event)" [placeholder]="'Optional' | translate" /></td>
+                <td><input class="field-input field-sm" type="text" [ngModel]="row.guest_name" (ngModelChange)="updateGuestRow($index, 'guest_name', $event)" [placeholder]="'Full name' | translate" /></td>
+                <td><input class="field-input field-sm" type="email" [ngModel]="row.guest_email" (ngModelChange)="updateGuestRow($index, 'guest_email', $event)" [placeholder]="'Optional' | translate" /></td>
                 <td>
-                  <select [ngModel]="row.room_type_id" (ngModelChange)="updateGuestRow($index, 'room_type_id', $event)">
+                  <select class="field-input field-sm" [ngModel]="row.room_type_id" (ngModelChange)="updateGuestRow($index, 'room_type_id', $event)">
                     <option value="">{{ 'Select' | translate }}</option>
                     @for (rt of roomTypes(); track rt.room_type_id) {
                       <option [value]="rt.room_type_id">{{ rt.type_name }}</option>
                     }
                   </select>
                 </td>
-                <td><input type="date" [ngModel]="row.arrival_date" (ngModelChange)="updateGuestRow($index, 'arrival_date', $event)" /></td>
-                <td><input type="date" [ngModel]="row.departure_date" (ngModelChange)="updateGuestRow($index, 'departure_date', $event)" /></td>
+                <td><input class="field-input field-sm" type="date" [ngModel]="row.arrival_date" (ngModelChange)="updateGuestRow($index, 'arrival_date', $event)" /></td>
+                <td><input class="field-input field-sm" type="date" [ngModel]="row.departure_date" (ngModelChange)="updateGuestRow($index, 'departure_date', $event)" /></td>
                 <td>
                   @if (roomingGuests().length > 1) {
                     <button class="btn btn-invisible btn-sm" (click)="removeGuestRow($index)" [pTooltip]="'Remove guest' | translate">
@@ -222,7 +222,7 @@
       <div class="card-header">
         <h3 class="card-title">
           @if (groupTypeIcon[g.group_type.toUpperCase()]; as typeInfo) {
-            <app-icon class="card-title-icon" [pTooltip]="typeInfo.tooltip" [name]="typeInfo.icon" />
+            <app-icon class="card-title-icon" [pTooltip]="typeInfo.tooltip | translate" [name]="typeInfo.icon" />
           }
           {{ 'Group Information' | translate }}
         </h3>
@@ -234,9 +234,9 @@
               <dt class="detail-label">{{ row.label | translate }}</dt>
               <dd class="detail-value">
                 @if (row.badge) {
-                  <span class="badge" [ngClass]="row.badge" [pTooltip]="row.description ?? ''">{{ row.value }}</span>
+                  <span class="badge" [ngClass]="row.badge" [pTooltip]="(row.description ?? '') | translate">{{ row.value }}</span>
                   @if (row.description) {
-                    <span class="detail-hint text-muted">{{ row.description }}</span>
+                    <span class="detail-hint text-muted">{{ row.description | translate }}</span>
                   }
                 } @else {
                   {{ row.value }}

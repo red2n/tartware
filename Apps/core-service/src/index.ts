@@ -3,12 +3,12 @@ import process from "node:process";
 import { ensureDependencies, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 
-import {
-  shutdownSettingsCommandCenterConsumer,
-  startSettingsCommandCenterConsumer,
-} from "./commands/settings-command-center-consumer.js";
 import { config } from "./config.js";
 import { shutdownRetentionSweep, startRetentionSweep } from "./jobs/retention-sweep.js";
+import {
+  shutdownSettingsOutboxDispatcher,
+  startSettingsOutboxDispatcher,
+} from "./jobs/settings-outbox-dispatcher.js";
 import { shutdownSettingsProducer } from "./kafka/settings-kafka-producer.js";
 import { closeRedis, initRedis } from "./lib/redis.js";
 import { buildServer } from "./server.js";
@@ -83,11 +83,9 @@ app
     // Start service registry sweep
     startRegistrySweep();
 
-    // Start settings Kafka consumer (if Kafka brokers are configured)
+    // Drain settings events from the transactional outbox (if Kafka is configured)
     if (config.settings.kafka.brokers.length > 0) {
-      startSettingsCommandCenterConsumer().catch((err: unknown) => {
-        app.log.error(err, "Failed to start settings command consumer");
-      });
+      startSettingsOutboxDispatcher();
     }
 
     // Warm up Bloom filter with existing usernames
@@ -123,7 +121,7 @@ const shutdown = async (signal: string) => {
   try {
     shutdownRetentionSweep();
     stopRegistrySweep();
-    await shutdownSettingsCommandCenterConsumer();
+    shutdownSettingsOutboxDispatcher();
     await shutdownSettingsProducer();
     await closeRedis();
     await telemetry

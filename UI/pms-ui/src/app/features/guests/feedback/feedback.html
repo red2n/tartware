@@ -1,0 +1,323 @@
+<app-page-header
+  title="Guest feedback"
+  description="Reviews, surveys and complaints — from intake through to resolution.">
+  <button class="btn btn-primary btn-sm" (click)="openLog()" [disabled]="submitting()">
+    <app-icon name="rate_review" /> {{ 'Log feedback' | translate }}
+  </button>
+</app-page-header>
+
+@if (awaitingResponse().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="mark_email_unread" />
+    {{ (awaitingResponse().length === 1
+          ? '{count} open item with no response sent'
+          : '{count} open items with no response sent') | translate:{ count: awaitingResponse().length } }}</p>
+}
+
+@if (logging()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="rate_review" />
+      <h3 class="confirm-title">{{ 'Log guest feedback' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'Guest and reservation are optional — a phone complaint may have neither.' | translate }}
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="gf-source">{{ 'Source' | translate }}</label>
+          <select class="field-input" id="gf-source" [ngModel]="form().feedback_source"
+                  (ngModelChange)="form.set({ ...form(), feedback_source: $event })">
+            @for (s of sources; track s) {
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-sentiment">{{ 'Sentiment' | translate }}</label>
+          <select class="field-input" id="gf-sentiment" [ngModel]="form().sentiment_label"
+                  (ngModelChange)="form.set({ ...form(), sentiment_label: $event })">
+            @for (s of sentiments; track s) {
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-category">{{ 'Category' | translate }}</label>
+          <input class="field-input" id="gf-category" type="text" [ngModel]="form().feedback_category"
+                 (ngModelChange)="form.set({ ...form(), feedback_category: $event ?? '' })"
+                 [placeholder]="'e.g. housekeeping, noise, billing' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-rating">{{ 'Overall rating' | translate }}</label>
+          <input class="field-input" id="gf-rating" type="number" min="0" max="10" step="0.5"
+                 [ngModel]="form().overall_rating"
+                 (ngModelChange)="form.set({ ...form(), overall_rating: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-guest">{{ 'Guest ID' | translate }}</label>
+          <input class="field-input" id="gf-guest" type="text" [ngModel]="form().guest_id"
+                 (ngModelChange)="form.set({ ...form(), guest_id: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-res">{{ 'Reservation ID' | translate }}</label>
+          <input class="field-input" id="gf-res" type="text" [ngModel]="form().reservation_id"
+                 (ngModelChange)="form.set({ ...form(), reservation_id: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-public">{{ 'Publish' | translate }}</label>
+          <select class="field-input" id="gf-public" [ngModel]="form().is_public"
+                  (ngModelChange)="form.set({ ...form(), is_public: $event })">
+            <option [ngValue]="false">{{ 'Internal only' | translate }}</option>
+            <option [ngValue]="true">{{ 'Public' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-title">{{ 'Title' | translate }}</label>
+          <input class="field-input" id="gf-title" type="text" [ngModel]="form().review_title"
+                 (ngModelChange)="form.set({ ...form(), review_title: $event ?? '' })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-text">{{ 'What the guest said' | translate }}</label>
+          <textarea class="field-input" id="gf-text" rows="4" [ngModel]="form().review_text"
+                    (ngModelChange)="form.set({ ...form(), review_text: $event ?? '' })"
+                    [placeholder]="'In the guest\'s own words where possible' | translate"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelLog()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitLog()"
+              [disabled]="submitting() || !canLog()">
+        {{ submitting() ? ('Saving…' | translate) : ('Log feedback' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (triageTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="label" />
+      <h3 class="confirm-title">{{ 'Triage — {item}' | translate:{ item: item.review_title || ('Feedback' | translate) } }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="gf-t-status">{{ 'Status' | translate }}</label>
+          <select class="field-input" id="gf-t-status" [ngModel]="triageForm().feedback_status"
+                  (ngModelChange)="triageForm.set({ ...triageForm(), feedback_status: $event })">
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-t-sentiment">{{ 'Sentiment' | translate }}</label>
+          <select class="field-input" id="gf-t-sentiment" [ngModel]="triageForm().sentiment_label"
+                  (ngModelChange)="triageForm.set({ ...triageForm(), sentiment_label: $event })">
+            <option value="">{{ 'Unset' | translate }}</option>
+            @for (s of sentiments; track s) {
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-t-category">{{ 'Category' | translate }}</label>
+          <input class="field-input" id="gf-t-category" type="text" [ngModel]="triageForm().feedback_category"
+                 (ngModelChange)="triageForm.set({ ...triageForm(), feedback_category: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-t-owner">{{ 'Assign to (user ID)' | translate }}</label>
+          <input class="field-input" id="gf-t-owner" type="text" [ngModel]="triageForm().assigned_to"
+                 (ngModelChange)="triageForm.set({ ...triageForm(), assigned_to: $event ?? '' })" />
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelTriage()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitTriage()" [disabled]="submitting()">
+        {{ submitting() ? ('Saving…' | translate) : ('Save' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (respondTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="reply" />
+      <h3 class="confirm-title">{{ 'Respond — {guest}' | translate:{ guest: item.guest_name || ('Guest' | translate) } }}</h3>
+    </div>
+    <div class="confirm-body">
+      @if (item.review_text) {
+        <p class="confirm-note">“{{ item.review_text }}”</p>
+      }
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-r-text">{{ 'Response' | translate }}</label>
+          <textarea class="field-input" id="gf-r-text" rows="4" [ngModel]="respondForm().response_text"
+                    (ngModelChange)="respondForm.set({ ...respondForm(), response_text: $event ?? '' })"
+                    [placeholder]="'What was sent to the guest' | translate"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-r-public">{{ 'Publish response' | translate }}</label>
+          <select class="field-input" id="gf-r-public" [ngModel]="respondForm().is_public"
+                  (ngModelChange)="respondForm.set({ ...respondForm(), is_public: $event })">
+            <option [ngValue]="false">{{ 'Internal only' | translate }}</option>
+            <option [ngValue]="true">{{ 'Public' | translate }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelRespond()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitRespond()"
+              [disabled]="submitting() || !canRespond()">
+        {{ submitting() ? ('Saving…' | translate) : ('Record response' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (resolveTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="task_alt" />
+      <h3 class="confirm-title">{{ 'Resolve — {item}' | translate:{ item: item.review_title || ('Feedback' | translate) } }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label class="field-label" for="gf-x-notes">{{ 'Resolution' | translate }}</label>
+          <textarea class="field-input" id="gf-x-notes" rows="3" [ngModel]="resolveForm().resolution_notes"
+                    (ngModelChange)="resolveForm.set({ ...resolveForm(), resolution_notes: $event ?? '' })"
+                    [placeholder]="'What was done about it' | translate"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-x-recovery">{{ 'Service recovery reference' | translate }}</label>
+          <input class="field-input" id="gf-x-recovery" type="text"
+                 [ngModel]="resolveForm().service_recovery_reference"
+                 (ngModelChange)="resolveForm.set({ ...resolveForm(), service_recovery_reference: $event ?? '' })"
+                 [placeholder]="'Comp posting or gesture, so the spend is tied to the complaint' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="gf-x-status">{{ 'Close as' | translate }}</label>
+          <select class="field-input" id="gf-x-status" [ngModel]="resolveForm().feedback_status"
+                  (ngModelChange)="resolveForm.set({ ...resolveForm(), feedback_status: $event })">
+            <option value="resolved">{{ 'Resolved' | translate }}</option>
+            <option value="closed">{{ 'Closed' | translate }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelResolve()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitResolve()"
+              [disabled]="submitting() || !canResolve()">
+        {{ submitting() ? ('Saving…' | translate) : ('Resolve' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="gf-f-status">{{ 'Status' | translate }}</label>
+    <select class="field-input" id="gf-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="gf-f-sentiment">{{ 'Sentiment' | translate }}</label>
+    <select class="field-input" id="gf-f-sentiment" [ngModel]="sentimentFilter()"
+            (ngModelChange)="sentimentFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (s of sentiments; track s) {
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="gf-f-category">{{ 'Category' | translate }}</label>
+    <input class="field-input" id="gf-f-category" type="text" [ngModel]="categoryFilter()"
+           (ngModelChange)="categoryFilter.set($event ?? '')" (change)="load()" />
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="gf-f-open">{{ 'Show' | translate }}</label>
+    <select class="field-input" id="gf-f-open" [ngModel]="unresolvedOnly()"
+            (ngModelChange)="unresolvedOnly.set($event)">
+      <option [ngValue]="false">{{ 'All feedback' | translate }}</option>
+      <option [ngValue]="true">{{ 'Unresolved only' | translate }}</option>
+    </select>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
+} @else if (visibleItems().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="rate_review" />
+    <h3>{{ unresolvedOnly() ? ('Nothing unresolved' | translate) : ('No guest feedback recorded' | translate) }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Received' | translate }}</th>
+          <th>{{ 'Guest' | translate }}</th>
+          <th>{{ 'Source' | translate }}</th>
+          <th>{{ 'Feedback' | translate }}</th>
+          <th>{{ 'Category' | translate }}</th>
+          <th>{{ 'Rating' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (f of visibleItems(); track f.id) {
+          <tr>
+            <td>{{ f.created_at | localeDate: 'mediumDate' }}</td>
+            <td>{{ f.guest_name || '—' }}</td>
+            <td>{{ (f.feedback_source_display || labelFor(f.feedback_source)) | translate }}</td>
+            <td class="cell-primary">
+              @if (f.review_title) {
+                <strong>{{ f.review_title }}</strong>
+              }
+              <div class="cell-sub">{{ f.review_text }}</div>
+              @if (f.response_text) {
+                <span class="badge badge-accent badge-sm">{{ 'Responded' | translate }}</span>
+              }
+            </td>
+            <td>
+              {{ labelFor(f.feedback_category) | translate }}
+              @if (f.sentiment_label) {
+                <span [class]="sentimentClass(f.sentiment_label)">{{ labelFor(f.sentiment_label) | translate }}</span>
+              }
+            </td>
+            <td>{{ f.overall_rating ? f.overall_rating + ' / ' + (f.rating_scale ?? 5) : '—' }}</td>
+            <td>
+              <span [class]="statusClass(f.feedback_status)">
+                {{ (f.feedback_status_display || labelFor(f.feedback_status)) | translate }}
+              </span>
+              @if (f.assigned_to) {
+                <span class="badge badge-muted badge-sm">{{ 'Assigned' | translate }}</span>
+              }
+            </td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openTriage(f)">{{ 'Triage' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openRespond(f)">{{ 'Respond' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openResolve(f)">{{ 'Resolve' | translate }}</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

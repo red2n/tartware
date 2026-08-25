@@ -6,6 +6,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -75,6 +76,7 @@ type GridCell = {
 })
 export class RateCalendarComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -161,7 +163,7 @@ export class RateCalendarComponent {
 			this.ratePlans.set(Array.isArray(rates) ? rates : []);
 			await this.loadCalendarData();
 		} catch {
-			this.toast.error("Failed to load reference data");
+			this.toast.error(this.i18n.t("Failed to load reference data"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -192,7 +194,7 @@ export class RateCalendarComponent {
 			this.calendarEntries.set(Array.isArray(entries) ? entries : []);
 			this.rebuildGrid();
 		} catch {
-			this.toast.error("Failed to load rate calendar");
+			this.toast.error(this.i18n.t("Failed to load rate calendar"));
 		}
 	}
 
@@ -267,16 +269,25 @@ export class RateCalendarComponent {
 		const parts: string[] = [];
 		if (cell.amount !== null) {
 			const diff = cell.amount - cell.baseRate;
-			if (diff > 0) parts.push(`+${this.fmtCurrency(diff, cell.currency)} vs base`);
-			else if (diff < 0) parts.push(`${this.fmtCurrency(diff, cell.currency)} vs base`);
-			else parts.push("At base rate");
+			if (diff > 0)
+				parts.push(
+					this.i18n.t("+{amount} vs base", { amount: this.fmtCurrency(diff, cell.currency) }),
+				);
+			else if (diff < 0)
+				parts.push(
+					this.i18n.t("{amount} vs base", { amount: this.fmtCurrency(diff, cell.currency) }),
+				);
+			else parts.push(this.i18n.t("At base rate"));
 		} else {
-			parts.push(`Base: ${this.fmtCurrency(cell.baseRate, cell.currency)}`);
+			parts.push(
+				this.i18n.t("Base: {amount}", { amount: this.fmtCurrency(cell.baseRate, cell.currency) }),
+			);
 		}
-		if (cell.cta) parts.push("CTA: Closed to Arrival");
-		if (cell.ctd) parts.push("CTD: Closed to Departure");
-		if (cell.minLos) parts.push(`Min LOS: ${cell.minLos}`);
-		if (cell.status !== "OPEN") parts.push(`Status: ${cell.status}`);
+		if (cell.cta) parts.push(this.i18n.t("CTA: Closed to Arrival"));
+		if (cell.ctd) parts.push(this.i18n.t("CTD: Closed to Departure"));
+		if (cell.minLos) parts.push(this.i18n.t("Min LOS: {nights}", { nights: cell.minLos }));
+		if (cell.status !== "OPEN")
+			parts.push(this.i18n.t("Status: {status}", { status: cell.status }));
 		return parts.join("\n");
 	}
 
@@ -366,10 +377,10 @@ export class RateCalendarComponent {
 				}),
 			);
 
-			this.toast.success(`Saved ${dirtyCells.length} day(s) successfully.`);
+			this.toast.success(this.i18n.t("Saved {p0} day(s) successfully.", { p0: dirtyCells.length }));
 			await this.loadCalendarData();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to save changes");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to save changes"));
 		} finally {
 			this.saving.set(false);
 		}

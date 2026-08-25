@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
@@ -36,6 +37,7 @@ type AdvanceTarget = "EVIDENCE_SUBMITTED" | "WON" | "LOST";
 })
 export class ChargebacksComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -113,7 +115,9 @@ export class ChargebacksComponent {
 		} catch (e) {
 			this.chargebacks.set([]);
 			this.error.set(
-				e instanceof Error ? e.message : "Chargeback list endpoint is not currently available.",
+				e instanceof Error
+					? e.message
+					: this.i18n.t("Chargeback list endpoint is not currently available."),
 			);
 		} finally {
 			this.dataReady.set(true);
@@ -163,7 +167,9 @@ export class ChargebacksComponent {
 		if (!tenantId) return;
 		const target = this.advanceTarget();
 		if (!this.allowedTargets(c.chargeback_status).includes(target)) {
-			this.toast.error(`Cannot transition ${c.chargeback_status} → ${target}`);
+			this.toast.error(
+				this.i18n.t("Cannot transition {p0} → {p1}", { p0: c.chargeback_status, p1: target }),
+			);
 			return;
 		}
 		this.processingAdvance.set(true);
@@ -176,11 +182,13 @@ export class ChargebacksComponent {
 					notes: this.advanceNotes() || undefined,
 				},
 			);
-			this.toast.success(`Chargeback advanced to ${target}.`);
+			this.toast.success(this.i18n.t("Chargeback advanced to {p0}.", { p0: target }));
 			this.cancelAdvance();
 			await settleCommandReadModel(() => this.loadChargebacks());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update chargeback status");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update chargeback status"),
+			);
 		} finally {
 			this.processingAdvance.set(false);
 		}

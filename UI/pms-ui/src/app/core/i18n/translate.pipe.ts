@@ -7,6 +7,9 @@ import { I18nService } from "./i18n.service";
  *
  * Usage: `{{ 'Dashboard' | translate }}`
  *
+ * Placeholders are supported via the argument:
+ * `{{ 'Page {current} of {total}' | translate:{ current: page(), total: pages() } }}`
+ *
  * Marked impure so it re-evaluates when the language signal changes.
  * The pipe is used on a small number of menu labels and page headers,
  * so the performance impact is negligible.
@@ -15,7 +18,7 @@ import { I18nService } from "./i18n.service";
 export class TranslatePipe implements PipeTransform {
 	private readonly i18n = inject(I18nService);
 
-	transform(value: string): string {
-		return this.i18n.t(value);
+	transform(value: string, params?: Record<string, string | number | null | undefined>): string {
+		return this.i18n.t(value, params);
 	}
 }

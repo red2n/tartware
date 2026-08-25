@@ -5,6 +5,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
@@ -16,7 +17,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../../shared/sort-utils";
-import { ToastService } from "../../../shared/toast/toast.service";
 
 @Component({
 	selector: "app-commissions",
@@ -27,9 +27,9 @@ import { ToastService } from "../../../shared/toast/toast.service";
 })
 export class CommissionsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
-	private readonly toast = inject(ToastService);
 	readonly settings = inject(SettingsService);
 
 	// ── Report data ──
@@ -74,7 +74,9 @@ export class CommissionsComponent {
 		} catch (e) {
 			this.items.set([]);
 			this.totalCommission.set(0);
-			this.error.set(e instanceof Error ? e.message : "Failed to load commission report.");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load commission report."),
+			);
 		} finally {
 			this.dataReady.set(true);
 		}

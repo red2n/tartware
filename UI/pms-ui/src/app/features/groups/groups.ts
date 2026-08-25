@@ -11,6 +11,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -46,6 +47,7 @@ type StatusFilter = "ALL" | GroupBlockStatus;
 })
 export class GroupsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -59,6 +61,7 @@ export class GroupsComponent {
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.currentPage.set(1);
@@ -67,42 +70,42 @@ export class GroupsComponent {
 	readonly statusFilters: { key: StatusFilter; label: string; description: string }[] = [
 		{ key: "ALL", label: "All", description: "All group bookings regardless of status" },
 		{
-			key: "INQUIRY",
+			key: "inquiry",
 			label: "Inquiry",
 			description: "Initial contact — guest or planner is asking about availability",
 		},
 		{
-			key: "PROSPECT",
+			key: "prospect",
 			label: "Prospect",
 			description: "Qualified lead — sales team is actively working the deal",
 		},
 		{
-			key: "TENTATIVE",
+			key: "tentative",
 			label: "Tentative",
 			description: "Space held with a cutoff date, pending a signed contract",
 		},
 		{
-			key: "DEFINITE",
+			key: "definite",
 			label: "Definite",
 			description: "Contract signed — the group booking is confirmed",
 		},
 		{
-			key: "CONFIRMED",
+			key: "confirmed",
 			label: "Confirmed",
 			description: "Rooms have been picked and assigned to the group",
 		},
 		{
-			key: "CANCELLED",
+			key: "cancelled",
 			label: "Cancelled",
 			description: "Group booking was cancelled by the guest or planner",
 		},
 		{
-			key: "TURNDOWN",
+			key: "turndown",
 			label: "Turndown",
 			description: "Hotel declined the business (capacity, rate, or fit)",
 		},
 		{
-			key: "COMPLETED",
+			key: "completed",
 			label: "Completed",
 			description: "Group stay is finished and all folios are closed",
 		},
@@ -128,7 +131,7 @@ export class GroupsComponent {
 		const query = this.globalSearch.query().toLowerCase().trim();
 
 		if (filter !== "ALL") {
-			list = list.filter((g) => g.block_status.toUpperCase() === filter);
+			list = list.filter((g) => g.block_status === filter);
 		}
 
 		if (query) {
@@ -156,18 +159,17 @@ export class GroupsComponent {
 
 	readonly filterCounts = computed(() => {
 		const all = this.groups();
-		const countByStatus = (status: string) =>
-			all.filter((g) => g.block_status.toUpperCase() === status).length;
+		const countByStatus = (status: string) => all.filter((g) => g.block_status === status).length;
 		return {
 			ALL: all.length,
-			INQUIRY: countByStatus("INQUIRY"),
-			PROSPECT: countByStatus("PROSPECT"),
-			TENTATIVE: countByStatus("TENTATIVE"),
-			DEFINITE: countByStatus("DEFINITE"),
-			CONFIRMED: countByStatus("CONFIRMED"),
-			CANCELLED: countByStatus("CANCELLED"),
-			TURNDOWN: countByStatus("TURNDOWN"),
-			COMPLETED: countByStatus("COMPLETED"),
+			inquiry: countByStatus("inquiry"),
+			prospect: countByStatus("prospect"),
+			tentative: countByStatus("tentative"),
+			definite: countByStatus("definite"),
+			confirmed: countByStatus("confirmed"),
+			cancelled: countByStatus("cancelled"),
+			turndown: countByStatus("turndown"),
+			completed: countByStatus("completed"),
 		};
 	});
 
@@ -232,7 +234,7 @@ export class GroupsComponent {
 		return this.settings.formatCurrency(amount, currency);
 	}
 	statusDescription = (status: string) =>
-		GroupBlockStatusDescriptions[status.toUpperCase() as GroupBlockStatus] ?? "";
+		GroupBlockStatusDescriptions[status as GroupBlockStatus] ?? "";
 
 	pickupClass(percentage: number): string {
 		if (percentage >= 80) return "badge-success";
@@ -258,7 +260,7 @@ export class GroupsComponent {
 			const list = Array.isArray(res) ? res : [];
 			this.groups.set(list);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load group bookings");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load group bookings"));
 		} finally {
 			this.dataReady.set(true);
 		}

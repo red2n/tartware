@@ -1,9 +1,14 @@
-import { DatePipe, NgClass, NgTemplateOutlet } from "@angular/common";
+import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-import type { HousekeepingTaskListItem, RoomItem, UserWithTenants } from "@tartware/schemas";
+import type {
+	HousekeepingTaskListItem,
+	HousekeepingTaskStatus,
+	RoomItem,
+	UserWithTenants,
+} from "@tartware/schemas";
 import { PopoverModule } from "primeng/popover";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
@@ -11,6 +16,8 @@ import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -31,17 +38,17 @@ type SortDir = "asc" | "desc";
 	selector: "app-housekeeping",
 	standalone: true,
 	imports: [
-		DatePipe,
-		NgClass,
-		NgTemplateOutlet,
 		FormsModule,
 		IconComponent,
+		LocaleDatePipe,
+		NgClass,
+		NgTemplateOutlet,
+		PageHeaderComponent,
+		PaginationComponent,
 		PopoverModule,
 		ProgressSpinnerModule,
-		TooltipModule,
 		RouterLink,
-		PaginationComponent,
-		PageHeaderComponent,
+		TooltipModule,
 		TranslatePipe,
 	],
 	templateUrl: "./housekeeping.html",
@@ -49,6 +56,7 @@ type SortDir = "asc" | "desc";
 })
 export class HousekeepingComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -107,6 +115,7 @@ export class HousekeepingComponent {
 	readonly activeFilter = signal<HkFilter>("ALL");
 	readonly currentPage = signal(1);
 	readonly pageSize = 30;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.currentPage.set(1);
@@ -401,7 +410,7 @@ export class HousekeepingComponent {
 			const rooms = await this.api.get<RoomItem[]>("/rooms", params);
 			this.rooms.set(rooms);
 		} catch (e) {
-			this.roomError.set(e instanceof Error ? e.message : "Failed to load rooms");
+			this.roomError.set(e instanceof Error ? e.message : this.i18n.t("Failed to load rooms"));
 		} finally {
 			this.roomsReady.set(true);
 		}
@@ -421,7 +430,7 @@ export class HousekeepingComponent {
 			const tasks = await this.api.get<HousekeepingTaskListItem[]>("/housekeeping/tasks", params);
 			this.tasks.set(tasks);
 		} catch (e) {
-			this.taskError.set(e instanceof Error ? e.message : "Failed to load tasks");
+			this.taskError.set(e instanceof Error ? e.message : this.i18n.t("Failed to load tasks"));
 		} finally {
 			this.tasksReady.set(true);
 		}
@@ -444,10 +453,17 @@ export class HousekeepingComponent {
 				housekeeping_status: newStatus,
 			});
 			const label = this.hkActions.find((a) => a.value === newStatus)?.label ?? newStatus;
-			this.toastService.success(`Room ${room.room_number} → ${label}`);
+			this.toastService.success(
+				this.i18n.t("Room {room} → {status}", {
+					room: room.room_number,
+					status: this.i18n.t(label),
+				}),
+			);
 			await this.loadRooms();
 		} catch (e) {
-			this.toastService.error(e instanceof Error ? e.message : "Failed to update room");
+			this.toastService.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update room"),
+			);
 		} finally {
 			this.updatingRoomId.set(null);
 		}
@@ -465,10 +481,17 @@ export class HousekeepingComponent {
 				status: newStatus,
 			});
 			const label = this.occupancyActions.find((a) => a.value === newStatus)?.label ?? newStatus;
-			this.toastService.success(`Room ${room.room_number} → ${label}`);
+			this.toastService.success(
+				this.i18n.t("Room {room} → {status}", {
+					room: room.room_number,
+					status: this.i18n.t(label),
+				}),
+			);
 			await this.loadRooms();
 		} catch (e) {
-			this.toastService.error(e instanceof Error ? e.message : "Failed to update occupancy");
+			this.toastService.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update occupancy"),
+			);
 		} finally {
 			this.updatingRoomId.set(null);
 		}
@@ -480,7 +503,9 @@ export class HousekeepingComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 		try {
-			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=200`);
+			// 100 is the cap UserListQuerySchema enforces; asking for more is a 400,
+			// which the catch below turns into an empty picker.
+			const data = await this.api.get<UserWithTenants[]>(`/users?tenant_id=${tenantId}&limit=100`);
 			this.staff.set(data ?? []);
 		} catch {
 			this.staff.set([]);
@@ -497,14 +522,32 @@ export class HousekeepingComponent {
 		return name || (u as { email?: string }).email || userId.slice(0, 8);
 	}
 
+	/**
+	 * `housekeeping_tasks.status` is the Postgres enum `housekeeping_status`:
+	 * CLEAN, DIRTY, INSPECTED, IN_PROGRESS, DO_NOT_DISTURB. It is a room-cleanliness
+	 * vocabulary, not a task lifecycle — COMPLETED and CANCELLED are not values the
+	 * database can hold, so the previous checks against them never matched.
+	 *
+	 * The effect was that `canComplete` was true for everything except INSPECTED
+	 * (Complete always offered) and `canReopen` was true for nothing but INSPECTED.
+	 * It failed open, which is why it went unnoticed. See
+	 * ui-gaps/17-command-reachability.md.
+	 *
+	 * `.toUpperCase()` stays: the row mapper lowercases on the way out while the
+	 * column stores upper.
+	 */
+	private taskStatus(task: HousekeepingTaskListItem): string {
+		return task.status?.toUpperCase() ?? "";
+	}
+
 	canComplete(task: HousekeepingTaskListItem): boolean {
-		const s = task.status?.toUpperCase();
-		return s !== "COMPLETED" && s !== "INSPECTED" && s !== "CANCELLED";
+		const open: HousekeepingTaskStatus[] = ["DIRTY", "IN_PROGRESS", "DO_NOT_DISTURB"];
+		return (open as string[]).includes(this.taskStatus(task));
 	}
 
 	canReopen(task: HousekeepingTaskListItem): boolean {
-		const s = task.status?.toUpperCase();
-		return s === "COMPLETED" || s === "INSPECTED" || s === "CANCELLED";
+		const done: HousekeepingTaskStatus[] = ["CLEAN", "INSPECTED"];
+		return (done as string[]).includes(this.taskStatus(task));
 	}
 
 	canAssign(task: HousekeepingTaskListItem): boolean {
@@ -540,7 +583,7 @@ export class HousekeepingComponent {
 			if (mode === "assign" || mode === "reassign") {
 				const assignee = this.assigneeInput().trim();
 				if (!assignee) {
-					this.toastService.error("Select an assignee");
+					this.toastService.error(this.i18n.t("Select an assignee"));
 					return;
 				}
 				const path =
@@ -552,21 +595,27 @@ export class HousekeepingComponent {
 					notes: this.noteInput() || undefined,
 				});
 				this.toastService.success(
-					`Task ${task.room_number} ${mode === "assign" ? "assigned" : "reassigned"}.`,
+					mode === "assign"
+						? this.i18n.t("Task {room} assigned.", { room: task.room_number })
+						: this.i18n.t("Task {room} reassigned.", { room: task.room_number }),
 				);
 			} else {
 				const note = this.noteInput().trim();
 				if (!note) {
-					this.toastService.error("Note cannot be empty");
+					this.toastService.error(this.i18n.t("Note cannot be empty"));
 					return;
 				}
 				await this.api.post(`/tenants/${tenantId}/housekeeping/tasks/${task.id}/notes`, { note });
-				this.toastService.success(`Note added to task ${task.room_number}.`);
+				this.toastService.success(
+					this.i18n.t("Note added to task {room}.", { room: task.room_number }),
+				);
 			}
 			this.cancelAction();
 			await settleCommandReadModel(() => this.loadTasks());
 		} catch (e) {
-			this.toastService.error(e instanceof Error ? e.message : "Failed to update task");
+			this.toastService.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update task"),
+			);
 		} finally {
 			this.processingTaskId.set(null);
 		}
@@ -580,10 +629,12 @@ export class HousekeepingComponent {
 			await this.api.post(`/tenants/${tenantId}/housekeeping/tasks/${task.id}/complete`, {
 				inspection_passed: true,
 			});
-			this.toastService.success(`Task ${task.room_number} completed.`);
+			this.toastService.success(this.i18n.t("Task {room} completed.", { room: task.room_number }));
 			await settleCommandReadModel(() => this.loadTasks());
 		} catch (e) {
-			this.toastService.error(e instanceof Error ? e.message : "Failed to complete task");
+			this.toastService.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to complete task"),
+			);
 		} finally {
 			this.processingTaskId.set(null);
 		}
@@ -597,10 +648,12 @@ export class HousekeepingComponent {
 			await this.api.post(`/tenants/${tenantId}/housekeeping/tasks/${task.id}/reopen`, {
 				reason: "Reopened from housekeeping screen",
 			});
-			this.toastService.success(`Task ${task.room_number} reopened.`);
+			this.toastService.success(this.i18n.t("Task {room} reopened.", { room: task.room_number }));
 			await settleCommandReadModel(() => this.loadTasks());
 		} catch (e) {
-			this.toastService.error(e instanceof Error ? e.message : "Failed to reopen task");
+			this.toastService.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to reopen task"),
+			);
 		} finally {
 			this.processingTaskId.set(null);
 		}

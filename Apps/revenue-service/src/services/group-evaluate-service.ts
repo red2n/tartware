@@ -1,3 +1,4 @@
+import { toNumberOrFallback as toNumber } from "@tartware/config";
 import type { GroupEvaluateRow } from "@tartware/schemas/api/revenue-rows";
 
 import { query } from "../lib/db.js";
@@ -5,9 +6,6 @@ import { appLogger } from "../lib/logger.js";
 import { GROUP_EVALUATE_SQL } from "../sql/displacement-queries.js";
 
 const logger = appLogger.child({ module: "group-evaluate-service" });
-
-const toNumber = (v: string | number | null): number =>
-  v == null ? 0 : typeof v === "string" ? Number(v) : v;
 
 const toDateString = (v: string | Date): string =>
   typeof v === "string" ? v.slice(0, 10) : v.toISOString().slice(0, 10);

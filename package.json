@@ -31,7 +31,9 @@
     "build:ui": "npx nx run @tartware/schemas:build && node scripts/stamp-ui-version.mjs && npx nx run @tartware/pms-ui:build",
     "clean": "npx nx run-many -t clean",
     "clean:all": "node ./scripts/clean-all.mjs",
-    "check": "pnpm run lint && pnpm run biome && pnpm run knip",
+    "check": "pnpm run check:guardrails && pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast && pnpm run check:i18n",
+    "check:contrast": "node UI/shared-styles/check-contrast.mjs",
+    "check:i18n": "node UI/pms-ui/check-i18n.mjs",
     "lint": "npx nx run-many -t lint",
     "lint:fix": "npx nx run-many -t lint:fix",
     "biome": "npx nx run-many -t biome",
@@ -50,6 +52,11 @@
     "validate:env": "node ./scripts/validate-env.mjs",
     "flow:integrity": "npx tsx scripts/flow-integrity-test.ts",
     "sql:contracts": "npx tsx scripts/sql-contract-check.ts",
+    "smoke": "for s in http_test/smoke-*.sh; do \"$s\" || exit 1; done",
+    "smoke:revenue": "./http_test/smoke-revenue.sh",
+    "smoke:operations": "./http_test/smoke-operations.sh",
+    "smoke:events": "./http_test/smoke-events.sh",
+    "smoke:accounts": "./http_test/smoke-accounts.sh",
     "sql:contracts:update": "npx tsx scripts/sql-contract-check.ts --update-baseline",
     "postinstall": "echo 'Monorepo dependencies installed successfully'",
     "bootstrap:modules": "pnpm --filter @tartware/core-service run bootstrap:modules",
@@ -61,7 +68,9 @@
     "validate:openapi": "node scripts/validate-openapi.mjs",
     "bootstrap:loadtest": "node scripts/bootstrap-loadtest-env.mjs",
     "samples:fetch": "node scripts/fetch-sample-records.mjs",
-    "samples:api": "node scripts/fetch-sample-api-records.mjs"
+    "samples:api": "node scripts/fetch-sample-api-records.mjs",
+    "check:guardrails": "node ./scripts/check-guardrail-coverage.mjs",
+    "prepare": "node ./scripts/install-git-hooks.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.12",

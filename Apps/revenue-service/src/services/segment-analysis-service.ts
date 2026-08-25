@@ -1,11 +1,9 @@
+import { toNumberOrFallback as toNumber } from "@tartware/config";
 import type { SegmentAnalysisItem } from "@tartware/schemas";
 import type { SegmentAnalysisRow } from "@tartware/schemas/api/revenue-rows";
 
 import { query } from "../lib/db.js";
 import { SEGMENT_ANALYSIS_SQL } from "../sql/segment-queries.js";
-
-const toNumber = (v: string | number | null): number =>
-  v == null ? 0 : typeof v === "string" ? Number(v) : v;
 
 /**
  * R17 — Segment performance analytics.

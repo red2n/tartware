@@ -15,6 +15,8 @@ import {
   ChargebackListResponseSchema,
   CheckInBriefSchema,
   CreatePropertyResponseSchema,
+  FxRateListResponseSchema,
+  FxRateUpsertResponseSchema,
   GlBatchEntriesResponseSchema,
   GlBatchListResponseSchema,
   GuestGridResponseSchema,
@@ -85,6 +87,11 @@ export const glBatchEntriesResponse = schemaFromZod(
 export const chargebackListResponse = schemaFromZod(
   ChargebackListResponseSchema,
   "ChargebackListResponse",
+);
+export const fxRateListResponse = schemaFromZod(FxRateListResponseSchema, "FxRateListResponse");
+export const fxRateUpsertResponse = schemaFromZod(
+  FxRateUpsertResponseSchema,
+  "FxRateUpsertResponse",
 );
 
 // ─── Housekeeping ───────────────────────────────────────────────

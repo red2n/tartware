@@ -5,14 +5,15 @@ import type { ChargePostingListItem, FolioListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { settleCommandReadModel } from "../../shared/command-refresh";
 import { ToastService } from "../../shared/toast/toast.service";
-
 import { BillingDataService } from "./billing-data.service";
 
 @Injectable()
 export class BillingFoliosService {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -128,7 +129,7 @@ export class BillingFoliosService {
 				folio_name: form.folio_name || undefined,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Folio create submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Folio create submitted. Refreshing folios..."));
 			this.showCreateFolioForm.set(false);
 			this.createFolioForm.set({
 				folio_type: "HOUSE_ACCOUNT",
@@ -137,7 +138,7 @@ export class BillingFoliosService {
 			});
 			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create folio");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create folio"));
 		} finally {
 			this.creatingFolio.set(false);
 		}
@@ -177,7 +178,7 @@ export class BillingFoliosService {
 				description: form.description || undefined,
 				department_code: form.department_code || undefined,
 			});
-			this.toast.success("Charge post submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Charge post submitted. Refreshing folios..."));
 			this.showPostChargeForm.set(false);
 			this.postChargeForm.set({
 				folio_id: "",
@@ -191,7 +192,7 @@ export class BillingFoliosService {
 				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to post charge");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to post charge"));
 		} finally {
 			this.postingCharge.set(false);
 		}
@@ -215,13 +216,13 @@ export class BillingFoliosService {
 				posting_id: charge.id,
 				void_reason: this.voidChargeReason() || undefined,
 			});
-			this.toast.success("Charge void submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Charge void submitted. Refreshing folios..."));
 			this.voidingChargeId.set(null);
 			await settleCommandReadModel(() =>
 				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to void charge");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to void charge"));
 		} finally {
 			this.processingChargeVoid.set(false);
 		}
@@ -245,11 +246,11 @@ export class BillingFoliosService {
 		if (!tenantId) return;
 		const form = this.transferChargeForm();
 		if (!form.target_folio_id) {
-			this.toast.error("Select a destination folio.");
+			this.toast.error(this.i18n.t("Select a destination folio."));
 			return;
 		}
 		if (form.target_folio_id === charge.folio_id) {
-			this.toast.error("Destination folio must differ from the source folio.");
+			this.toast.error(this.i18n.t("Destination folio must differ from the source folio."));
 			return;
 		}
 		this.processingChargeTransfer.set(true);
@@ -259,13 +260,13 @@ export class BillingFoliosService {
 				to_folio_id: form.target_folio_id,
 				reason: form.reason || undefined,
 			});
-			this.toast.success("Charge transfer submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Charge transfer submitted. Refreshing folios..."));
 			this.transferringChargeId.set(null);
 			await settleCommandReadModel(() =>
 				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to transfer charge");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to transfer charge"));
 		} finally {
 			this.processingChargeTransfer.set(false);
 		}
@@ -293,11 +294,11 @@ export class BillingFoliosService {
 				close_reason: this.closeFolioReason() || undefined,
 				force: this.closeFolioForce(),
 			});
-			this.toast.success("Folio close submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Folio close submitted. Refreshing folios..."));
 			this.closingFolioId.set(null);
 			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to close folio");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to close folio"));
 		} finally {
 			this.processingFolioClose.set(false);
 		}
@@ -322,11 +323,11 @@ export class BillingFoliosService {
 				property_id: propertyId,
 				reason: this.reopenFolioReason().trim(),
 			});
-			this.toast.success("Folio reopen submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Folio reopen submitted. Refreshing folios..."));
 			this.reopeningFolioId.set(null);
 			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to reopen folio");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to reopen folio"));
 		} finally {
 			this.processingFolioReopen.set(false);
 		}
@@ -354,13 +355,13 @@ export class BillingFoliosService {
 				target_folio_id: form.target_folio_id,
 				reason: form.reason.trim(),
 			});
-			this.toast.success("Folio merge submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Folio merge submitted. Refreshing folios..."));
 			this.mergingFolioId.set(null);
 			await settleCommandReadModel(() =>
 				Promise.all([this.data.loadFolios(), this.data.loadCharges()]),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to merge folios");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to merge folios"));
 		} finally {
 			this.processingFolioMerge.set(false);
 		}
@@ -406,11 +407,13 @@ export class BillingFoliosService {
 				billed_to_type: form.billed_to_type,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Folio window submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Folio window submitted. Refreshing folios..."));
 			this.creatingWindowFolioId.set(null);
 			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create folio window");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to create folio window"),
+			);
 		} finally {
 			this.processingFolioWindow.set(false);
 		}
@@ -444,13 +447,15 @@ export class BillingFoliosService {
 				exemption_reason: form.exemption_reason || undefined,
 				expiry_date: form.expiry_date || undefined,
 			});
-			this.toast.success("Tax exemption submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Tax exemption submitted. Refreshing folios..."));
 			this.taxExemptionFolioId.set(null);
 			await settleCommandReadModel(() =>
 				Promise.all([this.data.loadFolios(), this.data.loadCharges()]),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to apply tax exemption");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to apply tax exemption"),
+			);
 		} finally {
 			this.processingTaxExemption.set(false);
 		}
@@ -486,13 +491,13 @@ export class BillingFoliosService {
 				description: form.description || undefined,
 				authorized_by: this.auth.user()?.id,
 			});
-			this.toast.success("Comp posting submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Comp posting submitted. Refreshing folios..."));
 			this.compPostingFolioId.set(null);
 			await settleCommandReadModel(() =>
 				Promise.all([this.data.loadFolios(), this.data.loadCharges()]),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to post comp charge");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to post comp charge"));
 		} finally {
 			this.processingCompPosting.set(false);
 		}
@@ -517,7 +522,7 @@ export class BillingFoliosService {
 		const form = this.splitChargeForm();
 		if (!tenantId || !sourceFolioId || !form.target_folio_id) return;
 		if (form.amount <= 0 || form.amount >= charge.total_amount) {
-			this.toast.error("Split amount must be less than the original charge amount.");
+			this.toast.error(this.i18n.t("Split amount must be less than the original charge amount."));
 			return;
 		}
 		this.processingChargeSplit.set(true);
@@ -533,14 +538,14 @@ export class BillingFoliosService {
 					{ folio_id: form.target_folio_id, amount: Number(form.amount.toFixed(2)) },
 				],
 			});
-			this.toast.success("Charge split submitted. Refreshing folios...");
+			this.toast.success(this.i18n.t("Charge split submitted. Refreshing folios..."));
 			this.splittingChargeId.set(null);
 			await settleCommandReadModel(() =>
 				Promise.all([this.data.loadCharges(), this.data.loadFolios()]),
 			);
 			this.selectedFolioId.set(null);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to split charge");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to split charge"));
 		} finally {
 			this.processingChargeSplit.set(false);
 		}

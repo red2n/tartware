@@ -2,20 +2,63 @@
 
 @include mat.core();
 
-$theme: mat.define-theme((
+/* =====================================================
+ * Guest Portal — global stylesheet
+ *
+ * Colour comes from UI/shared-styles/, the same palette
+ * pms-ui uses, so the two apps cannot drift. Angular
+ * Material stays as the component library; only its
+ * colour layer is emitted twice, once per theme.
+ * ===================================================== */
+
+/* Layer 0: Primer size, type and motion scales — the same
+   scale pms-ui is built on, so spacing and type match. */
+@import '@primer/primitives/dist/css/primitives.css';
+@import url('../../shared-styles/shape.css');
+
+/* Layer 1: the shared palette, keyed on [data-theme] */
+@import url('../../shared-styles/palette-light.css');
+@import url('../../shared-styles/palette-dark.css');
+
+/* Layer 2: prefers-contrast and forced-colors handling */
+@import url('../../shared-styles/contrast.css');
+
+/* Layer 4: element defaults shared with pms-ui */
+@import url('../../shared-styles/base.css');
+
+/* ── Material themes ──
+ * The full theme (structure + typography + light colour) is emitted once.
+ * Dark mode re-emits colour ONLY, which is roughly a third of the size of a
+ * second full theme. Both use the azure palette because it is the closest
+ * Material palette to our accent; app chrome takes its colour from the shared
+ * tokens directly, so the two never appear side by side in a conflicting way.
+ */
+$gp-light: mat.define-theme((
   color: (
     theme-type: light,
     primary: mat.$azure-palette,
     tertiary: mat.$blue-palette,
   ),
   typography: (
-    brand-family: 'Roboto',
-    plain-family: 'Roboto',
+    brand-family: 'Inter',
+    plain-family: 'Inter',
   ),
 ));
 
-/* Only include themes for components actually used in guest-portal */
-html {
+$gp-dark: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: (
+    brand-family: 'Inter',
+    plain-family: 'Inter',
+  ),
+));
+
+/* Only the components guest-portal actually uses. */
+@mixin gp-full($theme) {
   @include mat.button-theme($theme);
   @include mat.card-theme($theme);
   @include mat.checkbox-theme($theme);
@@ -28,6 +71,27 @@ html {
   @include mat.toolbar-theme($theme);
 }
 
+@mixin gp-color($theme) {
+  @include mat.button-color($theme);
+  @include mat.card-color($theme);
+  @include mat.checkbox-color($theme);
+  @include mat.datepicker-color($theme);
+  @include mat.form-field-color($theme);
+  @include mat.icon-color($theme);
+  @include mat.input-color($theme);
+  @include mat.progress-spinner-color($theme);
+  @include mat.stepper-color($theme);
+  @include mat.toolbar-color($theme);
+}
+
+html {
+  @include gp-full($gp-light);
+}
+
+[data-theme='dark'] {
+  @include gp-color($gp-dark);
+}
+
 /* ── Global resets ── */
 *,
 *::before,
@@ -35,24 +99,73 @@ html {
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Roboto', sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  color: #1f2328;
-  background: #f6f8fa;
-  -webkit-font-smoothing: antialiased;
+/* Load-bearing, same reason as in pms-ui: the browser paints the parts of a
+   control it owns — the open <select> list, the date picker panel, autofill,
+   spinner arrows — from its own colour scheme rather than our tokens. Without
+   this a themed control still drops a light panel over the dark palette. */
+[data-theme='light'] {
+  color-scheme: light;
 }
 
-a {
-  color: #0969da;
-  text-decoration: none;
+/* Element defaults are shared with pms-ui — see shared-styles/base.css.
+   The guest portal sits on the muted canvas, cards on top; that is the one
+   element-level difference and it stays here. */
+html,
+body {
+  background: var(--bgColor-muted);
+}
 
-  &:hover {
-    text-decoration: underline;
+:focus-visible {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: 2px;
+  border-radius: var(--borderRadius-small);
+}
+
+/* Guests book at night and on the move; honour a reduced-motion preference
+   across the whole app rather than per component. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+}
+
+/* ── Material → shared tokens bridge ──
+ * Material v21 emits literal colour values per component rather than routing
+ * through --mat-sys-*, so the azure palette above decides what a button looks
+ * like. Left alone, the guest CTA is #005cbb in light and a pale #abc7ff with
+ * dark text in dark mode, while the PMS CTA is #1a6fc7 with a white label in
+ * both. Same product, two different primary actions.
+ *
+ * Both Material defaults pass contrast; this is about the two apps agreeing.
+ * Only the tokens that carry brand colour are re-pointed — Material keeps
+ * ownership of shape, ripple, elevation and disabled states.
+ *
+ * Selector is html[data-theme], not html: the dark block above is
+ * [data-theme='dark'] at (0,1,0) and would otherwise outrank a bare element
+ * selector, leaving dark mode on Material's pale azure while light followed
+ * our token. data-theme is always present, so this matches in both themes.
+ */
+html[data-theme] {
+  --mat-button-filled-container-color: var(--button-primary-bgColor-rest);
+  --mat-button-filled-label-text-color: var(--fgColor-onEmphasis);
+  --mat-button-filled-state-layer-color: var(--fgColor-onEmphasis);
+  --mat-button-filled-ripple-color: var(--fgColor-onEmphasis);
+
+  --mat-button-protected-container-color: var(--button-primary-bgColor-rest);
+  --mat-button-protected-label-text-color: var(--fgColor-onEmphasis);
+
+  --mat-button-outlined-label-text-color: var(--fgColor-accent);
+  --mat-button-outlined-outline-color: var(--borderColor-control);
+
+  --mat-button-text-label-text-color: var(--fgColor-accent);
+
+  /* Form fields: the focused label and underline are the other place the
+     accent shows up on every page of the booking flow. */
+  --mat-form-field-focus-active-indicator-color: var(--fgColor-accent);
+  --mat-form-field-focus-label-text-color: var(--fgColor-accent);
 }

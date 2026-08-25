@@ -5,14 +5,14 @@
  * Ownership: Schema package
  */
 
-export { FlowId, ALL_FLOW_IDS } from "./flow-ids.js";
+export { ALL_FLOW_IDS, FlowId } from "./flow-ids.js";
 export { FLOW_REGISTRY } from "./flow-registry.js";
 export type {
-  CommandDeclaration,
-  EventConsumerDeclaration,
-  FlowParticipation,
-  FlowRegistry,
-  FlowRequirement,
-  GateDeclaration,
-  ServiceFlowManifest,
+	CommandDeclaration,
+	EventConsumerDeclaration,
+	FlowParticipation,
+	FlowRegistry,
+	FlowRequirement,
+	GateDeclaration,
+	ServiceFlowManifest,
 } from "./types.js";

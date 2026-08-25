@@ -183,7 +183,7 @@ export const completeMobileCheckin = async (
       recordCheckinOutcome("complete", "invalid");
       throw Object.assign(new Error("Mobile check-in record not found"), { statusCode: 404 });
     }
-    const existingCheckin = existing[0]!;
+    const existingCheckin = existing[0] as NonNullable<(typeof existing)[0]>;
     if (existingCheckin.checkin_status === "completed") {
       recordCheckinOutcome("complete", "success");
       return {
@@ -234,7 +234,7 @@ export const completeMobileCheckin = async (
       );
     }
 
-    const row = rows[0]!;
+    const row = rows[0] as NonNullable<(typeof rows)[0]>;
     recordCheckinOutcome("complete", "success");
     logger.info(
       {

@@ -23,12 +23,36 @@ import {
 } from "../../core/notifications/notification.service";
 import { RegistryService } from "../../core/registry/registry.service";
 import { GlobalSearchService } from "../../core/search/global-search.service";
-import { ThemeService } from "../../core/theme/theme.service";
+import { type ThemeMode, ThemeService } from "../../core/theme/theme.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { UnsavedChangesService } from "../../shared/forms/unsaved-changes.service";
 import { RelativeTimePipe } from "../../shared/pipes/relative-time.pipe";
 import { type ScreenMatch, searchScreens } from "../nav-config";
 import { TOPBAR_MOTIF_LEFT, TOPBAR_MOTIF_RIGHT } from "./topbar-motif";
+
+/** One button cycles the three modes rather than spending topbar width on a
+ *  menu. Order puts SYSTEM last so the two explicit choices are one click
+ *  apart, and every mode is reachable within two clicks from any other. */
+const THEME_NEXT: Record<ThemeMode, ThemeMode> = {
+	LIGHT: "DARK",
+	DARK: "SYSTEM",
+	SYSTEM: "LIGHT",
+};
+
+const THEME_ICON: Record<ThemeMode, string> = {
+	LIGHT: "light_mode",
+	DARK: "dark_mode",
+	SYSTEM: "brightness_auto",
+};
+
+/* Whole phrases, not composed fragments — the translate pipe keys off the
+   complete English string. */
+/* i18n-keys */
+const THEME_ACTION: Record<ThemeMode, string> = {
+	LIGHT: "Switch to dark theme",
+	DARK: "Switch to system theme",
+	SYSTEM: "Switch to light theme",
+};
 
 @Component({
 	selector: "app-topbar",
@@ -77,6 +101,12 @@ export class TopbarComponent {
 
 	readonly user = this.auth.user;
 	readonly isDark = this.theme.isDark;
+	readonly themeMode = this.theme.themeMode;
+
+	/** Icon reflects the chosen mode, so SYSTEM stays distinguishable from the
+	 *  light or dark it happens to be resolving to right now. */
+	readonly themeIcon = computed(() => THEME_ICON[this.themeMode()]);
+	readonly themeAction = computed(() => THEME_ACTION[this.themeMode()]);
 
 	readonly memberships = this.auth.memberships;
 	readonly activeMembership = this.auth.activeMembership;
@@ -107,9 +137,8 @@ export class TopbarComponent {
 		this.ctx.selectProperty(propertyId);
 	}
 
-	toggleTheme(): void {
-		const next = this.isDark() ? "LIGHT" : "DARK";
-		this.theme.setTheme(next);
+	cycleTheme(): void {
+		this.theme.setTheme(THEME_NEXT[this.themeMode()]);
 	}
 
 	setLanguage(lang: LangCode): void {

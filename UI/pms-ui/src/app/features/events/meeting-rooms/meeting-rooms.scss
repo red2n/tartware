@@ -1,0 +1,9 @@
+/* `.filter-bar` is `justify-content: space-between`, which is right for screens
+   that put filters on the left and an action on the right. This screen has only
+   filters, so they are grouped to keep them together at the start. */
+.filter-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--base-size-16);
+  flex-wrap: wrap;
+}

@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
@@ -58,6 +59,7 @@ const INVOICE_STATUS_ORDER = [
 })
 export class InvoicesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -201,7 +203,7 @@ export class InvoicesComponent {
 		} catch (e) {
 			this.invoices.set([]);
 			this.totalCount.set(0);
-			this.error.set(e instanceof Error ? e.message : "Failed to load invoices.");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load invoices."));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -266,9 +268,9 @@ export class InvoicesComponent {
 
 	displayInvoiceNumber(invoice: InvoiceListItem): string {
 		if (invoice.invoice_number) return invoice.invoice_number;
-		if (this.isCreditInvoice(invoice)) return "Credit Note Pending";
-		if (invoice.status === "draft") return "Draft Pending";
-		return "Number Pending";
+		if (this.isCreditInvoice(invoice)) return this.i18n.t("Credit Note Pending");
+		if (invoice.status === "draft") return this.i18n.t("Draft Pending");
+		return this.i18n.t("Number Pending");
 	}
 
 	isCreditInvoice(invoice: InvoiceListItem): boolean {
@@ -290,7 +292,7 @@ export class InvoicesComponent {
 	actionLabel(invoice: InvoiceListItem): string {
 		if (this.canVoidInvoiceAction(invoice)) return "Draft";
 		if (this.canCreditInvoiceAction(invoice) || this.canReopenInvoiceAction(invoice)) {
-			return "Managed";
+			return this.i18n.t("Managed");
 		}
 		return "Locked";
 	}
@@ -327,7 +329,7 @@ export class InvoicesComponent {
 
 		const f = this.createForm();
 		if (!f.guest_id || !f.total_amount) {
-			this.toast.error("Guest ID and total amount are required.");
+			this.toast.error(this.i18n.t("Guest ID and total amount are required."));
 			return;
 		}
 
@@ -341,11 +343,11 @@ export class InvoicesComponent {
 				due_date: f.due_date || undefined,
 				notes: f.notes || undefined,
 			});
-			this.toast.success("Invoice create submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice create submitted. Refreshing invoices..."));
 			this.showCreateForm.set(false);
 			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create invoice.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to create invoice."));
 		} finally {
 			this.creating.set(false);
 		}
@@ -368,7 +370,7 @@ export class InvoicesComponent {
 
 		const f = this.adjustForm();
 		if (!f.adjustment_amount) {
-			this.toast.error("Adjustment amount is required.");
+			this.toast.error(this.i18n.t("Adjustment amount is required."));
 			return;
 		}
 
@@ -379,11 +381,11 @@ export class InvoicesComponent {
 				adjustment_amount: Number.parseFloat(f.adjustment_amount),
 				reason: f.reason || undefined,
 			});
-			this.toast.success("Invoice adjust submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice adjust submitted. Refreshing invoices..."));
 			this.adjustingInvoiceId.set(null);
 			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to adjust invoice.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to adjust invoice."));
 		} finally {
 			this.adjusting.set(false);
 		}
@@ -399,10 +401,10 @@ export class InvoicesComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${inv.id}/finalize`, {
 				invoice_id: inv.id,
 			});
-			this.toast.success("Invoice finalize submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice finalize submitted. Refreshing invoices..."));
 			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to finalize invoice.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to finalize invoice."));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -427,11 +429,11 @@ export class InvoicesComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/void`, {
 				reason: this.voidReason() || undefined,
 			});
-			this.toast.success("Invoice void submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice void submitted. Refreshing invoices..."));
 			this.voidingInvoiceId.set(null);
 			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to void invoice.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to void invoice."));
 		} finally {
 			this.voiding.set(false);
 		}
@@ -457,7 +459,7 @@ export class InvoicesComponent {
 
 		const form = this.creditForm();
 		if (!form.credit_amount || !form.reason.trim()) {
-			this.toast.error("Credit amount and reason are required.");
+			this.toast.error(this.i18n.t("Credit amount and reason are required."));
 			return;
 		}
 
@@ -468,11 +470,13 @@ export class InvoicesComponent {
 				credit_amount: Number.parseFloat(form.credit_amount),
 				reason: form.reason.trim(),
 			});
-			this.toast.success("Credit note submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Credit note submitted. Refreshing invoices..."));
 			this.creditingInvoiceId.set(null);
 			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create credit note.");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to create credit note."),
+			);
 		} finally {
 			this.crediting.set(false);
 		}
@@ -493,7 +497,7 @@ export class InvoicesComponent {
 		if (!tenantId || !invoiceId) return;
 
 		if (!this.reopenReason().trim()) {
-			this.toast.error("Reason is required to reopen an invoice.");
+			this.toast.error(this.i18n.t("Reason is required to reopen an invoice."));
 			return;
 		}
 
@@ -502,11 +506,11 @@ export class InvoicesComponent {
 			await this.api.post(`/tenants/${tenantId}/billing/invoices/${invoiceId}/reopen`, {
 				reason: this.reopenReason().trim(),
 			});
-			this.toast.success("Invoice reopen submitted. Refreshing invoices...");
+			this.toast.success(this.i18n.t("Invoice reopen submitted. Refreshing invoices..."));
 			this.reopeningInvoiceId.set(null);
 			await settleCommandReadModel(() => this.loadInvoices());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to reopen invoice.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to reopen invoice."));
 		} finally {
 			this.reopening.set(false);
 		}

@@ -195,7 +195,13 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
 
 			// Signal the browser to save credentials
 			if ("PasswordCredential" in window) {
-				const cred = new (window as any).PasswordCredential({
+				// PasswordCredential is not in lib.dom yet; narrow to what we call.
+				const PasswordCredentialCtor = (
+					window as unknown as {
+						PasswordCredential: new (data: { id: string; password: string }) => Credential;
+					}
+				).PasswordCredential;
+				const cred = new PasswordCredentialCtor({
 					id: this.username,
 					password: this.password,
 				});

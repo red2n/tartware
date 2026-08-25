@@ -5,12 +5,14 @@ on:
     branches: [main, develop, deployment]
     paths:
       - 'UI/pms-ui/**'
+      - 'UI/shared-styles/**'
       - 'schema/**'
       - 'package.json'
       - 'nx.json'
   pull_request:
     paths:
       - 'UI/pms-ui/**'
+      - 'UI/shared-styles/**'
       - 'schema/**'
   workflow_dispatch:
 
@@ -59,6 +61,21 @@ jobs:
 
       - name: Build schemas (dependency)
         run: npx nx run @tartware/schemas:build
+
+      - name: Biome
+        run: npx nx run @tartware/pms-ui:biome
+
+      - name: Knip
+        run: npx nx run @tartware/pms-ui:knip
+
+      - name: Check palette contrast (WCAG 2.2)
+        run: node UI/shared-styles/check-contrast.mjs
+
+      - name: Check translation coverage
+        run: node UI/pms-ui/check-i18n.mjs
+
+      - name: Test
+        run: npx nx run @tartware/pms-ui:test
 
       - name: Build UI
         run: npx nx run @tartware/pms-ui:build

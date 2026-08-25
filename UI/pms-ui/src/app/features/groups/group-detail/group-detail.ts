@@ -11,6 +11,7 @@ import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { groupBlockStatusClass, roomBlockStatusClass } from "../../../shared/badge-utils";
@@ -73,6 +74,7 @@ export const expandBlockNights = (startDate: string, endDate: string): string[] 
 })
 export class GroupDetailComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
@@ -198,8 +200,7 @@ export class GroupDetailComponent implements OnInit {
 				label: "Status",
 				value: g.block_status_display,
 				badge: this.statusClass(g.block_status),
-				description:
-					GroupBlockStatusDescriptions[g.block_status.toUpperCase() as GroupBlockStatus] ?? "",
+				description: GroupBlockStatusDescriptions[g.block_status as GroupBlockStatus] ?? "",
 			},
 			{ label: "Organization", value: g.organization_name ?? "—" },
 			{ label: "Event", value: g.event_name ?? "—" },
@@ -317,7 +318,7 @@ export class GroupDetailComponent implements OnInit {
 			});
 			this.group.set(res);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load group booking");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load group booking"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -340,7 +341,7 @@ export class GroupDetailComponent implements OnInit {
 			});
 			this.roomTypes.set(Array.isArray(res) ? res : []);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load room types");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load room types"));
 		}
 	}
 
@@ -384,11 +385,15 @@ export class GroupDetailComponent implements OnInit {
 
 			await this.api.post(`/tenants/${tenantId}/commands/group.check_in`, payload);
 
-			this.toast.success(`Group "${g.group_name}" check-in initiated. Rooms are being assigned.`);
+			this.toast.success(
+				this.i18n.t('Group "{p0}" check-in initiated. Rooms are being assigned.', {
+					p0: g.group_name,
+				}),
+			);
 			this.confirmingCheckIn.set(false);
 			await this.pollGroupUntilChanged(g.group_booking_id);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Group check-in failed");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Group check-in failed"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -436,7 +441,11 @@ export class GroupDetailComponent implements OnInit {
 			});
 
 			this.toast.success(
-				`Blocked ${this.blockRooms()} room(s) across ${blocks.length} night(s) for "${g.group_name}".`,
+				this.i18n.t('Blocked {rooms} room(s) across {nights} night(s) for "{group}".', {
+					rooms: this.blockRooms(),
+					nights: blocks.length,
+					group: g.group_name,
+				}),
 			);
 			this.addingBlock.set(false);
 			await this.pollGroupUntilChanged(
@@ -444,7 +453,7 @@ export class GroupDetailComponent implements OnInit {
 				(prev, next) => next.room_blocks.length !== prev.room_blocks.length,
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to add room block");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to add room block"));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -513,7 +522,10 @@ export class GroupDetailComponent implements OnInit {
 			});
 
 			this.toast.success(
-				`Booking ${guests.length} reservation(s) for "${g.group_name}". Rooms are being picked up from the block.`,
+				this.i18n.t(
+					'Booking {count} reservation(s) for "{group}". Rooms are being picked up from the block.',
+					{ count: guests.length, group: g.group_name },
+				),
 			);
 			this.bookingRoomingList.set(false);
 			await this.pollGroupUntilChanged(
@@ -521,7 +533,7 @@ export class GroupDetailComponent implements OnInit {
 				(prev, next) => next.total_rooms_picked !== prev.total_rooms_picked,
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to book rooming list");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to book rooming list"));
 		} finally {
 			this.actionLoading.set(false);
 		}

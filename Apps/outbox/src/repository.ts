@@ -120,12 +120,16 @@ export const createOutboxRepository = ({
 	const claimOutboxBatch = async (
 		limit: number,
 		workerId: string,
-		aggregateTypeFilter?: string,
+		aggregateTypeFilter?: string | readonly string[],
 	): Promise<OutboxRecord[]> => {
 		return withTransaction(async (client) => {
-			const params: (string | number)[] = [limit, workerId];
-			const aggregateFilter = aggregateTypeFilter
-				? `AND aggregate_type = $${params.push(aggregateTypeFilter)}`
+			const params: (string | number | string[])[] = [limit, workerId];
+			const aggregateTypes =
+				typeof aggregateTypeFilter === "string"
+					? [aggregateTypeFilter]
+					: aggregateTypeFilter;
+			const aggregateFilter = aggregateTypes?.length
+				? `AND aggregate_type = ANY($${params.push([...aggregateTypes])}::text[])`
 				: "";
 			const result = await client.query(
 				`

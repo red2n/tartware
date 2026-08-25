@@ -6,18 +6,18 @@
  * proto changes.
  */
 export type {
+  BulkReleaseRequest,
+  BulkReleaseResponse,
+  HealthCheckRequest,
+  HealthCheckResponse,
   InventoryLock as GrpcInventoryLock,
   LockRoomRequest,
   LockRoomResponse,
   ReleaseRoomRequest,
   ReleaseRoomResponse,
-  BulkReleaseRequest,
-  BulkReleaseResponse,
-  HealthCheckRequest,
-  HealthCheckResponse,
 } from "./gen/availability-guard.js";
 
 export {
-  LockRoomResponse_Status,
   HealthCheckResponse_ServingStatus,
+  LockRoomResponse_Status,
 } from "./gen/availability-guard.js";

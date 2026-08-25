@@ -259,7 +259,12 @@ export interface TenantModulesResponse {
 // =====================================================
 
 /** Lifecycle of a staff request to have a module switched on. */
-export const MODULE_REQUEST_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
+export const MODULE_REQUEST_STATUSES = [
+	"pending",
+	"approved",
+	"rejected",
+	"cancelled",
+] as const;
 
 export const ModuleRequestStatusSchema = z.enum(MODULE_REQUEST_STATUSES);
 

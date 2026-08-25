@@ -73,20 +73,43 @@ export const createReservation = async (
   // ── Gate: Guest blacklist check (Flow 3 → Flow 4 cross-flow gate) ──────
   // A blacklisted guest cannot create a reservation without explicit GM override.
   // This is the FIRST validation step per the master flow plan §3D/§4A.
+  // Guest identity travels on the event: notification-service dispatches
+  // BOOKING_CONFIRMED off reservation.created and cannot read the guests table,
+  // so an absent address there means the EMAIL channel fails outright. Both
+  // fields come off the blacklist row below rather than a second SELECT, so the
+  // create hot path still makes exactly one guest query.
+  let resolvedGuestName: string | undefined;
+  let resolvedGuestEmail: string | undefined;
+
   if (command.guest_id) {
-    const { rows: blacklistRows } = await query<{ is_blacklisted: boolean }>(
-      `SELECT COALESCE(is_blacklisted, false) AS is_blacklisted
+    const { rows: guestRows } = await query<{
+      is_blacklisted: boolean;
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+    }>(
+      `SELECT COALESCE(is_blacklisted, false) AS is_blacklisted,
+              first_name,
+              last_name,
+              email
        FROM guests
        WHERE id = $1::uuid AND tenant_id = $2::uuid
        LIMIT 1`,
       [command.guest_id, tenantId],
     );
-    if (blacklistRows[0]?.is_blacklisted) {
+    if (guestRows[0]?.is_blacklisted) {
       throw new ReservationCommandError(
         "GUEST_BLACKLISTED",
         `Guest ${command.guest_id} is blacklisted. Reservation creation blocked. ` +
           "A GM override with documented reason is required to proceed.",
       );
+    }
+
+    const guest = guestRows[0];
+    if (guest) {
+      const fullName = `${guest.first_name ?? ""} ${guest.last_name ?? ""}`.trim();
+      resolvedGuestName = fullName === "" ? undefined : fullName;
+      resolvedGuestEmail = guest.email ?? undefined;
     }
   }
 
@@ -136,6 +159,8 @@ export const createReservation = async (
     payload: {
       ...command,
       id: command.reservation_id ?? eventId,
+      guest_name: resolvedGuestName,
+      guest_email: resolvedGuestEmail,
       rate_code: rateResolution.appliedRateCode,
       check_in_date: stayStart,
       check_out_date: stayEnd,

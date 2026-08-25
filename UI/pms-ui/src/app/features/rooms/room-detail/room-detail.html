@@ -125,7 +125,7 @@
         <p class="hk-current">
           {{ 'Current:' | translate }}
           <span class="status-badge" [ngClass]="hkClass(r.housekeeping_status)">
-            {{ r.housekeeping_display }}
+            {{ r.housekeeping_display | translate }}
           </span>
         </p>
         <div class="hk-actions">
@@ -416,14 +416,14 @@
     } @loading (minimum 200ms) {
       <div class="loading-state">
         <p-progressSpinner [style]="{ width: '24px', height: '24px' }" />
-        <span class="text-muted">Rendering details…</span>
+        <span class="text-muted">{{ 'Rendering details…' | translate }}</span>
       </div>
     }
 
     <!-- Meta -->
     @if (r.updated_at) {
       <div class="meta-line">
-        Last updated {{ r.updated_at }}
+        {{ 'Last updated {date}' | translate:{ date: r.updated_at } }}
       </div>
     }
   </div>

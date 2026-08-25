@@ -6,6 +6,7 @@
  */
 
 import type { CancellationFeeInput, CancellationFeeOutput } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -16,6 +17,8 @@ import Decimal from "decimal.js";
  * - flat: fee = sum of all nightly rates (full stay penalty)
  */
 export function calculateCancellationFee(input: CancellationFeeInput): CancellationFeeOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const rates = input.nightly_rates;
   const overridePct =
     input.override_percentage !== undefined
@@ -28,7 +31,7 @@ export function calculateCancellationFee(input: CancellationFeeInput): Cancellat
       const pct = new Decimal(input.percentage ?? 100).div(100);
       const fee = total.times(pct).times(overridePct);
       return {
-        fee: fee.toDecimalPlaces(2).toNumber(),
+        fee: fee.toDecimalPlaces(dp).toNumber(),
         applicable_nights: rates.length,
       };
     }
@@ -39,14 +42,14 @@ export function calculateCancellationFee(input: CancellationFeeInput): Cancellat
         .reduce((sum, r) => sum.plus(r), new Decimal(0))
         .times(overridePct);
       return {
-        fee: fee.toDecimalPlaces(2).toNumber(),
+        fee: fee.toDecimalPlaces(dp).toNumber(),
         applicable_nights: nights,
       };
     }
     case "flat": {
       const fee = rates.reduce((sum, r) => sum.plus(r), new Decimal(0)).times(overridePct);
       return {
-        fee: fee.toDecimalPlaces(2).toNumber(),
+        fee: fee.toDecimalPlaces(dp).toNumber(),
         applicable_nights: rates.length,
       };
     }

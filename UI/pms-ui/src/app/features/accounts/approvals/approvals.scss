@@ -1,0 +1,18 @@
+/* Approvals — shared.scss carries the layout (page-header, kpi-grid, form-grid,
+   action-confirm-card, table, badge, notice, section-header, text-subtle).
+   Only the verbatim payload block is local: no shared utility renders a
+   scrollable pre, and an approver has to see exactly what will run. */
+
+.payload-block {
+  margin: 0 0 var(--base-size-12);
+  padding: var(--base-size-12);
+  max-height: 14rem;
+  overflow: auto;
+  font-family: var(--fontStack-monospace);
+  font-size: var(--base-text-size-xs);
+  line-height: var(--base-text-lineHeight-normal);
+  color: var(--fgColor-default);
+  background: var(--bgColor-inset, var(--bgColor-muted));
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--borderRadius-medium);
+}

@@ -14,6 +14,7 @@ import {
   LedgerEntryListResponseSchema,
   TaxConfigurationListItemSchema,
   TaxConfigurationListResponseSchema,
+  type TaxType,
   TaxTypeEnum,
   TrialBalanceResponseSchema,
 } from "@tartware/schemas";
@@ -52,10 +53,10 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       .string()
       .toLowerCase()
       .optional()
-      .refine(
-        (value) => !value || TaxTypeEnum.options.map((t) => t.toLowerCase()).includes(value),
-        { message: "Invalid tax type" },
-      ),
+      // TaxTypeEnum now carries the constraint's own lowercase values.
+      .refine((value) => !value || TaxTypeEnum.options.includes(value as TaxType), {
+        message: "Invalid tax type",
+      }),
     is_active: z.coerce.boolean().optional(),
     country_code: z.string().max(3).optional(),
     jurisdiction_level: z.string().optional(),
@@ -159,8 +160,7 @@ export const registerFinanceAdminRoutes = (app: FastifyInstance): void => {
       });
 
       if (!config) {
-        reply.notFound("TAX_CONFIGURATION_NOT_FOUND");
-        return;
+        return reply.notFound("TAX_CONFIGURATION_NOT_FOUND");
       }
 
       return TaxConfigurationListItemSchema.parse(config);

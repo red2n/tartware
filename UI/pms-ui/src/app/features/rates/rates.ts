@@ -6,6 +6,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -43,6 +44,7 @@ type TypeFilter = "ALL" | string;
 })
 export class RatesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(AppDialogService);
@@ -86,6 +88,7 @@ export class RatesComponent {
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.currentPage.set(1);
@@ -262,15 +265,15 @@ export class RatesComponent {
 		if (!code) return "—";
 		switch (code) {
 			case "RO":
-				return "Room only";
+				return this.i18n.t("Room only");
 			case "BB":
-				return "Bed & Breakfast";
+				return this.i18n.t("Bed & Breakfast");
 			case "HB":
-				return "Half board";
+				return this.i18n.t("Half board");
 			case "FB":
-				return "Full board";
+				return this.i18n.t("Full board");
 			case "AI":
-				return "All inclusive";
+				return this.i18n.t("All inclusive");
 			default:
 				return code;
 		}
@@ -286,7 +289,7 @@ export class RatesComponent {
 
 	validityTooltip(rate: RateItem): string {
 		const from = this.formatDate(rate.valid_from);
-		const until = rate.valid_until ? this.formatDate(rate.valid_until) : "No end date";
+		const until = rate.valid_until ? this.formatDate(rate.valid_until) : this.i18n.t("No end date");
 		return `${from} — ${until}`;
 	}
 
@@ -320,7 +323,7 @@ export class RatesComponent {
 			const rates = await this.api.get<RateItem[]>("/rates", params);
 			this.rates.set(rates);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load rates");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load rates"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -331,7 +334,7 @@ export class RatesComponent {
 			const ref = this.dialog.open(CreateRateDialogComponent);
 			ref?.onClose.subscribe((created: boolean) => {
 				if (created) {
-					this.toast.success("Rate plan created successfully.");
+					this.toast.success(this.i18n.t("Rate plan created successfully."));
 					this.loadRates();
 				}
 			});
@@ -345,7 +348,10 @@ export class RatesComponent {
 		if (
 			newStatus === "INACTIVE" &&
 			!confirm(
-				`Deactivate rate plan "${rate.rate_name}"? It will no longer be available for new bookings.`,
+				this.i18n.t(
+					'Deactivate rate plan "{name}"? It will no longer be available for new bookings.',
+					{ name: rate.rate_name },
+				),
 			)
 		)
 			return;
@@ -360,10 +366,14 @@ export class RatesComponent {
 				list.map((r) => (r.id === rate.id ? { ...r, status: newStatus } : r)),
 			);
 			this.toast.success(
-				`Rate "${rate.rate_name}" ${newStatus === "ACTIVE" ? "activated" : "deactivated"}.`,
+				newStatus === "ACTIVE"
+					? this.i18n.t('Rate "{name}" activated.', { name: rate.rate_name })
+					: this.i18n.t('Rate "{name}" deactivated.', { name: rate.rate_name }),
 			);
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update rate status");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update rate status"),
+			);
 		}
 	}
 }

@@ -222,7 +222,7 @@
                   <td>{{ room.room_type_name ?? '—' }}</td>
                   <td>{{ room.floor ?? '—' }}</td>
                   <td>
-                    <span class="badge" [ngClass]="statusClass(room.status)">{{ room.status_display }}</span>
+                    <span class="badge" [ngClass]="statusClass(room.status)">{{ room.status_display | translate }}</span>
                     @if (room.is_out_of_order) {
                       <span class="badge badge-danger" [pTooltip]="room.out_of_order_reason ?? ''">{{ 'OOO' | translate }}</span>
                     }
@@ -231,7 +231,7 @@
                     }
                   </td>
                   <td>
-                    <span class="badge" [ngClass]="hkClass(effectiveHkStatus(room))">{{ room.housekeeping_display }}</span>
+                    <span class="badge" [ngClass]="hkClass(effectiveHkStatus(room))">{{ room.housekeeping_display | translate }}</span>
                   </td>
                   <td class="cell-notes">
                     @if (room.housekeeping_notes) {
@@ -356,9 +356,9 @@
                     }
                   </td>
                   <td>
-                    <span class="badge" [ngClass]="hkClass(task.status)">{{ task.status_display }}</span>
+                    <span class="badge" [ngClass]="hkClass(task.status)">{{ task.status_display | translate }}</span>
                   </td>
-                  <td>{{ task.scheduled_date | date:'shortDate' }}</td>
+                  <td>{{ task.scheduled_date | localeDate:'shortDate' }}</td>
                   <td>{{ staffName(task.assigned_to) }}</td>
                   <td class="cell-notes">
                     @if (task.special_instructions) {

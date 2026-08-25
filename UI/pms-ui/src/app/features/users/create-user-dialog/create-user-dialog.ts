@@ -12,6 +12,7 @@ type DialogData = {
 	tenantId: string;
 };
 
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 @Component({
@@ -29,6 +30,7 @@ import { DialogShellComponent } from "../../../shared/components/dialog-shell/di
 })
 export class CreateUserDialogComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly dialogRef = inject(DynamicDialogRef);
 	private readonly data: DialogData = inject(DynamicDialogConfig).data;
 	private readonly toast = inject(ToastService);
@@ -54,9 +56,9 @@ export class CreateUserDialogComponent {
 
 	get usernameError(): string | null {
 		const val = this.username.trim();
-		if (!val) return "Username is required";
-		if (val.length < 3) return "Username must be at least 3 characters";
-		if (val.length > 50) return "Username must be at most 50 characters";
+		if (!val) return this.i18n.t("Username is required");
+		if (val.length < 3) return this.i18n.t("Username must be at least 3 characters");
+		if (val.length > 50) return this.i18n.t("Username must be at most 50 characters");
 		return null;
 	}
 
@@ -114,14 +116,14 @@ export class CreateUserDialogComponent {
 				this.toast.error(e.message);
 			} else if (e instanceof Error) {
 				if (e.message.includes("USER_ALREADY_EXISTS")) {
-					this.toast.error("A user with this username or email already exists.");
+					this.toast.error(this.i18n.t("A user with this username or email already exists."));
 				} else if (e.message.includes("USER_ALREADY_ASSOCIATED")) {
-					this.toast.error("This user is already associated with your organization.");
+					this.toast.error(this.i18n.t("This user is already associated with your organization."));
 				} else {
 					this.toast.error(e.message);
 				}
 			} else {
-				this.toast.error("Failed to create user");
+				this.toast.error(this.i18n.t("Failed to create user"));
 				this.dialogRef.close(false);
 			}
 		} finally {

@@ -18,10 +18,10 @@ import type { FlowId } from "./flow-ids.js";
  * The service MUST have a matching `case` in its `routeCommand` switch.
  */
 export type CommandDeclaration = {
-  /** The exact command name (e.g. "reservation.create") */
-  readonly commandName: string;
-  /** Optional human description for documentation */
-  readonly description?: string;
+	/** The exact command name (e.g. "reservation.create") */
+	readonly commandName: string;
+	/** Optional human description for documentation */
+	readonly description?: string;
 };
 
 /**
@@ -29,12 +29,12 @@ export type CommandDeclaration = {
  * The service MUST have a consumer subscribed to the topic with matching event handling.
  */
 export type EventConsumerDeclaration = {
-  /** Kafka topic (e.g. "reservations.events") */
-  readonly topic: string;
-  /** Event type filter (e.g. "reservation.checked_out") */
-  readonly eventType: string;
-  /** Optional human description */
-  readonly description?: string;
+	/** Kafka topic (e.g. "reservations.events") */
+	readonly topic: string;
+	/** Event type filter (e.g. "reservation.checked_out") */
+	readonly eventType: string;
+	/** Optional human description */
+	readonly description?: string;
 };
 
 /**
@@ -42,12 +42,12 @@ export type EventConsumerDeclaration = {
  * Gates are validation checks that must pass before a command proceeds.
  */
 export type GateDeclaration = {
-  /** Gate identifier (e.g. "blacklist_check") */
-  readonly gateName: string;
-  /** Which command this gate guards */
-  readonly guardsCommand: string;
-  /** Optional human description */
-  readonly description?: string;
+	/** Gate identifier (e.g. "blacklist_check") */
+	readonly gateName: string;
+	/** Which command this gate guards */
+	readonly guardsCommand: string;
+	/** Optional human description */
+	readonly description?: string;
 };
 
 // ─── Flow participation ──────────────────────────────────────────────────────
@@ -57,12 +57,12 @@ export type GateDeclaration = {
  * At least one of commands/events/gates must be non-empty.
  */
 export type FlowParticipation = {
-  /** Commands this service handles for this flow */
-  readonly commands?: readonly CommandDeclaration[];
-  /** Events this service consumes for this flow */
-  readonly events?: readonly EventConsumerDeclaration[];
-  /** Gates this service enforces for this flow */
-  readonly gates?: readonly GateDeclaration[];
+	/** Commands this service handles for this flow */
+	readonly commands?: readonly CommandDeclaration[];
+	/** Events this service consumes for this flow */
+	readonly events?: readonly EventConsumerDeclaration[];
+	/** Gates this service enforces for this flow */
+	readonly gates?: readonly GateDeclaration[];
 };
 
 // ─── Service manifest ────────────────────────────────────────────────────────
@@ -87,12 +87,12 @@ export type FlowParticipation = {
  * ```
  */
 export type ServiceFlowManifest = {
-  /** Unique service identifier (e.g. "billing-service") */
-  readonly serviceId: string;
-  /** Optional version of the manifest for tracking changes */
-  readonly version?: string;
-  /** Map of FlowId → what this service contributes */
-  readonly flows: Partial<Record<FlowId, FlowParticipation>>;
+	/** Unique service identifier (e.g. "billing-service") */
+	readonly serviceId: string;
+	/** Optional version of the manifest for tracking changes */
+	readonly version?: string;
+	/** Map of FlowId → what this service contributes */
+	readonly flows: Partial<Record<FlowId, FlowParticipation>>;
 };
 
 // ─── Flow registry (master requirements) ─────────────────────────────────────
@@ -102,22 +102,22 @@ export type ServiceFlowManifest = {
  * The validator checks that every requirement has at least one service claiming it.
  */
 export type FlowRequirement = {
-  /** Human-readable flow name */
-  readonly name: string;
-  /** Commands that MUST be handled by some service */
-  readonly requiredCommands: readonly string[];
-  /** Events that MUST be consumed by some service */
-  readonly requiredEvents?: readonly {
-    readonly topic: string;
-    readonly eventType: string;
-  }[];
-  /** Gates that MUST be enforced by some service */
-  readonly requiredGates?: readonly {
-    readonly gateName: string;
-    readonly guardsCommand: string;
-  }[];
-  /** Flows that must be operational before this flow can function */
-  readonly dependsOn?: readonly FlowId[];
+	/** Human-readable flow name */
+	readonly name: string;
+	/** Commands that MUST be handled by some service */
+	readonly requiredCommands: readonly string[];
+	/** Events that MUST be consumed by some service */
+	readonly requiredEvents?: readonly {
+		readonly topic: string;
+		readonly eventType: string;
+	}[];
+	/** Gates that MUST be enforced by some service */
+	readonly requiredGates?: readonly {
+		readonly gateName: string;
+		readonly guardsCommand: string;
+	}[];
+	/** Flows that must be operational before this flow can function */
+	readonly dependsOn?: readonly FlowId[];
 };
 
 /**

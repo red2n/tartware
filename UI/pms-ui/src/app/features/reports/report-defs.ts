@@ -106,4 +106,106 @@ export const REPORTS: readonly ReportDef[] = [
 		query: "business-date",
 		icon: "cleaning_services",
 	},
+
+	{
+		key: "vip-arrivals",
+		label: "VIP Arrivals",
+		description: "Arriving VIP guests for the date range.",
+		path: "/reports/vip-arrivals",
+		query: "range-paged",
+		icon: "star",
+	},
+	{
+		key: "pace",
+		label: "Booking Pace",
+		description: "Bookings taken per day against the same point last year.",
+		path: "/reports/pace",
+		query: "range-paged",
+		icon: "speed",
+	},
+	{
+		key: "market-segment-production",
+		label: "Market Segment Production",
+		description: "Room nights and revenue by market segment.",
+		path: "/reports/market-segment-production",
+		query: "range-paged",
+		icon: "donut_small",
+	},
+	{
+		key: "guest-statistics",
+		label: "Guest Statistics",
+		description: "Guest counts, nationalities and repeat-stay mix.",
+		path: "/reports/guest-statistics",
+		query: "paged",
+		icon: "groups",
+	},
+	{
+		key: "maintenance-sla",
+		label: "Maintenance SLA",
+		description: "Maintenance response and resolution times against SLA.",
+		path: "/reports/maintenance-sla",
+		query: "range-paged",
+		icon: "build",
+	},
+	{
+		key: "performance",
+		label: "Performance",
+		description: "Occupancy, ADR and RevPAR performance for the date range.",
+		path: "/reports/performance",
+		query: "range-paged",
+		icon: "query_stats",
+	},
+	{
+		key: "revenue-forecast",
+		label: "Revenue Forecast",
+		description: "Forward revenue forecast for the date range.",
+		path: "/reports/revenue-forecast",
+		query: "range-paged",
+		icon: "trending_up",
+	},
+
+	/**
+	 * revenue-service analyses. These four are the part of that service that
+	 * returns real numbers today: they compute from `reservations`,
+	 * `charge_postings`, `group_blocks` and `demand_calendar`, all of which are
+	 * populated by ordinary operation. Its other reads sit on revenue-owned tables
+	 * written only by the 32 `revenue.*` commands, which nothing dispatches — so
+	 * they are empty by construction and deliberately not listed here.
+	 * See ui-gaps/05-revenue-module-status.md.
+	 *
+	 * They need the `revenue-management` module and an ADMIN role; the screen
+	 * surfaces both refusals as callouts rather than errors.
+	 */
+	{
+		key: "segment-analysis",
+		label: "Segment Analysis",
+		description: "Room nights, ADR and revenue by market segment for the date range.",
+		path: "/revenue/segment-analysis",
+		query: "range",
+		icon: "pie_chart",
+	},
+	{
+		key: "channel-profitability",
+		label: "Channel Profitability",
+		description: "Revenue net of channel cost, by booking channel.",
+		path: "/revenue/channel-profitability",
+		query: "range",
+		icon: "hub",
+	},
+	{
+		key: "booking-pace",
+		label: "Booking Pace",
+		description: "On-the-books pace against the same point last year.",
+		path: "/revenue/booking-pace",
+		query: "range",
+		icon: "speed",
+	},
+	{
+		key: "displacement-analysis",
+		label: "Displacement Analysis",
+		description: "Revenue displaced by group business over the date range.",
+		path: "/revenue/displacement-analysis",
+		query: "range",
+		icon: "compare_arrows",
+	},
 ];

@@ -93,9 +93,195 @@
   margin: 0 0 var(--base-size-16);
 }
 
+/* ── Nav rail ────────────────────────────────────────────────────────────────
+ * Shared by layout/sidebar (primary) and layout/sub-sidebar (secondary): both
+ * collapse to an icon rail and both carry a full-width toggle at the foot.
+ * Only these were genuinely one pattern — .nav-item itself is deliberately
+ * different between the two (denser in the primary rail, and the active marker
+ * sits on the opposite edge), so it stays in each component. */
+.collapsed .nav-item {
+  justify-content: center;
+  padding: var(--base-size-8);
+}
+
+.collapsed .nav-item-active::before {
+  top: 6px;
+  bottom: 6px;
+}
+
+.collapse-toggle {
+  width: 100%;
+  height: var(--control-large-size);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--fgColor-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--color-sidebar-border);
+
+  &:hover {
+    background: var(--bgColor-muted);
+    color: var(--fgColor-default);
+  }
+}
+
+/* ── Calendar grid ───────────────────────────────────────────────────────────
+ * The skeleton behind any "rows × days" screen: a scrolling table with a
+ * sticky first column and one column per date. Lived twice — once in
+ * features/rate-calendar and once in features/events/function-space-calendar,
+ * 94 duplicated lines — until 2026-08-19.
+ *
+ * What stays in the component: the width of the first column and of a day
+ * column, whatever a cell holds, and the weekend/today tints, which are
+ * deliberately different per screen (a booking chip and a price cell need
+ * different amounts of wash behind them). */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-16);
+  margin-bottom: var(--base-size-16);
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+}
+
+.date-nav-input {
+  width: 140px;
+  text-align: center;
+}
+
+/* Horizontal scroll lives here, so the sticky first column has something to
+   stay put against. */
+.calendar-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+}
+
+.calendar-grid {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: var(--base-text-size-xs);
+}
+
+/* One date column header. The width is the component's business — a day of
+   meeting-room bookings needs more room than a day of prices. */
+.th-date {
+  padding: var(--base-size-4) var(--base-size-8);
+  text-align: center;
+  font-weight: var(--base-text-weight-medium);
+  background: var(--bgColor-muted);
+  border-bottom: 2px solid var(--borderColor-default);
+  border-right: 1px solid var(--borderColor-muted);
+  white-space: nowrap;
+
+  .date-dow {
+    display: block;
+    font-size: var(--base-text-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--fgColor-muted);
+  }
+
+  .date-num {
+    display: block;
+    font-size: var(--base-text-size-sm);
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+  }
+}
+
+.th-weekend {
+  background: color-mix(in srgb, var(--bgColor-muted) 50%, var(--bgColor-attention-muted));
+}
+
+.th-today {
+  background: var(--bgColor-accent-muted);
+
+  .date-num {
+    color: var(--fgColor-accent);
+  }
+}
+
+/* The sticky first column — the row's identity, held in place while the date
+   columns scroll under it. The rows differ (a meeting room, a rate plan), so
+   only the pinning and the frame are here; what the cell holds is the
+   component's. */
+.th-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bgColor-muted);
+  min-width: 200px;
+  padding: var(--base-size-8) var(--base-size-12);
+  text-align: left;
+  font-weight: var(--base-text-weight-semibold);
+  border-bottom: 2px solid var(--borderColor-default);
+  border-right: 2px solid var(--borderColor-default);
+}
+
+.td-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bgColor-default);
+  padding: var(--base-size-8) var(--base-size-12);
+  border-bottom: 1px solid var(--borderColor-muted);
+  border-right: 2px solid var(--borderColor-default);
+  white-space: nowrap;
+}
+
+/* ── Sparkline ───────────────────────────────────────────────────────────────
+ * The inline 12-point trend SVG. Identical copies sat in features/dashboard
+ * and features/guests until 2026-08-19; the size is set by the caller (see
+ * .sparkline-lg in dashboard), everything else is the same line. */
+.sparkline-svg {
+  display: block;
+  width: 120px;
+  height: var(--control-small-size);
+}
+
+.sparkline-area {
+  fill: var(--bgColor-accent-muted);
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--bgColor-accent-emphasis);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ── Text helpers ── */
 .text-muted {
   color: var(--fgColor-muted);
+}
+
+/* "+1" against a time that falls on the next day. Events store one event_date
+   and bare TIME columns, so a window crossing midnight is only visible if the
+   screen marks it — used by the function-space grid and the BEO header alike. */
+.daybreak-marker {
+  margin-left: 1px;
+  font-size: 0.85em;
+  vertical-align: super;
+  color: var(--fgColor-accent);
 }
 
 .text-subtle {
@@ -109,6 +295,14 @@
 
 .text-danger {
   color: var(--fgColor-danger);
+}
+
+/* The missing sibling of .text-success / .text-danger — a caption that needs to
+   be noticed without being an error, e.g. a BEO on the day sheet that has not
+   been issued to the departments yet. The pairing against --bgColor-default is
+   already in check-contrast's PAIRS list. */
+.text-attention {
+  color: var(--fgColor-attention);
 }
 
 .text-xs {
@@ -440,17 +634,29 @@
 input[type="date"].field-input,
 input[type="time"].field-input,
 input[type="datetime-local"].field-input {
+  /* The indicator glyph is repainted by the browser off the root color-scheme
+     (set in styles.scss), so it needs no filter of its own. */
   &::-webkit-calendar-picker-indicator {
     cursor: pointer;
     opacity: 0.6;
-    filter: var(--color-scheme-filter, none);
   }
+}
+
+/* The chevron replaces the native arrow that `appearance: none` strips. Its
+   fill is baked into the data URI and so cannot read a token — the two themes
+   carry two assets, tinted to match --fgColor-muted on each palette. */
+:root {
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+}
+
+[data-theme='dark'] {
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b929e' d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
 }
 
 select.field-input {
   cursor: pointer;
   padding-right: var(--base-size-32);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236e7781' d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+  background-image: var(--select-chevron);
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 12px;
@@ -883,6 +1089,10 @@ textarea.field-input {
   display: flex;
   flex-direction: column;
   gap: var(--base-size-2);
+  /* A column flex container stretches its children, so a badge dropped under
+     the identifier ran the full width of the cell — 234px for the word "Tour".
+     Text children look identical either way; only the badges change. */
+  align-items: flex-start;
 }
 
 .data-table td.cell-actions,
@@ -2602,7 +2812,7 @@ $tl-colors: (
     height: 18px;
     border-radius: var(--borderRadius-small);
     background: var(--borderColor-muted);
-    margin-bottom: var(--base-size-10);
+    margin-bottom: var(--base-size-8);
     &:last-of-type { margin-bottom: 0; }
   }
   &-bar {
@@ -2939,4 +3149,160 @@ $tl-colors: (
   &--title { width: 60%; height: 12px; }
   &--msg   { width: 90%; }
   &--time  { width: 35%; height: 8px; }
+}
+
+/* ── Read-only record panel (incident detail, and any screen showing a filed
+      narrative rather than a form) ── */
+
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--base-size-8) var(--base-size-16);
+  margin-bottom: var(--base-size-16);
+
+  .field-label {
+    display: block;
+    margin-bottom: var(--base-size-2);
+  }
+}
+
+.record-heading {
+  font-size: var(--base-text-size-sm);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: var(--base-size-16) 0 var(--base-size-4);
+}
+
+/* Narratives are typed or pasted from notes and wrap arbitrarily; preserving the
+   author's line breaks keeps a sequence of events readable as it was filed. */
+.record-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════
+   STATUS STRIP — one line of facts under a page title
+   ═══════════════════════════════════════════ */
+
+/* Status badge plus the dates that answer "where is this in its life".
+   Deliberately not `.notice`, which is the attention colour and would make
+   every healthy record look like a problem. Used by the event booking detail
+   and the BEO editor. */
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  flex-wrap: wrap;
+  margin: 0 0 var(--base-size-16);
+  font-size: var(--base-text-size-sm);
+}
+
+/* ═══════════════════════════════════════════
+   RECORD ROW LIST — a card body listing records you can open
+   ═══════════════════════════════════════════ */
+
+/* A borderless list whose rows are whole-width buttons. The row is the target,
+   not the identifier inside it: an operator aims at "the document", and a BEO
+   number or a version label alone is too small to hit comfortably.
+
+   `.record-row-btn` is a real <button>, so it is keyboard reachable and gets the
+   focus ring for free; `:disabled` marks the row you are already on. */
+.record-row-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.record-row {
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.record-row-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: var(--base-size-8) 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    background: var(--bgColor-muted);
+  }
+
+  /* Pushes a trailing chevron to the edge whatever else the row carries. */
+  .cell-chevron {
+    margin-inline-start: auto;
+  }
+}
+
+/* The leading identifier — a BEO number, a version label. */
+.record-row-label {
+  font-weight: var(--base-text-weight-semibold);
+}
+
+/* ── Printing ───────────────────────────────────────────────────────────────
+   The app's first printable screen is the banquet day sheet (ui-gaps/13 item
+   5), which is carried around the kitchen on paper. What is generic lives here
+   because any screen that later grows a Print button needs the same three
+   things: the app chrome gone, the content unconstrained by the scroll
+   container, and a way to mark controls that are not part of the document.
+
+   Colour is deliberately *not* forced to black here — the tokens already
+   resolve to a light palette in print (browsers print the light theme unless
+   the page says otherwise) and overriding them would break the one place a
+   status badge earns its colour. */
+
+.no-print {
+  @media print {
+    display: none !important;
+  }
+}
+
+@media print {
+  .shell {
+    display: block;
+  }
+
+  app-topbar,
+  app-sidebar,
+  app-sub-sidebar,
+  .topbar-placeholder,
+  .sidebar-placeholder,
+  .skip-link {
+    display: none !important;
+  }
+
+  /* The content area is a scroll container on screen; on paper it must be
+     allowed to run to whatever length the document is. */
+  .shell-body,
+  .content-area {
+    display: block;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Keep a card whole across a page break where the printer can manage it. */
+  .print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

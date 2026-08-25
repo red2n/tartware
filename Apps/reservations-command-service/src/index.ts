@@ -8,6 +8,7 @@ import {
 import { databaseConfig, kafkaConfig, serviceConfig } from "./config.js";
 import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownAutoCheckoutSweep, startAutoCheckoutSweep } from "./jobs/auto-checkout.js";
+import { shutdownQuoteExpirySweep, startQuoteExpirySweep } from "./jobs/quote-expiry-sweep.js";
 import { shutdownWaitlistSweep, startWaitlistSweep } from "./jobs/waitlist-sweep.js";
 import { shutdownReservationConsumer, startReservationConsumer } from "./kafka/consumer.js";
 import { shutdownProducer } from "./kafka/producer.js";
@@ -33,6 +34,7 @@ await bootstrapService({
     async () => startOutboxDispatcher(),
     async () => startWaitlistSweep(),
     async () => startAutoCheckoutSweep(),
+    async () => startQuoteExpirySweep(),
   ],
   consumerShutdowns: [
     shutdownReservationConsumer,
@@ -40,6 +42,7 @@ await bootstrapService({
     shutdownOutboxDispatcher,
     async () => shutdownWaitlistSweep(),
     async () => shutdownAutoCheckoutSweep(),
+    async () => shutdownQuoteExpirySweep(),
     shutdownAvailabilityGuardClient,
   ],
   shutdownProducer,

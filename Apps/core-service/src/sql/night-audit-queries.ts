@@ -214,6 +214,51 @@ OFFSET $6
 `;
 
 // =====================================================
+// OTA CONFIGURATIONS
+//
+// The real connection record: credentials, endpoint and sync settings.
+// `api_key` and `api_secret` are NEVER selected — the query reports only whether
+// a pair is stored, so a secret cannot leak through a read no matter what the
+// caller asks for. See ui-gaps/14-channel-distribution.md.
+// =====================================================
+
+export const OTA_CONFIGURATION_LIST_SQL = `
+SELECT
+    oc.id as ota_config_id,
+    oc.tenant_id,
+    oc.property_id,
+    p.property_name,
+    oc.ota_name,
+    oc.ota_code,
+    oc.api_endpoint,
+    oc.hotel_id,
+    oc.channel_manager,
+    (oc.api_key IS NOT NULL AND oc.api_secret IS NOT NULL) as has_credentials,
+    oc.is_active,
+    oc.sync_enabled,
+    oc.sync_frequency_minutes,
+    oc.last_sync_at,
+    oc.sync_status,
+    oc.sync_error_message,
+    oc.rate_push_enabled,
+    oc.availability_push_enabled,
+    oc.reservation_pull_enabled,
+    oc.commission_percentage::TEXT,
+    oc.currency_code,
+    oc.created_at,
+    oc.updated_at
+FROM ota_configurations oc
+LEFT JOIN properties p ON p.id = oc.property_id
+WHERE oc.tenant_id = $2
+  AND ($3::UUID IS NULL OR oc.property_id = $3)
+  AND ($4::BOOLEAN IS NULL OR oc.is_active = $4)
+  AND oc.deleted_at IS NULL
+ORDER BY oc.ota_name ASC
+LIMIT $1
+OFFSET $5
+`;
+
+// =====================================================
 // OTA SYNC HISTORY
 // =====================================================
 

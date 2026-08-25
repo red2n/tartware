@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/**/*.spec.ts",
+    "e2e/**/*.ts"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "e2e/**/*.ts"
+  ],
+  "ignore": [
+    "src/app/shared/guest-constants.ts"
+  ],
+  "ignoreDependencies": [
+    "@primer/primitives",
+    "@tartware/schemas"
+  ],
+  "ignoreExportsUsedInFile": true
+}

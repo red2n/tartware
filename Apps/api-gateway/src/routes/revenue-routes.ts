@@ -39,7 +39,7 @@ export const registerRevenueRoutes = (app: FastifyInstance): void => {
     proxyRevenue,
   );
 
-  app.all(
+  app.get(
     "/v1/revenue/*",
     {
       preHandler: tenantScopeFromQuery,

@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS maintenance_requests CASCADE;
 
-CREATE TABLE maintenance_requests (
+CREATE TABLE IF NOT EXISTS maintenance_requests (
     -- Primary Key
     request_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

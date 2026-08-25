@@ -17,6 +17,7 @@ import type {
   FolioBalanceInput,
   FolioBalanceOutput,
 } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -24,6 +25,8 @@ import Decimal from "decimal.js";
  * CORE.md §3.1: balance = sum of (amount × quantity), considering reverse-tax adjustments.
  */
 export function calculateFolioBalance(input: FolioBalanceInput): FolioBalanceOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   let balance = new Decimal(0);
 
   for (const item of input.line_items) {
@@ -36,7 +39,7 @@ export function calculateFolioBalance(input: FolioBalanceInput): FolioBalanceOut
   }
 
   return {
-    balance: balance.toDecimalPlaces(2).toNumber(),
+    balance: balance.toDecimalPlaces(dp).toNumber(),
     line_count: input.line_items.length,
   };
 }
@@ -46,15 +49,17 @@ export function calculateFolioBalance(input: FolioBalanceInput): FolioBalanceOut
  * CORE.md §3.2: remaining = creditLimit - accountBalance.
  */
 export function calculateCreditRemaining(input: CreditRemainingInput): CreditRemainingOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const creditLimit = new Decimal(input.credit_limit);
   const balance = new Decimal(input.account_balance);
   const remaining = creditLimit.minus(balance);
   const utilization = creditLimit.isZero()
     ? 0
-    : balance.div(creditLimit).times(100).toDecimalPlaces(2).toNumber();
+    : balance.div(creditLimit).times(100).toDecimalPlaces(dp).toNumber();
 
   return {
-    remaining_credit: remaining.toDecimalPlaces(2).toNumber(),
+    remaining_credit: remaining.toDecimalPlaces(dp).toNumber(),
     utilization_percent: utilization,
   };
 }
@@ -64,6 +69,8 @@ export function calculateCreditRemaining(input: CreditRemainingInput): CreditRem
  * CORE.md §3.3: Separates invoiced, uninvoiced, and credit balances.
  */
 export function calculateArBreakdown(input: ArBreakdownInput): ArBreakdownOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const invoiceTotal = input.aging_buckets.reduce((sum, b) => sum.plus(b), new Decimal(0));
   const uninvoicedTotal = new Decimal(input.account_balance_total).minus(invoiceTotal);
   const balance = new Decimal(input.account_balance_total).minus(input.deposit_balance);
@@ -71,11 +78,11 @@ export function calculateArBreakdown(input: ArBreakdownInput): ArBreakdownOutput
   const availableCredit = Decimal.max(creditLimitBalance, 0);
 
   return {
-    invoice_total: invoiceTotal.toDecimalPlaces(2).toNumber(),
-    uninvoiced_total: uninvoicedTotal.toDecimalPlaces(2).toNumber(),
-    balance: balance.toDecimalPlaces(2).toNumber(),
-    credit_limit_balance: creditLimitBalance.toDecimalPlaces(2).toNumber(),
-    available_credit: availableCredit.toDecimalPlaces(2).toNumber(),
+    invoice_total: invoiceTotal.toDecimalPlaces(dp).toNumber(),
+    uninvoiced_total: uninvoicedTotal.toDecimalPlaces(dp).toNumber(),
+    balance: balance.toDecimalPlaces(dp).toNumber(),
+    credit_limit_balance: creditLimitBalance.toDecimalPlaces(dp).toNumber(),
+    available_credit: availableCredit.toDecimalPlaces(dp).toNumber(),
   };
 }
 
@@ -84,6 +91,8 @@ export function calculateArBreakdown(input: ArBreakdownInput): ArBreakdownOutput
  * CORE.md §18: Combines posted + future charges/taxes - payments.
  */
 export function calculateEstimatedCheckout(input: EstimatedCheckoutInput): EstimatedCheckoutOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const estimatedCharges = new Decimal(input.posted_charges).plus(input.future_charges);
   const estimatedTaxes = new Decimal(input.posted_taxes).plus(input.future_taxes);
   const estimatedTotal = estimatedCharges.plus(estimatedTaxes);
@@ -91,10 +100,10 @@ export function calculateEstimatedCheckout(input: EstimatedCheckoutInput): Estim
   const estimatedAtCheckout = estimatedTotal.plus(input.posted_payments);
 
   return {
-    estimated_charges: estimatedCharges.toDecimalPlaces(2).toNumber(),
-    estimated_taxes: estimatedTaxes.toDecimalPlaces(2).toNumber(),
-    estimated_total: estimatedTotal.toDecimalPlaces(2).toNumber(),
-    avg_nightly_rate: avgNightlyRate.toDecimalPlaces(2).toNumber(),
-    estimated_at_checkout: estimatedAtCheckout.toDecimalPlaces(2).toNumber(),
+    estimated_charges: estimatedCharges.toDecimalPlaces(dp).toNumber(),
+    estimated_taxes: estimatedTaxes.toDecimalPlaces(dp).toNumber(),
+    estimated_total: estimatedTotal.toDecimalPlaces(dp).toNumber(),
+    avg_nightly_rate: avgNightlyRate.toDecimalPlaces(dp).toNumber(),
+    estimated_at_checkout: estimatedAtCheckout.toDecimalPlaces(dp).toNumber(),
   };
 }

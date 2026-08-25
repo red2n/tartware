@@ -1,11 +1,9 @@
+import { toNumberOrFallback as toNumber } from "@tartware/config";
 import type { ChannelProfitabilityItem } from "@tartware/schemas";
 import type { ChannelProfitabilityRow } from "@tartware/schemas/api/revenue-rows";
 
 import { query } from "../lib/db.js";
 import { CHANNEL_PROFITABILITY_SQL } from "../sql/channel-queries.js";
-
-const toNumber = (v: string | number | null): number =>
-  v == null ? 0 : typeof v === "string" ? Number(v) : v;
 
 /**
  * Industry-standard commission rates by distribution channel.

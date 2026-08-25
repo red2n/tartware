@@ -23,6 +23,20 @@
         "command": "npx ng test",
         "cwd": "UI/pms-ui"
       }
+    },
+    "biome": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx biome check src",
+        "cwd": "UI/pms-ui"
+      }
+    },
+    "knip": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx knip --tsConfig tsconfig.app.json",
+        "cwd": "UI/pms-ui"
+      }
     }
   }
 }

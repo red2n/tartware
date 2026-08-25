@@ -15,8 +15,6 @@ export * from "./auth.js";
 export * from "./availability-guard.js";
 export * from "./billing.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
-export * from "./core-rows.js";
-// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./billing-rows.js";
 export * from "./booking-config.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
@@ -27,7 +25,9 @@ export * from "./calculations.js";
 export * from "./cashier-rows.js";
 export * from "./command-center.js";
 export * from "./compliance-utils.js";
-export * from "./direct-booking.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./core-rows.js";
+export * from "./currency.js";
 export * from "./display-utils.js";
 export * from "./errors.js";
 export * from "./events.js";

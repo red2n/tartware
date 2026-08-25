@@ -139,9 +139,9 @@
                 <td class="cell-primary">
                   <div class="confirmation-cell">
                     @if (res.reservation_type && reservationTypeIcon[res.reservation_type]; as typeInfo) {
-                      <app-icon class="res-type-icon" [pTooltip]="typeInfo.tooltip" [name]="typeInfo.icon" />
+                      <app-icon class="res-type-icon" [pTooltip]="typeInfo.tooltip | translate" [name]="typeInfo.icon" />
                     }
-                    <span class="confirmation-number">{{ res.confirmation_number }}</span>
+                    <span class="ref-code">{{ res.confirmation_number }}</span>
                   </div>
                   @if (res.source) {
                     <span class="text-subtle">{{ res.source }}</span>
@@ -160,7 +160,7 @@
                 @if (activeFilter() === 'ALL') {
                   <td>
                     <span class="badge" [ngClass]="statusClass(res.status)">
-                      {{ res.status_display }}
+                      {{ res.status_display | translate }}
                     </span>
                   </td>
                 }

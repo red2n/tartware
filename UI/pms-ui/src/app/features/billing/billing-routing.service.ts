@@ -5,12 +5,14 @@ import type { FolioListItem, RoutingRuleListItem } from "@tartware/schemas";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { settleCommandReadModel } from "../../shared/command-refresh";
 import { ToastService } from "../../shared/toast/toast.service";
 
 @Injectable()
 export class BillingRoutingService {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -96,7 +98,9 @@ export class BillingRoutingService {
 			this.routingRules.set(rules ?? []);
 			this.routingTemplates.set(templates ?? []);
 		} catch (e) {
-			this.routingError.set(e instanceof Error ? e.message : "Failed to load routing rules");
+			this.routingError.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load routing rules"),
+			);
 			this.routingRules.set([]);
 			this.routingTemplates.set([]);
 		} finally {
@@ -121,7 +125,7 @@ export class BillingRoutingService {
 		const form = this.createRoutingRuleForm();
 		if (!tenantId || !propertyId || !form.rule_name.trim()) return;
 		if (!form.is_template && (!form.source_folio_id || !form.destination_folio_id)) {
-			this.toast.error("Active routing rules require source and destination folios.");
+			this.toast.error(this.i18n.t("Active routing rules require source and destination folios."));
 			return;
 		}
 		this.creatingRoutingRule.set(true);
@@ -144,7 +148,7 @@ export class BillingRoutingService {
 				priority: form.priority,
 				stop_on_match: form.stop_on_match,
 			});
-			this.toast.success("Routing rule submitted. Refreshing rules...");
+			this.toast.success(this.i18n.t("Routing rule submitted. Refreshing rules..."));
 			this.showCreateRoutingRuleForm.set(false);
 			this.createRoutingRuleForm.set({
 				rule_name: "",
@@ -163,7 +167,9 @@ export class BillingRoutingService {
 			});
 			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to create routing rule");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to create routing rule"),
+			);
 		} finally {
 			this.creatingRoutingRule.set(false);
 		}
@@ -223,11 +229,13 @@ export class BillingRoutingService {
 				stop_on_match: form.stop_on_match,
 				is_active: form.is_active,
 			});
-			this.toast.success("Routing rule update submitted. Refreshing rules...");
+			this.toast.success(this.i18n.t("Routing rule update submitted. Refreshing rules..."));
 			this.editingRoutingRuleId.set(null);
 			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update routing rule");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to update routing rule"),
+			);
 		} finally {
 			this.editingRoutingRule.set(false);
 		}
@@ -251,11 +259,13 @@ export class BillingRoutingService {
 				rule_id: rule.rule_id,
 				property_id: propertyId,
 			});
-			this.toast.success("Routing rule delete submitted. Refreshing rules...");
+			this.toast.success(this.i18n.t("Routing rule delete submitted. Refreshing rules..."));
 			this.deletingRoutingRuleId.set(null);
 			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to delete routing rule");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Failed to delete routing rule"),
+			);
 		} finally {
 			this.deletingRoutingRule.set(false);
 		}
@@ -290,11 +300,11 @@ export class BillingRoutingService {
 				destination_folio_id: form.destination_folio_id,
 				priority: form.priority || undefined,
 			});
-			this.toast.success("Routing rule clone submitted. Refreshing rules...");
+			this.toast.success(this.i18n.t("Routing rule clone submitted. Refreshing rules..."));
 			this.cloningTemplateId.set(null);
 			await settleCommandReadModel(() => this.loadRoutingRules());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to clone template");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to clone template"));
 		} finally {
 			this.cloningTemplate.set(false);
 		}

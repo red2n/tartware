@@ -23,12 +23,22 @@ import { RouterLink } from "@angular/router";
 				<mat-icon>smartphone</mat-icon>
 				Check In
 			</a>
+			<a mat-button routerLink="/checkout">
+				<mat-icon>logout</mat-icon>
+				Check Out
+			</a>
+			<a mat-button routerLink="/rewards">
+				<mat-icon>redeem</mat-icon>
+				Rewards
+			</a>
 		</mat-toolbar>
 	`,
 	styles: `
+		/* Deliberately the same dark bar in both themes — it is the product's
+		   masthead, not a surface that follows the page. */
 		.portal-header {
-			background: #25292e;
-			color: #fff;
+			background: var(--bgColor-emphasis);
+			color: var(--fgColor-onEmphasis);
 		}
 		.logo-img {
 			width: 24px;
@@ -39,16 +49,18 @@ import { RouterLink } from "@angular/router";
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			color: #fff;
+			color: var(--fgColor-onEmphasis);
 			text-decoration: none;
 			font-weight: 500;
-			font-size: 18px;
+			font-size: var(--base-text-size-lg);
 		}
 		.spacer {
 			flex: 1;
 		}
+		/* Was 87% white, which drops nav links below the surrounding label
+		   contrast for no design reason. */
 		a[mat-button] {
-			color: rgba(255, 255, 255, 0.87);
+			color: var(--fgColor-onEmphasis);
 		}
 	`,
 })

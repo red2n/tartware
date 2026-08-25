@@ -1,5 +1,4 @@
 import {
-  buildCommandCenterConfig,
   buildDbConfig,
   buildLogConfig,
   buildServiceInfo,
@@ -81,13 +80,28 @@ const membershipCacheHitDropCooldownMinutes = parseNumberEnv(
 const registryHeartbeatTtlMs = Number(process.env.REGISTRY_HEARTBEAT_TTL_MS) || 120_000;
 const registrySweepIntervalMs = Number(process.env.REGISTRY_SWEEP_INTERVAL_MS) || 30_000;
 
-// ─── Settings Kafka consumer ───────────────────────────────────────────────
+// ─── Settings Kafka producer ───────────────────────────────────────────────
 const settingsKafka = resolveKafkaConfig({
-  clientId: process.env.SETTINGS_KAFKA_CLIENT_ID ?? "tartware-core-settings-consumer",
+  clientId: process.env.SETTINGS_KAFKA_CLIENT_ID ?? "tartware-core-settings-producer",
   defaultPrimaryBroker: "localhost:29092",
 });
 
-const settingsCommandCenter = buildCommandCenterConfig("settings-service");
+/**
+ * Settings value writes enqueue a `settings.value.set` event in
+ * `transactional_outbox` (aggregate_type `setting`). This block configures the
+ * dispatcher that drains those rows onto `settings.events`, which
+ * billing-service consumes to hot-reload its business-calendar cache.
+ */
+const settingsEvents = {
+  topic: process.env.SETTINGS_EVENTS_TOPIC ?? "settings.events",
+  dlqTopic: process.env.SETTINGS_EVENTS_DLQ_TOPIC ?? "settings.events.dlq",
+  workerId: process.env.SETTINGS_OUTBOX_WORKER_ID ?? `core-settings-${process.pid}`,
+  pollIntervalMs: parseNumberEnv(process.env.SETTINGS_OUTBOX_POLL_INTERVAL_MS, 5_000),
+  batchSize: parseNumberEnv(process.env.SETTINGS_OUTBOX_BATCH_SIZE, 50),
+  lockTimeoutMs: parseNumberEnv(process.env.SETTINGS_OUTBOX_LOCK_TIMEOUT_MS, 60_000),
+  maxRetries: parseNumberEnv(process.env.SETTINGS_OUTBOX_MAX_RETRIES, 5),
+  retryBackoffMs: parseNumberEnv(process.env.SETTINGS_OUTBOX_RETRY_BACKOFF_MS, 2_000),
+};
 
 export const config = {
   service: buildServiceInfo(configValues),
@@ -190,6 +204,6 @@ export const config = {
   settings: {
     dataSource: (process.env.SETTINGS_DATA_SOURCE ?? "seed").toLowerCase(),
     kafka: settingsKafka,
-    commandCenter: settingsCommandCenter,
+    events: settingsEvents,
   },
 };

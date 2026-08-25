@@ -14,7 +14,6 @@ import { ToggleSwitchModule } from "primeng/toggleswitch";
 import { TooltipModule } from "primeng/tooltip";
 import { type Subscription } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
-import { AuthService } from "../../core/auth/auth.service";
 import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
@@ -91,7 +90,6 @@ interface JsonFieldGroup {
 })
 export class SettingsComponent implements OnInit, OnDestroy {
 	private readonly api = inject(ApiService);
-	private readonly auth = inject(AuthService);
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly i18n = inject(I18nService);
@@ -168,7 +166,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 				this.selectCategoryByCode(code);
 			}
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to load settings");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to load settings"));
 		} finally {
 			this.loadingCategories.set(false);
 		}
@@ -197,7 +195,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			this.options.set(res.data.options);
 			await this.loadValues();
 		} catch (err) {
-			this.error.set(err instanceof Error ? err.message : "Failed to load category");
+			this.error.set(err instanceof Error ? err.message : this.i18n.t("Failed to load category"));
 		} finally {
 			this.loadingCatalog.set(false);
 		}
@@ -226,8 +224,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
 	formatDisplayValue(def: SettingsDefinition): string {
 		const val = this.getDisplayValue(def);
-		if (val === null || val === undefined) return "Not configured";
-		if (typeof val === "boolean") return val ? "Enabled" : "Disabled";
+		if (val === null || val === undefined) return this.i18n.t("Not configured");
+		if (typeof val === "boolean") return this.i18n.t(val ? "Enabled" : "Disabled");
 		if (typeof val === "object") {
 			try {
 				return JSON.stringify(val, null, 2);
@@ -425,17 +423,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	}
 
 	/** Convert camelCase or SCREAMING_CASE key to human-readable label */
+	/**
+	 * Turn a setting key or enum value into the label the user reads.
+	 *
+	 * The humanized English is the translation key — these are derived at runtime
+	 * from whatever the settings API returns, so they cannot be listed statically;
+	 * anything without an entry falls back to the English, which is the old behaviour.
+	 */
 	humanizeKey(key: string): string {
 		if (key === key.toUpperCase() && key.includes("_")) {
-			return key
-				.split("_")
-				.map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-				.join(" ");
+			return this.i18n.t(
+				key
+					.split("_")
+					.map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+					.join(" "),
+			);
 		}
-		return key
-			.replace(/([a-z])([A-Z])/g, "$1 $2")
-			.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-			.replace(/^./, (c) => c.toUpperCase());
+		return this.i18n.t(
+			key
+				.replace(/([a-z])([A-Z])/g, "$1 $2")
+				.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+				.replace(/^./, (c) => c.toUpperCase()),
+		);
 	}
 
 	/** Format a table cell or child value for display */
@@ -664,7 +673,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			} catch {
 				this.editStates.update((s) => ({
 					...s,
-					[def.id]: { ...state, errorMessage: "Invalid JSON" },
+					[def.id]: { ...state, errorMessage: this.i18n.t("Invalid JSON") },
 				}));
 				return;
 			}
@@ -675,7 +684,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			if (Number.isNaN(parsedValue)) {
 				this.editStates.update((s) => ({
 					...s,
-					[def.id]: { ...state, errorMessage: "Invalid number" },
+					[def.id]: { ...state, errorMessage: this.i18n.t("Invalid number") },
 				}));
 				return;
 			}
@@ -727,7 +736,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 				[def.id]: {
 					...this.getEditState(def.id),
 					saving: false,
-					errorMessage: err instanceof Error ? err.message : "Failed to save",
+					errorMessage: err instanceof Error ? err.message : this.i18n.t("Failed to save"),
 				},
 			}));
 		}
@@ -740,6 +749,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	}
 
 	controlTypeLabel(type: string): string {
+		/* i18n-keys */
 		const labels: Record<string, string> = {
 			TOGGLE: "Toggle",
 			TEXT_INPUT: "Text",
@@ -756,7 +766,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
 			TAGS: "Tags",
 			FILE_UPLOAD: "File Upload",
 		};
-		return labels[type] ?? type;
+		const label = labels[type];
+		return label ? this.i18n.t(label) : type;
 	}
 
 	sensitivityClass(sensitivity: string): string {
@@ -782,6 +793,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 	// ── Industry-standard tooltips ──────────────────────────────────────────
 
 	/** PMS-industry tooltip text keyed by setting code. */
+	/* i18n-keys */
 	private static readonly TOOLTIPS: Record<string, string> = {
 		// Admin & Users
 		"admin.max_staff_users":

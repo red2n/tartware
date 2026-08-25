@@ -26,10 +26,10 @@
 
 		<div class="field-row">
 			<div class="field-group full-width">
-				<label class="field-label" for="componentName">Name <span class="required">*</span></label>
+				<label class="field-label" for="componentName">{{ 'Name' | translate }} <span class="required">*</span></label>
 				<input class="field-input" id="componentName" type="text" [(ngModel)]="componentName" [placeholder]="'e.g. Spa Treatment, Room Upgrade' | translate" />
 				@if (validationErrors['componentName']) {
-					<span class="field-error">{{ validationErrors['componentName'] }}</span>
+					<span class="field-error">{{ validationErrors['componentName'] | translate }}</span>
 				}
 			</div>
 		</div>
@@ -59,7 +59,7 @@
 				<label class="field-label" for="unitPrice">{{ 'Unit Price' | translate }}</label>
 				<input class="field-input" id="unitPrice" type="number" [(ngModel)]="unitPrice" min="0" step="0.01" placeholder="0.00" />
 				@if (validationErrors['unitPrice']) {
-					<span class="field-error">{{ validationErrors['unitPrice'] }}</span>
+					<span class="field-error">{{ validationErrors['unitPrice'] | translate }}</span>
 				}
 			</div>
 		</div>
@@ -69,7 +69,7 @@
 				<label class="field-label" for="quantity">{{ 'Quantity' | translate }}</label>
 				<input class="field-input" id="quantity" type="number" [(ngModel)]="quantity" min="1" />
 				@if (validationErrors['quantity']) {
-					<span class="field-error">{{ validationErrors['quantity'] }}</span>
+					<span class="field-error">{{ validationErrors['quantity'] | translate }}</span>
 				}
 			</div>
 			<div class="field-group">

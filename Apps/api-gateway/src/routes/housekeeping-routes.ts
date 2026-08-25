@@ -232,16 +232,45 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   );
 
   // Incidents routes - proxy to housekeeping service
-  app.all(
+  app.get(
     "/v1/incidents",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
-        summary: "Proxy incident requests to the housekeeping service.",
+        summary: "List incidents.",
         response: {
           200: jsonObjectSchema,
         },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  /**
+   * Filing an incident POSTs to the bare path, and `/v1/incidents/*` does not
+   * match it. Writes also carry `tenant_id` in the body, which a query-only
+   * resolver cannot see — `withTenantScope` then rejects the request with
+   * TENANT_ID_REQUIRED. Same trap as police-report filing.
+   * See ui-gaps/06-incidents.md.
+   */
+  const tenantScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "STAFF",
+    requiredModules: "facility-maintenance",
+  });
+
+  app.post(
+    "/v1/incidents",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Report an incident.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
       }),
     },
     proxyHousekeeping,
@@ -250,7 +279,7 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
   app.all(
     "/v1/incidents/*",
     {
-      preHandler: tenantScopeFromQuery,
+      preHandler: tenantScopeFromQueryOrBody,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy incident requests to the housekeeping service.",
@@ -262,14 +291,90 @@ export const registerHousekeepingRoutes = (app: FastifyInstance): void => {
     proxyHousekeeping,
   );
 
-  // Maintenance routes - proxy to housekeeping service
+  /**
+   * Lost & found — housekeeping-service owns the full lifecycle (register,
+   * update, claim, return). These were previously registered in
+   * operations-routes.ts against core-service, which only ever implemented the
+   * two reads, so every write 404ed downstream and the working implementation
+   * was unreachable through the gateway. See ui-gaps/07-lost-and-found.md.
+   */
+  app.get(
+    "/v1/lost-and-found",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "List lost and found items.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  // Registering an item POSTs to the bare path, which `/v1/lost-and-found/*`
+  // does not match — the same trap as incident and police-report filing.
+  app.post(
+    "/v1/lost-and-found",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Register a lost and found item.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
   app.all(
+    "/v1/lost-and-found/*",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy lost and found operations to the housekeeping service.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  // Maintenance routes - proxy to housekeeping service
+  app.get(
     "/v1/maintenance/*",
     {
       preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: CORE_PROXY_TAG,
         summary: "Proxy maintenance requests to the housekeeping service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyHousekeeping,
+  );
+
+  /**
+   * Maintenance writes. Only POST is registered because POST is all
+   * housekeeping-service implements under this prefix — a PUT/DELETE wildcard
+   * here would advertise a write surface that does not exist, which is the
+   * phantom-write defect `wildcard-write-conformance.test.ts` guards against.
+   *
+   * The wildcard was demoted to `app.get` in the 2026-08-13 sweep because the
+   * domain was read-only; it is promoted here in the same change as the service
+   * writes, which is the pairing the converse check now enforces.
+   * See ui-gaps/18-write-path-gap.md.
+   */
+  app.post(
+    "/v1/maintenance/*",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: CORE_PROXY_TAG,
+        summary: "Proxy maintenance writes to the housekeeping service.",
+        body: jsonObjectSchema,
         response: {
           200: jsonObjectSchema,
         },

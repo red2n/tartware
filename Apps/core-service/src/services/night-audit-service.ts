@@ -13,6 +13,7 @@ import {
   type GetNightAuditRunDetailInput,
   type ListBusinessCalendarInput,
   type ListNightAuditHistoryInput,
+  type ListOtaConfigurationsInput,
   type ListOtaConnectionsInput,
   type ListOtaSyncLogsInput,
   type NightAuditRunDetailResponse,
@@ -23,6 +24,9 @@ import {
   type NightAuditStep,
   type NightAuditStepRow,
   NightAuditStepSchema,
+  type OtaConfigurationListItem,
+  OtaConfigurationListItemSchema,
+  type OtaConfigurationRow,
   type OtaConnectionListItem,
   OtaConnectionListItemSchema,
   type OtaConnectionRow,
@@ -37,6 +41,7 @@ import {
   BUSINESS_DATE_STATUS_SQL,
   NIGHT_AUDIT_HISTORY_SQL,
   NIGHT_AUDIT_RUN_DETAIL_SQL,
+  OTA_CONFIGURATION_LIST_SQL,
   OTA_CONNECTION_LIST_SQL,
   OTA_SYNC_LOG_SQL,
 } from "../sql/night-audit-queries.js";
@@ -82,7 +87,7 @@ export const getBusinessDateStatus = async (
     return null;
   }
 
-  const row = rows[0]!;
+  const row = rows[0] as NonNullable<(typeof rows)[0]>;
   return BusinessDateStatusResponseSchema.parse({
     business_date_id: row.business_date_id,
     tenant_id: row.tenant_id,
@@ -181,7 +186,7 @@ export const getNightAuditRunDetail = async (
   }
 
   // First row contains run-level data
-  const firstRow = rows[0]!;
+  const firstRow = rows[0] as NonNullable<(typeof rows)[0]>;
 
   // Map all steps
   const steps: NightAuditStep[] = rows.map((row) =>
@@ -293,6 +298,53 @@ export const listOtaConnections = async (
   ]);
 
   return rows.map(mapOtaConnectionRow);
+};
+
+/**
+ * List OTA configurations — the real connection records.
+ *
+ * Credentials are excluded by the query itself rather than filtered here, so a
+ * secret cannot reach this layer to be leaked by accident.
+ * See ui-gaps/14-channel-distribution.md.
+ */
+export const listOtaConfigurations = async (
+  options: ListOtaConfigurationsInput,
+): Promise<OtaConfigurationListItem[]> => {
+  const { rows } = await query<OtaConfigurationRow>(OTA_CONFIGURATION_LIST_SQL, [
+    options.limit ?? 100,
+    options.tenantId,
+    options.propertyId ?? null,
+    options.isActive ?? null,
+    options.offset ?? 0,
+  ]);
+
+  return rows.map((row) =>
+    OtaConfigurationListItemSchema.parse({
+      ota_config_id: row.ota_config_id,
+      tenant_id: row.tenant_id,
+      property_id: row.property_id,
+      property_name: row.property_name ?? undefined,
+      ota_name: row.ota_name,
+      ota_code: row.ota_code,
+      api_endpoint: row.api_endpoint,
+      hotel_id: row.hotel_id,
+      channel_manager: row.channel_manager,
+      has_credentials: Boolean(row.has_credentials),
+      is_active: Boolean(row.is_active),
+      sync_enabled: Boolean(row.sync_enabled),
+      sync_frequency_minutes: row.sync_frequency_minutes,
+      last_sync_at: toIsoString(row.last_sync_at),
+      sync_status: row.sync_status,
+      sync_error_message: row.sync_error_message,
+      rate_push_enabled: Boolean(row.rate_push_enabled),
+      availability_push_enabled: Boolean(row.availability_push_enabled),
+      reservation_pull_enabled: Boolean(row.reservation_pull_enabled),
+      commission_percentage: row.commission_percentage,
+      currency_code: row.currency_code,
+      created_at: toIsoString(row.created_at),
+      updated_at: toIsoString(row.updated_at),
+    }),
+  );
 };
 
 // =====================================================

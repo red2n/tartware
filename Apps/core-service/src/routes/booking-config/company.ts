@@ -1,9 +1,23 @@
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
-import { CompanyListItemSchema, CompanyTypeEnum, CreditStatusEnum } from "@tartware/schemas";
+import type { CompanyUpdateBody, CompanyWriteBody } from "@tartware/schemas";
+import {
+  CompanyListItemSchema,
+  type CompanyType,
+  CompanyTypeEnum,
+  CompanyUpdateBodySchema,
+  CompanyWriteBodySchema,
+  type CreditStatus,
+  CreditStatusEnum,
+} from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { getCompanyById, listCompanies } from "../../services/booking-config/company.js";
+import {
+  createCompany,
+  getCompanyById,
+  listCompanies,
+  updateCompany,
+} from "../../services/booking-config/company.js";
 
 // =====================================================
 // ROUTE REGISTRATION
@@ -16,7 +30,9 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       .string()
       .toLowerCase()
       .optional()
-      .refine((val) => !val || CompanyTypeEnum.options.map((t) => t.toLowerCase()).includes(val), {
+      // CompanyTypeEnum now carries the constraint's own lowercase values, so
+      // there is nothing left to fold here.
+      .refine((val) => !val || CompanyTypeEnum.options.includes(val as CompanyType), {
         message: "Invalid company type",
       }),
     is_active: z.coerce.boolean().optional(),
@@ -24,12 +40,9 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       .string()
       .toLowerCase()
       .optional()
-      .refine(
-        (val) => !val || CreditStatusEnum.options.map((s: string) => s.toLowerCase()).includes(val),
-        {
-          message: "Invalid credit status",
-        },
-      ),
+      .refine((val) => !val || CreditStatusEnum.options.includes(val as CreditStatus), {
+        message: "Invalid credit status",
+      }),
     is_blacklisted: z.coerce.boolean().optional(),
     limit: z.coerce.number().int().positive().max(500).default(200),
     offset: z.coerce.number().int().min(0).default(0),
@@ -108,6 +121,106 @@ export const registerCompanyRoutes = (app: FastifyInstance): void => {
       const { companyId } = CompanyParamsSchema.parse(request.params);
       const { tenant_id } = z.object({ tenant_id: z.string().uuid() }).parse(request.query);
       const company = await getCompanyById({ companyId, tenantId: tenant_id });
+      if (!company) {
+        return reply.notFound("Company not found");
+      }
+      return CompanyListItemSchema.parse(company);
+    },
+  );
+
+  /**
+   * Write surface. `/v1/companies` was read-only, which left COV-03's AR account
+   * management unusable — `ar.account.create` needs a `company_id` and nothing
+   * could create one. See ui-gaps/16-booking-reference-data.md.
+   *
+   * Request contracts live in @tartware/schemas (api/events.ts) — schemas do not
+   * belong in a route file.
+   */
+  const CompanyWriteBodyJsonSchema = schemaFromZod(CompanyWriteBodySchema, "CompanyWriteBody");
+  const CompanyUpdateBodyJsonSchema = schemaFromZod(CompanyUpdateBodySchema, "CompanyUpdateBody");
+
+  const toWriteInput = (body: CompanyUpdateBody) => ({
+    companyName: body.company_name as string,
+    companyType: body.company_type,
+    legalName: body.legal_name,
+    companyCode: body.company_code,
+    primaryContactName: body.primary_contact_name,
+    primaryContactEmail: body.primary_contact_email,
+    primaryContactPhone: body.primary_contact_phone,
+    billingContactName: body.billing_contact_name,
+    billingContactEmail: body.billing_contact_email,
+    addressLine1: body.address_line1,
+    city: body.city,
+    stateProvince: body.state_province,
+    postalCode: body.postal_code,
+    country: body.country,
+    creditLimit: body.credit_limit,
+    paymentTermsType: body.payment_terms_type,
+    creditStatus: body.credit_status,
+    commissionRate: body.commission_rate,
+    commissionType: body.commission_type,
+    isActive: body.is_active,
+  });
+
+  app.post<{ Body: CompanyWriteBody }>(
+    "/v1/companies",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: COMPANIES_TAG,
+        summary: "Create a company (corporate account, travel agency, OTA).",
+        body: CompanyWriteBodyJsonSchema,
+        response: {
+          201: schemaFromZod(CompanyListItemSchema, "CompanyCreated"),
+          400: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const body = CompanyWriteBodySchema.parse(request.body);
+      const company = await createCompany(
+        body.tenant_id,
+        { ...toWriteInput(body), companyType: body.company_type },
+        (request as { userId?: string }).userId,
+      );
+      if (!company) {
+        return reply.internalServerError("Failed to create company");
+      }
+      return reply.status(201).send(CompanyListItemSchema.parse(company));
+    },
+  );
+
+  app.put<{ Params: z.infer<typeof CompanyParamsSchema>; Body: CompanyUpdateBody }>(
+    "/v1/companies/:companyId",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.body as { tenant_id?: string })?.tenant_id,
+        minRole: "MANAGER",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: COMPANIES_TAG,
+        summary: "Update a company.",
+        params: CompanyIdParamJsonSchema,
+        body: CompanyUpdateBodyJsonSchema,
+        response: {
+          200: schemaFromZod(CompanyListItemSchema, "CompanyUpdated"),
+          404: errorResponseSchema,
+        },
+      }),
+    },
+    async (request, reply) => {
+      const body = CompanyUpdateBodySchema.parse(request.body);
+      const company = await updateCompany(
+        body.tenant_id,
+        request.params.companyId,
+        toWriteInput(body),
+        (request as { userId?: string }).userId,
+      );
       if (!company) {
         return reply.notFound("Company not found");
       }

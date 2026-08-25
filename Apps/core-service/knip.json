@@ -13,6 +13,8 @@
     "@fastify/helmet",
     "@tartware/fastify-server",
     "@tartware/command-consumer-utils",
+    "@tartware/outbox",
+    "kafkajs",
     "ast-v8-to-istanbul"
   ],
   "ignoreExportsUsedInFile": true,

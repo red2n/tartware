@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     company_id UUID,
 
     -- Credit Limit
-    credit_limit_amount DECIMAL(12,2) NOT NULL,
+    credit_limit_amount DECIMAL(19,4) NOT NULL,
     currency VARCHAR(3) DEFAULT 'USD',
 
     -- Status
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     effective_to DATE,
 
     -- Utilization
-    current_balance DECIMAL(12,2) DEFAULT 0.00,
-    available_credit DECIMAL(12,2),
+    current_balance DECIMAL(19,4) DEFAULT 0.00,
+    available_credit DECIMAL(19,4),
     credit_utilization_percent DECIMAL(5,2),
 
     -- Thresholds
@@ -61,14 +61,14 @@ CREATE TABLE IF NOT EXISTS credit_limits (
 
     -- Temporary Increase
     temporary_increase_allowed BOOLEAN DEFAULT FALSE,
-    temporary_increase_amount DECIMAL(12,2),
+    temporary_increase_amount DECIMAL(19,4),
     temporary_increase_expires DATE,
     temporary_increase_active BOOLEAN DEFAULT FALSE,
     temporary_increase_reason TEXT,
     temporary_increase_approved_by UUID,
 
     -- Historical Limits
-    previous_limit DECIMAL(12,2),
+    previous_limit DECIMAL(19,4),
     limit_increased_count INTEGER DEFAULT 0,
     limit_decreased_count INTEGER DEFAULT 0,
     last_limit_change_date DATE,
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     credit_check_valid_until DATE,
 
     -- Financial Information
-    annual_revenue DECIMAL(15,2),
+    annual_revenue DECIMAL(19,4),
     years_in_business INTEGER,
     duns_number VARCHAR(50),
     tax_id VARCHAR(100),
@@ -116,13 +116,13 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     )),
     guarantor_name VARCHAR(255),
     guarantor_contact VARCHAR(255),
-    guarantee_amount DECIMAL(12,2),
+    guarantee_amount DECIMAL(19,4),
     guarantee_expiry_date DATE,
 
     -- Security Deposit
     security_deposit_required BOOLEAN DEFAULT FALSE,
-    security_deposit_amount DECIMAL(12,2),
-    security_deposit_held DECIMAL(12,2),
+    security_deposit_amount DECIMAL(19,4),
+    security_deposit_held DECIMAL(19,4),
     security_deposit_refundable BOOLEAN DEFAULT TRUE,
 
     -- Credit Card on File
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS credit_limits (
 
     -- Payment History
     total_transactions INTEGER DEFAULT 0,
-    total_amount_transacted DECIMAL(15,2) DEFAULT 0.00,
+    total_amount_transacted DECIMAL(19,4) DEFAULT 0.00,
 
     on_time_payment_count INTEGER DEFAULT 0,
     late_payment_count INTEGER DEFAULT 0,
@@ -146,8 +146,8 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     last_payment_date DATE,
 
     -- Outstanding
-    current_outstanding DECIMAL(12,2) DEFAULT 0.00,
-    overdue_amount DECIMAL(12,2) DEFAULT 0.00,
+    current_outstanding DECIMAL(19,4) DEFAULT 0.00,
+    overdue_amount DECIMAL(19,4) DEFAULT 0.00,
     longest_outstanding_days INTEGER DEFAULT 0,
 
     -- Violations
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS credit_limits (
     -- Restrictions
     restrictions TEXT,
     requires_prepayment BOOLEAN DEFAULT FALSE,
-    max_transaction_amount DECIMAL(12,2),
+    max_transaction_amount DECIMAL(19,4),
     allowed_services VARCHAR(100)[],
     restricted_services VARCHAR(100)[],
 
@@ -243,5 +243,7 @@ COMMENT ON TABLE credit_limits IS 'Manages customer credit limits, utilization, 
 COMMENT ON COLUMN credit_limits.available_credit IS 'Calculated as credit_limit_amount - current_balance (including temporary increases)';
 COMMENT ON COLUMN credit_limits.limit_history IS 'JSON array of historical limit changes: [{date, old_limit, new_limit, reason, changed_by}]';
 COMMENT ON COLUMN credit_limits.temporary_increase_amount IS 'Additional credit available for temporary period';
+
+
 
 \echo 'credit_limits table created successfully!'

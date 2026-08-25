@@ -127,12 +127,18 @@ VALUES
     ('11111111-1111-1111-1111-111111111111', '4110', 'Restaurant Revenue',            'REVENUE',   'CREDIT', 'Food & Beverage Revenue',     'F',   'Restaurant Revenue',                 '4100',  211, false),
     ('11111111-1111-1111-1111-111111111111', '4120', 'Bar Revenue',                   'REVENUE',   'CREDIT', 'Food & Beverage Revenue',     'F',   'Bar Revenue',                        '4100',  212, false),
     ('11111111-1111-1111-1111-111111111111', '4130', 'Room Service Revenue',          'REVENUE',   'CREDIT', 'Food & Beverage Revenue',     'F',   'Room Service Revenue',               '4100',  213, false),
+    ('11111111-1111-1111-1111-111111111111', '4150', 'Banquet Service Charge Revenue','REVENUE',   'CREDIT', 'Food & Beverage Revenue',     'F',   'Banquet Service Charge Revenue',     '4100',  214, false),
     ('11111111-1111-1111-1111-111111111111', '4200', 'Other Revenue - Fees',          'REVENUE',   'CREDIT', 'Other Revenue',               'G',   'Resort/Amenity Fee Revenue',         NULL,    220, false),
     ('11111111-1111-1111-1111-111111111111', '4300', 'Spa Revenue',                   'REVENUE',   'CREDIT', 'Spa Revenue',                 'H',   'Spa Revenue',                        NULL,    230, false),
     ('11111111-1111-1111-1111-111111111111', '4400', 'Parking Revenue',               'REVENUE',   'CREDIT', 'Other Revenue',               'G',   'Parking Revenue',                    NULL,    240, false),
     ('11111111-1111-1111-1111-111111111111', '4500', 'Telephone Revenue',             'REVENUE',   'CREDIT', 'Other Revenue',               'G',   'Telephone Revenue',                  NULL,    250, false),
     ('11111111-1111-1111-1111-111111111111', '4600', 'Laundry Revenue',               'REVENUE',   'CREDIT', 'Other Revenue',               'G',   'Laundry Revenue',                    NULL,    260, false),
     ('11111111-1111-1111-1111-111111111111', '4700', 'Miscellaneous Revenue',         'REVENUE',   'CREDIT', 'Miscellaneous Revenue',       'G',   'Miscellaneous Revenue',              NULL,    270, false),
+    -- Function space sits under Miscellaneous Income in USALI 12th Ed: space
+    -- rental is not a Rooms sale, and only the catering half is F&B revenue.
+    ('11111111-1111-1111-1111-111111111111', '4710', 'Function Space Rental Revenue',  'REVENUE',   'CREDIT', 'Miscellaneous Revenue',       'G',   'Function Space Rental Revenue',      '4700',  271, false),
+    ('11111111-1111-1111-1111-111111111111', '4720', 'Audio-Visual Revenue',           'REVENUE',   'CREDIT', 'Miscellaneous Revenue',       'G',   'Audio-Visual Revenue',               '4700',  272, false),
+    ('11111111-1111-1111-1111-111111111111', '4730', 'Event Services Revenue',         'REVENUE',   'CREDIT', 'Miscellaneous Revenue',       'G',   'Event Services Revenue',             '4700',  273, false),
     ('11111111-1111-1111-1111-111111111111', '4800', 'Package Revenue',               'REVENUE',   'CREDIT', 'Rooms Revenue',               'E',   'Package Revenue',                    '4000',  280, false),
     ('11111111-1111-1111-1111-111111111111', '4900', 'Other Revenue (Unclassified)',  'REVENUE',   'CREDIT', 'Miscellaneous Revenue',       'G',   'Other Unclassified Revenue',         NULL,    290, false),
 

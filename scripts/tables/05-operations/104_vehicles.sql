@@ -22,7 +22,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS vehicles CASCADE;
 
-CREATE TABLE vehicles (
+CREATE TABLE IF NOT EXISTS vehicles (
     -- Primary Key
     vehicle_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

@@ -9,6 +9,7 @@ import type {
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import {
+  GuestConsentUpdateCommandSchema,
   GuestGdprEraseCommandSchema,
   type GuestMergeCommand,
   GuestMergeCommandSchema,
@@ -21,6 +22,7 @@ import {
 } from "../schemas/guest-commands.js";
 import { hashIdentifier, recordAuditLog, redactPayload } from "../utils/audit.js";
 import { normalizePhoneNumber } from "../utils/phone.js";
+import { updateGuestConsent } from "./privacy-service.js";
 
 const guestCommandLogger = appLogger.child({
   module: "guest-command-service",
@@ -948,6 +950,60 @@ export const updateGuestPreferences = async ({
     { tenantId, guestId: command.guest_id, correlationId, initiatedBy },
     "guest.preference.update command applied",
   );
+};
+
+/**
+ * Record a guest's consent decisions (GDPR Art. 7).
+ *
+ * The write itself lives in privacy-service, which owns the append-only consent
+ * log and keeps `guests.marketing_consent` in step with the email toggle. This
+ * handler is the command-bus entry to it: validate, apply, audit.
+ *
+ * The audit metadata carries which toggles changed and to what, but hashes the
+ * guest id like the other guest commands here — a consent record must be
+ * traceable without spreading raw subject ids through the audit log.
+ */
+export const updateGuestConsentDecision = async ({
+  tenantId,
+  payload,
+  correlationId,
+  initiatedBy,
+}: GuestUpdateOptions): Promise<void> => {
+  const command = GuestConsentUpdateCommandSchema.parse(payload);
+  const actor = resolveActorId(initiatedBy);
+
+  const { guest_id, metadata: _metadata, idempotency_key: _idempotencyKey, ...consent } = command;
+
+  const ledger = await updateGuestConsent({
+    guestId: guest_id,
+    tenantId,
+    consent,
+    updatedBy: actor,
+  });
+
+  if (!ledger) {
+    throw new Error("GUEST_NOT_FOUND");
+  }
+
+  guestCommandLogger.info(
+    { tenantId, guestId: guest_id, correlationId, initiatedBy },
+    "guest.consent.update command applied",
+  );
+
+  await recordAuditLog({
+    tenantId,
+    propertyId: null,
+    actorId: actor,
+    action: "guest.consent.update",
+    eventType: "UPDATE",
+    entityType: "guest",
+    entityId: guest_id,
+    metadata: {
+      guest_id: hashIdentifier(guest_id),
+      consent,
+      correlationId,
+    },
+  });
 };
 
 const mergeGuestRows = (primary: GuestRow, duplicate: GuestRow, payload: GuestMergeCommand) => {

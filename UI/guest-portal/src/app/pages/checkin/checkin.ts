@@ -1,19 +1,19 @@
-import { Component, signal, inject } from "@angular/core";
-import { Router } from "@angular/router";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { portalConfig } from "../../portal-config";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
-import { MatStepperModule } from "@angular/material/stepper";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatStepperModule } from "@angular/material/stepper";
+import { Router } from "@angular/router";
+import { portalConfig } from "../../portal-config";
 import {
-	GuestApiService,
-	type CheckinStartResult,
 	type CheckinCompleteResult,
+	type CheckinStartResult,
+	GuestApiService,
 } from "../../services/guest-api.service";
 
 @Component({
@@ -117,6 +117,14 @@ import {
 								@if (cr.keyCode) {
 									<p>Digital key code: <strong>{{ cr.keyCode }}</strong></p>
 								}
+								<!-- The HTML registration card is what a guest reviews and signs; it is
+								     opened rather than fetched, so the browser renders it directly. -->
+								@if (registrationCardHref(); as href) {
+									<a mat-stroked-button color="primary" [href]="href" target="_blank" rel="noopener">
+										<mat-icon>description</mat-icon>
+										Registration card
+									</a>
+								}
 								<button mat-flat-button color="primary" (click)="finish()">Done</button>
 							</div>
 						}
@@ -129,20 +137,20 @@ import {
 		:host { display: block; max-width: 560px; margin: 2rem auto; }
 		.checkin-card { padding: 1rem; }
 		.step-content { display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0; }
-		.details { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; }
+		.details { border: 1px solid var(--borderColor-default); border-radius: 8px; padding: 1rem; }
 		.row {
 			display: flex; justify-content: space-between; padding: 0.3rem 0;
-			border-bottom: 1px solid #f5f5f5;
+			border-bottom: 1px solid var(--borderColor-muted);
 		}
-		.row span:first-child { color: #616161; }
-		.error { color: #d32f2f; margin: 0; }
+		.row span:first-child { color: var(--fgColor-muted); }
+		.error { color: var(--fgColor-danger); margin: 0; }
 		.done { text-align: center; align-items: center; }
-		.done-icon { font-size: 64px; width: 64px; height: 64px; color: #2e7d32; }
-		.room-number { font-size: 1.4rem; }
+		.done-icon { font-size: 4rem; width: 4rem; height: 4rem; color: var(--fgColor-success); }
+		.room-number { font-size: var(--base-text-size-lg); }
 	`,
 })
 export class CheckinPage {
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 	private readonly router = inject(Router);
 
 	confirmationCode = "";
@@ -174,6 +182,36 @@ export class CheckinPage {
 			this.loading.set(false);
 		}
 	}
+
+	/**
+	 * URL of the signable registration card for the checked-in reservation.
+	 *
+	 * `reservation.generate_registration_card` is a separate command with no UI
+	 * trigger, so if the card has not been generated this link may come back empty —
+	 * the button is offered, not promised.
+	 */
+	registrationCardHref(): string | null {
+		const reservationId = this.startResult()?.reservationId;
+		if (!reservationId) return null;
+		return this.api.registrationCardUrl(reservationId, portalConfig.tenantId);
+	}
+
+	/**
+	 * Re-read a check-in that was started earlier.
+	 *
+	 * The flow started and completed a check-in without ever reading its state, so a
+	 * refresh lost the session entirely. See ui-gaps/11-self-service-coverage.md.
+	 */
+	async resume(checkinId: string): Promise<void> {
+		try {
+			const status = await this.api.getCheckin(checkinId, portalConfig.tenantId);
+			if (status?.status) this.resumedStatus.set(status.status);
+		} catch {
+			/* nothing to resume — the guest simply starts again */
+		}
+	}
+
+	readonly resumedStatus = signal<string | null>(null);
 
 	async completeCheckin(stepper: { next: () => void }) {
 		const sr = this.startResult();

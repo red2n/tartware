@@ -40,13 +40,15 @@ CREATE TABLE IF NOT EXISTS payments (
     -- Foreign key constraint for payment_token_id will be added in 00-create-all-constraints.sql after payment_tokens table exists
 
     -- Amount
-    amount DECIMAL(15,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'USD',
+    -- Scale 4, not 2: ISO 4217 exponents range from 0 (JPY) to 4 (CLF), and
+    -- 3-decimal Gulf currencies (KWD, BHD, OMR) lose a spendable unit at scale 2.
+    amount DECIMAL(19,4) NOT NULL, -- Tendered amount in `currency`, at that currency's minor-unit scale
+    currency VARCHAR(3) DEFAULT 'USD', -- ISO 4217 code the guest actually paid in
 
     -- Exchange Rate (for foreign currency)
-    exchange_rate DECIMAL(15,6) DEFAULT 1.0,
-    base_amount DECIMAL(15,2),
-    base_currency VARCHAR(3) DEFAULT 'USD',
+    exchange_rate DECIMAL(15,6) DEFAULT 1.0, -- Rate locked at capture time (currency → base_currency)
+    base_amount DECIMAL(19,4), -- `amount` converted to base_currency at the locked rate
+    base_currency VARCHAR(3) DEFAULT 'USD', -- Property base currency for the ledger
 
     -- Payment Status
     status payment_status NOT NULL DEFAULT 'PENDING',
@@ -71,7 +73,7 @@ CREATE TABLE IF NOT EXISTS payments (
     processed_by VARCHAR(100),
 
     -- Refund Information
-    refund_amount DECIMAL(15,2) DEFAULT 0.00,
+    refund_amount DECIMAL(19,4) DEFAULT 0.00,
     refund_date TIMESTAMP,
     refund_reason TEXT,
     refunded_by VARCHAR(100),
@@ -142,5 +144,6 @@ END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_tenant_payment_reference
   ON payments (tenant_id, payment_reference);
+
 
 \echo 'Payments table created successfully!'

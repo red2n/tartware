@@ -1,0 +1,175 @@
+/* Function space calendar — meeting rooms × days.
+   The skeleton (sticky first column, scrolling date columns, date headers) is
+   the shared .calendar-* set in styles/shared.scss. What is here is what a day
+   of bookings needs: a wider column, fixed layout, and the chips themselves. */
+
+/* ── Toolbar ── */
+/* This toolbar carries more controls than the rate grid's, so its rows wrap
+   rather than pushing the date navigator off the edge. */
+.toolbar-left,
+.toolbar-right {
+  flex-wrap: wrap;
+}
+
+/* ── Grid ── */
+/* The room column is fixed rather than min-width, so a long room name cannot
+   widen it and squeeze the days. */
+.th-row-head {
+  width: 200px;
+}
+
+.td-row-head {
+  vertical-align: top;
+
+  .room-name {
+    display: block;
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+  }
+
+  .room-meta {
+    display: block;
+    font-size: var(--base-text-size-xs);
+    color: var(--fgColor-muted);
+  }
+}
+
+/* Fixed layout, so a long event name ellipsizes inside its day instead of
+   stretching that column and knocking the rest of the fortnight out of
+   alignment. Auto layout sized columns by content and the widths drifted. */
+.calendar-grid {
+  table-layout: fixed;
+}
+
+/* A day here holds event chips, not one number, so the column is wider than
+   the rate grid's. */
+.th-date {
+  width: 118px;
+  min-width: 118px;
+}
+
+.td-day {
+  width: 118px;
+  min-width: 118px;
+  max-width: 118px;
+  padding: var(--base-size-4);
+  vertical-align: top;
+  border-bottom: 1px solid var(--borderColor-muted);
+  border-right: 1px solid var(--borderColor-muted);
+
+  /* The add control only appears on hover or keyboard focus, so an empty day
+     reads as empty rather than as a wall of plus signs. */
+  .cell-add {
+    opacity: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: var(--base-size-2);
+    border: 1px dashed var(--borderColor-muted);
+    border-radius: var(--borderRadius-small);
+    background: transparent;
+    color: var(--fgColor-muted);
+    cursor: pointer;
+  }
+
+  &:hover .cell-add,
+  .cell-add:focus-visible {
+    opacity: 1;
+  }
+}
+
+.td-weekend {
+  background: color-mix(in srgb, var(--bgColor-default) 92%, var(--bgColor-attention-muted));
+}
+
+.td-today {
+  background: color-mix(in srgb, var(--bgColor-default) 92%, var(--bgColor-accent-muted));
+}
+
+/* ── Booking chips ── */
+/* Two lines, not one: a day column is ~118px, and "09:00 " ate enough of that
+   to truncate every event to about six characters. Stacking gives the name the
+   full width and keeps the start time legible above it. */
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  margin-bottom: var(--base-size-4);
+  padding: var(--base-size-2) var(--base-size-6);
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: var(--borderRadius-small);
+  font-size: var(--base-text-size-xs);
+  text-align: left;
+  cursor: pointer;
+
+  .chip-time {
+    flex: 0 0 auto;
+    font-size: var(--base-text-size-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--fgColor-muted);
+  }
+
+  .chip-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fgColor-default);
+  }
+}
+
+/* Status carries meaning, so it is border + background rather than colour of
+   the text alone — the same reason the badges elsewhere pair the two. */
+.chip-tentative {
+  background: var(--bgColor-attention-muted);
+  border-color: var(--borderColor-attention-emphasis);
+}
+
+.chip-definite {
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-emphasis);
+}
+
+.chip-confirmed {
+  background: var(--bgColor-success-muted);
+  border-color: var(--borderColor-success-emphasis);
+}
+
+.chip-completed {
+  background: var(--bgColor-muted);
+  border-color: var(--borderColor-default);
+}
+
+.chip-released {
+  background: transparent;
+  border-color: var(--borderColor-muted);
+
+  .chip-name {
+    color: var(--fgColor-muted);
+    text-decoration: line-through;
+  }
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  flex-wrap: wrap;
+  margin-top: var(--base-size-12);
+
+  .chip {
+    width: auto;
+    margin-bottom: 0;
+    cursor: default;
+  }
+
+  .chip-name {
+    white-space: nowrap;
+  }
+}

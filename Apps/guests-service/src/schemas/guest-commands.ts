@@ -1,4 +1,5 @@
 export {
+  GuestConsentUpdateCommandSchema,
   GuestGdprEraseCommandSchema,
   type GuestMergeCommand,
   GuestMergeCommandSchema,

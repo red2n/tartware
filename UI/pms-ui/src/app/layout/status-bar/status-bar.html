@@ -42,11 +42,11 @@
 
     <!-- User & Role -->
     @if (userName()) {
-      <span class="status-bar-item" [pTooltip]="('Logged in as' | translate) + ' ' + userName() + ' (' + userRole() + ')'" tooltipPosition="top">
+      <span class="status-bar-item" [pTooltip]="('Logged in as' | translate) + ' ' + userName() + ' (' + (userRole() | translate) + ')'" tooltipPosition="top">
         <app-icon class="status-bar-icon" name="person" />
         <span class="status-bar-text">{{ userName() }}</span>
         @if (userRole()) {
-          <span class="badge badge-accent badge-sm">{{ userRole() }}</span>
+          <span class="badge badge-accent badge-sm">{{ userRole() | translate }}</span>
         }
       </span>
     }

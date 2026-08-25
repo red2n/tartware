@@ -2,13 +2,27 @@
 @use './styles/shared';
 @use './styles/primeng-theme';
 
-/* Layer 0: Primer Design System primitives (official tokens) */
+/* Layer 0: Primer Design System primitives — size, type and motion scales.
+   Note that Primer's primitives.css deliberately ships no colour; the palette
+   below is ours. */
 @import '@primer/primitives/dist/css/primitives.css';
-@import url('./styles/primer-light.css');
-@import url('./styles/primer-dark.css');
+@import url('../../shared-styles/shape.css');
 
-/* Layer 1: App-specific tokens (sidebar, hero, layout — no Primer equivalent) */
+/* Layer 1: Shared palette — the single source of truth for colour across
+   pms-ui AND guest-portal. Lives in UI/shared-styles/ so neither app owns it.
+   Edit there, never here. */
+@import url('../../shared-styles/palette-light.css');
+@import url('../../shared-styles/palette-dark.css');
+
+/* Layer 2: App-specific tokens (sidebar, hero, login scene — PMS only) */
 @import url('./styles/tokens.css');
+
+/* Layer 3: Accessibility overrides — prefers-contrast and forced-colors.
+   Must load after the palette so it wins at equal specificity. */
+@import url('../../shared-styles/contrast.css');
+
+/* Layer 4: element defaults shared with guest-portal */
+@import url('../../shared-styles/base.css');
 
 /* ── Global resets ── */
 *,
@@ -17,27 +31,21 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: var(--base-text-size-md);
-  line-height: var(--base-text-lineHeight-normal);
-  color: var(--fgColor-default);
-  background: var(--bgColor-default);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ── Native widget chrome ──
+   Load-bearing: the browser paints the parts of a control it owns — the open
+   <select> popup list, the date picker panel, autofill fills, spinner arrows —
+   from its own colour scheme, not from our tokens. Without this a control we
+   have themed still drops a light-mode panel over the dark palette the moment
+   it opens. */
+[data-theme='light'] {
+  color-scheme: light;
 }
 
-a {
-  color: var(--fgColor-accent);
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
+/* Element defaults are shared with guest-portal — see shared-styles/base.css.
+   Only what genuinely differs between the two apps stays here. */
+html,
+body {
+  background: var(--bgColor-default);
 }
 
 /* ── Focus ring (GitHub-style) ── */

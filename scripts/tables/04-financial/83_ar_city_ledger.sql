@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS ar_city_ledger (
     due_date            DATE NOT NULL,                                 -- Payment due (from payment terms)
 
     -- Amount
-    original_amount     NUMERIC(14, 2) NOT NULL,                       -- Amount at transfer time
-    outstanding_balance NUMERIC(14, 2) NOT NULL,                       -- Remaining unpaid balance
+    original_amount     NUMERIC(19, 4) NOT NULL,                       -- Amount at transfer time
+    outstanding_balance NUMERIC(19, 4) NOT NULL,                       -- Remaining unpaid balance
     currency            CHAR(3) NOT NULL DEFAULT 'USD',                -- Billing currency
 
     -- Status
@@ -88,5 +88,7 @@ COMMENT ON COLUMN ar_city_ledger.aging_bucket IS
     'CURRENT (<30d), 1_30 (31-60d), 31_60 (61-90d) ... recalculated nightly by ar.aging.compute.';
 COMMENT ON COLUMN ar_city_ledger.days_outstanding IS
     'Computed nightly: CURRENT_DATE - transfer_date. Used to categorise into aging_bucket.';
+
+
 
 \echo 'ar_city_ledger table created successfully!'

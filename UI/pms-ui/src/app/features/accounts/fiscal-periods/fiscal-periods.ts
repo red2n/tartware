@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
@@ -38,6 +39,7 @@ type StatusFilter = "ALL" | "FUTURE" | "OPEN" | "SOFT_CLOSE" | "CLOSED" | "LOCKE
 })
 export class FiscalPeriodsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -92,7 +94,7 @@ export class FiscalPeriodsComponent {
 			this.error.set(
 				e instanceof Error
 					? e.message
-					: "Fiscal period list endpoint is not currently available through the API.",
+					: this.i18n.t("Fiscal period list endpoint is not currently available through the API."),
 			);
 		} finally {
 			this.dataReady.set(true);
@@ -162,11 +164,11 @@ export class FiscalPeriodsComponent {
 				close_reason: this.closeReason() || undefined,
 				reconciliation_confirmed: this.reconciliationConfirmed(),
 			});
-			this.toast.success("Fiscal period close submitted. Refreshing periods...");
+			this.toast.success(this.i18n.t("Fiscal period close submitted. Refreshing periods..."));
 			this.closingPeriodId.set(null);
 			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to close period.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to close period."));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -184,10 +186,10 @@ export class FiscalPeriodsComponent {
 				property_id: propertyId,
 				period_id: p.fiscal_period_id,
 			});
-			this.toast.success("Fiscal period lock submitted. Refreshing periods...");
+			this.toast.success(this.i18n.t("Fiscal period lock submitted. Refreshing periods..."));
 			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to lock period.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to lock period."));
 		} finally {
 			this.actionLoading.set(false);
 		}
@@ -208,7 +210,7 @@ export class FiscalPeriodsComponent {
 		if (!tenantId || !propertyId || !periodId) return;
 
 		if (!this.reopenReason()) {
-			this.toast.error("Reason for reopening is required.");
+			this.toast.error(this.i18n.t("Reason for reopening is required."));
 			return;
 		}
 
@@ -219,11 +221,11 @@ export class FiscalPeriodsComponent {
 				period_id: periodId,
 				reason: this.reopenReason(),
 			});
-			this.toast.success("Fiscal period reopen submitted. Refreshing periods...");
+			this.toast.success(this.i18n.t("Fiscal period reopen submitted. Refreshing periods..."));
 			this.reopeningPeriodId.set(null);
 			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to reopen period.");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to reopen period."));
 		} finally {
 			this.actionLoading.set(false);
 		}

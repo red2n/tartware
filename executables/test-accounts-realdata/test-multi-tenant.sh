@@ -110,30 +110,84 @@ gen_uuid() {
   fi
 }
 
+# ─── Rate-limit aware transport ────────────────────────────────────────
+# The gateway allows API_GATEWAY_RATE_MAX (default 200) requests per minute
+# per IP, and a full multi-tenant run comfortably exceeds that. A throttled
+# response is not a result — it carries no data and says nothing about the
+# endpoint — but the helpers below used to hand the error body straight to
+# resp_count, which reported 0. That turned one throttle window into
+# "Buildings seeded (A1): expected >= 2 actual=0" plus a cascade of empty
+# screens, none of which were real defects. Retry throttled calls instead,
+# honouring the gateway's advertised retry hint.
+RATE_LIMIT_MAX_RETRIES="${RATE_LIMIT_MAX_RETRIES:-4}"
+
+# True when the last response was a throttle rather than a real answer.
+# The gateway surfaces these as 429, but some proxied paths report 403 with
+# the same message, so match on both.
+is_rate_limited() {
+  local code="$1"
+  [[ "$code" == "429" ]] && return 0
+  if [[ "$code" == "403" ]] && grep -qi "rate limit" "$RESP_FILE" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+# Sleep out the throttle window, preferring the "retry in N seconds" hint the
+# gateway sends. Capped so one stuck window cannot stall the entire run.
+rate_limit_wait() {
+  local hint
+  hint=$(grep -oiE 'retry in[^0-9]*[0-9]+' "$RESP_FILE" 2>/dev/null | grep -oE '[0-9]+' | head -1)
+  [[ -z "$hint" ]] && hint=5
+  [[ "$hint" -lt 1 ]] && hint=1
+  [[ "$hint" -gt 35 ]] && hint=35
+  sleep "$((hint + 1))"
+}
+
 post() {
+  # Generate the idempotency key once and reuse it across retries — a retry
+  # must not be able to create a second row.
   local idem="${3:-$(gen_uuid)}"
-  curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X POST "$1" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -H "Idempotency-Key: $idem" \
-    -d "$2"
+  local code attempt=0
+  while :; do
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X POST "$1" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $idem" \
+      -d "$2")
+    is_rate_limited "$code" && [[ $attempt -lt $RATE_LIMIT_MAX_RETRIES ]] || break
+    attempt=$((attempt + 1)); rate_limit_wait
+  done
+  echo "$code"
 }
 
 put() {
   local idem="${3:-$(gen_uuid)}"
-  curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    -X PUT "$1" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -H "Idempotency-Key: $idem" \
-    -d "$2"
+  local code attempt=0
+  while :; do
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X PUT "$1" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $idem" \
+      -d "$2")
+    is_rate_limited "$code" && [[ $attempt -lt $RATE_LIMIT_MAX_RETRIES ]] || break
+    attempt=$((attempt + 1)); rate_limit_wait
+  done
+  echo "$code"
 }
 
 get() {
-  curl -s -o "$RESP_FILE" -w "%{http_code}" \
-    "$1" \
-    -H "Authorization: Bearer $TOKEN"
+  local code attempt=0
+  while :; do
+    code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      "$1" \
+      -H "Authorization: Bearer $TOKEN")
+    is_rate_limited "$code" && [[ $attempt -lt $RATE_LIMIT_MAX_RETRIES ]] || break
+    attempt=$((attempt + 1)); rate_limit_wait
+  done
+  echo "$code"
 }
 
 # ─── API response helpers (replace all direct SQL queries) ─────────────
@@ -264,17 +318,44 @@ wait_kafka() { sleep "${1:-$KAFKA_WAIT}"; }
 # a fixed sleep that works for the first property starves the fourth.
 # Usage: poll_count <url> <want> [max_wait_s=60]
 poll_count() {
-  local url="$1" want="$2" max="${3:-60}" waited=0 n=0
+  local url="$1" want="$2" max="${3:-60}" waited=0 n=0 code
   while [[ $waited -lt $max ]]; do
-    get "$url" >/dev/null
-    n=$(resp_count)
-    [[ "$n" -ge "$want" ]] && { echo "$n"; return 0; }
+    code=$(get "$url")
+    # Only a 2xx body carries a count. A throttled or errored response has no
+    # items in it, and treating that as "0 rows" reports a data problem where
+    # there is only a transport one — keep the last real count and poll again.
+    if [[ "$code" =~ ^2 ]]; then
+      n=$(resp_count)
+      [[ "$n" -ge "$want" ]] && { echo "$n"; return 0; }
+    fi
     sleep 4; waited=$((waited + 4))
   done
   # Always exit 0: the caller asserts on the count. Returning non-zero would
   # abort the whole script under `set -e` when used as `x=$(poll_count ...)`,
   # turning one slow endpoint into a total run failure.
   echo "$n"
+}
+
+# res_status_of — current status of one reservation, uppercased ("" if absent).
+#
+# The billing commands below each demand a specific reservation status and the
+# handlers treat a mismatch as non-retryable, so a command fired against the
+# wrong state is dead-lettered rather than failed politely. Since one pipeline
+# reservation moves through several of these scenarios, callers must check the
+# live status first instead of assuming the state they set up earlier still
+# holds — an async command from a previous step may have moved it.
+res_status_of() {
+  local tid="$1" pid="$2" rid="$3"
+  if [[ "$(get "$GW/v1/reservations/$rid?tenant_id=$tid")" =~ ^2 ]]; then
+    resp_field "status" | tr '[:lower:]' '[:upper:]'
+    return 0
+  fi
+  # Fall back to the collection when the single-resource read is unavailable.
+  get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+  jq -r --arg id "$rid" \
+    '(if type=="array" then . else (.data // []) end)
+     | map(select(.id == $id)) | .[0].status // empty' "$RESP_FILE" 2>/dev/null \
+    | tr '[:lower:]' '[:upper:]'
 }
 
 
@@ -492,12 +573,19 @@ fi
 echo "  ✓ Tenant B auth token acquired"
 
 # Enable all modules for Tenant B
-echo "  Enabling all modules for Tenant B..."
+echo "  Enabling modules for Tenant B..."
+# Deliberately withholds tenant-owner-portal and enterprise-api. Phase 5b needs
+# two modules this tenant does NOT have in order to exercise the request →
+# approve / reject flow, and the catalog is exactly these ten — enabling all of
+# them left nothing lockable and silently skipped that whole phase. Neither
+# withheld module gates any route the suite calls (only core,
+# finance-automation, facility-maintenance, analytics-bi and revenue-management
+# appear in a requiredModules guard), so nothing else loses coverage.
 MOD_CODE=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
   -X PUT "$GW/v1/tenants/$TID_B/modules" \
   -H "Authorization: Bearer $TOKEN_B" \
   -H "Content-Type: application/json" \
-  -d "{\"modules\":[\"core\",\"finance-automation\",\"tenant-owner-portal\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"enterprise-api\",\"revenue-management\",\"loyalty\",\"distribution\"]}")
+  -d "{\"modules\":[\"core\",\"finance-automation\",\"facility-maintenance\",\"analytics-bi\",\"marketing-channel\",\"revenue-management\",\"loyalty\",\"distribution\"]}")
 if [[ "$MOD_CODE" =~ ^2 ]]; then
   echo "  ✓ Modules enabled for Tenant B (HTTP $MOD_CODE)"
 else
@@ -819,6 +907,39 @@ run_billing_pipeline() {
   if [[ -n "$guest_id" ]]; then pass "Guest created ($label)"; else fail "Guest creation" "$label"; fi
   echo ""
 
+  # ── GDPR: consent ledger + subject access request ──
+  #
+  # Both of these answered 404 through the gateway while the UI called them, and
+  # the generic sweep could not see it because api_smoke treats 404 as a pass.
+  # These assertions are strict on purpose: consent that silently fails to record
+  # and a DSAR export that silently fails are the two most expensive things here
+  # to get wrong. See ui-gaps/19-gateway-proxy-mismatches.md.
+  if [[ -n "$guest_id" ]]; then
+    echo "── ${tag} — GDPR Consent & Subject Access ─────────────────────────"
+    local code
+    code=$(get "$GW/v1/guests/$guest_id/consent?tenant_id=$tid")
+    assert_http "GDPR consent ledger readable" "2" "$code"
+
+    send_command "CMD consent: opt in email, out of analytics" \
+      "guest.consent.update" \
+      "{\"guest_id\":\"$guest_id\",\"marketing_email\":true,\"analytics\":false}"
+    wait_kafka 3
+
+    get "$GW/v1/guests/$guest_id/consent?tenant_id=$tid" >/dev/null
+    # jq's `//` treats `false` as absent, so a correctly-stored `false` reads as
+    # empty. Select the key explicitly instead — this cost a false failure once.
+    assert_eq "GDPR consent: marketing_email recorded" \
+      "true" "$(jq -r 'if has("marketing_email") then .marketing_email else "" end' "$RESP_FILE" 2>/dev/null)"
+    assert_eq "GDPR consent: analytics recorded" \
+      "false" "$(jq -r 'if has("analytics") then .analytics else "" end' "$RESP_FILE" 2>/dev/null)"
+
+    code=$(get "$GW/v1/guests/$guest_id/gdpr-export?tenant_id=$tid")
+    assert_http "GDPR subject access export" "2" "$code"
+    assert_eq "GDPR export names the subject" \
+      "$guest_id" "$(jq -r '.subject_id // empty' "$RESP_FILE" 2>/dev/null)"
+    echo ""
+  fi
+
   # ── Tax configuration ──
   if [[ "$mode" == "full" ]]; then
     echo "── ${tag} — Tax Configuration ─────────────────────────────────────"
@@ -1015,6 +1136,87 @@ run_billing_pipeline() {
     sess_status=$(resp_field "session_status")
     if [[ -z "$sess_status" ]]; then sess_status=$(resp_field "data" | jq -r '.session_status // empty' 2>/dev/null || echo ""); fi
     assert_eq_ci "Cashier session closed ($label)" "closed" "$sess_status"
+  fi
+
+  # Approvals queue + flow-guard bypass log — the ACCT-08 backend shipped without a
+  # screen, so these endpoints had no caller. See ui-gaps/12-billing-partials.md.
+  if [[ "$mode" == "full" ]]; then
+    echo "── ${tag} — Approvals & Guard Bypasses ────────────────────────────"
+    code=$(get "$GW/v1/billing/approvals/pending?tenant_id=$tid&property_id=$pid&limit=10")
+    assert_http "Approvals queue readable ($label)" "2" "$code"
+    code=$(get "$GW/v1/billing/flow-approvals?tenant_id=$tid&limit=10")
+    assert_http "Flow-guard bypass log readable ($label)" "2" "$code"
+    echo ""
+  fi
+
+  # AR account management — ar.account.create had no dispatcher until 2026-08-11, so
+  # ar_accounts was empty everywhere and city-ledger transfer at checkout had no
+  # account to resolve. See ui-gaps/03-ar-account-management.md.
+  if [[ "$mode" == "full" ]]; then
+    echo "── ${tag} — AR Account Management ─────────────────────────────────"
+    get "$GW/v1/companies?tenant_id=$tid&limit=1" >/dev/null
+    local company_id
+    company_id=$(resp_first "id")
+    if [[ -n "$company_id" ]]; then
+      send_command "CMD ar: open account" \
+        "ar.account.create" \
+        "{\"property_id\":\"$pid\",\"company_id\":\"$company_id\",\"company_name\":\"ACME Corp $tag\",\"credit_limit\":25000,\"payment_terms\":\"NET30\",\"currency\":\"USD\"}"
+      wait_kafka 5
+      get "$GW/v1/billing/ar/accounts?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
+      local ar_acct_id
+      ar_acct_id=$(resp_first "ar_account_id")
+      if [[ -n "$ar_acct_id" ]]; then
+        pass "AR account created ($label)"
+        send_command "CMD ar: raise credit limit" \
+          "ar.account.update_terms" \
+          "{\"ar_account_id\":\"$ar_acct_id\",\"property_id\":\"$pid\",\"credit_limit\":40000,\"payment_terms\":\"NET45\"}"
+        wait_kafka 5
+        get "$GW/v1/billing/ar/accounts?tenant_id=$tid&property_id=$pid&limit=10" >/dev/null
+        assert_eq_ci "AR credit terms updated ($label)" \
+          "net45" "$(jq -r '.data[0].payment_terms // empty' "$RESP_FILE" 2>/dev/null)"
+        code=$(get "$GW/v1/billing/ar/accounts/$ar_acct_id/statement?tenant_id=$tid")
+        assert_http "AR statement readable ($label)" "2" "$code"
+      else
+        fail "AR account created" "$label — no ar_account_id after command"
+      fi
+    else
+      skip "AR account management" "$label — no company record to attach to"
+    fi
+    echo ""
+  fi
+
+  # Police report register — read-only until 2026-08-11, so nothing could file a
+  # report through the API at all. See ui-gaps/02-police-reports.md.
+  echo "── ${tag} — Police Report Register ────────────────────────────────"
+  local pr_code pr_id
+  pr_code=$(post "$GW/v1/police-reports" \
+    "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"incident_date\":\"$TODAY\",\"incident_type\":\"theft\",\"incident_description\":\"Laptop reported stolen from room ($tag)\",\"agency_name\":\"Metro Police\",\"responding_officer_name\":\"Officer Reyes\",\"property_stolen\":true,\"total_loss_value\":1200}")
+  assert_http "Police report filed ($label)" "2" "$pr_code"
+  pr_id=$(jq -r '.data.report_id // empty' "$RESP_FILE" 2>/dev/null)
+
+  if [[ -n "$pr_id" ]]; then
+    pr_code=$(post "$GW/v1/police-reports/$pr_id/status" \
+      "{\"tenant_id\":\"$tid\",\"report_status\":\"under_investigation\",\"police_case_number\":\"CASE-$tag-${RUN_TAG}\"}")
+    assert_http "Police report status updated ($label)" "2" "$pr_code"
+    get "$GW/v1/police-reports/$pr_id?tenant_id=$tid" >/dev/null
+    assert_eq "Police case number persisted ($label)" \
+      "CASE-$tag-${RUN_TAG}" "$(jq -r '.data.police_case_number // empty' "$RESP_FILE" 2>/dev/null)"
+    assert_eq_ci "Police report under investigation ($label)" \
+      "under_investigation" "$(jq -r '.data.report_status // empty' "$RESP_FILE" 2>/dev/null)"
+  else
+    fail "Police report id" "$label"
+  fi
+  echo ""
+
+  # Shift handover summary — proxied to billing-service but implemented only in
+  # housekeeping-service until 2026-08-11, so this path 404'd behind a documented
+  # endpoint. See ui-gaps/19-gateway-proxy-mismatches.md.
+  if [[ -n "$session_id" ]]; then
+    local shift_code
+    shift_code=$(get "$GW/v1/billing/cashier-sessions/$session_id/shift-summary?tenant_id=$tid")
+    assert_http "Cashier shift summary ($label)" "2" "$shift_code"
+    assert_eq "Shift summary names the session ($label)" \
+      "$session_id" "$(jq -r '.session_id // empty' "$RESP_FILE" 2>/dev/null)"
   fi
   echo ""
 
@@ -1343,30 +1545,49 @@ run_billing_pipeline() {
     echo ""
 
     # ── No-Show Charge ──
+    # Handler requires CONFIRMED or NO_SHOW, and promotes CONFIRMED → NO_SHOW.
     echo "── ${tag} — No-Show Charge ──────────────────────────────────────"
     if [[ -n "$res_id" ]]; then
-      local pre_ns
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      pre_ns=$(resp_count)
-      send_command "CMD no_show.charge" \
-        "billing.no_show.charge" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
-      wait_kafka 8
-      poll_delta "No-show charge ($label)" \
-        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
-        "$pre_ns"
+      local ns_status; ns_status=$(res_status_of "$tid" "$pid" "$res_id")
+      if [[ "$ns_status" == "CONFIRMED" || "$ns_status" == "NO_SHOW" ]]; then
+        local pre_ns
+        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+        pre_ns=$(resp_count)
+        send_command "CMD no_show.charge" \
+          "billing.no_show.charge" \
+          "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"charge_amount\":189.00,\"currency\":\"USD\",\"reason_code\":\"NO_SHOW_POLICY\"}"
+        wait_kafka 8
+        poll_delta "No-show charge ($label)" \
+          "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+          "$pre_ns"
+      else
+        skip "No-show charge ($label)" "reservation is ${ns_status:-unknown}, needs CONFIRMED/NO_SHOW"
+      fi
     else
       skip "No-show charge ($label)" "no reservation"
     fi
     echo ""
 
     # ── Late Checkout Charge ──
+    # Handler requires CHECKED_IN. Note this is mutually exclusive with the
+    # no-show scenario above, which leaves the reservation NO_SHOW — so on a
+    # pipeline that ran that step this one legitimately skips.
     echo "── ${tag} — Late Checkout Charge ────────────────────────────────"
     if [[ -n "$res_id" ]]; then
+      # 15:00 *today*, i.e. 3h past the 12:00 standard checkout. This used to be
+      # "now + 15 hours", which rolls into the small hours of the next day and
+      # lands *before* that day's 12:00 — the handler compares against standard
+      # checkout on the same date as the actual checkout, so the charge was
+      # rejected as NOT_LATE_CHECKOUT whenever the run started after ~09:00.
       local late_iso
-      late_iso=$(date -u -d "+15 hours" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
-        || date -u -v+15H +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
-      if [[ -n "$late_iso" ]]; then
+      late_iso=$(date -u -d "today 15:00" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null \
+        || date -u -v15H -v0M -v0S +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || echo "")
+      local lc_status; lc_status=$(res_status_of "$tid" "$pid" "$res_id")
+      if [[ -z "$late_iso" ]]; then
+        skip "Late checkout charge ($label)" "date calc unavailable"
+      elif [[ "$lc_status" != "CHECKED_IN" ]]; then
+        skip "Late checkout charge ($label)" "reservation is ${lc_status:-unknown}, needs CHECKED_IN"
+      else
         local pre_late
         get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
         pre_late=$(resp_count)
@@ -1377,8 +1598,6 @@ run_billing_pipeline() {
         poll_delta "Late checkout charge ($label)" \
           "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
           "$pre_late"
-      else
-        skip "Late checkout charge ($label)" "date calc unavailable"
       fi
     else
       skip "Late checkout charge ($label)" "no reservation"
@@ -1386,18 +1605,24 @@ run_billing_pipeline() {
     echo ""
 
     # ── Cancellation Penalty ──
+    # Handler requires CANCELLED or NO_SHOW.
     echo "── ${tag} — Cancellation Penalty ────────────────────────────────"
     if [[ -n "$res_id" ]]; then
-      local pre_cp
-      get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
-      pre_cp=$(resp_count)
-      send_command "CMD cancellation.penalty" \
-        "billing.cancellation.penalty" \
-        "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
-      wait_kafka 8
-      poll_delta "Cancellation penalty ($label)" \
-        "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
-        "$pre_cp"
+      local cp_status; cp_status=$(res_status_of "$tid" "$pid" "$res_id")
+      if [[ "$cp_status" == "CANCELLED" || "$cp_status" == "NO_SHOW" ]]; then
+        local pre_cp
+        get "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
+        pre_cp=$(resp_count)
+        send_command "CMD cancellation.penalty" \
+          "billing.cancellation.penalty" \
+          "{\"property_id\":\"$pid\",\"reservation_id\":\"$res_id\",\"penalty_amount_override\":99.50,\"currency\":\"USD\",\"reason\":\"Late cancellation — pipeline $tag\"}"
+        wait_kafka 8
+        poll_delta "Cancellation penalty ($label)" \
+          "$GW/v1/billing/charges?tenant_id=$tid&property_id=$pid&limit=200" \
+          "$pre_cp"
+      else
+        skip "Cancellation penalty ($label)" "reservation is ${cp_status:-unknown}, needs CANCELLED/NO_SHOW"
+      fi
     else
       skip "Cancellation penalty ($label)" "no reservation"
     fi
@@ -2256,12 +2481,40 @@ if [[ "$FULL_API" == true ]]; then
       code=$(get "$url")
     fi
     case "$code" in
-      2*|400|404)         pass "$label  HTTP=$code" ;;
+      2*|400|404)
+        # An array serialised against an object schema comes back index-keyed —
+        # {"0":{...},"1":{...}} instead of [...]. It is a 200 and a browser
+        # renders it happily, so nothing notices; every client counting rows
+        # reads zero. buildRouteSchema defaults to {200: jsonObjectSchema}, so
+        # any list route that omits an explicit 200 has this waiting for it
+        # (57 routes omit one today). Caught live because the shape is only
+        # visible at runtime — the handler's return type is not.
+        if [[ "$code" =~ ^2 ]] && jq -e 'type=="object" and (keys_unsorted|length)>0
+              and ([keys_unsorted[] | test("^[0-9]+$")] | all)' "$RESP_FILE" >/dev/null 2>&1; then
+          fail "$label" "array serialised as index-keyed object — route needs response:{200:jsonArraySchema}"
+        else
+          pass "$label  HTTP=$code"
+        fi
+        ;;
       403)
         local err
         err=$(jq -r '.code // .detail // empty' "$RESP_FILE" 2>/dev/null)
         if [[ "$err" == "TENANT_MODULE_NOT_ENABLED" ]]; then
-          skip "$label" "module-not-enabled (HTTP 403)"
+          # This used to be an unconditional skip, and that is how a whole domain
+          # went dark with the suite green: on 2026-08-19 lost & found and the
+          # incident register answered 403 for every call — the seed granted the
+          # demo tenant no modules at all — and every run recorded it as "skip".
+          #
+          # This suite *enables all modules for Tenant A* in preflight, and the
+          # seed now carries the full MODULE_IDS list, so a 403 here means the
+          # entitlement was lost, not that the feature is unlicensed. For Tenant A
+          # it is a failure. It stays a skip for any other tenant, where a module
+          # genuinely may not be enabled.
+          if [[ "$url" == *"$TID_A"* ]]; then
+            fail "$label" "module-not-enabled for the fully-entitled tenant (HTTP 403) — check tenants.config->modules"
+          else
+            skip "$label" "module-not-enabled (HTTP 403)"
+          fi
         elif [[ "$err" == "SYSTEM_ADMIN_SCOPE_REQUIRED" || "$err" == *"System administrator scope"* ]]; then
           skip "$label" "system-admin-required (HTTP 403)"
         elif [[ "$err" == *"Rate limit"* || "$err" == *"rate limit"* ]]; then
@@ -2306,7 +2559,7 @@ if [[ "$FULL_API" == true ]]; then
   api_smoke "SYS tenants"                  "$GW/v1/tenants"
   api_smoke "SYS users"                    "$GW/v1/users"
   api_smoke "SYS user-tenant-associations" "$GW/v1/user-tenant-associations"
-  api_smoke "SYS settings"                 "$GW/v1/settings"
+  api_smoke "SYS settings values"          "$GW/v1/settings/values"
   echo ""
 
   # Endpoint inventory (read-only). Each entry = "label|/v1/path?query"
@@ -2321,9 +2574,7 @@ room-types|/v1/room-types?tenant_id={TID}&limit=10
 room-types-grid|/v1/room-types/grid?tenant_id={TID}
 rates|/v1/rates?tenant_id={TID}&limit=10
 rate-calendar|/v1/rate-calendar?tenant_id={TID}&start_date={TODAY}&end_date={IN5DAYS}
-availability|/v1/availability?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-availability-calendar|/v1/availability/calendar?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-availability-room-types|/v1/availability/room-types?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+rooms-availability|/v1/rooms/availability?tenant_id={TID}&property_id={PID}&check_in_date={TODAY}&check_out_date={IN3DAYS}
 recommendations|/v1/recommendations?tenant_id={TID}&limit=10
 guests|/v1/guests?tenant_id={TID}&limit=10
 guests-grid|/v1/guests/grid?tenant_id={TID}
@@ -2378,15 +2629,12 @@ billing-commissions|/v1/billing/reports/commissions?tenant_id={TID}&property_id=
 report-arrivals|/v1/reports/arrivals?tenant_id={TID}&property_id={PID}&business_date={TODAY}
 report-departures|/v1/reports/departures?tenant_id={TID}&property_id={PID}&business_date={TODAY}
 report-in-house|/v1/reports/in-house?tenant_id={TID}&property_id={PID}&business_date={TODAY}
-report-no-show|/v1/reports/no-show?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-no-shows|/v1/reports/no-shows?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
 report-occupancy|/v1/reports/occupancy?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-forecast|/v1/reports/forecast?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-revenue-summary|/v1/reports/revenue-summary?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-daily-revenue|/v1/reports/daily-revenue?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-manager-flash|/v1/reports/manager-flash?tenant_id={TID}&property_id={PID}&business_date={TODAY}
-report-str-metrics|/v1/reports/str-metrics?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
-report-housekeeping|/v1/reports/housekeeping-status?tenant_id={TID}&property_id={PID}
-report-night-audit|/v1/reports/night-audit-summary?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-demand-forecast|/v1/reports/demand-forecast?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-revenue-kpis|/v1/reports/revenue-kpis?tenant_id={TID}&property_id={PID}&start_date={TODAY}&end_date={IN5DAYS}
+report-flash|/v1/reports/flash?tenant_id={TID}&property_id={PID}&business_date={TODAY}
+report-housekeeping-productivity|/v1/reports/housekeeping-productivity?tenant_id={TID}&property_id={PID}&business_date={TODAY}
 EOF
 
   # Tenant-scoped endpoints with :tenantId in path (no query tenant_id).
@@ -2466,6 +2714,21 @@ echo ""
 # Reservations per property (screen 10 asks for at least 20).
 RES_PER_PROPERTY="${RES_PER_PROPERTY:-20}"
 
+# Per-screen seeders live in seeds/, one file per screen, so adding a screen is
+# a new file plus a call below rather than an edit inside this script. They are
+# sourced here — after the helpers above are defined — because each seeder is a
+# plain function that uses post/get/pass/skip/poll_count from this shell.
+# See seeds/README.md for the contract.
+SEEDS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/seeds"
+if [[ -d "$SEEDS_DIR" ]]; then
+  for _seed_file in "$SEEDS_DIR"/*.sh; do
+    [[ -e "$_seed_file" ]] || continue
+    # shellcheck source=/dev/null
+    source "$_seed_file"
+  done
+  unset _seed_file
+fi
+
 # ── 6c.1  Buildings (Availability → Buildings) ──────────────────────────
 # PROPERTY_SETUP tier — must precede rate/reservation seeding.
 echo "── 6c.1  Buildings ──────────────────────────────────────────────────"
@@ -2519,9 +2782,12 @@ seed_packages() {
       n=$((n+1))
       pkg_id=$(jq -r '.package_id // .id // .data.package_id // .data.id // empty' "$RESP_FILE" 2>/dev/null)
       # Components make the package detail screen meaningful, not just the list.
+      # component_type must be one of the package_components CHECK values
+      # (service, amenity, meal, activity, transportation, upgrade, credit,
+      # voucher, other) — 'food_beverage' silently 400'd and halved the count.
       if [[ -n "$pkg_id" ]]; then
         comp_code=$(post "$GW/v1/packages/$pkg_id/components" \
-          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"food_beverage\",\"quantity\":2,\"pricing_type\":\"included\",\"unit_price\":35.00,\"is_included\":true}")
+          "{\"tenant_id\":\"$tid\",\"component_name\":\"Daily Breakfast\",\"component_type\":\"meal\",\"quantity\":2,\"pricing_type\":\"included\",\"unit_price\":35.00,\"is_included\":true}")
         [[ "$comp_code" =~ ^2 ]] && comps=$((comps+1))
         comp_code=$(post "$GW/v1/packages/$pkg_id/components" \
           "{\"tenant_id\":\"$tid\",\"component_name\":\"Welcome Amenity\",\"component_type\":\"amenity\",\"quantity\":1,\"pricing_type\":\"included\",\"unit_price\":25.00,\"is_included\":true}")
@@ -2813,9 +3079,14 @@ seed_reservations() {
   get "$GW/v1/reservations?tenant_id=$tid&property_id=$pid&limit=200" >/dev/null
   before=$(resp_count)
 
-  # Free rooms for the check-in cohort.
+  # Free rooms for the check-in cohort — AVAILABLE only. Earlier phases already
+  # checked guests into some of this property's rooms, and the check-in handler
+  # rejects a non-AVAILABLE room as non-retryable, so taking the first N rooms
+  # regardless of status parked those check-ins in the DLQ.
   get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
-  local room_ids; room_ids=$(jq -r '(if type=="array" then . else (.data // []) end) | .[].room_id // .[].id' "$RESP_FILE" 2>/dev/null | head -20)
+  local room_ids; room_ids=$(jq -r '(if type=="array" then . else (.data // []) end)
+    | map(select((.status // .room_status // "" | ascii_upcase) == "AVAILABLE"))
+    | .[] | (.room_id // .id)' "$RESP_FILE" 2>/dev/null | head -20)
   local -a rooms=(); local r
   for r in $room_ids; do rooms+=("$r"); done
 
@@ -2869,13 +3140,22 @@ seed_reservations() {
     return
   fi
 
-  # --- 6 → CHECKED_IN (force bypasses the deposit gate) ---
+  # --- up to 6 → CHECKED_IN (force bypasses the deposit gate) ---
+  # Each check-in needs its own room: the first one leaves the room OCCUPIED, so
+  # the previous round-robin (n_in % #rooms) handed the same room out again and
+  # every surplus command was dead-lettered as ROOM_NOT_AVAILABLE. Cap the
+  # cohort at the number of free rooms; with none, omit room_id and let the
+  # handler assign.
+  local max_in=6
+  if [[ ${#rooms[@]} -gt 0 && ${#rooms[@]} -lt $max_in ]]; then
+    max_in=${#rooms[@]}
+  fi
   local n_in=0 idx=0 rid
-  while [[ $idx -lt $total && $n_in -lt 6 ]]; do
+  while [[ $idx -lt $total && $n_in -lt $max_in ]]; do
     rid="${pending[$idx]}"
     local room_arg=""
     if [[ ${#rooms[@]} -gt 0 ]]; then
-      room_arg=",\"room_id\":\"${rooms[$(( n_in % ${#rooms[@]} ))]}\""
+      room_arg=",\"room_id\":\"${rooms[$n_in]}\""
     fi
     send_command "reservation.check_in #$((n_in+1)) ($lbl)" \
       "reservation.check_in" \
@@ -3042,6 +3322,43 @@ check_room_block "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
 check_room_block "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
 echo ""
 
+# ── 6c.10  Registers & operational logs (seeds/) ────────────────────────
+# Screens that had no seeding at all and so always rendered empty: waitlist,
+# guest feedback, promo codes, lost & found, incidents, shift handovers and
+# accounts approvals. Each seeder lives in its own file under seeds/.
+echo "── 6c.10 Registers & Operational Logs ───────────────────────────────"
+
+seed_waitlist        "$TOKEN_A" "$TID_A" "$PID_A1" "$RTID_A1" "A1"
+seed_waitlist        "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "B1"
+
+seed_guest_feedback  "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_guest_feedback  "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_promo_codes     "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_promo_codes     "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_lost_and_found  "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_lost_and_found  "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_incidents       "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_incidents       "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_shift_handovers "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_shift_handovers "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_approvals       "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_approvals       "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+# Loyalty → Transactions is a lookup screen keyed on a program id, and the two
+# Accounts screens sit on two different tables (ui-gaps/04-duplicate-ar-surface)
+# — seeding one leaves the other empty.
+seed_loyalty         "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_loyalty         "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+
+seed_ar_accounts     "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_ar_accounts     "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+echo ""
+
 # ── 6c.9  Screen-readiness roll-up ──────────────────────────────────────
 # One assertion per UI screen the user reported empty.
 echo "── 6c.9  UI Screen Readiness ────────────────────────────────────────"
@@ -3138,6 +3455,20 @@ ui_get "10. Reservations A1"    "$TOKEN_A" "$GW/v1/reservations/grid?tenant_id=$
 ui_get "10. Reservations A2"    "$TOKEN_A" "$GW/v1/reservations/grid?tenant_id=$TID_A&limit=200&property_id=$PID_A2" "$RES_PER_PROPERTY"
 ui_get "10. Reservations B1"    "$TOKEN_B" "$GW/v1/reservations/grid?tenant_id=$TID_B&limit=200&property_id=$PID_B1" "$RES_PER_PROPERTY"
 ui_get "10. Reservations B2"    "$TOKEN_B" "$GW/v1/reservations/grid?tenant_id=$TID_B&limit=200&property_id=$PID_B2" "$RES_PER_PROPERTY"
+
+# 11-17. Registers and operational logs seeded by 6c.10. These rendered empty
+# because nothing ever wrote to them, not because the screens were mis-wired.
+ui_get "11. Reservations → Waitlist"   "$TOKEN_A" "$GW/v1/waitlist?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
+ui_get "12. Guests → Feedback"         "$TOKEN_A" "$GW/v1/guest-feedback?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 4
+ui_get "13. Revenue → Promo Codes"     "$TOKEN_A" "$GW/v1/promo-codes?tenant_id=$TID_A&limit=200" 3
+ui_get "14. Housekeeping → Lost&Found" "$TOKEN_A" "$GW/v1/lost-and-found?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 4
+ui_get "15. Housekeeping → Incidents"  "$TOKEN_A" "$GW/v1/incidents?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
+ui_get "16. Housekeeping → Handovers"  "$TOKEN_A" "$GW/v1/shift-handovers?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
+ui_get "17. Accounts → Approvals"      "$TOKEN_A" "$GW/v1/billing/approvals?tenant_id=$TID_A&limit=200" 3
+
+# 18. Accounts → AR Accounts. Unlike the above this table is already written by
+# the AR commands in Phase 1, so it is a read-path check only.
+ui_get "18. Accounts → AR Accounts"    "$TOKEN_A" "$GW/v1/billing/ar/accounts?tenant_id=$TID_A&limit=200" 3
 echo ""
 
 # ═════════════════════════════════════════════════════════════════════════════

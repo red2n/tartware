@@ -124,7 +124,13 @@ export const ActivityItemSchema = z.object({
 	timestamp: z.coerce.date().describe("Activity timestamp"),
 	icon: z.string().describe("Material icon name"),
 	urgent: z.boolean().optional().describe("Urgent flag"),
-	reservation_id: z.string().nullable().optional().describe("Parent reservation ID — used to group child activities under a reservation"),
+	reservation_id: z
+		.string()
+		.nullable()
+		.optional()
+		.describe(
+			"Parent reservation ID — used to group child activities under a reservation",
+		),
 });
 
 export type ActivityItem = z.infer<typeof ActivityItemSchema>;
@@ -140,8 +146,19 @@ export type RecentActivity = z.infer<typeof RecentActivitySchema>;
  * Activity feed query parameters (extends base query with pagination)
  */
 export const ActivityQuerySchema = DashboardStatsQuerySchema.extend({
-	limit: z.coerce.number().int().min(1).max(100).default(5).describe("Max items to return"),
-	offset: z.coerce.number().int().min(0).default(0).describe("Pagination offset"),
+	limit: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(100)
+		.default(5)
+		.describe("Max items to return"),
+	offset: z.coerce
+		.number()
+		.int()
+		.min(0)
+		.default(0)
+		.describe("Pagination offset"),
 });
 
 export type ActivityQuery = z.infer<typeof ActivityQuerySchema>;
@@ -151,7 +168,11 @@ export type ActivityQuery = z.infer<typeof ActivityQuerySchema>;
  */
 export const PaginatedActivitySchema = z.object({
 	items: RecentActivitySchema,
-	total: z.number().int().nonnegative().describe("Total matching events across all pages"),
+	total: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe("Total matching events across all pages"),
 });
 
 export type PaginatedActivity = z.infer<typeof PaginatedActivitySchema>;

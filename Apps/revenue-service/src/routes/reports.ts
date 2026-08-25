@@ -1,4 +1,4 @@
-import { buildRouteSchema } from "@tartware/openapi";
+import { buildRouteSchema, jsonArraySchema } from "@tartware/openapi";
 import {
   type BookingPaceQuery,
   BookingPaceQuerySchema,
@@ -53,6 +53,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
         summary: "List revenue forecasts",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -81,6 +82,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
         summary: "List revenue goals with budget vs actual tracking",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -146,7 +148,13 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       preHandler: app.withTenantScope({
         resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
         minRole: "ADMIN",
-        requiredModules: "finance-automation",
+        // `revenue-management`, not `finance-automation`: the gateway gates all of
+        // /v1/revenue/* on revenue-management, so a finance-automation tenant can
+        // never reach this route anyway — the old value could only 403 tenants who
+        // had already passed the edge. It also ships alongside segment-analysis,
+        // channel-profitability and booking-pace on the reports screen, all three
+        // of which are revenue-management. See ui-gaps/05-revenue-module-status.md.
+        requiredModules: "revenue-management",
       }),
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
@@ -185,6 +193,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       schema: buildRouteSchema({
         tag: REPORTS_TAG,
         summary: "Budget vs actual variance report by department, segment, and goal type",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {
@@ -241,6 +250,7 @@ const reportRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
         tag: REPORTS_TAG,
         summary:
           "Booking pace report — OTB rooms/revenue vs same-time last year for each future date",
+        response: { 200: jsonArraySchema },
       }),
     },
     async (request) => {

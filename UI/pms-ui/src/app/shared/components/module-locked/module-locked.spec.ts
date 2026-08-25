@@ -16,6 +16,9 @@ const lockedError = (): ModuleNotEnabledError =>
 		title: "Analytics & BI isn't switched on",
 		detail: "This screen needs Analytics & BI, which your property hasn't switched on yet.",
 		action: "An administrator at your property can switch it on under Settings → Modules.",
+		titleKey: "{modules} isn't switched on",
+		detailKey: "This screen needs {modules}, which your property hasn't switched on yet.",
+		messageParams: { modules: "Analytics & BI" },
 	});
 
 const pendingRequest = (): ModuleAccessRequest =>
@@ -142,6 +145,9 @@ describe("ModuleLockedComponent", () => {
 				title: "This feature isn't switched on",
 				detail: "This screen needs a feature your property hasn't switched on yet.",
 				action: "An administrator at your property can switch it on under Settings → Modules.",
+				titleKey: "This feature isn't switched on",
+				detailKey: "This screen needs a feature your property hasn't switched on yet.",
+				messageParams: { modules: "" },
 			}),
 		);
 		fixture.detectChanges();

@@ -26,7 +26,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS charge_postings CASCADE;
 
-CREATE TABLE charge_postings (
+CREATE TABLE IF NOT EXISTS charge_postings (
     -- Primary Key
     posting_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -57,13 +57,18 @@ CREATE TABLE charge_postings (
 
     -- Financial Amounts
     quantity DECIMAL(10, 3) DEFAULT 1.000,
-    unit_price DECIMAL(12, 2) NOT NULL,
-    subtotal DECIMAL(12, 2) NOT NULL,
-    tax_amount DECIMAL(12, 2) DEFAULT 0.00,
-    service_charge DECIMAL(12, 2) DEFAULT 0.00,
-    discount_amount DECIMAL(12, 2) DEFAULT 0.00,
-    total_amount DECIMAL(12, 2) NOT NULL,
-    currency_code CHAR(3) DEFAULT 'USD',
+    unit_price DECIMAL(19,4) NOT NULL,
+    subtotal DECIMAL(19,4) NOT NULL,
+    tax_amount DECIMAL(19,4) DEFAULT 0.00,
+    service_charge DECIMAL(19,4) DEFAULT 0.00,
+    discount_amount DECIMAL(19,4) DEFAULT 0.00,
+    total_amount DECIMAL(19,4) NOT NULL,
+    currency_code CHAR(3) DEFAULT 'USD', -- ISO 4217 code this charge was transacted in
+
+    -- ACCT-13 Multi-Currency FX Rate Locking
+    exchange_rate DECIMAL(12,6) DEFAULT 1.000000, -- Rate locked at posting time (currency_code / base_currency); 1.0 when same currency
+    base_amount DECIMAL(19,4), -- total_amount converted to base_currency at the locked rate
+    base_currency CHAR(3) DEFAULT 'USD', -- Property base currency this posting rolls up into
 
     -- Tax Details
     tax_rate DECIMAL(5, 2),
@@ -144,6 +149,7 @@ CREATE TABLE charge_postings (
         (is_voided = TRUE AND voided_at IS NOT NULL AND voided_by IS NOT NULL) OR
         (is_voided = FALSE)
     ),
+    CONSTRAINT chk_postings_exchange_rate CHECK (exchange_rate > 0),
     CONSTRAINT chk_postings_payment CHECK (
         (transaction_type = 'PAYMENT' AND payment_method IS NOT NULL) OR
         (transaction_type != 'PAYMENT')
@@ -173,23 +179,9 @@ CREATE INDEX IF NOT EXISTS idx_charge_postings_audit_run_id
     ON charge_postings (audit_run_id)
     WHERE audit_run_id IS NOT NULL;
 
--- ACCT-13: Multi-Currency FX Rate Locking — add exchange_rate, base_amount, base_currency
--- exchange_rate: the locked rate at posting time (transaction_currency / base_currency)
--- base_amount:   total_amount converted to the property base currency at the locked rate
--- base_currency: the property base currency (e.g., USD) for this posting
-ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS exchange_rate DECIMAL(12,6) DEFAULT 1.000000;
-ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_amount DECIMAL(15,2);
-ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS base_currency CHAR(3) DEFAULT 'USD';
-
--- Add constraint with idempotent error handling (IF NOT EXISTS not supported on ADD CONSTRAINT)
-DO $$ BEGIN
-  ALTER TABLE charge_postings ADD CONSTRAINT chk_postings_exchange_rate CHECK (exchange_rate > 0);
-EXCEPTION WHEN duplicate_object THEN
-  NULL; -- Constraint already exists
-END $$;
 
 COMMENT ON COLUMN charge_postings.exchange_rate IS 'FX rate locked at posting time (transaction_currency/base_currency). 1.0 when same currency.';
-COMMENT ON COLUMN charge_postings.base_amount IS 'total_amount converted to property base currency at the locked exchange_rate.';
+COMMENT ON COLUMN charge_postings.base_amount IS 'total_amount converted to property base currency at the locked exchange_rate, stored at scale 4 to hold 3- and 4-decimal ISO 4217 currencies (KWD, BHD, OMR, CLF).';
 COMMENT ON COLUMN charge_postings.base_currency IS 'Property base currency for FX conversion (ISO 4217, e.g. USD).';
 
 -- Partial index for fast idempotency check: "does a non-voided room charge already
@@ -246,5 +238,7 @@ ALTER TABLE charge_postings SET (
 -- Kept in lockstep with migration 2026-08-10-001.
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 COMMENT ON COLUMN charge_postings.created_at IS 'Row creation timestamp; backfilled from posting_date for rows predating this column';
+
+
 
 \echo ''

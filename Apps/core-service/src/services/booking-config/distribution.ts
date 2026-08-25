@@ -2,6 +2,7 @@ import {
   type BookingSourceListItem,
   BookingSourceListItemSchema,
   type BookingSourceRow,
+  type BookingSourceWriteInput,
   type ChannelMappingListItem,
   ChannelMappingListItemSchema,
   type ChannelMappingRow,
@@ -14,6 +15,7 @@ import {
   type MarketSegmentListItem,
   MarketSegmentListItemSchema,
   type MarketSegmentRow,
+  type MarketSegmentWriteInput,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -26,7 +28,13 @@ import {
   MARKET_SEGMENT_LIST_SQL,
 } from "../../sql/booking-config/distribution.js";
 
-import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
+import {
+  formatDisplayLabel,
+  isUniqueViolationOn,
+  ReferenceCodeConflictError,
+  toIsoString,
+  toNumber,
+} from "./common.js";
 
 // =====================================================
 // BOOKING SOURCE SERVICE
@@ -95,6 +103,175 @@ export const getBookingSourceById = async (
     return null;
   }
   return mapBookingSourceRow(row);
+};
+
+// =====================================================
+// BOOKING SOURCES — WRITE PATH
+//
+// Reference data on one service with no fan-out, so plain HTTP per
+// ui-gaps/18-write-path-gap.md. Performance columns are machine-maintained and
+// are not part of any write body. See ui-gaps/14-channel-distribution.md.
+// =====================================================
+
+/** Create a booking source. */
+export const createBookingSource = async (
+  tenantId: string,
+  input: BookingSourceWriteInput,
+  actorId?: string,
+): Promise<BookingSourceListItem | null> => {
+  // A duplicate `source_code` is an operator typing a code that already exists,
+  // not a fault: the UNIQUE index is caught by name and reported as a conflict.
+  // Mirrors createMeetingRoom in booking-config/event.ts.
+  let rows: { source_id: string }[];
+  try {
+    ({ rows } = await query<{ source_id: string }>(
+      `
+      INSERT INTO public.booking_sources (
+        tenant_id, property_id,
+        source_code, source_name, source_type,
+        category, sub_category,
+        is_active, is_bookable,
+        channel_name, channel_website, channel_manager,
+        commission_type, commission_percentage, commission_fixed_amount, commission_notes,
+        ranking, is_preferred,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid,
+        $3, $4, $5,
+        $6, $7,
+        COALESCE($8, true), COALESCE($9, true),
+        $10, $11, $12,
+        COALESCE($13, 'PERCENTAGE'), $14, $15, $16,
+        $17, COALESCE($18, false),
+        $19, $19
+      )
+      RETURNING source_id
+    `,
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.sourceCode,
+        input.sourceName,
+        input.sourceType,
+        input.category ?? null,
+        input.subCategory ?? null,
+        input.isActive ?? null,
+        input.isBookable ?? null,
+        input.channelName ?? null,
+        input.channelWebsite ?? null,
+        input.channelManager ?? null,
+        input.commissionType ?? null,
+        input.commissionPercentage ?? null,
+        input.commissionFixedAmount ?? null,
+        input.commissionNotes ?? null,
+        input.ranking ?? null,
+        input.isPreferred ?? null,
+        actorId ?? null,
+      ],
+    ));
+  } catch (error) {
+    if (isUniqueViolationOn(error, "uk_booking_sources_code")) {
+      throw new ReferenceCodeConflictError(
+        `Booking source code ${input.sourceCode} already exists for this property`,
+      );
+    }
+    throw error;
+  }
+
+  const sourceId = rows[0]?.source_id;
+  if (!sourceId) return null;
+
+  return getBookingSourceById({ sourceId, tenantId });
+};
+
+/**
+ * Edit a booking source. `source_code` is not settable — reservations carry it,
+ * so rewriting it orphans every booking already attributed to this source.
+ */
+export const updateBookingSource = async (
+  tenantId: string,
+  sourceId: string,
+  input: Partial<BookingSourceWriteInput>,
+  actorId?: string,
+): Promise<BookingSourceListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.booking_sources
+      SET
+        source_name = COALESCE($3, source_name),
+        source_type = COALESCE($4, source_type),
+        category = COALESCE($5, category),
+        sub_category = COALESCE($6, sub_category),
+        is_active = COALESCE($7, is_active),
+        is_bookable = COALESCE($8, is_bookable),
+        channel_name = COALESCE($9, channel_name),
+        channel_website = COALESCE($10, channel_website),
+        channel_manager = COALESCE($11, channel_manager),
+        commission_type = COALESCE($12, commission_type),
+        commission_percentage = COALESCE($13, commission_percentage),
+        commission_fixed_amount = COALESCE($14, commission_fixed_amount),
+        commission_notes = COALESCE($15, commission_notes),
+        ranking = COALESCE($16, ranking),
+        is_preferred = COALESCE($17, is_preferred),
+        updated_by = $18,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE source_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      sourceId,
+      tenantId,
+      input.sourceName ?? null,
+      input.sourceType ?? null,
+      input.category ?? null,
+      input.subCategory ?? null,
+      input.isActive ?? null,
+      input.isBookable ?? null,
+      input.channelName ?? null,
+      input.channelWebsite ?? null,
+      input.channelManager ?? null,
+      input.commissionType ?? null,
+      input.commissionPercentage ?? null,
+      input.commissionFixedAmount ?? null,
+      input.commissionNotes ?? null,
+      input.ranking ?? null,
+      input.isPreferred ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getBookingSourceById({ sourceId, tenantId });
+};
+
+/**
+ * Retire a booking source.
+ *
+ * Soft delete, and `is_bookable` is cleared with it: historic reservations still
+ * reference the source for production reporting, so the row must stay, but no new
+ * booking should be able to pick it.
+ */
+export const deleteBookingSource = async (
+  tenantId: string,
+  sourceId: string,
+  actorId?: string,
+): Promise<boolean> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.booking_sources
+      SET is_deleted = true,
+          is_active = false,
+          is_bookable = false,
+          updated_by = $3,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE source_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [sourceId, tenantId, actorId ?? null],
+  );
+
+  return (rowCount ?? 0) > 0;
 };
 
 // =====================================================
@@ -171,6 +348,157 @@ export const getMarketSegmentById = async (
     return null;
   }
   return mapMarketSegmentRow(row);
+};
+
+// =====================================================
+// MARKET SEGMENTS — WRITE PATH
+//
+// `/v1/reports/market-segment-production` has always read these, so the report
+// grouped by a dimension nobody could populate.
+// See ui-gaps/14-channel-distribution.md.
+// =====================================================
+
+/** Create a market segment. */
+export const createMarketSegment = async (
+  tenantId: string,
+  input: MarketSegmentWriteInput,
+  actorId?: string,
+): Promise<MarketSegmentListItem | null> => {
+  // Same conflict handling as booking sources above: a duplicate `segment_code`
+  // is a 409, not a 500 carrying a Postgres error string.
+  let rows: { segment_id: string }[];
+  try {
+    ({ rows } = await query<{ segment_id: string }>(
+      `
+      INSERT INTO public.market_segments (
+        tenant_id, property_id,
+        segment_code, segment_name, segment_type,
+        is_active, is_bookable,
+        parent_segment_id, segment_level,
+        rate_multiplier,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid,
+        $3, $4, $5,
+        COALESCE($6, true), COALESCE($7, true),
+        $8::uuid,
+        -- A sub-segment sits one level below its parent; a root segment is level 1.
+        CASE WHEN $8::uuid IS NULL THEN 1 ELSE COALESCE(
+          (SELECT segment_level + 1 FROM public.market_segments
+            WHERE segment_id = $8::uuid AND tenant_id = $1::uuid), 2
+        ) END,
+        COALESCE($9, 1.0),
+        $10, $10
+      )
+      RETURNING segment_id
+    `,
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.segmentCode,
+        input.segmentName,
+        input.segmentType,
+        input.isActive ?? null,
+        input.isBookable ?? null,
+        input.parentSegmentId ?? null,
+        input.rateMultiplier ?? null,
+        actorId ?? null,
+      ],
+    ));
+  } catch (error) {
+    if (isUniqueViolationOn(error, "uk_market_segments_code")) {
+      throw new ReferenceCodeConflictError(
+        `Market segment code ${input.segmentCode} already exists for this property`,
+      );
+    }
+    throw error;
+  }
+
+  const segmentId = rows[0]?.segment_id;
+  if (!segmentId) return null;
+
+  return getMarketSegmentById({ segmentId, tenantId });
+};
+
+/**
+ * Edit a market segment. `segment_code` is fixed — reservations carry it, and
+ * production reporting groups on it.
+ */
+export const updateMarketSegment = async (
+  tenantId: string,
+  segmentId: string,
+  input: Partial<MarketSegmentWriteInput>,
+  actorId?: string,
+): Promise<MarketSegmentListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.market_segments
+      SET
+        segment_name = COALESCE($3, segment_name),
+        segment_type = COALESCE($4, segment_type),
+        is_active = COALESCE($5, is_active),
+        is_bookable = COALESCE($6, is_bookable),
+        rate_multiplier = COALESCE($7, rate_multiplier),
+        updated_by = $8,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE segment_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      segmentId,
+      tenantId,
+      input.segmentName ?? null,
+      input.segmentType ?? null,
+      input.isActive ?? null,
+      input.isBookable ?? null,
+      input.rateMultiplier ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getMarketSegmentById({ segmentId, tenantId });
+};
+
+/**
+ * Retire a market segment.
+ *
+ * Refused while sub-segments still point at it: orphaning them would leave rows
+ * whose `segment_level` describes a hierarchy that no longer exists.
+ */
+export const deleteMarketSegment = async (
+  tenantId: string,
+  segmentId: string,
+  actorId?: string,
+): Promise<{ removed: boolean; reason?: string }> => {
+  const { rows } = await query<{ child_count: string }>(
+    `SELECT COUNT(*)::text AS child_count
+       FROM public.market_segments
+      WHERE parent_segment_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false`,
+    [segmentId, tenantId],
+  );
+
+  if (Number(rows[0]?.child_count ?? 0) > 0) {
+    return { removed: false, reason: "SEGMENT_HAS_CHILDREN" };
+  }
+
+  const { rowCount } = await query(
+    `
+      UPDATE public.market_segments
+      SET is_deleted = true,
+          is_active = false,
+          is_bookable = false,
+          updated_by = $3,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE segment_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [segmentId, tenantId, actorId ?? null],
+  );
+
+  return { removed: (rowCount ?? 0) > 0 };
 };
 
 // =====================================================

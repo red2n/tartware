@@ -20,7 +20,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS deposit_schedules CASCADE;
 
-CREATE TABLE deposit_schedules (
+CREATE TABLE IF NOT EXISTS deposit_schedules (
     -- Primary Key
     schedule_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

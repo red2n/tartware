@@ -442,7 +442,67 @@ export const searchAvailableRooms = async (options: {
     number_of_beds: number | string | null;
     size_sqm: number | string | null;
   }>(
-    `WITH unassigned_reservations AS (
+    `WITH group_holds AS (
+       -- Rooms a group block is holding and has not yet picked up.
+       --
+       -- Until 2026-08-20 nothing subtracted these: a 40-room block for March
+       -- left all 40 rooms sellable to anyone, and the rooming-list upload then
+       -- logged "No available block for guest — creating reservation without
+       -- block decrement" and created the reservation anyway, oversold. The
+       -- block table even carries a GENERATED available_rooms column that no
+       -- query read. See ui-gaps/16-booking-reference-data.md.
+       --
+       -- MAX across the nights in the window, not SUM: a stay needs one spare
+       -- room on *every* night, so the tightest night is the constraint.
+       -- release_unsold_rooms with a cutoff in the past releases the block
+       -- back to general inventory, which is what a cutoff is for.
+       SELECT grb.room_type_id,
+              MAX(GREATEST(grb.blocked_rooms - COALESCE(grb.picked_rooms, 0), 0)) AS held_rooms
+       FROM public.group_room_blocks grb
+       JOIN public.group_bookings gb
+         ON gb.group_booking_id = grb.group_booking_id
+        AND gb.tenant_id = grb.tenant_id
+       WHERE grb.tenant_id = $1::uuid
+         AND gb.property_id = $2::uuid
+         AND grb.block_date >= $3::date
+         AND grb.block_date < $4::date
+         AND grb.block_status IN ('pending', 'active')
+         AND gb.block_status NOT IN ('cancelled', 'turndown', 'completed')
+         AND COALESCE(grb.is_deleted, false) = false
+         AND COALESCE(gb.is_deleted, false) = false
+         AND NOT (
+           COALESCE(gb.release_unsold_rooms, false) = true
+           AND gb.cutoff_date IS NOT NULL
+           AND gb.cutoff_date < CURRENT_DATE
+         )
+       GROUP BY grb.room_type_id
+     ),
+     allotment_holds AS (
+       -- The same for contracted allotments. rooms_per_night when the block is
+       -- an even nightly one, otherwise the whole block; rooms_available on
+       -- the table is defined as blocked − picked, and the CHECK says so.
+       --
+       -- Only type-specific allotments are subtracted: an allotment with no
+       -- room_type_id holds rooms of no particular type, and charging it
+       -- against every type would over-hold the house several times over. That
+       -- gap is recorded in ui-gaps/16 rather than guessed at here.
+       SELECT a.room_type_id,
+              SUM(GREATEST(
+                COALESCE(a.rooms_per_night, a.total_rooms_blocked) - COALESCE(a.rooms_picked_up, 0),
+                0
+              )) AS held_rooms
+       FROM public.allotments a
+       WHERE a.tenant_id = $1::uuid
+         AND a.property_id = $2::uuid
+         AND a.room_type_id IS NOT NULL
+         AND a.allotment_status IN ('TENTATIVE', 'DEFINITE', 'ACTIVE', 'PICKUP_IN_PROGRESS')
+         AND a.start_date < $4::date
+         AND a.end_date > $3::date
+         AND (a.cutoff_date IS NULL OR a.cutoff_date >= CURRENT_DATE)
+         AND COALESCE(a.is_deleted, false) = false
+       GROUP BY a.room_type_id
+     ),
+     unassigned_reservations AS (
        -- Pre-aggregate unassigned reservation counts per room type.
        -- Excludes the current reservation ($10) so its own vacant slot is
        -- not hidden when the room picker is opened during check-in.
@@ -519,11 +579,24 @@ export const searchAvailableRooms = async (options: {
             ar.number_of_beds, ar.size_sqm, ar.base_rate, ar.currency, ar.features
      FROM available_rooms ar
      LEFT JOIN unassigned_reservations ur ON ur.room_type_id = ar.room_type_id
+     LEFT JOIN group_holds gh ON gh.room_type_id = ar.room_type_id
+     LEFT JOIN allotment_holds ah ON ah.room_type_id = ar.room_type_id
      -- When a reservation_id is provided (check-in use case) bypass the unassigned guard.
      -- Staff manually picking a room for check-in need to see all physically available rooms;
      -- actual double-booking is prevented by the NOT EXISTS room_number conflict check above.
      -- For standard availability queries (no reservation_id), keep the guard to avoid overbooking.
-     WHERE ($10::uuid IS NOT NULL OR ar.rn > COALESCE(ur.unassigned_count, 0))
+     --
+     -- Held block rooms are counted the same way as unassigned reservations: both
+     -- are demand against a room *type* with no physical room attached yet, so
+     -- both push the per-type row number the same way. Picking up a block writes
+     -- reservations directly and never comes through here, so a group can still
+     -- draw down its own block.
+     WHERE (
+       $10::uuid IS NOT NULL
+       OR ar.rn > COALESCE(ur.unassigned_count, 0)
+                + COALESCE(gh.held_rooms, 0)
+                + COALESCE(ah.held_rooms, 0)
+     )
      ORDER BY type_name, room_number
      LIMIT $8
      OFFSET $9`,

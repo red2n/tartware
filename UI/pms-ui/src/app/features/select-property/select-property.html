@@ -39,7 +39,7 @@
         }
       </div>
       @if (search() && filtered().length > 0) {
-        <span class="search-count">{{ filtered().length }} of {{ properties().length }}</span>
+        <span class="search-count">{{ '{shown} of {total}' | translate:{ shown: filtered().length, total: properties().length } }}</span>
       }
     </div>
 

@@ -1,5 +1,6 @@
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNoShowChargeCommandSchema } from "../../schemas/billing-commands.js";
@@ -85,6 +86,16 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
   const businessDate = new Date().toISOString().slice(0, 10);
 
   const postingId = await withTransaction(async (client) => {
+    // ACCT-13: lock the rate here too. Without it this posting kept the column
+    // default base_currency of 'USD' at every property, so a yen penalty rolled
+    // into the property ledger labelled — and totalled — as dollars.
+    const baseCurrency = await getPropertyBaseCurrency(
+      client,
+      context.tenantId,
+      reservation.property_id,
+    );
+    const fxLock = await lockFxRate(client, context.tenantId, currency, baseCurrency, chargeAmount);
+
     const { rows: postingRows } = await queryWithClient<{ posting_id: string }>(
       client,
       `INSERT INTO public.charge_postings (
@@ -92,12 +103,14 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
          transaction_type, posting_type,
          charge_code, charge_description,
          unit_price, subtotal, total_amount, currency_code,
+         exchange_rate, base_amount, base_currency,
          quantity, business_date, created_by, updated_by
        ) VALUES (
          $1::uuid, $2::uuid, $3::uuid, $4::uuid,
          'CHARGE', 'DEBIT',
          $5, $6,
          $7::numeric, $7::numeric, $7::numeric, $8,
+         $10, $11, UPPER($12),
          1, CURRENT_DATE, $9, $9
        ) RETURNING posting_id`,
       [
@@ -110,6 +123,9 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
         chargeAmount,
         currency,
         actorId,
+        fxLock.rate,
+        fxLock.baseAmount,
+        baseCurrency,
       ],
     );
 

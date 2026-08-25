@@ -22,7 +22,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS shuttle_schedules CASCADE;
 
-CREATE TABLE shuttle_schedules (
+CREATE TABLE IF NOT EXISTS shuttle_schedules (
     -- Primary Key
     schedule_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

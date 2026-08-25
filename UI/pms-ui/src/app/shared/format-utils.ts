@@ -1,21 +1,10 @@
-/** Shared formatting utilities for dates and currencies. */
-
-/** Format a number as currency (e.g. "$1,234.56"). */
-export function formatCurrency(
-	amount: number,
-	currency: string,
-	fractionDigits?: { min: number; max: number },
-): string {
-	const opts: Intl.NumberFormatOptions = {
-		style: "currency",
-		currency: currency || "USD",
-	};
-	if (fractionDigits) {
-		opts.minimumFractionDigits = fractionDigits.min;
-		opts.maximumFractionDigits = fractionDigits.max;
-	}
-	return new Intl.NumberFormat("en-US", opts).format(amount);
-}
+/**
+ * Shared date formatting utilities.
+ *
+ * Currency and time-of-day formatting live on `SettingsService` instead, which
+ * resolves the property's locale and currency; a second hardcoded en-US/USD
+ * implementation here would silently disagree with it.
+ */
 
 /**
  * Format a date as a relative time (e.g. "3h ago", "tomorrow", "Apr 14").
@@ -38,13 +27,4 @@ export function relativeTime(date: Date | string): string {
 	if (diffDays === 1) return past ? "yesterday" : "tomorrow";
 	if (diffDays < 7) return past ? `${diffDays}d ago` : `in ${diffDays}d`;
 	return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-/** Format a date/string as a short time (e.g. "2:30 PM"). */
-export function formatTime(dateStr: string | Date): string {
-	const d = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
-	return d.toLocaleTimeString("en-US", {
-		hour: "numeric",
-		minute: "2-digit",
-	});
 }

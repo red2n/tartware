@@ -12,6 +12,10 @@ export const BILLING_PAYMENT_LIST_SQL = `
     p.payment_method,
     p.amount,
     p.currency,
+    -- ACCT-13: rate locked at capture time + the base-currency equivalent.
+    p.exchange_rate,
+    p.base_amount,
+    p.base_currency,
     p.status,
     p.gateway_name,
     p.gateway_reference,
@@ -166,6 +170,12 @@ export const CHARGE_POSTING_LIST_SQL = `
     c.discount_amount,
     c.total_amount,
     c.currency_code AS currency,
+    -- ACCT-13: the rate locked at posting time and the base-currency equivalent.
+    -- Exposed so multi-currency callers can reconcile a foreign-currency charge
+    -- against the property's base ledger without a direct DB read.
+    c.exchange_rate,
+    c.base_amount,
+    c.base_currency,
     c.payment_method,
     c.source_system,
     c.outlet,
@@ -209,6 +219,9 @@ export const CASHIER_SESSION_LIST_SQL = `
     business_date,
     shift_type,
     opening_float_declared,
+    -- The currency the drawer is counted in. Without it a list of sessions from
+    -- properties in different countries reads as a single pile of numbers.
+    base_currency,
     closing_cash_declared,
     closing_cash_counted,
     total_transactions,
@@ -280,4 +293,74 @@ export const CASHIER_SESSION_BY_ID_SQL = `
   FROM cashier_sessions
   WHERE session_id = $1::uuid
     AND tenant_id = $2::uuid
+`;
+
+/**
+ * Shift handover summary — session reconciliation plus the day's posting totals.
+ *
+ * Charge and payment counts are scoped to the session's property and business
+ * date rather than to the session itself, because `charge_postings` carries no
+ * session reference. For a single-cashier property that is the same number; where
+ * shifts overlap it is the day's total, not the shift's. Moved here from
+ * housekeeping-service, which owned an unreachable copy of this endpoint — the
+ * gateway proxies cashier reads to billing-service, and the catalog routes
+ * `billing.cashier.*` here too. See ui-gaps/19-gateway-proxy-mismatches.md.
+ */
+export const SHIFT_SUMMARY_SQL = `
+  SELECT
+    cs.session_id,
+    cs.session_number,
+    cs.cashier_name,
+    cs.terminal_id,
+    cs.shift_type,
+    cs.session_status,
+    cs.business_date,
+    cs.opened_at,
+    cs.closed_at,
+    cs.opening_float_declared,
+    cs.closing_cash_counted,
+    cs.cash_variance,
+    cs.total_transactions,
+    cs.total_revenue,
+    cs.total_refunds,
+    cs.net_revenue,
+    cs.has_variance,
+    cs.reconciled,
+    cs.metadata,
+    COALESCE(
+      (SELECT COUNT(cp.posting_id) FROM charge_postings cp
+       WHERE cp.tenant_id = cs.tenant_id
+         AND cp.property_id = cs.property_id
+         AND cp.business_date = cs.business_date
+         AND cp.posting_type = 'CHARGE'
+         AND cp.is_voided = false), 0
+    )::int AS charge_count,
+    COALESCE(
+      (SELECT SUM(cp.total_amount) FROM charge_postings cp
+       WHERE cp.tenant_id = cs.tenant_id
+         AND cp.property_id = cs.property_id
+         AND cp.business_date = cs.business_date
+         AND cp.posting_type = 'CHARGE'
+         AND cp.is_voided = false), 0
+    ) AS charge_total,
+    COALESCE(
+      (SELECT COUNT(cp.posting_id) FROM charge_postings cp
+       WHERE cp.tenant_id = cs.tenant_id
+         AND cp.property_id = cs.property_id
+         AND cp.business_date = cs.business_date
+         AND cp.posting_type = 'PAYMENT'
+         AND cp.is_voided = false), 0
+    )::int AS payment_count,
+    COALESCE(
+      (SELECT SUM(ABS(cp.total_amount)) FROM charge_postings cp
+       WHERE cp.tenant_id = cs.tenant_id
+         AND cp.property_id = cs.property_id
+         AND cp.business_date = cs.business_date
+         AND cp.posting_type = 'PAYMENT'
+         AND cp.is_voided = false), 0
+    ) AS payment_total
+  FROM cashier_sessions cs
+  WHERE cs.session_id = $1::uuid
+    AND cs.tenant_id = $2::uuid
+    AND COALESCE(cs.is_deleted, false) = false
 `;

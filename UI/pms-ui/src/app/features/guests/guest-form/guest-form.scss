@@ -55,37 +55,21 @@
   gap: var(--base-size-12);
 }
 
+/* Chrome (border, padding, focus ring) comes from .field-input / .field-label in
+   shared.scss. Only the grid sizing is local — the fields sit in a 12-column
+   track and must be free to shrink inside it. */
 .form-field {
   display: flex;
   flex-direction: column;
   gap: var(--base-size-4);
   min-width: 0;
 
-  label {
-    font-size: var(--base-text-size-sm);
-    font-weight: var(--base-text-weight-semibold);
-    color: var(--fgColor-default);
-  }
-
-  input,
-  select {
+  .field-input {
     width: 100%;
     min-width: 0;
-    padding: var(--base-size-8);
-    border: 1px solid var(--borderColor-default);
-    border-radius: var(--borderRadius-medium);
-    font-size: var(--base-text-size-sm);
-    background: var(--bgColor-default);
-    color: var(--fgColor-default);
-
-    &:focus {
-      border-color: var(--fgColor-accent);
-      outline: none;
-      box-shadow: 0 0 0 1px var(--fgColor-accent);
-    }
 
     &.invalid {
-      border-color: var(--fgColor-danger, #d1242f);
+      border-color: var(--fgColor-danger);
     }
   }
 }
@@ -109,17 +93,12 @@
 }
 
 .req {
-  color: var(--fgColor-danger, #d1242f);
+  color: var(--fgColor-danger);
 }
 
 .field-error {
   font-size: var(--base-text-size-xs);
-  color: var(--fgColor-danger, #d1242f);
-}
-
-.field-hint {
-  font-size: var(--base-text-size-xs);
-  color: var(--fgColor-muted);
+  color: var(--fgColor-danger);
 }
 
 .checkbox-row {

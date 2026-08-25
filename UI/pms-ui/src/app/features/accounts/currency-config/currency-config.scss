@@ -1,0 +1,6 @@
+/* Currency Config — component-specific overrides only.
+ * Every pattern this screen uses (detail-card, stat-row, callout, section-header,
+ * filter-bar, table, table-container, empty-state, badges, inline-form, form-grid,
+ * form-actions, form-hint, field-hint, buttons, mono) lives in styles/shared.scss. */
+
+.currency-config-page { max-width: 1600px; }

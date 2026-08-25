@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { NightAuditCheckpointStatus } from "@tartware/schemas";
+import { roundToCurrency } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { getPropertyBaseCurrency } from "../../lib/fx-rate-lookup.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.js";
 import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
@@ -703,6 +705,11 @@ async function postRoomChargesAndTaxes(
   let chargesPosted = 0;
   let taxChargesPosted = 0;
 
+  // Every amount this function posts is denominated in the property's own
+  // currency, and its ISO 4217 exponent decides how tax is rounded. Resolved
+  // once per run rather than per reservation.
+  const baseCurrency = await getPropertyBaseCurrency(client, tenantId, propertyId);
+
   const inHouseResult = await queryWithClient<{
     id: string;
     room_rate: string;
@@ -792,10 +799,20 @@ async function postRoomChargesAndTaxes(
          $1::uuid, $2::uuid, $3::uuid, $4::uuid,
          'CHARGE', 'DEBIT', 'ROOM', 'Room charge - night audit',
          1, $5, $5, $5,
-         'USD', NOW(), $6::date,
+         UPPER($9), NOW(), $6::date,
          'Auto-posted by night audit', $7::uuid, $8::uuid, $8::uuid
        )`,
-      [tenantId, propertyId, folioId, res.id, roomRate, auditDate, auditRunId, actorId],
+      [
+        tenantId,
+        propertyId,
+        folioId,
+        res.id,
+        roomRate,
+        auditDate,
+        auditRunId,
+        actorId,
+        baseCurrency,
+      ],
     );
 
     // Post applicable taxes — compound taxes apply sequentially on base + prior taxes
@@ -805,7 +822,9 @@ async function postRoomChargesAndTaxes(
       // Compound taxes apply on (room rate + all prior tax amounts)
       const taxableBase =
         useCompoundTaxes && tax.is_compound_tax ? roomRate + totalTaxAmount : roomRate;
-      const taxAmount = Number(((taxableBase * taxRate) / 100).toFixed(2));
+      // Rounded to the property currency's minor unit: a fixed 2dp puts a
+      // fractional yen on a JPY folio and drops the third decimal on a KWD one.
+      const taxAmount = roundToCurrency((taxableBase * taxRate) / 100, baseCurrency);
       if (taxAmount <= 0) continue;
 
       await queryWithClient(
@@ -820,7 +839,7 @@ async function postRoomChargesAndTaxes(
            $1::uuid, $2::uuid, $3::uuid, $4::uuid,
            'CHARGE', 'DEBIT', 'ROOM_TAX', $5,
            1, $6, $6, $6,
-           'USD', NOW(), $7::date,
+           UPPER($11), NOW(), $7::date,
            'ROOMS', $8, $9::uuid, $10::uuid, $10::uuid
          )`,
         [
@@ -834,6 +853,7 @@ async function postRoomChargesAndTaxes(
           `${tax.tax_code}: ${taxRate}% on ${useCompoundTaxes && tax.is_compound_tax ? "cumulative" : "room"} charge`,
           auditRunId,
           actorId,
+          baseCurrency,
         ],
       );
       totalTaxAmount += taxAmount;
@@ -881,6 +901,8 @@ async function postPackageCharges(
   actorId: string,
   auditRunId: string,
 ): Promise<number> {
+  // Package components post in the property's currency, same as room charges.
+  const baseCurrency = await getPropertyBaseCurrency(client, tenantId, propertyId);
   let packageChargesPosted = 0;
 
   // Find in-house reservations that have active package bookings with per_night components
@@ -950,7 +972,7 @@ async function postPackageCharges(
          $1::uuid, $2::uuid, $3::uuid, $4::uuid,
          'CHARGE', 'DEBIT', $5, $6,
          1, $7, $7, $7,
-         'USD', NOW(), $8::date,
+         UPPER($12), NOW(), $8::date,
          $9, 'Package component - night audit', $10::uuid, $11::uuid, $11::uuid
        )`,
       [
@@ -965,6 +987,7 @@ async function postPackageCharges(
         pkg.department_code,
         auditRunId,
         actorId,
+        baseCurrency,
       ],
     );
 
@@ -993,6 +1016,10 @@ async function postOtaCommissions(
   actorId: string,
 ): Promise<number> {
   let commissionsPosted = 0;
+
+  // Commission accrues in the property's currency, so it rounds to that
+  // currency's minor unit rather than a fixed 2 decimal places.
+  const baseCurrency = await getPropertyBaseCurrency(client, tenantId, propertyId);
 
   // Find in-house OTA reservations without commission already tracked for this date
   const otaResult = await queryWithClient<{
@@ -1027,7 +1054,7 @@ async function postOtaCommissions(
     const commPct = Number(ota.commission_percentage ?? 0);
     if (roomRate <= 0 || commPct <= 0) continue;
 
-    const commissionAmount = Number(((roomRate * commPct) / 100).toFixed(2));
+    const commissionAmount = roundToCurrency((roomRate * commPct) / 100, baseCurrency);
     const commissionNumber = `COMM-${ota.reservation_id.slice(0, 8)}-${auditDate}`;
 
     await queryWithClient(

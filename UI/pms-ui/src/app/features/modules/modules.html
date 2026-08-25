@@ -22,7 +22,7 @@
     <div class="callout-content">
       <p class="callout-title">
         {{ pendingRequests().length }}
-        {{ (pendingRequests().length === 1 ? 'request to switch on a module' : 'requests to switch on modules') | translate }}
+        {{ (pendingRequests().length === 1 ? ('request to switch on a module' | translate) : ('requests to switch on modules' | translate)) | translate }}
       </p>
       <div class="callout-copy">
         <p>
@@ -41,7 +41,7 @@
                 @if (req.requestedScreen) {
                   · {{ 'blocked on' | translate }} {{ req.requestedScreen }}
                 }
-                · {{ req.createdAt | date: 'mediumDate' }}
+                · {{ req.createdAt | localeDate: 'mediumDate' }}
               </span>
               @if (req.reason) {
                 <span class="request-reason">“{{ req.reason }}”</span>
@@ -106,7 +106,7 @@
               <div class="cell-notes">{{ m.id }}</div>
             </td>
             <td>{{ m.category }}</td>
-            <td class="cell-notes">{{ m.description }}</td>
+            <td class="cell-notes">{{ m.description | translate }}</td>
           </tr>
         }
       </tbody>

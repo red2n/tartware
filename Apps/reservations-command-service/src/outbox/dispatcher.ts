@@ -35,6 +35,24 @@ const throttleTenant = createTenantThrottler({
 });
 
 /**
+ * Every aggregate type this service enqueues, all of which belong on
+ * `reservations.events`.
+ *
+ * This list used to be the single literal `"reservation"`, so the other four were
+ * written inside the command transaction and then claimed by nobody — `group.created`
+ * and `group.rooms_added` (which notification-service maps to GROUP_BOOKING_CONFIRMED)
+ * and the four `integration.*` events sat PENDING indefinitely. Anything added to an
+ * `enqueueOutboxRecord*` call in this service has to be added here too.
+ */
+const DISPATCHED_AGGREGATE_TYPES = [
+  "reservation",
+  "group_booking",
+  "ota_sync",
+  "webhook",
+  "integration_mapping",
+] as const;
+
+/**
  * Boots the outbox dispatcher loop which continuously flushes
  * transactional outbox rows into Kafka.
  */
@@ -96,7 +114,7 @@ const processOutboxBatch = async (): Promise<void> => {
   const records = await claimOutboxBatch(
     outboxConfig.batchSize,
     outboxConfig.workerId,
-    "reservation",
+    DISPATCHED_AGGREGATE_TYPES,
   );
 
   for (const record of records) {
@@ -111,7 +129,7 @@ const processOutboxBatch = async (): Promise<void> => {
 const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
   const startedAt = performance.now();
 
-  await updateLifecycleStateSafe(record.eventId, "IN_PROGRESS", {
+  await updateLifecycleStateSafe(record, "IN_PROGRESS", {
     workerId: outboxConfig.workerId,
     aggregateId: record.aggregateId,
   });
@@ -123,7 +141,7 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       headers: normalizeHeaders(record.headers),
     });
     await markOutboxDelivered(record.id);
-    await updateLifecycleStateSafe(record.eventId, "PUBLISHED", {
+    await updateLifecycleStateSafe(record, "PUBLISHED", {
       topic: kafkaConfig.topic,
       partitionKey: record.partitionKey ?? record.aggregateId,
     });
@@ -135,7 +153,7 @@ const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
       outboxConfig.retryBackoffMs,
       outboxConfig.maxRetries,
     );
-    await updateLifecycleStateSafe(record.eventId, status === "DLQ" ? "DLQ" : "FAILED", {
+    await updateLifecycleStateSafe(record, status === "DLQ" ? "DLQ" : "FAILED", {
       error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
       workerId: outboxConfig.workerId,
     });
@@ -184,11 +202,23 @@ const secondsSince = (startedAt: number): number => {
   return (performance.now() - startedAt) / 1000;
 };
 
+/**
+ * `reservation_command_lifecycle` only ever holds rows for reservation events, so
+ * every other aggregate type this dispatcher now drains would warn twice per record
+ * about a row that is not supposed to exist. Skipping them keeps the warning
+ * meaningful: if it fires, a reservation event really has lost its lifecycle row.
+ */
+const tracksLifecycle = (record: OutboxRecord): boolean => record.aggregateType === "reservation";
+
 const updateLifecycleStateSafe = async (
-  eventId: string,
+  record: OutboxRecord,
   state: ReservationCommandLifecycleState,
   details: Record<string, unknown>,
 ): Promise<void> => {
+  if (!tracksLifecycle(record)) {
+    return;
+  }
+  const { eventId } = record;
   try {
     await updateLifecycleState({
       eventId,

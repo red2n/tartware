@@ -15,6 +15,7 @@ import type {
   DepositPerGuestInput,
   DepositPerGuestOutput,
 } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -22,11 +23,13 @@ import Decimal from "decimal.js";
  * CORE.md §8.1: deposit = totalCharge × percentage / 100.
  */
 export function calculateDepositEntireStay(input: DepositEntireStayInput): DepositEntireStayOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const deposit = new Decimal(input.total_reservation_charge)
     .times(input.percentage_of_stay)
     .div(100);
   return {
-    deposit_amount: deposit.toDecimalPlaces(2).toNumber(),
+    deposit_amount: deposit.toDecimalPlaces(dp).toNumber(),
   };
 }
 
@@ -35,10 +38,12 @@ export function calculateDepositEntireStay(input: DepositEntireStayInput): Depos
  * CORE.md §8.2: deposit = (adultRate × numAdults) + (childRate × numChildren).
  */
 export function calculateDepositPerGuest(input: DepositPerGuestInput): DepositPerGuestOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const adultTotal = new Decimal(input.per_adult_rate).times(input.num_adults);
   const childTotal = new Decimal(input.per_child_rate).times(input.num_children);
   return {
-    deposit_amount: adultTotal.plus(childTotal).toDecimalPlaces(2).toNumber(),
+    deposit_amount: adultTotal.plus(childTotal).toDecimalPlaces(dp).toNumber(),
   };
 }
 
@@ -47,6 +52,8 @@ export function calculateDepositPerGuest(input: DepositPerGuestInput): DepositPe
  * CORE.md §8.3: If cumulative + due > total, cap the collectible amount.
  */
 export function calculateDepositCap(input: DepositCapInput): DepositCapOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const ceiling = new Decimal(input.total_reservation_charge);
   const cumulative = new Decimal(input.cumulative_schedule_total);
   const due = new Decimal(input.due_amount);
@@ -54,7 +61,7 @@ export function calculateDepositCap(input: DepositCapInput): DepositCapOutput {
 
   if (wouldBeTotal.lte(ceiling)) {
     return {
-      collectible: due.toDecimalPlaces(2).toNumber(),
+      collectible: due.toDecimalPlaces(dp).toNumber(),
       excess: new Decimal(0).toNumber(),
       capped: false,
     };
@@ -62,8 +69,8 @@ export function calculateDepositCap(input: DepositCapInput): DepositCapOutput {
 
   const collectible = Decimal.max(ceiling.minus(cumulative), 0);
   return {
-    collectible: collectible.toDecimalPlaces(2).toNumber(),
-    excess: due.minus(collectible).toDecimalPlaces(2).toNumber(),
+    collectible: collectible.toDecimalPlaces(dp).toNumber(),
+    excess: due.minus(collectible).toDecimalPlaces(dp).toNumber(),
     capped: true,
   };
 }

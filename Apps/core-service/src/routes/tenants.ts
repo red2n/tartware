@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 
 import { buildRouteSchema, errorResponseSchema, schemaFromZod } from "@tartware/openapi";
 import type { TenantListQuery } from "@tartware/schemas";
@@ -33,6 +33,30 @@ const TenantBootstrapResponseJsonSchema = schemaFromZod(
 
 const TENANTS_TAG = "Tenants";
 const BOOTSTRAP_TOKEN_HEADER = "x-onboarding-token";
+
+/**
+ * Constant-time comparison of the self-serve onboarding token.
+ *
+ * The token is a shared secret guarding a route that creates a tenant, a property and an owner
+ * user, so a plain `!==` would let a caller recover it byte-by-byte from response timings. Length
+ * is compared first because `timingSafeEqual` throws on mismatched buffer lengths; that leaks the
+ * token's length only, which is the same trade-off `webhook-dispatcher.ts` makes.
+ */
+const matchesBootstrapToken = (
+  expected: string,
+  provided: string | string[] | undefined,
+): boolean => {
+  const candidate = Array.isArray(provided) ? provided[0] : provided;
+  if (typeof candidate !== "string" || candidate.length === 0) {
+    return false;
+  }
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  const providedBuffer = Buffer.from(candidate, "utf8");
+  if (expectedBuffer.length !== providedBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(expectedBuffer, providedBuffer);
+};
 const bootstrapRateLimitMax = Number(process.env.TENANT_BOOTSTRAP_RATE_LIMIT_MAX ?? "10");
 const bootstrapRateLimitWindowMs = Number(
   process.env.TENANT_BOOTSTRAP_RATE_LIMIT_WINDOW_MS ?? "60000",
@@ -119,16 +143,31 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
           409: errorResponseSchema,
           401: errorResponseSchema,
           429: errorResponseSchema,
+          503: errorResponseSchema,
         },
       }),
     },
     async (request, reply) => {
-      const requiredToken = process.env.TENANT_BOOTSTRAP_TOKEN;
-      if (requiredToken) {
-        const providedToken = request.headers[BOOTSTRAP_TOKEN_HEADER] ?? "";
-        if (providedToken !== requiredToken) {
-          return reply.unauthorized("Invalid onboarding token.");
-        }
+      // Fail closed. An unset token previously skipped the check entirely, leaving an
+      // unauthenticated route that mints a tenant, a property and an owner user with
+      // caller-chosen credentials. Absent configuration now disables the feature instead
+      // of disabling its guard.
+      const requiredToken = process.env.TENANT_BOOTSTRAP_TOKEN?.trim();
+      if (!requiredToken) {
+        request.log.error(
+          "TENANT_BOOTSTRAP_TOKEN is not configured; self-serve tenant onboarding is disabled.",
+        );
+        return reply.status(503).header("content-type", "application/problem+json").send({
+          type: "about:blank",
+          title: "Service Unavailable",
+          status: 503,
+          detail: "Self-serve onboarding is not enabled.",
+          instance: request.url,
+        });
+      }
+
+      if (!matchesBootstrapToken(requiredToken, request.headers[BOOTSTRAP_TOKEN_HEADER])) {
+        return reply.unauthorized("Invalid onboarding token.");
       }
 
       const rateLimit = checkBootstrapRateLimit(request.ip);

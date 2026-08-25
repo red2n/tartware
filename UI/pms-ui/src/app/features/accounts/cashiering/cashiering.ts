@@ -7,6 +7,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
@@ -72,6 +73,7 @@ type CashierSessionDetail = CashierSessionListItem & {
 })
 export class CashieringComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -90,6 +92,7 @@ export class CashieringComponent {
 	readonly selectedSessionDetail = signal<CashierSessionDetail | null>(null);
 	readonly loadingSessionDetail = signal(false);
 	readonly sessionDetailError = signal<string | null>(null);
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.page.set(1);
@@ -247,7 +250,7 @@ export class CashieringComponent {
 				shift_type: form.shift_type,
 				opening_float: form.opening_float,
 			});
-			this.toast.success("Cashier session open submitted. Refreshing sessions...");
+			this.toast.success(this.i18n.t("Cashier session open submitted. Refreshing sessions..."));
 			this.showOpenForm.set(false);
 			this.openForm.set({
 				cashier_name: "",
@@ -257,7 +260,7 @@ export class CashieringComponent {
 			});
 			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to open session");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to open session"));
 		} finally {
 			this.openingSession.set(false);
 		}
@@ -291,11 +294,11 @@ export class CashieringComponent {
 				closing_cash_counted: form.closing_cash_counted,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Cashier session close submitted. Refreshing sessions...");
+			this.toast.success(this.i18n.t("Cashier session close submitted. Refreshing sessions..."));
 			this.closingSessionId.set(null);
 			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to close session");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to close session"));
 		} finally {
 			this.closingSession.set(false);
 		}
@@ -358,11 +361,11 @@ export class CashieringComponent {
 				incoming_opening_float: form.incoming_opening_float,
 				property_id: propertyId,
 			});
-			this.toast.success("Shift handover submitted. Refreshing sessions...");
+			this.toast.success(this.i18n.t("Shift handover submitted. Refreshing sessions..."));
 			this.handoveringSessionId.set(null);
 			await settleCommandReadModel(() => this.loadSessions());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to handover session");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to handover session"));
 		} finally {
 			this.handoveringSession.set(false);
 		}
@@ -386,7 +389,7 @@ export class CashieringComponent {
 			if (this.selectedSessionId() === sessionId) {
 				this.selectedSessionDetail.set(null);
 				this.sessionDetailError.set(
-					e instanceof Error ? e.message : "Failed to load cashier session detail",
+					e instanceof Error ? e.message : this.i18n.t("Failed to load cashier session detail"),
 				);
 			}
 		} finally {
@@ -410,7 +413,9 @@ export class CashieringComponent {
 			);
 			this.sessions.set(Array.isArray(res) ? res : (res.data ?? []));
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load cashier sessions");
+			this.error.set(
+				e instanceof Error ? e.message : this.i18n.t("Failed to load cashier sessions"),
+			);
 		} finally {
 			this.dataReady.set(true);
 		}

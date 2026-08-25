@@ -9,15 +9,21 @@
 /* ── Surface + text ── */
 :root {
   --p-surface-card:               var(--bgColor-muted);
-  --p-surface-hover:              var(--bgColor-subtle);
+  /* --bgColor-subtle does not exist in Primer or in our overrides, so this
+     resolved to nothing and PrimeNG hover surfaces painted no background. */
+  --p-surface-hover:              var(--bgColor-neutral-muted);
   --p-surface-border:             var(--borderColor-default);
   --p-text-color:                 var(--fgColor-default);
   --p-text-muted-color:           var(--fgColor-muted);
 
-  /* ── Primary — OpenSea blue ── */
-  --p-primary-color:              #2081e2;
-  --p-primary-hover-color:        #1a6ecf;
-  --p-primary-active-color:       #1558a8;
+  /* ── Primary — OpenSea blue ──
+   * Routed through the tokens rather than repeating hex here: these literals
+   * had drifted from the button tokens, and #2081e2 only reaches 3.96:1 behind
+   * a white label. Theme-aware for free, and one place left to change.
+   */
+  --p-primary-color:              var(--bgColor-accent-emphasis);
+  --p-primary-hover-color:        var(--button-primary-bgColor-hover);
+  --p-primary-active-color:       var(--button-primary-bgColor-active);
   --p-primary-contrast-color:     #ffffff;
 
   /* ── Border radius — matches existing tokens.css ── */

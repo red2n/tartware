@@ -16,10 +16,21 @@ import { uuid } from "../../shared/base-schemas.js";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export const DunningBucketNameEnum = z.enum(["CURRENT", "30", "60", "90", "90+"]);
+export const DunningBucketNameEnum = z.enum([
+	"CURRENT",
+	"30",
+	"60",
+	"90",
+	"90+",
+]);
 export type DunningBucketName = z.infer<typeof DunningBucketNameEnum>;
 
-export const DunningActionTypeEnum = z.enum(["EMAIL", "STATEMENT", "FORMAL_NOTICE", "COLLECTIONS"]);
+export const DunningActionTypeEnum = z.enum([
+	"EMAIL",
+	"STATEMENT",
+	"FORMAL_NOTICE",
+	"COLLECTIONS",
+]);
 export type DunningActionType = z.infer<typeof DunningActionTypeEnum>;
 
 // ─── Full row schema ──────────────────────────────────────────────────────────
@@ -62,7 +73,9 @@ export const CreateArDunningRuleSchema = z.object({
 	is_active: z.boolean().default(true),
 });
 
-export type CreateArDunningRuleInput = z.infer<typeof CreateArDunningRuleSchema>;
+export type CreateArDunningRuleInput = z.infer<
+	typeof CreateArDunningRuleSchema
+>;
 
 // ─── Update input ─────────────────────────────────────────────────────────────
 
@@ -76,4 +89,6 @@ export const UpdateArDunningRuleSchema = z.object({
 	is_active: z.boolean().optional(),
 });
 
-export type UpdateArDunningRuleInput = z.infer<typeof UpdateArDunningRuleSchema>;
+export type UpdateArDunningRuleInput = z.infer<
+	typeof UpdateArDunningRuleSchema
+>;

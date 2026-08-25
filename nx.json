@@ -11,6 +11,9 @@
       "!{projectRoot}/**/*.spec.ts",
       "!{projectRoot}/**/*.test.ts",
       "!{projectRoot}/vitest.config.*"
+    ],
+    "sharedUiStyles": [
+      "{workspaceRoot}/UI/shared-styles/**/*"
     ]
   },
   "targetDefaults": {
@@ -19,7 +22,8 @@
         "^build"
       ],
       "inputs": [
-        "production"
+        "production",
+        "sharedUiStyles"
       ],
       "outputs": [
         "{projectRoot}/dist"

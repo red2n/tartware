@@ -1,0 +1,96 @@
+/**
+ * Shared palette — LIGHT. Consumed by pms-ui and guest-portal alike.
+ *
+ * @spec  ./README.md — the naming grammar, the full token set, the pairing
+ *        contract (which foreground may sit on which background) and the
+ *        contrast floor each pairing holds.
+ *        (This header used to point at /DESIGN_TOKENS_SPEC.md, which is a file
+ *        inside @primer/primitives, not a file in this repo.)
+ * @rule  Never use raw values in an app. Semantic tokens ONLY.
+ * @test  node UI/shared-styles/check-contrast.mjs — run it after any edit here.
+ */
+[data-theme="light"] {
+  /* ── OpenSea-inspired light palette — cool whites with blue accent ── */
+  --bgColor-default: #ffffff;
+  --bgColor-muted: #f4f5f9;             /** Cool-tinted muted surface */
+  --bgColor-inset: var(--bgColor-muted);
+  --bgColor-emphasis: #1e2442;
+
+  /* ── Accent — OpenSea electric blue ──
+   * The showcase blue #2081e2 is only 3.96:1 on white, short of the 4.5:1
+   * WCAG 1.4.3 floor, so it cannot carry text or sit behind a white label.
+   * The accent tokens below are one step darker (5.07:1 as text on the page,
+   * 4.65:1 on --bgColor-muted, 5.07:1 behind --fgColor-onEmphasis).
+   * #2081e2 survives only where 1.4.11's 3:1 applies — see --accent-decorative.
+   */
+  --fgColor-accent: #1a6fc7;
+  --bgColor-accent-emphasis: #1a6fc7;
+  /* 4.60:1 behind --fgColor-accent. #e8f2fd was 4.48:1 — the accent badge
+     was the one status chip under the floor, and nothing checked it until
+     the badge pairing was added to the guard. */
+  --bgColor-accent-muted: #ecf5fe;
+  --borderColor-accent-emphasis: #1a6fc7;
+  --borderColor-accent-muted: #2081e266;
+  /* Glows, gradients and washes that never sit under text. */
+  --accent-decorative: #2081e2;
+
+  /* ── Borders ── */
+  --borderColor-default: #dde1ed;       /** Cool-tinted border */
+  /* Same 1.4.11 requirement: #dde1ed is only 1.31:1 on white. The value has to
+     clear 3:1 on the PANEL too, not just the page — #88909b managed 3.23:1 on
+     white but fell to 2.96:1 on --bgColor-muted, where most forms actually sit. */
+  --borderColor-control: #818995;
+  --borderColor-muted: #dde1edb3;
+  --borderColor-translucent: #1f23280f;
+
+  /* ── Foreground ── */
+  --fgColor-default: #1e2442;           /** Deep navy text — matches OpenSea */
+  /* #6b7280 clears 4.5:1 on white but only reaches 4.44:1 on --bgColor-muted,
+     and muted text inside a muted panel is one of the app's commonest pairings
+     (card subtitles, table headers, hints). One step darker clears both:
+     5.22:1 on the page, 4.79:1 on the panel. */
+  --fgColor-muted: #656d7a;
+  --fgColor-onEmphasis: #ffffff;
+
+  /* ── Semantic ── */
+  --bgColor-success-emphasis: #1f883d;
+  --bgColor-success-muted: #dafbe1;
+  --bgColor-danger-emphasis: #cf222e;
+  --bgColor-danger-muted: #ffebe9;
+  --bgColor-attention-emphasis: #9a6700;
+  --bgColor-attention-muted: #fff8c5;
+  --bgColor-done-emphasis: #7b3fe4;
+  --bgColor-done-muted: #f3ebff;
+  --bgColor-neutral-muted: #818b981f;
+  --bgColor-open-muted: var(--bgColor-success-muted);
+
+  --fgColor-success: #1a7f37;
+  --fgColor-danger: #d1242f;
+  --fgColor-attention: #9a6700;
+  --fgColor-done: #7b3fe4;
+  --fgColor-open: var(--fgColor-success);
+
+  --borderColor-success-muted: #4ac26b66;
+  --borderColor-danger-emphasis: #cf222e;
+  --borderColor-danger-muted: #ff818266;
+  --borderColor-attention-muted: #d4a72c66;
+  --borderColor-done-muted: #c297ff66;
+
+  /* ── Primary button → OpenSea blue ── */
+  --button-primary-bgColor-rest: #1a6fc7;
+  --button-primary-bgColor-hover: #145fae;
+  --button-primary-bgColor-active: #12508f;
+  --button-primary-borderColor-rest: var(--borderColor-translucent);
+
+  --control-transparent-bgColor-hover: #2081e214;
+
+  /* ── Overlays ── */
+  --overlay-bgColor: #ffffff;
+  --overlay-backdrop-bgColor: #1e244260;
+
+  /* ── Shadows ── */
+  --shadow-resting-small: 0 1px 2px 0 #1e244214, 0 1px 4px 0 #1e24420a;
+  --shadow-resting-medium: 0 2px 4px 0 #1e24421a, 0 4px 12px 0 #1e24420f;
+  --shadow-floating-medium: 0 0 0 1px #dde1ed, 0 8px 24px -4px #1e244214, 0 16px 48px -8px #1e24420f;
+  --shadow-floating-large: 0 0 0 1px #dde1ed00, 0 24px 64px 0 #1e24422e;
+}

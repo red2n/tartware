@@ -152,3 +152,25 @@ export type IncidentReportRow = {
 	updated_at: string | Date | null;
 	created_by: string;
 };
+
+/**
+ * Extra columns `INCIDENT_REPORT_BY_ID_SQL` already selects but the list shape
+ * has no room for. The by-id query fetched the narrative all along and the row
+ * mapper discarded it, so an incident's description and the actions taken were
+ * write-only — filed through the product and never readable in it.
+ * See ui-gaps/06-incidents.md.
+ */
+export type IncidentReportDetailRow = IncidentReportRow & {
+	incident_description: string;
+	immediate_actions_taken: string | null;
+	discovered_by_name: string | null;
+	guest_name: string | null;
+	injury_details: string | null;
+	damage_description: string | null;
+	investigation_findings: string | null;
+	corrective_actions: string | null;
+	follow_up_required: boolean | null;
+	follow_up_actions: string | null;
+	closed_at: string | Date | null;
+	closure_notes: string | null;
+};

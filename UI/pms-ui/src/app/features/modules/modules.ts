@@ -1,4 +1,3 @@
-import { DatePipe } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import type {
@@ -12,6 +11,8 @@ import { TooltipModule } from "primeng/tooltip";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { LocaleDatePipe } from "../../core/i18n/locale-date.pipe";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { ModuleRequestService } from "../../core/modules/module-request.service";
 import { IconComponent } from "../../shared/components/icon/icon";
@@ -26,12 +27,12 @@ type CatalogResponse =
 	selector: "app-modules",
 	standalone: true,
 	imports: [
-		DatePipe,
 		FormsModule,
 		IconComponent,
+		LocaleDatePipe,
+		PageHeaderComponent,
 		ProgressSpinnerModule,
 		TooltipModule,
-		PageHeaderComponent,
 		TranslatePipe,
 	],
 	templateUrl: "./modules.html",
@@ -39,6 +40,7 @@ type CatalogResponse =
 })
 export class ModulesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 	private readonly requests = inject(ModuleRequestService);
@@ -103,10 +105,10 @@ export class ModulesComponent {
 			// Secondary to the catalog: a failure here costs the requests panel,
 			// not the screen, so it must not take the module list down with it.
 			await this.requests.load().catch(() => {
-				this.toast.error("Could not load pending module requests.");
+				this.toast.error(this.i18n.t("Could not load pending module requests."));
 			});
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to load modules");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load modules"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -126,16 +128,18 @@ export class ModulesComponent {
 		try {
 			if (verb === "approve") {
 				await this.requests.approve(request.id);
-				this.toast.success(`${request.moduleName} switched on.`);
+				this.toast.success(this.i18n.t("{p0} switched on.", { p0: request.moduleName }));
 				// The server enabled it; re-read so the catalog's checkboxes agree
 				// rather than showing it still off until the next visit.
 				await this.load();
 			} else {
 				await this.requests.reject(request.id);
-				this.toast.success("Request rejected.");
+				this.toast.success(this.i18n.t("Request rejected."));
 			}
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Could not update the request.");
+			this.toast.error(
+				e instanceof Error ? e.message : this.i18n.t("Could not update the request."),
+			);
 			// A conflict means someone else decided it first — re-read the queue so
 			// the stale row disappears instead of inviting another failed click.
 			await this.requests.load().catch(() => undefined);
@@ -167,10 +171,10 @@ export class ModulesComponent {
 			await this.api.put(`/tenants/${tenantId}/modules`, {
 				modules: Array.from(this.enabled()),
 			});
-			this.toast.success("Tenant modules updated.");
+			this.toast.success(this.i18n.t("Tenant modules updated."));
 			this.originalEnabled.set(new Set(this.enabled()));
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to update modules");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to update modules"));
 		} finally {
 			this.saving.set(false);
 		}

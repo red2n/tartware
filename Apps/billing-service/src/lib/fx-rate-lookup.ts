@@ -13,16 +13,25 @@
  * and the posting INSERT share the same snapshot.
  */
 
+import { convertCurrency, roundToCurrency } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
-import { queryWithClient } from "./db.js";
+import { query, queryWithClient } from "./db.js";
 import { appLogger } from "./logger.js";
 
 /** Result of a rate lookup: the locked rate and base amount. */
 interface FxLockResult {
   /** The exchange rate: 1 unit of `fromCurrency` = `rate` units of `toCurrency`. */
   rate: number;
-  /** `amount * rate`, rounded to 2 decimal places. */
+  /**
+   * The same rate as the exact decimal string read from the DB.
+   *
+   * `rate` is lossy the moment it becomes a JS number; callers that need to
+   * convert a further amount at this locked rate must multiply against this
+   * string so the arithmetic stays exact.
+   */
+  rateText: string;
+  /** `amount * rate`, rounded to `toCurrency`'s ISO 4217 exponent. */
   baseAmount: number;
   /** Indicates the rate was the same-currency no-op (rate=1.0, fromCurrency=toCurrency). */
   isSameCurrency: boolean;
@@ -48,9 +57,17 @@ export const lockFxRate = async (
   toCurrency: string,
   amount: number,
 ): Promise<FxLockResult> => {
-  // Same currency — no conversion
+  // Same currency — no conversion, but still normalise to the currency's own
+  // precision so a caller passing an over-precise amount cannot write a
+  // non-tenderable value into the ledger.
   if (fromCurrency === toCurrency) {
-    return { rate: 1.0, baseAmount: amount, isSameCurrency: true, isFallback: false };
+    return {
+      rate: 1.0,
+      rateText: "1",
+      baseAmount: roundToCurrency(amount, toCurrency),
+      isSameCurrency: true,
+      isFallback: false,
+    };
   }
 
   // Query: prefer tenant-specific rate for today, then global, then recent fallback
@@ -59,16 +76,20 @@ export const lockFxRate = async (
     `
       SELECT rate::text, rate_date::text
       FROM public.fx_rates
-      WHERE from_currency = UPPER($3)
-        AND to_currency   = UPPER($4)
+      WHERE from_currency = UPPER($2)
+        AND to_currency   = UPPER($3)
         AND rate_date     BETWEEN CURRENT_DATE - INTERVAL '7 days' AND CURRENT_DATE
         AND (tenant_id = $1::uuid OR tenant_id IS NULL)
       ORDER BY
         rate_date DESC,                   -- most recent first
-        (tenant_id = $1::uuid) DESC       -- tenant-specific preferred over global
+        -- Tenant-specific preferred over global. Testing "tenant_id IS NOT NULL"
+        -- rather than "tenant_id = $1" matters: the equality is NULL for global
+        -- rows, and DESC sorts NULLs first in Postgres, which would have ranked
+        -- global rates *above* the tenant's own.
+        (tenant_id IS NOT NULL) DESC
       LIMIT 1
     `,
-    [tenantId, null, fromCurrency.toUpperCase(), toCurrency.toUpperCase()],
+    [tenantId, fromCurrency.toUpperCase(), toCurrency.toUpperCase()],
   );
 
   if (!rows[0]) {
@@ -76,18 +97,28 @@ export const lockFxRate = async (
       { tenantId, fromCurrency, toCurrency },
       "No FX rate found for currency pair — falling back to rate 1.0 (no conversion). Configure fx_rates.",
     );
-    return { rate: 1.0, baseAmount: amount, isSameCurrency: false, isFallback: true };
+    return {
+      rate: 1.0,
+      rateText: "1",
+      baseAmount: roundToCurrency(amount, toCurrency),
+      isSameCurrency: false,
+      isFallback: true,
+    };
   }
 
-  const rate = Number.parseFloat(rows[0].rate);
-  const baseAmount = Math.round(amount * rate * 100) / 100;
+  const rateText = rows[0].rate;
+  const rate = Number.parseFloat(rateText);
+  // Convert from the exact decimal string, not the parsed float, and round to
+  // the *target* currency's own precision — a JPY base amount has no fractional
+  // yen, and a KWD one keeps its third decimal.
+  const baseAmount = convertCurrency(amount, rateText, toCurrency);
 
   appLogger.debug(
     { tenantId, fromCurrency, toCurrency, rate, rateDate: rows[0].rate_date, baseAmount },
     "FX rate locked",
   );
 
-  return { rate, baseAmount, isSameCurrency: false, isFallback: false };
+  return { rate, rateText, baseAmount, isSameCurrency: false, isFallback: false };
 };
 
 /**
@@ -101,8 +132,27 @@ export const getPropertyBaseCurrency = async (
 ): Promise<string> => {
   const { rows } = await queryWithClient<{ base_currency: string | null }>(
     client,
-    `SELECT currency AS base_currency FROM public.properties WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
+    PROPERTY_BASE_CURRENCY_SQL,
     [propertyId, tenantId],
   );
+  return rows[0]?.base_currency ?? "USD";
+};
+
+const PROPERTY_BASE_CURRENCY_SQL = `SELECT currency AS base_currency FROM public.properties WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`;
+
+/**
+ * Same lookup as {@link getPropertyBaseCurrency}, off the pool rather than a
+ * caller's transaction. For callers that need the property's currency *before*
+ * opening a transaction — to denominate an amount, say — where enrolling in one
+ * just to read a config value would be wasteful.
+ */
+export const getPropertyBaseCurrencyFromPool = async (
+  tenantId: string,
+  propertyId: string,
+): Promise<string> => {
+  const { rows } = await query<{ base_currency: string | null }>(PROPERTY_BASE_CURRENCY_SQL, [
+    propertyId,
+    tenantId,
+  ]);
   return rows[0]?.base_currency ?? "USD";
 };

@@ -187,7 +187,7 @@
                   <td>
                     <span class="badge" [ngClass]="statusClass(room.status)"
                           [pTooltip]="room.is_out_of_order ? (room.out_of_order_reason ?? '') : ''">
-                      {{ room.status_display }}
+                      {{ room.status_display | translate }}
                     </span>
                     @if (room.is_blocked) {
                       <span class="badge badge-warning" [pTooltip]="room.block_reason ?? ''">{{ 'Blocked' | translate }}</span>
@@ -227,10 +227,10 @@
                 </td>
                 <td>
                   <span class="badge" [ngClass]="hkClass(room.housekeeping_status)">
-                    {{ room.housekeeping_display }}
+                    {{ room.housekeeping_display | translate }}
                   </span>
                 </td>
-                <td>{{ room.maintenance_display }}</td>
+                <td>{{ room.maintenance_display | translate }}</td>
                 <td class="cell-actions">
                   <a class="btn btn-invisible btn-sm" [routerLink]="['/rooms', room.room_id]" [pTooltip]="'View details' | translate" [attr.aria-label]="'View room details' | translate">
                     <app-icon name="chevron_right" />

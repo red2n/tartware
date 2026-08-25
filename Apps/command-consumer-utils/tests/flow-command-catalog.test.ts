@@ -12,7 +12,7 @@
  * flow registry requires.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -108,9 +108,13 @@ describe("command handlers ↔ command catalog", () => {
    * inventory.release.room, inventory.release.bulk, rooms.key.issue,
    * rooms.key.revoke and the three operations.maintenance.* verbs — each with a
    * handler, a payload validator, and no way to be invoked.
+   *
+   * The inventory.* and operations.maintenance.* entries above are historical:
+   * both sets were retired on 2026-08-18 (gRPC and plain HTTP respectively were
+   * already the live paths), and availability-guard-service's consumer went with
+   * them — it handled nothing else. See ui-gaps/17-command-reachability.md.
    */
   const CONSUMERS = [
-    "availability-guard-service/src/workers/command-center-consumer.ts",
     "housekeeping-service/src/commands/command-center-consumer.ts",
     "rooms-service/src/commands/command-center-consumer.ts",
     "guests-service/src/services/guest-command-service.ts",
@@ -132,7 +136,10 @@ describe("command handlers ↔ command catalog", () => {
     }
 
     // Guards against a consumer being renamed and this check going vacuous.
-    expect(handled, "no `case \"command.name\":` handlers found — consumer layout changed").toBeGreaterThan(20);
+    // Floor lowered from 20 to 15 on 2026-08-18: retiring inventory.* (3) and
+    // operations.maintenance.* (4) took the real count from 26 to 19. The floor
+    // is a vacuity guard, not an assertion about how many commands should exist.
+    expect(handled, "no `case \"command.name\":` handlers found — consumer layout changed").toBeGreaterThan(15);
 
     expect(
       [...new Set(missing)].sort(),
@@ -162,15 +169,22 @@ describe("command catalog ↔ consumer target services", () => {
    *
    * Do not add a command here to silence this check — an entry means "not
    * built yet", and a command WITH a handler must never appear in this list.
+   *
+   * Three entries left on 2026-08-13 by deletion rather than implementation:
+   * `compliance.breach.report`, `compliance.breach.notify` and
+   * `operations.incident.report`. All three describe a write that already exists
+   * as plain HTTP on the owning service — the breach register on core-service and
+   * the incident register on housekeeping-service. Per ui-gaps/18-write-path-gap.md
+   * a single-service, single-table write with no fan-out does not belong on the
+   * command bus, so the catalog rows, payload schemas and validators went instead
+   * of gaining handlers. Keeping them would have meant two write paths for one
+   * table, one of which silently drops every message.
    */
   const UNIMPLEMENTED = new Set([
     "analytics.metric.ingest",
     "analytics.report.schedule",
-    "operations.incident.report",
     "operations.asset.update",
     "operations.inventory.adjust",
-    "compliance.breach.report",
-    "compliance.breach.notify",
   ]);
 
   it("routes every command to a target service some consumer claims", () => {
@@ -251,6 +265,130 @@ describe("command catalog ↔ module registry", () => {
     expect(
       [...offenders.keys()].sort(),
       `\nCommands gated on unregistered modules (403 for every tenant, forever):\n${summary}\n`,
+    ).toEqual([]);
+  });
+});
+
+/**
+ * Flow registry ↔ dispatchability.
+ *
+ * The checks above prove a required command has a handler and a catalog row.
+ * Neither asks the question that actually matters: can anything *send* it?
+ *
+ * A flow that lists a command nobody dispatches is a manifest describing an
+ * architecture the product does not have. COV-05 made this point about
+ * `revenue.daily_close.process`; the 2026-08-18 reachability pass found twelve.
+ * See ui-gaps/17-command-reachability.md.
+ *
+ * **Detection is deliberately permissive.** It counts a command as dispatchable
+ * if its name appears as a literal anywhere in the gateway, in a UI
+ * `commands/<name>` path, or in a job/consumer dispatch. That will over-credit a
+ * name mentioned only in a comment — and that is the right way to be wrong here.
+ * The forms this has to survive are hostile to exact matching: a `commandName:`
+ * built with a ternary, a wrapper factory taking the name as an argument, and a
+ * UI template literal. An exact matcher produced three false "unreachable"
+ * verdicts on its first run, and a test that cries wolf is worse than none —
+ * the same lesson the 2026-08-13 enum sweep recorded.
+ */
+describe("flow registry ↔ dispatchability", () => {
+  const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+
+  /**
+   * Known-unreachable, each owned by a spec. This list must only ever shrink;
+   * the test below fails if an entry becomes reachable and is not removed.
+   */
+  const KNOWN_UNREACHABLE = new Set<string>([
+    // ui-gaps/05-revenue-module-status.md — blocked on the build-or-retire call.
+    "revenue.daily_close.process",
+    "revenue.pricing_rule.create",
+    "revenue.pricing_rule.update",
+    "revenue.pricing_rule.activate",
+    "revenue.pricing_rule.deactivate",
+    "billing.pricing.evaluate",
+    // accounts-gaps/ + ui-gaps/12-billing-partials.md
+    "billing.ar.post",
+    "billing.payment.authorize",
+    // ui-gaps/17-command-reachability.md — (c) retire: the guest portal reaches
+    // mobile check-in over REST on guests-service, so the flow declares a path
+    // the product does not use.
+    // ui-gaps/17 — (a) needs UI.
+    "reservation.generate_registration_card",
+    "rooms.move",
+  ]);
+
+  const COMMAND_LITERAL = /"([a-z_]+\.[a-z_.]+)"/g;
+  const UI_DISPATCH = /commands\/([a-z_]+\.[a-z_.]+)/g;
+  const UI_DYNAMIC = /commands\/([a-z_.]+)\$\{/g;
+
+  const walk = (dir: string, out: string[] = []): string[] => {
+    if (!existsSync(dir)) return out;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(path, out);
+      else if (/\.(ts|html)$/.test(path) && !path.endsWith(".d.ts")) out.push(path);
+    }
+    return out;
+  };
+
+  const dispatchable = (): { names: Set<string>; prefixes: string[] } => {
+    const names = new Set<string>();
+    const prefixes: string[] = [];
+
+    for (const file of walk(`${ROOT}Apps/api-gateway/src`)) {
+      for (const m of readFileSync(file, "utf8").matchAll(COMMAND_LITERAL)) names.add(m[1]!);
+    }
+    for (const app of ["UI/pms-ui/src", "UI/guest-portal/src"]) {
+      for (const file of walk(`${ROOT}${app}`)) {
+        const src = readFileSync(file, "utf8");
+        for (const m of src.matchAll(UI_DISPATCH)) names.add(m[1]!);
+        for (const m of src.matchAll(UI_DYNAMIC)) prefixes.push(m[1]!);
+      }
+    }
+    for (const file of walk(`${ROOT}Apps`)) {
+      if (!/\/(jobs|consumers)\//.test(file)) continue;
+      const src = readFileSync(file, "utf8");
+      for (const m of src.matchAll(/(?:commandName:\s*|dispatchCommand\(\s*)"([a-z_]+\.[a-z_.]+)"/g)) {
+        names.add(m[1]!);
+      }
+    }
+    return { names, prefixes };
+  };
+
+  const { names, prefixes } = dispatchable();
+  const canSend = (command: string): boolean =>
+    names.has(command) || prefixes.some((p) => command.startsWith(p));
+
+  const required = [
+    ...new Set(ALL_FLOW_IDS.flatMap((id) => [...FLOW_REGISTRY[id]!.requiredCommands])),
+  ].sort();
+
+  it("found the dispatch sites it is meant to be scanning", () => {
+    // A walk that silently returned nothing would make this suite vacuously green.
+    expect(names.size).toBeGreaterThan(50);
+    expect(required.length).toBeGreaterThan(5);
+  });
+
+  it("can dispatch every command a flow declares as required", () => {
+    const unreachable = required.filter((c) => !canSend(c) && !KNOWN_UNREACHABLE.has(c));
+
+    expect(
+      unreachable,
+      `\nFlows declare these commands as required, but nothing can send them:\n` +
+        unreachable.map((c) => `  ✗ ${c}`).join("\n") +
+        `\n\nEither wire a dispatch path (gateway wrapper, UI dispatch or job), drop\n` +
+        `the command from the flow's requiredCommands, or add it to\n` +
+        `KNOWN_UNREACHABLE with the spec that owns it.\n`,
+    ).toEqual([]);
+  });
+
+  it("keeps KNOWN_UNREACHABLE honest, so the list shrinks as commands are wired", () => {
+    const stale = [...KNOWN_UNREACHABLE].filter((c) => canSend(c)).sort();
+
+    expect(
+      stale,
+      `\nThese are dispatchable now — delete them from KNOWN_UNREACHABLE:\n` +
+        stale.map((c) => `  ✓ ${c}`).join("\n") + `\n`,
     ).toEqual([]);
   });
 });

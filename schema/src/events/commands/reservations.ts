@@ -30,6 +30,13 @@ const ReservationStatusEnum = z.enum([
 
 export const ReservationCreateCommandSchema = z.object({
 	reservation_id: z.string().uuid().optional(),
+	/**
+	 * Set when the booking came from a waitlist entry, so the entry can be
+	 * linked to the reservation once the row exists. The convert command cannot
+	 * write that link itself: it only emits reservation.created, and the FK has
+	 * nothing to point at until the event handler has inserted the row.
+	 */
+	waitlist_id: z.string().uuid().optional(),
 	property_id: z.string().uuid(),
 	guest_id: z.string().uuid(),
 	room_type_id: z.string().uuid(),
@@ -355,10 +362,22 @@ export type ReservationWaitlistAddCommand = z.infer<
  */
 export const ReservationWaitlistConvertCommandSchema = z.object({
 	waitlist_id: z.string().uuid(),
-	property_id: z.string().uuid(),
+	/**
+	 * Defaults to the waitlist entry's own property. Every other field of the
+	 * booking — guest, dates, occupancy, room type — is already read off the
+	 * entry, so requiring the caller to resend the property made converting an
+	 * entry impossible from the one place that does it: the Waitlist screen
+	 * posts an empty body because it has nothing to add.
+	 */
+	property_id: z.string().uuid().optional(),
 	room_type_id: z.string().uuid().optional(),
 	rate_code: RateCodeSchema.optional(),
 	allow_rate_fallback: z.boolean().optional(),
+	/**
+	 * Required: rate resolution picks the rate *plan* but does not price the
+	 * stay — RatePlanResolution carries a code and policy, not an amount — so
+	 * there is nothing for the server to fall back to. The caller supplies it.
+	 */
 	total_amount: z.coerce.number().nonnegative(),
 	currency: z.string().length(3).optional(),
 	notes: z.string().max(2000).optional(),

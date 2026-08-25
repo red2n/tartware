@@ -33,11 +33,6 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
 
     [FlowId.PRE_ARRIVAL]: {
       commands: [
-        { commandName: "reservation.mobile_checkin.start", description: "Start mobile check-in" },
-        {
-          commandName: "reservation.mobile_checkin.complete",
-          description: "Complete mobile check-in",
-        },
         {
           commandName: "reservation.generate_registration_card",
           description: "Generate reg card PDF",

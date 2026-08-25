@@ -7,6 +7,7 @@ import type {
 } from "@tartware/schemas";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
+import { getPropertyBaseCurrency } from "../../lib/fx-rate-lookup.js";
 import { appLogger } from "../../lib/logger.js";
 import {
   type BillingGlBatchExportCommand,
@@ -67,6 +68,16 @@ const rebuildLedgerBatch = async (
       businessDate,
     ]);
 
+    // USALI keeps each property's books in that property's own currency. This was
+    // the literal 'USD', which mis-stated every batch at a non-USD property — and
+    // the postings it summarises already carry their own base_currency, so the
+    // batch header disagreed with its own entries.
+    const batchCurrency = await getPropertyBaseCurrency(
+      client,
+      context.tenantId,
+      command.property_id,
+    );
+
     const batchResult = await queryWithClient<Pick<GeneralLedgerBatches, "gl_batch_id">>(
       client,
       `
@@ -93,7 +104,7 @@ const rebuildLedgerBatch = async (
           $4::date,
           $5,
           'PMS',
-          'USD',
+          UPPER($7),
           0,
           0,
           0,
@@ -116,7 +127,15 @@ const rebuildLedgerBatch = async (
           updated_by = EXCLUDED.updated_by
         RETURNING gl_batch_id
       `,
-      [context.tenantId, command.property_id, batchNumber, businessDate, accountingPeriod, actorId],
+      [
+        context.tenantId,
+        command.property_id,
+        batchNumber,
+        businessDate,
+        accountingPeriod,
+        actorId,
+        batchCurrency,
+      ],
     );
 
     const batchId = batchResult.rows[0]?.gl_batch_id;

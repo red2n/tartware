@@ -13,33 +13,33 @@
   <!-- PACKAGE ENGAGEMENT OVERVIEW                  -->
   <!-- ═════════════════════════════════════════════ -->
   @if (packages().length > 0) {
-    <div class="pkg-overview">
+    <div class="kpi-grid">
       <div class="pkg-stat pkg-stat-active">
         <app-icon name="inventory_2" />
-        <div class="pkg-stat-content">
-          <div class="pkg-stat-value">{{ summary().activeCount }}</div>
-          <div class="pkg-stat-label">{{ 'Active Packages' | translate }}</div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().activeCount }}</div>
+          <div class="kpi-label">{{ 'Active Packages' | translate }}</div>
         </div>
       </div>
       <div class="pkg-stat pkg-stat-featured">
         <app-icon name="star" />
-        <div class="pkg-stat-content">
-          <div class="pkg-stat-value">{{ summary().featuredCount }}</div>
-          <div class="pkg-stat-label">{{ 'Featured' | translate }}</div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().featuredCount }}</div>
+          <div class="kpi-label">{{ 'Featured' | translate }}</div>
         </div>
       </div>
       <div class="pkg-stat pkg-stat-bookings">
         <app-icon name="trending_up" />
-        <div class="pkg-stat-content">
-          <div class="pkg-stat-value">{{ summary().totalBookings }}</div>
-          <div class="pkg-stat-label">{{ 'Total Bookings' | translate }}</div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ summary().totalBookings }}</div>
+          <div class="kpi-label">{{ 'Total Bookings' | translate }}</div>
         </div>
       </div>
       <div class="pkg-stat pkg-stat-price">
         <app-icon name="sell" />
-        <div class="pkg-stat-content">
-          <div class="pkg-stat-value">{{ formatCurrency(summary().avgPrice, summary().currency) }}</div>
-          <div class="pkg-stat-label">{{ 'Avg Price' | translate }}</div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ formatCurrency(summary().avgPrice, summary().currency) }}</div>
+          <div class="kpi-label">{{ 'Avg Price' | translate }}</div>
         </div>
       </div>
     </div>
@@ -125,11 +125,11 @@
                   (keydown.enter)="$event.preventDefault()"
                   (keydown.space)="$event.preventDefault()">
                 <td class="cell-primary">
-                  <span class="pkg-code">{{ pkg.package_code }}</span>
+                  <span class="ref-code">{{ pkg.package_code }}</span>
                   <span class="pkg-name text-muted">{{ pkg.package_name }}</span>
                 </td>
                 <td>
-                  <span class="badge badge-muted">{{ pkg.package_type_display }}</span>
+                  <span class="badge badge-muted">{{ pkg.package_type_display | translate }}</span>
                 </td>
                 <td class="col-right cell-amount">
                   {{ formatCurrency(pkg.base_price, pkg.currency_code) }}
@@ -138,11 +138,11 @@
                   }
                 </td>
                 <td>
-                  <span class="text-muted">{{ pkg.pricing_model_display }}</span>
+                  <span class="text-muted">{{ pkg.pricing_model_display | translate }}</span>
                 </td>
                 <td class="cell-inclusions">
                   @for (inc of inclusionIcons(pkg); track inc.icon) {
-                    <app-icon class="inclusion-icon" [pTooltip]="inc.label" [name]="inc.icon" />
+                    <app-icon class="inclusion-icon" [pTooltip]="inc.label | translate" [name]="inc.icon" />
                   }
                   @if (inclusionIcons(pkg).length === 0) {
                     <span class="text-muted">—</span>
@@ -162,7 +162,7 @@
                 </td>
                 <td class="cell-status">
                   <span class="badge" [ngClass]="statusClass(pkg)">
-                    {{ statusLabel(pkg) }}
+                    {{ statusLabel(pkg) | translate }}
                   </span>
                   @if (pkg.is_featured) {
                     <app-icon class="featured-icon" [pTooltip]="'Featured package' | translate" name="star" />

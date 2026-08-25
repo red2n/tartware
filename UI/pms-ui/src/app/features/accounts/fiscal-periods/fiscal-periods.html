@@ -54,7 +54,7 @@
               <td><strong>{{ p.period_name }}</strong> (#{{ p.period_number }})</td>
               <td>{{ formatDate(p.period_start) }}</td>
               <td>{{ formatDate(p.period_end) }}</td>
-              <td><span [class]="statusBadge(p.period_status)">{{ p.period_status_display }}</span></td>
+              <td><span [class]="statusBadge(p.period_status)">{{ p.period_status_display | translate }}</span></td>
               <td>
                 <app-icon [ngClass]="p.is_reconciled ? 'icon-success' : 'icon-danger'" [name]="p.is_reconciled ? 'check_circle' : 'cancel'" />
               </td>

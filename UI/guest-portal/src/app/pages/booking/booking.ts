@@ -1,14 +1,14 @@
-import { Component, OnInit, signal, inject } from "@angular/core";
-import { ActivatedRoute, Router } from "@angular/router";
+import { Component, inject, OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { portalConfig } from "../../portal-config";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { ActivatedRoute, Router } from "@angular/router";
 import type { GuestBookingBody } from "@tartware/schemas";
+import { portalConfig } from "../../portal-config";
 import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
@@ -88,13 +88,13 @@ import { GuestApiService } from "../../services/guest-api.service";
 		}
 		.full-width { grid-column: 1 / -1; }
 		.actions { display: flex; justify-content: space-between; margin-top: 0.5rem; }
-		.error { color: #d32f2f; }
+		.error { color: var(--fgColor-danger); }
 	`,
 })
 export class BookingPage implements OnInit {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 
 	roomTypeId = "";
 	roomName = signal("");

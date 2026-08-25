@@ -25,20 +25,16 @@ import {
   commandAcceptedSchema,
   GDPR_TAG,
   GUESTS_PROXY_TAG,
+  guestIdParamsSchema,
   paginationQuerySchema,
   tenantGuestParamsSchema,
+  tenantQuerySchema,
 } from "./schemas.js";
 
 /** Register guest read-proxy and command-dispatch routes on the gateway. */
 export const registerGuestRoutes = (app: FastifyInstance): void => {
   const proxyGuests = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.guestsServiceUrl);
-
-  const tenantScopeFromParams = app.withTenantScope({
-    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "STAFF",
-    requiredModules: "core",
-  });
 
   /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
   const tenantWriteScopeFromParams = app.withTenantScope({
@@ -263,14 +259,22 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
   // GDPR / CCPA COMPLIANCE ENDPOINTS
   // -------------------------------------------------
 
+  /**
+   * Reads proxy straight through, so the path must be the one guests-service
+   * registers — `/v1/guests/:guestId/…`, tenant resolved from `tenant_id`, the
+   * same shape as every other proxied guest read here. This route was declared
+   * as `/v1/tenants/:tenantId/guests/:guestId/gdpr-export` and answered 404 for
+   * every subject access request the UI made. See ui-gaps/19-gateway-proxy-mismatches.md.
+   */
   app.get(
-    "/v1/tenants/:tenantId/guests/:guestId/gdpr-export",
+    "/v1/guests/:guestId/gdpr-export",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Subject access request — export all guest data (GDPR Art. 15 / CCPA).",
-        params: tenantGuestParamsSchema,
+        params: guestIdParamsSchema,
+        querystring: tenantQuerySchema,
         response: { 200: jsonObjectSchema },
       }),
     },
@@ -321,14 +325,16 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       }),
   );
 
+  /** Proxied read — see the gdpr-export note above on why this is not tenant-scoped by path. */
   app.get(
-    "/v1/tenants/:tenantId/guests/:guestId/consent",
+    "/v1/guests/:guestId/consent",
     {
-      preHandler: tenantScopeFromParams,
+      preHandler: tenantScopeFromQuery,
       schema: buildRouteSchema({
         tag: GDPR_TAG,
         summary: "Get guest consent ledger (marketing, analytics, third-party sharing).",
-        params: tenantGuestParamsSchema,
+        params: guestIdParamsSchema,
+        querystring: tenantQuerySchema,
         response: { 200: jsonObjectSchema },
       }),
     },
@@ -448,6 +454,36 @@ export const registerGuestRoutes = (app: FastifyInstance): void => {
       schema: buildRouteSchema({
         tag: GUESTS_PROXY_TAG,
         summary: "Proxy nested guest routes to the guests service.",
+        response: {
+          200: jsonObjectSchema,
+        },
+      }),
+    },
+    proxyGuests,
+  );
+
+  /**
+   * The privacy writes under this prefix (CCPA opt-out, communication
+   * preferences) are PUT-only and MANAGER-gated in guests-service. Only PUT is
+   * registered: a POST/DELETE wildcard here would advertise a write surface the
+   * service does not implement — see ui-gaps/18-write-path-gap.md.
+   */
+  const guestWriteScopeFromQueryOrBody = app.withTenantScope({
+    resolveTenantId: (request) =>
+      (request.query as { tenant_id?: string })?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  app.put(
+    "/v1/guests/*",
+    {
+      preHandler: guestWriteScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: GUESTS_PROXY_TAG,
+        summary: "Proxy nested guest privacy updates to the guests service.",
+        body: jsonObjectSchema,
         response: {
           200: jsonObjectSchema,
         },

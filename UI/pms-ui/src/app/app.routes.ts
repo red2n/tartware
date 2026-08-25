@@ -46,6 +46,14 @@ export const routes: Routes = [
 					import("./features/reservations/reservations").then((m) => m.ReservationsComponent),
 			},
 			{
+				// Ahead of reservations/:reservationId, which would match "waitlist" as an id.
+				path: "reservations/waitlist",
+				canActivate: [propertyGuard, screenGuard("reservations")],
+				data: { screen: "reservations" },
+				loadComponent: () =>
+					import("./features/reservations/waitlist/waitlist").then((m) => m.WaitlistComponent),
+			},
+			{
 				path: "reservations/new",
 				canDeactivate: [unsavedChangesGuard],
 				canActivate: [propertyGuard, screenGuard("reservations")],
@@ -112,11 +120,76 @@ export const routes: Routes = [
 				loadComponent: () => import("./features/rates/rates").then((m) => m.RatesComponent),
 			},
 			{
+				path: "promo-codes",
+				canActivate: [propertyGuard, screenGuard("rates")],
+				data: { screen: "rates" },
+				loadComponent: () =>
+					import("./features/rates/promo-codes/promo-codes").then((m) => m.PromoCodesComponent),
+			},
+			{
 				path: "rate-calendar",
 				canActivate: [propertyGuard, screenGuard("rate-calendar")],
 				data: { screen: "rate-calendar" },
 				loadComponent: () =>
 					import("./features/rate-calendar/rate-calendar").then((m) => m.RateCalendarComponent),
+			},
+			{
+				// Sales & catering (ui-gaps/13). Two screen keys, matching the two
+				// privilege levels the write routes already draw: booking an event is
+				// STAFF, editing function space inventory is MANAGER.
+				path: "events",
+				redirectTo: "events/calendar",
+				pathMatch: "full",
+			},
+			{
+				path: "events/calendar",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/function-space-calendar/function-space-calendar").then(
+						(m) => m.FunctionSpaceCalendarComponent,
+					),
+			},
+			{
+				// The day sheet — item 5 of ui-gaps/13-sales-catering.md. Screen key
+				// `events` like the calendar: reading the day is STAFF work, and the
+				// four execution steps it records are the operation's own, not
+				// inventory administration.
+				path: "events/day-sheet",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/day-sheet/day-sheet").then((m) => m.DaySheetComponent),
+			},
+			{
+				path: "events/meeting-rooms",
+				canActivate: [propertyGuard, screenGuard("meeting-rooms")],
+				data: { screen: "meeting-rooms" },
+				loadComponent: () =>
+					import("./features/events/meeting-rooms/meeting-rooms").then(
+						(m) => m.MeetingRoomsComponent,
+					),
+			},
+			{
+				path: "events/bookings/:eventId",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/event-booking-detail/event-booking-detail").then(
+						(m) => m.EventBookingDetailComponent,
+					),
+			},
+			{
+				// The BEO editor. Reached from a booking rather than from the nav —
+				// a BEO only exists as the operational detail of one event, so there
+				// is no useful "all BEOs" entry point at this level. Screen key
+				// `events`, because POST /v1/banquet-orders is STAFF like the
+				// booking routes, not MANAGER like meeting-room inventory.
+				path: "events/beos/:beoId",
+				canActivate: [propertyGuard, screenGuard("events")],
+				data: { screen: "events" },
+				loadComponent: () =>
+					import("./features/events/beo-editor/beo-editor").then((m) => m.BeoEditorComponent),
 			},
 			{
 				path: "packages",
@@ -145,6 +218,14 @@ export const routes: Routes = [
 				path: "guests",
 				pathMatch: "full",
 				redirectTo: "guests/segment/all",
+			},
+			{
+				// Ahead of guests/:guestId, which would otherwise match "feedback" as an id.
+				path: "guests/feedback",
+				canActivate: [propertyGuard, screenGuard("guests")],
+				data: { screen: "guests" },
+				loadComponent: () =>
+					import("./features/guests/feedback/feedback").then((m) => m.GuestFeedbackComponent),
 			},
 			{
 				// Declared before guests/:guestId; the extra segment keeps them distinct.
@@ -184,6 +265,32 @@ export const routes: Routes = [
 				pathMatch: "full",
 				redirectTo: "housekeeping/rooms",
 			},
+			// Ahead of `housekeeping/:view`, which would otherwise swallow these as board tabs.
+			{
+				path: "housekeeping/incidents",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/housekeeping/incidents/incidents").then((m) => m.IncidentsComponent),
+			},
+			{
+				path: "housekeeping/maintenance",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/housekeeping/maintenance/maintenance").then(
+						(m) => m.MaintenanceComponent,
+					),
+			},
+			{
+				path: "housekeeping/lost-and-found",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/housekeeping/lost-and-found/lost-and-found").then(
+						(m) => m.LostAndFoundComponent,
+					),
+			},
 			{
 				path: "housekeeping/:view",
 				canActivate: [propertyGuard, screenGuard("housekeeping")],
@@ -196,6 +303,20 @@ export const routes: Routes = [
 				canActivate: [propertyGuard, screenGuard("billing")],
 				data: { screen: "billing" },
 				loadComponent: () => import("./features/billing/billing").then((m) => m.BillingComponent),
+			},
+			{
+				path: "approvals",
+				canActivate: [propertyGuard, screenGuard("billing")],
+				data: { screen: "billing" },
+				loadComponent: () =>
+					import("./features/accounts/approvals/approvals").then((m) => m.ApprovalsComponent),
+			},
+			{
+				path: "ar-accounts",
+				canActivate: [propertyGuard, screenGuard("accounts-receivable")],
+				data: { screen: "accounts-receivable" },
+				loadComponent: () =>
+					import("./features/accounts/ar-accounts/ar-accounts").then((m) => m.ArAccountsComponent),
 			},
 			{
 				path: "accounts-receivable",
@@ -249,6 +370,15 @@ export const routes: Routes = [
 					import("./features/accounts/tax-config/tax-config").then((m) => m.TaxConfigComponent),
 			},
 			{
+				path: "currency-config",
+				canActivate: [propertyGuard, screenGuard("currency-config")],
+				data: { screen: "currency-config" },
+				loadComponent: () =>
+					import("./features/accounts/currency-config/currency-config").then(
+						(m) => m.CurrencyConfigComponent,
+					),
+			},
+			{
 				path: "invoices",
 				canActivate: [propertyGuard, screenGuard("invoices")],
 				data: { screen: "invoices" },
@@ -286,6 +416,21 @@ export const routes: Routes = [
 				path: "settings",
 				pathMatch: "full",
 				redirectTo: "settings/ADMIN_USER_MANAGEMENT",
+			},
+			{
+				// Must precede `settings/:categoryCode`. Angular matches routes in
+				// declaration order, and the parameterised one matches
+				// `/settings/distribution` too — so this screen rendered the settings
+				// catalogue with categoryCode="distribution" from the day it shipped
+				// (2026-08-13) until 2026-08-20. It was in the nav, it built, and it
+				// was unreachable. See ui-gaps/14-channel-distribution.md.
+				path: "settings/distribution",
+				canActivate: [propertyGuard, screenGuard("settings")],
+				data: { screen: "settings" },
+				loadComponent: () =>
+					import("./features/settings/distribution/distribution").then(
+						(m) => m.DistributionSettingsComponent,
+					),
 			},
 			{
 				path: "settings/:categoryCode",
@@ -337,6 +482,40 @@ export const routes: Routes = [
 				data: { screen: "webhooks" },
 				loadComponent: () =>
 					import("./features/webhooks/webhooks").then((m) => m.WebhooksComponent),
+			},
+			{
+				path: "operations/shift-handovers",
+				canActivate: [propertyGuard, screenGuard("housekeeping")],
+				data: { screen: "housekeeping" },
+				loadComponent: () =>
+					import("./features/operations/shift-handovers/shift-handovers").then(
+						(m) => m.ShiftHandoversComponent,
+					),
+			},
+			{
+				path: "channels",
+				canActivate: [screenGuard("channels")],
+				data: { screen: "channels" },
+				loadComponent: () =>
+					import("./features/channels/channels").then((m) => m.ChannelsComponent),
+			},
+			{
+				path: "compliance/police-reports",
+				canActivate: [screenGuard("compliance")],
+				data: { screen: "compliance" },
+				loadComponent: () =>
+					import("./features/compliance/police-reports/police-reports").then(
+						(m) => m.PoliceReportsComponent,
+					),
+			},
+			{
+				path: "compliance/breach-incidents",
+				canActivate: [screenGuard("compliance")],
+				data: { screen: "compliance" },
+				loadComponent: () =>
+					import("./features/compliance/breach-incidents/breach-incidents").then(
+						(m) => m.BreachIncidentsComponent,
+					),
 			},
 			{
 				path: "screen-permissions",

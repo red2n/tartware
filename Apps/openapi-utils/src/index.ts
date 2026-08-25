@@ -69,15 +69,46 @@ const normalizeNumericBounds = (schema: JsonSchema): JsonSchema => {
       delete record.maximum;
     }
 
-    // Fix Fastify/AJV "nullable cannot be used without type" error
-    if (record.nullable === true && !record.type) {
-      if (Array.isArray(record.anyOf)) {
-        const types = new Set(record.anyOf.map((s: { type?: string }) => s.type).filter(Boolean));
-        if (types.size === 1) {
-          record.type = [...types][0];
-        } else if (types.size === 0) {
-          record.type = "string"; // fallback
+    // `target: "openApi3"` emits OpenAPI's `nullable: true`, which the response
+    // serializer (fast-json-stringify) does not understand — it only honours
+    // JSON Schema's `type` keyword. AJV additionally rejects `nullable` with no
+    // `type` at all. So every nullable node needs a `type` that itself admits
+    // null, otherwise a null value serialises as "does not match schema
+    // definition" and the route 500s on perfectly valid data.
+    if (record.nullable === true) {
+      const withNull = (type: unknown): unknown => {
+        if (typeof type === "string") {
+          return type === "null" ? type : [type, "null"];
         }
+        if (Array.isArray(type)) {
+          return type.includes("null") ? type : [...type, "null"];
+        }
+        return type;
+      };
+
+      if (record.type) {
+        record.type = withNull(record.type);
+      } else if (Array.isArray(record.anyOf)) {
+        const types = new Set(
+          record.anyOf.map((s: { type?: string }) => s.type).filter(Boolean) as string[],
+        );
+        // A single underlying type can be hoisted; a genuine union cannot, so
+        // leave `type` off and let the anyOf branch below carry nullability.
+        record.type = types.size === 1 ? withNull([...types][0]) : withNull("string");
+        if (types.size !== 1 && types.size !== 0) {
+          delete record.type;
+        }
+      } else {
+        record.type = withNull("string");
+      }
+
+      // The union must admit null too: a top-level type of ["string","null"]
+      // still fails if every anyOf branch rejects null, since both apply.
+      if (
+        Array.isArray(record.anyOf) &&
+        !record.anyOf.some((s: { type?: unknown }) => s?.type === "null")
+      ) {
+        record.anyOf = [...record.anyOf, { type: "null" }];
       }
     }
 

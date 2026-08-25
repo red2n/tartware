@@ -167,6 +167,45 @@ export type EventBookingRow = {
 	updated_at: string | Date | null;
 };
 
+/**
+ * Raw row from the by-id event booking query, which selects more than the list.
+ *
+ * The list view answers "what is on in this room today"; the detail screen has
+ * to show who to call, what was promised, and where the money lands, so the
+ * fields below are read only there. Kept as an extension rather than widening
+ * `EventBookingRow`, because the list SQL genuinely does not select them.
+ */
+export type EventBookingDetailRow = EventBookingRow & {
+	teardown_end_time: string | null;
+	contact_person: string | null;
+	contact_email: string | null;
+	contact_phone: string | null;
+	group_booking_id: string | null;
+	folio_id: string | null;
+	setup_details: string | null;
+	special_requests: string | null;
+	internal_notes: string | null;
+	billing_instructions: string | null;
+	billing_contact_name: string | null;
+	billing_contact_email: string | null;
+	cancellation_date: string | Date | null;
+	cancellation_notes: string | null;
+	/** Billing basis and folio summary — ui-gaps/13-sales-catering.md, UI item 6. */
+	estimated_food_beverage: string | number | null;
+	setup_fee: string | number | null;
+	equipment_rental_fee: string | number | null;
+	av_equipment_fee: string | number | null;
+	labor_charges: string | number | null;
+	service_charge_percent: string | number | null;
+	tax_rate: string | number | null;
+	discount_amount: string | number | null;
+	tax_exempt: boolean | null;
+	charges_posted_at: string | Date | null;
+	folio_number: string | null;
+	folio_status: string | null;
+	folio_balance: string | number | null;
+};
+
 // =====================================================
 // BOOKING SOURCE ROW
 // =====================================================

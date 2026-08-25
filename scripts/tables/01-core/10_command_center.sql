@@ -148,6 +148,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('guest.set_blacklist', 'Update guest blacklist status', 'guests-service', ARRAY['core']),
         ('guest.gdpr.erase', 'Erase guest data for GDPR requests', 'guests-service', ARRAY['core']),
         ('guest.preference.update', 'Update guest preferences', 'guests-service', ARRAY['core']),
+        ('guest.consent.update', 'Record guest consent decisions (GDPR Art. 7)', 'guests-service', ARRAY['core']),
         ('rooms.inventory.block', 'Block rooms for maintenance', 'rooms-service', ARRAY['core']),
         ('rooms.inventory.release', 'Release a room block', 'rooms-service', ARRAY['core']),
         ('rooms.status.update', 'Update room status', 'rooms-service', ARRAY['core']),
@@ -158,9 +159,6 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('rooms.features.update', 'Update room features and amenities', 'rooms-service', ARRAY['core']),
         ('rooms.key.issue', 'Issue a room key for a reservation', 'rooms-service', ARRAY['core']),
         ('rooms.key.revoke', 'Revoke an issued room key', 'rooms-service', ARRAY['core']),
-        ('inventory.lock.room', 'Lock room inventory for a reservation', 'availability-guard-service', ARRAY['core']),
-        ('inventory.release.room', 'Release a room inventory lock', 'availability-guard-service', ARRAY['core']),
-        ('inventory.release.bulk', 'Release room inventory locks in bulk', 'availability-guard-service', ARRAY['core']),
         ('housekeeping.task.assign', 'Assign housekeeping task', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('housekeeping.task.complete', 'Complete housekeeping task workflow', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('housekeeping.task.create', 'Create housekeeping task', 'housekeeping-service', ARRAY['facility-maintenance']),
@@ -183,10 +181,6 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.gl_batch.export', 'Mark a GL batch as exported and record the export destination for ERP integration', 'billing-service', ARRAY['finance-automation']),
         ('billing.charge.void', 'Void a charge posting and create reversal entry', 'billing-service', ARRAY['finance-automation']),
         ('billing.invoice.finalize', 'Finalize an invoice, locking it from edits', 'accounts-service', ARRAY['finance-automation']),
-        ('settings.value.set', 'Set a configuration value', 'settings-service', ARRAY['core']),
-        ('settings.value.bulk_set', 'Bulk set configuration values', 'settings-service', ARRAY['core']),
-        ('settings.value.approve', 'Approve a pending setting value', 'settings-service', ARRAY['core']),
-        ('settings.value.revert', 'Revert a setting value', 'settings-service', ARRAY['core']),
         ('integration.ota.sync_request', 'Request an OTA sync', 'reservations-command-service', ARRAY['marketing-channel']),
         ('integration.ota.content_sync', 'Sync property/room content to an OTA', 'reservations-command-service', ARRAY['marketing-channel']),
         ('integration.ota.rate_push', 'Push OTA rates', 'reservations-command-service', ARRAY['marketing-channel']),
@@ -197,15 +191,8 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         -- Target is housekeeping-service because that is where the handlers
         -- live. No consumer claims 'operations-command-service', and a command
         -- whose target no consumer matches is dropped by shouldProcess().
-        ('operations.maintenance.request', 'Create maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.maintenance.assign', 'Assign a maintenance request to a technician', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.maintenance.complete', 'Complete a maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.maintenance.escalate', 'Escalate a maintenance request', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('operations.incident.report', 'Report an incident', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.asset.update', 'Update asset status or location', 'operations-command-service', ARRAY['facility-maintenance']),
         ('operations.inventory.adjust', 'Adjust inventory levels', 'operations-command-service', ARRAY['facility-maintenance']),
-        ('reservation.mobile_checkin.start', 'Begin mobile check-in for a reservation', 'reservations-command-service', ARRAY['core']),
-        ('reservation.mobile_checkin.complete', 'Complete mobile check-in for a reservation', 'reservations-command-service', ARRAY['core']),
         ('reservation.generate_registration_card', 'Generate the guest registration card', 'reservations-command-service', ARRAY['core']),
         ('reservation.waitlist_offer', 'Offer a freed room to a waitlisted guest', 'reservations-command-service', ARRAY['core']),
         ('reservation.waitlist_expire_sweep', 'Sweep and expire stale waitlist offers', 'reservations-command-service', ARRAY['core']),
@@ -247,6 +234,9 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('billing.folio.reopen', 'Reopen a settled/closed folio for further postings', 'billing-service', ARRAY['finance-automation']),
         ('billing.folio.merge', 'Merge a source folio''s postings into a target folio then close the source', 'billing-service', ARRAY['finance-automation']),
         ('billing.chargeback.update_status', 'Advance a chargeback through its RECEIVED→EVIDENCE_SUBMITTED→WON|LOST state machine', 'billing-service', ARRAY['finance-automation']),
+        -- ── Event billing (ui-gaps/13-sales-catering.md, UI item 6) ──────────
+        ('billing.event.setup', 'Open the event''s own folio and link it to the booking', 'billing-service', ARRAY['finance-automation']),
+        ('billing.event.post_charges', 'Post an event booking''s derived charges to its folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.no_show.charge', 'Post a no-show penalty charge to the reservation folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.late_checkout.charge', 'Post a tier-based late checkout fee to the reservation folio', 'billing-service', ARRAY['finance-automation']),
         ('billing.tax_exemption.apply', 'Apply a tax exemption certificate to an open folio', 'billing-service', ARRAY['finance-automation']),
@@ -262,8 +252,6 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('commission.statement.generate', 'Generate a commission statement for an agent or period', 'finance-admin-service', ARRAY['finance-automation']),
         ('operations.schedule.create', 'Create a staff schedule entry', 'housekeeping-service', ARRAY['facility-maintenance']),
         ('operations.schedule.update', 'Update an existing staff schedule entry', 'housekeeping-service', ARRAY['facility-maintenance']),
-        ('compliance.breach.report', 'Report a data breach incident', 'core-service', ARRAY['core']),
-        ('compliance.breach.notify', 'Notify authority/subjects of a data breach', 'core-service', ARRAY['core']),
         ('loyalty.program.enroll', 'Enrol a guest into a loyalty program', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.earn', 'Earn loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
         ('loyalty.points.redeem', 'Redeem loyalty points for a guest', 'guests-service', ARRAY['loyalty']),
@@ -309,37 +297,47 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('revenue.recommendation.reject', 'Reject a rate recommendation with reason', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.recommendation.apply', 'Apply an accepted recommendation to live rates', 'revenue-service', ARRAY['revenue-management']),
         ('revenue.recommendation.bulk_approve', 'Bulk-approve multiple rate recommendations', 'revenue-service', ARRAY['revenue-management']),
+        -- Everything from here to the end of the ARA block is handled by
+        -- accounts-command-center-consumer.ts, whose targetServiceId is
+        -- 'accounts-service'. These were seeded as 'billing-service', and a
+        -- consumer drops any message whose metadata.targetService is not its own
+        -- (command-consumer-utils/src/index.ts) — so the primary billing consumer
+        -- accepted them, found no matching case, fell through `default:` and still
+        -- logged "command applied". Every deposit, suspense, group-billing and AR
+        -- command was silently discarded: accepted 202, no row written, nothing on
+        -- the DLQ. Keep the target service here in step with the consumer that
+        -- actually has the `case` for it.
         -- ── ACCT-02: Advance Deposit Lifecycle ──────────────────────────────
-        ('billing.deposit.record',  'Record receipt of an advance deposit against a schedule entry',           'billing-service', ARRAY['finance-automation']),
-        ('billing.deposit.transfer','Transfer advance deposit liability to folio credit at check-in',          'billing-service', ARRAY['finance-automation']),
-        ('billing.deposit.refund',  'Refund an advance deposit (partial or full)',                             'billing-service', ARRAY['finance-automation']),
-        ('billing.deposit.waive',   'Waive a pending deposit schedule entry (no GL movement)',                 'billing-service', ARRAY['finance-automation']),
+        ('billing.deposit.record',  'Record receipt of an advance deposit against a schedule entry',           'accounts-service', ARRAY['finance-automation']),
+        ('billing.deposit.transfer','Transfer advance deposit liability to folio credit at check-in',          'accounts-service', ARRAY['finance-automation']),
+        ('billing.deposit.refund',  'Refund an advance deposit (partial or full)',                             'accounts-service', ARRAY['finance-automation']),
+        ('billing.deposit.waive',   'Waive a pending deposit schedule entry (no GL movement)',                 'accounts-service', ARRAY['finance-automation']),
         -- ── ACCT-03: Suspense Account ────────────────────────────────────────
-        ('billing.suspense.resolve',    'Move a suspense charge to the correct guest folio',                  'billing-service', ARRAY['finance-automation']),
-        ('billing.suspense.write_off',  'Write off an unresolvable suspense item as bad debt',                'billing-service', ARRAY['finance-automation']),
+        ('billing.suspense.resolve',    'Move a suspense charge to the correct guest folio',                  'accounts-service', ARRAY['finance-automation']),
+        ('billing.suspense.write_off',  'Write off an unresolvable suspense item as bad debt',                'accounts-service', ARRAY['finance-automation']),
         -- ── ACCT-17: Group Master Billing ────────────────────────────────────
-        ('billing.group.setup',             'Create master folio and routing rules for a group booking',      'billing-service', ARRAY['finance-automation']),
-        ('billing.group.checkout',          'Close all group folios and finalize group billing',              'billing-service', ARRAY['finance-automation']),
-        ('billing.group.add_reservation',   'Add a reservation to an existing group master folio',           'billing-service', ARRAY['finance-automation']),
+        ('billing.group.setup',             'Create master folio and routing rules for a group booking',      'accounts-service', ARRAY['finance-automation']),
+        ('billing.group.checkout',          'Close all group folios and finalize group billing',              'accounts-service', ARRAY['finance-automation']),
+        ('billing.group.add_reservation',   'Add a reservation to an existing group master folio',           'accounts-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: AR Account Management ─────────────────────────────
-        ('ar.account.create',        'Create a new AR account for a company or travel agent',                 'billing-service', ARRAY['finance-automation']),
-        ('ar.account.update_terms',  'Update credit limit, payment terms, or status on an AR account',        'billing-service', ARRAY['finance-automation']),
+        ('ar.account.create',        'Create a new AR account for a company or travel agent',                 'accounts-service', ARRAY['finance-automation']),
+        ('ar.account.update_terms',  'Update credit limit, payment terms, or status on an AR account',        'accounts-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: City Ledger ────────────────────────────────────────
-        ('ar.city_ledger.transfer',  'Transfer a folio outstanding balance to city ledger',                   'billing-service', ARRAY['finance-automation']),
-        ('ar.city_ledger.write_off', 'Write off a bad-debt city ledger entry',                               'billing-service', ARRAY['finance-automation']),
+        ('ar.city_ledger.transfer',  'Transfer a folio outstanding balance to city ledger',                   'accounts-service', ARRAY['finance-automation']),
+        ('ar.city_ledger.write_off', 'Write off a bad-debt city ledger entry',                               'accounts-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: Aging ──────────────────────────────────────────────
-        ('ar.aging.compute',  'Compute nightly aging snapshot for all open city ledger entries',              'billing-service', ARRAY['finance-automation']),
+        ('ar.aging.compute',  'Compute nightly aging snapshot for all open city ledger entries',              'accounts-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: Dunning ────────────────────────────────────────────
-        ('ar.dunning.trigger',   'Trigger a dunning action (reminder, warning, collections) for an AR account','billing-service', ARRAY['finance-automation']),
-        ('ar.dunning.suppress',  'Suppress dunning for an AR account for a specified number of days',          'billing-service', ARRAY['finance-automation']),
-        ('ar.dunning.escalate',  'Manually escalate dunning level for an AR account (bypass time threshold)', 'billing-service', ARRAY['finance-automation']),
+        ('ar.dunning.trigger',   'Trigger a dunning action (reminder, warning, collections) for an AR account','accounts-service', ARRAY['finance-automation']),
+        ('ar.dunning.suppress',  'Suppress dunning for an AR account for a specified number of days',          'accounts-service', ARRAY['finance-automation']),
+        ('ar.dunning.escalate',  'Manually escalate dunning level for an AR account (bypass time threshold)', 'accounts-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: Cash Application ───────────────────────────────────
-        ('ar.payment.apply',    'Apply an incoming payment to city ledger entries (FIFO or manual)',           'billing-service', ARRAY['finance-automation']),
-        ('ar.payment.unapply',  'Reverse a misapplied cash application',                                     'billing-service', ARRAY['finance-automation']),
+        ('ar.payment.apply',    'Apply an incoming payment to city ledger entries (FIFO or manual)',           'accounts-service', ARRAY['finance-automation']),
+        ('ar.payment.unapply',  'Reverse a misapplied cash application',                                     'accounts-service', ARRAY['finance-automation']),
         -- ── ARA Sprint 1: Disputes ───────────────────────────────────────────
-        ('ar.dispute.raise',     'Raise a dispute on a city ledger entry',                                    'billing-service', ARRAY['finance-automation']),
-        ('ar.dispute.resolve',   'Resolve a dispute and re-open the entry for collection',                    'billing-service', ARRAY['finance-automation']),
-        ('ar.dispute.escalate',  'Escalate a dispute to management or collections',                           'billing-service', ARRAY['finance-automation'])
+        ('ar.dispute.raise',     'Raise a dispute on a city ledger entry',                                    'accounts-service', ARRAY['finance-automation']),
+        ('ar.dispute.resolve',   'Resolve a dispute and re-open the entry for collection',                    'accounts-service', ARRAY['finance-automation']),
+        ('ar.dispute.escalate',  'Escalate a dispute to management or collections',                           'accounts-service', ARRAY['finance-automation'])
 )
 INSERT INTO command_templates (command_name, description, default_target_service, required_modules, metadata)
 SELECT

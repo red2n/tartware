@@ -162,12 +162,12 @@
               <td class="invoice-cell">
                 <div class="invoice-primary-row">
                   <span class="ref-code invoice-ref">{{ displayInvoiceNumber(inv) }}</span>
-                  <span class="badge" [ngClass]="isCreditInvoice(inv) ? 'badge-warning' : 'badge-muted'">{{ inv.invoice_type_display }}</span>
+                  <span class="badge" [ngClass]="isCreditInvoice(inv) ? 'badge-warning' : 'badge-muted'">{{ inv.invoice_type_display | translate }}</span>
                 </div>
                 <div class="invoice-secondary-row">
                   <span>{{ inv.confirmation_number ?? ('No confirmation linked' | translate) }}</span>
                   @if (!inv.invoice_number) {
-                    <span class="text-subtle">Number assigned by backend state transition.</span>
+                    <span class="text-subtle">{{ 'Number assigned by backend state transition.' | translate }}</span>
                   }
                 </div>
               </td>
@@ -184,14 +184,14 @@
                   {{ formatCurrency(inv.total_amount, inv.currency) }}
                 </div>
                 <div class="cell-sub amount-breakdown">
-                  <span>Paid {{ formatCurrency(inv.paid_amount, inv.currency) }}</span>
+                  <span>{{ 'Paid {amount}' | translate:{ amount: formatCurrency(inv.paid_amount, inv.currency) } }}</span>
                   <span [class.cell-negative]="inv.balance_due > 0" [class.cell-positive]="inv.balance_due <= 0">
-                    Balance {{ formatCurrency(inv.balance_due, inv.currency) }}
+                    {{ 'Balance {amount}' | translate:{ amount: formatCurrency(inv.balance_due, inv.currency) } }}
                   </span>
                 </div>
               </td>
               <td>
-                <span class="badge" [ngClass]="statusBadge(inv.status)">{{ statusLabel(inv) }}</span>
+                <span class="badge" [ngClass]="statusBadge(inv.status)">{{ statusLabel(inv) | translate }}</span>
               </td>
               <td class="text-right">
                 <div class="action-btn-group">
@@ -230,7 +230,7 @@
                     <div class="form-grid">
                       <div class="form-group">
                         <label class="field-label">{{ 'Adjustment Amount' | translate }} *</label>
-                        <input type="number" class="field-input field-sm" step="0.01" placeholder="+/- amount"
+                        <input type="number" class="field-input field-sm" step="0.01" [placeholder]="'+/- amount' | translate"
                                [ngModel]="adjustForm().adjustment_amount"
                                (ngModelChange)="adjustForm.set({...adjustForm(), adjustment_amount: $event})" />
                       </div>

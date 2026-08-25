@@ -6,6 +6,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
@@ -28,6 +29,7 @@ const PAGE_SIZE = 20;
 })
 export class ActivityLogComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly router = inject(Router);
@@ -59,8 +61,9 @@ export class ActivityLogComponent {
 		for (const item of items) {
 			if (item.type === "reservation") continue;
 			const resId = item.reservation_id;
-			if (resId && parentMap.has(resId)) {
-				parentMap.get(resId)!.children.push(item);
+			const parent = resId ? parentMap.get(resId) : undefined;
+			if (parent) {
+				parent.children.push(item);
 			} else {
 				result.push(item);
 			}
@@ -73,7 +76,12 @@ export class ActivityLogComponent {
 	readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
 	readonly hasPrev = computed(() => this.page() > 0);
 	readonly hasNext = computed(() => this.page() < this.totalPages() - 1);
-	readonly pageLabel = computed(() => `Page ${this.page() + 1} of ${this.totalPages()}`);
+	readonly pageLabel = computed(() =>
+		this.i18n.t("Page {current} of {total}", {
+			current: this.page() + 1,
+			total: this.totalPages(),
+		}),
+	);
 
 	constructor() {
 		effect(() => {
@@ -105,7 +113,7 @@ export class ActivityLogComponent {
 			this.items.set(result.items);
 			this.total.set(result.total);
 		} catch {
-			this.error.set("Failed to load activity log");
+			this.error.set(this.i18n.t("Failed to load activity log"));
 		} finally {
 			this.loading.set(false);
 			this.ready.set(true);

@@ -83,7 +83,9 @@ export const BillingGlBatchExportCommandSchema = z.object({
 	idempotency_key: z.string().max(120).optional(),
 });
 
-export type BillingGlBatchExportCommand = z.infer<typeof BillingGlBatchExportCommandSchema>;
+export type BillingGlBatchExportCommand = z.infer<
+	typeof BillingGlBatchExportCommandSchema
+>;
 
 /**
  * Create a new fiscal period for a property.

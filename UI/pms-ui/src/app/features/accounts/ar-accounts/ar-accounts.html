@@ -1,0 +1,390 @@
+<app-page-header
+  title="AR accounts"
+  description="Corporate and travel-agent accounts, credit terms and city-ledger exposure.">
+  <button class="btn btn-primary btn-sm" (click)="openCreate()" [disabled]="submitting()">
+    <app-icon name="add_business" /> {{ 'Open account' | translate }}
+  </button>
+</app-page-header>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <app-icon name="account_balance" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ accounts().length }}</div>
+      <div class="kpi-label">{{ 'Accounts' | translate }}</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="payments" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ totalOutstanding() | number: settings.amountDigits() }}</div>
+      <div class="kpi-label">{{ 'Outstanding' | translate }}</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="schedule" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ dso() !== null ? (dso() | number: '1.1-1') : '—' }}</div>
+      <div class="kpi-label">{{ 'DSO' | translate }}{{ dsoNote() ? ' — ' + dsoNote() : '' }}</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="trending_up" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ collectionRate() !== null ? (collectionRate() + '%') : '—' }}</div>
+      <div class="kpi-label">{{ 'Collected within terms' | translate }}</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="running_with_errors" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ uncollected() | number: settings.amountDigits() }}</div>
+      <div class="kpi-label">{{ 'Uncollected' | translate }}</div>
+    </div>
+  </div>
+</div>
+<!-- Over-limit accounts are the ones a folio should stop routing against, so they
+     are named before the table rather than left to be read off a column. -->
+@if (overLimit().length > 0) {
+  <p class="notice notice-error">
+    <app-icon class="notice-icon" name="credit_card_off" />
+    {{ (overLimit().length === 1
+          ? '{count} account over the credit limit'
+          : '{count} accounts over the credit limit') | translate:{ count: overLimit().length } }}</p>
+}
+
+@if (creating()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="add_business" />
+      <h3 class="confirm-title">{{ 'Open an AR account' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      @if (companies().length === 0 && !addingCompany()) {
+        <p class="confirm-note">
+          {{ 'No companies found for this tenant. An AR account belongs to a company — create one to continue.' | translate }}
+        </p>
+      }
+
+      @if (addingCompany()) {
+        <div class="form-section">
+          <div class="form-section-title">{{ 'New company' | translate }}</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label" for="co-name">{{ 'Company name' | translate }}</label>
+              <input class="field-input" id="co-name" type="text" [ngModel]="companyForm().company_name"
+                     (ngModelChange)="companyForm.set({ ...companyForm(), company_name: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="co-type">{{ 'Type' | translate }}</label>
+              <select class="field-input" id="co-type" [ngModel]="companyForm().company_type"
+                      (ngModelChange)="companyForm.set({ ...companyForm(), company_type: $event })">
+                @for (t of companyTypes; track t) {
+                  <option [value]="t">{{ labelFor(t) | translate }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="co-contact">{{ 'Contact name' | translate }}</label>
+              <input class="field-input" id="co-contact" type="text" [ngModel]="companyForm().primary_contact_name"
+                     (ngModelChange)="companyForm.set({ ...companyForm(), primary_contact_name: $event ?? '' })" />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="co-email">{{ 'Contact email' | translate }}</label>
+              <input class="field-input" id="co-email" type="email" [ngModel]="companyForm().primary_contact_email"
+                     (ngModelChange)="companyForm.set({ ...companyForm(), primary_contact_email: $event ?? '' })" />
+            </div>
+          </div>
+          <div class="confirm-actions">
+            <button class="btn btn-outline btn-sm" (click)="cancelAddCompany()" [disabled]="submitting()">
+              {{ 'Cancel' | translate }}
+            </button>
+            <button class="btn btn-primary btn-sm" (click)="submitCompany()"
+                    [disabled]="submitting() || !canSubmitCompany()">
+              {{ submitting() ? ('Creating…' | translate) : ('Create company' | translate) }}
+            </button>
+          </div>
+        </div>
+      }
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="ar-company">{{ 'Company' | translate }}</label>
+          <select class="field-input" id="ar-company" [ngModel]="createForm().company_id"
+                  (ngModelChange)="onCompanyPicked($event ?? '')">
+            <option value="">{{ 'Select a company…' | translate }}</option>
+            @for (c of companies(); track c.company_id) {
+              <option [value]="c.company_id">{{ companyLabel(c) }}</option>
+            }
+          </select>
+          @if (!addingCompany()) {
+            <button class="btn btn-link btn-sm" (click)="openAddCompany()" [disabled]="submitting()">
+              {{ '+ New company' | translate }}
+            </button>
+          }
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-name">{{ 'Account name' | translate }}</label>
+          <input class="field-input" id="ar-name" type="text" [ngModel]="createForm().company_name"
+                 (ngModelChange)="createForm.set({ ...createForm(), company_name: $event ?? '' })"
+                 [placeholder]="'As it should appear on statements' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-limit">{{ 'Credit limit' | translate }}</label>
+          <input class="field-input" id="ar-limit" type="number" min="0" step="0.01" [ngModel]="createForm().credit_limit"
+                 (ngModelChange)="createForm.set({ ...createForm(), credit_limit: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-terms">{{ 'Payment terms' | translate }}</label>
+          <select class="field-input" id="ar-terms" [ngModel]="createForm().payment_terms"
+                  (ngModelChange)="createForm.set({ ...createForm(), payment_terms: $event })">
+            @for (t of paymentTerms; track t) {
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-currency">{{ 'Currency' | translate }}</label>
+          <input class="field-input" id="ar-currency" type="text" maxlength="3" [ngModel]="createForm().currency"
+                 (ngModelChange)="createForm.set({ ...createForm(), currency: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-contact">{{ 'Contact name' | translate }}</label>
+          <input class="field-input" id="ar-contact" type="text" [ngModel]="createForm().contact_name"
+                 (ngModelChange)="createForm.set({ ...createForm(), contact_name: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-email">{{ 'Contact email' | translate }}</label>
+          <input class="field-input" id="ar-email" type="email" [ngModel]="createForm().contact_email"
+                 (ngModelChange)="createForm.set({ ...createForm(), contact_email: $event ?? '' })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="ar-address">{{ 'Billing address' | translate }}</label>
+          <textarea class="field-input" id="ar-address" rows="2" [ngModel]="createForm().billing_address"
+                    (ngModelChange)="createForm.set({ ...createForm(), billing_address: $event ?? '' })"></textarea>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="ar-notes">{{ 'Notes' | translate }}</label>
+          <textarea class="field-input" id="ar-notes" rows="2" [ngModel]="createForm().notes"
+                    (ngModelChange)="createForm.set({ ...createForm(), notes: $event ?? '' })"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelCreate()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitCreate()"
+              [disabled]="submitting() || !canSubmitCreate()">
+        {{ submitting() ? ('Requesting…' | translate) : ('Open account' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (editing(); as account) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="edit" />
+      <h3 class="confirm-title">{{ 'Credit terms — {company}' | translate:{ company: account.company_name } }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'Currently {terms}, limit {limit} {currency}, status {status}. Leave a field blank to keep it as it is.'
+            | translate:{
+                terms: labelFor(account.payment_terms),
+                limit: (num(account.credit_limit) | number: settings.amountDigits()) ?? '',
+                currency: account.currency,
+                status: labelFor(account.account_status)
+              } }}
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="ar-t-limit">{{ 'New credit limit' | translate }}</label>
+          <input class="field-input" id="ar-t-limit" type="number" min="0" step="0.01" [ngModel]="termsForm().credit_limit"
+                 (ngModelChange)="termsForm.set({ ...termsForm(), credit_limit: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-t-terms">{{ 'New payment terms' | translate }}</label>
+          <select class="field-input" id="ar-t-terms" [ngModel]="termsForm().payment_terms"
+                  (ngModelChange)="termsForm.set({ ...termsForm(), payment_terms: $event })">
+            <option value="">{{ 'Unchanged' | translate }}</option>
+            @for (t of paymentTerms; track t) {
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="ar-t-status">{{ 'New status' | translate }}</label>
+          <select class="field-input" id="ar-t-status" [ngModel]="termsForm().status"
+                  (ngModelChange)="termsForm.set({ ...termsForm(), status: $event })">
+            <option value="">{{ 'Unchanged' | translate }}</option>
+            @for (s of accountStatuses; track s) {
+              <option [value]="s">{{ labelFor(s) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="ar-t-notes">{{ 'Reason' | translate }}</label>
+          <textarea class="field-input" id="ar-t-notes" rows="2" [ngModel]="termsForm().notes"
+                    (ngModelChange)="termsForm.set({ ...termsForm(), notes: $event ?? '' })"
+                    [placeholder]="'Why the terms are changing' | translate"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelTerms()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitTerms()"
+              [disabled]="submitting() || !canSubmitTerms()">
+        {{ submitting() ? ('Requesting…' | translate) : ('Update terms' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="ar-f-status">{{ 'Status' | translate }}</label>
+    <select class="field-input" id="ar-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (s of accountStatuses; track s) {
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
+} @else if (accounts().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="account_balance" />
+    <h3>{{ 'No AR accounts' | translate }}</h3>
+    <p>{{ 'Direct bill and city-ledger routing need an account here before checkout can settle to it.' | translate }}</p>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Account' | translate }}</th>
+          <th>{{ 'Company' | translate }}</th>
+          <th>{{ 'Terms' | translate }}</th>
+          <th class="right mono">{{ 'Credit limit' | translate }}</th>
+          <th class="right mono">{{ 'Outstanding' | translate }}</th>
+          <th class="right mono">{{ 'Available' | translate }}</th>
+          <th>{{ 'Dunning' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of accounts(); track a.ar_account_id) {
+          <tr [class.overdue]="num(a.available_credit) < 0">
+            <td class="cell-primary"><strong>{{ a.account_number }}</strong></td>
+            <td>
+              {{ a.company_name }}
+              @if (a.contact_name) {
+                <span class="cell-sub">{{ a.contact_name }}</span>
+              }
+            </td>
+            <td>{{ labelFor(a.payment_terms) | translate }}</td>
+            <td class="right mono">{{ num(a.credit_limit) | number: settings.amountDigits() }} {{ a.currency }}</td>
+            <td class="right mono">{{ num(a.outstanding_balance) | number: settings.amountDigits() }}</td>
+            <td class="right mono">
+              @if (num(a.available_credit) < 0) {
+                <span class="badge badge-danger badge-sm">{{ num(a.available_credit) | number: settings.amountDigits() }}</span>
+              } @else {
+                {{ num(a.available_credit) | number: settings.amountDigits() }}
+              }
+            </td>
+            <td>{{ a.dunning_level ?? 0 }}</td>
+            <td><span [class]="statusClass(a.account_status)">{{ labelFor(a.account_status) | translate }}</span></td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openStatement(a)">{{ 'Statement' | translate }}</button>
+              <button class="btn btn-outline btn-sm" (click)="openTerms(a)">{{ 'Terms' | translate }}</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (statementFor(); as account) {
+  <div class="action-confirm-card">
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="receipt_long" />
+      <h3 class="confirm-title">{{ 'City ledger — {company}' | translate:{ company: account.company_name } }}</h3>
+    </div>
+    <div class="confirm-body">
+      @if (loadingStatement()) {
+        <div class="loading-state">{{ 'Loading statement…' | translate }}</div>
+      } @else if (statement().length === 0) {
+        <p class="confirm-note">{{ 'No city-ledger entries against this account.' | translate }}</p>
+      } @else {
+        <div class="table-container">
+          <table class="table data-table table-compact">
+            <thead>
+              <tr>
+                <th>{{ 'Entry' | translate }}</th>
+                <th>{{ 'Transferred' | translate }}</th>
+                <th>{{ 'Due' | translate }}</th>
+                <th class="right mono">{{ 'Original' | translate }}</th>
+                <th class="right mono">{{ 'Outstanding' | translate }}</th>
+                <th>{{ 'Status' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of statement(); track e.entry_id) {
+                <tr>
+                  <td>{{ e.entry_number }}</td>
+                  <td>{{ e.transfer_date }}</td>
+                  <td>{{ e.due_date }}</td>
+                  <td class="right mono">{{ num(e.original_amount) | number: settings.amountDigits() }}</td>
+                  <td class="right mono">{{ num(e.outstanding_balance) | number: settings.amountDigits() }}</td>
+                  <td>{{ labelFor(e.entry_status) | translate }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="closeStatement()">{{ 'Close' | translate }}</button>
+    </div>
+  </div>
+}
+
+@if (aging().length > 0) {
+  <h3 class="section-header">{{ 'Aging' | translate }}</h3>
+  <div class="table-container">
+    <table class="table data-table table-compact">
+      <thead>
+        <tr>
+          <th>{{ 'Account' | translate }}</th>
+          <th class="right mono">{{ 'Current' | translate }}</th>
+          <th class="right mono">1–30</th>
+          <th class="right mono">31–60</th>
+          <th class="right mono">61–90</th>
+          <th class="right mono">91–120</th>
+          <th class="right mono">120+</th>
+          <th class="right mono">{{ 'Total' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of aging(); track row.ar_account_id) {
+          <tr>
+            <td class="cell-primary">{{ row.company_name }}</td>
+            <td class="right mono">{{ num(row.current_amount) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_1_30) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_31_60) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_61_90) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_91_120) | number: settings.amountDigits() }}</td>
+            <td class="right mono">{{ num(row.bucket_over_120) | number: settings.amountDigits() }}</td>
+            <td class="right mono"><strong>{{ num(row.total_outstanding) | number: settings.amountDigits() }}</strong></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

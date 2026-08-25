@@ -1,0 +1,200 @@
+<app-page-header
+  title="Approvals"
+  description="Four-eyes approval queue for high-risk billing operations, and the flow-guard bypass log.">
+  <button class="btn btn-outline btn-sm" (click)="load(); loadBypasses()" [disabled]="loading()">
+    <app-icon name="refresh" /> {{ 'Refresh' | translate }}
+  </button>
+</app-page-header>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <app-icon name="pending_actions" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ pending().length }}</div>
+      <div class="kpi-label">{{ 'Awaiting decision' | translate }}</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="timer" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ expiringSoon().length }}</div>
+      <div class="kpi-label">{{ 'Expiring within the hour' | translate }}</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <app-icon name="lock_open" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ bypasses().length }}</div>
+      <div class="kpi-label">{{ 'Guard bypasses recorded' | translate }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- A pending request that expires has to be raised again from scratch, so the ones
+     about to lapse are named rather than left to be spotted in the expiry column. -->
+@if (expiringSoon().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="timer" />
+    {{ (expiringSoon().length === 1
+          ? '{count} request expiring within the hour'
+          : '{count} requests expiring within the hour') | translate:{ count: expiringSoon().length } }}</p>
+}
+
+@if (decision(); as d) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon"
+                [name]="d.kind === 'approve' ? 'verified' : d.kind === 'reject' ? 'block' : 'undo'" />
+      <h3 class="confirm-title">
+        {{ d.kind === ('approve' | translate) ? ('Approve' | translate) : d.kind === ('reject' | translate) ? ('Reject' | translate) : ('Cancel' | translate) }}
+        — {{ labelFor(d.request.operation_type) | translate }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'Requested by {requester} on {entityType} {entityId}.'
+            | translate:{
+                requester: d.request.requested_by_name || d.request.requested_by,
+                entityType: d.request.entity_type,
+                entityId: d.request.entity_id
+              } }}
+        @if (d.request.description) {
+          {{ d.request.description }}
+        }
+      </p>
+      @if (payloadText(d.request); as payload) {
+        <!-- What is actually being approved, verbatim — an approval on a summary is
+             not an approval. -->
+        <pre class="payload-block">{{ payload }}</pre>
+      }
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label class="field-label" for="ap-reason">
+            {{ d.kind === ('reject' | translate) ? ('Reason (required)' | translate) : ('Note (optional)' | translate) }}
+          </label>
+          <textarea class="field-input" id="ap-reason" rows="3" [ngModel]="reason()"
+                    (ngModelChange)="reason.set($event ?? '')"
+                    [placeholder]="'Recorded against the decision' | translate"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelDecision()" [disabled]="submitting()">{{ 'Back' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitDecision()"
+              [disabled]="submitting() || !canSubmitDecision()">
+        {{ submitting() ? ('Recording…' | translate) : ('Confirm' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+<h3 class="section-header">{{ 'Pending' | translate }}</h3>
+
+@if (loading()) {
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
+} @else if (pending().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="task_alt" />
+    <h3>{{ 'Nothing awaiting approval' | translate }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Operation' | translate }}</th>
+          <th>{{ 'Entity' | translate }}</th>
+          <th>{{ 'Requested by' | translate }}</th>
+          <th>{{ 'Requested' | translate }}</th>
+          <th>{{ 'Expires in' | translate }}</th>
+          <th>{{ 'Required role' | translate }}</th>
+          <th class="cell-actions">{{ 'Decision' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of pending(); track r.approval_id) {
+          <tr>
+            <td class="cell-primary"><strong>{{ labelFor(r.operation_type) | translate }}</strong></td>
+            <td>
+              {{ r.entity_type }}
+              <span class="cell-sub">{{ r.entity_id }}</span>
+            </td>
+            <td>{{ r.requested_by_name || r.requested_by }}</td>
+            <td>{{ r.created_at | localeDate: 'short' }}</td>
+            <td>
+              @if (hoursToExpiry(r) <= 1) {
+                <span class="badge badge-warning badge-sm">{{ expiryLabel(r) }}</span>
+              } @else {
+                {{ expiryLabel(r) }}
+              }
+            </td>
+            <td>{{ labelFor(r.required_role) | translate }}</td>
+            <td class="cell-actions">
+              @if (isOwnRequest(r)) {
+                <!-- Four-eyes: billing-service rejects self-approval outright. -->
+                <span class="badge badge-muted badge-sm">{{ 'Your request' | translate }}</span>
+                <button class="btn btn-outline btn-sm" (click)="open('cancel', r)">{{ 'Cancel' | translate }}</button>
+              } @else {
+                <button class="btn btn-primary btn-sm" (click)="open('approve', r)">{{ 'Approve' | translate }}</button>
+                <button class="btn btn-outline btn-sm" (click)="open('reject', r)">{{ 'Reject' | translate }}</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<h3 class="section-header">{{ 'Flow-guard bypasses' | translate }}</h3>
+<p class="text-subtle">
+  {{ 'Recorded whenever a flow gate was overridden with' | translate }} <code>force</code>{{ '. These rows were being written with nothing able to read them.' | translate }}
+</p>
+
+@if (loadingBypasses()) {
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
+} @else if (bypasses().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="shield" />
+    <h3>{{ 'No guard bypasses recorded' | translate }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table table-compact">
+      <thead>
+        <tr>
+          <th>{{ 'When' | translate }}</th>
+          <th>{{ 'Flow / gate' | translate }}</th>
+          <th>{{ 'Entity' | translate }}</th>
+          <th>{{ 'Approved by' | translate }}</th>
+          <th>{{ 'Reason' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (b of bypasses(); track bypassKey(b)) {
+          <tr>
+            <td>{{ b.approved_at | localeDate: 'short' }}</td>
+            <td class="cell-primary">
+              {{ labelFor(b.gate_name) | translate }}
+              <span class="cell-sub">{{ labelFor(b.flow_name) | translate }}</span>
+            </td>
+            <td>
+              {{ b.entity_type }}
+              <span class="cell-sub">{{ b.entity_id }}</span>
+            </td>
+            <td>
+              {{ b.approved_by }}
+              <span class="cell-sub">{{ labelFor(b.role_at_approval) | translate }}</span>
+            </td>
+            <td>
+              {{ labelFor(b.reason_code) | translate }}
+              @if (b.reason_notes) {
+                <span class="cell-sub">{{ b.reason_notes }}</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

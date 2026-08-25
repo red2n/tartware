@@ -9,7 +9,7 @@
 @if (showCreate()) {
   <div class="detail-card">
     <h3 class="card-title">
-      {{ (editingId() ? 'Edit webhook' : 'New webhook') | translate }}
+      {{ (editingId() ? ('Edit webhook' | translate) : ('New webhook' | translate)) | translate }}
     </h3>
     <div class="form-grid">
       <div class="form-group">
@@ -35,9 +35,9 @@
         <select class="field-input"
           [ngModel]="form().http_method"
           (ngModelChange)="updateForm('http_method', $event)">
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-          <option value="PATCH">PATCH</option>
+          <option value="POST">{{ 'POST' | translate }}</option>
+          <option value="PUT">{{ 'PUT' | translate }}</option>
+          <option value="PATCH">{{ 'PATCH' | translate }}</option>
         </select>
       </div>
       <div class="form-group">
@@ -45,10 +45,10 @@
         <select class="field-input"
           [ngModel]="form().authentication_type"
           (ngModelChange)="updateForm('authentication_type', $event)">
-          <option value="NONE">None</option>
-          <option value="HMAC">HMAC</option>
-          <option value="BEARER">Bearer</option>
-          <option value="BASIC">Basic</option>
+          <option value="NONE">{{ 'None' | translate }}</option>
+          <option value="HMAC">{{ 'HMAC' | translate }}</option>
+          <option value="BEARER">{{ 'Bearer' | translate }}</option>
+          <option value="BASIC">{{ 'Basic' | translate }}</option>
         </select>
       </div>
       <div class="form-group">
@@ -109,37 +109,37 @@
             </td>
             <td class="cell-notes">{{ w.event_types.join(', ') }}</td>
             <td>
-              @if (w.is_active) { <span class="badge badge-success">Active</span> }
-              @else { <span class="badge">Disabled</span> }
+              @if (w.is_active) { <span class="badge badge-success">{{ 'Active' | translate }}</span> }
+              @else { <span class="badge">{{ 'Disabled' | translate }}</span> }
             </td>
-            <td>{{ w.last_success_at ? (w.last_success_at | date:'short') : '—' }}</td>
-            <td>{{ w.last_failure_at ? (w.last_failure_at | date:'short') : '—' }}</td>
+            <td>{{ w.last_success_at ? (w.last_success_at | localeDate:'short') : '—' }}</td>
+            <td>{{ w.last_failure_at ? (w.last_failure_at | localeDate:'short') : '—' }}</td>
             <td>
-              <span pTooltip="Successes / Failures">
+              <span [pTooltip]="'Successes / Failures' | translate">
                 {{ w.success_count ?? 0 }} / {{ w.failure_count ?? 0 }}
               </span>
             </td>
             <td class="cell-actions">
-              <button class="btn btn-outline btn-xs" (click)="openEdit(w)" pTooltip="Edit">
+              <button class="btn btn-outline btn-xs" (click)="openEdit(w)" [pTooltip]="'Edit' | translate">
                 <app-icon name="edit" />
               </button>
               <button class="btn btn-outline btn-xs" (click)="sendTest(w)"
-                [disabled]="processing() === ('test-' + w.subscription_id)" pTooltip="Send test event">
+                [disabled]="processing() === ('test-' + w.subscription_id)" [pTooltip]="'Send test event' | translate">
                 <app-icon name="send" />
               </button>
               <button class="btn btn-outline btn-xs" (click)="rotateSecret(w)"
-                [disabled]="processing() === ('rotate-' + w.subscription_id)" pTooltip="Rotate signing secret">
+                [disabled]="processing() === ('rotate-' + w.subscription_id)" [pTooltip]="'Rotate signing secret' | translate">
                 <app-icon name="key" />
               </button>
-              <button class="btn btn-outline btn-xs" (click)="showDeliveries(w)" pTooltip="View deliveries">
+              <button class="btn btn-outline btn-xs" (click)="showDeliveries(w)" [pTooltip]="'View deliveries' | translate">
                 <app-icon name="history" />
               </button>
               <button class="btn btn-outline btn-xs" (click)="replayFailures(w)"
-                [disabled]="processing() === ('replay-' + w.subscription_id)" pTooltip="Replay failed deliveries">
+                [disabled]="processing() === ('replay-' + w.subscription_id)" [pTooltip]="'Replay failed deliveries' | translate">
                 <app-icon name="replay" />
               </button>
               <button class="btn btn-outline btn-xs btn-danger" (click)="deleteWebhook(w)"
-                [disabled]="processing() === w.subscription_id" pTooltip="Delete">
+                [disabled]="processing() === w.subscription_id" [pTooltip]="'Delete' | translate">
                 <app-icon name="delete" />
               </button>
             </td>
@@ -178,11 +178,11 @@
           <tbody>
             @for (d of deliveries(); track d.delivery_id) {
               <tr>
-                <td>{{ d.created_at ? (d.created_at | date:'short') : '—' }}</td>
+                <td>{{ d.created_at ? (d.created_at | localeDate:'short') : '—' }}</td>
                 <td>{{ d.event_type ?? '—' }}</td>
                 <td>
-                  @if (d.status === 'SUCCESS') { <span class="badge badge-success">Success</span> }
-                  @else if (d.status === 'FAILED') { <span class="badge badge-error">Failed</span> }
+                  @if (d.status === 'SUCCESS') { <span class="badge badge-success">{{ 'Success' | translate }}</span> }
+                  @else if (d.status === 'FAILED') { <span class="badge badge-error">{{ 'Failed' | translate }}</span> }
                   @else { <span class="badge">{{ d.status ?? '—' }}</span> }
                 </td>
                 <td>{{ d.http_status_code ?? '—' }}</td>

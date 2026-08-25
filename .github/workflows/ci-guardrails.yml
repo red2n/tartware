@@ -1,0 +1,107 @@
+name: Guardrails
+
+# The repo's cross-cutting checks, on every branch.
+#
+# Every other workflow triggers on `[main, develop, deployment]` (or a filtered
+# pull_request), so a feature branch with no PR open runs nothing. That is how a
+# statement naming a column the table does not have — every PUT and DELETE on a
+# booking source returning 500 — survived six days of daily commits: the check
+# that catches it exists, is wired into build.yml, and was never reached.
+#
+# So this workflow deliberately has no branch filter. It is kept to the checks
+# that need neither a database nor a running stack, and the whole job is a few
+# seconds of work after the caches are warm; the heavy matrix build stays in
+# build.yml on main/develop.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A branch only needs the guardrails for its newest commit.
+  group: guardrails-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guardrails:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `nx run-many -t biome` runs the projects that HAVE a biome target and
+      # says nothing about the rest, so a project added without one is invisible:
+      # `pnpm run check` goes green while that code is never inspected. UI/pms-ui
+      # and UI/guest-portal sat unchecked that way. Asserts coverage instead of
+      # inferring it from a green run. Needs no build, so it runs first.
+      - name: Guardrail coverage
+        run: pnpm run check:guardrails
+
+      # Lint, formatting and dead-code checks for every project that has them.
+      # These lived only in the per-package workflows, which fire on
+      # [main, develop, deployment] or a filtered pull_request — so on a feature
+      # branch with no PR they ran on nothing, which is the same gap this
+      # workflow exists to close. Verified to need no build: both pass with
+      # schema/dist absent, so they sit above the schemas step deliberately.
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Biome
+        run: pnpm run biome
+
+      - name: Knip
+        run: pnpm run knip
+
+      # The conformance suites import from @tartware/schemas, so its dist has to
+      # exist before they run. Nothing else here needs a build.
+      - name: Build schemas
+        run: npx nx run @tartware/schemas:build
+
+      # Binds every SQL string in Apps/ to the DDL in scripts/tables/. Self-tests
+      # before it reports: a scanner that has stopped meaning something exits 2
+      # rather than printing a verdict.
+      - name: SQL contracts
+        run: pnpm run sql:contracts
+
+      # Gateway ↔ downstream routing: a proxied path with no handler, a wildcard
+      # advertising writes nothing implements, a route gated on a module id that
+      # is not in MODULE_IDS. Each of these has shipped at least once.
+      - name: Gateway conformance
+        run: npx nx run @tartware/api-gateway:test
+
+      # Command catalog ↔ flow registry ↔ payload validators ↔ consumers: a
+      # command missing any one of those links is accepted and silently dropped.
+      #
+      # Also outbox enqueue ↔ dispatcher, added after two live instances of the
+      # same shape: an event committed inside a successful transaction whose
+      # aggregate_type no dispatcher claims. The write succeeds, the API returns
+      # 200, and the consumer never hears anything.
+      - name: Command catalog conformance
+        run: npx nx run @tartware/command-consumer-utils:test

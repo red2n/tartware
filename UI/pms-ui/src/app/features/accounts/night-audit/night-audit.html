@@ -24,7 +24,7 @@
           <app-icon name="calendar_today" />
           <div>
             <div class="status-date">{{ formatDate(sd.businessDate) }}</div>
-            <div class="status-property">{{ sd.propertyName ?? 'Current Property' }}</div>
+            <div class="status-property">{{ sd.propertyName ?? ('Current Property' | translate) }}</div>
           </div>
         </div>
         <div class="status-badges">
@@ -206,7 +206,7 @@
           <app-icon [name]="s.isBalanced ? 'check_circle' : 'warning'" />
           <div class="kpi-body">
             <div class="kpi-value">{{ formatCurrency(s.variance, 'USD') }}</div>
-            <div class="kpi-label">{{ s.isBalanced ? 'Balanced' : 'Variance' | translate }}</div>
+            <div class="kpi-label">{{ s.isBalanced ? ('Balanced' | translate) : 'Variance' | translate }}</div>
           </div>
         </div>
       </div>
@@ -603,7 +603,7 @@
                   <app-icon class="expand-icon" [class.rotated]="expandedRunId() === run.audit_run_id" name="expand_more" />
                 </td>
                 <td>{{ formatDate(run.business_date) }}</td>
-                <td><span [class]="statusBadgeClass(run.audit_status)">{{ run.audit_status_display }}</span></td>
+                <td><span [class]="statusBadgeClass(run.audit_status)">{{ run.audit_status_display | translate }}</span></td>
                 <td>{{ formatDate(run.started_at) }}</td>
                 <td>{{ formatDuration(run.duration_seconds) }}</td>
                 <td>

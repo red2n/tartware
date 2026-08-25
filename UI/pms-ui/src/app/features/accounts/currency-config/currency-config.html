@@ -1,0 +1,240 @@
+<div class="currency-config-page">
+  <app-page-header
+    title="Currency Configuration"
+    description="Base currencies per property and the daily FX rates used to convert postings">
+    <button class="btn btn-primary btn-sm" (click)="openForm()">
+      <app-icon name="add" />
+      {{ 'Add Rate' | translate }}
+    </button>
+    <button class="btn btn-invisible" (click)="loadRates()" [pTooltip]="'Refresh' | translate">
+      <app-icon name="refresh" />
+    </button>
+  </app-page-header>
+
+  <!-- ═══ BASE CURRENCY SUMMARY ═══ -->
+  <div class="detail-card">
+    <div class="card-body">
+      <div class="stat-row stat-row-primary">
+        <span class="stat-row-label">{{ 'Posting currency' | translate }}</span>
+        <span class="stat-row-value mono">{{ baseCurrency() }} — {{ currencyName(baseCurrency()) }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-row-label">{{ 'Minor unit' | translate }}</span>
+        <span class="stat-row-value">{{ exponentLabel(baseCurrency()) }}</span>
+      </div>
+      <p class="field-hint">
+        {{ 'Set on the active property and used for every amount on screen, following the ISO 4217 minor unit for this currency.' | translate }}
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══ MISSING RATE WARNING ═══ -->
+  @if (missingRates().length > 0) {
+    <app-callout variant="warning" [title]="'Missing exchange rates' | translate">
+      <p>
+        {{ 'These property currencies have no rate to' | translate }} {{ baseCurrency() }}
+        {{ 'for' | translate }} {{ rateDate() }}.
+        {{ 'Postings in them will be recorded at a rate of 1.0 — an amount in the property currency will land in the ledger unconverted.' | translate }}
+      </p>
+      <div callout-actions>
+        @for (m of missingRates(); track m.propertyId) {
+          <button class="btn btn-sm" (click)="fixMissing(m)">
+            {{ m.currency }} → {{ baseCurrency() }}
+          </button>
+        }
+      </div>
+    </app-callout>
+  }
+
+  <!-- ═══ PROPERTY BASE CURRENCIES ═══ -->
+  <h2 class="section-header">{{ 'Property Base Currencies' | translate }}</h2>
+  <div class="table-container">
+    <table class="table table-compact" role="grid">
+      <thead>
+        <tr>
+          <th>{{ 'Property' | translate }}</th>
+          <th>{{ 'Currency' | translate }}</th>
+          <th>{{ 'Minor unit' | translate }}</th>
+          <th>{{ 'Rate to' | translate }} {{ baseCurrency() }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of propertyCurrencies(); track p.propertyId) {
+          <tr [class.row-selected]="p.isActive">
+            <td>
+              <strong>{{ p.propertyName }}</strong>
+              @if (p.isActive) { <span class="badge badge-accent">{{ 'Active' | translate }}</span> }
+            </td>
+            <td class="mono">{{ p.currency }} <span class="text-muted">— {{ currencyName(p.currency) }}</span></td>
+            <td class="text-muted">{{ exponentLabel(p.currency) }}</td>
+            <td>
+              @if (p.currency === baseCurrency()) {
+                <span class="text-muted">{{ 'same currency' | translate }}</span>
+              } @else if (p.hasRate) {
+                <span class="badge badge-success">{{ 'Configured' | translate }}</span>
+              } @else {
+                <button class="btn btn-outline btn-sm" (click)="fixMissing(p)">
+                  {{ 'Set rate' | translate }}
+                </button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="text-muted">{{ 'No properties found for this tenant.' | translate }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ RATE ENTRY FORM ═══ -->
+  @if (showForm()) {
+    <div class="inline-form" appUnsavedGuard appSubmitOnEnter>
+      <h4>{{ 'Exchange Rate' | translate }} — {{ rateDate() }}</h4>
+      <p class="form-hint">
+        {{ 'Re-saving a pair for the same date corrects the existing rate rather than adding a second one. Postings already made keep the rate they locked at the time.' | translate }}
+      </p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="field-label" for="fx-from">{{ 'From' | translate }}</label>
+          <select id="fx-from" class="field-input field-sm" [ngModel]="formFrom()" (ngModelChange)="formFrom.set($event)">
+            @for (c of currencies; track c.code) {
+              <option [value]="c.code">{{ c.code }} — {{ c.name | translate }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="field-label" for="fx-to">{{ 'To' | translate }}</label>
+          <select id="fx-to" class="field-input field-sm" [ngModel]="formTo()" (ngModelChange)="formTo.set($event)">
+            @for (c of currencies; track c.code) {
+              <option [value]="c.code">{{ c.code }} — {{ c.name | translate }}</option>
+            }
+          </select>
+          <button class="btn btn-invisible btn-sm" (click)="swapPair()" [pTooltip]="'Swap and invert' | translate">
+            <app-icon name="swap_horiz" />
+            {{ 'Swap' | translate }}
+          </button>
+        </div>
+
+        <div class="form-group" [class.field-error]="formFrom() === formTo()">
+          <label class="field-label" for="fx-rate">{{ 'Rate' | translate }} *</label>
+          <input id="fx-rate" type="number" step="0.000001" min="0" class="field-input field-sm mono"
+                 [placeholder]="'e.g. 1.090000' | translate"
+                 [ngModel]="formRate()" (ngModelChange)="formRate.set($event)" />
+          <span class="field-hint">{{ '1 unit of the From currency, expressed in the To currency. Stored to 6 decimal places.' | translate }}</span>
+        </div>
+
+        <div class="form-group">
+          <label class="field-label" for="fx-ref">{{ 'Source reference' | translate }}</label>
+          <input id="fx-ref" type="text" class="field-input field-sm"
+                 [placeholder]="'e.g. ECB daily fixing' | translate"
+                 [ngModel]="formSourceRef()" (ngModelChange)="formSourceRef.set($event)" />
+        </div>
+      </div>
+
+      @if (formFrom() === formTo()) {
+        <p class="field-hint field-hint-error">{{ 'From and To must be different currencies.' | translate }}</p>
+      }
+
+      @if (preview(); as pv) {
+        <p class="field-hint">
+          {{ pv.amount }} {{ pv.from }} =
+          <strong class="mono">{{ pv.converted }} {{ pv.to }}</strong>
+          ({{ 'rounded to' | translate }} {{ exponentLabel(pv.to) }})
+        </p>
+      }
+
+      <div class="form-actions">
+        <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelForm()" [disabled]="saving()">
+          {{ 'Cancel' | translate }}
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="saveRate()" [disabled]="saving() || !formValid()">
+          @if (saving()) { <p-progressSpinner [style]="{ width: '14px', height: '14px' }" /> }
+          {{ 'Save Rate' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ RATE LIST ═══ -->
+  <h2 class="section-header">{{ 'Exchange Rates' | translate }}</h2>
+
+  <div class="filter-bar">
+    <button class="btn btn-invisible btn-sm" (click)="shiftDate(-1)" [pTooltip]="'Previous day' | translate">
+      <app-icon name="chevron_left" />
+    </button>
+    <input type="date" class="field-input field-sm" [ngModel]="rateDate()" (ngModelChange)="rateDate.set($event)" />
+    <button class="btn btn-invisible btn-sm" (click)="shiftDate(1)" [pTooltip]="'Next day' | translate">
+      <app-icon name="chevron_right" />
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="today()">{{ 'Today' | translate }}</button>
+  </div>
+
+  @defer (when dataReady(); prefetch on idle) {
+    @if (error(); as err) {
+      <div class="empty-state">
+        <app-icon name="error_outline" />
+        <span>{{ err }}</span>
+      </div>
+    } @else if (rates().length === 0) {
+      <div class="empty-state">
+        <app-icon class="empty-icon" name="currency_exchange" />
+        <span>{{ 'No exchange rates recorded for this date.' | translate }}</span>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table class="table table-compact" role="grid">
+          <thead>
+            <tr>
+              <th>{{ 'Pair' | translate }}</th>
+              <th class="text-right">{{ 'Rate' | translate }}</th>
+              <th>{{ 'Example' | translate }}</th>
+              <th>{{ 'Source' | translate }}</th>
+              <th>{{ 'Scope' | translate }}</th>
+              <th class="text-right">{{ 'Actions' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rates(); track r.rate_id) {
+              <tr>
+                <td class="mono"><strong>{{ r.from_currency }} → {{ r.to_currency }}</strong></td>
+                <td class="text-right mono">{{ r.rate }}</td>
+                <td class="text-muted mono">{{ sampleConversion(r) }}</td>
+                <td>
+                  {{ r.rate_source }}
+                  @if (r.rate_source_ref) { <span class="text-muted">— {{ r.rate_source_ref }}</span> }
+                </td>
+                <td>
+                  @if (isGlobal(r)) {
+                    <span class="badge badge-muted" [pTooltip]="'Applies to all tenants unless overridden' | translate">{{ 'Global' | translate }}</span>
+                  } @else {
+                    <span class="badge badge-accent">{{ 'Tenant' | translate }}</span>
+                  }
+                </td>
+                <td class="text-right">
+                  @if (!isGlobal(r)) {
+                    <button class="btn btn-outline btn-sm" (click)="editRate(r)" [pTooltip]="'Correct rate' | translate">
+                      <app-icon name="edit" />
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @placeholder {
+    <div class="placeholder-table">
+      @for (_ of [1,2,3,4]; track $index) {
+        <div class="placeholder-row">
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--xs"></div>
+          <div class="placeholder-cell placeholder-cell--md"></div>
+          <div class="placeholder-cell placeholder-cell--sm"></div>
+          <div class="placeholder-cell placeholder-cell--badge"></div>
+        </div>
+      }
+    </div>
+  }
+</div>

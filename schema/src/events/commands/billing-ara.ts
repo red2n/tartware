@@ -35,7 +35,9 @@ export const ArAccountCreateCommandSchema = z.object({
 	idempotency_key: z.string().max(120).optional(),
 });
 
-export type ArAccountCreateCommand = z.infer<typeof ArAccountCreateCommandSchema>;
+export type ArAccountCreateCommand = z.infer<
+	typeof ArAccountCreateCommandSchema
+>;
 
 /**
  * Update credit limit and/or payment terms on an existing AR account.

@@ -1,4 +1,5 @@
 import { toNumberOrFallback } from "@tartware/config";
+import type { IncidentStatusInput, IncidentWriteInput } from "@tartware/schemas";
 import {
   type DeepCleanDueItem,
   DeepCleanDueItemSchema,
@@ -7,6 +8,9 @@ import {
   type HousekeepingTaskListItem,
   HousekeepingTaskListItemSchema,
   type HousekeepingTaskRow,
+  type IncidentReportDetail,
+  type IncidentReportDetailRow,
+  IncidentReportDetailSchema,
   type IncidentReportListItem,
   IncidentReportListItemSchema,
   type IncidentReportRow,
@@ -14,6 +18,7 @@ import {
   MaintenanceRequestListItemSchema,
   type MaintenanceRequestRow,
 } from "@tartware/schemas";
+
 import { query } from "../lib/db.js";
 import {
   DEEP_CLEAN_DUE_SQL,
@@ -443,13 +448,43 @@ export const listIncidentReports = async (options: {
 };
 
 /**
+ * Map the by-id row, which carries the narrative columns the list shape omits.
+ * Reusing the list mapper here is what made an incident's description, the
+ * actions taken and the closure notes unreadable through the product.
+ */
+const mapIncidentReportDetailRow = (row: IncidentReportDetailRow): IncidentReportDetail => {
+  return IncidentReportDetailSchema.parse({
+    ...mapIncidentReportRow(row),
+    incident_description: row.incident_description,
+    immediate_actions_taken: row.immediate_actions_taken,
+    discovered_by_name: row.discovered_by_name,
+    guest_name: row.guest_name,
+    injury_details: row.injury_details,
+    damage_description: row.damage_description,
+    investigation_findings: row.investigation_findings,
+    corrective_actions: row.corrective_actions,
+    follow_up_required: row.follow_up_required,
+    follow_up_actions: row.follow_up_actions,
+    // `toIsoString` answers `undefined` for a null column while the schema
+    // declares `closed_at` as `.nullable()` — which accepts null, not undefined
+    // — so every incident that had not been closed failed its own response
+    // parse with "closed_at Required", *after* the insert had committed. An open
+    // incident has a known absence of a closing time, not a missing field. Same
+    // slip as `cancellation_date` in booking-config/event.ts; found by
+    // http_test/smoke-operations.sh, 2026-08-19.
+    closed_at: toIsoString(row.closed_at) ?? null,
+    closure_notes: row.closure_notes,
+  });
+};
+
+/**
  * Get a single incident report by ID.
  */
 export const getIncidentReportById = async (options: {
   incidentId: string;
   tenantId: string;
-}): Promise<IncidentReportListItem | null> => {
-  const { rows } = await query<IncidentReportRow>(INCIDENT_REPORT_BY_ID_SQL, [
+}): Promise<IncidentReportDetail | null> => {
+  const { rows } = await query<IncidentReportDetailRow>(INCIDENT_REPORT_BY_ID_SQL, [
     options.incidentId,
     options.tenantId,
   ]);
@@ -459,5 +494,189 @@ export const getIncidentReportById = async (options: {
     return null;
   }
 
-  return mapIncidentReportRow(row);
+  return mapIncidentReportDetailRow(row);
+};
+
+// =====================================================
+// INCIDENT REPORTS — WRITE PATH
+//
+// The register was read-only: two GETs over a table nothing could write to, so
+// incidents were recorded on paper and the table stayed empty. `operations.incident.report`
+// is catalogued with a payload schema and a validator but has no consumer, and per
+// ui-gaps/18-write-path-gap.md this is a single-service, single-table write with no
+// fan-out — so it is plain HTTP and that catalog row should be dropped rather than
+// implemented. See ui-gaps/06-incidents.md.
+// =====================================================
+
+/** `INC-YYYYMMDD-XXXX`, matching the police-report and folio numbering style. */
+const buildIncidentNumber = (): string => {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `INC-${datePart}-${random}`;
+};
+
+/**
+ * Report an incident.
+ *
+ * `created_by` is NOT NULL on this table, so an authenticated actor is required —
+ * the route rejects the request rather than inventing a placeholder, because the
+ * whole point of an incident record is knowing who filed it.
+ */
+export const createIncidentReport = async (
+  tenantId: string,
+  input: IncidentWriteInput,
+  actorId: string,
+): Promise<IncidentReportDetail | null> => {
+  const { rows } = await query<{ incident_id: string }>(
+    `
+      INSERT INTO public.incident_reports (
+        tenant_id, property_id, incident_number,
+        incident_title, incident_type, incident_category, severity, severity_score,
+        incident_date, incident_time, incident_datetime,
+        incident_location, room_number, area_name,
+        incident_description, immediate_actions_taken,
+        incident_status,
+        guest_involved, staff_involved, injury_severity, police_notified,
+        discovered_by, discovered_by_name,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid, $3,
+        $4, $5, $6, $7, $8,
+        $9::date, $10::time, ($9::date + $10::time) AT TIME ZONE 'UTC',
+        $11, $12, $13,
+        $14, $15,
+        'reported',
+        COALESCE($16, false), COALESCE($17, false), $18, COALESCE($19, false),
+        $20::uuid, $21,
+        $20::uuid, $20::uuid
+      )
+      RETURNING incident_id
+    `,
+    [
+      tenantId,
+      input.propertyId,
+      buildIncidentNumber(),
+      input.incidentTitle,
+      input.incidentType,
+      input.incidentCategory ?? null,
+      input.severity,
+      input.severityScore ?? null,
+      input.incidentDate,
+      input.incidentTime,
+      input.incidentLocation,
+      input.roomNumber ?? null,
+      input.areaName ?? null,
+      input.incidentDescription,
+      input.immediateActionsTaken,
+      input.guestInvolved ?? null,
+      input.staffInvolved ?? null,
+      input.injurySeverity ?? null,
+      input.policeNotified ?? null,
+      actorId,
+      input.discoveredByName ?? null,
+    ],
+  );
+
+  const incidentId = rows[0]?.incident_id;
+  if (!incidentId) return null;
+  return getIncidentReportById({ incidentId, tenantId });
+};
+
+/** Correct an incident. Absent fields keep their stored value. */
+export const updateIncidentReport = async (
+  tenantId: string,
+  incidentId: string,
+  input: Partial<IncidentWriteInput>,
+  actorId: string,
+): Promise<IncidentReportDetail | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.incident_reports
+      SET
+        incident_title = COALESCE($3, incident_title),
+        incident_type = COALESCE($4, incident_type),
+        incident_category = COALESCE($5, incident_category),
+        severity = COALESCE($6, severity),
+        severity_score = COALESCE($7, severity_score),
+        incident_location = COALESCE($8, incident_location),
+        room_number = COALESCE($9, room_number),
+        area_name = COALESCE($10, area_name),
+        incident_description = COALESCE($11, incident_description),
+        immediate_actions_taken = COALESCE($12, immediate_actions_taken),
+        guest_involved = COALESCE($13, guest_involved),
+        staff_involved = COALESCE($14, staff_involved),
+        injury_severity = COALESCE($15, injury_severity),
+        police_notified = COALESCE($16, police_notified),
+        updated_at = NOW(),
+        updated_by = $17::uuid
+      WHERE tenant_id = $1::uuid
+        AND incident_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      tenantId,
+      incidentId,
+      input.incidentTitle ?? null,
+      input.incidentType ?? null,
+      input.incidentCategory ?? null,
+      input.severity ?? null,
+      input.severityScore ?? null,
+      input.incidentLocation ?? null,
+      input.roomNumber ?? null,
+      input.areaName ?? null,
+      input.incidentDescription ?? null,
+      input.immediateActionsTaken ?? null,
+      input.guestInvolved ?? null,
+      input.staffInvolved ?? null,
+      input.injurySeverity ?? null,
+      input.policeNotified ?? null,
+      actorId,
+    ],
+  );
+
+  if (!rowCount) return null;
+  return getIncidentReportById({ incidentId, tenantId });
+};
+
+/**
+ * Move an incident through its status.
+ *
+ * `resolved_at` is stamped by the terminal statuses so "how long was this open"
+ * stays answerable without a second field for the operator to remember.
+ */
+export const updateIncidentStatus = async (
+  tenantId: string,
+  incidentId: string,
+  input: IncidentStatusInput,
+  actorId: string,
+): Promise<IncidentReportDetail | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.incident_reports
+      SET
+        incident_status = $3::text,
+        closure_notes = COALESCE($4, closure_notes),
+        -- The table models closure as closed/closed_at/closed_by rather than a
+        -- resolved_at timestamp, so a terminal status stamps all three. Verified
+        -- against the live columns: there is no resolution_notes or resolved_at.
+        closed = CASE WHEN $3::text IN ('resolved', 'closed') THEN true ELSE closed END,
+        closed_at = CASE
+          WHEN $3::text IN ('resolved', 'closed') THEN COALESCE(closed_at, NOW())
+          ELSE closed_at
+        END,
+        closed_by = CASE
+          WHEN $3::text IN ('resolved', 'closed') THEN COALESCE(closed_by, $5::uuid)
+          ELSE closed_by
+        END,
+        updated_at = NOW(),
+        updated_by = $5::uuid
+      WHERE tenant_id = $1::uuid
+        AND incident_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [tenantId, incidentId, input.incidentStatus, input.closureNotes ?? null, actorId],
+  );
+
+  if (!rowCount) return null;
+  return getIncidentReportById({ incidentId, tenantId });
 };

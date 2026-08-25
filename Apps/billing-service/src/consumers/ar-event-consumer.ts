@@ -155,7 +155,7 @@ const processEvent = async (event: z.infer<typeof ReservationEventSchema>): Prom
 
   // Handle reservation.updated events
   if (event.metadata.type === "reservation.updated") {
-    const payload = event.payload as any;
+    const payload = event.payload as Record<string, unknown>;
     const classified = classifyEvent(payload);
 
     if (classified === "reservation.checked_out") {
@@ -258,7 +258,7 @@ export const startArEventConsumer = async (): Promise<void> => {
         const eventType = event.metadata.type;
 
         try {
-          await processWithRetry(async () => processEvent(event!), {
+          await processWithRetry(async () => processEvent(event as NonNullable<typeof event>), {
             maxRetries: 5,
             baseDelayMs: 1000,
             delayScheduleMs: [1000, 2000, 5000, 10000, 20000],
@@ -268,19 +268,23 @@ export const startArEventConsumer = async (): Promise<void> => {
                   attempt: ctx.attempt,
                   delayMs: ctx.delayMs,
                   err: ctx.error,
-                  reservationId: (event?.payload as any)?.reservation_id,
+                  reservationId: (event?.payload as { reservation_id?: string } | undefined)
+                    ?.reservation_id,
                 },
                 "AR event consumer retry triggered",
               );
             },
-            isRetryable: (err: any) => {
-              const code = String(err.code || "");
+            isRetryable: (err: unknown) => {
+              // Postgres driver errors carry `code`/`message`; narrow once rather
+              // than typing the parameter as `any`.
+              const e = err as { code?: string; message?: string };
+              const code = String(e.code || "");
               return (
                 code.startsWith("08") ||
                 code === "40001" ||
                 code === "57P01" ||
-                err.message?.includes("deadlock") ||
-                err.message?.includes("ECONNREFUSED")
+                e.message?.includes("deadlock") === true ||
+                e.message?.includes("ECONNREFUSED") === true
               );
             },
           });
@@ -288,14 +292,19 @@ export const startArEventConsumer = async (): Promise<void> => {
           const durationSeconds = (Date.now() - startTime) / 1000;
           observeCommandDuration(eventType, durationSeconds);
           recordCommandOutcome(eventType, "success");
-        } catch (err: any) {
+        } catch (err: unknown) {
           const durationSeconds = (Date.now() - startTime) / 1000;
           observeCommandDuration(eventType, durationSeconds);
           recordCommandOutcome(eventType, "handler_error");
           recordDlqEvent(err instanceof Error ? err.message : String(err));
 
           logger.error(
-            { err, offset: message.offset, reservationId: (event?.payload as any)?.reservation_id },
+            {
+              err,
+              offset: message.offset,
+              reservationId: (event?.payload as { reservation_id?: string } | undefined)
+                ?.reservation_id,
+            },
             "AR event consumer: failed to process event after retries. Routing to DLQ.",
           );
 
@@ -308,7 +317,7 @@ export const startArEventConsumer = async (): Promise<void> => {
               attempts: 6,
               failureReason: "HANDLER_FAILURE",
               error: err,
-              envelope: event as any,
+              envelope: event as unknown as Record<string, unknown>,
             });
 
             await dlqProducer?.publishDlqEvent({

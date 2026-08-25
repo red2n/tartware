@@ -6,6 +6,7 @@ import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { ApiService, ApiValidationError } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { DialogShellComponent } from "../../../shared/components/dialog-shell/dialog-shell";
 import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
@@ -24,14 +25,13 @@ import { PACKAGE_TYPE_OPTIONS } from "../package-constants";
 })
 export class CreatePackageDialogComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialogRef = inject(DynamicDialogRef);
 
 	readonly saving = signal(false);
 	readonly error = signal<string | null>(null);
-
-	private readonly dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
 	packageName = "";
 	packageCode = "";
@@ -158,7 +158,7 @@ export class CreatePackageDialogComponent {
 			if (e instanceof ApiValidationError) {
 				this.error.set(e.message);
 			} else {
-				this.error.set(e instanceof Error ? e.message : "Failed to create package");
+				this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to create package"));
 			}
 		} finally {
 			this.saving.set(false);

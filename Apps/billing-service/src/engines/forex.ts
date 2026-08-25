@@ -6,6 +6,7 @@
  */
 
 import type { ForexConvertInput, ForexConvertOutput } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -34,8 +35,12 @@ export function convertCurrency(input: ForexConvertInput): ForexConvertOutput {
 
   const converted = new Decimal(input.amount).times(effectiveRate);
 
+  // The result is money in `to_currency`, so it rounds to that currency's ISO
+  // 4217 exponent — 0 places for JPY, 3 for KWD — not a fixed 2.
+  const toExponent = getCurrencyExponent(input.to_currency);
+
   return {
-    converted_amount: converted.toDecimalPlaces(2).toNumber(),
+    converted_amount: converted.toDecimalPlaces(toExponent).toNumber(),
     effective_rate: effectiveRate.toDecimalPlaces(6).toNumber(),
     surcharge_applied: surchargeApplied.toDecimalPlaces(2).toNumber(),
   };

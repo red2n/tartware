@@ -5,8 +5,10 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
+import { SettingsService } from "../../../core/settings/settings.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
 import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
@@ -37,6 +39,8 @@ import { ToastService } from "../../../shared/toast/toast.service";
 })
 export class RoomTypesComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
+	readonly settings = inject(SettingsService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(AppDialogService);
@@ -127,7 +131,7 @@ export class RoomTypesComponent {
 			const roomTypes = await this.api.get<RoomTypeGridItem[]>("/room-types/grid", params);
 			this.roomTypes.set(roomTypes);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load room types");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load room types"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -139,7 +143,7 @@ export class RoomTypesComponent {
 				const ref = this.dialog.open(CreateRoomTypeDialogComponent);
 				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
-						this.toast.success("Room type created successfully.");
+						this.toast.success(this.i18n.t("Room type created successfully."));
 						this.loadRoomTypes();
 					}
 				});
@@ -155,7 +159,7 @@ export class RoomTypesComponent {
 				});
 				ref?.onClose.subscribe((saved: boolean) => {
 					if (saved) {
-						this.toast.success("Room type updated successfully.");
+						this.toast.success(this.i18n.t("Room type updated successfully."));
 						this.loadRoomTypes();
 					}
 				});
@@ -168,20 +172,22 @@ export class RoomTypesComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		if (!confirm(`Delete room type "${rt.type_name}"?`)) return;
+		if (!confirm(this.i18n.t('Delete room type "{name}"?', { name: rt.type_name }))) return;
 
 		try {
 			await this.api.delete(`/room-types/${rt.room_type_id}`, {
 				tenant_id: tenantId,
 			});
-			this.toast.success("Room type deleted.");
+			this.toast.success(this.i18n.t("Room type deleted."));
 			this.loadRoomTypes();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to delete room type");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to delete room type"));
 		}
 	}
 
 	currencyLabel(amount: number, currency?: string): string {
-		return `${currency ?? "USD"} ${amount.toFixed(2)}`;
+		// Intl applies the currency's own ISO 4217 exponent, so a JPY rate reads
+		// ¥12,000 rather than "JPY 12000.00" and a KWD rate keeps three decimals.
+		return this.settings.formatCurrency(amount, currency);
 	}
 }

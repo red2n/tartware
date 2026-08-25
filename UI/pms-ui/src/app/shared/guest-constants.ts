@@ -1,3 +1,11 @@
+/**
+ * Guest reference data (titles, VIP tiers, loyalty tiers, nationalities).
+ *
+ * Staged ahead of its consumer: the guest profile needs passport / visa /
+ * nationality fields before police reporting can be built (see
+ * `ui-gaps/02-police-reports.md`). Listed in `knip.json` `ignore` so the
+ * unused-file check does not delete it before that screen lands.
+ */
 export const GUEST_TITLES = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."];
 export const VIP_STATUSES = ["VIP1", "VIP2", "VIP3", "VIP4", "VIP5", "VVIP"];
 export const LOYALTY_TIERS = ["BASE", "SILVER", "GOLD", "PLATINUM", "ELITE"];

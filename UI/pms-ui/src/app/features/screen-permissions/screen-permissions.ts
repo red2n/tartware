@@ -6,6 +6,7 @@ import { ToggleSwitchModule } from "primeng/toggleswitch";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
@@ -37,6 +38,7 @@ const SCREEN_LABELS: Record<string, string> = {
 	cashiering: "Cashiering",
 	"night-audit": "Night Audit",
 	"tax-config": "Tax Configuration",
+	"currency-config": "Currency Configuration",
 	reports: "Reports",
 	settings: "Settings",
 	"command-management": "Command Management",
@@ -60,6 +62,7 @@ const SCREEN_ICONS: Record<string, string> = {
 	cashiering: "point_of_sale",
 	"night-audit": "nightlight",
 	"tax-config": "gavel",
+	"currency-config": "currency_exchange",
 	reports: "assessment",
 	settings: "settings",
 	"command-management": "terminal",
@@ -94,6 +97,7 @@ type ScreenRow = {
 })
 export class ScreenPermissionsComponent implements OnInit {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly toast = inject(ToastService);
 
@@ -168,7 +172,7 @@ export class ScreenPermissionsComponent implements OnInit {
 			this.screenRows.set(rows);
 			this.serverSnapshot = JSON.stringify(rows.map((r) => ({ k: r.screen_key, v: r.visibility })));
 		} catch {
-			this.error.set("Failed to load screen permissions");
+			this.error.set(this.i18n.t("Failed to load screen permissions"));
 		} finally {
 			this.loading.set(false);
 		}
@@ -224,9 +228,11 @@ export class ScreenPermissionsComponent implements OnInit {
 			}
 
 			this.serverSnapshot = JSON.stringify(rows.map((r) => ({ k: r.screen_key, v: r.visibility })));
-			this.toast.success(`Permissions saved for ${changedRoles.size} role(s)`);
+			this.toast.success(
+				this.i18n.t("Permissions saved for {p0} role(s)", { p0: changedRoles.size }),
+			);
 		} catch {
-			this.toast.error("Failed to save screen permissions");
+			this.toast.error(this.i18n.t("Failed to save screen permissions"));
 		} finally {
 			this.saving.set(false);
 		}
@@ -249,7 +255,7 @@ export class ScreenPermissionsComponent implements OnInit {
 				...row,
 				visibility: {
 					...row.visibility,
-					[role]: row.screen_key === "dashboard" ? true : false,
+					[role]: row.screen_key === "dashboard",
 				},
 			})),
 		);

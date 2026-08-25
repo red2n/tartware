@@ -15,6 +15,8 @@ import {
 	TransactionTypeEnum,
 } from "../shared/enums.js";
 
+import { CurrencyCodeSchema } from "./currency.js";
+
 /**
  * Billing payment list item schema for API responses.
  * Includes display fields derived from enum values.
@@ -38,6 +40,11 @@ export const BillingPaymentListItemSchema = z.object({
 	status_display: z.string(),
 	amount: z.number(),
 	currency: z.string(),
+	/** ACCT-13: rate locked at capture time (payment currency → base currency). */
+	exchange_rate: z.number().optional(),
+	/** `amount` expressed in the property's base currency at `exchange_rate`. */
+	base_amount: z.number().optional(),
+	base_currency: z.string().optional(),
 	processed_at: z.string().optional(),
 	created_at: z.string(),
 	updated_at: z.string().optional(),
@@ -187,6 +194,11 @@ export const ChargePostingListItemSchema = z.object({
 	discount_amount: z.number(),
 	total_amount: z.number(),
 	currency: z.string(),
+	/** ACCT-13: rate locked at posting time (transaction currency → base currency). */
+	exchange_rate: z.number().optional(),
+	/** `total_amount` expressed in the property's base currency at `exchange_rate`. */
+	base_amount: z.number().optional(),
+	base_currency: z.string().optional(),
 	payment_method: z.string().optional(),
 	source_system: z.string().optional(),
 	outlet: z.string().optional(),
@@ -300,22 +312,26 @@ export type BillingLedgerEntryInsertInput = z.infer<
 // =====================================================
 
 /**
- * Tax type enum matching database constraints.
+ * Tax type, matching the `tax_configurations.tax_type` CHECK constraint.
+ *
+ * The comment above this enum always claimed it matched the database; it did
+ * not — it was UPPERCASE against a lowercase constraint, and the route
+ * lower-cased it at the call site to compensate.
  */
 export const TaxTypeEnum = z.enum([
-	"SALES_TAX",
-	"VAT",
-	"GST",
-	"OCCUPANCY_TAX",
-	"TOURISM_TAX",
-	"CITY_TAX",
-	"STATE_TAX",
-	"FEDERAL_TAX",
-	"RESORT_FEE",
-	"SERVICE_CHARGE",
-	"EXCISE_TAX",
-	"CUSTOMS_DUTY",
-	"OTHER",
+	"sales_tax",
+	"vat",
+	"gst",
+	"occupancy_tax",
+	"tourism_tax",
+	"city_tax",
+	"state_tax",
+	"federal_tax",
+	"resort_fee",
+	"service_charge",
+	"excise_tax",
+	"customs_duty",
+	"other",
 ]);
 export type TaxType = z.infer<typeof TaxTypeEnum>;
 
@@ -323,15 +339,15 @@ export type TaxType = z.infer<typeof TaxTypeEnum>;
  * Tax calculation method enum.
  */
 export const TaxCalculationMethodEnum = z.enum([
-	"INCLUSIVE",
-	"EXCLUSIVE",
-	"COMPOUND",
-	"CASCADING",
-	"ADDITIVE",
-	"TIERED",
-	"PROGRESSIVE",
-	"FLAT",
-	"CUSTOM",
+	"inclusive",
+	"exclusive",
+	"compound",
+	"cascading",
+	"additive",
+	"tiered",
+	"progressive",
+	"flat",
+	"custom",
 ]);
 export type TaxCalculationMethod = z.infer<typeof TaxCalculationMethodEnum>;
 
@@ -477,7 +493,9 @@ export const GlTrialBalanceResponseSchema = z.object({
 	variance: z.number(),
 	is_balanced: z.boolean(),
 });
-export type GlTrialBalanceResponse = z.infer<typeof GlTrialBalanceResponseSchema>;
+export type GlTrialBalanceResponse = z.infer<
+	typeof GlTrialBalanceResponseSchema
+>;
 
 /** AR list item — summary view for list endpoints. */
 export const AccountsReceivableListItemSchema = z.object({
@@ -627,7 +645,9 @@ export const FiscalPeriodListResponseSchema = z.object({
 	}),
 });
 
-export type FiscalPeriodListResponse = z.infer<typeof FiscalPeriodListResponseSchema>;
+export type FiscalPeriodListResponse = z.infer<
+	typeof FiscalPeriodListResponseSchema
+>;
 
 // =====================================================
 // SHIFT SUMMARY (CASHIER HANDOVER)
@@ -958,9 +978,7 @@ export const computeBulkPricingCell = (
 			r.conditions.length === 0
 		)
 			return true;
-		return (r.conditions).every((c) =>
-			evalPricingCondition(c, evalCtx),
-		);
+		return r.conditions.every((c) => evalPricingCondition(c, evalCtx));
 	});
 
 	let adjustedRate = basePrice;
@@ -1276,8 +1294,14 @@ export const LedgerEntryListQuerySchema = z.object({
 	batch_status: z.string().toLowerCase().optional(),
 	gl_account_code: z.string().optional(),
 	department_code: z.string().optional(),
-	start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-	end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	start_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	end_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 	limit: z.coerce.number().int().positive().max(500).default(200),
 	offset: z.coerce.number().int().min(0).default(0),
 });
@@ -1296,9 +1320,7 @@ export const BillingPaymentListQuerySchema = z.object({
 		.refine(
 			(value) =>
 				!value ||
-				PaymentStatusEnum.options
-					.map((s) => s.toLowerCase())
-					.includes(value),
+				PaymentStatusEnum.options.map((s) => s.toLowerCase()).includes(value),
 			{ message: "Invalid payment status" },
 		),
 	transaction_type: z
@@ -1308,9 +1330,7 @@ export const BillingPaymentListQuerySchema = z.object({
 		.refine(
 			(value) =>
 				!value ||
-				TransactionTypeEnum.options
-					.map((t) => t.toLowerCase())
-					.includes(value),
+				TransactionTypeEnum.options.map((t) => t.toLowerCase()).includes(value),
 			{ message: "Invalid transaction type" },
 		),
 	payment_method: z
@@ -1320,9 +1340,7 @@ export const BillingPaymentListQuerySchema = z.object({
 		.refine(
 			(value) =>
 				!value ||
-				PaymentMethodEnum.options
-					.map((m) => m.toLowerCase())
-					.includes(value),
+				PaymentMethodEnum.options.map((m) => m.toLowerCase()).includes(value),
 			{ message: "Invalid payment method" },
 		),
 	limit: z.coerce.number().int().positive().max(200).default(100),
@@ -1523,7 +1541,7 @@ export const GlBatchListItemSchema = z.object({
 	gl_batch_id: uuid,
 	property_id: uuid,
 	batch_number: z.string(),
-	batch_date: z.string(),            // ISO date string (YYYY-MM-DD)
+	batch_date: z.string(), // ISO date string (YYYY-MM-DD)
 	accounting_period: z.string(),
 	source_module: z.string(),
 	currency: z.string().default("USD"),
@@ -1593,7 +1611,9 @@ export const GlBatchEntriesResponseSchema = z.object({
 	meta: z.object({ count: z.number().int() }),
 });
 
-export type GlBatchEntriesResponse = z.infer<typeof GlBatchEntriesResponseSchema>;
+export type GlBatchEntriesResponse = z.infer<
+	typeof GlBatchEntriesResponseSchema
+>;
 
 // ============================================================================
 // CHARGEBACK / DISPUTE LIST (GAP-03)
@@ -1633,12 +1653,16 @@ export const ChargebackListResponseSchema = z.object({
 	meta: z.object({ count: z.number().int() }),
 });
 
-export type ChargebackListResponse = z.infer<typeof ChargebackListResponseSchema>;
+export type ChargebackListResponse = z.infer<
+	typeof ChargebackListResponseSchema
+>;
 
 export const ChargebackListQuerySchema = z.object({
 	tenant_id: z.string().uuid(),
 	property_id: z.string().uuid().optional(),
-	chargeback_status: z.enum(["RECEIVED", "EVIDENCE_SUBMITTED", "WON", "LOST"]).optional(),
+	chargeback_status: z
+		.enum(["RECEIVED", "EVIDENCE_SUBMITTED", "WON", "LOST"])
+		.optional(),
 	start_date: z.string().optional(),
 	end_date: z.string().optional(),
 	limit: z.coerce.number().int().positive().max(500).default(100),
@@ -1654,3 +1678,72 @@ export const GlTrialBalanceQuerySchema = z.object({
 });
 
 export type GlTrialBalanceQuery = z.infer<typeof GlTrialBalanceQuerySchema>;
+
+// ============================================================================
+// FX RATES (ACCT-13 multi-currency rate locking)
+// ============================================================================
+
+// `CurrencyCodeSchema` lives in ./currency.ts alongside the ISO 4217 exponent
+// table, so code validation and minor-unit handling stay in one place.
+
+export const FxRateUpsertRequestSchema = z
+	.object({
+		tenant_id: z.string().uuid(),
+		from_currency: CurrencyCodeSchema,
+		to_currency: CurrencyCodeSchema,
+		rate: z.coerce.number().positive(),
+		rate_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+		rate_source: z.string().max(60).default("MANUAL"),
+		rate_source_ref: z.string().max(200).optional(),
+	})
+	.refine((input) => input.from_currency !== input.to_currency, {
+		message: "from_currency and to_currency must differ",
+		path: ["to_currency"],
+	});
+
+export type FxRateUpsertRequest = z.infer<typeof FxRateUpsertRequestSchema>;
+
+export const FxRateItemSchema = z.object({
+	rate_id: uuid,
+	tenant_id: uuid.nullable(),
+	from_currency: z.string(),
+	to_currency: z.string(),
+	rate: z.number(),
+	rate_date: z.string(),
+	rate_source: z.string(),
+	rate_source_ref: z.string().nullable().optional(),
+	created_at: z.string().optional(),
+});
+
+export type FxRateItem = z.infer<typeof FxRateItemSchema>;
+
+export const FxRateListResponseSchema = z.object({
+	data: z.array(FxRateItemSchema),
+	meta: z.object({ count: z.number().int() }),
+});
+
+export type FxRateListResponse = z.infer<typeof FxRateListResponseSchema>;
+
+export const FxRateUpsertResponseSchema = z.object({
+	rate_id: uuid,
+	created: z.boolean(),
+	message: z.string(),
+});
+
+export type FxRateUpsertResponse = z.infer<typeof FxRateUpsertResponseSchema>;
+
+export const FxRateListQuerySchema = z.object({
+	tenant_id: z.string().uuid(),
+	from_currency: CurrencyCodeSchema.optional(),
+	to_currency: CurrencyCodeSchema.optional(),
+	rate_date: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
+	/** Include global (tenant_id IS NULL) rates alongside tenant-specific ones. */
+	include_global: z.coerce.boolean().default(true),
+	limit: z.coerce.number().int().positive().max(500).default(100),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type FxRateListQuery = z.infer<typeof FxRateListQuerySchema>;

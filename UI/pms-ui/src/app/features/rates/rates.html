@@ -185,11 +185,11 @@
             @for (rate of paginatedRates(); track rate.id) {
               <tr>
                 <td class="cell-primary">
-                  <span class="rate-code">{{ rate.rate_code }}</span>
+                  <span class="ref-code">{{ rate.rate_code }}</span>
                   <span class="rate-name text-muted">{{ rate.rate_name }}</span>
                 </td>
                 <td>
-                  <span class="badge badge-muted">{{ typeLabel(rate.rate_type) }}</span>
+                  <span class="badge badge-muted">{{ typeLabel(rate.rate_type) | translate }}</span>
                 </td>
                 <td>{{ strategyLabel(rate.strategy) }}</td>
                 <td class="col-right cell-amount">

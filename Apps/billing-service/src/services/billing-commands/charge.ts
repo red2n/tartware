@@ -1,7 +1,13 @@
+import { convertCurrency, roundToCurrency } from "@tartware/schemas";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
-import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
+import {
+  getPropertyBaseCurrency,
+  getPropertyBaseCurrencyFromPool,
+  lockFxRate,
+} from "../../lib/fx-rate-lookup.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import {
@@ -467,7 +473,23 @@ const applyChargePost = async (
 ): Promise<string> => {
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
-  const currency = command.currency ?? "USD";
+
+  // An amount posted without a currency is denominated in the property's own
+  // money — an unqualified 29,000 at a Tokyo hotel is yen. Defaulting to "USD"
+  // both mislabelled the tender and skipped conversion, so the folio total was
+  // wrong by the whole exchange rate.
+  const propertyCurrency = await getPropertyBaseCurrencyFromPool(
+    context.tenantId,
+    command.property_id,
+  );
+  const currency = (command.currency ?? propertyCurrency).toUpperCase();
+
+  // Normalise the tender to the currency's smallest unit before it reaches the
+  // ledger, exactly as payment.capture does. ¥29,000.75 and 61.5006 KWD describe
+  // amounts that cannot be tendered; storing them verbatim leaves a folio that
+  // cannot be reconciled against cash.
+  const unitAmount = roundToCurrency(command.amount, currency);
+  const chargeTotal = roundToCurrency(unitAmount * command.quantity, currency);
 
   // Resolve folio: prefer explicit folio_id, fall back to reservation lookup
   let folioId = command.folio_id ?? null;
@@ -489,7 +511,7 @@ const applyChargePost = async (
     chargeCode: command.charge_code,
     transactionType: command.posting_type,
     chargeCategory: command.metadata?.charge_category as string | undefined,
-    amount: command.amount * command.quantity,
+    amount: chargeTotal,
   });
 
   const postingId = await withTransaction(async (client) => {
@@ -505,13 +527,7 @@ const applyChargePost = async (
       context.tenantId,
       command.property_id,
     );
-    const fxLock = await lockFxRate(
-      client,
-      context.tenantId,
-      currency,
-      baseCurrency,
-      command.amount * command.quantity,
-    );
+    const fxLock = await lockFxRate(client, context.tenantId, currency, baseCurrency, chargeTotal);
 
     // Resolve GL accounts once per transaction; cached in-process across calls.
     // A missing mapping is logged but does NOT fail the charge — operations
@@ -578,7 +594,11 @@ const applyChargePost = async (
           decision.ruleId,
           actorId,
           fxLock.rate, // $15
-          Math.round(routedSubtotal * fxLock.rate * 100) / 100, // $16 — routed portion in base currency
+          // $16 — routed portion in base currency. Converted from the locked
+          // rate's exact decimal string at the base currency's ISO 4217
+          // exponent, so neither a float product nor a fixed 2dp can shift the
+          // posted amount by a minor unit.
+          convertCurrency(routedSubtotal, fxLock.rateText, baseCurrency),
           baseCurrency, // $17
         ],
       );
@@ -598,13 +618,21 @@ const applyChargePost = async (
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + $2,
-              balance = balance + $2,
+          SET total_charges = total_charges + CASE WHEN $6::boolean THEN 0::numeric ELSE $2::numeric END,
+              total_credits = total_credits + CASE WHEN $6::boolean THEN $2::numeric ELSE 0::numeric END,
+              balance = balance + CASE WHEN $6::boolean THEN -$2::numeric ELSE $2::numeric END,
               version = version + 1,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5
         `,
-        [context.tenantId, routedSubtotal, actorId, decision.destinationFolioId, destFolio.version],
+        [
+          context.tenantId,
+          routedSubtotal,
+          actorId,
+          decision.destinationFolioId,
+          destFolio.version,
+          isCredit,
+        ],
       );
 
       if (destCount === 0) {
@@ -644,10 +672,9 @@ const applyChargePost = async (
     const remainderAmount = routing.remainderAmount;
 
     if (remainderAmount > 0 || routing.decisions.length === 0) {
-      const unitPrice = routing.decisions.length === 0 ? command.amount : remainderAmount;
+      const unitPrice = routing.decisions.length === 0 ? unitAmount : remainderAmount;
       const qty = routing.decisions.length === 0 ? command.quantity : 1;
-      const subtotal =
-        routing.decisions.length === 0 ? command.amount * command.quantity : remainderAmount;
+      const subtotal = routing.decisions.length === 0 ? chargeTotal : remainderAmount;
 
       const result = await queryWithClient<{ posting_id: string }>(
         client,
@@ -696,17 +723,34 @@ const applyChargePost = async (
         throw new BillingCommandError("CHARGE_POST_FAILED", "Unable to post charge.");
       }
 
-      // G3: Update source folio totals
+      // G3: Update source folio totals.
+      //
+      // A CREDIT posting reduces what is owed — the table says so
+      // (`posting_type`: "DEBIT increases balance, CREDIT decreases") and
+      // `comp-post.ts` has always done it. This path added *every* posting to
+      // the balance regardless, so a refund, an allowance or an event discount
+      // raised the bill instead of lowering it, and by twice its own value
+      // against the correct figure. Found by http_test/smoke-events.sh when an
+      // event's discount line came back +550 rather than −550.
+      //
+      // Every `$2` is cast to numeric and every literal written `0::numeric`.
+      // Without that Postgres deduces the parameter's type from the branch it
+      // sits beside — `CASE WHEN … THEN 0 ELSE $2 END` makes `$2` an *integer*,
+      // and a 24.50 minibar charge dies with "invalid input syntax for type
+      // integer". Whole-number amounts pass, which is why the smoke suites and
+      // two hand probes all missed it; the E2E suite's first decimal charge
+      // found it. Same family as the `CASE WHEN $3` cast in ui-gaps/13.
       await queryWithClient(
         client,
         `
           UPDATE public.folios
-          SET total_charges = total_charges + $2,
-              balance = balance + $2,
+          SET total_charges = total_charges + CASE WHEN $5::boolean THEN 0::numeric ELSE $2::numeric END,
+              total_credits = total_credits + CASE WHEN $5::boolean THEN $2::numeric ELSE 0::numeric END,
+              balance = balance + CASE WHEN $5::boolean THEN -$2::numeric ELSE $2::numeric END,
               updated_at = NOW(), updated_by = $3::uuid
           WHERE tenant_id = $1::uuid AND folio_id = $4::uuid
         `,
-        [context.tenantId, subtotal, actorId, folioId],
+        [context.tenantId, subtotal, actorId, folioId, isCredit],
       );
 
       // GL: paired DR/CR for the remainder on the source folio.
@@ -742,12 +786,13 @@ const applyChargePost = async (
     action: "CHARGE_POST",
     entityType: "charge_posting",
     entityId: postingId,
-    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${command.amount} on folio ${folioId}`,
+    description: `Charge posted: ${command.charge_code} x${command.quantity} @ ${unitAmount} ${currency} on folio ${folioId}`,
     newValues: {
       posting_id: postingId,
       folio_id: folioId,
       charge_code: command.charge_code,
-      amount: command.amount * command.quantity,
+      amount: chargeTotal,
+      currency,
       posting_type: command.posting_type,
       reservation_id: command.reservation_id,
     },

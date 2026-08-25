@@ -11,6 +11,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { SettingsService } from "../../../core/settings/settings.service";
@@ -77,6 +78,7 @@ type AgingFilter =
 })
 export class AccountsReceivableComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly toast = inject(ToastService);
@@ -95,6 +97,7 @@ export class AccountsReceivableComponent {
 	readonly page = signal(1);
 	readonly sort = createSortState();
 	readonly pageSize = 25;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.page.set(1);
@@ -296,7 +299,7 @@ export class AccountsReceivableComponent {
 			this.selectedAr.set(detail);
 		} catch (e) {
 			this.selectedAr.set(null);
-			this.toast.error(e instanceof Error ? e.message : "Failed to load AR detail");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to load AR detail"));
 		}
 	}
 
@@ -342,12 +345,12 @@ export class AccountsReceivableComponent {
 				payment_method: form.payment_method || undefined,
 				notes: form.notes || undefined,
 			});
-			this.toast.success("Payment application submitted. Refreshing AR...");
+			this.toast.success(this.i18n.t("Payment application submitted. Refreshing AR..."));
 			this.showPaymentForm.set(false);
 			this.closeDetail();
 			await settleCommandReadModel(() => this.loadArData());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to apply payment");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to apply payment"));
 		} finally {
 			this.applyingPayment.set(false);
 		}
@@ -385,12 +388,12 @@ export class AccountsReceivableComponent {
 				write_off_amount: form.write_off_amount,
 				reason: form.reason,
 			});
-			this.toast.success("Write-off submitted. Refreshing AR...");
+			this.toast.success(this.i18n.t("Write-off submitted. Refreshing AR..."));
 			this.showWriteOffForm.set(false);
 			this.closeDetail();
 			await settleCommandReadModel(() => this.loadArData());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to write off AR");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to write off AR"));
 		} finally {
 			this.writingOff.set(false);
 		}
@@ -407,10 +410,10 @@ export class AccountsReceivableComponent {
 			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.age`, {
 				property_id: propertyId,
 			});
-			this.toast.success("Aging recalculation submitted. Refreshing AR...");
+			this.toast.success(this.i18n.t("Aging recalculation submitted. Refreshing AR..."));
 			await settleCommandReadModel(() => this.loadArData());
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to recalculate aging");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to recalculate aging"));
 		} finally {
 			this.recalculatingAging.set(false);
 		}
@@ -434,7 +437,7 @@ export class AccountsReceivableComponent {
 			this.arItems.set(items);
 			this.agingSummary.set(aging);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load AR data");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load AR data"));
 		} finally {
 			this.dataReady.set(true);
 		}

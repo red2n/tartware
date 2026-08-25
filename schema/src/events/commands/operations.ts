@@ -2,7 +2,7 @@
  * DEV DOC
  * Module: events/commands/operations.ts
  * Description: Operations command schemas for maintenance requests, incidents, asset tracking, inventory adjustments, and staff scheduling
- * Primary exports: OperationsMaintenanceRequestCommandSchema, OperationsIncidentReportCommandSchema, OperationsScheduleCreateCommandSchema
+ * Primary exports: OperationsMaintenanceRequestCommandSchema, OperationsScheduleCreateCommandSchema
  * @category commands
  * Ownership: Schema package
  */
@@ -89,20 +89,6 @@ export const OperationsMaintenanceEscalateCommandSchema = z.object({
 
 export type OperationsMaintenanceEscalateCommand = z.infer<
 	typeof OperationsMaintenanceEscalateCommandSchema
->;
-
-export const OperationsIncidentReportCommandSchema = z.object({
-	property_id: z.string().uuid(),
-	incident_type: z.string().min(2).max(100),
-	description: z.string().min(2).max(2000),
-	reported_by: z.string().uuid().optional(),
-	occurred_at: z.coerce.date().optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
-
-export type OperationsIncidentReportCommand = z.infer<
-	typeof OperationsIncidentReportCommandSchema
 >;
 
 export const OperationsAssetUpdateCommandSchema = z

@@ -20,7 +20,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS booking_sources CASCADE;
 
-CREATE TABLE booking_sources (
+CREATE TABLE IF NOT EXISTS booking_sources (
     -- Primary Key
     source_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -132,6 +132,13 @@ CREATE TABLE booking_sources (
     -- Metadata
     metadata JSONB,
 
+    -- Audit. `created_at`/`updated_at` were missing where every sibling
+    -- reference table (market_segments, promotional_codes) carries them, so the
+    -- write path's `SET updated_at = ...` failed with "column does not exist"
+    -- and every PUT and DELETE on a booking source returned 500. Found by
+    -- http_test/smoke-operations.sh, 2026-08-19.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- When the source was added
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Last edit to the source
     created_by UUID,
     updated_by UUID,
 
@@ -190,6 +197,15 @@ CREATE UNIQUE INDEX idx_uk_booking_sources_code_active
 
 -- CREATE INDEX idx_booking_sources_type ON booking_sources(source_type, is_active) WHERE deleted_at IS NULL;
 -- CREATE INDEX idx_booking_sources_active ON booking_sources(property_id, is_active, ranking) WHERE is_active = TRUE;
+
+-- =====================================================
+-- AUDIT TIMESTAMPS (ui-gaps/14 — found by smoke-operations.sh 2026-08-19)
+-- Idempotent for databases created before the columns were added. Without them
+-- updateBookingSource / deleteBookingSource fail at the driver: the statement
+-- names updated_at, the table does not have it, and the caller sees a 500.
+-- =====================================================
+ALTER TABLE booking_sources ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE booking_sources ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE ON booking_sources TO tartware_app;

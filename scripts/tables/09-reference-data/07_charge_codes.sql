@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS charge_codes (
 COMMENT ON TABLE charge_codes IS 'Tenant-scoped PMS charge codes with department categorization (USALI)';
 COMMENT ON COLUMN charge_codes.tenant_id IS 'Owning tenant — each tenant has its own charge code set';
 COMMENT ON COLUMN charge_codes.code IS 'Unique charge code identifier within tenant (e.g. ROOM, MINIBAR, SPA)';
-COMMENT ON COLUMN charge_codes.department_code IS 'Department short code (ROOMS, FB, SPA, MISC, ADJ, FEES, HSKP)';
+COMMENT ON COLUMN charge_codes.department_code IS 'Department short code (ROOMS, FB, SPA, MISC, ADJ, FEES, HSKP, EVENTS)';
 COMMENT ON COLUMN charge_codes.revenue_group IS 'Revenue classification (ROOMS, FB, FEES, TAXES, OTHER)';
 COMMENT ON COLUMN charge_codes.is_taxable IS 'Whether this charge type is subject to tax';
 
@@ -53,6 +53,18 @@ VALUES
     ('11111111-1111-1111-1111-111111111111', 'LATE_CHECKOUT','Late Checkout Fee',        'ADJ',   'Adjustments',        'FEES',   FALSE, 62),
     ('11111111-1111-1111-1111-111111111111', 'EARLY_CHECKIN','Early Check-In Fee',       'ADJ',   'Adjustments',        'FEES',   FALSE, 63),
     ('11111111-1111-1111-1111-111111111111', 'RESORT_FEE',   'Resort Fee',              'FEES',  'Mandatory Fees',     'FEES',   TRUE,  70),
+    -- ── Events & catering (ui-gaps/13-sales-catering.md, UI item 6) ──────────
+    -- What an event booking posts to its folio. BANQUET above already carries
+    -- event food & beverage, so it is not repeated here: splitting catering
+    -- across two codes would split one revenue line across two GL accounts.
+    ('11111111-1111-1111-1111-111111111111', 'SPACE_RENTAL', 'Function Space Rental',   'EVENTS','Events & Catering',  'OTHER',  TRUE,  80),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_SETUP',  'Event Setup',             'EVENTS','Events & Catering',  'OTHER',  TRUE,  81),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_EQUIPMENT','Event Equipment Rental','EVENTS','Events & Catering',  'OTHER',  TRUE,  82),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_AV',     'Audio-Visual',            'EVENTS','Events & Catering',  'OTHER',  TRUE,  83),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_LABOR',  'Event Labour',            'EVENTS','Events & Catering',  'OTHER',  TRUE,  84),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_SERVICE_CHARGE','Event Service Charge','FB', 'Food & Beverage',    'FEES',   TRUE,  85),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_DISCOUNT','Event Discount',         'EVENTS','Events & Catering',  'OTHER',  FALSE, 86),
+    ('11111111-1111-1111-1111-111111111111', 'EVENT_TAX',    'Event Tax',               'EVENTS','Events & Catering',  'TAXES',  FALSE, 87),
     ('11111111-1111-1111-1111-111111111111', 'MISC',         'Miscellaneous Charge',    'MISC',  'Miscellaneous',      'OTHER',  TRUE,  99)
 ON CONFLICT (tenant_id, code) DO NOTHING;
 

@@ -1,0 +1,312 @@
+<app-page-header
+  title="Function space"
+  description="Meeting rooms by day — who holds which space, and what is still free.">
+  <button class="btn btn-primary btn-sm" (click)="openCreate()" [disabled]="submitting() || visibleRooms().length === 0">
+    <app-icon name="event" /> {{ 'New event booking' | translate }}
+  </button>
+</app-page-header>
+
+@if (tentativeCount() > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="hourglass_bottom" />
+    {{ tentativeCount() }} {{ (tentativeCount() === 1 ? ('tentative hold in this window' | translate) : ('tentative holds in this window' | translate)) | translate }}
+  </p>
+}
+@if (beoDueSoon().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="assignment_late" />
+    {{ beoDueSoon().length }} {{ (beoDueSoon().length === 1 ? ('booking is past its BEO due date' | translate) : ('bookings are past their BEO due date' | translate)) | translate }}
+  </p>
+}
+
+@if (editorOpen()) {
+  <div class="action-confirm-card" appSubmitOnEnter appUnsavedGuard>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="event" />
+      <h3 class="confirm-title">{{ 'New event booking' | translate }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'The space is held from setup through teardown. If any part of that window is already taken the booking is refused, so a room being dressed is never sold twice.' | translate }}
+      </p>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="fs-room">{{ 'Meeting room' | translate }}</label>
+          <select class="field-input" id="fs-room" [ngModel]="form().meeting_room_id"
+                  (ngModelChange)="patchForm({ meeting_room_id: $event })">
+            @for (room of visibleRooms(); track room.room_id) {
+              <option [value]="room.room_id">{{ room.room_name }} ({{ 'max' | translate }} {{ room.max_capacity }})</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="fs-date">{{ 'Date' | translate }}</label>
+          <input class="field-input" id="fs-date" type="date" [ngModel]="form().event_date"
+                 (ngModelChange)="patchForm({ event_date: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="fs-name">{{ 'Event name' | translate }}</label>
+          <input class="field-input" id="fs-name" type="text" [ngModel]="form().event_name"
+                 (ngModelChange)="patchForm({ event_name: $event ?? '' })"
+                 [placeholder]="'Q3 Sales Kickoff' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="fs-type">{{ 'Event type' | translate }}</label>
+          <select class="field-input" id="fs-type" [ngModel]="form().event_type"
+                  (ngModelChange)="patchForm({ event_type: $event })">
+            @for (t of eventTypes; track t) {
+              <option [value]="t">{{ labelFor(t) | translate }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Schedule' | translate }}</span>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="fs-setup-start">{{ 'Setup from' | translate }}</label>
+            <input class="field-input" id="fs-setup-start" type="time" [ngModel]="form().setup_start_time"
+                   (ngModelChange)="patchForm({ setup_start_time: $event ?? '' })" />
+            @if (formSetupIsPreviousDay()) {
+              <span class="field-hint">{{ 'Previous evening' | translate }}</span>
+            }
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-start">{{ 'Starts' | translate }}</label>
+            <input class="field-input" id="fs-start" type="time" [ngModel]="form().start_time"
+                   (ngModelChange)="patchForm({ start_time: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-end">{{ 'Ends' | translate }}</label>
+            <input class="field-input" id="fs-end" type="time" [ngModel]="form().end_time"
+                   (ngModelChange)="patchForm({ end_time: $event ?? '' })" />
+            @if (formEndsNextDay()) {
+              <span class="field-hint">{{ 'Next day' | translate }}</span>
+            }
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-teardown-end">{{ 'Teardown until' | translate }}</label>
+            <input class="field-input" id="fs-teardown-end" type="time" [ngModel]="form().teardown_end_time"
+                   (ngModelChange)="patchForm({ teardown_end_time: $event ?? '' })" />
+            @if (formTeardownIsNextDay()) {
+              <span class="field-hint">{{ 'Next day' | translate }}</span>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Organizer' | translate }}</span>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="fs-organizer">{{ 'Organizer' | translate }}</label>
+            <input class="field-input" id="fs-organizer" type="text" [ngModel]="form().organizer_name"
+                   (ngModelChange)="patchForm({ organizer_name: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-company">{{ 'Company' | translate }}</label>
+            <input class="field-input" id="fs-company" type="text" [ngModel]="form().organizer_company"
+                   (ngModelChange)="patchForm({ organizer_company: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-email">{{ 'Email' | translate }}</label>
+            <input class="field-input" id="fs-email" type="email" [ngModel]="form().organizer_email"
+                   (ngModelChange)="patchForm({ organizer_email: $event ?? '' })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-phone">{{ 'Phone' | translate }}</label>
+            <input class="field-input" id="fs-phone" type="tel" [ngModel]="form().organizer_phone"
+                   (ngModelChange)="patchForm({ organizer_phone: $event ?? '' })" />
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <span class="form-section-title">{{ 'Room set' | translate }}</span>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="fs-attendees">{{ 'Expected attendees' | translate }}</label>
+            <input class="field-input" id="fs-attendees" type="number" min="1" [ngModel]="form().expected_attendees"
+                   (ngModelChange)="patchForm({ expected_attendees: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-setup">{{ 'Setup' | translate }}</label>
+            <select class="field-input" id="fs-setup" [ngModel]="form().setup_type"
+                    (ngModelChange)="patchForm({ setup_type: $event })">
+              @for (s of setupTypes; track s) {
+                <option [value]="s">{{ labelFor(s) | translate }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-rate">{{ 'Rental rate' | translate }}</label>
+            <input class="field-input" id="fs-rate" type="number" min="0" step="0.01" [ngModel]="form().rental_rate"
+                   (ngModelChange)="patchForm({ rental_rate: $event })" />
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="fs-currency">{{ 'Currency' | translate }}</label>
+            <input class="field-input" id="fs-currency" type="text" maxlength="3" [ngModel]="form().currency_code"
+                   (ngModelChange)="patchForm({ currency_code: $event ?? '' })" />
+          </div>
+          <div class="form-field form-field-wide">
+            <label class="field-label" for="fs-requests">{{ 'Special requests' | translate }}</label>
+            <input class="field-input" id="fs-requests" type="text" [ngModel]="form().special_requests"
+                   (ngModelChange)="patchForm({ special_requests: $event ?? '' })" />
+          </div>
+        </div>
+
+        <div class="checkbox-grid">
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().catering_required"
+                   (ngModelChange)="patchForm({ catering_required: $event })" />
+            {{ 'Catering required' | translate }}
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form().audio_visual_needed"
+                   (ngModelChange)="patchForm({ audio_visual_needed: $event })" />
+            {{ 'Audio visual needed' | translate }}
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelEditor()" [disabled]="submitting()">
+        {{ 'Cancel' | translate }}
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="submitForm()" [disabled]="!canSubmit() || submitting()">
+        {{ (submitting() ? ('Booking…' | translate) : ('Book the space' | translate)) | translate }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="calendar-toolbar">
+  <div class="toolbar-left">
+    <div class="field-group field-group-inline">
+      <label class="field-label" for="fs-f-status">{{ 'Status' | translate }}</label>
+      <select id="fs-f-status" class="field-input field-input-sm" [ngModel]="statusFilter()"
+              (ngModelChange)="statusFilter.set($event ?? '')">
+        <option value="">{{ 'All statuses' | translate }}</option>
+        @for (s of bookingStatuses; track s) {
+          <option [value]="s">{{ labelFor(s) | translate }}</option>
+        }
+      </select>
+    </div>
+    <div class="field-group field-group-inline">
+      <label class="field-label" for="fs-view">{{ 'View' | translate }}</label>
+      <select id="fs-view" class="field-input field-input-sm" [ngModel]="viewDays()"
+              (ngModelChange)="onViewDaysChange(+$event)">
+        <option [value]="7">{{ '7 days' | translate }}</option>
+        <option [value]="14">{{ '14 days' | translate }}</option>
+        <option [value]="30">{{ '30 days' | translate }}</option>
+      </select>
+    </div>
+    <label class="checkbox-field">
+      <input type="checkbox" [ngModel]="showReleased()" (ngModelChange)="showReleased.set($event)" />
+      {{ 'Show cancelled' | translate }}
+    </label>
+  </div>
+
+  <div class="toolbar-center">
+    <button class="btn btn-invisible btn-sm" (click)="shiftPeriod(-1)" [attr.aria-label]="'Previous period' | translate">
+      <app-icon name="chevron_left" />
+    </button>
+    <div class="date-nav">
+      <input type="date" class="field-input field-input-sm date-nav-input"
+             [(ngModel)]="startDate" (ngModelChange)="onStartDateChange()" />
+    </div>
+    <button class="btn btn-invisible btn-sm" (click)="shiftPeriod(1)" [attr.aria-label]="'Next period' | translate">
+      <app-icon name="chevron_right" />
+    </button>
+    <button class="btn btn-outline btn-sm" (click)="goToToday()">{{ 'Today' | translate }}</button>
+  </div>
+
+  <div class="toolbar-right">
+    <button class="btn btn-outline btn-sm" (click)="loadBookings()" [attr.aria-label]="'Refresh' | translate">
+      <app-icon name="refresh" />
+    </button>
+  </div>
+</div>
+
+@if (!dataReady()) {
+  <div class="calendar-grid-wrap" aria-busy="true" [attr.aria-label]="'Loading function space calendar' | translate">
+    <div class="skeleton-table" [style.--skeleton-cols]="8" aria-hidden="true">
+      <div class="skeleton-row skeleton-row-head">
+        @for (c of [1,2,3,4,5,6,7,8]; track $index) {
+          <span class="skeleton skeleton-text"></span>
+        }
+      </div>
+      @for (r of skeletonRows; track $index) {
+        <div class="skeleton-row">
+          @for (c of [1,2,3,4,5,6,7,8]; track $index) {
+            <span class="skeleton skeleton-text"></span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+} @else if (visibleRooms().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="meeting_room" />
+    <h3>{{ 'No bookable meeting rooms' | translate }}</h3>
+    <p class="text-muted">{{ 'Add function space under Meeting rooms first — the calendar has nothing to show until a room exists.' | translate }}</p>
+  </div>
+} @else {
+  <div class="calendar-grid-wrap">
+    <table class="calendar-grid">
+      <thead>
+        <tr>
+          <th class="th-row-head">{{ 'Meeting room' | translate }}</th>
+          @for (date of dateColumns(); track date) {
+            <th class="th-date" [class.th-weekend]="isWeekend(date)" [class.th-today]="isToday(date)">
+              <span class="date-dow">{{ dayOfWeek(date) }}</span>
+              <span class="date-num">{{ dayNum(date) }}</span>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (room of visibleRooms(); track room.room_id) {
+          <tr>
+            <td class="td-row-head">
+              <span class="room-name">{{ room.room_name }}</span>
+              <span class="room-meta">
+                {{ room.room_type_display | translate }} · {{ 'max' | translate }} {{ room.max_capacity }}
+              </span>
+            </td>
+            @for (date of dateColumns(); track date) {
+              <td class="td-day" [class.td-weekend]="isWeekend(date)" [class.td-today]="isToday(date)">
+                @for (booking of bookingsFor(room.room_id, date); track booking.event_id) {
+                  <button type="button" [class]="statusClass(booking.booking_status)"
+                          (click)="openBooking(booking)"
+                          [attr.title]="booking.event_name + ' · ' + booking.booking_status_display
+                            + (endsNextDay(booking) ? ' · ' + ('ends next day' | translate) : '')">
+                    <span class="chip-time">{{ shortTime(booking.start_time) }}@if (endsNextDay(booking)) {<span class="daybreak-marker">+1</span>}</span>
+                    <span class="chip-name">{{ booking.event_name }}</span>
+                  </button>
+                }
+                <button type="button" class="cell-add" (click)="openCreate(room.room_id, date)"
+                        [attr.aria-label]="'Book ' + room.room_name + ' on ' + date">
+                  <app-icon name="add" />
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="calendar-legend">
+    <span class="chip chip-tentative"><span class="chip-name">{{ 'Tentative / inquiry' | translate }}</span></span>
+    <span class="chip chip-definite"><span class="chip-name">{{ 'Definite' | translate }}</span></span>
+    <span class="chip chip-confirmed"><span class="chip-name">{{ 'Confirmed / in progress' | translate }}</span></span>
+    <span class="chip chip-completed"><span class="chip-name">{{ 'Completed' | translate }}</span></span>
+    @if (showReleased()) {
+      <span class="chip chip-released"><span class="chip-name">{{ 'Cancelled / no show' | translate }}</span></span>
+    }
+  </div>
+}

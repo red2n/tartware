@@ -23,7 +23,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS folios CASCADE;
 
-CREATE TABLE folios (
+CREATE TABLE IF NOT EXISTS folios (
     -- Primary Key
     folio_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -48,11 +48,11 @@ CREATE TABLE folios (
     company_reference VARCHAR(100),
 
     -- Financial Tracking
-    balance DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    total_charges DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    total_payments DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    total_credits DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-    credit_balance DECIMAL(12, 2) NOT NULL DEFAULT 0.00, -- Guest credit balance (overpayment). USALI 12th Ed §7.3
+    balance DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    total_charges DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    total_payments DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    total_credits DECIMAL(19,4) NOT NULL DEFAULT 0.00,
+    credit_balance DECIMAL(19,4) NOT NULL DEFAULT 0.00, -- Guest credit balance (overpayment). USALI 12th Ed §7.3
     currency_code CHAR(3) DEFAULT 'USD',
 
     -- Billing Information
@@ -160,5 +160,7 @@ COMMENT ON COLUMN folios.close_reason IS 'Why the folio was closed; pairs with c
 COMMENT ON COLUMN folios.group_booking_id IS 'Reference to group_bookings.group_booking_id for a master or member folio';
 CREATE INDEX IF NOT EXISTS idx_folios_group_booking
     ON folios (group_booking_id) WHERE group_booking_id IS NOT NULL;
+
+
 
 \echo ''

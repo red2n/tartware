@@ -1,0 +1,333 @@
+<app-page-header
+  title="Lost &amp; found"
+  description="Items handed in, held in storage, claimed and returned.">
+  <button class="btn btn-primary btn-sm" (click)="openRegister()" [disabled]="submitting()">
+    <app-icon name="inventory_2" /> {{ 'Register item' | translate }}
+  </button>
+</app-page-header>
+
+@if (pastRetention().length > 0) {
+  <p class="notice">
+    <app-icon class="notice-icon" name="schedule" />
+    {{ (pastRetention().length === 1
+          ? '{count} item past the hold window and still in storage'
+          : '{count} items past the hold window and still in storage') | translate:{ count: pastRetention().length } }}<button class="btn btn-outline btn-sm" (click)="overdueOnly.set(!overdueOnly())">
+      {{ overdueOnly() ? ('Show all items' | translate) : ('Show only these' | translate) }}
+    </button>
+  </p>
+}
+
+@if (registering()) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="inventory_2" />
+      <h3 class="confirm-title">
+        {{ editing() ? ('Edit ' | translate) + (editing()!.item_number || editing()!.item_name) : ('Register a found item' | translate) }}
+      </h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="lf-name">{{ 'Item' | translate }}</label>
+          <input class="field-input" id="lf-name" type="text" [ngModel]="form().item_name"
+                 (ngModelChange)="form.set({ ...form(), item_name: $event ?? '' })"
+                 [placeholder]="'e.g. Black phone charger' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-category">{{ 'Category' | translate }}</label>
+          <select class="field-input" id="lf-category" [ngModel]="form().item_category"
+                  (ngModelChange)="form.set({ ...form(), item_category: $event })">
+            @for (c of categories; track c) {
+              <option [value]="c">{{ labelFor(c) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-brand">{{ 'Brand' | translate }}</label>
+          <input class="field-input" id="lf-brand" type="text" [ngModel]="form().brand"
+                 (ngModelChange)="form.set({ ...form(), brand: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-color">{{ 'Colour' | translate }}</label>
+          <input class="field-input" id="lf-color" type="text" [ngModel]="form().color"
+                 (ngModelChange)="form.set({ ...form(), color: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-value">{{ 'Estimated value' | translate }}</label>
+          <input class="field-input" id="lf-value" type="number" min="0" step="0.01"
+                 [ngModel]="form().estimated_value"
+                 (ngModelChange)="form.set({ ...form(), estimated_value: $event })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-found-date">{{ 'Found date' | translate }}</label>
+          <input class="field-input" id="lf-found-date" type="date" [ngModel]="form().found_date"
+                 (ngModelChange)="form.set({ ...form(), found_date: $event ?? '' })"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-found-time">{{ 'Found time' | translate }}</label>
+          <input class="field-input" id="lf-found-time" type="time" [ngModel]="form().found_time"
+                 (ngModelChange)="form.set({ ...form(), found_time: $event ?? '' })"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-found-loc">{{ 'Found location' | translate }}</label>
+          <input class="field-input" id="lf-found-loc" type="text" [ngModel]="form().found_location"
+                 (ngModelChange)="form.set({ ...form(), found_location: $event ?? '' })"
+                 [placeholder]="'e.g. Room 412 bathroom, Lobby sofa' | translate"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-room">{{ 'Room number' | translate }}</label>
+          <input class="field-input" id="lf-room" type="text" [ngModel]="form().room_number"
+                 (ngModelChange)="form.set({ ...form(), room_number: $event ?? '' })"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-area">{{ 'Area' | translate }}</label>
+          <input class="field-input" id="lf-area" type="text" [ngModel]="form().area_name"
+                 (ngModelChange)="form.set({ ...form(), area_name: $event ?? '' })"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-found-by">{{ 'Found by' | translate }}</label>
+          <input class="field-input" id="lf-found-by" type="text" [ngModel]="form().found_by_name"
+                 (ngModelChange)="form.set({ ...form(), found_by_name: $event ?? '' })"
+                 [placeholder]="'Attendant or guest who handed it in' | translate"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-storage">{{ 'Storage location' | translate }}</label>
+          <input class="field-input" id="lf-storage" type="text" [ngModel]="form().storage_location"
+                 (ngModelChange)="form.set({ ...form(), storage_location: $event ?? '' })"
+                 [placeholder]="'e.g. Housekeeping store, shelf B' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-hold">{{ 'Hold for (days)' | translate }}</label>
+          <input class="field-input" id="lf-hold" type="number" min="1" max="365"
+                 [ngModel]="form().hold_days"
+                 (ngModelChange)="form.set({ ...form(), hold_days: $event })"
+                 [disabled]="editing() !== null" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-guest">{{ 'Likely owner' | translate }}</label>
+          <input class="field-input" id="lf-guest" type="text" [ngModel]="form().guest_name"
+                 (ngModelChange)="form.set({ ...form(), guest_name: $event ?? '' })"
+                 [placeholder]="'Guest name, if known' | translate" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-guest-email">{{ 'Owner email' | translate }}</label>
+          <input class="field-input" id="lf-guest-email" type="email" [ngModel]="form().guest_email"
+                 (ngModelChange)="form.set({ ...form(), guest_email: $event ?? '' })" />
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-valuable">{{ 'Valuable' | translate }}</label>
+          <select class="field-input" id="lf-valuable" [ngModel]="form().is_valuable"
+                  (ngModelChange)="form.set({ ...form(), is_valuable: $event })">
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-secure">{{ 'Needs secure storage' | translate }}</label>
+          <select class="field-input" id="lf-secure" [ngModel]="form().requires_secure_storage"
+                  (ngModelChange)="form.set({ ...form(), requires_secure_storage: $event })">
+            <option [ngValue]="false">{{ 'No' | translate }}</option>
+            <option [ngValue]="true">{{ 'Yes' | translate }}</option>
+          </select>
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="lf-desc">{{ 'Description' | translate }}</label>
+          <textarea class="field-input" id="lf-desc" rows="3" [ngModel]="form().item_description"
+                    (ngModelChange)="form.set({ ...form(), item_description: $event ?? '' })"
+                    [placeholder]="'Enough detail to match it against an owner\'s description' | translate"></textarea>
+        </div>
+        @if (!editing()) {
+          <div class="form-field full-width">
+            <label class="field-label" for="lf-handling">{{ 'Special handling' | translate }}</label>
+            <textarea class="field-input" id="lf-handling" rows="2"
+                      [ngModel]="form().special_handling_instructions"
+                      (ngModelChange)="form.set({ ...form(), special_handling_instructions: $event ?? '' })"
+                      [placeholder]="'Perishable, fragile, medication…' | translate"></textarea>
+          </div>
+        }
+        <div class="form-field full-width">
+          <label class="field-label" for="lf-notes">{{ 'Internal notes' | translate }}</label>
+          <textarea class="field-input" id="lf-notes" rows="2" [ngModel]="form().internal_notes"
+                    (ngModelChange)="form.set({ ...form(), internal_notes: $event ?? '' })"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelForm()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitForm()"
+              [disabled]="submitting() || !canSubmitForm()">
+        {{ submitting() ? ('Saving…' | translate) : (editing() ? ('Save changes' | translate) : ('Register item' | translate)) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (claimTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="how_to_reg" />
+      <h3 class="confirm-title">{{ 'Record a claim — {item}' | translate:{ item: item.item_name } }}</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-note">
+        {{ 'This is a chain-of-custody record. Verify the claimant can describe the item before recording it.' | translate }}
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="lf-claim-name">{{ 'Claimed by' | translate }}</label>
+          <input class="field-input" id="lf-claim-name" type="text" [ngModel]="claimForm().claimed_by_name"
+                 (ngModelChange)="claimForm.set({ ...claimForm(), claimed_by_name: $event ?? '' })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="lf-claim-notes">{{ 'Verification notes' | translate }}</label>
+          <textarea class="field-input" id="lf-claim-notes" rows="3"
+                    [ngModel]="claimForm().verification_notes"
+                    (ngModelChange)="claimForm.set({ ...claimForm(), verification_notes: $event ?? '' })"
+                    [placeholder]="'ID checked, matched reservation, description given' | translate"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelClaim()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitClaim()"
+              [disabled]="submitting() || !canSubmitClaim()">
+        {{ submitting() ? ('Saving…' | translate) : ('Record claim' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (returnTarget(); as item) {
+  <div class="action-confirm-card" appSubmitOnEnter>
+    <div class="confirm-header">
+      <app-icon class="confirm-icon" name="local_shipping" />
+      <h3 class="confirm-title">{{ 'Record a return — {item}' | translate:{ item: item.item_name } }}</h3>
+    </div>
+    <div class="confirm-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label" for="lf-return-method">{{ 'Method' | translate }}</label>
+          <select class="field-input" id="lf-return-method" [ngModel]="returnForm().return_method"
+                  (ngModelChange)="returnForm.set({ ...returnForm(), return_method: $event })">
+            @for (m of returnMethods; track m) {
+              <option [value]="m">{{ labelFor(m) | translate }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="lf-return-to">{{ 'Returned to' | translate }}</label>
+          <input class="field-input" id="lf-return-to" type="text" [ngModel]="returnForm().returned_to_name"
+                 (ngModelChange)="returnForm.set({ ...returnForm(), returned_to_name: $event ?? '' })" />
+        </div>
+        <div class="form-field full-width">
+          <label class="field-label" for="lf-return-notes">{{ 'Notes' | translate }}</label>
+          <textarea class="field-input" id="lf-return-notes" rows="2" [ngModel]="returnForm().notes"
+                    (ngModelChange)="returnForm.set({ ...returnForm(), notes: $event ?? '' })"
+                    [placeholder]="'Courier tracking reference, who handed it over' | translate"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" (click)="cancelReturn()" [disabled]="submitting()">{{ 'Cancel' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="submitReturn()"
+              [disabled]="submitting() || !canSubmitReturn()">
+        {{ submitting() ? ('Saving…' | translate) : ('Record return' | translate) }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="filter-form">
+  <div class="form-field">
+    <label class="field-label" for="lf-f-status">{{ 'Status' | translate }}</label>
+    <select class="field-input" id="lf-f-status" [ngModel]="statusFilter()"
+            (ngModelChange)="statusFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ labelFor(s) | translate }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="lf-f-category">{{ 'Category' | translate }}</label>
+    <select class="field-input" id="lf-f-category" [ngModel]="categoryFilter()"
+            (ngModelChange)="categoryFilter.set($event ?? ''); load()">
+      <option value="">{{ 'All' | translate }}</option>
+      @for (c of categories; track c) {
+        <option [value]="c">{{ labelFor(c) | translate }}</option>
+      }
+    </select>
+  </div>
+  <div class="form-field">
+    <label class="field-label" for="lf-f-from">{{ 'Found from' | translate }}</label>
+    <input class="field-input" id="lf-f-from" type="date" [ngModel]="dateFromFilter()"
+           (ngModelChange)="dateFromFilter.set($event ?? ''); load()" />
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loading-state">{{ 'Loading…' | translate }}</div>
+} @else if (visibleItems().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="inventory_2" />
+    <h3>{{ overdueOnly() ? ('Nothing is past its hold window' | translate) : ('No items in lost & found' | translate) }}</h3>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Item' | translate }}</th>
+          <th>{{ 'Category' | translate }}</th>
+          <th>{{ 'Found' | translate }}</th>
+          <th>{{ 'Where' | translate }}</th>
+          <th>{{ 'Storage' | translate }}</th>
+          <th>{{ 'Days held' | translate }}</th>
+          <th>{{ 'Status' | translate }}</th>
+          <th class="cell-actions">{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (i of visibleItems(); track i.item_id) {
+          <tr>
+            <td class="cell-primary">
+              <strong>{{ i.item_name }}</strong>
+              @if (i.is_valuable) {
+                <span class="badge badge-warning badge-sm">{{ 'Valuable' | translate }}</span>
+              }
+              @if (i.item_number) {
+                <div class="cell-sub">{{ i.item_number }}</div>
+              }
+            </td>
+            <td>{{ labelFor(i.item_category) | translate }}{{ i.brand ? ' · ' + i.brand : '' }}</td>
+            <td>{{ i.found_date | localeDate: 'mediumDate' }}</td>
+            <td>{{ i.room_number || i.found_location }}</td>
+            <td>{{ i.storage_location || '—' }}</td>
+            <td>
+              {{ daysInStorage(i) }}
+              @if (isOverdue(i)) {
+                <span class="badge badge-attention badge-sm">{{ 'Past hold' | translate }}</span>
+              }
+            </td>
+            <td><span [class]="statusClass(i.item_status)">{{ labelFor(i.item_status) | translate }}</span></td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm" (click)="openEdit(i)">{{ 'Edit' | translate }}</button>
+              @if (canClaim(i)) {
+                <button class="btn btn-outline btn-sm" (click)="openClaim(i)">{{ 'Claim' | translate }}</button>
+              }
+              @if (canReturn(i)) {
+                <button class="btn btn-outline btn-sm" (click)="openReturn(i)">{{ 'Return' | translate }}</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

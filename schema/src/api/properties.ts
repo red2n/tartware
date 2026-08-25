@@ -8,7 +8,7 @@
 import { z } from "zod";
 
 import { PropertyWithStatsSchema } from "../schemas/01-core/properties.js";
-import { uuid } from "../shared/base-schemas.js";
+import { currencyCode, uuid } from "../shared/base-schemas.js";
 
 import { PropertyAddressSchema } from "./tenants.js";
 
@@ -50,7 +50,10 @@ export const CreatePropertyBodySchema = z.object({
 	email: z.string().email().optional(),
 	website: z.string().url().optional(),
 	address: PropertyAddressSchema.optional(),
-	currency: z.string().length(3).optional(),
+	// A property's base currency is what every FX conversion and ledger total
+	// keys off, so a malformed code has to be rejected here — the column is a
+	// bare varchar(3) with no database-level ISO 4217 check.
+	currency: currencyCode.optional(),
 	timezone: z.string().optional(),
 	default_language: z.string().max(10).optional(),
 });

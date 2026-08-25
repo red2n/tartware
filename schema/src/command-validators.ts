@@ -10,33 +10,24 @@ import {
 	AnalyticsReportScheduleCommandSchema,
 } from "./events/commands/analytics.js";
 import {
-	BillingArAgeCommandSchema,
-	BillingArApplyPaymentCommandSchema,
-	BillingArPostCommandSchema,
-	BillingArWriteOffCommandSchema,
 	ArAccountCreateCommandSchema,
 	ArAccountUpdateTermsCommandSchema,
 	ArAgingComputeCommandSchema,
 	ArCityLedgerTransferCommandSchema,
 	ArCityLedgerWriteOffCommandSchema,
+	ArDisputeEscalateCommandSchema,
 	ArDisputeRaiseCommandSchema,
 	ArDisputeResolveCommandSchema,
-	ArDisputeEscalateCommandSchema,
-	ArDunningTriggerCommandSchema,
-	ArDunningSuppressCommandSchema,
 	ArDunningEscalateCommandSchema,
+	ArDunningSuppressCommandSchema,
+	ArDunningTriggerCommandSchema,
 	ArPaymentApplyCommandSchema,
 	ArPaymentUnapplyCommandSchema,
+	BillingArAgeCommandSchema,
+	BillingArApplyPaymentCommandSchema,
+	BillingArPostCommandSchema,
+	BillingArWriteOffCommandSchema,
 	BillingCancellationPenaltyCommandSchema,
-	BillingDepositRecordCommandSchema,
-	BillingDepositRefundCommandSchema,
-	BillingDepositTransferCommandSchema,
-	BillingDepositWaiveCommandSchema,
-	BillingGroupAddReservationCommandSchema,
-	BillingGroupCheckoutCommandSchema,
-	BillingGroupSetupCommandSchema,
-	BillingSuspenseResolveCommandSchema,
-	BillingSuspenseWriteOffCommandSchema,
 	BillingCashierCloseCommandSchema,
 	BillingCashierHandoverCommandSchema,
 	BillingCashierOpenCommandSchema,
@@ -48,6 +39,12 @@ import {
 	BillingCompPostCommandSchema,
 	BillingCreditNoteCreateCommandSchema,
 	BillingDateRollManualCommandSchema,
+	BillingDepositRecordCommandSchema,
+	BillingDepositRefundCommandSchema,
+	BillingDepositTransferCommandSchema,
+	BillingDepositWaiveCommandSchema,
+	BillingEventPostChargesCommandSchema,
+	BillingEventSetupCommandSchema,
 	BillingExpressCheckoutCommandSchema,
 	BillingFiscalPeriodCloseCommandSchema,
 	BillingFiscalPeriodCreateCommandSchema,
@@ -61,13 +58,16 @@ import {
 	BillingFolioTransferCommandSchema,
 	BillingFolioWindowCreateCommandSchema,
 	BillingGlBatchExportCommandSchema,
+	BillingGroupAddReservationCommandSchema,
+	BillingGroupCheckoutCommandSchema,
+	BillingGroupSetupCommandSchema,
 	BillingInvoiceAdjustCommandSchema,
 	BillingInvoiceCreateCommandSchema,
 	BillingInvoiceFinalizeCommandSchema,
 	BillingInvoiceReopenCommandSchema,
 	BillingInvoiceVoidCommandSchema,
-	BillingLedgerPostCommandSchema,
 	BillingLateCheckoutChargeCommandSchema,
+	BillingLedgerPostCommandSchema,
 	BillingNightAuditCommandSchema,
 	BillingNoShowChargeCommandSchema,
 	BillingPaymentApplyCommandSchema,
@@ -82,6 +82,8 @@ import {
 	BillingRoutingRuleCreateCommandSchema,
 	BillingRoutingRuleDeleteCommandSchema,
 	BillingRoutingRuleUpdateCommandSchema,
+	BillingSuspenseResolveCommandSchema,
+	BillingSuspenseWriteOffCommandSchema,
 	BillingTaxConfigCreateCommandSchema,
 	BillingTaxConfigDeleteCommandSchema,
 	BillingTaxConfigUpdateCommandSchema,
@@ -92,10 +94,6 @@ import {
 	CommissionStatementGenerateCommandSchema,
 } from "./events/commands/billing.js";
 import {
-	ComplianceBreachNotifyCommandSchema,
-	ComplianceBreachReportCommandSchema,
-} from "./events/commands/compliance.js";
-import {
 	GroupAddRoomsCommandSchema,
 	GroupBillingSetupCommandSchema,
 	GroupCheckInCommandSchema,
@@ -104,8 +102,8 @@ import {
 	GroupUploadRoomingListCommandSchema,
 } from "./events/commands/groups.js";
 import {
+	GuestConsentUpdateCommandSchema,
 	GuestGdprEraseCommandSchema,
-	GuestGdprExportCommandSchema,
 	GuestMergeCommandSchema,
 	GuestPreferenceUpdateCommandSchema,
 	GuestRegisterCommandSchema,
@@ -135,15 +133,10 @@ import {
 	MetasearchConfigUpdateCommandSchema,
 } from "./events/commands/integrations.js";
 import {
-	InventoryBulkReleaseCommandSchema,
-	InventoryLockRoomCommandSchema,
-	InventoryReleaseRoomCommandSchema,
-} from "./events/commands/inventory.js";
-import {
 	LoyaltyPointsEarnCommandSchema,
-	LoyaltyProgramEnrollCommandSchema,
 	LoyaltyPointsExpireSweepCommandSchema,
 	LoyaltyPointsRedeemCommandSchema,
+	LoyaltyProgramEnrollCommandSchema,
 } from "./events/commands/loyalty.js";
 import {
 	NotificationAutomatedMessageCreateCommandSchema,
@@ -156,12 +149,7 @@ import {
 } from "./events/commands/notifications.js";
 import {
 	OperationsAssetUpdateCommandSchema,
-	OperationsIncidentReportCommandSchema,
 	OperationsInventoryAdjustCommandSchema,
-	OperationsMaintenanceAssignCommandSchema,
-	OperationsMaintenanceCompleteCommandSchema,
-	OperationsMaintenanceEscalateCommandSchema,
-	OperationsMaintenanceRequestCommandSchema,
 	OperationsScheduleCreateCommandSchema,
 	OperationsScheduleUpdateCommandSchema,
 } from "./events/commands/operations.js";
@@ -178,8 +166,6 @@ import {
 	ReservationExpireCommandSchema,
 	ReservationExtendStayCommandSchema,
 	ReservationGenerateRegCardCommandSchema,
-	ReservationMobileCheckinCompleteCommandSchema,
-	ReservationMobileCheckinStartCommandSchema,
 	ReservationModifyCommandSchema,
 	ReservationNoShowCommandSchema,
 	ReservationRateOverrideCommandSchema,
@@ -238,12 +224,6 @@ import {
 	RoomOutOfServiceCommandSchema,
 	RoomStatusUpdateCommandSchema,
 } from "./events/commands/rooms.js";
-import {
-	SettingsValueApproveCommandSchema,
-	SettingsValueBulkSetCommandSchema,
-	SettingsValueRevertCommandSchema,
-	SettingsValueSetCommandSchema,
-} from "./events/commands/settings.js";
 
 type CommandPayloadValidator = (
 	payload: Record<string, unknown>,
@@ -387,6 +367,14 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"billing.group.setup",
 		(payload) => BillingGroupSetupCommandSchema.parse(payload),
+	],
+	[
+		"billing.event.setup",
+		(payload) => BillingEventSetupCommandSchema.parse(payload),
+	],
+	[
+		"billing.event.post_charges",
+		(payload) => BillingEventPostChargesCommandSchema.parse(payload),
 	],
 	[
 		"billing.group.checkout",
@@ -537,10 +525,7 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		"ar.city_ledger.write_off",
 		(payload) => ArCityLedgerWriteOffCommandSchema.parse(payload),
 	],
-	[
-		"ar.aging.compute",
-		(payload) => ArAgingComputeCommandSchema.parse(payload),
-	],
+	["ar.aging.compute", (payload) => ArAgingComputeCommandSchema.parse(payload)],
 	[
 		"ar.dunning.trigger",
 		(payload) => ArDunningTriggerCommandSchema.parse(payload),
@@ -553,18 +538,12 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		"ar.dunning.escalate",
 		(payload) => ArDunningEscalateCommandSchema.parse(payload),
 	],
-	[
-		"ar.payment.apply",
-		(payload) => ArPaymentApplyCommandSchema.parse(payload),
-	],
+	["ar.payment.apply", (payload) => ArPaymentApplyCommandSchema.parse(payload)],
 	[
 		"ar.payment.unapply",
 		(payload) => ArPaymentUnapplyCommandSchema.parse(payload),
 	],
-	[
-		"ar.dispute.raise",
-		(payload) => ArDisputeRaiseCommandSchema.parse(payload),
-	],
+	["ar.dispute.raise", (payload) => ArDisputeRaiseCommandSchema.parse(payload)],
 	[
 		"ar.dispute.resolve",
 		(payload) => ArDisputeResolveCommandSchema.parse(payload),
@@ -594,12 +573,12 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	],
 	["guest.gdpr.erase", (payload) => GuestGdprEraseCommandSchema.parse(payload)],
 	[
-		"guest.gdpr.export",
-		(payload) => GuestGdprExportCommandSchema.parse(payload),
-	],
-	[
 		"guest.preference.update",
 		(payload) => GuestPreferenceUpdateCommandSchema.parse(payload),
+	],
+	[
+		"guest.consent.update",
+		(payload) => GuestConsentUpdateCommandSchema.parse(payload),
 	],
 	[
 		"housekeeping.task.assign",
@@ -662,38 +641,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => MetasearchClickRecordCommandSchema.parse(payload),
 	],
 	[
-		"inventory.lock.room",
-		(payload) => InventoryLockRoomCommandSchema.parse(payload),
-	],
-	[
-		"inventory.release.room",
-		(payload) => InventoryReleaseRoomCommandSchema.parse(payload),
-	],
-	[
-		"inventory.release.bulk",
-		(payload) => InventoryBulkReleaseCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.request",
-		(payload) => OperationsMaintenanceRequestCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.assign",
-		(payload) => OperationsMaintenanceAssignCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.complete",
-		(payload) => OperationsMaintenanceCompleteCommandSchema.parse(payload),
-	],
-	[
-		"operations.maintenance.escalate",
-		(payload) => OperationsMaintenanceEscalateCommandSchema.parse(payload),
-	],
-	[
-		"operations.incident.report",
-		(payload) => OperationsIncidentReportCommandSchema.parse(payload),
-	],
-	[
 		"operations.asset.update",
 		(payload) => OperationsAssetUpdateCommandSchema.parse(payload),
 	],
@@ -708,14 +655,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"operations.schedule.update",
 		(payload) => OperationsScheduleUpdateCommandSchema.parse(payload),
-	],
-	[
-		"compliance.breach.report",
-		(payload) => ComplianceBreachReportCommandSchema.parse(payload),
-	],
-	[
-		"compliance.breach.notify",
-		(payload) => ComplianceBreachNotifyCommandSchema.parse(payload),
 	],
 	[
 		"loyalty.program.enroll",
@@ -810,14 +749,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 		(payload) => ReservationGenerateRegCardCommandSchema.parse(payload),
 	],
 	[
-		"reservation.mobile_checkin.start",
-		(payload) => ReservationMobileCheckinStartCommandSchema.parse(payload),
-	],
-	[
-		"reservation.mobile_checkin.complete",
-		(payload) => ReservationMobileCheckinCompleteCommandSchema.parse(payload),
-	],
-	[
 		"reservation.send_quote",
 		(payload) => ReservationSendQuoteCommandSchema.parse(payload),
 	],
@@ -879,22 +810,6 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	],
 	["rooms.key.issue", (payload) => RoomKeyIssueCommandSchema.parse(payload)],
 	["rooms.key.revoke", (payload) => RoomKeyRevokeCommandSchema.parse(payload)],
-	[
-		"settings.value.set",
-		(payload) => SettingsValueSetCommandSchema.parse(payload),
-	],
-	[
-		"settings.value.bulk_set",
-		(payload) => SettingsValueBulkSetCommandSchema.parse(payload),
-	],
-	[
-		"settings.value.approve",
-		(payload) => SettingsValueApproveCommandSchema.parse(payload),
-	],
-	[
-		"settings.value.revert",
-		(payload) => SettingsValueRevertCommandSchema.parse(payload),
-	],
 	[
 		"notification.send",
 		(payload) => NotificationSendCommandSchema.parse(payload),

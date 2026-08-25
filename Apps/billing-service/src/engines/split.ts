@@ -16,6 +16,7 @@ import type {
   SplitComponentInput,
   SplitComponentOutput,
 } from "@tartware/schemas";
+import { getCurrencyExponent } from "@tartware/schemas";
 import Decimal from "decimal.js";
 
 /**
@@ -23,16 +24,18 @@ import Decimal from "decimal.js";
  * CORE.md §5.1: secondary = floor(total / count); primary = total - secondary × (count - 1).
  */
 export function splitByReservation(input: SplitByReservationInput): SplitByReservationOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const total = new Decimal(input.total);
   const count = input.reservation_count;
-  const secondary = total.div(count).toDecimalPlaces(2, Decimal.ROUND_DOWN);
+  const secondary = total.div(count).toDecimalPlaces(dp, Decimal.ROUND_DOWN);
   const primaryShare = total.minus(secondary.times(count - 1));
   const remainder = primaryShare.minus(secondary);
 
   return {
-    primary_share: primaryShare.toDecimalPlaces(2).toNumber(),
-    secondary_share: secondary.toDecimalPlaces(2).toNumber(),
-    remainder: remainder.toDecimalPlaces(2).toNumber(),
+    primary_share: primaryShare.toDecimalPlaces(dp).toNumber(),
+    secondary_share: secondary.toDecimalPlaces(dp).toNumber(),
+    remainder: remainder.toDecimalPlaces(dp).toNumber(),
   };
 }
 
@@ -42,21 +45,23 @@ export function splitByReservation(input: SplitByReservationInput): SplitByReser
  * primary gets the remainder.
  */
 export function splitByGuest(input: SplitByGuestInput): SplitByGuestOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const total = new Decimal(input.total);
-  const perGuest = total.div(input.overall_guest_count).toDecimalPlaces(2, Decimal.ROUND_DOWN);
+  const perGuest = total.div(input.overall_guest_count).toDecimalPlaces(dp, Decimal.ROUND_DOWN);
 
   if (input.is_primary) {
     const othersTotal = perGuest.times(input.overall_guest_count - input.my_guests);
     const myShare = total.minus(othersTotal);
     return {
-      my_share: myShare.toDecimalPlaces(2).toNumber(),
-      remainder: myShare.minus(perGuest.times(input.my_guests)).toDecimalPlaces(2).toNumber(),
+      my_share: myShare.toDecimalPlaces(dp).toNumber(),
+      remainder: myShare.minus(perGuest.times(input.my_guests)).toDecimalPlaces(dp).toNumber(),
     };
   }
 
   const myShare = perGuest.times(input.my_guests);
   return {
-    my_share: myShare.toDecimalPlaces(2).toNumber(),
+    my_share: myShare.toDecimalPlaces(dp).toNumber(),
     remainder: new Decimal(0).toNumber(),
   };
 }
@@ -66,20 +71,22 @@ export function splitByGuest(input: SplitByGuestInput): SplitByGuestOutput {
  * CORE.md §5.3: share = floor(componentRate / divisor); primary gets remainder.
  */
 export function splitComponent(input: SplitComponentInput): SplitComponentOutput {
+  // Monetary results round to the currency's ISO 4217 exponent.
+  const dp = getCurrencyExponent(input.currency);
   const rate = new Decimal(input.component_rate);
-  const baseShare = rate.div(input.divisor).toDecimalPlaces(2, Decimal.ROUND_DOWN);
+  const baseShare = rate.div(input.divisor).toDecimalPlaces(dp, Decimal.ROUND_DOWN);
 
   if (input.is_primary) {
     const othersTotal = baseShare.times(input.divisor - 1);
     const share = rate.minus(othersTotal);
     return {
-      share: share.toDecimalPlaces(2).toNumber(),
-      remainder: share.minus(baseShare).toDecimalPlaces(2).toNumber(),
+      share: share.toDecimalPlaces(dp).toNumber(),
+      remainder: share.minus(baseShare).toDecimalPlaces(dp).toNumber(),
     };
   }
 
   return {
-    share: baseShare.toDecimalPlaces(2).toNumber(),
+    share: baseShare.toDecimalPlaces(dp).toNumber(),
     remainder: new Decimal(0).toNumber(),
   };
 }

@@ -21,7 +21,12 @@ export const BillingPaymentCaptureCommandSchema = z
 		payment_method: PaymentMethodEnum,
 		/** Transaction type — ADVANCE_DEPOSIT records to deposit liability account, not revenue. */
 		transaction_type: z
-			.enum(["PAYMENT", "ADVANCE_DEPOSIT", "DEPOSIT_APPLIED", "SECURITY_DEPOSIT"])
+			.enum([
+				"PAYMENT",
+				"ADVANCE_DEPOSIT",
+				"DEPOSIT_APPLIED",
+				"SECURITY_DEPOSIT",
+			])
 			.default("PAYMENT"),
 		/** Exchange rate to the property's base currency when paying in a foreign currency. */
 		exchange_rate: z.coerce.number().positive().optional(),

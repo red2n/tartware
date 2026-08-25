@@ -156,7 +156,7 @@
                 {{ session.cash_variance ? formatCurrency(+(session.cash_variance), 'USD') : '—' }}
               </td>
               <td>
-                <span class="badge" [ngClass]="statusClass(session.session_status)">{{ session.session_status_display }}</span>
+                <span class="badge" [ngClass]="statusClass(session.session_status)">{{ session.session_status_display | translate }}</span>
               </td>
               <td class="cell-actions">
                 <button class="btn btn-outline btn-xs" (click)="toggleSessionDetails(session.session_id); $event.stopPropagation()">
@@ -223,7 +223,7 @@
                               </div>
                               <div class="detail-row">
                                 <dt class="detail-label">{{ 'Duration' | translate }}</dt>
-                                <dd class="detail-value">{{ detail.session_duration_minutes ? detail.session_duration_minutes + ' min' : '—' }}</dd>
+                                <dd class="detail-value">{{ detail.session_duration_minutes ? detail.session_duration_minutes + (' min' | translate) : '—' }}</dd>
                               </div>
                               <div class="detail-row">
                                 <dt class="detail-label">{{ 'Base Currency' | translate }}</dt>

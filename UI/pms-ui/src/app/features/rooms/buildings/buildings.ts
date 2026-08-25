@@ -6,6 +6,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
+import { I18nService } from "../../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../../core/search/global-search.service";
 import { IconComponent } from "../../../shared/components/icon/icon";
@@ -39,6 +40,7 @@ import { ToastService } from "../../../shared/toast/toast.service";
 })
 export class BuildingsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly ctx = inject(TenantContextService);
 	private readonly dialog = inject(AppDialogService);
@@ -128,7 +130,7 @@ export class BuildingsComponent {
 			const buildings = await this.api.get<BuildingGridItem[]>("/buildings/grid", params);
 			this.buildings.set(buildings);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load buildings");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load buildings"));
 		} finally {
 			this.dataReady.set(true);
 		}
@@ -140,7 +142,7 @@ export class BuildingsComponent {
 				const ref = this.dialog.open(CreateBuildingDialogComponent);
 				ref?.onClose.subscribe((created: boolean) => {
 					if (created) {
-						this.toast.success("Building created successfully.");
+						this.toast.success(this.i18n.t("Building created successfully."));
 						this.loadBuildings();
 					}
 				});
@@ -156,7 +158,7 @@ export class BuildingsComponent {
 				});
 				ref?.onClose.subscribe((saved: boolean) => {
 					if (saved) {
-						this.toast.success("Building updated successfully.");
+						this.toast.success(this.i18n.t("Building updated successfully."));
 						this.loadBuildings();
 					}
 				});
@@ -169,16 +171,17 @@ export class BuildingsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!tenantId) return;
 
-		if (!confirm(`Delete building "${building.building_name}"?`)) return;
+		if (!confirm(this.i18n.t('Delete building "{name}"?', { name: building.building_name })))
+			return;
 
 		try {
 			await this.api.delete(`/buildings/${building.building_id}`, {
 				tenant_id: tenantId,
 			});
-			this.toast.success("Building deleted.");
+			this.toast.success(this.i18n.t("Building deleted."));
 			this.loadBuildings();
 		} catch (e) {
-			this.toast.error(e instanceof Error ? e.message : "Failed to delete building");
+			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to delete building"));
 		}
 	}
 

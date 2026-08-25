@@ -59,12 +59,21 @@ export const openCashierSession = async (
     ? (text: string, params: unknown[]) => queryWithClient(client, text, params)
     : (text: string, params: unknown[]) => query(text, params);
 
+  // The drawer counts the property's own money: a till at a Tokyo hotel holds yen.
+  // Leaving base_currency unset let the column default 'USD' stand at every
+  // property, so shift reconciliation compared a yen float against a dollar label.
+  const { rows: propertyRows } = await run(
+    `SELECT currency FROM public.properties WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
+    [command.property_id, tenantId],
+  );
+  const baseCurrency = (propertyRows[0] as { currency?: string } | undefined)?.currency ?? "USD";
+
   await run(
     `INSERT INTO cashier_sessions (
        session_id, tenant_id, property_id, session_number,
        cashier_id, cashier_name, terminal_id,
        session_status, opened_at, business_date, shift_type,
-       opening_float_declared, opening_float_counted,
+       opening_float_declared, opening_float_counted, base_currency,
        total_transactions, cash_transactions, card_transactions,
        total_cash_received, total_card_received, total_revenue, total_refunds,
        created_at, updated_at, created_by, updated_by
@@ -72,7 +81,7 @@ export const openCashierSession = async (
        $1, $2, $3, $4,
        $5, $6, $7,
        'open', NOW(), $8, $9,
-       $10, $10,
+       $10, $10, UPPER($12),
        0, 0, 0,
        0, 0, 0, 0,
        NOW(), NOW(), $11, $11
@@ -89,6 +98,7 @@ export const openCashierSession = async (
       command.shift_type,
       command.opening_float,
       actorId,
+      baseCurrency,
     ],
   );
 

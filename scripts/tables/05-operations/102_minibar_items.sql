@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS minibar_items CASCADE;
 
-CREATE TABLE minibar_items (
+CREATE TABLE IF NOT EXISTS minibar_items (
     -- Primary Key
     item_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 

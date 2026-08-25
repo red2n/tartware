@@ -133,7 +133,7 @@
                       (ngModelChange)="updateCapturePaymentForm({ folio_id: $event })">
                 <option value="">{{ 'No folio (standalone payment)' | translate }}</option>
                 @for (f of openFolios(); track f.id) {
-                  <option [value]="f.id">{{ f.folio_number }} — {{ f.guest_name ?? f.company_name ?? f.folio_type_display }}</option>
+                  <option [value]="f.id">{{ f.folio_number }} — {{ (f.guest_name ?? f.company_name ?? f.folio_type_display) | translate }}</option>
                 }
               </select>
             } @else {
@@ -191,10 +191,10 @@
                     }
                   </td>
                   <td>{{ pay.guest_name ?? '—' }}</td>
-                  <td><span class="badge badge-muted">{{ pay.payment_method_display }}</span></td>
-                  <td>{{ pay.transaction_type_display }}</td>
+                  <td><span class="badge badge-muted">{{ pay.payment_method_display | translate }}</span></td>
+                  <td>{{ pay.transaction_type_display | translate }}</td>
                   <td class="col-right cell-amount">{{ formatCurrency(pay.amount, pay.currency) }}</td>
-                  <td><span class="badge" [ngClass]="paymentStatusClass(pay.status)">{{ pay.status_display }}</span></td>
+                  <td><span class="badge" [ngClass]="paymentStatusClass(pay.status)">{{ pay.status_display | translate }}</span></td>
                   <td>{{ formatDate(pay.created_at) }}</td>
                   <td class="cell-actions">
                     @if (canVoid(pay)) {
@@ -430,12 +430,12 @@
                     }
                   </td>
                   <td>{{ inv.guest_name ?? '—' }}</td>
-                  <td>{{ inv.invoice_type_display }}</td>
+                  <td>{{ inv.invoice_type_display | translate }}</td>
                   <td class="col-right cell-amount">{{ formatCurrency(inv.total_amount, inv.currency) }}</td>
                   <td class="col-right cell-amount">{{ formatCurrency(inv.paid_amount, inv.currency) }}</td>
                   <td class="col-right cell-amount" [class.text-danger]="inv.balance_due > 0">{{ formatCurrency(inv.balance_due, inv.currency) }}</td>
                   <td>{{ inv.due_date ? formatDate(inv.due_date) : '—' }}</td>
-                  <td><span class="badge" [ngClass]="invoiceStatusClass(inv.status)">{{ inv.status_display }}</span></td>
+                  <td><span class="badge" [ngClass]="invoiceStatusClass(inv.status)">{{ inv.status_display | translate }}</span></td>
                   <td class="cell-actions">
                     @if (canFinalizeInvoice(inv)) {
                       <button class="btn btn-outline btn-xs" (click)="finalizeInvoice(inv); $event.stopPropagation()"
@@ -649,11 +649,11 @@
                       }
                     </div>
                   </td>
-                  <td><span class="badge badge-muted">{{ fol.folio_type_display }}</span></td>
+                  <td><span class="badge badge-muted">{{ fol.folio_type_display | translate }}</span></td>
                   <td class="col-right cell-amount">{{ formatCurrency(fol.total_charges, fol.currency) }}</td>
                   <td class="col-right cell-amount">{{ formatCurrency(fol.total_payments, fol.currency) }}</td>
                   <td class="col-right cell-amount" [class.text-danger]="fol.balance > 0">{{ formatCurrency(fol.balance, fol.currency) }}</td>
-                  <td><span class="badge" [ngClass]="folioStatusClass(fol.folio_status)">{{ fol.folio_status_display }}</span></td>
+                  <td><span class="badge" [ngClass]="folioStatusClass(fol.folio_status)">{{ fol.folio_status_display | translate }}</span></td>
                   <td>{{ formatDate(fol.opened_at) }}</td>
                   <td class="cell-actions">
                     @if (canCloseFolio(fol)) {
@@ -667,7 +667,7 @@
                       </button>
                     }
                     @if (!canCloseFolio(fol) && !canReopenFolio(fol)) {
-                      <span class="badge badge-muted">{{ fol.folio_status_display }}</span>
+                      <span class="badge badge-muted">{{ fol.folio_status_display | translate }}</span>
                     }
                   </td>
                   <td class="cell-chevron">
@@ -720,7 +720,7 @@
                                   {{ rule.rule_name }}:
                                   {{ rule.charge_code_pattern ?? rule.charge_category ?? rule.transaction_type ?? 'ALL' }}
                                   →
-                                  {{ rule.destination_folio_id === fol.id ? ('Same Folio' | translate) : (rule.destination_folio_type ?? 'Folio') }}
+                                  {{ rule.destination_folio_id === fol.id ? ('Same Folio' | translate) : (rule.destination_folio_type ?? ('Folio' | translate)) }}
                                 </span>
                               }
                             </div>
@@ -758,7 +758,7 @@
                                   <td>{{ formatDate(chg.posting_date) }}</td>
                                   <td><span class="charge-code">{{ chg.charge_code }}</span></td>
                                   <td>{{ chg.charge_description }}</td>
-                                  <td><span class="badge" [ngClass]="chargeTypeClass(chg.transaction_type)">{{ chg.transaction_type_display }}</span></td>
+                                  <td><span class="badge" [ngClass]="chargeTypeClass(chg.transaction_type)">{{ chg.transaction_type_display | translate }}</span></td>
                                   <td class="col-right cell-amount">{{ formatCurrency(chg.total_amount, chg.currency) }}</td>
                                   <td>
                                     @if (chg.is_voided) {
@@ -782,7 +782,7 @@
                                                     (ngModelChange)="splitChargeForm.set({ ...splitChargeForm(), target_folio_id: $event })">
                                               <option value="">{{ 'Select folio...' | translate }}</option>
                                               @for (target of targetFoliosFor(fol.id); track target.id) {
-                                                <option [value]="target.id">{{ target.folio_number }} — {{ target.guest_name ?? target.company_name ?? target.folio_type_display }}</option>
+                                                <option [value]="target.id">{{ target.folio_number }} — {{ (target.guest_name ?? target.company_name ?? target.folio_type_display) | translate }}</option>
                                               }
                                             </select>
                                           </div>
@@ -890,7 +890,7 @@
                                     (ngModelChange)="mergeFolioForm.set({ ...mergeFolioForm(), target_folio_id: $event })">
                               <option value="">{{ 'Select target...' | translate }}</option>
                               @for (target of targetFoliosFor(fol.id); track target.id) {
-                                <option [value]="target.id">{{ target.folio_number }} — {{ target.guest_name ?? target.company_name ?? target.folio_type_display }}</option>
+                                <option [value]="target.id">{{ target.folio_number }} — {{ (target.guest_name ?? target.company_name ?? target.folio_type_display) | translate }}</option>
                               }
                             </select>
                           </div>
@@ -1118,7 +1118,7 @@
                       (ngModelChange)="updatePostChargeForm({ folio_id: $event })">
                 <option value="">{{ 'Select folio...' | translate }}</option>
                 @for (f of openFolios(); track f.id) {
-                  <option [value]="f.id">{{ f.folio_number }} — {{ f.guest_name ?? f.company_name ?? f.folio_type_display }} ({{ f.folio_type_display }})</option>
+                  <option [value]="f.id">{{ f.folio_number }} — {{ (f.guest_name ?? f.company_name ?? f.folio_type_display) | translate }} ({{ f.folio_type_display | translate }})</option>
                 }
               </select>
             } @else {
@@ -1196,7 +1196,7 @@
                   <td>{{ chg.guest_name ?? '—' }}</td>
                   <td><span class="charge-code">{{ chg.charge_code }}</span></td>
                   <td>{{ chg.charge_description }}</td>
-                  <td><span class="badge" [ngClass]="chargeTypeClass(chg.transaction_type)">{{ chg.transaction_type_display }}</span></td>
+                  <td><span class="badge" [ngClass]="chargeTypeClass(chg.transaction_type)">{{ chg.transaction_type_display | translate }}</span></td>
                   <td class="col-right cell-amount">{{ formatCurrency(chg.total_amount, chg.currency) }}</td>
                   <td class="cell-actions">
                     @if (chg.is_voided) {
@@ -1354,7 +1354,7 @@
                       (ngModelChange)="updateCreateRoutingRuleForm({ source_folio_id: $event })">
                 <option value="">{{ 'Select source...' | translate }}</option>
                 @for (folio of openFolios(); track folio.id) {
-                  <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                  <option [value]="folio.id">{{ folio.folio_number }} — {{ (folio.guest_name ?? folio.company_name ?? folio.folio_type_display) | translate }}</option>
                 }
               </select>
             </div>
@@ -1365,7 +1365,7 @@
                     (ngModelChange)="updateCreateRoutingRuleForm({ destination_folio_id: $event })">
               <option value="">{{ 'Select destination...' | translate }}</option>
               @for (folio of openFolios(); track folio.id) {
-                <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                <option [value]="folio.id">{{ folio.folio_number }} — {{ (folio.guest_name ?? folio.company_name ?? folio.folio_type_display) | translate }}</option>
               }
             </select>
           </div>
@@ -1525,7 +1525,7 @@
                                   (ngModelChange)="updateEditRoutingRuleForm({ destination_folio_id: $event })">
                             <option value="">{{ 'Select...' | translate }}</option>
                             @for (folio of openFolios(); track folio.id) {
-                              <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                              <option [value]="folio.id">{{ folio.folio_number }} — {{ (folio.guest_name ?? folio.company_name ?? folio.folio_type_display) | translate }}</option>
                             }
                           </select>
                         </div>
@@ -1574,7 +1574,7 @@
                                   (ngModelChange)="cloneTemplateForm.set({ ...cloneTemplateForm(), source_folio_id: $event })">
                             <option value="">{{ 'Select source...' | translate }}</option>
                             @for (folio of openFolios(); track folio.id) {
-                              <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                              <option [value]="folio.id">{{ folio.folio_number }} — {{ (folio.guest_name ?? folio.company_name ?? folio.folio_type_display) | translate }}</option>
                             }
                           </select>
                         </div>
@@ -1584,7 +1584,7 @@
                                   (ngModelChange)="cloneTemplateForm.set({ ...cloneTemplateForm(), destination_folio_id: $event })">
                             <option value="">{{ 'Select destination...' | translate }}</option>
                             @for (folio of openFolios(); track folio.id) {
-                              <option [value]="folio.id">{{ folio.folio_number }} — {{ folio.guest_name ?? folio.company_name ?? folio.folio_type_display }}</option>
+                              <option [value]="folio.id">{{ folio.folio_number }} — {{ (folio.guest_name ?? folio.company_name ?? folio.folio_type_display) | translate }}</option>
                             }
                           </select>
                         </div>

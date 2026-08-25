@@ -463,6 +463,32 @@ export type IncidentReportListItem = z.infer<
 >;
 
 /**
+ * Detail shape for `GET /v1/incidents/:incidentId`.
+ *
+ * The list shape carries classification and flags only. `INCIDENT_REPORT_BY_ID_SQL`
+ * has always selected the narrative columns too, but the by-id handler reused the
+ * list mapper and dropped them — so what happened, what was done about it and how
+ * it was closed could be written through the product and never read back.
+ * See ui-gaps/06-incidents.md.
+ */
+export const IncidentReportDetailSchema = IncidentReportListItemSchema.extend({
+	incident_description: z.string(),
+	immediate_actions_taken: z.string().nullable(),
+	discovered_by_name: z.string().nullable(),
+	guest_name: z.string().nullable(),
+	injury_details: z.string().nullable(),
+	damage_description: z.string().nullable(),
+	investigation_findings: z.string().nullable(),
+	corrective_actions: z.string().nullable(),
+	follow_up_required: z.boolean().nullable(),
+	follow_up_actions: z.string().nullable(),
+	closed_at: z.string().nullable(),
+	closure_notes: z.string().nullable(),
+});
+
+export type IncidentReportDetail = z.infer<typeof IncidentReportDetailSchema>;
+
+/**
  * Incident report list response schema.
  */
 export const IncidentReportListResponseSchema = z.object({
@@ -510,6 +536,40 @@ export const ReturnLostAndFoundBodySchema = z.object({
 export type ReturnLostAndFoundBody = z.infer<
 	typeof ReturnLostAndFoundBodySchema
 >;
+
+// =====================================================
+// HOUSEKEEPING TASK STATUS
+// =====================================================
+
+/**
+ * Status of a housekeeping task.
+ *
+ * @database housekeeping_tasks.status — the Postgres enum type
+ * `housekeeping_status`, which is why the column carries no CHECK constraint.
+ *
+ * This is a **room-cleanliness** vocabulary, not a task lifecycle. There is no
+ * PENDING, COMPLETED or CANCELLED; the database cannot store them. Both the
+ * dashboard summary and `features/housekeeping` were coded against those
+ * non-existent values until 2026-08-18 — the dashboard's four housekeeping tiles
+ * read zero against real data, and `canComplete`/`canReopen` were inverted.
+ * Housekeeping tasks was the only domain here with no status enum to import,
+ * which is exactly how the UI drifted. See ui-gaps/17-command-reachability.md.
+ *
+ * **The values on the wire are lowercase.** `housekeeping-service`'s row mapper
+ * lowercases `status` on the way out while the column stores upper, so the list
+ * response types `status` as `z.string()` rather than this enum — parsing a
+ * response against these values would fail. Compare case-insensitively until the
+ * mappers stop case-folding.
+ */
+export const HousekeepingTaskStatusEnum = z.enum([
+	"CLEAN",
+	"DIRTY",
+	"INSPECTED",
+	"IN_PROGRESS",
+	"DO_NOT_DISTURB",
+]);
+
+export type HousekeepingTaskStatus = z.infer<typeof HousekeepingTaskStatusEnum>;
 
 // =====================================================
 // LOST & FOUND ITEM CATEGORIES & STATUSES
@@ -616,3 +676,98 @@ export const UpdateLostAndFoundBodySchema = z.object({
 export type UpdateLostAndFoundBody = z.infer<
 	typeof UpdateLostAndFoundBodySchema
 >;
+
+// -----------------------------------------------------------------------------
+// Incident report write contracts
+//
+// The type/severity/status/injury enums above already match the
+// `incident_reports` CHECK constraints, so these bodies reuse them rather than
+// restating the values. `created_by` is NOT NULL on that table, so the route
+// requires an authenticated actor rather than attributing a record to a
+// placeholder.
+// -----------------------------------------------------------------------------
+
+export const IncidentInjurySeverityEnum = z.enum([
+	"none",
+	"minor",
+	"moderate",
+	"serious",
+	"critical",
+	"fatal",
+]);
+
+/** Report an incident. `incident_number` is generated server-side. */
+export const IncidentWriteBodySchema = z.object({
+	tenant_id: uuid,
+	property_id: uuid,
+	incident_title: z.string().min(1).max(300),
+	incident_type: IncidentTypeEnum,
+	severity: IncidentSeverityEnum,
+	incident_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	incident_time: z.string().min(4).max(8),
+	incident_location: z.string().min(1).max(255),
+	incident_description: z.string().min(1).max(5000),
+	immediate_actions_taken: z.string().min(1).max(5000),
+	incident_category: z.string().max(100).optional(),
+	room_number: z.string().max(50).optional(),
+	area_name: z.string().max(100).optional(),
+	guest_involved: z.boolean().optional(),
+	staff_involved: z.boolean().optional(),
+	injury_severity: IncidentInjurySeverityEnum.optional(),
+	police_notified: z.boolean().optional(),
+	severity_score: z.coerce.number().int().min(1).max(10).optional(),
+	discovered_by_name: z.string().max(255).optional(),
+});
+
+export type IncidentWriteBody = z.infer<typeof IncidentWriteBodySchema>;
+
+export const IncidentUpdateBodySchema =
+	IncidentWriteBodySchema.partial().extend({
+		tenant_id: uuid,
+	});
+
+export type IncidentUpdateBody = z.infer<typeof IncidentUpdateBodySchema>;
+
+/**
+ * Move an incident through its status. A terminal status stamps
+ * closed/closed_at/closed_by, which is how time-to-close stays answerable.
+ */
+export const IncidentStatusBodySchema = z.object({
+	tenant_id: uuid,
+	incident_status: IncidentStatusEnum,
+	closure_notes: z.string().max(2000).optional(),
+});
+
+export type IncidentStatusBody = z.infer<typeof IncidentStatusBodySchema>;
+
+/**
+ * Service-layer input for reporting or correcting an incident. `incidentNumber`
+ * is generated server-side and the actor is passed separately, because
+ * `incident_reports.created_by` is NOT NULL and must come from the request.
+ */
+export type IncidentWriteInput = {
+	propertyId: string;
+	incidentTitle: string;
+	incidentType: IncidentWriteBody["incident_type"];
+	severity: IncidentWriteBody["severity"];
+	incidentDate: string;
+	incidentTime: string;
+	incidentLocation: string;
+	incidentDescription: string;
+	immediateActionsTaken: string;
+	incidentCategory?: string;
+	roomNumber?: string;
+	areaName?: string;
+	guestInvolved?: boolean;
+	staffInvolved?: boolean;
+	injurySeverity?: IncidentWriteBody["injury_severity"];
+	policeNotified?: boolean;
+	severityScore?: number;
+	discoveredByName?: string;
+};
+
+/** Service-layer input for an incident status transition. */
+export type IncidentStatusInput = {
+	incidentStatus: IncidentStatusBody["incident_status"];
+	closureNotes?: string;
+};

@@ -209,7 +209,7 @@
             [(ngModel)]="currency"
             [disabled]="saving()">
             @for (c of currencies; track c.code) {
-              <option [value]="c.code">{{ c.code }} — {{ c.name }}</option>
+              <option [value]="c.code">{{ c.code }} — {{ c.name | translate }}</option>
             }
           </select>
         </div>
@@ -222,7 +222,7 @@
             [(ngModel)]="defaultLanguage"
             [disabled]="saving()">
             @for (l of languages; track l.code) {
-              <option [value]="l.code">{{ l.name }}</option>
+              <option [value]="l.code">{{ l.name | translate }}</option>
             }
           </select>
         </div>

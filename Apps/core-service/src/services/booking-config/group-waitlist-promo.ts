@@ -15,6 +15,7 @@ import {
   type PromotionalCodeListItem,
   PromotionalCodeListItemSchema,
   type PromotionalCodeRow,
+  type PromotionalCodeWriteInput,
   type ValidatePromoCodeInput,
   type WaitlistEntryListItem,
   WaitlistEntryListItemSchema,
@@ -33,7 +34,13 @@ import {
   WAITLIST_ENTRY_LIST_SQL,
 } from "../../sql/booking-config/group-waitlist-promo.js";
 
-import { formatDisplayLabel, toIsoString, toNumber } from "./common.js";
+import {
+  formatDisplayLabel,
+  isUniqueViolationOn,
+  ReferenceCodeConflictError,
+  toIsoString,
+  toNumber,
+} from "./common.js";
 
 // =====================================================
 // WAITLIST ENTRY SERVICE
@@ -317,6 +324,221 @@ export const getPromotionalCodeById = async (
     return null;
   }
   return mapPromotionalCodeRow(row);
+};
+
+// =====================================================
+// PROMOTIONAL CODES — WRITE PATH
+//
+// `POST /v1/promo-codes/validate` has always worked, so codes could be *used*
+// and never *created*: the redemption path was live over a table only SQL could
+// populate. Per ui-gaps/18-write-path-gap.md this is reference data on one
+// service with no fan-out, so plain HTTP.
+// See ui-gaps/16-booking-reference-data.md.
+// =====================================================
+
+/**
+ * Create a promotional code.
+ *
+ * `remaining_uses` is seeded from the limit so the redemption path has a counter
+ * to decrement from the moment the code exists, rather than treating NULL as
+ * "unlimited" on a code that has one. Usage and analytics counters start at
+ * their defaults and are never caller-settable.
+ */
+export const createPromotionalCode = async (
+  tenantId: string,
+  input: PromotionalCodeWriteInput,
+  actorId?: string,
+): Promise<PromotionalCodeListItem | null> => {
+  // `uq_promotional_codes_tenant_code` is the constraint COV-16 added; a code an
+  // operator has already used is a 409, not a 500. Same handling as booking
+  // sources and market segments in booking-config/distribution.ts.
+  let rows: { promo_id: string }[];
+  try {
+    ({ rows } = await query<{ promo_id: string }>(
+      `
+      INSERT INTO public.promotional_codes (
+        tenant_id, property_id,
+        promo_code, promo_name, promo_description,
+        promo_type, promo_status, is_active, is_public,
+        valid_from, valid_to,
+        discount_type, discount_percent, discount_amount, discount_currency,
+        max_discount_amount, free_nights_count,
+        has_usage_limit, total_usage_limit, remaining_uses, per_user_limit,
+        minimum_stay_nights, maximum_stay_nights, minimum_booking_amount,
+        combinable_with_other_promos, auto_apply, display_on_website,
+        created_by, updated_by
+      ) VALUES (
+        $1::uuid, $2::uuid,
+        $3, $4, $5,
+        $6, COALESCE($7, 'draft'), COALESCE($8, true), COALESCE($9, false),
+        $10::date, $11::date,
+        $12, $13, $14, COALESCE($15, 'USD'),
+        $16, $17,
+        COALESCE($18, false), $19, $19, COALESCE($20, 1),
+        $21, $22, $23,
+        COALESCE($24, false), COALESCE($25, false), COALESCE($26, false),
+        $27, $27
+      )
+      RETURNING promo_id
+    `,
+      [
+        tenantId,
+        input.propertyId ?? null,
+        input.promoCode,
+        input.promoName,
+        input.promoDescription ?? null,
+        input.promoType ?? null,
+        input.promoStatus ?? null,
+        input.isActive ?? null,
+        input.isPublic ?? null,
+        input.validFrom,
+        input.validTo,
+        input.discountType ?? null,
+        input.discountPercent ?? null,
+        input.discountAmount ?? null,
+        input.discountCurrency ?? null,
+        input.maxDiscountAmount ?? null,
+        input.freeNightsCount ?? null,
+        input.hasUsageLimit ?? null,
+        input.totalUsageLimit ?? null,
+        input.perUserLimit ?? null,
+        input.minimumStayNights ?? null,
+        input.maximumStayNights ?? null,
+        input.minimumBookingAmount ?? null,
+        input.combinableWithOtherPromos ?? null,
+        input.autoApply ?? null,
+        input.displayOnWebsite ?? null,
+        actorId ?? null,
+      ],
+    ));
+  } catch (error) {
+    if (isUniqueViolationOn(error, "uq_promotional_codes_tenant_code")) {
+      throw new ReferenceCodeConflictError(
+        `Promotional code ${input.promoCode} already exists for this tenant`,
+      );
+    }
+    throw error;
+  }
+
+  const promoId = rows[0]?.promo_id;
+  if (!promoId) return null;
+
+  return getPromotionalCodeById({ promoId, tenantId });
+};
+
+/**
+ * Edit a promotional code.
+ *
+ * `promo_code` is deliberately absent: it is the identifier guests already hold,
+ * and rewriting it silently invalidates every email and landing page carrying
+ * the old one. `remaining_uses` is re-derived when the limit moves, so raising a
+ * limit on a part-redeemed code grants the difference rather than resetting it.
+ */
+export const updatePromotionalCode = async (
+  tenantId: string,
+  promoId: string,
+  input: Partial<PromotionalCodeWriteInput>,
+  actorId?: string,
+): Promise<PromotionalCodeListItem | null> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.promotional_codes
+      SET
+        promo_name = COALESCE($3, promo_name),
+        promo_description = COALESCE($4, promo_description),
+        promo_type = COALESCE($5, promo_type),
+        promo_status = COALESCE($6, promo_status),
+        is_active = COALESCE($7, is_active),
+        is_public = COALESCE($8, is_public),
+        valid_from = COALESCE($9::date, valid_from),
+        valid_to = COALESCE($10::date, valid_to),
+        discount_type = COALESCE($11, discount_type),
+        discount_percent = COALESCE($12, discount_percent),
+        discount_amount = COALESCE($13, discount_amount),
+        discount_currency = COALESCE($14, discount_currency),
+        max_discount_amount = COALESCE($15, max_discount_amount),
+        free_nights_count = COALESCE($16, free_nights_count),
+        has_usage_limit = COALESCE($17, has_usage_limit),
+        total_usage_limit = COALESCE($18, total_usage_limit),
+        remaining_uses = CASE
+          WHEN $18::integer IS NULL THEN remaining_uses
+          ELSE GREATEST($18::integer - COALESCE(usage_count, 0), 0)
+        END,
+        per_user_limit = COALESCE($19, per_user_limit),
+        minimum_stay_nights = COALESCE($20, minimum_stay_nights),
+        maximum_stay_nights = COALESCE($21, maximum_stay_nights),
+        minimum_booking_amount = COALESCE($22, minimum_booking_amount),
+        combinable_with_other_promos = COALESCE($23, combinable_with_other_promos),
+        auto_apply = COALESCE($24, auto_apply),
+        display_on_website = COALESCE($25, display_on_website),
+        updated_by = $26,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE promo_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [
+      promoId,
+      tenantId,
+      input.promoName ?? null,
+      input.promoDescription ?? null,
+      input.promoType ?? null,
+      input.promoStatus ?? null,
+      input.isActive ?? null,
+      input.isPublic ?? null,
+      input.validFrom ?? null,
+      input.validTo ?? null,
+      input.discountType ?? null,
+      input.discountPercent ?? null,
+      input.discountAmount ?? null,
+      input.discountCurrency ?? null,
+      input.maxDiscountAmount ?? null,
+      input.freeNightsCount ?? null,
+      input.hasUsageLimit ?? null,
+      input.totalUsageLimit ?? null,
+      input.perUserLimit ?? null,
+      input.minimumStayNights ?? null,
+      input.maximumStayNights ?? null,
+      input.minimumBookingAmount ?? null,
+      input.combinableWithOtherPromos ?? null,
+      input.autoApply ?? null,
+      input.displayOnWebsite ?? null,
+      actorId ?? null,
+    ],
+  );
+
+  if (!rowCount) return null;
+
+  return getPromotionalCodeById({ promoId, tenantId });
+};
+
+/**
+ * Withdraw a promotional code.
+ *
+ * Soft delete, and `is_active` is cleared in the same statement: the validate
+ * path filters on `is_deleted`, but anything reading the row directly would
+ * otherwise still see an "active" code that cannot be redeemed. Redemption
+ * history is why the row stays.
+ */
+export const deletePromotionalCode = async (
+  tenantId: string,
+  promoId: string,
+  actorId?: string,
+): Promise<boolean> => {
+  const { rowCount } = await query(
+    `
+      UPDATE public.promotional_codes
+      SET is_deleted = true,
+          is_active = false,
+          promo_status = 'cancelled',
+          updated_by = $3,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE promo_id = $1::uuid AND tenant_id = $2::uuid
+        AND COALESCE(is_deleted, false) = false
+    `,
+    [promoId, tenantId, actorId ?? null],
+  );
+
+  return (rowCount ?? 0) > 0;
 };
 
 export const validatePromoCode = async (

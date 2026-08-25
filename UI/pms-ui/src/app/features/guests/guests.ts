@@ -8,6 +8,7 @@ import { TooltipModule } from "primeng/tooltip";
 import { map } from "rxjs";
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
@@ -23,7 +24,6 @@ import {
 	sortBy,
 	toggleSort,
 } from "../../shared/sort-utils";
-import { ToastService } from "../../shared/toast/toast.service";
 
 type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 
@@ -47,9 +47,9 @@ type GuestFilter = "ALL" | "VIP" | "LOYALTY" | "BLACKLISTED";
 })
 export class GuestsComponent {
 	private readonly api = inject(ApiService);
+	private readonly i18n = inject(I18nService);
 	private readonly auth = inject(AuthService);
 	private readonly router = inject(Router);
-	private readonly toast = inject(ToastService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 
@@ -77,6 +77,7 @@ export class GuestsComponent {
 	readonly currentPage = signal(1);
 	readonly pageSize = 25;
 	readonly sortState = createSortState();
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _resetPage = effect(() => {
 		this.globalSearch.query();
 		this.currentPage.set(1);
@@ -136,7 +137,10 @@ export class GuestsComponent {
 	);
 	readonly segmentSummary = computed(() => {
 		const count = this.filterCounts()[this.activeFilter()] ?? 0;
-		return `${count} ${count === 1 ? "guest" : "guests"} in this segment`;
+		return this.i18n.t(
+			count === 1 ? "{count} guest in this segment" : "{count} guests in this segment",
+			{ count },
+		);
 	});
 
 	readonly filterCounts = computed(() => {
@@ -282,7 +286,7 @@ export class GuestsComponent {
 			const guests = await this.api.get<GuestGridResponse>("/guests/grid", params);
 			this.guests.set(guests.data ?? []);
 		} catch (e) {
-			this.error.set(e instanceof Error ? e.message : "Failed to load guests");
+			this.error.set(e instanceof Error ? e.message : this.i18n.t("Failed to load guests"));
 		} finally {
 			this.dataReady.set(true);
 		}

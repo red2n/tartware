@@ -60,6 +60,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 	private routerSub?: Subscription;
 
 	/** Apply brand color as a CSS custom property on the document root. */
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: holds the EffectRef; the effect body is the purpose, nothing reads the field
 	private readonly _brandColorEffect = effect(() => {
 		const color = this.settings.getString("property.brand_color", "");
 		if (color && /^#[0-9a-fA-F]{3,8}$/.test(color)) {

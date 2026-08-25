@@ -21,7 +21,7 @@
 -- Drop table if exists (for development)
 -- DROP TABLE IF EXISTS event_bookings CASCADE;
 
-CREATE TABLE event_bookings (
+CREATE TABLE IF NOT EXISTS event_bookings (
     -- Primary Key
     event_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Unique event identifier
 
@@ -61,6 +61,21 @@ setup_start_time TIME, -- When setup crew can start
 actual_start_time TIME, -- Actual start time
 actual_end_time TIME, -- Actual end time
 teardown_end_time TIME, -- When room must be clear
+
+-- Resolved instants. event_date + start_time anchors the booking; an end at or
+-- before start_time is the next day, a setup after start_time is the previous
+-- evening. Generated here so no query has to re-derive the rule — and so an
+-- event running past midnight is representable at all.
+occupancy_starts_at TIMESTAMP GENERATED ALWAYS AS (
+    (event_date + COALESCE(setup_start_time, start_time))
+    - CASE WHEN COALESCE(setup_start_time, start_time) > start_time
+           THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+) STORED, -- First instant the room is held (setup included)
+occupancy_ends_at TIMESTAMP GENERATED ALWAYS AS (
+    (event_date + COALESCE(teardown_end_time, end_time))
+    + CASE WHEN COALESCE(teardown_end_time, end_time) <= start_time
+           THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+) STORED, -- First instant the room is free again (teardown included)
 
 -- Guest/Organizer Information
 organizer_name VARCHAR(200) NOT NULL, -- Primary organizer
@@ -310,6 +325,8 @@ evacuation_plan_url VARCHAR(500), -- Link to evacuation plan document
 
 -- Billing
 folio_id UUID, -- Reference to folios for charges
+    charges_posted_at TIMESTAMP, -- When billing.event.post_charges posted this event to its folio; the post-once guard
+    charges_posted_by UUID, -- User whose dispatch posted the charges
     billing_instructions TEXT,  -- Special billing instructions
     billing_contact_name VARCHAR(200),  -- Billing contact person
     billing_contact_email VARCHAR(255), -- Billing contact email
@@ -451,10 +468,10 @@ deleted_by UUID, -- User who deleted
 version BIGINT DEFAULT 0, -- Concurrency version
 
 -- Constraints
-CONSTRAINT event_bookings_time_check CHECK (end_time > start_time),
-    CONSTRAINT event_bookings_setup_time_check CHECK (
-        setup_start_time IS NULL OR start_time IS NULL OR setup_start_time <= start_time
-    ),
+-- Not `end_time > start_time`: these are bare TIME columns, so an end at or
+    -- before the start is the next morning, not an inverted window. A zero-length
+    -- event is the only thing the day-boundary convention cannot rescue.
+    CONSTRAINT event_bookings_time_check CHECK (end_time <> start_time),
     CONSTRAINT event_bookings_attendees_check CHECK (expected_attendees > 0),
     CONSTRAINT event_bookings_rating_check CHECK (
         post_event_rating IS NULL OR (post_event_rating >= 1 AND post_event_rating <= 5)
@@ -486,5 +503,55 @@ COMMENT ON COLUMN event_bookings.booking_status IS 'Current status: INQUIRY, TEN
 COMMENT ON COLUMN event_bookings.series_id IS 'Groups recurring events together';
 
 COMMENT ON COLUMN event_bookings.metadata IS 'Custom fields and additional event details';
+
+-- =====================================================
+-- MIDNIGHT-CROSSING EVENTS (ui-gaps/13-sales-catering.md)
+-- Idempotent migration for deployments created before the day-boundary
+-- convention. The tables' original CHECKs read the bare TIME columns as if they
+-- were on one calendar day, so a wedding running 18:00 -> 01:00 could not be
+-- stored at all and had to be recorded as ending 23:59.
+-- =====================================================
+
+-- Zero-length is still invalid; an end at or before the start now means the
+-- following day rather than an inverted window.
+ALTER TABLE event_bookings DROP CONSTRAINT IF EXISTS event_bookings_time_check;
+ALTER TABLE event_bookings
+    ADD CONSTRAINT event_bookings_time_check CHECK (end_time <> start_time);
+
+-- Dropped, not relaxed: a setup after start_time is the previous evening, which
+-- is a legitimate window for a gala starting after midnight. Under the
+-- convention there is no invalid setup value left to constrain.
+ALTER TABLE event_bookings DROP CONSTRAINT IF EXISTS event_bookings_setup_time_check;
+
+ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS occupancy_starts_at TIMESTAMP
+    GENERATED ALWAYS AS (
+        (event_date + COALESCE(setup_start_time, start_time))
+        - CASE WHEN COALESCE(setup_start_time, start_time) > start_time
+               THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+    ) STORED;
+
+ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS occupancy_ends_at TIMESTAMP
+    GENERATED ALWAYS AS (
+        (event_date + COALESCE(teardown_end_time, end_time))
+        + CASE WHEN COALESCE(teardown_end_time, end_time) <= start_time
+               THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+    ) STORED;
+
+COMMENT ON COLUMN event_bookings.occupancy_starts_at IS 'Resolved first instant the space is held, setup included. event_date + COALESCE(setup_start_time, start_time), minus one day when setup runs after start_time (the evening before).';
+COMMENT ON COLUMN event_bookings.occupancy_ends_at IS 'Resolved first instant the space is free again, teardown included. event_date + COALESCE(teardown_end_time, end_time), plus one day when that time is at or before start_time (past midnight).';
+
+-- =====================================================
+-- EVENT BILLING (ui-gaps/13-sales-catering.md, UI item 6)
+-- Idempotent migration for deployments created before event charges could be
+-- posted. `charges_posted_at` is the post-once guard billing.event.post_charges
+-- reads: an event whose charges are already on its folio is refused rather than
+-- posted twice, and the screen shows the date instead of the action.
+-- =====================================================
+
+ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS charges_posted_at TIMESTAMP;
+ALTER TABLE event_bookings ADD COLUMN IF NOT EXISTS charges_posted_by UUID;
+
+COMMENT ON COLUMN event_bookings.charges_posted_at IS 'When the event charges were posted to folio_id by billing.event.post_charges. NULL means unbilled; a value makes a second posting a 409.';
+COMMENT ON COLUMN event_bookings.charges_posted_by IS 'User who dispatched the charge posting.';
 
 \echo 'Event bookings table created successfully!'

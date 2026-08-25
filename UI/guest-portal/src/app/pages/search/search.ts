@@ -1,16 +1,16 @@
-import { Component, signal } from "@angular/core";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
-import { portalConfig } from "../../portal-config";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { MatNativeDateModule } from "@angular/material/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatNativeDateModule } from "@angular/material/core";
+import { MatDatepickerModule } from "@angular/material/datepicker";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { Router } from "@angular/router";
 import type { AvailableRoomType } from "@tartware/schemas";
+import { portalConfig } from "../../portal-config";
 import { GuestApiService } from "../../services/guest-api.service";
 
 @Component({
@@ -104,28 +104,28 @@ import { GuestApiService } from "../../services/guest-api.service";
 	styles: `
 		:host { display: block; }
 		.search-form { text-align: center; padding: 2rem 0; }
-		.search-form h2 { margin-bottom: 1.5rem; font-weight: 300; font-size: 1.8rem; }
+		.search-form h2 { margin-bottom: 1.5rem; font-weight: 300; font-size: var(--base-text-size-xl); }
 		.fields { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem; }
 		.fields mat-form-field { width: 180px; }
-		.error { color: #d32f2f; margin-top: 1rem; }
+		.error { color: var(--fgColor-danger); margin-top: 1rem; }
 		.results { padding: 1rem 0; }
 		.results h3 { margin-bottom: 1rem; }
 		.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
 		.room-card mat-card-content { padding-top: 0.5rem; }
 		.amenities { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.5rem 0; }
 		.chip {
-			background: #e3f2fd; color: #1565c0; padding: 2px 10px; border-radius: 12px;
-			font-size: 0.8rem;
+			background: var(--bgColor-accent-muted); color: var(--fgColor-accent); padding: 2px 10px; border-radius: 12px;
+			font-size: var(--base-text-size-xs);
 		}
-		.availability { color: #2e7d32; font-weight: 500; font-size: 0.9rem; }
+		.availability { color: var(--fgColor-success); font-weight: 500; font-size: var(--base-text-size-sm); }
 		mat-card-actions {
 			display: flex; align-items: center; justify-content: space-between; padding: 0 16px 8px;
 		}
-		.price { font-size: 1.1rem; font-weight: 600; color: #1565c0; }
+		.price { font-size: var(--base-text-size-lg); font-weight: 600; color: var(--fgColor-accent); }
 	`,
 })
 export class SearchPage {
-	private readonly api = new GuestApiService();
+	private readonly api = inject(GuestApiService);
 	private readonly router: Router;
 
 	today = new Date();
