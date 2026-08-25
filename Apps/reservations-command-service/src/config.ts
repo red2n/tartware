@@ -72,6 +72,14 @@ export const commandCenterConfig = {
   maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
   retryBackoffMs: parseNumberEnv(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
   retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
+  // This is the one service that assembles this config by hand instead of
+  // calling `buildCommandCenterConfig`, so every field the shared builder gains
+  // has to be mirrored here or this consumer silently diverges from the fleet.
+  partitionsConsumedConcurrently: parseNumberEnv(
+    process.env.RESERVATIONS_COMMAND_SERVICE_KAFKA_PARTITION_CONCURRENCY ??
+      process.env.KAFKA_PARTITION_CONCURRENCY,
+    4,
+  ),
 };
 
 export const availabilityGuardConfig = {

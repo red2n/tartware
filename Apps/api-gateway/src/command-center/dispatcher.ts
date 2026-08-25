@@ -20,8 +20,13 @@
 import type { OutboxRecord, OutboxStatus } from "@tartware/outbox";
 import type { TopicMessages } from "kafkajs";
 
-/** Only the rows this gateway enqueues; other producers own their own types. */
-const COMMAND_AGGREGATE_TYPE = "command";
+/**
+ * Aggregate types this dispatcher claims — only the rows the gateway's command
+ * accept path enqueues. Other producers own their own types and their own
+ * dispatchers, and a type enqueued here but missing from this list would sit
+ * PENDING forever, which is what `outbox-dispatch-conformance` guards against.
+ */
+const DISPATCHED_AGGREGATE_TYPES = ["command"] as const;
 
 type DispatcherLogger = {
   info: (obj: unknown, msg?: string) => void;
@@ -56,10 +61,10 @@ export type CommandOutboxDispatcherDeps = {
   claimOutboxBatch: (
     limit: number,
     workerId: string,
-    aggregateType: string,
+    aggregateTypes: readonly string[],
   ) => Promise<OutboxRecord[]>;
   publishRecordBatch: (topicMessages: TopicMessages[]) => Promise<void>;
-  markOutboxDeliveredBatch: (ids: string[]) => Promise<number>;
+  markOutboxDeliveredBatch: (ids: Array<string | bigint>) => Promise<number>;
   markOutboxFailed: (
     id: string,
     error: unknown,
@@ -192,7 +197,7 @@ export const createCommandOutboxDispatcher = (deps: CommandOutboxDispatcherDeps)
     const records = await deps.claimOutboxBatch(
       settings.batchSize,
       settings.workerId,
-      COMMAND_AGGREGATE_TYPE,
+      DISPATCHED_AGGREGATE_TYPES,
     );
 
     if (records.length === 0) {

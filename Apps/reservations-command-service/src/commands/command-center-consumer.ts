@@ -1,7 +1,7 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
-import { enterTenantScope } from "@tartware/config/db";
+import { runWithTenantScope } from "@tartware/config/db";
 
 import { commandCenterConfig, serviceConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -316,7 +316,7 @@ const { start, shutdown } = createConsumerLifecycle({
   publishDlqEvent: publishCommandDlqEvent,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
-  onTenantResolved: enterTenantScope,
+  withTenantScope: runWithTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

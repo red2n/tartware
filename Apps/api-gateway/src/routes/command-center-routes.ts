@@ -34,6 +34,7 @@ import {
   listCommandFeatures,
   updateCommandFeatureStatus,
 } from "../command-center/sql/command-features.js";
+import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken, verifySystemAdminToken } from "../lib/jwt.js";
 import { submitCommand } from "../utils/command-publisher.js";
 
@@ -202,9 +203,15 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         requiredModules: "core",
       }),
       config: {
+        // Was hardcoded to 120/minute — two commands a second, on the endpoint
+        // every write in the system goes through, with no way to raise it. The
+        // config it now reads is the same one `self-service-routes` and
+        // `misc-routes` already use for their command writes, so the limit is
+        // consistent across them and tunable per environment via
+        // `API_GATEWAY_RATE_COMMAND_MAX`.
         rateLimit: {
-          max: 120,
-          timeWindow: "1 minute",
+          max: gatewayConfig.rateLimit.commandMax,
+          timeWindow: gatewayConfig.rateLimit.commandTimeWindow,
         },
       },
       schema: buildRouteSchema({

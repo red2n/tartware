@@ -67,7 +67,7 @@ export type OutboxRepository = {
 	) => Promise<OutboxRecord[]>;
 	markOutboxDelivered: (id: string) => Promise<void>;
 	/** Mark many published rows delivered in one statement; returns rows updated. */
-	markOutboxDeliveredBatch: (ids: string[]) => Promise<number>;
+	markOutboxDeliveredBatch: (ids: Array<string | bigint>) => Promise<number>;
 	markOutboxDeliveredByEventId: (eventId: string) => Promise<void>;
 	markOutboxFailed: (
 		id: string,

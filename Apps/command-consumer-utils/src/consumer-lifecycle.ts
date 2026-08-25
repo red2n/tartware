@@ -38,8 +38,12 @@ type CommandCenterConfig = {
    * on its database round trips. Left at 1, a consumer's ceiling is a single
    * command's latency — roughly 200/sec against a 5 ms handler, no matter how
    * many partitions it owns or how many replicas are running.
+   *
+   * Optional so a config assembled without it is merely serial rather than
+   * broken; `buildCommandCenterConfig` supplies it for every service that uses
+   * the shared builder.
    */
-  partitionsConsumedConcurrently: number;
+  partitionsConsumedConcurrently?: number;
 };
 
 type CommandConsumerMetrics = {
@@ -183,7 +187,16 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
     // command. With the ambient `onTenantResolved` form, interleaved partitions
     // would leave one tenant's scope visible to another's queries, so hold the
     // consumer at 1 and say why rather than risking a cross-tenant read.
-    let concurrency = Math.max(1, input.commandCenterConfig.partitionsConsumedConcurrently);
+    // Coerce defensively rather than trusting the field to be a usable number.
+    // `Math.max(1, undefined)` is NaN, and KafkaJS builds its fetch manager with
+    // `new Array(concurrency)` — so a config assembled by hand without this
+    // field took down the whole service at startup with "Invalid array length"
+    // rather than falling back to serial consumption.
+    const requestedConcurrency = Number(input.commandCenterConfig.partitionsConsumedConcurrently);
+    let concurrency =
+      Number.isFinite(requestedConcurrency) && requestedConcurrency >= 1
+        ? Math.floor(requestedConcurrency)
+        : 1;
     if (concurrency > 1 && input.onTenantResolved && !input.withTenantScope) {
       input.logger.warn(
         { requested: concurrency, serviceName: input.serviceName },

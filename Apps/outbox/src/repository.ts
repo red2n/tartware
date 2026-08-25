@@ -202,10 +202,16 @@ export const createOutboxRepository = ({
 	 * connect / BEGIN / `set_config` / COMMIT, so the bookkeeping costs more
 	 * round trips than the publish it is recording.
 	 */
-	const markOutboxDeliveredBatch = async (ids: string[]): Promise<number> => {
+	const markOutboxDeliveredBatch = async (
+		ids: Array<string | bigint>,
+	): Promise<number> => {
 		if (ids.length === 0) {
 			return 0;
 		}
+		// A BIGINT type parser is registered globally, so `id` arrives as a JS
+		// BigInt. node-pg cannot serialise BigInt into an array parameter — send
+		// the decimal text and let Postgres do the cast.
+		const idText = ids.map((id) => String(id));
 		const result = await query(
 			`
         UPDATE transactional_outbox
@@ -222,9 +228,12 @@ export const createOutboxRepository = ({
             'publishedAt',
             NOW()
           )
-        WHERE id = ANY($1::uuid[])
+        -- id is the BIGINT surrogate key, not the UUID event_id. Casting
+        -- this to uuid[] fails with "operator does not exist: bigint = uuid"
+        -- and leaves the whole claimed batch stuck IN_PROGRESS.
+        WHERE id = ANY($1::bigint[])
       `,
-			[ids],
+			[idText],
 		);
 		return result.rowCount ?? 0;
 	};

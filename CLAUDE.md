@@ -155,18 +155,33 @@ Working through these one at a time. Update the status column when one lands.
 
 ### Throughput (20K ops/sec target)
 
-Derived from reading the hot paths, **not measured** — `loadtest/k6` has never been run against
-this stack. Treat the numbers as arithmetic until a k6 run says otherwise.
+**Measured 25 Aug 2026** — first real k6 run against this stack, single dev box (32 cores, 62 GB)
+with all 10 services + Postgres + Kafka + k6 co-located, one gateway process:
+
+| Metric | Result |
+|--------|--------|
+| Command acceptance, sustained | **~1,700/sec** (single gateway process) |
+| Latency at 1,000/sec | p50 2.4 ms, p95 13.7 ms, **0 errors in 91,493** |
+| Latency at saturation (6,000/sec offered) | p95 2.3 s — queueing collapse, still 0 errors |
+| Outbox dispatcher drain | **~2,034 msgs/sec**, drained an 83K backlog to zero, no loss |
+
+Read it as a floor, not a ceiling: one gateway process, everything sharing one box, and k6 itself
+competing for the same cores. Reproduce with
+`loadtest/k6/scenarios/command-capacity.js` (see its header for the two prerequisites).
 
 | # | Finding | Status |
 |---|---------|--------|
 | T1 | Consumers drained one partition at a time (`partitionsConsumedConcurrently` unset → 1), capping a process at one command's latency, ~200/sec. | **done 25 Aug** — now configurable via `KAFKA_PARTITION_CONCURRENCY`, default 4. Required `runWithTenantScope` first: `enterWith` writes tenant scope back into the calling context, so a shared batch runner leaked the last tenant's scope. |
 | T2 | Gateway accept path ran 5 standalone statements + a synchronous Kafka ack. With an RLS scope active each statement pays its own connect/BEGIN/`set_config`/COMMIT → ~25 round trips, 5 pool checkouts per command. | **done 25 Aug** — one transaction (~6 round trips, 1 checkout); publish moved to the outbox dispatcher. |
 | T3 | Outbox was written then published inline and marked delivered in-request — full cost of a durable log, none of the benefit. | **done 25 Aug** — `Apps/api-gateway/src/command-center/dispatcher.ts` drains it with `sendBatch` + batched marking, adaptive polling, `FOR UPDATE SKIP LOCKED` so every replica can run one. |
-| T4 | `DB_POOL_MAX` defaults to 15 per pod — the binding limit once T1–T3 land. Raising it needs PgBouncer, which is referenced in docs/health checks but has no deployment manifest. | open |
+| T4 | `DB_POOL_MAX` defaulted to 15 per pod. PgBouncer *was* already in `docker-compose.yml` (transaction mode) and `DB_PORT` already defaults to 5433, so services route through it — but there was no Kubernetes manifest, so in-cluster `DB_PORT=5433` resolved to nothing. | **done 25 Aug** — `DB_POOL_MAX` 15→50 (behind a transaction pooler a client connection is cheap; the real Postgres-side cap is PgBouncer's `default_pool_size`), PgBouncer limits made env-tunable, and `platform/kubernetes/pgbouncer.yaml` added. Code verified pooling-safe: `pg_advisory_xact_lock` not the session variant, no LISTEN/NOTIFY, no named prepared statements. |
 | T5 | Kafka message keying: commands are keyed by command id, so there is **no ordering guarantee** between two commands on the same reservation or folio. Pre-existing, preserved deliberately through T3. Keying by tenant would fix ordering but hot-partition the largest tenants. Needs a decision. | open |
-| T6 | Nothing here is measured. Run `loadtest/k6` and replace the arithmetic above with real numbers. | open |
+| T6 | Nothing was measured. | **done 25 Aug** — numbers above. Three blockers had to be cleared first, all recorded as T8-T10. |
+| T8 | `loadtest/k6/command-pipeline.js` posts to `POST /v1/reservations`, which the gateway does not serve — every write 404s. The real endpoint is `POST /v1/commands/:name/execute`. `scenarios/*.js` also query `/v1/availability`, which 404s too. | open — new `scenarios/command-capacity.js` uses the real endpoint; the older files still need fixing |
+| T9 | All 195 command feature flags ship `disabled` in the default seed, so every write returns 409 until they are enabled. `executables/test-accounts-realdata/test-multi-tenant.sh` bulk-enables them first and calls this the "FEATURE_DISABLED trap"; the load harness does not. | open — document it in `loadtest/README.md` |
+| T10 | PgBouncer's resolver fails with `(bad-af)` against the compose DNS name and never connects, so every service falls over on startup with `08P01`. Worked around by pinning `PGBOUNCER_DATABASES_HOST` to the container IP. | open — needs a real fix, the IP changes on recreate |
 | T7 | `reservations-command-service` outbox dispatcher publishes one record per `send()`, serially, on a 2s poll, and uses `enterTenantScope` in its loop (same hazard as T1). | open |
+| T11 | `POST /v1/commands/:name/execute` hardcoded `rateLimit: { max: 120, timeWindow: "1 minute" }` — two commands a second on the endpoint every write goes through, unraisable by config, while `self-service-routes` and `misc-routes` already read `gatewayConfig.rateLimit.commandMax`. Capped the first load run at exactly 120 accepted commands. | **done 25 Aug** — now reads the same config, tunable via `API_GATEWAY_RATE_COMMAND_MAX` (default still 60/min; raise it deliberately per environment). |
 
 ---
 
