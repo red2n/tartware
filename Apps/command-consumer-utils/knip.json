@@ -6,7 +6,7 @@
   "ignoreFiles": [
     ".eslintrc.cjs"
   ],
-  "ignoreDependencies": ["@tartware/config", "@tartware/schemas"],
+  "ignoreDependencies": ["@tartware/config", "@tartware/schemas", "@tartware/telemetry"],
   "ignoreBinaries": [
     "biome",
     "eslint",

@@ -31,7 +31,7 @@
     "build:ui": "npx nx run @tartware/schemas:build && node scripts/stamp-ui-version.mjs && npx nx run @tartware/pms-ui:build",
     "clean": "npx nx run-many -t clean",
     "clean:all": "node ./scripts/clean-all.mjs",
-    "check": "pnpm run check:guardrails && pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast && pnpm run check:i18n",
+    "check": "pnpm run check:guardrails && pnpm run check:frameworks && pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast && pnpm run check:i18n",
     "check:contrast": "node UI/shared-styles/check-contrast.mjs",
     "check:i18n": "node UI/pms-ui/check-i18n.mjs",
     "lint": "npx nx run-many -t lint",
@@ -70,7 +70,8 @@
     "samples:fetch": "node scripts/fetch-sample-records.mjs",
     "samples:api": "node scripts/fetch-sample-api-records.mjs",
     "check:guardrails": "node ./scripts/check-guardrail-coverage.mjs",
-    "prepare": "node ./scripts/install-git-hooks.mjs"
+    "prepare": "node ./scripts/install-git-hooks.mjs",
+    "check:frameworks": "node ./scripts/check-shared-framework-usage.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.12",

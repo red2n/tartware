@@ -1,5 +1,9 @@
 # Agent Instructions
 
+> **Orientation first:** `CLAUDE.md` at the repo root is the at-a-glance start document — service
+> map, shared-framework entry points, commands, a verified baseline of repo facts (so no session
+> re-scans for them) and the active backlog. This file holds the rule detail behind it.
+
 ## Project Principles
 - This app targets 20K ops/sec; prefer designs that scale under sustained write throughput.
 - Favor modular, low-coupling boundaries between services.
@@ -185,6 +189,35 @@ Every SQL table script must include all 6 documentation elements. Reference: `sc
    ```sql
    \echo 'tablename table created successfully!'
    ```
+
+## Shared Frameworks — use the entry point, never hand-roll
+
+Cross-cutting mechanisms live in one package each. Going around one is how drift
+starts: `createKafkaClient()` existed while five services still called
+`new Kafka(...)` directly, so KafkaJS printed its own raw JSON into the log
+output for months. Before writing infrastructure code, check this table.
+
+| Concern | Entry point | Never |
+|---------|-------------|-------|
+| HTTP service | `buildFastifyServer()` / `bootstrapService()` — `@tartware/fastify-server` | A bare `fastify()` app |
+| Service logger | `createServiceLogger()` — `@tartware/telemetry` | `pino()` directly (type-only `import type { Logger } from "pino"` is fine) |
+| Kafka client | `createKafkaClient()` — `@tartware/command-consumer-utils/producer` | `new Kafka(...)` |
+| Kafka producer | `createKafkaProducer()` — same module | A hand-rolled connect/send wrapper |
+| Consumer lifecycle | `createConsumerLifecycle()` — `@tartware/command-consumer-utils/lifecycle` | Bespoke run/disconnect handling |
+| DB pool / tenant scope | `createDbPool()` / `enterTenantScope()` — `@tartware/config/db` | A local `new Pool(...)` |
+| Outbox dispatch | `createOutboxRepository()` — `@tartware/outbox` | Direct produce inside a transaction |
+
+`createKafkaClient()` requires a `logger`: KafkaJS' own broker/consumer/producer
+logs are routed through it so they carry the service's formatting, redaction and
+OTLP export. Pass `component` to label them, and `logLevel` to choose how much
+KafkaJS says (`NOTHING` by default).
+
+Enforced by `pnpm run check:frameworks`
+(`scripts/check-shared-framework-usage.mjs`), which runs in `pnpm run check`,
+the pre-push hook, and the Guardrails workflow on every branch. Add a rule there
+whenever a shared entry point becomes the only right way to do something; if a
+call site genuinely cannot use one, add it to that rule's `allow` list with a
+reason rather than deleting the rule.
 
 ## Reliability Defaults
 - Every new command must support idempotency keys and deduplication.

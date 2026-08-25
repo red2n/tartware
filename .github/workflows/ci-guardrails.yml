@@ -64,6 +64,14 @@ jobs:
       - name: Guardrail coverage
         run: pnpm run check:guardrails
 
+      # Shared entry points are only worth having if every service goes through
+      # them. `createKafkaClient()` existed while five services still called
+      # `new Kafka(...)` directly, which is how raw KafkaJS JSON ended up
+      # interleaved with the pino output. Asserts the convention instead of
+      # trusting it. Needs no build either.
+      - name: Shared framework usage
+        run: pnpm run check:frameworks
+
       # Lint, formatting and dead-code checks for every project that has them.
       # These lived only in the per-package workflows, which fire on
       # [main, develop, deployment] or a filtered pull_request — so on a feature

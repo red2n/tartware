@@ -413,6 +413,9 @@ importers:
       '@tartware/schemas':
         specifier: workspace:*
         version: link:../../schema
+      '@tartware/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4

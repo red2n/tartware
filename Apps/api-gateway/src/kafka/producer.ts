@@ -1,12 +1,14 @@
-import { Kafka, logLevel, type ProducerRecord } from "kafkajs";
+import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
+import type { ProducerRecord } from "kafkajs";
 
 import { kafkaConfig } from "../config.js";
 import { gatewayLogger } from "../logger.js";
 
-const kafka = new Kafka({
+const kafka = createKafkaClient({
   clientId: kafkaConfig.clientId,
   brokers: kafkaConfig.brokers,
-  logLevel: logLevel.NOTHING,
+  logger: gatewayLogger,
+  component: "command-producer",
 });
 
 const logger = gatewayLogger.child({ module: "command-producer" });

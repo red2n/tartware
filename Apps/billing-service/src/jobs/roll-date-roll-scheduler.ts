@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 
+import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
 import type { ActivePropertyRow, SchedulerStatus } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
-import { Kafka, type Producer } from "kafkajs";
+import type { Producer } from "kafkajs";
 
 import { config } from "../config.js";
 import { pool } from "../lib/db.js";
@@ -85,9 +86,12 @@ export const buildDateRollScheduler = (
     lastDispatchResults: [],
   };
 
-  const kafka = new Kafka({
+  const kafka = createKafkaClient({
     clientId: `${config.roll.kafka.clientId}-scheduler`,
     brokers: config.roll.kafka.brokers,
+    logger,
+    component: "date-roll-scheduler",
+    logLevel: "INFO",
   });
 
   const connectProducer = async () => {

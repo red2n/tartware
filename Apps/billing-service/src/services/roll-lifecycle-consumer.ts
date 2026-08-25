@@ -1,10 +1,11 @@
 import { performance } from "node:perf_hooks";
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
 import { enterTenantScope } from "@tartware/config/db";
 import { type ReservationEvent, ReservationEventSchema } from "@tartware/schemas";
 import type { FastifyBaseLogger } from "fastify";
-import { type Consumer, type EachBatchPayload, Kafka, logLevel } from "kafkajs";
+import type { Consumer, EachBatchPayload, Kafka } from "kafkajs";
 import { config } from "../config.js";
 import {
   batchDurationHistogram,
@@ -26,11 +27,12 @@ const tracer = trace.getTracer("roll-service");
 
 type LifecycleEventResult = "processed" | "skipped" | "parse_error" | "db_error";
 
-const buildKafkaClient = () =>
-  new Kafka({
+const buildKafkaClient = (logger: FastifyBaseLogger) =>
+  createKafkaClient({
     clientId: config.roll.kafka.clientId,
     brokers: config.roll.kafka.brokers,
-    logLevel: logLevel.NOTHING,
+    logger,
+    component: "roll-lifecycle-consumer",
   });
 
 /**
@@ -47,7 +49,7 @@ class RollLifecycleConsumer {
 
   constructor(logger: FastifyBaseLogger) {
     this.logger = logger.child({ component: "roll-lifecycle-consumer" });
-    this.kafka = buildKafkaClient();
+    this.kafka = buildKafkaClient(logger);
   }
 
   async start(): Promise<void> {

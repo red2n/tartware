@@ -886,3 +886,73 @@ export const createServiceLogger = (options: ServiceLoggerOptions): PinoLogger =
 };
 
 export type { Logger as PinoLogger } from "pino";
+
+// =====================================================
+// KafkaJS log bridge
+// =====================================================
+
+/**
+ * Minimal logger contract the Kafka bridge needs. Kept structural so both a
+ * pino logger and a Fastify request/app logger satisfy it without casting.
+ */
+export interface KafkaBridgeLogger {
+  child(bindings: Record<string, unknown>): KafkaBridgeLogger;
+  error(obj: Record<string, unknown>, msg?: string): void;
+  warn(obj: Record<string, unknown>, msg?: string): void;
+  info(obj: Record<string, unknown>, msg?: string): void;
+  debug(obj: Record<string, unknown>, msg?: string): void;
+}
+
+/** A single entry handed to a KafkaJS `logCreator` sink. */
+export interface KafkaLogEntry {
+  namespace: string;
+  level: number;
+  label: string;
+  log: { timestamp?: string; message: string; [key: string]: unknown };
+}
+
+/** The `logCreator` shape KafkaJS expects (`kafkajs.logCreator`). */
+export type KafkaLogCreator = (level: number) => (entry: KafkaLogEntry) => void;
+
+export interface KafkaLogCreatorOptions {
+  /** Value for the `component` binding on emitted records. */
+  component?: string;
+}
+
+/** Fields KafkaJS puts on every entry that the service logger already emits. */
+const KAFKA_LOG_ENVELOPE_FIELDS = new Set(["timestamp", "message"]);
+
+/** KafkaJS numeric log levels (`kafkajs.logLevel`) mapped to pino methods. */
+const KAFKA_LEVEL_TO_PINO_METHOD: Record<number, "error" | "warn" | "info" | "debug"> = {
+  1: "error", // logLevel.ERROR
+  2: "warn", // logLevel.WARN
+  4: "info", // logLevel.INFO
+  5: "debug", // logLevel.DEBUG
+};
+
+/**
+ * Build a KafkaJS `logCreator` that routes broker/consumer/producer logs through
+ * the service logger, so they share the formatting, redaction and OTLP export of
+ * every other log line instead of KafkaJS printing its own raw JSON to stdout.
+ *
+ * KafkaJS still filters by the client's `logLevel` before calling this sink.
+ */
+export const createKafkaLogCreator = (
+  logger: KafkaBridgeLogger,
+  options: KafkaLogCreatorOptions = {},
+): KafkaLogCreator => {
+  const kafkaLogger = logger.child({ component: options.component ?? "kafkajs" });
+
+  return () =>
+    ({ namespace, level, log }: KafkaLogEntry) => {
+      const context = Object.fromEntries(
+        Object.entries(log).filter(([key]) => !KAFKA_LOG_ENVELOPE_FIELDS.has(key)),
+      );
+      const method = KAFKA_LEVEL_TO_PINO_METHOD[level] ?? "info";
+
+      kafkaLogger[method](
+        namespace ? { ...context, namespace } : context,
+        `[kafkajs] ${log.message}`,
+      );
+    };
+};
