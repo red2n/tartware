@@ -3,8 +3,33 @@ import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/c
 import type { CommandContext } from "@tartware/schemas";
 import { config } from "../config.js";
 import { publishEvent } from "../kafka/producer.js";
-import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  applyRoomBlock,
+  assignReservationRoom,
+  assignReservationRoomAndType,
+  fetchRateChangeContext,
+  findGuestContact,
+  findReservationForNotification,
+  findRoomForKeyIssue,
+  findRoomForMove,
+  findRoomNumber,
+  findRoomTypeBasePrice,
+  insertMobileKey,
+  markRoomDirty,
+  markRoomOccupied,
+  markRoomOutOfOrder,
+  markRoomOutOfService,
+  recordRoomMoveHistory,
+  revokeKey,
+  revokeKeysForReservation,
+  transferRoomCharges,
+  unblockRoom,
+  updateHousekeepingStatus,
+  updateReservationRate,
+  updateRoomFeatures,
+  updateRoomStatus,
+} from "../repositories/room-command-repository.js";
 import {
   RoomFeaturesUpdateCommandSchema,
   RoomHousekeepingStatusUpdateCommandSchema,
@@ -66,45 +91,13 @@ export const handleRoomStatusUpdate = async (
   const actor = resolveActorId(context.initiatedBy);
   // MED-006: Sync is_blocked and is_out_of_order flags when status changes
   // to maintain single source of truth for room availability
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        status = COALESCE($3::room_status, status),
-        maintenance_status = COALESCE($4::maintenance_status, maintenance_status),
-        is_blocked = CASE
-          WHEN $3::room_status = 'AVAILABLE' THEN false
-          ELSE is_blocked
-        END,
-        is_out_of_order = CASE
-          WHEN $3::room_status = 'AVAILABLE' THEN false
-          WHEN $3::room_status IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE') THEN true
-          ELSE is_out_of_order
-        END,
-        out_of_order_reason = CASE
-          WHEN $3::room_status = 'AVAILABLE' THEN NULL
-          ELSE out_of_order_reason
-        END,
-        notes = CASE
-          WHEN $5::text IS NULL THEN notes
-          WHEN notes IS NULL THEN $5::text
-          ELSE CONCAT_WS(E'\\n', notes, $5::text)
-        END,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $6
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.status ?? null,
-      command.maintenance_status ?? null,
-      command.reason ?? command.notes ?? null,
-      actor,
-    ],
+  const { rowCount } = await updateRoomStatus(
+    context.tenantId,
+    command.room_id,
+    command.status ?? null,
+    command.maintenance_status ?? null,
+    command.reason ?? command.notes ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -130,10 +123,7 @@ export const handleRoomStatusUpdate = async (
   // the room is returned to inventory, check for awaiting guests.
   if (command.status === "AVAILABLE") {
     try {
-      const { rows: roomRows } = await query<{ room_number: string }>(
-        `SELECT room_number FROM public.rooms WHERE id = $1 AND tenant_id = $2::uuid LIMIT 1`,
-        [command.room_id, context.tenantId],
-      );
+      const { rows: roomRows } = await findRoomNumber(command.room_id, context.tenantId);
       const roomNumber = roomRows[0]?.room_number;
       if (roomNumber) {
         const reservation = await findArrivingReservation(context.tenantId, roomNumber);
@@ -175,24 +165,12 @@ export const handleRoomHousekeepingStatusUpdate = async (
 ): Promise<void> => {
   const command = RoomHousekeepingStatusUpdateCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        housekeeping_status = $3::housekeeping_status,
-        housekeeping_notes = CASE
-          WHEN $4::text IS NULL THEN housekeeping_notes
-          WHEN housekeeping_notes IS NULL THEN $4::text
-          ELSE CONCAT_WS(E'\\n', housekeeping_notes, $4::text)
-        END,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $5
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [context.tenantId, command.room_id, command.housekeeping_status, command.notes ?? null, actor],
+  const { rowCount } = await updateHousekeepingStatus(
+    context.tenantId,
+    command.room_id,
+    command.housekeeping_status,
+    command.notes ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -217,10 +195,7 @@ export const handleRoomHousekeepingStatusUpdate = async (
   // INSPECTED, check if a guest is arriving today for this room.
   if (command.housekeeping_status === "CLEAN" || command.housekeeping_status === "INSPECTED") {
     try {
-      const { rows: roomRows } = await query<{ room_number: string }>(
-        `SELECT room_number FROM public.rooms WHERE id = $1 AND tenant_id = $2::uuid LIMIT 1`,
-        [command.room_id, context.tenantId],
-      );
+      const { rows: roomRows } = await findRoomNumber(command.room_id, context.tenantId);
       const roomNumber = roomRows[0]?.room_number;
       if (roomNumber) {
         const reservation = await findArrivingReservation(context.tenantId, roomNumber);
@@ -262,30 +237,13 @@ export const handleRoomOutOfOrder = async (
 ): Promise<void> => {
   const command = RoomOutOfOrderCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        status = 'OUT_OF_ORDER',
-        is_out_of_order = true,
-        out_of_order_reason = $3,
-        out_of_order_since = COALESCE($4, NOW()),
-        expected_ready_date = $5,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $6
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.reason ?? null,
-      command.out_of_order_since ?? null,
-      command.expected_ready_date ?? null,
-      actor,
-    ],
+  const { rowCount } = await markRoomOutOfOrder(
+    context.tenantId,
+    command.room_id,
+    command.reason ?? null,
+    command.out_of_order_since ?? null,
+    command.expected_ready_date ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -317,30 +275,13 @@ export const handleRoomOutOfService = async (
 ): Promise<void> => {
   const command = RoomOutOfServiceCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        status = 'OUT_OF_SERVICE',
-        is_out_of_order = true,
-        out_of_order_reason = $3,
-        out_of_order_since = COALESCE($4, NOW()),
-        expected_ready_date = $5,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $6
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.reason ?? null,
-      command.out_of_service_from ?? null,
-      command.out_of_service_until ?? null,
-      actor,
-    ],
+  const { rowCount } = await markRoomOutOfService(
+    context.tenantId,
+    command.room_id,
+    command.reason ?? null,
+    command.out_of_service_from ?? null,
+    command.out_of_service_until ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -373,16 +314,7 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
   const actor = resolveActorId(context.initiatedBy);
 
   // 1. Validate source room exists and is OCCUPIED
-  const fromResult = await query<{
-    id: string;
-    status: string;
-    room_number: string;
-    room_type_id: string;
-  }>(
-    `SELECT id, status, room_number, room_type_id FROM public.rooms
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
-    [command.from_room_id, context.tenantId],
-  );
+  const fromResult = await findRoomForMove(command.from_room_id, context.tenantId);
   const fromRoom = fromResult.rows[0];
   if (!fromRoom) {
     throw new RoomCommandError("ROOM_NOT_FOUND", `Source room ${command.from_room_id} not found.`);
@@ -395,16 +327,7 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
   }
 
   // 2. Validate target room exists and is AVAILABLE
-  const toResult = await query<{
-    id: string;
-    status: string;
-    room_number: string;
-    room_type_id: string;
-  }>(
-    `SELECT id, status, room_number, room_type_id FROM public.rooms
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
-    [command.to_room_id, context.tenantId],
-  );
+  const toResult = await findRoomForMove(command.to_room_id, context.tenantId);
   const toRoom = toResult.rows[0];
   if (!toRoom) {
     throw new RoomCommandError("ROOM_NOT_FOUND", `Target room ${command.to_room_id} not found.`);
@@ -417,18 +340,10 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
   }
 
   // 3. Source room → DIRTY (vacated, needs housekeeping)
-  await query(
-    `UPDATE public.rooms SET status = 'DIRTY', version = version + 1, updated_at = NOW(), updated_by = $3
-     WHERE id = $1 AND tenant_id = $2`,
-    [command.from_room_id, context.tenantId, actor],
-  );
+  await markRoomDirty(command.from_room_id, context.tenantId, actor);
 
   // 4. Target room → OCCUPIED
-  await query(
-    `UPDATE public.rooms SET status = 'OCCUPIED', version = version + 1, updated_at = NOW(), updated_by = $3
-     WHERE id = $1 AND tenant_id = $2`,
-    [command.to_room_id, context.tenantId, actor],
-  );
+  await markRoomOccupied(command.to_room_id, context.tenantId, actor);
 
   // 5. Update reservation room_number if reservation_id provided
   if (command.reservation_id) {
@@ -436,59 +351,36 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
 
     // Update room_number (and room_type_id if room type changed)
     if (roomTypeChanged) {
-      await query(
-        `UPDATE public.reservations
-         SET room_number = $3, room_type_id = $4, version = version + 1, updated_at = NOW()
-         WHERE id = $1 AND tenant_id = $2`,
-        [command.reservation_id, context.tenantId, toRoom.room_number, toRoom.room_type_id],
+      await assignReservationRoomAndType(
+        command.reservation_id,
+        context.tenantId,
+        toRoom.room_number,
+        toRoom.room_type_id,
       );
     } else {
-      await query(
-        `UPDATE public.reservations
-         SET room_number = $3, version = version + 1, updated_at = NOW()
-         WHERE id = $1 AND tenant_id = $2`,
-        [command.reservation_id, context.tenantId, toRoom.room_number],
-      );
+      await assignReservationRoom(command.reservation_id, context.tenantId, toRoom.room_number);
     }
 
     // S25: Recalculate rate if room type changed and recalculate_rate is true
     if (roomTypeChanged && command.recalculate_rate) {
-      const { rows: rateRows } = await query<{ base_price: string | number }>(
-        `SELECT base_price FROM public.room_types
-         WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
-        [toRoom.room_type_id, context.tenantId],
-      );
-      const { rows: oldRateRows } = await query<{ base_price: string | number }>(
-        `SELECT base_price FROM public.room_types
-         WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
-        [fromRoom.room_type_id, context.tenantId],
+      const { rows: rateRows } = await findRoomTypeBasePrice(toRoom.room_type_id, context.tenantId);
+      const { rows: oldRateRows } = await findRoomTypeBasePrice(
+        fromRoom.room_type_id,
+        context.tenantId,
       );
       if (rateRows[0]) {
         const newRate = Number(rateRows[0].base_price);
         const oldRate = oldRateRows[0] ? Number(oldRateRows[0].base_price) : 0;
         // Recalculate total_amount based on new nightly rate × nights
-        await query(
-          `UPDATE public.reservations
-           SET room_rate = $3,
-               total_amount = $3 * GREATEST(1, check_out_date::date - check_in_date::date),
-               version = version + 1, updated_at = NOW()
-           WHERE id = $1 AND tenant_id = $2`,
-          [command.reservation_id, context.tenantId, newRate],
-        );
+        await updateReservationRate(command.reservation_id, context.tenantId, newRate);
 
         // S25: Post rate adjustment charge to billing for the remaining nights
         const rateDiff = newRate - oldRate;
         if (rateDiff !== 0) {
           try {
-            const { rows: stayRows } = await query<{
-              remaining_nights: number;
-              property_id: string;
-            }>(
-              `SELECT GREATEST(0, check_out_date::date - CURRENT_DATE) AS remaining_nights,
-                      property_id
-               FROM public.reservations
-               WHERE id = $1 AND tenant_id = $2`,
-              [command.reservation_id, context.tenantId],
+            const { rows: stayRows } = await fetchRateChangeContext(
+              command.reservation_id,
+              context.tenantId,
             );
             const stay = stayRows[0];
             if (stay && stay.remaining_nights > 0) {
@@ -550,46 +442,26 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
 
     // S25: Transfer pending charges from old folio to new room's folio
     if (command.transfer_charges) {
-      await query(
-        `UPDATE public.charge_postings
-         SET transfer_from_folio_id = folio_id,
-             transfer_to_folio_id = (
-               SELECT folio_id FROM public.folios
-               WHERE reservation_id = $3 AND tenant_id = $1
-                 AND folio_status = 'OPEN'
-               ORDER BY created_at ASC LIMIT 1
-             ),
-             updated_at = NOW()
-         WHERE tenant_id = $1
-           AND reservation_id = $3
-           AND is_voided = false
-           AND transfer_from_folio_id IS NULL`,
-        [context.tenantId, command.from_room_id, command.reservation_id],
-      );
+      await transferRoomCharges(context.tenantId, command.from_room_id, command.reservation_id);
     }
 
     // S25: Log the room move in reservation_status_history for audit
-    await query(
-      `INSERT INTO public.reservation_status_history
-         (reservation_id, tenant_id, previous_status, new_status, change_reason, changed_by, changed_at, metadata)
-       VALUES ($1, $2, 'CHECKED_IN', 'CHECKED_IN', $3, $4, NOW(), $5)`,
-      [
-        command.reservation_id,
-        context.tenantId,
-        `Room move: ${fromRoom.room_number} → ${toRoom.room_number}${command.reason ? ` (${command.reason})` : ""}`,
-        actor,
-        JSON.stringify({
-          action: "room_move",
-          from_room_id: command.from_room_id,
-          to_room_id: command.to_room_id,
-          from_room_number: fromRoom.room_number,
-          to_room_number: toRoom.room_number,
-          room_type_changed: fromRoom.room_type_id !== toRoom.room_type_id,
-          charges_transferred: command.transfer_charges,
-          rate_recalculated:
-            fromRoom.room_type_id !== toRoom.room_type_id && command.recalculate_rate,
-        }),
-      ],
+    await recordRoomMoveHistory(
+      command.reservation_id,
+      context.tenantId,
+      `Room move: ${fromRoom.room_number} → ${toRoom.room_number}${command.reason ? ` (${command.reason})` : ""}`,
+      actor,
+      JSON.stringify({
+        action: "room_move",
+        from_room_id: command.from_room_id,
+        to_room_id: command.to_room_id,
+        from_room_number: fromRoom.room_number,
+        to_room_number: toRoom.room_number,
+        room_type_changed: fromRoom.room_type_id !== toRoom.room_type_id,
+        charges_transferred: command.transfer_charges,
+        rate_recalculated:
+          fromRoom.room_type_id !== toRoom.room_type_id && command.recalculate_rate,
+      }),
     );
 
     await recordAuditLog({
@@ -612,29 +484,13 @@ export const handleRoomMove = async (payload: unknown, context: CommandContext):
 
     // Room move notification to the guest
     try {
-      const { rows: resRows } = await query<{
-        guest_id: string;
-        property_id: string;
-        confirmation_number: string;
-      }>(
-        `SELECT guest_id, property_id, confirmation_number
-         FROM public.reservations
-         WHERE id = $1 AND tenant_id = $2::uuid
-         LIMIT 1`,
-        [command.reservation_id, context.tenantId],
+      const { rows: resRows } = await findReservationForNotification(
+        command.reservation_id,
+        context.tenantId,
       );
       const res = resRows[0];
       if (res) {
-        const { rows: guestRows } = await query<{
-          guest_name: string;
-          email: string | null;
-        }>(
-          `SELECT COALESCE(first_name || ' ' || last_name, 'Guest') AS guest_name, email
-           FROM public.guests
-           WHERE id = $1 AND tenant_id = $2::uuid
-           LIMIT 1`,
-          [res.guest_id, context.tenantId],
-        );
+        const { rows: guestRows } = await findGuestContact(res.guest_id, context.tenantId);
         const guest = guestRows[0];
         await publishNotificationCommand({
           tenantId: context.tenantId,
@@ -673,32 +529,13 @@ export const handleRoomFeaturesUpdate = async (
 ): Promise<void> => {
   const command = RoomFeaturesUpdateCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        features = COALESCE($3::jsonb, features),
-        amenities = COALESCE($4::jsonb, amenities),
-        notes = CASE
-          WHEN $5 IS NULL THEN notes
-          WHEN notes IS NULL THEN $5
-          ELSE CONCAT_WS(E'\\n', notes, $5)
-        END,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $6
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.features ? JSON.stringify(command.features) : null,
-      command.amenities ? JSON.stringify(command.amenities) : null,
-      command.notes ?? null,
-      actor,
-    ],
+  const { rowCount } = await updateRoomFeatures(
+    context.tenantId,
+    command.room_id,
+    command.features ? JSON.stringify(command.features) : null,
+    command.amenities ? JSON.stringify(command.amenities) : null,
+    command.notes ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -730,11 +567,7 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
   const actor = resolveActorId(context.initiatedBy);
 
   // Validate room exists and belongs to tenant
-  const { rows: roomRows } = await query<{ id: string; room_number: string }>(
-    `SELECT id, room_number FROM public.rooms
-     WHERE id = $1 AND tenant_id = $2 AND COALESCE(is_deleted, false) = false LIMIT 1`,
-    [command.room_id, context.tenantId],
-  );
+  const { rows: roomRows } = await findRoomForKeyIssue(command.room_id, context.tenantId);
   if (!roomRows[0]) {
     throw new RoomCommandError("ROOM_NOT_FOUND", `Room ${command.room_id} not found.`);
   }
@@ -747,36 +580,20 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
   const defaultValidTo = new Date(validFrom.getTime() + 24 * 60 * 60 * 1000);
   const validTo = command.valid_to ?? defaultValidTo;
 
-  await query(
-    `INSERT INTO public.mobile_keys (
-       tenant_id, property_id, guest_id, reservation_id, room_id,
-       key_code, key_type, status,
-       valid_from, valid_to, usage_count,
-       device_id, device_type, metadata,
-       created_by, updated_by
-     ) VALUES (
-       $1, $2, $3, $4, $5,
-       $6, $7, 'active',
-       $8, $9, 0,
-       $10, $11, $12,
-       $13, $13
-     )
-     ON CONFLICT (key_code) DO NOTHING`,
-    [
-      context.tenantId,
-      command.property_id,
-      command.guest_id,
-      command.reservation_id,
-      command.room_id,
-      keyCode,
-      command.key_type,
-      validFrom,
-      validTo,
-      command.device_id ?? null,
-      command.device_type ?? null,
-      command.metadata ? JSON.stringify(command.metadata) : null,
-      actor,
-    ],
+  await insertMobileKey(
+    context.tenantId,
+    command.property_id,
+    command.guest_id,
+    command.reservation_id,
+    command.room_id,
+    keyCode,
+    command.key_type,
+    validFrom,
+    validTo,
+    command.device_id ?? null,
+    command.device_type ?? null,
+    command.metadata ? JSON.stringify(command.metadata) : null,
+    actor,
   );
 
   await recordAuditLog({
@@ -798,16 +615,7 @@ export const handleKeyIssue = async (payload: unknown, context: CommandContext):
 
   // Mobile key issued notification to the guest
   try {
-    const { rows: guestRows } = await query<{
-      guest_name: string;
-      email: string | null;
-    }>(
-      `SELECT COALESCE(first_name || ' ' || last_name, 'Guest') AS guest_name, email
-       FROM public.guests
-       WHERE id = $1 AND tenant_id = $2::uuid
-       LIMIT 1`,
-      [command.guest_id, context.tenantId],
-    );
+    const { rows: guestRows } = await findGuestContact(command.guest_id, context.tenantId);
     const guest = guestRows[0];
     await publishNotificationCommand({
       tenantId: context.tenantId,
@@ -845,27 +653,21 @@ export const handleKeyRevoke = async (payload: unknown, context: CommandContext)
 
   if (command.revoke_all_for_reservation && command.reservation_id) {
     // Revoke all active keys for this reservation
-    await query(
-      `UPDATE public.mobile_keys
-       SET status = 'revoked', updated_at = NOW(), updated_by = $3,
-           metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('revoke_reason', $4)
-       WHERE tenant_id = $1 AND reservation_id = $2
-         AND status = 'active'
-         AND COALESCE(is_deleted, false) = false`,
-      [context.tenantId, command.reservation_id, actor, command.reason ?? "bulk_revoke"],
+    await revokeKeysForReservation(
+      context.tenantId,
+      command.reservation_id,
+      actor,
+      command.reason ?? "bulk_revoke",
     );
     return;
   }
 
   // Revoke single key
-  const { rowCount } = await query(
-    `UPDATE public.mobile_keys
-     SET status = 'revoked', updated_at = NOW(), updated_by = $3,
-         metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('revoke_reason', $4)
-     WHERE tenant_id = $1 AND key_id = $2
-       AND status = 'active'
-       AND COALESCE(is_deleted, false) = false`,
-    [context.tenantId, command.key_id, actor, command.reason ?? "manual_revoke"],
+  const { rowCount } = await revokeKey(
+    context.tenantId,
+    command.key_id,
+    actor,
+    command.reason ?? "manual_revoke",
   );
 
   if (!rowCount || rowCount === 0) {
@@ -897,32 +699,14 @@ const blockRoom = async (
 
   // MED-006: Also update status to maintain single source of truth
   // A blocked room should have status reflecting unavailability
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        is_blocked = TRUE,
-        status = 'BLOCKED',
-        block_reason = COALESCE($3, block_reason),
-        blocked_from = $4,
-        blocked_until = $5,
-        expected_ready_date = $6,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $7
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-      `,
-    [
-      context.tenantId,
-      command.room_id,
-      command.reason ?? null,
-      blockedFrom,
-      command.blocked_until ?? null,
-      command.expected_ready_date ?? null,
-      actor,
-    ],
+  const { rowCount } = await applyRoomBlock(
+    context.tenantId,
+    command.room_id,
+    command.reason ?? null,
+    blockedFrom,
+    command.blocked_until ?? null,
+    command.expected_ready_date ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -940,28 +724,7 @@ const releaseRoomBlock = async (
   const actor = resolveActorId(context.initiatedBy);
   // MED-006: Restore status when releasing block
   // Only set to AVAILABLE if room is not out_of_order; otherwise preserve that status
-  const { rowCount } = await query(
-    `
-      UPDATE public.rooms
-      SET
-        is_blocked = FALSE,
-        status = CASE
-          WHEN is_out_of_order = true THEN status
-          ELSE 'AVAILABLE'
-        END,
-        block_reason = NULL,
-        blocked_from = NULL,
-        blocked_until = NULL,
-        expected_ready_date = NULL,
-        version = version + 1,
-        updated_at = NOW(),
-        updated_by = $3
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [context.tenantId, command.room_id, actor],
-  );
+  const { rowCount } = await unblockRoom(context.tenantId, command.room_id, actor);
 
   if (!rowCount || rowCount === 0) {
     throw new RoomCommandError(

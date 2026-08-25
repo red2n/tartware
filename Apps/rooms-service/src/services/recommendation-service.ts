@@ -13,6 +13,10 @@ import {
   recommendationRequestsTotal,
 } from "../lib/recommendation-metrics.js";
 import { buildRecommendationPipeline } from "../pipeline/index.js";
+import {
+  findGuestRoomPreferences,
+  findRoomsForRecommendation,
+} from "../repositories/recommendation-repository.js";
 import type {
   RoomCandidate,
   RoomRecommendation,
@@ -163,27 +167,11 @@ export async function rankRooms(params: {
   // In production, this would use the full pipeline with the provided roomIds as candidates
   const rankedRooms: RankedRoom[] = [];
 
-  // Query room details and guest preferences to generate rankings
-  const { pool } = await import("../lib/db.js");
-
   // Get guest preferences if guestId provided
   let guestPreferences: { roomType?: string; amenities?: string[]; floor?: string } = {};
   if (params.guestId) {
     try {
-      const prefResult = await pool.query(
-        `SELECT
-           preferences->>'roomType' AS preferred_room_type,
-           preferences->>'floor' AS preferred_floor,
-           COALESCE(
-             ARRAY(
-               SELECT jsonb_array_elements_text(preferences->'specialRequests')
-             ),
-             ARRAY[]::text[]
-           ) AS preferred_amenities
-         FROM guests
-         WHERE id = $1 AND tenant_id = $2`,
-        [params.guestId, params.tenantId],
-      );
+      const prefResult = await findGuestRoomPreferences(params.guestId, params.tenantId);
       if (prefResult.rows.length > 0) {
         const row = prefResult.rows[0] as {
           preferred_room_type?: string;
@@ -202,14 +190,7 @@ export async function rankRooms(params: {
   }
 
   // Get room details for scoring
-  const roomDetails = await pool.query(
-    `SELECT r.id, r.room_number, r.floor, r.room_type_id,
-            rt.type_name as room_type_name, rt.base_price as base_rate, rt.max_occupancy
-     FROM rooms r
-     JOIN room_types rt ON r.room_type_id = rt.id
-     WHERE r.id = ANY($1) AND r.tenant_id = $2`,
-    [params.roomIds, params.tenantId],
-  );
+  const roomDetails = await findRoomsForRecommendation(params.roomIds, params.tenantId);
 
   const roomMap = new Map<
     string,
