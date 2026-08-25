@@ -19,7 +19,6 @@ import {
   recordCommandOutcome,
   setCommandConsumerLag,
 } from "../lib/metrics.js";
-import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   approveCommission,
   bulkGeneratePricingRecommendations,
@@ -96,7 +95,6 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeFinanceAdminCommand,
   publishDlqEvent,
-  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",

@@ -41,7 +41,6 @@ import {
   updateArAccountTerms,
   writeOffCityLedger,
 } from "../services/billing-commands/ara.js";
-import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   recordDeposit,
   refundDeposit,
@@ -180,7 +179,6 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
-  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",

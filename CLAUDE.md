@@ -116,7 +116,8 @@ Underlying scripts live in `executables/<name>/`. If `stop` leaves anything behi
 - **SQL placement:** `repositories/` exists only in billing, core, reservations,
   availability-guard. The other seven put SQL in `services/` and `routes/` (84 files).
 - **Consumers:** 9 command consumers, all wiring `createIdempotencyHandlers` + `fail-open`.
-  Only billing and reservations pass `isRetryable`.
+  Retry policy is `isRetryableByDefault` inside `createConsumerLifecycle` — honours
+  `CommandError.retryable`; consumers only pass `isRetryable` to override it.
 - **Kafka:** 13 clients, all through `createKafkaClient` with a required logger.
 - **Tests:** 70 test files; ~20 cover domain logic. Runner is vitest. `test` is not a required
   Nx target and `pnpm run build` does not run it.
@@ -135,7 +136,7 @@ Working through these one at a time. Update the status column when one lands.
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
 | 01 | Critical | 6 services define a local `resolveActorId` falling back to non-UUID strings (`"COMMAND_CENTER"`, `"NOTIFICATION_SERVICE"`); `rooms` writes it into `mobile_keys.created_by UUID` → 22P02. Use the shared helper. | **done 25 Aug** |
-| 02 | Critical | 5 of 9 consumers omit `isRetryable`, so deterministic failures burn the 1s/5s/30s ladder and stall the partition. | open |
+| 02 | Critical | 5 of 9 consumers omit `isRetryable`, so deterministic failures burn the 1s/5s/30s ladder and stall the partition. | **done 25 Aug** |
 | 03 | Critical | `CommandError` reinvented as 5 `*CommandError` classes; only 2 carry `retryable` — the root cause of 02. | **done 25 Aug** |
 | 04 | High | Repository layer in 4 of 11 services; 84 files hold SQL in services/routes. `checkin-checkout.ts` = 1,229 lines / 25 statements / 14 tables. | open |
 | 05 | High | N+1 writes inside loops in 10 files (group-booking, compset-service, night-audit, commission, ota-integration, waitlist, …). | open |
@@ -143,7 +144,7 @@ Working through these one at a time. Update the status column when one lands.
 | 07 | Medium | DB singleton imported by ~220 files instead of injected (DIP). Fix forward on new code, pair with 04. | open |
 | 08 | Medium | TSDoc coverage 8%–100%; weakest in shared packages (telemetry 8%, availability-guard 11%, core 37%). | open |
 | 09 | Medium | Tests run in no local gate: `test` missing from `REQUIRED_TARGETS` and from `pnpm run build`. | open |
-| 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | 01, 03 done; 02/06 open |
+| 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | 01, 03 done; 02 needs no rule (safe by default); 06 open |
 
 ---
 

@@ -92,7 +92,6 @@ import {
   walkInCheckIn,
   webhookRetry,
 } from "../services/reservation-command-service.js";
-import { ReservationCommandError } from "../services/reservation-commands/common.js";
 
 const logger = reservationsLogger.child({ module: "command-center-consumer" });
 
@@ -317,7 +316,6 @@ const { start, shutdown } = createConsumerLifecycle({
   publishDlqEvent: publishCommandDlqEvent,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
-  isRetryable: (error) => !(error instanceof ReservationCommandError) || error.retryable,
   onTenantResolved: enterTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,

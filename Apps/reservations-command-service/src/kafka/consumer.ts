@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-
+import { isRetryableByDefault } from "@tartware/command-consumer-utils/lifecycle";
 import { enterTenantScope } from "@tartware/config/db";
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import {
@@ -149,6 +149,7 @@ const handleBatch = async ({
           maxRetries: kafkaConfig.maxRetries,
           baseDelayMs: kafkaConfig.retryBackoffMs,
           delayScheduleMs: kafkaConfig.retryScheduleMs,
+          isRetryable: isRetryableByDefault,
           onRetry: ({ attempt, delayMs, error }) => {
             recordRetryAttempt("handler");
             batchLogger.warn(

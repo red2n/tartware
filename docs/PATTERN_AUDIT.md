@@ -92,7 +92,7 @@ label inside event `metadata` JSON, never an actor id, and is now documented as 
 
 ---
 
-## 02 — Consumers retry errors that can never succeed · CRITICAL
+## 02 — Consumers retry errors that can never succeed · CRITICAL · FIXED 25 Aug 2026
 
 `processWithRetry` (`Apps/config/src/retry.ts`) documents its default as *retry everything*;
 `isRetryable` is optional. Only billing and reservations override it:
@@ -108,8 +108,22 @@ failed validation — costs 36s of backoff before reaching the DLQ it was always
 Commands are consumed in partition order, so everything queued behind it waits too. Against the
 20K ops/sec target that is not a rounding error.
 
-**Fix.** Once 03 lands, default it inside `createConsumerLifecycle`:
-`isRetryable: input.isRetryable ?? ((e) => !(e instanceof CommandError) || e.retryable)`.
+**Fixed 25 Aug 2026.** `isRetryableByDefault` now lives in `consumer-lifecycle.ts` and applies
+unless a consumer passes its own, so all nine command consumers get the safe behaviour and a new
+one inherits it without knowing it exists. The four explicit predicates in billing and
+reservations were deleted as redundant — retry policy has one home now.
+
+The scan for this also caught a tenth consumer the audit missed:
+`reservations-command-service/src/kafka/consumer.ts:146` calls `processWithRetry` directly for
+reservation events, with no predicate. It now passes `isRetryableByDefault` too.
+
+Covered by `tests/retry-policy.test.ts` in command-consumer-utils, which asserts the default
+rather than each consumer's wiring — including that an unrecognised failure (a dropped
+connection, a restarting broker) is still retried.
+
+**Deliberately unchanged.** The event consumers in revenue, housekeeping, notification and
+billing already carry a stricter inverse policy — retry only known-transient Postgres codes
+(`08*`, `40001`, `57P01`, deadlock, `ECONNREFUSED`). They are safer than the default, not a gap.
 
 ---
 
