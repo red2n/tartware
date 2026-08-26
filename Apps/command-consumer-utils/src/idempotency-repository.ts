@@ -1,3 +1,4 @@
+import { buildValuesRows } from "@tartware/config/sql-batch";
 import type { Pool } from "pg";
 
 /**
@@ -22,6 +23,15 @@ export type IdempotencyRecordInput = IdempotencyCheckInput & {
 export type IdempotencyHandlers = {
   checkIdempotency: (input: IdempotencyCheckInput) => Promise<boolean>;
   recordIdempotency: (input: IdempotencyRecordInput) => Promise<void>;
+  /**
+   * Record a whole Kafka batch's processed commands in one statement.
+   *
+   * A consumer draining thousands of commands a second cannot afford an insert
+   * per message on top of the handler's own work. The batch is written when the
+   * batch finishes, which is also when its offsets are committed — so a crash
+   * replays exactly the commands that were never recorded.
+   */
+  recordIdempotencyBatch: (inputs: IdempotencyRecordInput[]) => Promise<void>;
 };
 
 /**
@@ -60,5 +70,29 @@ export const createIdempotencyHandlers = (pool: Pool): IdempotencyHandlers => {
     );
   };
 
-  return { checkIdempotency, recordIdempotency };
+  const recordIdempotencyBatch = async (inputs: IdempotencyRecordInput[]): Promise<void> => {
+    if (inputs.length === 0) {
+      return;
+    }
+    await pool.query(
+      `INSERT INTO command_idempotency (
+         tenant_id, idempotency_key, command_name, command_id, processed_at
+       ) VALUES ${buildValuesRows({
+         rowCount: inputs.length,
+         columnsPerRow: 5,
+         scalarCount: 0,
+         render: (p) => `(${p(1)}::uuid, ${p(2)}, ${p(3)}, ${p(4)}::uuid, ${p(5)})`,
+       })}
+       ON CONFLICT (tenant_id, idempotency_key) DO NOTHING`,
+      inputs.flatMap((input) => [
+        input.tenantId,
+        input.idempotencyKey,
+        input.commandName,
+        input.commandId ?? null,
+        input.processedAt,
+      ]),
+    );
+  };
+
+  return { checkIdempotency, recordIdempotency, recordIdempotencyBatch };
 };

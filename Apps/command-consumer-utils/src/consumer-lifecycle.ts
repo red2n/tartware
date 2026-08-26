@@ -44,6 +44,12 @@ type CommandCenterConfig = {
    * the shared builder.
    */
   partitionsConsumedConcurrently?: number;
+  /**
+   * Distinct aggregates applied at once within a single batch. Independent of
+   * {@link partitionsConsumedConcurrently}, which governs how many partitions a
+   * process drains; this governs parallelism inside each of them.
+   */
+  batchConcurrency?: number;
 };
 
 type CommandConsumerMetrics = {
@@ -80,6 +86,16 @@ export type CreateConsumerLifecycleInput = {
     commandId?: string;
     processedAt: Date;
   }) => Promise<void>;
+  /** Batched form of {@link recordIdempotency}; one statement per Kafka batch. */
+  recordIdempotencyBatch?: (
+    inputs: Array<{
+      tenantId: string;
+      idempotencyKey: string;
+      commandName: string;
+      commandId?: string;
+      processedAt: Date;
+    }>,
+  ) => Promise<void>;
   idempotencyFailureMode?: "fail-open" | "fail-closed";
   /**
    * Predicate deciding whether a caught error is worth retrying. Defaults to
@@ -176,9 +192,11 @@ export function createConsumerLifecycle(input: CreateConsumerLifecycleInput) {
       routeCommand: wrappedRouteCommand,
       commandLabel: input.commandLabel,
       metrics: input.metrics,
+      batchConcurrency: input.commandCenterConfig.batchConcurrency,
       ...(input.checkIdempotency && {
         checkIdempotency: input.checkIdempotency,
         recordIdempotency: input.recordIdempotency,
+        recordIdempotencyBatch: input.recordIdempotencyBatch,
         idempotencyFailureMode: input.idempotencyFailureMode,
       }),
     });

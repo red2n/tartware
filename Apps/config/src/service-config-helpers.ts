@@ -125,6 +125,12 @@ export function buildCommandCenterConfig(serviceId: string) {
         process.env.KAFKA_PARTITION_CONCURRENCY,
       4,
     ),
+    // Commands are keyed by aggregate, so unrelated aggregates inside one batch
+    // are safe to overlap; same-aggregate commands stay ordered regardless.
+    batchConcurrency: parseNumberEnv(
+      process.env[`${envPrefix}_KAFKA_BATCH_CONCURRENCY`] ?? process.env.KAFKA_BATCH_CONCURRENCY,
+      16,
+    ),
   };
 }
 

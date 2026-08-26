@@ -32,6 +32,16 @@ import { Counter, Rate, Trend } from "k6/metrics";
 
 import { uuid } from "../lib/utils.js";
 
+/**
+ * Per-tenant manifest: token, property, and the aggregate ids that tenant owns.
+ *
+ * A user is authorised per tenant, so one token cannot drive fifty of them —
+ * every command for a tenant the caller is not a member of is refused. Running
+ * with a single token produced a 1.94% acceptance rate, almost exactly the 1-in-51
+ * that authorisation allows, and measured nothing but the cost of a 403.
+ */
+const MANIFEST = JSON.parse(open(__ENV.MANIFEST_PATH || "/tmp/tartware-flow-manifest.json"));
+
 const GATEWAY_URLS = (__ENV.GATEWAY_URLS || __ENV.GATEWAY_URL || "http://localhost:8085")
   .split(",")
   .map((url) => url.trim())
@@ -70,6 +80,10 @@ const peakRate = Number(__ENV.PEAK_RATE || 20000);
 const rampDuration = __ENV.RAMP_DURATION || "60s";
 const holdDuration = __ENV.HOLD_DURATION || "60s";
 
+const availabilityLatency = new Trend("availability_latency", true);
+const rateLatency = new Trend("rate_lookup_latency", true);
+const readErrors = new Rate("read_errors");
+const totalOps = new Counter("total_ops");
 const accepted = new Counter("commands_accepted");
 const rejected = new Counter("commands_rejected");
 const acceptRate = new Rate("command_accept_rate");
@@ -115,19 +129,30 @@ const futureDay = (offset) => {
  */
 const buildCommand = () => {
   const roll = Math.random();
-  const guestId = GUEST_IDS.length > 0 ? pick(GUEST_IDS) : uuid();
-  const reservationId = RESERVATION_IDS.length > 0 ? pick(RESERVATION_IDS) : uuid();
-  const { tenantId, propertyId } = TENANT_PAIRS.length > 0 ? pick(TENANT_PAIRS) : FALLBACK_PAIR;
+  const entry = pick(MANIFEST);
+  const tenantId = entry.tenantId;
+  const propertyId = entry.propertyId;
+  const token = entry.token;
+  const roomTypeId = entry.roomTypeId || ROOM_TYPE_ID;
+  // Only ids this tenant owns: the guest and reservation foreign keys are
+  // composite on tenant_id, so borrowing another tenant's id always fails.
+  const guestId = entry.guestIds && entry.guestIds.length > 0 ? pick(entry.guestIds) : uuid();
+  const reservationId =
+    entry.reservationIds && entry.reservationIds.length > 0
+      ? pick(entry.reservationIds)
+      : uuid();
+  const roomIds = entry.roomIds || [];
 
   if (roll < 0.24) {
     const checkIn = 1 + Math.floor(Math.random() * 60);
     return {
       tenantId,
+      token,
       family: "reservation.create",
       name: "reservation.create",
       payload: {
         property_id: propertyId,
-        room_type_id: ROOM_TYPE_ID,
+        room_type_id: roomTypeId,
         guest_id: guestId,
         check_in_date: futureDay(checkIn),
         check_out_date: futureDay(checkIn + 1 + Math.floor(Math.random() * 4)),
@@ -142,6 +167,7 @@ const buildCommand = () => {
   if (roll < 0.34) {
     return {
       tenantId,
+      token,
       family: "billing.charge.post",
       name: "billing.charge.post",
       payload: {
@@ -159,6 +185,7 @@ const buildCommand = () => {
   if (roll < 0.44) {
     return {
       tenantId,
+      token,
       family: "billing.payment.authorize",
       name: "billing.payment.authorize",
       payload: {
@@ -175,11 +202,12 @@ const buildCommand = () => {
   if (roll < 0.56) {
     return {
       tenantId,
+      token,
       family: "reservation.check_in",
       name: "reservation.check_in",
       payload: {
         reservation_id: reservationId,
-        ...(ROOM_IDS.length > 0 ? { room_id: pick(ROOM_IDS) } : {}),
+        ...(roomIds.length > 0 ? { room_id: pick(roomIds) } : {}),
       },
     };
   }
@@ -187,6 +215,7 @@ const buildCommand = () => {
   if (roll < 0.66) {
     return {
       tenantId,
+      token,
       family: "reservation.check_out",
       name: "reservation.check_out",
       payload: { reservation_id: reservationId },
@@ -196,6 +225,7 @@ const buildCommand = () => {
   if (roll < 0.74) {
     return {
       tenantId,
+      token,
       family: "reservation.modify",
       name: "reservation.modify",
       payload: {
@@ -209,6 +239,7 @@ const buildCommand = () => {
   if (roll < 0.80) {
     return {
       tenantId,
+      token,
       family: "reservation.cancel",
       name: "reservation.cancel",
       payload: {
@@ -222,11 +253,12 @@ const buildCommand = () => {
   if (roll < 0.90) {
     return {
       tenantId,
+      token,
       family: "housekeeping.task.create",
       name: "housekeeping.task.create",
       payload: {
         property_id: propertyId,
-        ...(ROOM_IDS.length > 0 ? { room_id: pick(ROOM_IDS) } : {}),
+        ...(roomIds.length > 0 ? { room_id: pick(roomIds) } : {}),
         task_type: pick(["STAYOVER", "DEPARTURE", "DEEP_CLEAN", "INSPECTION"]),
         priority: pick(["LOW", "NORMAL", "HIGH"]),
       },
@@ -235,6 +267,7 @@ const buildCommand = () => {
 
   return {
     tenantId,
+    token,
     family: "guest.register",
     name: "guest.register",
     payload: {
@@ -267,18 +300,63 @@ export function setup() {
   return { token: response.json("access_token") };
 }
 
+/**
+ * The shop-then-book sequence a real booking performs.
+ *
+ * A property management system never writes a reservation cold: the caller
+ * searches availability for the stay window, prices it against the rate plans,
+ * and only then books. Firing `reservation.create` on its own measures the
+ * write path but not the funnel that produces it — and the funnel is where most
+ * of a PMS's request volume actually lives.
+ *
+ * Counted separately from commands so the headline number cannot be inflated by
+ * cheap reads: `commands_accepted` stays the write figure, `total_ops` is the
+ * whole request volume.
+ */
+const shopBeforeBooking = (data, tenantId, propertyId, checkIn, checkOut) => {
+  const headers = { Authorization: `Bearer ${data.token}` };
+
+  const availability = http.get(
+    `${data.base}/v1/rooms/availability?tenant_id=${tenantId}&property_id=${propertyId}` +
+      `&check_in_date=${checkIn}&check_out_date=${checkOut}`,
+    { headers, tags: { op: "availability" } },
+  );
+  availabilityLatency.add(availability.timings.duration);
+  readErrors.add(availability.status !== 200);
+  totalOps.add(1);
+
+  const rates = http.get(
+    `${data.base}/v1/rates?tenant_id=${tenantId}&property_id=${propertyId}`,
+    { headers, tags: { op: "rates" } },
+  );
+  rateLatency.add(rates.timings.duration);
+  readErrors.add(rates.status !== 200);
+  totalOps.add(1);
+};
+
 export default function (data) {
   const command = buildCommand();
   // Round-robin across the fleet so no single process becomes the ceiling.
   const base = GATEWAY_URLS[__VU % GATEWAY_URLS.length];
 
+  if (command.family === "reservation.create") {
+    shopBeforeBooking(
+      { token: data.token, base },
+      command.tenantId,
+      command.payload.property_id,
+      command.payload.check_in_date,
+      command.payload.check_out_date,
+    );
+  }
+
+  totalOps.add(1);
   const response = http.post(
     `${base}/v1/commands/${command.name}/execute`,
     JSON.stringify({ tenant_id: command.tenantId, payload: command.payload }),
     {
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${data.token}`,
+        Authorization: `Bearer ${command.token}`,
         "Idempotency-Key": uuid(),
       },
       tags: { command: command.family },

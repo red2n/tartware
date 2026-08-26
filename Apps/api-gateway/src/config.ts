@@ -174,6 +174,21 @@ export const kafkaConfig = {
 };
 
 /**
+ * Group-commit ingestion for accepted commands.
+ *
+ * `maxDelayMs` is the latency this trades for throughput: a command waits at
+ * most this long for its batch to commit, and gets a database cost of a few
+ * extra rows in an existing statement instead of six round trips of its own.
+ * Keep it small — the point is to coalesce the commands already arriving in the
+ * same millisecond, not to hold anyone up.
+ */
+export const commandBatchConfig = {
+  enabled: (process.env.COMMAND_BATCH_ENABLED ?? "true") !== "false",
+  maxDelayMs: Math.max(1, parseNumberEnv(process.env.COMMAND_BATCH_MAX_DELAY_MS, 5)),
+  maxBatchSize: Math.max(1, parseNumberEnv(process.env.COMMAND_BATCH_MAX_SIZE, 256)),
+};
+
+/**
  * Command outbox dispatcher.
  *
  * `idlePollIntervalMs` is the delay only when a cycle came back empty; a cycle

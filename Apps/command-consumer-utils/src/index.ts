@@ -127,6 +127,57 @@ type CreateCommandCenterHandlersInput = {
    * - fail-closed: route to DLQ and skip processing
    */
   idempotencyFailureMode?: "fail-open" | "fail-closed";
+  /**
+   * Records a whole batch's idempotency rows in one statement.
+   *
+   * Supplied together with {@link recordIdempotency}; when present the per
+   * message insert is skipped and the batch is written once at the end, which
+   * matches when offsets are committed anyway.
+   */
+  recordIdempotencyBatch?: (
+    inputs: Array<{
+      tenantId: string;
+      idempotencyKey: string;
+      commandName: string;
+      commandId?: string;
+      processedAt: Date;
+    }>,
+  ) => Promise<void>;
+  /**
+   * How many *distinct aggregates* within one batch are applied at once.
+   *
+   * Commands are keyed by the aggregate they mutate, so two messages with
+   * different keys cannot depend on each other and are safe to overlap; two
+   * with the same key must stay in order. Draining a batch strictly serially
+   * spends most of its time waiting on database round trips that belong to
+   * unrelated reservations.
+   */
+  batchConcurrency?: number;
+};
+
+/**
+ * Run `worker` over `items` with at most `limit` in flight.
+ *
+ * Preserves nothing about ordering between items — the caller has already
+ * grouped them so that anything order-dependent is inside a single item.
+ */
+const runWithConcurrency = async <T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> => {
+  if (items.length === 0) {
+    return;
+  }
+  const width = Math.max(1, Math.min(limit, items.length));
+  let cursor = 0;
+  const runners = Array.from({ length: width }, async () => {
+    while (cursor < items.length) {
+      const item = items[cursor++] as T;
+      await worker(item);
+    }
+  });
+  await Promise.all(runners);
 };
 
 export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersInput) => {
@@ -138,6 +189,19 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
   }
 
   const idempotencyFailureMode = input.idempotencyFailureMode ?? "fail-open";
+  const batchConcurrency = Math.max(1, Math.floor(Number(input.batchConcurrency ?? 16)) || 1);
+
+  /**
+   * Idempotency rows accumulated by the batch in flight, or null when batching
+   * is not wired and each command records its own.
+   */
+  let pendingIdempotency: Array<{
+    tenantId: string;
+    idempotencyKey: string;
+    commandName: string;
+    commandId?: string;
+    processedAt: Date;
+  }> | null = null;
 
   const shouldProcess = (metadata: CommandEnvelope["metadata"]): metadata is CommandMetadata => {
     if (!metadata) {
@@ -371,21 +435,29 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
         (performance.now() - startedAt) / 1000,
       );
 
-      // Record idempotency after successful processing
-      if (idempotencyKey && input.recordIdempotency) {
-        try {
-          await input.recordIdempotency({
-            tenantId: metadata.tenantId,
-            idempotencyKey,
-            commandName: metadata.commandName,
-            commandId: metadata.commandId,
-            processedAt: new Date(),
-          });
-        } catch (error) {
-          input.logger.warn(
-            { err: error, metadata, idempotencyKey },
-            "Failed to record idempotency; command processed successfully",
-          );
+      // Record idempotency after successful processing. When the batch collector
+      // is active the row is buffered and written with the rest of the batch,
+      // which is also when the offsets are committed — so a crash replays
+      // exactly the commands whose offsets were never committed.
+      if (idempotencyKey && (input.recordIdempotency || pendingIdempotency)) {
+        const row = {
+          tenantId: metadata.tenantId,
+          idempotencyKey,
+          commandName: metadata.commandName,
+          commandId: metadata.commandId,
+          processedAt: new Date(),
+        };
+        if (pendingIdempotency) {
+          pendingIdempotency.push(row);
+        } else if (input.recordIdempotency) {
+          try {
+            await input.recordIdempotency(row);
+          } catch (error) {
+            input.logger.warn(
+              { err: error, metadata, idempotencyKey },
+              "Failed to record idempotency; command processed successfully",
+            );
+          }
         }
       }
     } catch (error) {
@@ -467,15 +539,67 @@ export const createCommandCenterHandlers = (input: CreateCommandCenterHandlersIn
       return;
     }
 
+    // Group by the message key, which is the aggregate the command mutates.
+    // Two commands with different keys touch different reservations or folios
+    // and cannot depend on each other, so their groups may overlap; commands
+    // sharing a key stay strictly in order inside their own group.
+    const groups = new Map<string, KafkaMessage[]>();
     for (const message of batch.messages) {
-      if (!isRunning() || isStale()) {
-        break;
+      // A message with no key has no aggregate to be ordered against, so it
+      // gets a group of its own rather than serialising behind unrelated work.
+      const key = message.key ? message.key.toString() : `__unkeyed:${message.offset}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.push(message);
+      } else {
+        groups.set(key, [message]);
       }
-      await processMessage(message, batch.topic, batch.partition, batch.highWatermark);
-      resolveOffset(message.offset);
-      await heartbeat();
     }
 
+    pendingIdempotency = input.recordIdempotencyBatch ? [] : null;
+
+    // KafkaJS expects a heartbeat well inside the session timeout; a wide batch
+    // can otherwise run long enough for the group to evict this member.
+    let lastHeartbeat = Date.now();
+    const beat = async (): Promise<void> => {
+      if (Date.now() - lastHeartbeat < 1_000) {
+        return;
+      }
+      lastHeartbeat = Date.now();
+      await heartbeat();
+    };
+
+    await runWithConcurrency([...groups.values()], batchConcurrency, async (messages) => {
+      for (const message of messages) {
+        if (!isRunning() || isStale()) {
+          return;
+        }
+        await processMessage(message, batch.topic, batch.partition, batch.highWatermark);
+        await beat();
+      }
+    });
+
+    if (input.recordIdempotencyBatch && pendingIdempotency && pendingIdempotency.length > 0) {
+      try {
+        await input.recordIdempotencyBatch(pendingIdempotency);
+      } catch (error) {
+        // The commands themselves succeeded; losing the record only risks them
+        // being reprocessed, which their handlers already tolerate.
+        input.logger.warn(
+          { err: error, rows: pendingIdempotency.length },
+          "Failed to record idempotency batch; commands processed successfully",
+        );
+      }
+    }
+    pendingIdempotency = null;
+
+    // Offsets are resolved in the batch's own order once every group is done,
+    // so a partial batch never marks a later offset complete than the earliest
+    // message that still needs replaying.
+    for (const message of batch.messages) {
+      resolveOffset(message.offset);
+    }
+    await heartbeat();
     await commitOffsetsIfNecessary();
   };
 

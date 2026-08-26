@@ -47,6 +47,11 @@ const resolveTopic = (record: OutboxRecord): string => {
 
 const dispatcher = createOutboxDispatcher({
   settings: commandOutboxConfig,
+  // The aggregate the command mutates, chosen at accept time. Keying by the
+  // command id instead — which this did until the ordering contract was fixed —
+  // spread load evenly and guaranteed nothing, so a check-out could apply
+  // before its check-in.
+  resolveKey: (record) => record.partitionKey ?? record.aggregateId,
   logger: gatewayLogger.child({ module: "command-outbox-dispatcher" }),
   aggregateTypes: DISPATCHED_AGGREGATE_TYPES,
   resolveTopic,

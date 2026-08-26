@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-
 import type {
   AcceptCommandInput,
   AcceptedCommand,
@@ -13,6 +12,7 @@ import type {
   CommandRouteInfo,
   Initiator,
 } from "@tartware/schemas";
+import { resolveCommandPartitionKey } from "./partition-key.js";
 
 export type {
   Initiator,
@@ -262,7 +262,11 @@ export const createCommandDispatchService = <Membership>(
       payload: eventPayload,
       headers,
       correlationId: input.correlationId,
-      partitionKey: input.tenantId ?? commandId,
+      // The aggregate this command mutates, so every command touching one
+      // reservation or folio applies in order. See partition-key.ts for why
+      // this is neither the command id (no ordering) nor the tenant (hot
+      // partitions for the largest chains).
+      partitionKey: resolveCommandPartitionKey(input.payload, commandId),
       metadata: {
         initiator: input.initiatedBy,
         requestId: input.requestId,

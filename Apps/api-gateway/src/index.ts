@@ -2,7 +2,11 @@ import process from "node:process";
 
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
-import { shutdownCommandRegistry, startCommandRegistry } from "./command-center/index.js";
+import {
+  drainCommandBatcher,
+  shutdownCommandRegistry,
+  startCommandRegistry,
+} from "./command-center/index.js";
 import {
   shutdownCommandOutboxDispatcher,
   startCommandOutboxDispatcher,
@@ -98,6 +102,9 @@ if (proc && "on" in proc && typeof proc.on === "function") {
       .close()
       .catch((error: unknown) => app.log.error(error, "Error while shutting down server (SIGTERM)"))
       .finally(async () => {
+        await drainCommandBatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while draining queued commands"),
+        );
         await shutdownCommandOutboxDispatcher().catch((error: unknown) =>
           app.log.error(error, "Error while stopping command outbox dispatcher"),
         );
@@ -126,6 +133,9 @@ if (proc && "on" in proc && typeof proc.on === "function") {
       .close()
       .catch((error: unknown) => app.log.error(error, "Error while shutting down server (SIGINT)"))
       .finally(async () => {
+        await drainCommandBatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while draining queued commands"),
+        );
         await shutdownCommandOutboxDispatcher().catch((error: unknown) =>
           app.log.error(error, "Error while stopping command outbox dispatcher"),
         );

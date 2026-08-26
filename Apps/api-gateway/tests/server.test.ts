@@ -46,6 +46,9 @@ vi.mock("../src/utils/proxy.js", () => ({
 
 vi.mock("../src/lib/db.js", () => ({
   query: vi.fn(async () => ({ rows: [{ "?column?": 1 }] })),
+  // The command batcher runs its statements against a transaction client, so
+  // the mock has to answer `queryWithClient` too or the gateway fails to load.
+  queryWithClient: vi.fn(async () => ({ rows: [] })),
   withTransaction: vi.fn(async (fn: (q: unknown) => Promise<unknown>) => fn(vi.fn(async () => ({ rows: [] })))),
   pool: { end: vi.fn() },
 }));

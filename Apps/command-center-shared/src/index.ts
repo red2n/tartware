@@ -23,3 +23,7 @@ export {
   createCommandDispatchService,
   type Initiator,
 } from "./services/command-dispatch.js";
+export {
+  aggregateKeyFields,
+  resolveCommandPartitionKey,
+} from "./services/partition-key.js";
