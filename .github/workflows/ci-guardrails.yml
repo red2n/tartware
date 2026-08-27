@@ -72,12 +72,22 @@ jobs:
       - name: Shared framework usage
         run: pnpm run check:frameworks
 
+      # eslint's type-aware rules resolve a workspace import through the target
+      # package's dist, so any library whose types cross a package boundary has
+      # to be built before Lint runs. That used to be true by accident — no
+      # service consumed a workspace type — until service code started holding
+      # the return type of createKafkaClient. Without this, lint reports a wall
+      # of no-unsafe-* errors in files that are perfectly fine.
+      #
+      # UI projects are excluded: nothing lints against their output.
+      - name: Build workspace libraries
+        run: npx nx run-many -t build --exclude=@tartware/pms-ui,@tartware/guest-portal
+
       # Lint, formatting and dead-code checks for every project that has them.
       # These lived only in the per-package workflows, which fire on
       # [main, develop, deployment] or a filtered pull_request — so on a feature
       # branch with no PR they ran on nothing, which is the same gap this
-      # workflow exists to close. Verified to need no build: both pass with
-      # schema/dist absent, so they sit above the schemas step deliberately.
+      # workflow exists to close.
       - name: Lint
         run: pnpm run lint
 
@@ -86,11 +96,6 @@ jobs:
 
       - name: Knip
         run: pnpm run knip
-
-      # The conformance suites import from @tartware/schemas, so its dist has to
-      # exist before they run. Nothing else here needs a build.
-      - name: Build schemas
-        run: npx nx run @tartware/schemas:build
 
       # Binds every SQL string in Apps/ to the DDL in scripts/tables/. Self-tests
       # before it reports: a scanner that has stopped meaning something exits 2

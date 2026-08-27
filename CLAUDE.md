@@ -139,6 +139,14 @@ Underlying scripts live in `executables/<name>/`. If `stop` leaves anything behi
 ## 6. Active backlog — pattern audit remediation
 
 Working through these one at a time. Update the status column when one lands.
+Findings 01–05 landed 25–26 Aug on `SOLID_Gaps`; detail per finding in
+`docs/PATTERN_AUDIT.md`, published summary in the artifact linked in §5.
+
+**CI note:** the Guardrails workflow builds workspace libraries before Lint.
+eslint's type-aware rules resolve a workspace import through the target package's
+`dist`, so a service holding a type from another package (e.g. `createKafkaClient`'s
+return) reports a wall of `no-unsafe-*` errors when that dist is absent. If lint
+fails in CI but passes locally, that is the reason — check the build step ran.
 
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
