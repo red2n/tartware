@@ -239,7 +239,7 @@ comp-set competitors by name, group blocks by (room type, date), screen permissi
 **Correction:** `screen-permissions-repository.ts` was never an N+1 — it already batched by
 hand-rolling its placeholders, and the original scan mistook that loop for a per-row query.
 
-## 06 — Cross-service fetch with no timeout · HIGH
+## 06 — Cross-service fetch with no timeout · HIGH · FIXED 26 Aug 2026
 
 `billing-service/src/services/business-calendar-settings-service.ts:45` calls core-service with
 no `AbortSignal`. It runs from billing's `onReady` hook, so an unresponsive core-service hangs
@@ -254,7 +254,20 @@ notification (`webhook-provider.ts`), guests (`internal-api.ts`), fastify-server
 The SSE proxy at `api-gateway/src/routes/misc-routes.ts:528` is correctly exempt — that stream is
 meant to stay open.
 
-**Fix.** One `fetchWithTimeout` in `@tartware/fastify-server`; make the sixth copy the last.
+**Fixed 26 Aug 2026 — but not as recommended.** No `fetchWithTimeout` wrapper was added. The
+platform already provides the one-liner, `AbortSignal.timeout(ms)`, and three call sites were
+already using it; a wrapper would have been an abstraction over a one-liner. Instead every call
+site now uses the platform form, which deleted the five hand-rolled
+`AbortController` + `setTimeout` + `clearTimeout` sequences outright — including one in
+`health-routes.ts` that only cleared its timer on the success path.
+
+The real bug is fixed: billing's startup settings load carries a 5s deadline, and its existing
+catch already falls back to system defaults, so an unresponsive core-service now costs five
+seconds instead of billing's readiness.
+
+Guardrail rule `fetch-timeout` reads to the closing paren of each `fetch(` call — an options
+object can run twenty lines — and fails any request without a signal. The SSE proxy is the one
+allowed exception, documented in place.
 
 ---
 
@@ -281,7 +294,7 @@ rooms 40%, revenue 40%. Strongest: candidate-pipeline 100%, command-consumer-uti
 
 ---
 
-## 09 — Tests run in no local gate · MEDIUM
+## 09 — Tests run in no local gate · MEDIUM · FIXED 26 Aug 2026
 
 - `scripts/check-guardrail-coverage.mjs`: `REQUIRED_TARGETS = ["biome", "knip"]` — no `test`, so a
   package with zero tests reports green.
@@ -293,7 +306,16 @@ rooms 40%, revenue 40%. Strongest: candidate-pipeline 100%, command-consumer-uti
 
 70 test files exist, ~20 covering domain logic. Billing has 6 for 28k LOC.
 
-**Fix.** Add `"test"` to `REQUIRED_TARGETS` and `nx run-many -t test` to the build script.
+**Fixed 26 Aug 2026.** `test` is now a required target on every project (proto-types exempt, with
+a reason — it is generated code), `pnpm run build` ends with the suite, and the Guardrails
+workflow runs all of it rather than two cherry-picked suites.
+
+Requiring the target meant outbox and tenant-auth needed one. Both got real tests rather than a
+`--passWithNoTests` stub: the tenant throttler, whose clock, sleep and jitter are all injectable
+so pacing is asserted exactly; and bearer-token parsing plus membership loading, which sit on the
+authentication path. One of those tests failed first time by asserting behaviour the parser does
+not have — it rejects `"Bearer  abc"` rather than trimming the padding. Rejecting a malformed
+credential is the safer reading, so the test was corrected, not the parser loosened.
 
 ---
 

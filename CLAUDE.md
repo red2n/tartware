@@ -65,6 +65,7 @@ table; this is the working set.
 | Concern | Entry point | Never |
 |---------|-------------|-------|
 | HTTP service | `buildFastifyServer()` / `bootstrapService()` — `@tartware/fastify-server` | bare `fastify()` |
+| Outbound HTTP | `fetch(url, { signal: AbortSignal.timeout(ms) })` | a `fetch` with no deadline |
 | Logger | `createServiceLogger()` — `@tartware/telemetry` | `pino()` directly |
 | Kafka client | `createKafkaClient()` — `@tartware/command-consumer-utils/producer` | `new Kafka(...)` |
 | Consumer lifecycle | `createConsumerLifecycle()` — `.../lifecycle` | bespoke run/disconnect |
@@ -157,11 +158,11 @@ fails in CI but passes locally, that is the reason — check the build step ran.
 | 03 | Critical | `CommandError` reinvented as 5 `*CommandError` classes; only 2 carry `retryable` — the root cause of 02. | **done 25 Aug** |
 | 04 | High | Repository layer in 4 of 11 services; 84 files hold SQL in services/routes. | **done 25 Aug** — all 5 services without one now have it (revenue, rooms, notification, housekeeping, guests). Billing/core/reservations already had partial layers; deepening those is separate. |
 | 05 | High | N+1 writes inside loops. | **done 25 Aug** — 10 loops batched via `buildValuesRows` (`@tartware/config/sql-batch`). Two stay per-row deliberately: group cutoff (per-group transaction isolation) and OTA intake (duplicate check reads state earlier iterations write). |
-| 06 | High | `business-calendar-settings-service.ts:45` fetches with no `AbortSignal` on the startup path; 6 files hand-roll the same timeout dance → needs a shared `fetchWithTimeout`. | open |
+| 06 | High | `business-calendar-settings-service.ts:45` fetches with no `AbortSignal` on the startup path. | **done 26 Aug** — every `fetch` now carries `AbortSignal.timeout(...)`; five hand-rolled `AbortController` dances collapsed. No `fetchWithTimeout` wrapper: the platform one-liner already does it. Guardrail rule `fetch-timeout`. SSE proxy exempt. |
 | 07 | Medium | DB singleton imported by ~220 files instead of injected (DIP). Fix forward on new code, pair with 04. | open |
 | 08 | Medium | TSDoc coverage 8%–100%; weakest in shared packages (telemetry 8%, availability-guard 11%, core 37%). | open |
 | 09 | Medium | Tests run in no local gate: `test` missing from `REQUIRED_TARGETS` and from `pnpm run build`. | **done 26 Aug** — `test` now required on every project (proto-types exempt), runs at the end of `pnpm run build`, and CI runs the whole suite instead of two cherry-picked ones. outbox and tenant-auth gained real tests. |
-| 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | 01, 03 done; 02 needs no rule (safe by default); 06 open |
+| 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | **done 26 Aug** — 5 rules: kafka-client, actor-resolution, command-error, fetch-timeout, pino-logger, plus an undeclared-workspace-dependency check. 02 needs no rule (safe by default). |
 
 ### Throughput (20K ops/sec target)
 

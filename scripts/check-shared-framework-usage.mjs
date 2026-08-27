@@ -72,6 +72,21 @@ const RULES = [
       "the whole backoff ladder and stalls its partition before reaching the DLQ anyway",
   },
   {
+    id: "fetch-timeout",
+    // `fetch(` on a line that carries no signal, and no signal on the following
+    // few lines either — options objects are usually written multi-line.
+    pattern: /\bfetch\(/,
+    allow: [
+      // Proxies a server-sent-events stream, which is meant to stay open.
+      "Apps/api-gateway/src/routes/misc-routes.ts",
+    ],
+    use: "AbortSignal.timeout(ms) on the request",
+    why:
+      "a fetch with no deadline waits as long as the peer does; billing's startup " +
+      "settings load hung its readiness on an unresponsive core-service that way",
+    satisfied: /AbortSignal\.timeout|signal:/,
+  },
+  {
     id: "pino-logger",
     pattern: /from ["']pino["']|require\(["']pino["']\)/,
     allow: ["Apps/telemetry/src/", "Apps/candidate-pipeline/src/__tests__/"],
@@ -82,6 +97,24 @@ const RULES = [
     ignore: isTypeOnlyImport,
   },
 ];
+
+/**
+ * The text of a call that starts on `lines[start]`, up to its closing paren.
+ * Bounded so a malformed file cannot make this run away.
+ */
+const callText = (lines, start, maxLines = 80) => {
+  let depth = 0;
+  const collected = [];
+  for (let i = start; i < Math.min(lines.length, start + maxLines); i++) {
+    collected.push(lines[i]);
+    for (const char of lines[i]) {
+      if (char === "(") depth++;
+      else if (char === ")") depth--;
+    }
+    if (i > start && depth <= 0) break;
+  }
+  return collected.join("\n");
+};
 
 const isAllowed = (file, rule) =>
   rule.allow.some((entry) => (entry.endsWith("/") ? file.startsWith(entry) : file === entry));
@@ -109,6 +142,12 @@ for (const file of tracked) {
       if (line.trimStart().startsWith("*")) return; // doc comment referencing the pattern
       if (rule.ignore?.(line)) return;
       if (rule.pattern.test(line)) {
+        if (rule.satisfied) {
+          // Some rules are satisfied by something inside the call rather than on
+          // its first line — a request's options object can run for twenty
+          // lines. Read to the closing paren rather than guessing a window.
+          if (rule.satisfied.test(callText(lines, index))) return;
+        }
         violations.push({ file, line: index + 1, rule, source: line.trim() });
       }
     });

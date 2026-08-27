@@ -525,6 +525,9 @@ export const registerMiscRoutes = (app: FastifyInstance): void => {
       headers["x-tenant-id"] = validatedTenantId;
 
       try {
+        // No timeout here on purpose: this proxies a server-sent-events
+        // stream, which is meant to stay open. The client closing the
+        // connection is what ends it.
         const response = await fetch(target, {
           headers,
         });

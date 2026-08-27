@@ -2,6 +2,9 @@ import { getOutboundUrlRejection } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
 
+/** Cap on a single webhook delivery attempt. */
+const WEBHOOK_TIMEOUT_MS = 10_000;
+
 /**
  * Reject a webhook target that points somewhere the platform must not dial.
  *
@@ -206,24 +209,18 @@ export const sendTestEvent = async (tenantId: string, webhookId: string) => {
     error = `Refused to dial webhook_url: ${rejection}`;
   } else {
     try {
-      // Bounded so a hanging endpoint cannot hold the request open indefinitely.
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10_000);
-      try {
-        const res = await fetch(webhook.webhook_url, {
-          method: webhook.http_method === "PUT" ? "PUT" : "POST",
-          headers: { "content-type": "application/json", ...(webhook.headers ?? {}) },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-          // Do not follow redirects: a target that passes validation can 302
-          // to 169.254.169.254, which would hand back exactly the SSRF this
-          // validation exists to prevent.
-          redirect: "manual",
-        });
-        status = res.status;
-      } finally {
-        clearTimeout(timeout);
-      }
+      const res = await fetch(webhook.webhook_url, {
+        method: webhook.http_method === "PUT" ? "PUT" : "POST",
+        headers: { "content-type": "application/json", ...(webhook.headers ?? {}) },
+        body: JSON.stringify(payload),
+        // Bounded so a hanging endpoint cannot hold the request open indefinitely.
+        signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
+        // Do not follow redirects: a target that passes validation can 302
+        // to 169.254.169.254, which would hand back exactly the SSRF this
+        // validation exists to prevent.
+        redirect: "manual",
+      });
+      status = res.status;
     } catch (e) {
       error = e instanceof Error ? e.message : "Request failed";
     }

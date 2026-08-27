@@ -181,23 +181,19 @@ export const proxyRequest = async (
       }
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
-
     try {
       response = await fetch(targetUrl, {
         method: request.method,
         headers,
         body,
-        signal: controller.signal,
+        // A fresh deadline per attempt, so a retry is not charged the time the
+        // previous attempt already burned.
+        signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
       });
     } catch (error) {
       lastError = error;
       await breaker.recordFailure();
-      clearTimeout(timeoutId);
       continue;
-    } finally {
-      clearTimeout(timeoutId);
     }
 
     if (response.status >= 500) {
