@@ -25,6 +25,21 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mkdir -p "$LOG_DIR"
 node "$ROOT/scripts/dev/ensure-otel.mjs" >/dev/null 2>&1 || true
 
+# Spread proxy targets across read replicas when they exist. The gateway takes
+# one URL per service, so gateway *i* is pointed at replica *i mod N* — enough
+# to stop a single rooms-service or core-service process being the ceiling for
+# every read in the fleet. In Kubernetes the Service object does this and none
+# of it is needed.
+ROOMS_URLS=""
+CORE_URLS=""
+# shellcheck disable=SC1091
+[ -f /tmp/tartware-replica-urls.env ] && . /tmp/tartware-replica-urls.env
+IFS=',' read -r -a ROOMS_POOL <<< "${ROOMS_URLS:-http://localhost:3015}"
+IFS=',' read -r -a CORE_POOL <<< "${CORE_URLS:-http://localhost:3000}"
+[ "${#ROOMS_POOL[@]}" -gt 0 ] || ROOMS_POOL=("http://localhost:3015")
+[ "${#CORE_POOL[@]}" -gt 0 ] || CORE_POOL=("http://localhost:3000")
+echo "read pools: rooms=${#ROOMS_POOL[@]} core=${#CORE_POOL[@]}"
+
 for i in $(seq 0 $((COUNT - 1))); do
   PORT=$((BASE_PORT + i))
   # Rate limits are raised deliberately: the shipped defaults (60 commands/min)
@@ -42,9 +57,9 @@ for i in $(seq 0 $((COUNT - 1))); do
   AUTH_JWT_SECRET='dev-secret-minimum-32-chars-change-me!' \
   AUTH_JWT_ISSUER=tartware-core-service \
   AUTH_JWT_AUDIENCE=tartware-core \
-  CORE_SERVICE_URL=http://localhost:3000 \
+  CORE_SERVICE_URL="${CORE_POOL[$((i % ${#CORE_POOL[@]}))]}" \
   GUESTS_SERVICE_URL=http://localhost:3010 \
-  ROOMS_SERVICE_URL=http://localhost:3015 \
+  ROOMS_SERVICE_URL="${ROOMS_POOL[$((i % ${#ROOMS_POOL[@]}))]}" \
   RESERVATION_COMMAND_SERVICE_URL=http://localhost:3020 \
   BILLING_SERVICE_URL=http://localhost:3025 \
   HOUSEKEEPING_SERVICE_URL=http://localhost:3030 \

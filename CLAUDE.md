@@ -166,19 +166,41 @@ fails in CI but passes locally, that is the reason — check the build step ran.
 
 ### Throughput (20K ops/sec target)
 
-**Measured 25 Aug 2026** — first real k6 run against this stack, single dev box (32 cores, 62 GB)
-with all 10 services + Postgres + Kafka + k6 co-located, one gateway process:
+**Measured 26 Aug 2026** — full PMS flow (availability search → rate quote →
+book → check-in → check-out → folio charge → payment → housekeeping), 51
+tenants each with its own token, 12 gateway processes, 5 read replicas, 3
+consumer replicas per domain, 128 partitions. Everything — setup, traffic and
+verification — goes through the HTTP API; the harness touches no database.
 
 | Metric | Result |
 |--------|--------|
-| Command acceptance, sustained | **~1,700/sec** (single gateway process) |
-| Latency at 1,000/sec | p50 2.4 ms, p95 13.7 ms, **0 errors in 91,493** |
-| Latency at saturation (6,000/sec offered) | p95 2.3 s — queueing collapse, still 0 errors |
-| Outbox dispatcher drain | **~2,034 msgs/sec**, drained an 83K backlog to zero, no loss |
+| Total ops (reads + writes) | **~4,551/sec** |
+| Command acceptance | **2,995/sec**, 97.5% accepted |
+| Rate lookup | p50 368 ms, p95 1.63 s |
+| Availability search | p50 818 ms, p95 5.45 s |
+| Read errors | 1.8% |
+| Outbox after settle | **0 pending** |
+| CPU during run | **92%** |
 
-Read it as a floor, not a ceiling: one gateway process, everything sharing one box, and k6 itself
-competing for the same cores. Reproduce with
-`loadtest/k6/scenarios/command-capacity.js` (see its header for the two prerequisites).
+Short-lived gateway caching of the two funnel reads (availability 2 s, rates
+30 s, invalidated on rate writes) was worth +31% total ops and cut rate-lookup
+p95 from 9.35 s to 1.63 s. Safe because overbooking is prevented by
+availability-guard when the command is *applied*, not by the search.
+
+Reproduce: `./loadtest/run-full-test.sh 50 12 20000 90s` (resets the DB and runs
+the whole sequence). Env knobs: `CONSUMER_REPLICAS`, `READ_REPLICAS`,
+`SEED_GUESTS`, `SEED_RESERVATIONS`.
+
+**The box, not the architecture, is the current limit — and ~39% of it is not
+the system under test.** Measured per-process during load: k6 **289%** of a
+core-equivalent, Chrome **208%**, docker-proxy **78%**, PgBouncer **55%**,
+against 16 physical cores. A valid 20K measurement needs the load generator on
+its own host; until then treat these as a floor.
+
+Applied (not merely accepted) throughput went from ~274/sec at the start of this
+work to ~2,700/sec, roughly 10x, via: 128 partitions, per-aggregate keying,
+batched idempotency, intra-batch concurrency, consumer replicas, and raising
+PgBouncer's `default_pool_size` — which was the hidden ceiling behind all of it.
 
 | # | Finding | Status |
 |---|---------|--------|

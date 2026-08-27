@@ -29,7 +29,13 @@ services:
       - -c
       - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-12GB}
       - -c
-      - max_connections=${PG_MAX_CONNECTIONS:-300}
+      # Sized above PgBouncer's server pool, not above client demand. The
+      # invariant that matters is
+      #   PGBOUNCER_DEFAULT_POOL_SIZE < PGBOUNCER_MAX_DB_CONNECTIONS < max_connections
+      # Breaking it means PgBouncer opens more server connections than Postgres
+      # will accept and the fleet fails with "too many clients", which looks
+      # like an application fault rather than a misconfiguration.
+      - max_connections=${PG_MAX_CONNECTIONS:-600}
       - -c
       - autovacuum_max_workers=${PG_AUTOVACUUM_MAX_WORKERS:-5}
       - -c
@@ -76,8 +82,10 @@ services:
   # app connections. All services should connect via pgbouncer:5433.
   # Direct port 5432 is kept for DBA/admin access only.
   #
-  # PGBOUNCER_DEFAULT_POOL_SIZE is the throughput-limiting number in this whole
-  # stack. It is the count of *server* connections PgBouncer opens per
+  # PGBOUNCER_DEFAULT_POOL_SIZE was measured to be the throughput-limiting
+  # number in this whole stack: at 60 the fleet showed 369 clients queued for a
+  # server connection, and at 150 the services logged ~24k "timeout exceeded
+  # when trying to connect". Raising it to 350 cleared both. It is the count of *server* connections PgBouncer opens per
   # (database, user) pair, and every service shares one pair here — so it caps
   # how many statements Postgres executes at once, no matter how large the app
   # pools or how many replicas run. Raising it is not free: past roughly 2-4x
@@ -96,12 +104,12 @@ services:
       DATABASES_DBNAME: tartware
       # Transaction pooling is essential for 20K ops/sec with RLS SET LOCAL
       PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: "${PGBOUNCER_MAX_CLIENT_CONN:-2000}"
-      PGBOUNCER_DEFAULT_POOL_SIZE: "${PGBOUNCER_DEFAULT_POOL_SIZE:-60}"
+      PGBOUNCER_MAX_CLIENT_CONN: "${PGBOUNCER_MAX_CLIENT_CONN:-8000}"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "${PGBOUNCER_DEFAULT_POOL_SIZE:-350}"
       PGBOUNCER_MIN_POOL_SIZE: "${PGBOUNCER_MIN_POOL_SIZE:-10}"
-      PGBOUNCER_RESERVE_POOL_SIZE: "${PGBOUNCER_RESERVE_POOL_SIZE:-15}"
+      PGBOUNCER_RESERVE_POOL_SIZE: "${PGBOUNCER_RESERVE_POOL_SIZE:-50}"
       PGBOUNCER_RESERVE_POOL_TIMEOUT: "3"
-      PGBOUNCER_MAX_DB_CONNECTIONS: "${PGBOUNCER_MAX_DB_CONNECTIONS:-250}"
+      PGBOUNCER_MAX_DB_CONNECTIONS: "${PGBOUNCER_MAX_DB_CONNECTIONS:-500}"
       PGBOUNCER_SERVER_LIFETIME: "3600"
       PGBOUNCER_SERVER_IDLE_TIMEOUT: "300"
       PGBOUNCER_CLIENT_IDLE_TIMEOUT: "0"

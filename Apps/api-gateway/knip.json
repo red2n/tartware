@@ -13,7 +13,6 @@
     "@fastify/helmet",
     "@tartware/fastify-server",
     "@tartware/tenant-auth",
-    "pg",
     "@tartware/command-consumer-utils"
   ],
   "ignoreBinaries": [

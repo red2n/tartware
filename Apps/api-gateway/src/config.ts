@@ -174,6 +174,22 @@ export const kafkaConfig = {
 };
 
 /**
+ * Short-lived caching for the booking funnel's two hot reads.
+ *
+ * `availabilityTtlMs` is deliberately small: overbooking is prevented by
+ * availability-guard when the reservation command is applied, not by the search,
+ * so a slightly stale search is a UX concern rather than a correctness one — but
+ * only slightly stale. Rates change on an operator's timescale and are also
+ * invalidated on write, so they hold longer.
+ */
+export const cachedReadConfig = {
+  enabled: (process.env.GATEWAY_READ_CACHE_ENABLED ?? "true") !== "false",
+  availabilityTtlMs: Math.max(0, parseNumberEnv(process.env.GATEWAY_AVAILABILITY_TTL_MS, 2000)),
+  ratesTtlMs: Math.max(0, parseNumberEnv(process.env.GATEWAY_RATES_TTL_MS, 30000)),
+  maxEntries: Math.max(64, parseNumberEnv(process.env.GATEWAY_READ_CACHE_MAX, 5000)),
+};
+
+/**
  * Group-commit ingestion for accepted commands.
  *
  * `maxDelayMs` is the latency this trades for throughput: a command waits at

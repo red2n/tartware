@@ -33,6 +33,34 @@ echo "── 2/7  resetting the database ─────────────
   echo "db reset failed — see $LOGS/db-reset.log"; exit 1; }
 echo "  database reset (verified by the bootstrap below finding one tenant)"
 
+# The reset can recreate Postgres, which gives it a new container address.
+# PgBouncer resolves its upstream once and pins it (its own resolver fails
+# against the compose DNS name with "(bad-af)"), so after a reset it is still
+# dialling the old address and every service fails to start with 08P01.
+# Re-pointing it here is what makes a fresh run reliable.
+PG_IP=$(docker inspect tartware-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
+if [ -n "$PG_IP" ]; then
+  PGBOUNCER_DATABASES_HOST="$PG_IP" docker compose up -d --force-recreate pgbouncer >/dev/null 2>&1
+  for _ in $(seq 1 30); do
+    PGPASSWORD=postgres psql -h 127.0.0.1 -p 5433 -U postgres -d tartware -t -A -c "SELECT 1;" >/dev/null 2>&1 && break
+    sleep 2
+  done
+  echo "  pgbouncer re-pointed at postgres $PG_IP"
+fi
+
+# Reach PgBouncer on its container address rather than the published port.
+# Published ports are forwarded by `docker-proxy`, a userspace hop that was
+# measured burning ~78% of a core relaying database traffic — pure overhead
+# that competes with the system it is meant to be measuring.
+PGB_IP=$(docker inspect tartware-pgbouncer --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
+if [ -n "$PGB_IP" ] && PGPASSWORD=postgres psql -h "$PGB_IP" -p 6432 -U postgres -d tartware -t -A -c "SELECT 1;" >/dev/null 2>&1; then
+  export DB_HOST="$PGB_IP"
+  export DB_PORT=6432
+  echo "  database via container address $PGB_IP:6432 (bypassing docker-proxy)"
+else
+  echo "  database via published port 127.0.0.1:5433 (docker-proxy in path)"
+fi
+
 echo "── 3/7  bootstrapping topics + starting services ───────────────"
 # Partitions are the ceiling on how many commands a domain can apply at once,
 # so the topics are sized before anything consumes from them.
@@ -58,10 +86,9 @@ done
 echo "  services listening: ${UP:-0}/9   consumers: $(grep -c 'command consumer started' "$LOGS/services.log" 2>/dev/null || echo 0)/9"
 
 echo "── 4/7  starting $GATEWAYS gateways + consumer replicas ────────"
-./loadtest/run-gateway-fleet.sh "$GATEWAYS" 8085 "$LOGS/fleet" 2>&1 | tail -1
-# Accepting commands scales with gateways; applying them scales with consumer
-# replicas sharing the partitions.
-./loadtest/run-consumer-replicas.sh "${CONSUMER_REPLICAS:-3}" "$LOGS/replicas" 2>&1 | tail -2
+# Replicas first: the gateway fleet reads their URLs to spread read traffic.
+./loadtest/run-service-replicas.sh "${CONSUMER_REPLICAS:-3}" "${READ_REPLICAS:-3}" "$LOGS/replicas" 2>&1 | tail -4
+./loadtest/run-gateway-fleet.sh "$GATEWAYS" 8085 "$LOGS/fleet" 2>&1 | tail -2
 
 echo "── 5/7  bootstrapping $TENANTS tenants ─────────────────────────"
 SYS=$(ADMIN_USERNAME=system.admin DB_PASSWORD=postgres \
@@ -130,22 +157,29 @@ import json, sys, urllib.request, concurrent.futures as f
 gateway = sys.argv[1].split(",")[0]
 rows = [l.rstrip("\n").split("\t") for l in open(sys.argv[2]) if l.count("\t") == 2]
 
+PAGE = 100  # the list endpoints cap `limit` at 100
+
 def count(entry, resource):
+    """Page through a tenant's rows; the endpoints expose no total."""
     tenant, _prop, token = entry
-    req = urllib.request.Request(
-        f"{gateway}/v1/{resource}?tenant_id={tenant}&limit=2000",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            body = json.loads(r.read() or "null")
-    except Exception:
-        return 0
-    if isinstance(body, list):
-        return len(body)
-    if isinstance(body, dict) and isinstance(body.get("data"), list):
-        return len(body["data"])
-    return 0
+    total, offset = 0, 0
+    while True:
+        req = urllib.request.Request(
+            f"{gateway}/v1/{resource}?tenant_id={tenant}&limit={PAGE}&offset={offset}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                body = json.loads(r.read() or "null")
+        except Exception:
+            return total
+        rows = body if isinstance(body, list) else (body or {}).get("data", [])
+        total += len(rows)
+        if len(rows) < PAGE:
+            return total
+        offset += PAGE
+        if offset > 20000:  # a tenant this large is a bug, not a count
+            return total
 
 for resource in ("reservations", "guests"):
     with f.ThreadPoolExecutor(max_workers=32) as pool:

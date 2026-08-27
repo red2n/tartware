@@ -83,14 +83,34 @@ const holdDuration = __ENV.HOLD_DURATION || "60s";
 const availabilityLatency = new Trend("availability_latency", true);
 const rateLatency = new Trend("rate_lookup_latency", true);
 const readErrors = new Rate("read_errors");
+/**
+ * Read outcomes counted by HTTP status.
+ *
+ * "98% of reads failed" is not a diagnosis — a 429, a 500 and a proxy timeout
+ * each mean something different and are fixed in different places. Counting the
+ * status is what turns the number into a cause.
+ *
+ * Every counter is declared here because k6 only permits metric creation in the
+ * init context: building one on first sight of a status throws inside the
+ * iteration and silently kills the rest of that code path, which is exactly how
+ * the read metrics disappeared while availability latency kept recording.
+ */
+const READ_STATUSES = [0, 200, 400, 401, 403, 404, 429, 500, 502, 503, 504];
+const readStatus = {};
+for (const code of READ_STATUSES) {
+  readStatus[code] = new Counter(`read_status_${code}`);
+}
+const readStatusOther = new Counter("read_status_other");
+
+const countRead = (response) => {
+  const counter = readStatus[response.status || 0];
+  (counter || readStatusOther).add(1);
+};
 const totalOps = new Counter("total_ops");
 const accepted = new Counter("commands_accepted");
 const rejected = new Counter("commands_rejected");
 const acceptRate = new Rate("command_accept_rate");
 const acceptLatency = new Trend("command_accept_latency", true);
-/** Per-command-family acceptance, so one failing family cannot hide in the total. */
-const familyLatency = {};
-const familyRejects = {};
 
 export const options = {
   scenarios: {
@@ -313,23 +333,28 @@ export function setup() {
  * cheap reads: `commands_accepted` stays the write figure, `total_ops` is the
  * whole request volume.
  */
-const shopBeforeBooking = (data, tenantId, propertyId, checkIn, checkOut) => {
-  const headers = { Authorization: `Bearer ${data.token}` };
+const shopBeforeBooking = (base, token, tenantId, propertyId, checkIn, checkOut) => {
+  // The tenant's own token, not the harness login. Authorisation is per tenant,
+  // so searching one tenant's availability with another's credentials is a 403 —
+  // which looked exactly like a read-capacity problem and is not one.
+  const headers = { Authorization: `Bearer ${token}` };
 
   const availability = http.get(
-    `${data.base}/v1/rooms/availability?tenant_id=${tenantId}&property_id=${propertyId}` +
+    `${base}/v1/rooms/availability?tenant_id=${tenantId}&property_id=${propertyId}` +
       `&check_in_date=${checkIn}&check_out_date=${checkOut}`,
     { headers, tags: { op: "availability" } },
   );
   availabilityLatency.add(availability.timings.duration);
+  countRead(availability);
   readErrors.add(availability.status !== 200);
   totalOps.add(1);
 
   const rates = http.get(
-    `${data.base}/v1/rates?tenant_id=${tenantId}&property_id=${propertyId}`,
+    `${base}/v1/rates?tenant_id=${tenantId}&property_id=${propertyId}`,
     { headers, tags: { op: "rates" } },
   );
   rateLatency.add(rates.timings.duration);
+  countRead(rates);
   readErrors.add(rates.status !== 200);
   totalOps.add(1);
 };
@@ -341,7 +366,8 @@ export default function (data) {
 
   if (command.family === "reservation.create") {
     shopBeforeBooking(
-      { token: data.token, base },
+      base,
+      command.token,
       command.tenantId,
       command.payload.property_id,
       command.payload.check_in_date,
@@ -369,16 +395,12 @@ export default function (data) {
   acceptRate.add(ok);
   acceptLatency.add(response.timings.duration);
 
-  if (!familyLatency[command.family]) {
-    familyLatency[command.family] = new Trend(`accept_latency_${command.family}`, true);
-    familyRejects[command.family] = new Counter(`rejected_${command.family}`);
-  }
-  familyLatency[command.family].add(response.timings.duration);
-
+  // Per-family breakdown comes from the `command` tag on the request rather
+  // than a metric per family: k6 can split any metric by tag, and building the
+  // metrics at runtime is what broke the read path.
   if (ok) {
     accepted.add(1);
   } else {
     rejected.add(1);
-    familyRejects[command.family].add(1);
   }
 }

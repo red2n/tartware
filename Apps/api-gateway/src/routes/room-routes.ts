@@ -13,7 +13,8 @@
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { serviceTargets } from "../config.js";
+import { cachedReadConfig, serviceTargets } from "../config.js";
+import { createCachedRead } from "../utils/cached-read.js";
 import { proxyRequest } from "../utils/proxy.js";
 
 import { forwardCommandWithParamId, forwardRoomInventoryCommand } from "./command-helpers.js";
@@ -36,6 +37,44 @@ import {
 export const registerRoomRoutes = (app: FastifyInstance): void => {
   const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
+
+  /**
+   * The booking funnel's two hot reads, served from a short-lived per-process
+   * cache. Both were measured queueing to a multi-second median under load
+   * while answering in single-digit milliseconds idle — the cost is repetition,
+   * not the query. See `utils/cached-read.ts` for why caching availability does
+   * not risk overbooking.
+   */
+  const availabilityRead = createCachedRead({
+    name: "rooms-availability",
+    ttlMs: cachedReadConfig.availabilityTtlMs,
+    maxSize: cachedReadConfig.maxEntries,
+    targetBaseUrl: () => serviceTargets.roomsServiceUrl,
+  });
+
+  const ratesRead = createCachedRead({
+    name: "rates",
+    ttlMs: cachedReadConfig.ratesTtlMs,
+    maxSize: cachedReadConfig.maxEntries,
+    targetBaseUrl: () => serviceTargets.roomsServiceUrl,
+  });
+
+  /**
+   * Writing a rate makes this tenant's cached rate lookups wrong immediately,
+   * and can change what a search should show, so both are dropped rather than
+   * left to expire.
+   */
+  const proxyRoomsInvalidating = async (request: FastifyRequest, reply: FastifyReply) => {
+    const result = await proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
+    const tenantId =
+      (request.query as { tenant_id?: string } | undefined)?.tenant_id ??
+      (request.body as { tenant_id?: string } | undefined)?.tenant_id;
+    if (tenantId) {
+      ratesRead.invalidateTenant(tenantId);
+      availabilityRead.invalidateTenant(tenantId);
+    }
+    return result;
+  };
 
   /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
   const tenantWriteScopeFromParams = app.withTenantScope({
@@ -333,7 +372,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         },
       }),
     },
-    proxyRooms,
+    ratesRead.handler,
   );
 
   app.post(
@@ -349,7 +388,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         },
       }),
     },
-    proxyRooms,
+    proxyRoomsInvalidating,
   );
 
   app.all(
@@ -439,7 +478,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         response: { 200: jsonObjectSchema },
       }),
     },
-    proxyRooms,
+    availabilityRead.handler,
   );
 
   // Room command routes
