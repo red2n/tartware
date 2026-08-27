@@ -103,18 +103,13 @@ jobs:
       - name: SQL contracts
         run: pnpm run sql:contracts
 
-      # Gateway ↔ downstream routing: a proxied path with no handler, a wildcard
-      # advertising writes nothing implements, a route gated on a module id that
-      # is not in MODULE_IDS. Each of these has shipped at least once.
-      - name: Gateway conformance
-        run: npx nx run @tartware/api-gateway:test
-
-      # Command catalog ↔ flow registry ↔ payload validators ↔ consumers: a
-      # command missing any one of those links is accepted and silently dropped.
+      # Gateway ↔ downstream routing, command catalog ↔ flow registry ↔ payload
+      # validators ↔ consumers, and outbox enqueue ↔ dispatcher: each of those
+      # links has been broken at least once, and each break is silent — a
+      # command accepted and dropped, a 200 with nothing behind it.
       #
-      # Also outbox enqueue ↔ dispatcher, added after two live instances of the
-      # same shape: an event committed inside a successful transaction whose
-      # aggregate_type no dispatcher claims. The write succeeds, the API returns
-      # 200, and the consumer never hears anything.
-      - name: Command catalog conformance
-        run: npx nx run @tartware/command-consumer-utils:test
+      # This used to run two cherry-picked suites. Every project now has a test
+      # target (asserted by the guardrail coverage step above), so run the lot:
+      # the unit suites are fast and need no database.
+      - name: Tests
+        run: pnpm run test

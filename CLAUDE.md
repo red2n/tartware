@@ -89,7 +89,7 @@ pnpm run dev:ui              # Angular pms-ui
 pnpm run build               # THE gate: check → build → typecheck. Must exit 0.
 pnpm run check               # guardrails + frameworks + lint + biome + knip + contrast + i18n
 pnpm run check:frameworks    # shared-entry-point guardrail (fast, no build needed)
-pnpm run test                # nx run-many -t test — NOT part of build (see backlog 09)
+pnpm run test                # nx run-many -t test — also runs as the last step of build
 pnpm run kafka:topics        # bootstrap Kafka topics
 ```
 
@@ -123,8 +123,10 @@ Underlying scripts live in `executables/<name>/`. If `stop` leaves anything behi
   Retry policy is `isRetryableByDefault` inside `createConsumerLifecycle` — honours
   `CommandError.retryable`; consumers only pass `isRetryable` to override it.
 - **Kafka:** 13 clients, all through `createKafkaClient` with a required logger.
-- **Tests:** 70 test files; ~20 cover domain logic. Runner is vitest. `test` is not a required
-  Nx target and `pnpm run build` does not run it.
+- **Tests:** ~73 test files. Most services use vitest; the small libs (config, telemetry, outbox,
+  tenant-auth) use `node:test` with a `tsconfig.tests.json`. `test` is a required Nx target on
+  every project (proto-types exempt — generated code) and runs at the end of `pnpm run build` and
+  in the Guardrails workflow.
 - **Type safety:** 23 uses of `any` repo-wide, zero TODO/FIXME/HACK markers.
 - **Batched writes:** `buildValuesRows` / `chunkForBatch` in `@tartware/config/sql-batch` own the
   placeholder arithmetic for multi-row INSERTs. Never hand-roll it — an off-by-one binds every
@@ -158,7 +160,7 @@ fails in CI but passes locally, that is the reason — check the build step ran.
 | 06 | High | `business-calendar-settings-service.ts:45` fetches with no `AbortSignal` on the startup path; 6 files hand-roll the same timeout dance → needs a shared `fetchWithTimeout`. | open |
 | 07 | Medium | DB singleton imported by ~220 files instead of injected (DIP). Fix forward on new code, pair with 04. | open |
 | 08 | Medium | TSDoc coverage 8%–100%; weakest in shared packages (telemetry 8%, availability-guard 11%, core 37%). | open |
-| 09 | Medium | Tests run in no local gate: `test` missing from `REQUIRED_TARGETS` and from `pnpm run build`. | open |
+| 09 | Medium | Tests run in no local gate: `test` missing from `REQUIRED_TARGETS` and from `pnpm run build`. | **done 26 Aug** — `test` now required on every project (proto-types exempt), runs at the end of `pnpm run build`, and CI runs the whole suite instead of two cherry-picked ones. outbox and tenant-auth gained real tests. |
 | 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | 01, 03 done; 02 needs no rule (safe by default); 06 open |
 
 ### Throughput (20K ops/sec target)

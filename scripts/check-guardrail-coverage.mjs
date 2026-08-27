@@ -13,7 +13,7 @@
 import { spawnSync } from "node:child_process";
 
 /** Targets every project is expected to expose. */
-const REQUIRED_TARGETS = ["biome", "knip"];
+const REQUIRED_TARGETS = ["biome", "knip", "test"];
 
 /**
  * Projects allowed to skip a target, with the reason.
@@ -21,7 +21,12 @@ const REQUIRED_TARGETS = ["biome", "knip"];
  * ESLint setup and Biome is their linter.
  */
 const EXEMPTIONS = {
-  // project name -> { target: reason }
+  "@tartware/proto-types": {
+    test:
+      "generated from proto/*.proto by the `generate` target — there is no " +
+      "hand-written code here to test, and asserting the generator's output " +
+      "would only restate the .proto files",
+  },
 };
 
 const show = (args) =>
