@@ -92,7 +92,15 @@ export const FLOW_REGISTRY: FlowRegistry = {
 		// does mobile check-in over REST on guests-service (`routes/checkin.ts`), so
 		// the commands were a third entry point nothing dispatched.
 		// See ui-gaps/17-command-reachability.md.
-		requiredCommands: ["reservation.generate_registration_card"],
+		requiredCommands: [
+			"reservation.generate_registration_card",
+			// A guarantee taken before the guest travels is what makes the
+			// booking real. Both commands existed and were reachable, and no
+			// flow asserted either — so nothing checked that a property can
+			// actually secure a reservation.
+			"reservation.add_deposit",
+			"reservation.release_deposit",
+		],
 		dependsOn: [FlowId.RESERVATION],
 	},
 
@@ -125,6 +133,9 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"billing.charge.transfer",
 			"reservation.extend_stay",
 			"reservation.rate_override",
+			// Moving an in-house guest: the one lifecycle event a front desk
+			// performs daily that had no command (WS-04 / PMS-02-02).
+			"reservation.room_move",
 			"rooms.move",
 		],
 		dependsOn: [FlowId.CHECK_IN],
@@ -181,6 +192,24 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			{ topic: "reservations.events", eventType: "reservation.checked_out" },
 		],
 		dependsOn: [FlowId.CHECK_OUT],
+	},
+
+	[FlowId.CASHIER_SHIFT]: {
+		name: "Cashier Shift",
+		/*
+		 * Front-office money handling is a shift, not a series of unrelated
+		 * postings: a drawer is opened with a float, money is taken against it,
+		 * it is handed to the next cashier or closed with a counted variance.
+		 * All three commands existed and were reachable, and no flow named any
+		 * of them — so the one part of the product where cash physically
+		 * changes hands had no compliance check at all.
+		 */
+		requiredCommands: [
+			"billing.cashier.open",
+			"billing.cashier.handover",
+			"billing.cashier.close",
+		],
+		dependsOn: [FlowId.CHECK_IN],
 	},
 
 	[FlowId.AR_COLLECTIONS]: {
