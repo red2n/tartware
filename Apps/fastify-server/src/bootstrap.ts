@@ -71,7 +71,8 @@ export async function bootstrapService(
 		serviceVersion: config.service.version,
 		environment: process.env.NODE_ENV ?? "development",
 		instrumentationOptions: {
-			"@opentelemetry/instrumentation-fastify": { enabled: true },
+			// Fastify is registered directly by initTelemetry — it is no longer
+			// part of the auto-instrumentations config map.
 			"@opentelemetry/instrumentation-http": { enabled: true },
 			"@opentelemetry/instrumentation-pg": { enabled: true },
 		},

@@ -18,9 +18,8 @@ import { buildServer } from "./server.js";
 const telemetry = await initTelemetry({
   serviceName: gatewayConfig.serviceId ?? "api-gateway",
   instrumentationOptions: {
-    "@opentelemetry/instrumentation-fastify": {
-      enabled: true,
-    },
+    // Fastify is registered directly by initTelemetry — it left the
+    // auto-instrumentations config map in 0.79.
     "@opentelemetry/instrumentation-http": {
       enabled: true,
     },

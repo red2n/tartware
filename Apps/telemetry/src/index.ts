@@ -7,12 +7,23 @@ import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { Resource } from "@opentelemetry/resources";
+import { FastifyInstrumentation } from "@opentelemetry/instrumentation-fastify";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import pino, { type Logger as PinoLogger } from "pino";
+
+/**
+ * `deployment.environment.name`, spelled out rather than imported.
+ *
+ * The constant lives in the semantic-conventions *incubating* entrypoint,
+ * which is explicitly unstable — importing it means this file breaks on a
+ * patch release of a dependency. The attribute key itself is what the
+ * collector matches on, and that is stable.
+ */
+const ATTR_DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name";
 
 type RedactObject = {
   paths?: string[];
@@ -528,11 +539,11 @@ export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK 
     ? false
     : parseBoolean(process.env.OTEL_METRICS_ENABLED, true);
 
-  const resource = new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: process.env.OTEL_SERVICE_NAME ?? options.serviceName,
-    [SemanticResourceAttributes.SERVICE_VERSION]:
+  const resource = resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME ?? options.serviceName,
+    [ATTR_SERVICE_VERSION]:
       process.env.OTEL_SERVICE_VERSION ?? options.serviceVersion ?? process.env.npm_package_version,
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]:
+    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]:
       process.env.OTEL_ENVIRONMENT ?? options.environment ?? process.env.NODE_ENV ?? "development",
     ...options.resourceAttributes,
   });
@@ -550,14 +561,15 @@ export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK 
   }
 
   const logRecordProcessor = logEndpoint
-    ? new BatchLogRecordProcessor(
-        new OTLPLogExporter({
+    ? // 2.x takes an options bag; the exporter used to be the positional argument.
+      new BatchLogRecordProcessor({
+        exporter: new OTLPLogExporter({
           url: logEndpoint,
           headers: parseHeaders(
             process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS ?? process.env.OTEL_EXPORTER_OTLP_HEADERS,
           ),
         }),
-      )
+      })
     : undefined;
 
   if (logRecordProcessor) {
@@ -568,7 +580,7 @@ export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK 
 
   const sdk = new NodeSDK({
     resource,
-    logRecordProcessor,
+    logRecordProcessors: logRecordProcessor ? [logRecordProcessor] : undefined,
     traceExporter: traceEndpoint
       ? new OTLPTraceExporter({
           url: traceEndpoint,
@@ -577,7 +589,13 @@ export const initTelemetry = async (options: TelemetryOptions): Promise<NodeSDK 
           ),
         })
       : undefined,
-    instrumentations: [getNodeAutoInstrumentations(options.instrumentationOptions)],
+    instrumentations: [
+      getNodeAutoInstrumentations(options.instrumentationOptions),
+      // Fastify left the auto-instrumentations bundle in 0.79. Registering it
+      // here keeps route-level spans, which every service in this repo relies
+      // on — without it a trace shows the HTTP span and nothing beneath it.
+      new FastifyInstrumentation(),
+    ],
   });
 
   if (!metricsEnabled) {

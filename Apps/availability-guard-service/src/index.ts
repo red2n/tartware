@@ -11,7 +11,8 @@ const telemetry = await initTelemetry({
   serviceVersion: config.service.version,
   environment: process.env.NODE_ENV ?? "development",
   instrumentationOptions: {
-    "@opentelemetry/instrumentation-fastify": { enabled: true },
+    // Fastify is registered directly by initTelemetry — it left the
+    // auto-instrumentations config map in 0.79.
     "@opentelemetry/instrumentation-http": { enabled: true },
     "@opentelemetry/instrumentation-pg": { enabled: true },
   },
