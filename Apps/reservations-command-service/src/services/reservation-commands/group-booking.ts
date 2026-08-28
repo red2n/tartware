@@ -34,7 +34,7 @@ import {
 export const createGroupBooking = async (
   tenantId: string,
   command: GroupCreateCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const groupBookingId = uuid();

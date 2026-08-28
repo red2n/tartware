@@ -496,7 +496,7 @@ describe("every reversal is recorded twice, on purpose", () => {
       { rows: [folioRow()] },
       { rows: [posting("EARLY_CHECKIN", 25)] },
     );
-    await reverseCheckIn(TENANT, command());
+    await reverseCheckIn(TENANT, command(), { actorRole: "MANAGER" });
 
     expect(recordFlowApprovalMock).toHaveBeenCalledTimes(1);
     expect(recordAuditLogMock).toHaveBeenCalledTimes(1);
@@ -506,8 +506,24 @@ describe("every reversal is recorded twice, on purpose", () => {
       flowName: "reservation_reversal",
       gateName: "reverse_check_in",
       reasonCode: "KEYED_IN_ERROR",
-      roleAtApproval: "REVERSAL",
+      // The role the operator actually held. This asserted "REVERSAL" — a
+      // literal describing the operation, in the column that is supposed to
+      // say who had the authority for it.
+      roleAtApproval: "MANAGER",
+      forced: false,
     });
+  });
+
+  it("records SYSTEM when no membership rode the command", async () => {
+    queueQueries(
+      { rows: [reservationRow()] },
+      { rows: [reasonRow] },
+      { rows: [folioRow()] },
+      { rows: [posting("EARLY_CHECKIN", 25)] },
+    );
+    await reverseCheckIn(TENANT, command());
+    const approval = recordFlowApprovalMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(approval.roleAtApproval).toBe("SYSTEM");
   });
 
   it("marks a forced reversal as an override", async () => {
@@ -517,8 +533,11 @@ describe("every reversal is recorded twice, on purpose", () => {
       { rows: [folioRow()] },
       { rows: [posting("FNB", 10)] },
     );
-    await reverseCheckIn(TENANT, command({ force: true }));
+    await reverseCheckIn(TENANT, command({ force: true }), { actorRole: "OWNER" });
     const approval = recordFlowApprovalMock.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(approval.roleAtApproval).toBe("FORCE_OVERRIDE");
+    // Two separate facts, which the old "FORCE_OVERRIDE" literal conflated into
+    // one: who authorised it, and that a gate was bypassed rather than met.
+    expect(approval.roleAtApproval).toBe("OWNER");
+    expect(approval.forced).toBe(true);
   });
 });

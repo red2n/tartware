@@ -30,7 +30,7 @@ const logger = reservationsLogger.child({ module: "mass-operations" });
 
 const store = createBatchResultStore(pool);
 
-type CommandOptions = { correlationId?: string; actorId?: string };
+type CommandOptions = { correlationId?: string; actorId?: string; actorRole?: string };
 
 const buildContext = (
   tenantId: string,

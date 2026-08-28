@@ -18,6 +18,7 @@
  * the folio balance is what it was before the check-in, to the cent.
  */
 
+import { SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
 import type {
   ReasonCodeRow,
   ReservationReinstateCommand,
@@ -370,6 +371,7 @@ const recordReversal = async (input: {
   reason: ReasonCodeRow;
   reasonNotes?: string;
   actorId?: string;
+  actorRole?: string;
   correlationId?: string;
   forced: boolean;
   outcome: FolioReversalOutcome;
@@ -384,7 +386,8 @@ const recordReversal = async (input: {
     entityType: "reservation",
     entityId: input.reservationId,
     approvedBy: input.actorId ?? null,
-    roleAtApproval: input.forced ? "FORCE_OVERRIDE" : "REVERSAL",
+    roleAtApproval: input.actorRole ?? SYSTEM_ACTOR_ROLE,
+    forced: input.forced,
     reasonCode: input.reason.reason_code,
     reasonNotes:
       input.reasonNotes ??
@@ -438,7 +441,7 @@ const recordReversal = async (input: {
 export const reverseCheckIn = async (
   tenantId: string,
   rawCommand: ReservationReverseCheckInCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   // Parsed here as well as in the consumer: the schema defaults are load-bearing
   // (see `restore_status` / `room_status_after`), and a handler that inherited
@@ -502,6 +505,7 @@ export const reverseCheckIn = async (
     reason,
     reasonNotes: input.reason_notes,
     actorId: options.actorId,
+    actorRole: options.actorRole,
     correlationId: options.correlationId,
     forced: Boolean(input.force),
     outcome,
@@ -543,7 +547,7 @@ export const reverseCheckIn = async (
 export const reverseCheckOut = async (
   tenantId: string,
   rawCommand: ReservationReverseCheckOutCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const input = ReservationReverseCheckOutCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
@@ -622,6 +626,7 @@ export const reverseCheckOut = async (
     reason,
     reasonNotes: input.reason_notes,
     actorId: options.actorId,
+    actorRole: options.actorRole,
     correlationId: options.correlationId,
     forced: Boolean(input.force),
     outcome,
@@ -658,7 +663,7 @@ export const reverseCheckOut = async (
 export const reinstateReservation = async (
   tenantId: string,
   rawCommand: ReservationReinstateCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const input = ReservationReinstateCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
@@ -763,6 +768,7 @@ export const reinstateReservation = async (
     reason,
     reasonNotes: input.reason_notes,
     actorId: options.actorId,
+    actorRole: options.actorRole,
     correlationId: options.correlationId,
     forced: Boolean(input.force),
     outcome,

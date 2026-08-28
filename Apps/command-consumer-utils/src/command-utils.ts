@@ -10,6 +10,15 @@
 export { SYSTEM_ACTOR_ID } from "@tartware/config";
 
 import { SYSTEM_ACTOR_ID } from "@tartware/config";
+import { TenantRoleEnum } from "@tartware/schemas";
+
+/**
+ * Role recorded when a command carries no authenticated membership — a
+ * scheduler job, a replay, an internal dispatch. The role counterpart to
+ * `SYSTEM_ACTOR_ID`, and deliberately not a member of `TenantRoleEnum`: it
+ * names the absence of a human authority rather than impersonating one.
+ */
+export const SYSTEM_ACTOR_ROLE = "SYSTEM";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,6 +34,25 @@ export const asUuid = (value: string | undefined | null): string | null =>
  */
 export const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
   asUuid(initiatedBy?.userId) ?? SYSTEM_ACTOR_ID;
+
+/**
+ * The role held by the actor when the command was accepted.
+ *
+ * The counterpart to {@link resolveActorId}, and the reason it exists: the
+ * gateway stamps `initiatedBy = { userId, role }` from the caller's membership
+ * and the envelope carries both to the consumer, but every handler read only
+ * `.userId`. The role was dropped on arrival, so every `flow_approvals` row
+ * written on the command path recorded a hardcoded literal — `"FORCE_OVERRIDE"`,
+ * `"GM_OVERRIDE"` — in a column whose own comment calls it a snapshot of the
+ * approver's role. An override trail that cannot say who had the authority is
+ * not a trail.
+ *
+ * Falls back to {@link SYSTEM_ACTOR_ROLE} for a scheduler or replay with no
+ * membership behind it, and for anything that is not a recognised role — the
+ * same shape as `asUuid` guarding the actor id.
+ */
+export const resolveActorRole = (initiatedBy?: { role?: string } | null): string =>
+  TenantRoleEnum.safeParse(initiatedBy?.role).data ?? SYSTEM_ACTOR_ROLE;
 
 /**
  * Domain error for command handler failures.

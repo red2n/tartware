@@ -2,6 +2,7 @@ import {
   asUuid,
   CommandError,
   resolveActorId,
+  resolveActorRole,
   SYSTEM_ACTOR_ID,
 } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
@@ -11,7 +12,7 @@ export type { CommandContext };
 
 // Actor resolution is shared infrastructure — re-exported here so billing's
 // command modules keep importing it from one place.
-export { asUuid, resolveActorId, SYSTEM_ACTOR_ID };
+export { asUuid, resolveActorId, resolveActorRole, SYSTEM_ACTOR_ID };
 
 /**
  * Billing command failure. `retryable` defaults to false — see

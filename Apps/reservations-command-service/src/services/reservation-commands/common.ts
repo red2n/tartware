@@ -92,7 +92,7 @@ export const enqueueReservationUpdate = async (
   tenantId: string,
   commandName: string,
   rawPayload: ReservationUpdatePayload,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const payload = await hydrateReservationIdentity(tenantId, rawPayload);
   const eventId = uuid();

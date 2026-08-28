@@ -139,7 +139,24 @@ export interface FlowApprovalParams {
   entityType: string;
   entityId: string | null;
   approvedBy: string | null;
+  /**
+   * The role the approver actually held, as a snapshot — which is what the
+   * column's own comment promises. Not a description of the override: the
+   * command path used to pass literals like "FORCE_OVERRIDE" and "GM_OVERRIDE"
+   * here, which read as roles, matched no role the product defines, and left no
+   * way to ask what authority a bypass was made under. Use `forced` for that.
+   */
   roleAtApproval: string;
+  /**
+   * Whether the operator bypassed the gate rather than satisfying it.
+   *
+   * Kept as its own field because most call sites carry it in `reasonCode`
+   * (FORCE_CHECK_IN, FORCE_CHECK_OUT) but the two that let the operator choose
+   * the reason code — room move and reversals — have nowhere else to put it.
+   * Folded into `reasonNotes` behind a stable `FORCED:` prefix so a reader can
+   * filter on it without a migration.
+   */
+  forced?: boolean;
   reasonCode: string;
   reasonNotes?: string | null;
   correlationId?: string | null;
@@ -183,7 +200,9 @@ export const recordFlowApproval = async (
       params.approvedBy ?? SYSTEM_ACTOR_ID,
       params.roleAtApproval,
       params.reasonCode,
-      params.reasonNotes ?? null,
+      params.forced
+        ? `FORCED: ${params.reasonNotes ?? "gate bypassed"}`
+        : (params.reasonNotes ?? null),
       params.correlationId ?? null,
     ]);
   } catch (error) {

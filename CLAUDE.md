@@ -274,7 +274,7 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 |---|----------|---------|--------|
 | A01 | Critical | Four-eyes took `actioned_by` / `requested_by` from the **request body**, so the self-approval check compared two caller-supplied strings — defeated by typing a colleague's id. `required_role` was stored and never compared. | **done 28 Aug** |
 | A02 | Critical | No per-command permission, so no way to express an override as a distinct right. Everything is `MANAGER`. | open |
-| A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | open |
+| A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | **done 28 Aug** |
 | A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | open |
 | A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | open |
 | A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | open |
@@ -283,6 +283,16 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
 | A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | open |
 | A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | open |
+
+**A03, as landed.** `resolveActorRole()` sits beside `resolveActorId` in `command-utils` and
+validates against `TenantRoleEnum`, so the literals it replaced cannot come back through it;
+`SYSTEM_ACTOR_ROLE` is the fallback for a scheduler or replay and is deliberately **not** a member
+of the enum. `CommandContext.initiatedBy` gained `role`, which the gateway had been stamping and
+every consumer dropping. The "was this forced" fact that the old literals smuggled into the role
+column now has its own `forced` flag on `FlowApprovalParams`, folded into `reason_notes` behind a
+stable `FORCED:` prefix by both writers (`@tartware/config` and billing's repository) so the two
+services read alike. Guardrail rule `approval-role-literal` fires on any quoted
+`role_at_approval:` — verified by reintroducing `"GM_OVERRIDE"` and watching it trip. 6 tests.
 
 **A01, as landed.** The role ladder now lives once, in `schema/src/shared/enums.ts` as
 `TENANT_ROLE_PRIORITY` + `tenantRoleAtLeast()` — the same five numbers had been copied into

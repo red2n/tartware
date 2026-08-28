@@ -214,8 +214,13 @@ export type CommandFeatureUpdateRow = {
 export type CommandContext = {
 	/** Tenant ID the command is scoped to */
 	tenantId: string;
-	/** Identity that initiated the command (may be null for system-generated commands) */
-	initiatedBy?: { userId?: string } | null;
+	/**
+	 * Identity that initiated the command (may be null for system-generated
+	 * commands). `role` is the caller's tenant membership role at accept time —
+	 * the gateway stamps it onto every envelope, and an override record that
+	 * omits it cannot say what authority the bypass was made under.
+	 */
+	initiatedBy?: { userId?: string; role?: string } | null;
 	/** Raw command payload (present when the handler destructures context for the full envelope) */
 	payload?: unknown;
 	/** Correlation ID from the Kafka message (for distributed tracing) */

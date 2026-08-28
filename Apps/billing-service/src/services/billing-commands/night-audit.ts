@@ -10,7 +10,13 @@ import { getPropertyBaseCurrency } from "../../lib/fx-rate-lookup.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.js";
 
-import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
+import {
+  asUuid,
+  type CommandContext,
+  resolveActorId,
+  resolveActorRole,
+  SYSTEM_ACTOR_ID,
+} from "./common.js";
 import { buildGlBatchForDate } from "./ledger.js";
 
 /**
@@ -144,7 +150,10 @@ export const executeNightAudit = async (
     }
   } else {
     // Gate bypass: record approval in flow_approvals audit log
-    // skip_preconditions=true is a GM override — must be logged.
+    // skip_preconditions=true is an override of a blocking control — logged
+    // with the role the operator actually held. It used to record the literal
+    // "GM_OVERRIDE", which named an authority the product does not define and
+    // nothing had checked.
     try {
       const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
       const gatesToLog = [
@@ -161,7 +170,8 @@ export const executeNightAudit = async (
           entity_type: "property",
           entity_id: command.property_id,
           approved_by: actorId,
-          role_at_approval: "GM_OVERRIDE",
+          role_at_approval: resolveActorRole(context.initiatedBy),
+          forced: true,
           reason_code: "SKIP_PRECONDITIONS",
           reason_notes: `Night audit precondition gates bypassed via skip_preconditions=true for ${auditDate}`,
           correlation_id: context.correlationId ?? null,

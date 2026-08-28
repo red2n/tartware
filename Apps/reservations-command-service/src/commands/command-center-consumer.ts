@@ -1,4 +1,5 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { resolveActorRole } from "@tartware/command-consumer-utils/command-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
 import { runWithTenantScope } from "@tartware/config/db";
@@ -121,6 +122,10 @@ const routeReservationCommand = async (
   const context = {
     correlationId: rawCorrelation && UUID_RE.test(rawCorrelation) ? rawCorrelation : undefined,
     actorId: metadata.initiatedBy?.userId,
+    // The gateway stamps the caller's membership role onto every envelope and
+    // this line used to stop at `.userId`, so an override could name who acted
+    // but never with what authority.
+    actorRole: resolveActorRole(metadata.initiatedBy),
   };
 
   switch (metadata.commandName) {

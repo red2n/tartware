@@ -1,4 +1,4 @@
-import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
+import { resolveActorId, SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
 import type { ReservationRoomMoveCommand } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
@@ -87,7 +87,7 @@ const selectRoomToMove = (
 export const moveRoom = async (
   tenantId: string,
   command: ReservationRoomMoveCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const actorId = resolveActorId({ userId: options.actorId }) ?? SYSTEM_ACTOR_ID;
@@ -272,7 +272,8 @@ export const moveRoom = async (
       entityType: "reservation",
       entityId: command.reservation_id,
       approvedBy: actorId,
-      roleAtApproval: command.force ? "FORCE_OVERRIDE" : "ROOM_MOVE",
+      roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      forced: Boolean(command.force),
       reasonCode: reason.reason_code,
       reasonNotes:
         command.reason_notes ??

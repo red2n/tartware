@@ -62,6 +62,21 @@ const RULES = [
       "seeded system.actor row every other service writes",
   },
   {
+    id: "approval-role-literal",
+    // `roleAtApproval:` / `role_at_approval:` followed by a quoted string.
+    // A real role always arrives through a resolver or a membership lookup.
+    pattern: /\brole_?[Aa]t_?[Aa]pproval\s*:\s*["'`]/,
+    allow: [],
+    use: 'resolveActorRole(initiatedBy) from "@tartware/command-consumer-utils/command-utils", or the membership role on the request',
+    why:
+      "flow_approvals.role_at_approval documents itself as a snapshot of the approver's role, " +
+      "and every command-path writer passed a literal instead — \"FORCE_OVERRIDE\", \"GM_OVERRIDE\", " +
+      "\"REVERSAL\" — none of which is a role the product defines. The real role rides the command " +
+      "envelope as initiatedBy.role the whole way to the consumer, so an override trail that cannot " +
+      "say what authority a bypass was made under was throwing away data it already had. Use the " +
+      "`forced` flag to record that a gate was bypassed",
+  },
+  {
     id: "command-error",
     pattern: /class \w*(Command|Event)Error extends Error\b/,
     allow: ["Apps/command-consumer-utils/src/command-utils.ts"],

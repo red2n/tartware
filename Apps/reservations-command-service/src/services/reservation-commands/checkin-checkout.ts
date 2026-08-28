@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
 import { v4 as uuid } from "uuid";
 
 import {
@@ -42,7 +43,7 @@ import {
 export const checkInReservation = async (
   tenantId: string,
   command: ReservationCheckInCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and status allows check-in
   const resResult = await query(
@@ -100,7 +101,8 @@ export const checkInReservation = async (
       entityType: "reservation",
       entityId: command.reservation_id,
       approvedBy: options.actorId ?? null,
-      roleAtApproval: "FORCE_OVERRIDE",
+      roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      forced: true,
       reasonCode: "FORCE_CHECK_IN_REINSTATE",
       reasonNotes:
         command.notes ??
@@ -211,7 +213,8 @@ export const checkInReservation = async (
       entityType: "reservation",
       entityId: command.reservation_id,
       approvedBy: options.actorId ?? null,
-      roleAtApproval: "FORCE_OVERRIDE",
+      roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      forced: true,
       reasonCode: "FORCE_CHECK_IN",
       reasonNotes: command.notes ?? "Check-in forced with force=true; deposit gate bypassed",
       correlationId: options.correlationId ?? null,
@@ -424,7 +427,7 @@ export const checkInReservation = async (
 export const checkOutReservation = async (
   tenantId: string,
   command: ReservationCheckOutCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and is CHECKED_IN
   const resResult = await query(
@@ -512,7 +515,8 @@ export const checkOutReservation = async (
           entityType: "reservation",
           entityId: command.reservation_id,
           approvedBy: options.actorId ?? null,
-          roleAtApproval: "FORCE_OVERRIDE",
+          roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+          forced: true,
           reasonCode: "FORCE_CHECK_OUT",
           reasonNotes:
             command.notes ??
@@ -953,7 +957,7 @@ export const checkOutReservation = async (
 export const walkInCheckIn = async (
   tenantId: string,
   command: ReservationWalkInCheckInCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const reservationId = uuid();
