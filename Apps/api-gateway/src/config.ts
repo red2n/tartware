@@ -121,6 +121,7 @@ export const serviceTargets = {
   housekeepingServiceUrl: env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3030",
   notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
   revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
+  documentServiceUrl: env.DOCUMENT_SERVICE_URL ?? "http://localhost:3080",
   // calculationServiceUrl removed — calculation absorbed into billing-service (Phase 6)
   // serviceRegistryUrl removed — registry absorbed into core-service (Phase 5)
   // accountsServiceUrl removed — accounts absorbed into billing-service (Phase 6)

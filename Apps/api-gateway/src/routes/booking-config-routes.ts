@@ -153,6 +153,19 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  app.get(
+    "/v1/reason-codes",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "List reason codes an operator can pick when reversing a lifecycle event.",
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   app.post(
     "/v1/market-segments",
     {

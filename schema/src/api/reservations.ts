@@ -758,6 +758,29 @@ export type MarketSegmentType = z.infer<typeof MarketSegmentTypeEnum>;
 /**
  * Market segment list item schema for API responses.
  */
+/**
+ * A reason code as it appears in an operator's picker.
+ *
+ * `reason_codes` was a table with no route — it existed, nothing read it, and
+ * nothing could write to it. The lifecycle reversals (WS-04) are the first
+ * thing that requires one, so this is the shape that makes the codes
+ * discoverable instead of something a caller has to know by heart.
+ */
+export const ReasonCodeListItemSchema = z.object({
+	reason_id: z.string().uuid(),
+	reason_code: z.string(),
+	reason_name: z.string(),
+	reason_description: z.string().nullable().optional(),
+	reason_category: z.string(),
+	property_id: z.string().uuid().nullable().optional(),
+	requires_approval: z.boolean().nullable().optional(),
+	has_financial_impact: z.boolean().nullable().optional(),
+	display_order: z.number().int().nullable().optional(),
+	is_active: z.boolean().nullable().optional(),
+});
+
+export type ReasonCodeListItem = z.infer<typeof ReasonCodeListItemSchema>;
+
 export const MarketSegmentListItemSchema = z.object({
 	segment_id: uuid,
 	tenant_id: uuid,

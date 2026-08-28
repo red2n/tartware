@@ -28,8 +28,14 @@ export type BootstrapServiceInput = {
 		service: { name: string; version: string };
 		port: number;
 		host: string;
-		db: { host: string; port: number };
-		kafka: { brokers: string[] };
+		/**
+		 * Postgres endpoint to wait on at boot. Omit for a service that holds no
+		 * pool — a stateless renderer refusing to start because the database is
+		 * down would be a dependency it does not have.
+		 */
+		db?: { host: string; port: number };
+		/** Kafka brokers to wait on. Omit for a service that neither produces nor consumes. */
+		kafka?: { brokers: string[] };
 	};
 	/** Kafka consumer start functions. Called in order when Kafka is enabled. */
 	consumerStarters?: Array<() => Promise<void>>;
@@ -73,11 +79,19 @@ export async function bootstrapService(
 
 	const start = async () => {
 		try {
-			const kafkaBroker = config.kafka.brokers[0];
+			const kafkaBroker = config.kafka?.brokers[0];
 			const telemetryDependency = resolveOtelDependency(true);
 			const dependenciesOk = await ensureDependencies(
 				[
-					{ name: "PostgreSQL", host: config.db.host, port: config.db.port },
+					...(config.db
+						? [
+								{
+									name: "PostgreSQL",
+									host: config.db.host,
+									port: config.db.port,
+								},
+							]
+						: []),
 					...(kafkaEnabled && kafkaBroker
 						? [{ name: "Kafka broker", ...parseHostPort(kafkaBroker, 9092) }]
 						: []),

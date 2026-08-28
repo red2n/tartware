@@ -60,6 +60,7 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"reservation.create",
 			"reservation.modify",
 			"reservation.cancel",
+			"reservation.reinstate",
 			"reservation.assign_room",
 			"reservation.no_show",
 			"group.create",
@@ -94,6 +95,9 @@ export const FLOW_REGISTRY: FlowRegistry = {
 		requiredCommands: [
 			"reservation.check_in",
 			"reservation.walkin_checkin",
+			// A check-in nobody can undo means the only recovery from a mis-key
+			// on an arrival day is direct database work (WS-04 / PMS-02-01).
+			"reservation.reverse_check_in",
 			"billing.folio.create",
 			"billing.payment.authorize",
 		],
@@ -145,6 +149,7 @@ export const FLOW_REGISTRY: FlowRegistry = {
 		name: "Check-Out",
 		requiredCommands: [
 			"reservation.check_out",
+			"reservation.reverse_check_out",
 			"billing.folio.close",
 			"billing.express_checkout",
 			"billing.invoice.create",

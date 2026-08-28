@@ -247,6 +247,93 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
       }),
   );
 
+  // ── Lifecycle reversals (WS-04) ────────────────────────────────────────────
+  // Separate routes rather than a flag on check-in/check-out: undoing a
+  // financial event is a different permission and a different audit record from
+  // performing one, and collapsing them would make the two indistinguishable in
+  // the command log.
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/reverse-check-in",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Undo a check-in via Command Center.",
+        description:
+          "Returns the reservation to CONFIRMED, clears the room assignment and voids " +
+          "the postings check-in created. Requires a reason_code from reason_codes.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.reverse_check_in",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/reverse-check-out",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Undo a check-out via Command Center.",
+        description:
+          "Returns the reservation to CHECKED_IN and reopens the folio so charges can " +
+          "post again. Requires a reason_code from reason_codes.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.reverse_check_out",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/reinstate",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Reinstate a cancelled reservation via Command Center.",
+        description:
+          "Re-acquires the availability hold before restoring the booking, and refuses " +
+          "if the released nights have since been sold. Requires a reason_code.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.reinstate",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/assign-room",
     {

@@ -180,6 +180,98 @@ export type ReservationCheckOutCommand = z.infer<
 	typeof ReservationCheckOutCommandSchema
 >;
 
+// ---------------------------------------------------------------------------
+// Lifecycle reversals (WS-04)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a reversal does to the room the guest was in.
+ *
+ * `DIRTY` is the default and the safe one: a check-in that got as far as a key
+ * card means someone may have been in the room, and a room returned straight to
+ * AVAILABLE can be sold to the next arrival uninspected. `AVAILABLE` is for the
+ * mis-key corrected thirty seconds later, and is a deliberate choice the
+ * operator makes, not a default they inherit.
+ */
+export const ReversalRoomStatusEnum = z.enum(["DIRTY", "AVAILABLE", "INSPECTED"]);
+
+export type ReversalRoomStatus = z.infer<typeof ReversalRoomStatusEnum>;
+
+/**
+ * Fields every reversal carries.
+ *
+ * `reason_code` is required and not free text. A reversal is an operator
+ * undoing a financial event, and "why" is the first thing asked in an audit —
+ * so it resolves against the `reason_codes` reference table rather than
+ * accepting whatever was typed.
+ */
+const reversalBase = {
+	reservation_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	/** Must match an active `reason_codes.reason_code` for the tenant. */
+	reason_code: z.string().trim().min(1).max(50),
+	/** Free-text detail recorded alongside the code; never replaces it. */
+	reason_notes: z.string().max(2000).optional(),
+	/**
+	 * Proceed when the reversal would leave charges it did not post.
+	 *
+	 * Without this a reversal refuses rather than guessing. Voiding a guest's
+	 * restaurant bill because someone undid a check-in is worse than refusing.
+	 */
+	force: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+};
+
+/**
+ * Undo a check-in (PMS-02-01).
+ *
+ * Returns the reservation to CONFIRMED, clears `actual_check_in` and the room
+ * assignment, and voids exactly the postings check-in created — so the folio
+ * balance returns to what it was before.
+ */
+export const ReservationReverseCheckInCommandSchema = z.object({
+	...reversalBase,
+	room_status_after: ReversalRoomStatusEnum.default("DIRTY"),
+});
+
+export type ReservationReverseCheckInCommand = z.infer<
+	typeof ReservationReverseCheckInCommandSchema
+>;
+
+/**
+ * Undo a check-out (PMS-02-14).
+ *
+ * Returns the reservation to CHECKED_IN, clears `actual_check_out`, reopens the
+ * folio if check-out settled it, and voids the late-checkout fee.
+ */
+export const ReservationReverseCheckOutCommandSchema = z.object({
+	...reversalBase,
+	/** The guest is back in-house, so the room goes back to OCCUPIED by default. */
+	room_status_after: z.enum(["OCCUPIED", "DIRTY"]).default("OCCUPIED"),
+});
+
+export type ReservationReverseCheckOutCommand = z.infer<
+	typeof ReservationReverseCheckOutCommandSchema
+>;
+
+/**
+ * Reinstate a cancelled reservation (PMS-01-20).
+ *
+ * Unlike the other two this can legitimately fail on inventory: the nights were
+ * released when the booking was cancelled and may have been sold since. It
+ * re-acquires the availability hold first and refuses if it cannot.
+ */
+export const ReservationReinstateCommandSchema = z.object({
+	...reversalBase,
+	/** Status to return to. A cancelled booking normally comes back CONFIRMED. */
+	restore_status: z.enum(["CONFIRMED", "PENDING"]).default("CONFIRMED"),
+});
+
+export type ReservationReinstateCommand = z.infer<
+	typeof ReservationReinstateCommandSchema
+>;
+
 export const ReservationAssignRoomCommandSchema = z.object({
 	reservation_id: z.string().uuid(),
 	room_id: z.string().uuid(),

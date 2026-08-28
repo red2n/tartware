@@ -18,6 +18,10 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         { commandName: "reservation.cancel", description: "Cancel reservation" },
         { commandName: "reservation.assign_room", description: "Assign room to reservation" },
         { commandName: "reservation.no_show", description: "Mark reservation as no-show" },
+        {
+          commandName: "reservation.reinstate",
+          description: "Reinstate a cancelled reservation",
+        },
         { commandName: "group.create", description: "Create group block" },
         { commandName: "group.add_rooms", description: "Add rooms to group" },
         { commandName: "group.upload_rooming_list", description: "Upload group rooming list" },
@@ -44,6 +48,10 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
       commands: [
         { commandName: "reservation.check_in", description: "Check in guest" },
         { commandName: "reservation.walkin_checkin", description: "Walk-in check-in" },
+        {
+          commandName: "reservation.reverse_check_in",
+          description: "Undo a check-in and void what it posted",
+        },
       ],
     },
 
@@ -55,7 +63,13 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
     },
 
     [FlowId.CHECK_OUT]: {
-      commands: [{ commandName: "reservation.check_out", description: "Check out guest" }],
+      commands: [
+        { commandName: "reservation.check_out", description: "Check out guest" },
+        {
+          commandName: "reservation.reverse_check_out",
+          description: "Undo a check-out and reopen the folio",
+        },
+      ],
     },
 
     [FlowId.CHANNEL_DISTRIBUTION]: {

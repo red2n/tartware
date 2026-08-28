@@ -25,7 +25,7 @@ import {
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-
+import { buildFolioDocument } from "../repositories/folio-document-repository.js";
 import {
   BillingPaymentSchema,
   getBucketCheck,
@@ -38,6 +38,7 @@ import {
   listChargePostings,
   listFolios,
 } from "../services/billing-service.js";
+import { renderFolioDocument } from "../services/folio-document-service.js";
 import { getRoutingRuleById, listRoutingRules } from "../services/routing-rule-read-service.js";
 
 const BillingListResponseSchema = z.array(BillingPaymentSchema);
@@ -192,6 +193,80 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
       }
 
       return FolioListItemSchema.parse(folio);
+    },
+  );
+
+  /**
+   * Render this folio as a document (WS-06 / PMS-11-01).
+   *
+   * The payload is assembled here and handed to the document service whole; the
+   * renderer never touches the database, so this endpoint is the only place a
+   * printed folio's contents are decided.
+   */
+  app.get<{
+    Params: { folioId: string };
+    Querystring: { tenant_id: string; format?: string; locale?: string; template?: string };
+  }>(
+    "/v1/billing/folios/:folioId/document",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "finance-automation",
+      }),
+      schema: buildRouteSchema({
+        tag: BILLING_TAG,
+        summary: "Render a folio as a PDF or HTML document",
+        description:
+          "Assembles the folio, its charges, payments, tax summary and the property's " +
+          "tax registrations, then renders them through the document service.",
+        params: schemaFromZod(z.object({ folioId: z.string().uuid() }), "FolioDocumentIdParam"),
+        querystring: schemaFromZod(
+          z.object({
+            tenant_id: z.string().uuid(),
+            format: z.enum(["PDF", "HTML"]).default("PDF"),
+            locale: z.string().min(2).default("en"),
+            template: z.string().min(1).default("FOLIO_STANDARD"),
+          }),
+          "FolioDocumentQuery",
+        ),
+        response: {
+          200: { type: "string", format: "binary" },
+        },
+      }),
+    },
+    async (request, reply) => {
+      const { folioId } = request.params;
+      const { tenant_id, format, locale, template } = request.query;
+
+      const payload = await buildFolioDocument(folioId, tenant_id);
+      if (!payload) {
+        return reply.notFound("FOLIO_NOT_FOUND");
+      }
+
+      const rendered = await renderFolioDocument({
+        payload,
+        format: format === "HTML" ? "HTML" : "PDF",
+        locale: locale ?? "en",
+        templateId: template ?? "FOLIO_STANDARD",
+        authorization: request.headers.authorization,
+      });
+
+      if (!rendered.ok) {
+        request.log.warn({ folioId, code: rendered.failure.code }, "Folio document render failed");
+        return reply.code(rendered.status).send(rendered.failure);
+      }
+
+      const extension = format === "HTML" ? "html" : "pdf";
+      return reply
+        .code(200)
+        .header("content-type", rendered.contentType)
+        .header(
+          "content-disposition",
+          `inline; filename="folio-${payload.folio.folio_number}.${extension}"`,
+        )
+        .header("x-document-locale", rendered.locale)
+        .send(rendered.body);
     },
   );
 

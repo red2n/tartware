@@ -594,6 +594,53 @@ const upsertMarketSegments = async (client, segments = []) => {
   }
 };
 
+/**
+ * Reason codes for lifecycle reversals (WS-04).
+ *
+ * `reason_codes` has existed as a table with no rows and no reader since it was
+ * created. The reversal commands are the first thing that requires one, and a
+ * reversal cannot be performed without a code — so an unseeded install would
+ * have a check-in nobody can undo, which is the gap this closes.
+ *
+ * Seeded tenant-wide (`property_id IS NULL`) so every property inherits them.
+ */
+const upsertReasonCodes = async (client, reasonCodes = []) => {
+  for (const reason of reasonCodes) {
+    await client.query(
+      `
+        INSERT INTO reason_codes AS rc (
+          tenant_id, property_id, reason_code, reason_name, reason_description,
+          reason_category, requires_approval, has_financial_impact, display_order
+        )
+        VALUES (
+          $1, $2, $3, $4, $5,
+          $6, COALESCE($7, false), COALESCE($8, false), COALESCE($9, 0)
+        )
+        ON CONFLICT (tenant_id, property_id, reason_code, reason_category) DO UPDATE
+        SET
+          reason_name = EXCLUDED.reason_name,
+          reason_description = EXCLUDED.reason_description,
+          requires_approval = EXCLUDED.requires_approval,
+          has_financial_impact = EXCLUDED.has_financial_impact,
+          display_order = EXCLUDED.display_order,
+          is_active = true,
+          updated_at = NOW();
+      `,
+      [
+        reason.tenantId,
+        reason.propertyId ?? null,
+        reason.reasonCode,
+        reason.reasonName,
+        reason.reasonDescription ?? null,
+        reason.reasonCategory,
+        reason.requiresApproval ?? false,
+        reason.hasFinancialImpact ?? false,
+        reason.displayOrder ?? 0,
+      ],
+    );
+  }
+};
+
 const upsertServices = async (client, services = []) => {
   for (const service of services) {
     await client.query(
@@ -709,6 +756,7 @@ const seed = async () => {
     await upsertRates(client, dataset.rates);
     await upsertBookingSources(client, dataset.bookingSources);
     await upsertMarketSegments(client, dataset.marketSegments);
+    await upsertReasonCodes(client, dataset.reasonCodes);
     await upsertServices(client, dataset.services);
     await client.query("COMMIT");
     console.log("✓ Default operating data applied successfully.");

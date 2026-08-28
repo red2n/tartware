@@ -16,6 +16,7 @@ import {
   MarketSegmentListItemSchema,
   type MarketSegmentRow,
   type MarketSegmentWriteInput,
+  type ReasonCodeListItem,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -334,6 +335,37 @@ export const listMarketSegments = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapMarketSegmentRow);
+};
+
+/**
+ * List the reason codes an operator may choose from.
+ *
+ * Property-scoped codes and tenant-wide ones come back together, ordered so a
+ * picker shows the property's own overrides alongside the chain defaults.
+ * The reversal commands resolve the chosen code again server-side — this list
+ * is for discovery, not authorisation.
+ */
+export const listReasonCodes = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  category?: string;
+  limit?: number;
+}): Promise<ReasonCodeListItem[]> => {
+  const { rows } = await query<ReasonCodeListItem>(
+    `SELECT reason_id, reason_code, reason_name, reason_description,
+            reason_category, property_id, requires_approval,
+            has_financial_impact, display_order, is_active
+       FROM public.reason_codes
+      WHERE tenant_id = $1::uuid
+        AND COALESCE(is_active, true) = true
+        AND COALESCE(is_deleted, false) = false
+        AND ($2::uuid IS NULL OR property_id IS NULL OR property_id = $2::uuid)
+        AND ($3::text IS NULL OR UPPER(reason_category) = UPPER($3::text))
+      ORDER BY reason_category, display_order, reason_code
+      LIMIT $4`,
+    [options.tenantId, options.propertyId ?? null, options.category ?? null, options.limit ?? 200],
+  );
+  return rows;
 };
 
 export const getMarketSegmentById = async (

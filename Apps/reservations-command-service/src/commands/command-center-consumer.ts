@@ -43,6 +43,9 @@ import {
   ReservationModifyCommandSchema,
   ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
+  ReservationReinstateCommandSchema,
+  ReservationReverseCheckInCommandSchema,
+  ReservationReverseCheckOutCommandSchema,
   ReservationSendQuoteCommandSchema,
   ReservationUnassignRoomCommandSchema,
   ReservationWaitlistAddCommandSchema,
@@ -77,7 +80,10 @@ import {
   overrideRate,
   processOtaReservationQueue,
   recordMetasearchClick,
+  reinstateReservation,
   releaseDeposit,
+  reverseCheckIn,
+  reverseCheckOut,
   sendQuote,
   setupGroupBilling,
   unassignRoom,
@@ -133,6 +139,21 @@ const routeReservationCommand = async (
     case "reservation.check_out": {
       const commandPayload = ReservationCheckOutCommandSchema.parse(envelope.payload);
       await checkOutReservation(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.reverse_check_in": {
+      const commandPayload = ReservationReverseCheckInCommandSchema.parse(envelope.payload);
+      await reverseCheckIn(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.reverse_check_out": {
+      const commandPayload = ReservationReverseCheckOutCommandSchema.parse(envelope.payload);
+      await reverseCheckOut(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.reinstate": {
+      const commandPayload = ReservationReinstateCommandSchema.parse(envelope.payload);
+      await reinstateReservation(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.assign_room": {

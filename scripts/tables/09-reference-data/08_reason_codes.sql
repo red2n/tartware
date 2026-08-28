@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS reason_codes (
             'MAINTENANCE',          -- Maintenance-related reasons
             'COMPLAINT',            -- Guest complaint reasons
             'WRITE_OFF',            -- AR write-off reasons
+            'REVERSAL',             -- Undoing a lifecycle event: check-in, check-out, cancellation
             'OTHER'                 -- Uncategorized
         )
     ),                                                      -- Category grouping for filtering

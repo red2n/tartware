@@ -15,6 +15,7 @@ import {
   MarketSegmentTypeEnum,
   MarketSegmentUpdateBodySchema,
   MarketSegmentWriteBodySchema,
+  ReasonCodeListItemSchema,
 } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -30,6 +31,7 @@ import {
   listBookingSources,
   listChannelMappings,
   listMarketSegments,
+  listReasonCodes,
   updateBookingSource,
   updateMarketSegment,
 } from "../../services/booking-config/distribution.js";
@@ -100,6 +102,23 @@ const MarketSegmentListQuerySchema = z.object({
 });
 
 type MarketSegmentListQuery = z.infer<typeof MarketSegmentListQuerySchema>;
+
+const ReasonCodeListQuerySchema = z.object({
+  tenant_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
+  category: z.string().max(50).optional(),
+  limit: z.coerce.number().int().positive().max(500).default(200),
+});
+
+const ReasonCodeListResponseSchema = z.array(ReasonCodeListItemSchema);
+const ReasonCodeListQueryJsonSchema = schemaFromZod(
+  ReasonCodeListQuerySchema,
+  "ReasonCodeListQuery",
+);
+const ReasonCodeListResponseJsonSchema = schemaFromZod(
+  ReasonCodeListResponseSchema,
+  "ReasonCodeListResponse",
+);
 
 const MarketSegmentListResponseSchema = z.array(MarketSegmentListItemSchema);
 const MarketSegmentListQueryJsonSchema = schemaFromZod(
@@ -298,6 +317,48 @@ export const registerDistributionRoutes = (app: FastifyInstance): void => {
       });
 
       return MarketSegmentListResponseSchema.parse(segments);
+    },
+  );
+
+  // -------------------------------------------------
+  // REASON CODES
+  //
+  // The table has existed since it was created with no route to read it, so
+  // nothing could offer an operator the list. The WS-04 reversals require a
+  // code, which makes this the point at which a picker became necessary.
+  // -------------------------------------------------
+
+  app.get<{ Querystring: z.infer<typeof ReasonCodeListQuerySchema> }>(
+    "/v1/reason-codes",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.query as { tenant_id: string }).tenant_id,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: MARKET_SEGMENTS_TAG,
+        summary: "List reason codes",
+        description:
+          "Reference codes an operator picks when reversing a lifecycle event. " +
+          "Property-scoped codes are returned alongside tenant-wide defaults.",
+        querystring: ReasonCodeListQueryJsonSchema,
+        response: {
+          200: ReasonCodeListResponseJsonSchema,
+        },
+      }),
+    },
+    async (request) => {
+      const { tenant_id, property_id, category, limit } = ReasonCodeListQuerySchema.parse(
+        request.query,
+      );
+      const codes = await listReasonCodes({
+        tenantId: tenant_id,
+        propertyId: property_id,
+        category,
+        limit,
+      });
+      return ReasonCodeListResponseSchema.parse(codes);
     },
   );
 

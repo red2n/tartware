@@ -235,6 +235,7 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
         { name: "rooms-service", url: serviceTargets.roomsServiceUrl },
         { name: "reservations-command-service", url: serviceTargets.reservationCommandServiceUrl },
         { name: "billing-service", url: serviceTargets.billingServiceUrl },
+        { name: "document-service", url: serviceTargets.documentServiceUrl },
         { name: "housekeeping-service", url: serviceTargets.housekeepingServiceUrl },
         { name: "notification-service", url: serviceTargets.notificationServiceUrl },
       ];

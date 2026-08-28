@@ -169,6 +169,9 @@ import {
 	ReservationModifyCommandSchema,
 	ReservationNoShowCommandSchema,
 	ReservationRateOverrideCommandSchema,
+	ReservationReinstateCommandSchema,
+	ReservationReverseCheckInCommandSchema,
+	ReservationReverseCheckOutCommandSchema,
 	ReservationSendQuoteCommandSchema,
 	ReservationUnassignRoomCommandSchema,
 	ReservationWaitlistAddCommandSchema,
@@ -691,6 +694,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.check_out",
 		(payload) => ReservationCheckOutCommandSchema.parse(payload),
+	],
+	[
+		"reservation.reverse_check_in",
+		(payload) => ReservationReverseCheckInCommandSchema.parse(payload),
+	],
+	[
+		"reservation.reverse_check_out",
+		(payload) => ReservationReverseCheckOutCommandSchema.parse(payload),
+	],
+	[
+		"reservation.reinstate",
+		(payload) => ReservationReinstateCommandSchema.parse(payload),
 	],
 	[
 		"reservation.assign_room",

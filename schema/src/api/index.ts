@@ -29,6 +29,8 @@ export * from "./compliance-utils.js";
 export * from "./core-rows.js";
 export * from "./currency.js";
 export * from "./display-utils.js";
+export * from "./document-render.js";
+export * from "./documents.js";
 export * from "./errors.js";
 export * from "./events.js";
 export * from "./gl-postings.js";
@@ -54,6 +56,8 @@ export * from "./rates.js";
 export * from "./recommendations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./report-rows.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./reservation-rows.js";
 export * from "./reservations.js";
 export * from "./restrictions.js";
 export * from "./revenue.js";

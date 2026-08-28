@@ -15,6 +15,7 @@ import { registerBookingConfigRoutes } from "./routes/booking-config-routes.js";
 import { registerCalculationRoutes } from "./routes/calculation-routes.js";
 import { registerCommandCenterRoutes } from "./routes/command-center-routes.js";
 import { registerCoreProxyRoutes } from "./routes/core-proxy-routes.js";
+import { registerDocumentRoutes } from "./routes/document-routes.js";
 import { registerGuestRoutes } from "./routes/guest-routes.js";
 import { registerHealthRoutes } from "./routes/health-routes.js";
 import { registerHousekeepingRoutes } from "./routes/housekeeping-routes.js";
@@ -120,6 +121,7 @@ export const buildServer = () => {
     registerHousekeepingRoutes(app);
     registerBillingRoutes(app);
     registerCalculationRoutes(app);
+    registerDocumentRoutes(app);
     registerRevenueRoutes(app);
     registerReportingRoutes(app);
     registerWebhookRoutes(app);

@@ -103,4 +103,7 @@ export const config = {
     dateRollScheduler: rollDateRollScheduler,
   },
   coreServiceUrl: process.env.CORE_SERVICE_URL ?? "http://localhost:3000",
+  documentServiceUrl: process.env.DOCUMENT_SERVICE_URL ?? "http://localhost:3080",
+  /** Cap on a folio render. A folio is printed while a guest waits at the desk. */
+  documentRenderTimeoutMs: Number(process.env.DOCUMENT_RENDER_TIMEOUT_MS ?? "10000"),
 };

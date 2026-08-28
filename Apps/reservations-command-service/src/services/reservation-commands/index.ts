@@ -5,6 +5,7 @@
  *
  *  ├─ Core          — create, modify, cancel, no-show, walk
  *  ├─ Checkin       — check-in, check-out, walk-in
+ *  ├─ Reversals     — reverse check-in, reverse check-out, reinstate
  *  ├─ Room          — assign, unassign, extend stay
  *  ├─ Financial     — rate override, deposits
  *  ├─ Group         — group bookings, rooming lists, cutoffs
@@ -59,6 +60,11 @@ export {
   expireReservation,
   sendQuote,
 } from "./quote-management.js";
+export {
+  reinstateReservation,
+  reverseCheckIn,
+  reverseCheckOut,
+} from "./reversals.js";
 export {
   assignRoom,
   extendStay,

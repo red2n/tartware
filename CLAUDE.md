@@ -30,7 +30,7 @@ Fastify decorator augmentation, single-file internal types. Full list in `AGENTS
 ## 2. Layout
 
 ```
-Apps/          11 runtime services + 8 shared packages
+Apps/          12 runtime services + 8 shared packages
 schema/        @tartware/schemas — single source of truth for all domain types
 scripts/       SQL DDL (tables/, indexes/, migrations/) + guardrail scripts
 UI/            pms-ui (Angular), guest-portal
@@ -50,9 +50,10 @@ docs/          design notes;  pms-gaps/  capability gap plan of record
 | 3045 | availability-guard-service | Overbooking guard (+ gRPC 4400) |
 | 3055 | notification-service | Templates, SSE, delivery providers |
 | 3060 | revenue-service | Pricing, forecasting, compset |
+| 3080 | document-service | Folio/invoice/statement rendering to PDF + HTML. Stateless — no DB, no Kafka. |
 | 8080 | api-gateway | Entry point; hosts Command Center routes |
 
-Next free port: **3080**. New services must be added to `dev:backend`/`dev:stack` and given a
+Next free port: **3085**. New services must be added to `dev:backend`/`dev:stack` and given a
 `<SERVICE>_SERVICE_URL` in `dev:gateway`.
 
 ---
@@ -164,6 +165,51 @@ fails in CI but passes locally, that is the reason — check the build step ran.
 | 09 | Medium | Tests run in no local gate: `test` missing from `REQUIRED_TARGETS` and from `pnpm run build`. | **done 26 Aug** — `test` now required on every project (proto-types exempt), runs at the end of `pnpm run build`, and CI runs the whole suite instead of two cherry-picked ones. outbox and tenant-auth gained real tests. |
 | 10 | Medium | Add guardrail rules for 01, 03, 02 and 06 to `scripts/check-shared-framework-usage.mjs`. | **done 26 Aug** — 5 rules: kafka-client, actor-resolution, command-error, fetch-timeout, pino-logger, plus an undeclared-workspace-dependency check. 02 needs no rule (safe by default). |
 
+### WS-06 — document renderer (in progress)
+
+`document-service` on **:3080** is the one build the workstream hangs on. Three layers, kept apart
+on purpose:
+
+- **Payloads** — `schema/src/api/documents.ts`. Assembled whole by the owning service; the renderer
+  holds no database handle, so a folio PDF cannot disagree with the folio API about the balance.
+- **Templates** — *data*, not code. A template is a list of sections whose values are payload paths,
+  i18n keys, literals or joins. A new folio style is a new object.
+- **Blocks** — `composeDocument()` in `schema/src/api/document-render.ts` resolves template + payload
+  into already-formatted blocks. Both emitters read only that, so HTML and PDF cannot drift on
+  content. Pure, no I/O, 52 tests.
+
+PDF is `pdfkit` with Helvetica (WinAnsi: Latin scripts only). `DOCUMENT_BODY_FONT_PATH` registers a
+TTF for anything else — the UI already ships `zh-TW`, which needs one. Not shipped in-repo: ~20 MB.
+
+3 of the workstream's 13 items are closed (PMS-11-01, PMS-11-03, PMS-15-17); the other 10 are
+unblocked but not built.
+
+### WS-04 — lifecycle reversals (reversals done, batch envelope open)
+
+Three commands in `reservations-command-service/src/services/reservation-commands/reversals.ts`:
+`reservation.reverse_check_in`, `reservation.reverse_check_out`, `reservation.reinstate`.
+
+The rule they all follow: **put back exactly what the reversed operation did, and nothing else.**
+`OWNED_CHARGE_CODES` names the postings each operation owns; anything else on the folio makes the
+reversal refuse (`FOLIO_HAS_OTHER_CHARGES`) rather than guess. Undoing a check-in must not void a
+guest's bar tab. `force` proceeds and leaves the foreign charges standing.
+
+- **Reason codes are mandatory** and resolve against `reason_codes` — previously a table with no
+  rows, no route and no reader. Seeded tenant-wide by `scripts/data/defaults/seed-default-data.mjs`,
+  readable at `GET /v1/reason-codes`, and the category enum gained `REVERSAL`.
+- **`actual_check_in` / `actual_check_out` are now `.nullable()`** in `ReservationsSchema`.
+  `undefined` means "leave alone" on an update payload, so a reversal needs `null` to clear the
+  stamp — without it `z.coerce.date()` turns null into 1970-01-01.
+- **Reinstatement takes the availability hold before changing status**, and fails closed on both
+  `CONFLICT` (sold) and `ERROR` (guard could not answer). Overbooking on a shrug is worse than a
+  refused reinstatement.
+- Every reversal writes twice: `flow_approvals` for operations, `audit_logs` for compliance,
+  carrying `balance_before` / `balance_after` so it is auditable without re-deriving.
+- New commands need a row in the **flow registry** (`schema/src/flows/flow-registry.ts`), not just
+  the service manifest — boot fails with `phantom_command` otherwise.
+
+Open: room move for an in-house guest (the remaining P0) and the batch envelope, which WS-15 reuses.
+
 ### Throughput (20K ops/sec target)
 
 **Measured 26 Aug 2026** — full PMS flow (availability search → rate quote →
@@ -223,6 +269,9 @@ PgBouncer's `default_pool_size` — which was the hidden ceiling behind all of i
 - **Never `knip --fix` from the repo root** — it strips real dependencies and rewrites generated
   code. Use `npx nx run @tartware/<pkg>:knip` per package.
 - **Stopping the stack:** `pkill -f "src/index.ts"` is the only pattern that gets every service.
+  It is also the only *safe* one — every `dev:*` script sets `AUTH_JWT_ISSUER=tartware-core-service`,
+  so a narrower `pkill -f "core-service"` matches the full command line of **every** service and
+  kills the whole stack. Name the service by its `--filter` package if you need to stop just one.
 - **E2E realdata suites** need a DB reset (`./scripts/setup-database.sh`) before a re-run.
 - **UI work:** grep `UI/shared-styles/shared.scss` before writing component SCSS — reuse
   `.detail-card` / `.detail-list`; swap literal "Loading…" text for the `.skeleton` classes.

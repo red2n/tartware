@@ -269,9 +269,10 @@ Canonical dev port assignments (set via `PORT=` env var in root `package.json` d
 | 3065 | guest-experience-service | `dev:guest-experience` | Kafka consumer |
 | 3070 | calculation-service | `dev:calculation` | Stateless |
 | 3075 | service-registry | `dev:registry` | In-memory registry |
+| 3080 | document-service | `dev:document` | Stateless renderer; no DB, no Kafka |
 | 8080 | api-gateway | `dev:gateway` | Entry point; hosts command-center routes |
 
-- When adding a new service, assign the next port in the sequence (next: **3080**) and add it to `dev:backend`/`dev:stack` in root `package.json`.
+- When adding a new service, assign the next port in the sequence (next: **3085**) and add it to `dev:backend`/`dev:stack` in root `package.json`.
 - Add the service URL env var (`<SERVICE>_SERVICE_URL=http://localhost:<port>`) to the `dev:gateway` script.
 - Non-HTTP services (shared libs, outbox, config, telemetry, tenant-auth) do not need a port.
 

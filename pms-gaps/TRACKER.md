@@ -17,7 +17,7 @@
 | [ ] | PMS-01-07 | Deposit request and schedule | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-08 | Preferences | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-09 | Confirmation letters | PARTIAL | WS-05 | M | |
-| [ ] | PMS-02-01 | Check-in reversal | MISSING | WS-04 | M | |
+| [x] | PMS-02-01 | Check-in reversal | MISSING | WS-04 | M | `reservation.reverse_check_in`. Returns to CONFIRMED, clears `actual_check_in` and the room assignment, voids only what check-in posted. Verified through the gateway: folio 111.40 → 86.40 with the EARLY_CHECKIN 25.00 voided and the guest's FNB 86.40 left intact; room → DIRTY; `actual_check_in` NULL (not the epoch — `ReservationsSchema` now makes it nullable so a reversal can transmit "clear this"). |
 | [ ] | PMS-02-02 | Room move for in-house guest | PARTIAL | WS-04 | M | |
 | [ ] | PMS-02-03 | Credit card pre-authorization | PARTIAL | WS-07 | M | |
 | [x] | PMS-03-01 | Physical vs sellable inventory | PARTIAL | WS-02 | M | `rooms_to_sell − rooms_sold` is the ceiling the booking path checks. Verified: with rooms_to_sell=1 and one room sold, a second booking was refused RESTRICTION_SELL_LIMIT although physical rooms were free. |
@@ -28,7 +28,7 @@
 | [ ] | PMS-07-02 | Stay history | PARTIAL | WS-13 | M | |
 | [ ] | PMS-07-03 | Profile search and duplicate detection | PARTIAL | WS-13 | M | |
 | [ ] | PMS-09-01 | Cut-off date and auto-release | PARTIAL | WS-15 | M | |
-| [ ] | PMS-11-01 | Folio generation and printing | PARTIAL | WS-06 | L | |
+| [x] | PMS-11-01 | Folio generation and printing | PARTIAL | WS-06 | L | `document-service` (:3080) renders a typed payload + template id to PDF or HTML; `GET /v1/billing/folios/:id/document` assembles the payload. Verified through the gateway: closed folio F-A1ED69C5 rendered to a valid 1-page PDF and to HTML. |
 | [ ] | PMS-13-01 | Audit report pack | PARTIAL | WS-06 | M | |
 | [ ] | PMS-14-01 | Channel manager connectivity | PARTIAL | WS-09 | XL | |
 | [ ] | PMS-14-02 | Reservation delivery with retry | PARTIAL | WS-09 | M | |
@@ -62,12 +62,12 @@
 | [ ] | PMS-01-17 | Item / inventory rentals | MISSING | WS-05 | M | |
 | [ ] | PMS-01-18 | Upsell and upgrade offers | PARTIAL | WS-05 | S | |
 | [ ] | PMS-01-19 | Copy and duplicate reservation | MISSING | WS-04 | M | |
-| [ ] | PMS-01-20 | Reinstate cancelled reservation | MISSING | WS-04 | M | |
+| [x] | PMS-01-20 | Reinstate cancelled reservation | MISSING | WS-04 | M | `reservation.reinstate`. **Re-acquires the availability hold before touching status**, so a reinstatement that cannot get its nights back leaves the booking cancelled rather than creating an overbooking. A guard `ERROR` refuses too — it means "could not answer", not "yes". Verified: CANCELLED → CONFIRMED with cancellation date/reason/fee cleared. |
 | [ ] | PMS-01-21 | Mass update | MISSING | WS-04 | M | |
 | [ ] | PMS-01-22 | Mass cancellation | MISSING | WS-04 | M | |
 | [ ] | PMS-01-23 | Early departure with penalty | MISSING | WS-04 | M | |
 | [ ] | PMS-01-24 | Do-not-move flag | MISSING | WS-04 | M | |
-| [ ] | PMS-01-25 | Turnaway / denial capture | PARTIAL | WS-04 | S | |
+| [ ] | PMS-01-25 | Turnaway / denial capture | PARTIAL | WS-04 | S | not started |
 | [ ] | PMS-02-04 | Advance check-in | MISSING | WS-04 | M | |
 | [ ] | PMS-02-05 | Mass check-in | MISSING | WS-04 | M | |
 | [ ] | PMS-02-06 | ID and passport scanning | MISSING | WS-10 | M | |
@@ -78,7 +78,7 @@
 | [ ] | PMS-02-11 | Rooms on hold | PARTIAL | WS-04 | S | |
 | [ ] | PMS-02-12 | Room swap / shift | MISSING | WS-04 | M | |
 | [ ] | PMS-02-13 | Early check-out | PARTIAL | WS-04 | S | |
-| [ ] | PMS-02-14 | Reinstate checked-out reservation | MISSING | WS-04 | M | |
+| [x] | PMS-02-14 | Reinstate checked-out reservation | MISSING | WS-04 | M | `reservation.reverse_check_out`. Returns to CHECKED_IN, clears `actual_check_out`, reopens the folio so charges can post again. Verified: folio SETTLED → OPEN with `settled_at` cleared, room → OCCUPIED. Refuses when a forced check-out moved the balance to the city ledger — that AR row has its own lifecycle and reversing it from here would leave AR and the folio disagreeing. |
 | [ ] | PMS-02-15 | Guest messages | MISSING | WS-11 | M | |
 | [ ] | PMS-02-16 | Service requests and complaint log | PARTIAL | WS-11 | S | |
 | [ ] | PMS-02-17 | Currency exchange at the desk | PARTIAL | WS-17 | S | |
@@ -126,8 +126,8 @@
 | [ ] | PMS-09-07 | Booking code / access exclusion | PARTIAL | WS-15 | S | |
 | [ ] | PMS-09-08 | Block notes, traces, and attachments | PARTIAL | WS-15 | S | |
 | [ ] | PMS-09-09 | Block change log and production changes | PARTIAL | WS-15 | S | |
-| [ ] | PMS-11-02 | Folio styles | MISSING | WS-06 | M | |
-| [ ] | PMS-11-03 | Multi-language and multi-currency folios | PARTIAL | WS-06 | S | |
+| [ ] | PMS-11-02 | Folio styles | MISSING | WS-06 | M | mechanism done, not the feature — templates are data (`DocumentTemplateSchema`), the route takes a `template` param, and a new style is a new object rather than new code. Only `FOLIO_STANDARD` ships, and nothing lets a property pick one. |
+| [x] | PMS-11-03 | Multi-language and multi-currency folios | PARTIAL | WS-06 | S | Locale tables in `document-service/src/locales/`; labels, dates and money formatting all switch together. Verified: same folio in `en` ($330.00, "Aug 27, 2026") and `fr` (330,00 $US, "27 août 2026"). Currency exponent comes from `getCurrencyExponent`, so JPY prints 0 decimals and KWD 3. |
 | [ ] | PMS-11-04 | POS interface postings | PARTIAL | WS-10 | S | |
 | [ ] | PMS-11-05 | Rebates, allowances, and service recovery | PARTIAL | WS-17 | S | |
 | [ ] | PMS-11-06 | Folio history and archive | PARTIAL | WS-17 | S | |
@@ -164,7 +164,7 @@
 | [ ] | PMS-15-14 | e-Invoicing submission | MISSING | WS-08 | L | |
 | [ ] | PMS-15-15 | Fiscal audit file export | MISSING | WS-08 | L | |
 | [ ] | PMS-15-16 | Failed fiscal payload replay | MISSING | WS-08 | L | |
-| [ ] | PMS-15-17 | Tax registration IDs on documents | PARTIAL | WS-06 | M | |
+| [x] | PMS-15-17 | Tax registration IDs on documents | PARTIAL | WS-06 | M | The letterhead prints `properties.tax_id` plus every `tax_configurations.tax_registration_number`. **The create/update commands had no field for the number at all** — the column existed and nothing could write it; both now carry `tax_registration_number`. Verified end-to-end: created VAT/GB123456789 and a city levy EDI-99881 through the Command Center, both appear on the rendered folio. |
 | [ ] | PMS-16-03 | Statistics by month and year | PARTIAL | WS-20 | S | |
 | [ ] | PMS-16-04 | Scheduled report distribution | MISSING | WS-20 | M | |
 | [ ] | PMS-16-05 | Custom report builder | MISSING | WS-20 | M | |
