@@ -257,6 +257,32 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   // performing one, and collapsing them would make the two indistinguishable in
   // the command log.
 
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/room-move",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Move an in-house guest to a different room via Command Center.",
+        description:
+          "Takes the hold on the new room before releasing the old and fails closed, so a " +
+          "guest is never moved into a room that has been sold. Requires a ROOM_MOVE reason " +
+          "code. Nights already slept keep their rate; only remaining nights can be repriced.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.room_move",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
   // ─── Mass operations (WS-04 batch envelope) ───────────────────────────────
   //
   // The targets are in the body, not the path — a batch names many of them —

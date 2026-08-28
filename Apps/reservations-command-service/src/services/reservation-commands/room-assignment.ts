@@ -74,6 +74,10 @@ export const assignRoom = async (
     internal_notes: command.notes,
     metadata: {
       ...command.metadata,
+      // The event handler fills `reservation_rooms.room_id` from this. Without
+      // it an assignment wrote the number onto `reservations` and left the
+      // room row unassigned, so a later room move had no room to vacate.
+      room_id: command.room_id,
       availabilityGuard: guardMetadata,
     },
   };

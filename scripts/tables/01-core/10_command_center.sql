@@ -128,6 +128,7 @@ WITH seed_commands(command_name, description, default_target_service, required_m
         ('reservation.reverse_check_in', 'Undo a check-in and void what it posted', 'reservations-command-service', ARRAY['core']),
         ('reservation.reverse_check_out', 'Undo a check-out and reopen the folio', 'reservations-command-service', ARRAY['core']),
         ('reservation.reinstate', 'Reinstate a cancelled reservation', 'reservations-command-service', ARRAY['core']),
+        ('reservation.room_move', 'Move an in-house guest to a different room', 'reservations-command-service', ARRAY['core']),
         ('reservation.mass_cancel', 'Cancel many reservations in one batch', 'reservations-command-service', ARRAY['core']),
         ('reservation.mass_check_in', 'Check in many reservations in one batch', 'reservations-command-service', ARRAY['core']),
         ('reservation.mass_update', 'Apply one set of changes to many reservations', 'reservations-command-service', ARRAY['core']),

@@ -71,6 +71,10 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
       commands: [
         { commandName: "reservation.extend_stay", description: "Extend stay dates" },
         { commandName: "reservation.rate_override", description: "Override rate for reservation" },
+        {
+          commandName: "reservation.room_move",
+          description: "Move an in-house guest to a different room",
+        },
       ],
     },
 

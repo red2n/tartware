@@ -8,6 +8,7 @@ import type {
   ReservationUpdatedEvent,
 } from "@tartware/schemas";
 import { expandStayPlan, StayPlanError } from "@tartware/schemas";
+import type { PoolClient } from "pg";
 
 import { query, withTransaction } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
@@ -353,6 +354,77 @@ const linkWaitlistEntry = async (
   }
 };
 
+/**
+ * Carry a reservation's lifecycle down to its rooms.
+ *
+ * `reservation_rooms.status` was written once at creation and never again, so
+ * every room row froze at its booking status while the reservation moved on: a
+ * checked-in guest's room still read CONFIRMED. Anything gating on the per-room
+ * status — a room move, per-room reporting — saw a stay that had never started.
+ *
+ * Rows already carrying the target status are skipped, which is what keeps a
+ * part-checked-in three-room booking expressible: the column exists precisely
+ * so rooms can differ from each other.
+ */
+const propagateRoomStatus = async (
+  client: PoolClient,
+  tenantId: string,
+  reservationId: string,
+  reservationStatus: string,
+): Promise<void> => {
+  await client.query(
+    `UPDATE public.reservation_rooms
+        SET status = $3,
+            updated_at = NOW()
+      WHERE tenant_id = $2::uuid
+        AND reservation_id = $1::uuid
+        AND status <> $3
+        AND COALESCE(is_deleted, false) = false`,
+    [reservationId, tenantId, toRoomStatus(reservationStatus)],
+  );
+};
+
+/**
+ * Record which physical room a booking's room row was given.
+ *
+ * Check-in and assign-room wrote the number onto `reservations` and stopped, so
+ * `reservation_rooms.room_id` stayed NULL for the life of the stay. Everything
+ * that works from the room row rather than the booking — a room move needing to
+ * know which room to vacate, per-room housekeeping — saw an unassigned room for
+ * a guest who was demonstrably in one.
+ *
+ * Only rows without an assignment are filled. A booking holding three rooms
+ * must not have all three pointed at whichever room this event mentions, and a
+ * room already assigned is changed by a move, not by a status update.
+ */
+const propagateRoomAssignment = async (
+  client: PoolClient,
+  tenantId: string,
+  reservationId: string,
+  roomId: string,
+  roomNumber: string | null,
+): Promise<void> => {
+  await client.query(
+    `UPDATE public.reservation_rooms
+        SET room_id = $3::uuid,
+            room_number = COALESCE($4, room_number),
+            updated_at = NOW()
+      WHERE tenant_id = $2::uuid
+        AND reservation_id = $1::uuid
+        AND room_id IS NULL
+        AND COALESCE(is_deleted, false) = false`,
+    [reservationId, tenantId, roomId, roomNumber],
+  );
+};
+
+/** `metadata.room_id` is where the check-in and assign commands put it. */
+const roomIdFromPayload = (payload: { metadata?: unknown }): string | null => {
+  const meta = payload.metadata;
+  if (!meta || typeof meta !== "object") return null;
+  const value = (meta as { room_id?: unknown }).room_id;
+  return typeof value === "string" && value.length > 0 ? value : null;
+};
+
 const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise<string> => {
   const payload = event.payload;
   const tenantId = event.metadata.tenantId;
@@ -416,7 +488,28 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
     payload.check_in_date !== undefined || payload.check_out_date !== undefined;
 
   if (!stayWindowChanged) {
-    await query(sql, values);
+    const assignedRoomId = roomIdFromPayload(payload);
+    if (payload.status || assignedRoomId) {
+      // The row and its rooms must not be able to disagree, so they move
+      // together even on the path that has no stay-window work to do.
+      await withTransaction(async (client) => {
+        await client.query(sql, values);
+        if (payload.status) {
+          await propagateRoomStatus(client, tenantId, payload.id, payload.status as string);
+        }
+        if (assignedRoomId) {
+          await propagateRoomAssignment(
+            client,
+            tenantId,
+            payload.id,
+            assignedRoomId,
+            payload.room_number ?? null,
+          );
+        }
+      });
+    } else {
+      await query(sql, values);
+    }
     return payload.id;
   }
 
@@ -444,6 +537,20 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
       checkInDate: stay.check_in_date,
       checkOutDate: stay.check_out_date,
     });
+
+    if (payload.status) {
+      await propagateRoomStatus(client, tenantId, payload.id, payload.status);
+    }
+    const assignedRoomId = roomIdFromPayload(payload);
+    if (assignedRoomId) {
+      await propagateRoomAssignment(
+        client,
+        tenantId,
+        payload.id,
+        assignedRoomId,
+        payload.room_number ?? null,
+      );
+    }
 
     // The caller's own total wins when it sent one; otherwise the nights are
     // the price, which is what makes an extend actually cost more.

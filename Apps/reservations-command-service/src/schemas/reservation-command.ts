@@ -67,6 +67,7 @@ export {
   ReservationReinstateCommandSchema,
   ReservationReverseCheckInCommandSchema,
   ReservationReverseCheckOutCommandSchema,
+  ReservationRoomMoveCommandSchema,
   type ReservationSendQuoteCommand,
   ReservationSendQuoteCommandSchema,
   type ReservationUnassignRoomCommand,

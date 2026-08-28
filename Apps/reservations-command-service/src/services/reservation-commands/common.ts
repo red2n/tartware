@@ -1,5 +1,9 @@
 import { CommandError, SYSTEM_ACTOR_ID } from "@tartware/command-consumer-utils/command-utils";
-import type { CreateReservationResult, ReservationUpdatedEvent } from "@tartware/schemas";
+import type {
+  CreateReservationResult,
+  ReasonCodeRow,
+  ReservationUpdatedEvent,
+} from "@tartware/schemas";
 import { ReservationUpdatedEventSchema } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
@@ -306,4 +310,62 @@ export const hasStayCriticalChanges = (
     new Date(command.check_out_date).getTime() !== snapshot.checkOutDate.getTime();
 
   return roomTypeChanged || checkInChanged || checkOutChanged;
+};
+
+/**
+ * Resolve the reason code, or refuse.
+ *
+ * `reason_codes` has existed as a table with no route and no reader since it
+ * was created. A reversal is the first thing in the product with a real need
+ * for it: "why did someone undo this" is the first question an audit asks, and
+ * free text does not answer it consistently.
+ *
+ * Resolution is a three-level hierarchy, most specific first: a property's own
+ * code, then the tenant's, then the system defaults seeded under the all-zero
+ * tenant. That last level is the one that matters — every reference code the
+ * product ships (ROOM_MOVE, CANCELLATION, RATE_OVERRIDE, DEPOSIT_OVERRIDE) is
+ * seeded there, and a resolver that looked only at the caller's tenant could
+ * not see any of them. A tenant inherits the defaults until it defines its own.
+ */
+const SYSTEM_REASON_TENANT = "00000000-0000-0000-0000-000000000000";
+
+export const resolveReasonCode = async (
+  tenantId: string,
+  propertyId: string | null,
+  reasonCode: string,
+  category: string,
+): Promise<ReasonCodeRow> => {
+  const result = await query<ReasonCodeRow>(
+    `SELECT reason_id, reason_code, reason_name, reason_category,
+            requires_approval, has_financial_impact
+       FROM public.reason_codes
+      WHERE tenant_id IN ($1::uuid, $4::uuid)
+        AND UPPER(reason_code) = UPPER($2)
+        AND COALESCE(is_active, true) = true
+        AND COALESCE(is_deleted, false) = false
+        AND (property_id IS NULL OR property_id = $3::uuid)
+      ORDER BY (tenant_id = $1::uuid) DESC, property_id NULLS LAST
+      LIMIT 1`,
+    [tenantId, reasonCode, propertyId, SYSTEM_REASON_TENANT],
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    throw new ReservationCommandError(
+      "REASON_CODE_NOT_FOUND",
+      `Reason code "${reasonCode}" is not configured for this tenant. ` +
+        `This command requires a reason code from the reason_codes reference table.`,
+    );
+  }
+
+  // A code exists but belongs to a different kind of event — voiding a check-in
+  // with a "room move" reason produces an audit trail that reads as a lie.
+  if (row.reason_category && row.reason_category.toUpperCase() !== category) {
+    throw new ReservationCommandError(
+      "REASON_CODE_WRONG_CATEGORY",
+      `Reason code "${reasonCode}" is category ${row.reason_category}, not ${category}`,
+    );
+  }
+
+  return row;
 };

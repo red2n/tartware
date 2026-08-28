@@ -7,6 +7,7 @@
  *  ├─ Checkin       — check-in, check-out, walk-in
  *  ├─ Reversals     — reverse check-in, reverse check-out, reinstate
  *  ├─ Mass          — mass cancel, mass check-in, mass update (batch envelope)
+ *  ├─ Room move     — in-house guest relocation with charge follow-through
  *  ├─ Room          — assign, unassign, extend stay
  *  ├─ Financial     — rate override, deposits
  *  ├─ Group         — group bookings, rooming lists, cutoffs
@@ -76,6 +77,7 @@ export {
   extendStay,
   unassignRoom,
 } from "./room-assignment.js";
+export { moveRoom } from "./room-move.js";
 export {
   waitlistAdd,
   waitlistConvert,

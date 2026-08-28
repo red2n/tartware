@@ -175,6 +175,7 @@ import {
 	ReservationReinstateCommandSchema,
 	ReservationReverseCheckInCommandSchema,
 	ReservationReverseCheckOutCommandSchema,
+	ReservationRoomMoveCommandSchema,
 	ReservationSendQuoteCommandSchema,
 	ReservationUnassignRoomCommandSchema,
 	ReservationWaitlistAddCommandSchema,
@@ -709,6 +710,10 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.reinstate",
 		(payload) => ReservationReinstateCommandSchema.parse(payload),
+	],
+	[
+		"reservation.room_move",
+		(payload) => ReservationRoomMoveCommandSchema.parse(payload),
 	],
 	[
 		"reservation.mass_cancel",

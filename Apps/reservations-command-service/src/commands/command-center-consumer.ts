@@ -49,6 +49,7 @@ import {
   ReservationReinstateCommandSchema,
   ReservationReverseCheckInCommandSchema,
   ReservationReverseCheckOutCommandSchema,
+  ReservationRoomMoveCommandSchema,
   ReservationSendQuoteCommandSchema,
   ReservationUnassignRoomCommandSchema,
   ReservationWaitlistAddCommandSchema,
@@ -80,6 +81,7 @@ import {
   massCheckInReservations,
   massUpdateReservations,
   modifyReservation,
+  moveRoom,
   otaContentSync,
   otaRatePush,
   otaSyncRequest,
@@ -175,6 +177,11 @@ const routeReservationCommand = async (
     case "reservation.mass_update": {
       const commandPayload = ReservationMassUpdateCommandSchema.parse(envelope.payload);
       await massUpdateReservations(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.room_move": {
+      const commandPayload = ReservationRoomMoveCommandSchema.parse(envelope.payload);
+      await moveRoom(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.assign_room": {

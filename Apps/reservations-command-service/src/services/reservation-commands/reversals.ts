@@ -44,6 +44,7 @@ import {
   enqueueReservationUpdate,
   ReservationCommandError,
   type ReservationUpdatePayload,
+  resolveReasonCode,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -73,58 +74,6 @@ const toAmount = (value: string | number | null | undefined): number => {
 // ---------------------------------------------------------------------------
 // Reason codes
 // ---------------------------------------------------------------------------
-
-/**
- * Resolve the reason code, or refuse.
- *
- * `reason_codes` has existed as a table with no route and no reader since it
- * was created. A reversal is the first thing in the product with a real need
- * for it: "why did someone undo this" is the first question an audit asks, and
- * free text does not answer it consistently.
- *
- * Property-scoped codes win over tenant-wide ones with the same code, which is
- * how a property overrides a chain default.
- */
-const resolveReasonCode = async (
-  tenantId: string,
-  propertyId: string | null,
-  reasonCode: string,
-  category: string,
-): Promise<ReasonCodeRow> => {
-  const result = await query<ReasonCodeRow>(
-    `SELECT reason_id, reason_code, reason_name, reason_category,
-            requires_approval, has_financial_impact
-       FROM public.reason_codes
-      WHERE tenant_id = $1::uuid
-        AND UPPER(reason_code) = UPPER($2)
-        AND COALESCE(is_active, true) = true
-        AND COALESCE(is_deleted, false) = false
-        AND (property_id IS NULL OR property_id = $3::uuid)
-      ORDER BY property_id NULLS LAST
-      LIMIT 1`,
-    [tenantId, reasonCode, propertyId],
-  );
-
-  const row = result.rows[0];
-  if (!row) {
-    throw new ReservationCommandError(
-      "REASON_CODE_NOT_FOUND",
-      `Reason code "${reasonCode}" is not configured for this tenant. ` +
-        `Reversals require a reason code from the reason_codes reference table.`,
-    );
-  }
-
-  // A code exists but belongs to a different kind of event — voiding a check-in
-  // with a "room move" reason produces an audit trail that reads as a lie.
-  if (row.reason_category && row.reason_category.toUpperCase() !== category) {
-    throw new ReservationCommandError(
-      "REASON_CODE_WRONG_CATEGORY",
-      `Reason code "${reasonCode}" is category ${row.reason_category}, not ${category}`,
-    );
-  }
-
-  return row;
-};
 
 // ---------------------------------------------------------------------------
 // Folio and postings

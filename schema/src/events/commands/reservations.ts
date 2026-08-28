@@ -740,6 +740,86 @@ export type ReservationMobileCheckinCompleteCommand = z.infer<
 >;
 
 // ---------------------------------------------------------------------------
+// Room move (WS-04 / PMS-02-02)
+// ---------------------------------------------------------------------------
+
+/**
+ * What happens to the money when a guest changes room mid-stay.
+ *
+ * `KEEP_RATE` is the default because the common room move is the property's
+ * doing — a maintenance fault, a noise complaint, an upgrade offered at the
+ * desk — and billing the guest for the property's problem is the exception.
+ * `REPRICE` is the deliberate choice, and it re-rates only the nights not yet
+ * slept: a guest moved on night 3 of 5 pays the old rate for nights 1-2,
+ * whatever happens next.
+ */
+export const RoomMoveRateActionEnum = z.enum(["KEEP_RATE", "REPRICE"]);
+
+export type RoomMoveRateAction = z.infer<typeof RoomMoveRateActionEnum>;
+
+/**
+ * Move an in-house guest to a different room (PMS-02-02).
+ *
+ * This moves one `reservation_rooms` row, not a reservation. A booking can hold
+ * several rooms since WS-01, so "move the reservation" has no meaning for a
+ * three-room group — the command names the room being moved and refuses to
+ * guess when the booking holds more than one.
+ *
+ * Distinct from `reservation.assign_room`, which fills an empty assignment
+ * before arrival. This one has a guest in the bed: it must vacate a room that
+ * has been slept in, carry the charges, and leave housekeeping something to do.
+ */
+export const ReservationRoomMoveCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	/**
+	 * Which room of the booking to move. Optional only when the booking holds
+	 * exactly one room; with more than one the command refuses rather than
+	 * picking for you.
+	 */
+	reservation_room_id: z.string().uuid().optional(),
+	/** The room the guest is moving into. */
+	to_room_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	/** Must match an active `reason_codes` entry in the ROOM_MOVE category. */
+	reason_code: z.string().trim().min(1).max(50),
+	reason_notes: z.string().max(2000).optional(),
+	rate_action: RoomMoveRateActionEnum.default("KEEP_RATE"),
+	/**
+	 * Nightly amount for the nights not yet slept. Required by `REPRICE`.
+	 *
+	 * Deliberately not derived here. A nightly price comes from the rate engine
+	 * reading `rate_calendar`, and re-deriving one inside a room move would be a
+	 * second pricing path that quietly disagrees with the first. The desk agent
+	 * moving a guest into a suite knows the rate that was agreed; the command
+	 * takes that number rather than inventing one.
+	 */
+	new_rate_amount: z.coerce.number().nonnegative().optional(),
+	/** Rate code to stamp on the repriced nights, when it changes with the room. */
+	new_rate_code: RateCodeSchema.optional(),
+	/**
+	 * Housekeeping status for the room being vacated. `DIRTY` is the default and
+	 * the only safe one: someone has slept there. `INSPECTED` exists for the
+	 * move corrected within a minute of a mis-key, and is a choice the operator
+	 * makes rather than one they inherit.
+	 */
+	from_room_status_after: z.enum(["DIRTY", "INSPECTED"]).default("DIRTY"),
+	/**
+	 * Proceed past a `do_not_move` room, or past a reason code whose
+	 * configuration requires an approval this command cannot produce.
+	 *
+	 * Both refusals exist because someone deliberately set them. Overriding is
+	 * allowed, on the record — the override is written into the audit row.
+	 */
+	force: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationRoomMoveCommand = z.infer<
+	typeof ReservationRoomMoveCommandSchema
+>;
+
+// ---------------------------------------------------------------------------
 // Mass operations (WS-04) — all three stamped from the one batch envelope
 // ---------------------------------------------------------------------------
 
