@@ -810,6 +810,19 @@ if [ "$LOAD_DEFAULT_DATA" = true ]; then
         echo -e "${YELLOW}⚠  Default data script not found at $DEFAULT_DATA_SCRIPT - skipping${NC}"
     fi
 
+    # Development tax template. Inactive and 0%, so it proves tax configuration
+    # is reachable without any invented rate reaching a folio. Asserted by
+    # scripts/verify-installation.sql.
+    TAX_SEED_SCRIPT="$SCRIPTS_DIR/seed/dev/tax_configurations_seed.sql"
+    if [ -f "$TAX_SEED_SCRIPT" ]; then
+        if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+            -f "$TAX_SEED_SCRIPT" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Development tax configuration template seeded${NC}"
+        else
+            echo -e "${YELLOW}⚠  Failed to seed development tax configuration template${NC}"
+        fi
+    fi
+
     # Seed settings catalog (requires tenant rows created by seed-default-data.mjs above)
     SETTINGS_SEED_SCRIPT="$SCRIPTS_DIR/tables/08-settings/15_settings_seed.sql"
     if [ -f "$SETTINGS_SEED_SCRIPT" ]; then

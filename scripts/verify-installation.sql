@@ -783,7 +783,11 @@ BEGIN
     IF v_fail = 0 THEN
         RAISE NOTICE '✓✓✓ ALL INDUSTRY STANDARDS CHECKS PASSED ✓✓✓';
     ELSE
-        RAISE WARNING '⚠⚠⚠ % INDUSTRY STANDARDS CHECK(S) FAILED ⚠⚠⚠', v_fail;
+        -- A warning let this whole file fail silently: 49 checks could report
+        -- ✗ and `db verify` still exited 0, because nothing here raised. A
+        -- verification that cannot fail is decoration, so this now stops the
+        -- run the way verify-setup.sql and verify-tables.sql already do.
+        RAISE EXCEPTION '⚠⚠⚠ % INDUSTRY STANDARDS CHECK(S) FAILED ⚠⚠⚠', v_fail;
     END IF;
     RAISE NOTICE '==========================================';
 END $$;
