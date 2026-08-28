@@ -81,6 +81,21 @@ CREATE TYPE command_dispatch_status AS ENUM (
     'DLQ'            -- Routed to DLQ after exhausting retries
 );
 
+-- Command Batch Run Status (WS-04 batch envelope)
+CREATE TYPE command_batch_status AS ENUM (
+    'RUNNING',       -- Runner is iterating the items
+    'COMPLETED',     -- Every item succeeded
+    'PARTIAL',       -- Run finished with at least one failed or skipped item
+    'FAILED'         -- The run itself failed; individual items may never have been attempted
+);
+
+-- Command Batch Item Outcome
+CREATE TYPE command_batch_item_outcome AS ENUM (
+    'SUCCEEDED',     -- Handler applied the item
+    'FAILED',        -- Handler refused the item; error_code carries the reason
+    'SKIPPED'        -- Never attempted (dry run, or an earlier failure stopped the run)
+);
+
 -- Reservation Command Lifecycle State
 CREATE TYPE reservation_command_lifecycle_state AS ENUM (
     'RECEIVED',      -- Command accepted at ingress

@@ -444,6 +444,61 @@ export type AcceptedCommand = {
 	};
 };
 
+/**
+ * A timestamp on the way out of the API, always ISO 8601.
+ *
+ * `pg` hands back a `Date`, and `z.coerce.string()` on one yields
+ * `String(date)` — "Fri Aug 28 2026 12:19:05 GMT+0000 (Coordinated Universal
+ * Time)". Every other timestamp this API returns is ISO, and a client parsing
+ * the rest with `new Date(...)` has no reason to expect this field to be
+ * different.
+ */
+const IsoTimestampSchema = z
+	.union([z.string(), z.date()])
+	.transform((value) => (value instanceof Date ? value.toISOString() : value));
+
+/** One target's outcome inside a batch run, as the API returns it. */
+export const CommandBatchItemViewSchema = z.object({
+	item_index: z.number().int().nonnegative(),
+	target_id: z.string().nullable(),
+	outcome: z.enum(["SUCCEEDED", "FAILED", "SKIPPED"]),
+	event_id: z.string().nullable(),
+	error_code: z.string().nullable(),
+	error_message: z.string().nullable(),
+	duration_ms: z.number().int().nullable(),
+});
+export type CommandBatchItemView = z.infer<typeof CommandBatchItemViewSchema>;
+
+/** Summary row for a batch run, without its items. */
+export const CommandBatchSummarySchema = z.object({
+	batch_id: z.string(),
+	command_name: z.string(),
+	status: z.enum(["RUNNING", "COMPLETED", "PARTIAL", "FAILED"]),
+	total: z.number().int().nonnegative(),
+	succeeded: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	skipped: z.number().int().nonnegative(),
+	dry_run: z.boolean(),
+	property_id: z.string().nullable(),
+	correlation_id: z.string().nullable(),
+	error_code: z.string().nullable(),
+	error_message: z.string().nullable(),
+	started_at: IsoTimestampSchema,
+	completed_at: IsoTimestampSchema.nullable(),
+});
+export type CommandBatchSummary = z.infer<typeof CommandBatchSummarySchema>;
+
+/**
+ * A batch run with every requested item.
+ *
+ * This is what an operator reads after a mass operation: the aggregate says how
+ * many did not go through, and `items` says which ones and why.
+ */
+export const CommandBatchDetailSchema = CommandBatchSummarySchema.extend({
+	items: z.array(CommandBatchItemViewSchema),
+});
+export type CommandBatchDetailView = z.infer<typeof CommandBatchDetailSchema>;
+
 /** Public view of a command definition for API/UI consumers. */
 export type CommandDefinitionView = {
 	name: string;

@@ -166,6 +166,9 @@ import {
 	ReservationExpireCommandSchema,
 	ReservationExtendStayCommandSchema,
 	ReservationGenerateRegCardCommandSchema,
+	ReservationMassCancelCommandSchema,
+	ReservationMassCheckInCommandSchema,
+	ReservationMassUpdateCommandSchema,
 	ReservationModifyCommandSchema,
 	ReservationNoShowCommandSchema,
 	ReservationRateOverrideCommandSchema,
@@ -706,6 +709,18 @@ const commandPayloadValidators = new Map<string, CommandPayloadValidator>([
 	[
 		"reservation.reinstate",
 		(payload) => ReservationReinstateCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mass_cancel",
+		(payload) => ReservationMassCancelCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mass_check_in",
+		(payload) => ReservationMassCheckInCommandSchema.parse(payload),
+	],
+	[
+		"reservation.mass_update",
+		(payload) => ReservationMassUpdateCommandSchema.parse(payload),
 	],
 	[
 		"reservation.assign_room",

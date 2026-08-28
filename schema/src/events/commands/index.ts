@@ -6,6 +6,7 @@
  */
 
 export * from "./analytics.js";
+export * from "./batch.js";
 export * from "./billing.js"; // billing.js is a barrel — all billing domain schemas included
 export * from "./groups.js";
 export * from "./guests.js";

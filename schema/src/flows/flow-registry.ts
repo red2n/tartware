@@ -63,6 +63,12 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"reservation.reinstate",
 			"reservation.assign_room",
 			"reservation.no_show",
+			// Mass cancel and mass update are the same two commands applied to
+			// many targets through the batch envelope (WS-04 / PMS-01-21,
+			// PMS-01-22); a front desk that can only act one booking at a time
+			// falls back to spreadsheets on the days it matters most.
+			"reservation.mass_cancel",
+			"reservation.mass_update",
 			"group.create",
 			"group.add_rooms",
 			"group.upload_rooming_list",
@@ -98,6 +104,9 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			// A check-in nobody can undo means the only recovery from a mis-key
 			// on an arrival day is direct database work (WS-04 / PMS-02-01).
 			"reservation.reverse_check_in",
+			// Arrival day is when bulk matters: a coach party is one action,
+			// not forty (WS-04 / PMS-02-05).
+			"reservation.mass_check_in",
 			"billing.folio.create",
 			"billing.payment.authorize",
 		],

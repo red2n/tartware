@@ -16,7 +16,11 @@ import { serviceTargets } from "../config.js";
 import { submitCommand } from "../utils/command-publisher.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-import { forwardCommandWithParamId, forwardReservationCommand } from "./command-helpers.js";
+import {
+  forwardCommandWithParamId,
+  forwardReservationCommand,
+  forwardTenantCommand,
+} from "./command-helpers.js";
 import {
   checkInBriefResponse,
   reservationDetailResponse,
@@ -252,6 +256,70 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
   // financial event is a different permission and a different audit record from
   // performing one, and collapsing them would make the two indistinguishable in
   // the command log.
+
+  // ─── Mass operations (WS-04 batch envelope) ───────────────────────────────
+  //
+  // The targets are in the body, not the path — a batch names many of them —
+  // so these take the whole body as the command payload. Each returns 202 with
+  // the batch_id; the outcome of each item is read back from
+  // GET /v1/tenants/:tenantId/commands/batches/:batchId once the run completes.
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/mass-cancel",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Cancel many reservations in one batch via Command Center.",
+        description:
+          "Each cancellation is its own transaction, so a refused item leaves the rest " +
+          "applied. Send dry_run to resolve the targets without changing anything.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardTenantCommand({ request, reply, commandName: "reservation.mass_cancel" }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/mass-check-in",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Check in many reservations in one batch via Command Center.",
+        description:
+          "Unlike group check-in, the targets need not share a group booking. Each item " +
+          "may name a room, or be auto-assigned from its reservation's room type.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardTenantCommand({ request, reply, commandName: "reservation.mass_check_in" }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/mass-update",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Apply one set of changes to many reservations via Command Center.",
+        description:
+          "`changes` is applied to every target through the same path a single modify " +
+          "takes, so rate re-quote and availability re-checks run per reservation.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardTenantCommand({ request, reply, commandName: "reservation.mass_update" }),
+  );
 
   app.post(
     "/v1/tenants/:tenantId/reservations/:reservationId/reverse-check-in",

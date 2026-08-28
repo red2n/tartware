@@ -33,6 +33,14 @@
       "types": "./dist/command-utils.d.ts",
       "import": "./dist/command-utils.js"
     },
+    "./batch": {
+      "types": "./dist/batch-runner.d.ts",
+      "import": "./dist/batch-runner.js"
+    },
+    "./batch-repository": {
+      "types": "./dist/batch-repository.d.ts",
+      "import": "./dist/batch-repository.js"
+    },
     "./cashier": {
       "types": "./dist/cashier.d.ts",
       "import": "./dist/cashier.js"

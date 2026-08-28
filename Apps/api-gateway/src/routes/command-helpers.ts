@@ -161,6 +161,38 @@ export const forwardCommandWithParamId = async ({
 };
 
 /**
+ * Forward the request body as one named command, scoped to `tenantId` from the
+ * path.
+ *
+ * For commands whose target is inside the body rather than the URL — a batch
+ * names its targets in `items`, so there is no single resource id to lift out
+ * of the path the way {@link forwardCommandWithParamId} does.
+ */
+export const forwardTenantCommand = async ({
+  request,
+  reply,
+  commandName,
+}: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  commandName: string;
+}): Promise<FastifyReply> => {
+  const tenantId = getParamValue(request, "tenantId");
+  if (!tenantId) {
+    reply.badRequest("TENANT_ID_REQUIRED");
+    return reply;
+  }
+  return submitCommand({
+    request,
+    reply,
+    commandName,
+    tenantId,
+    payload: normalizePayloadObject(request.body),
+    requiredRole: "MANAGER",
+  });
+};
+
+/**
  * Dispatch an arbitrary command by name using `tenantId` and `commandName`
  * from route params. Used by the generic command dispatch endpoint.
  */

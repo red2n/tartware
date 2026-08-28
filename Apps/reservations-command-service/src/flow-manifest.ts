@@ -19,6 +19,14 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         { commandName: "reservation.assign_room", description: "Assign room to reservation" },
         { commandName: "reservation.no_show", description: "Mark reservation as no-show" },
         {
+          commandName: "reservation.mass_cancel",
+          description: "Cancel many reservations in one batch",
+        },
+        {
+          commandName: "reservation.mass_update",
+          description: "Apply one set of changes to many reservations",
+        },
+        {
           commandName: "reservation.reinstate",
           description: "Reinstate a cancelled reservation",
         },
@@ -51,6 +59,10 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         {
           commandName: "reservation.reverse_check_in",
           description: "Undo a check-in and void what it posted",
+        },
+        {
+          commandName: "reservation.mass_check_in",
+          description: "Check in many reservations in one batch",
         },
       ],
     },

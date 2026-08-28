@@ -63,13 +63,13 @@
 | [ ] | PMS-01-18 | Upsell and upgrade offers | PARTIAL | WS-05 | S | |
 | [ ] | PMS-01-19 | Copy and duplicate reservation | MISSING | WS-04 | M | |
 | [x] | PMS-01-20 | Reinstate cancelled reservation | MISSING | WS-04 | M | `reservation.reinstate`. **Re-acquires the availability hold before touching status**, so a reinstatement that cannot get its nights back leaves the booking cancelled rather than creating an overbooking. A guard `ERROR` refuses too — it means "could not answer", not "yes". Verified: CANCELLED → CONFIRMED with cancellation date/reason/fee cleared. |
-| [ ] | PMS-01-21 | Mass update | MISSING | WS-04 | M | |
-| [ ] | PMS-01-22 | Mass cancellation | MISSING | WS-04 | M | |
+| [x] | PMS-01-21 | Mass update | MISSING | WS-04 | M | `reservation.mass_update` on the shared batch envelope (`buildBatchCommandSchema` + `runBatchCommand`). Verified through the gateway: 3 of 5 reservations updated with one `changes` block, the other 2 untouched; batch COMPLETED 3/3. A dry run over the same targets plus one bogus id changed nothing and returned 2 SKIPPED + 1 FAILED `RESERVATION_NOT_FOUND`. |
+| [x] | PMS-01-22 | Mass cancellation | MISSING | WS-04 | M | `reservation.mass_cancel`. Each item is `cancelReservation` verbatim, so the cancellation-fee policy is the one a single cancel uses. Verified through the gateway: a batch of 3 containing a CHECKED_IN guest came back PARTIAL 2/1 — the checked-in booking refused `INVALID_STATUS_FOR_CANCEL` and was left alone while the other two cancelled, one with the envelope reason and one with its own override. Replaying the same `batch_id` re-cancelled nothing. |
 | [ ] | PMS-01-23 | Early departure with penalty | MISSING | WS-04 | M | |
 | [ ] | PMS-01-24 | Do-not-move flag | MISSING | WS-04 | M | |
 | [ ] | PMS-01-25 | Turnaway / denial capture | PARTIAL | WS-04 | S | not started |
 | [ ] | PMS-02-04 | Advance check-in | MISSING | WS-04 | M | |
-| [ ] | PMS-02-05 | Mass check-in | MISSING | WS-04 | M | |
+| [x] | PMS-02-05 | Mass check-in | MISSING | WS-04 | M | `reservation.mass_check_in`. Distinct from `group.check_in`: targets need not share a group booking. Verified through the gateway: 2 reservations CONFIRMED → CHECKED_IN in one batch with the named rooms (201, 202) and `actual_check_in` stamped; batch COMPLETED 2/2. |
 | [ ] | PMS-02-06 | ID and passport scanning | MISSING | WS-10 | M | |
 | [ ] | PMS-02-07 | eSignature registration card | PARTIAL | WS-06 | S | |
 | [ ] | PMS-02-08 | Batch registration card printing | MISSING | WS-06 | M | |

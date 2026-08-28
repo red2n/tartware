@@ -11,6 +11,8 @@ import { z } from "zod";
 
 import { StayPlanInputSchema } from "../../api/stay-plan.js";
 
+import { buildBatchCommandSchema } from "./batch.js";
+
 const RateCodeSchema = z
 	.string()
 	.min(2)
@@ -735,4 +737,94 @@ export const ReservationMobileCheckinCompleteCommandSchema = z.object({
 
 export type ReservationMobileCheckinCompleteCommand = z.infer<
 	typeof ReservationMobileCheckinCompleteCommandSchema
+>;
+
+// ---------------------------------------------------------------------------
+// Mass operations (WS-04) — all three stamped from the one batch envelope
+// ---------------------------------------------------------------------------
+
+/**
+ * Mass cancel (PMS-01-22).
+ *
+ * The reason sits on the envelope, not the item: a mass cancel is one
+ * operational decision applied to many bookings, and letting each item carry
+ * its own reason invites a batch whose rows cannot be explained as a group
+ * afterwards. An item may still override it for the one booking that differs.
+ *
+ * The fields are exactly `reservation.cancel`'s, on purpose. A batch that could
+ * express something its single command cannot is a second implementation of
+ * cancellation waiting to drift — including the cancellation fee, which stays
+ * the rate policy's decision here just as it is there.
+ */
+export const ReservationMassCancelCommandSchema = buildBatchCommandSchema(
+	z.object({
+		reservation_id: z.string().uuid(),
+		/** Overrides the envelope reason for this one booking. */
+		reason: z.string().max(500).optional(),
+	}),
+	{
+		reason: z.string().max(500).optional(),
+	},
+);
+
+export type ReservationMassCancelCommand = z.infer<
+	typeof ReservationMassCancelCommandSchema
+>;
+
+/**
+ * Mass check-in (PMS-02-05).
+ *
+ * Distinct from `group.check_in`, which allocates rooms by proximity for one
+ * group booking. This one checks in an arbitrary set of reservations that are
+ * already assigned, or auto-assigns each from its own room type.
+ */
+export const ReservationMassCheckInCommandSchema = buildBatchCommandSchema(
+	z.object({
+		reservation_id: z.string().uuid(),
+		/** Pre-chosen room. Omit to let the handler assign from the room type. */
+		room_id: z.string().uuid().optional(),
+	}),
+	{
+		checked_in_at: z.coerce.date().optional(),
+		/** Bypass blocking deposit enforcement for every item in the batch. */
+		force: z.boolean().default(false),
+		notes: z.string().max(2000).optional(),
+	},
+);
+
+export type ReservationMassCheckInCommand = z.infer<
+	typeof ReservationMassCheckInCommandSchema
+>;
+
+/**
+ * Mass update (PMS-01-21).
+ *
+ * `changes` is the whole point: one set of field changes applied to every
+ * target. It reuses the modify command's field vocabulary minus `reservation_id`
+ * — the targets come from `items` — so a mass update can never do something a
+ * single modify could not, and the two cannot drift apart.
+ */
+export const ReservationMassUpdateChangesSchema = z
+	.object({
+		room_type_id: z.string().uuid().optional(),
+		check_in_date: z.coerce.date().optional(),
+		check_out_date: z.coerce.date().optional(),
+		status: ReservationStatusEnum.optional(),
+		rate_code: RateCodeSchema.optional(),
+		allow_rate_fallback: z.boolean().optional(),
+		notes: z.string().max(2000).optional(),
+		market_segment_id: z.string().uuid().optional(),
+	})
+	.refine(
+		(value) => Object.values(value).some((field) => field !== undefined),
+		"At least one field must be provided in changes",
+	);
+
+export const ReservationMassUpdateCommandSchema = buildBatchCommandSchema(
+	z.object({ reservation_id: z.string().uuid() }),
+	{ changes: ReservationMassUpdateChangesSchema },
+);
+
+export type ReservationMassUpdateCommand = z.infer<
+	typeof ReservationMassUpdateCommandSchema
 >;

@@ -1,3 +1,10 @@
+export {
+  type CommandBatchDetail,
+  type CommandBatchItemRow,
+  type CommandBatchRow,
+  createCommandBatchRepository,
+  type ListCommandBatchesInput,
+} from "./repositories/command-batches.js";
 export type {
   InsertCommandDispatchInput,
   QueryExecutor,

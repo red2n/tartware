@@ -13,12 +13,16 @@
  *  PATCH /v1/commands/:commandName/features  — update a single command's feature status
  *  PATCH /v1/commands/features/batch         — bulk-update feature statuses
  *  POST /v1/commands/:commandName/execute    — generic command execution (MANAGER+ role)
+ *  GET  /v1/tenants/:tenantId/commands/batches           — recent batch command runs
+ *  GET  /v1/tenants/:tenantId/commands/batches/:batchId  — one run, every item outcome
  */
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   BatchUpdateCommandFeaturesRequestSchema,
   BatchUpdateCommandFeaturesResponseSchema,
+  CommandBatchDetailSchema,
+  CommandBatchSummarySchema,
   CommandDefinitionSchema,
   CommandExecuteRequestSchema,
   CommandFeatureListItemSchema,
@@ -29,6 +33,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { listCommandDefinitions } from "../command-center/index.js";
+import { findCommandBatch, listCommandBatches } from "../command-center/sql/command-batches.js";
 import {
   batchUpdateCommandFeatureStatuses,
   listCommandFeatures,
@@ -43,6 +48,27 @@ import { commandAcceptedSchema } from "./schemas.js";
 const environment = process.env.NODE_ENV ?? "development";
 
 const CommandParamSchema = z.object({ commandName: z.string().min(1) });
+
+const BatchListParamSchema = z.object({ tenantId: z.string().uuid() });
+const BatchListParamJsonSchema = schemaFromZod(BatchListParamSchema, "CommandBatchListParams");
+
+const BatchParamSchema = z.object({
+  tenantId: z.string().uuid(),
+  batchId: z.string().uuid(),
+});
+const BatchParamJsonSchema = schemaFromZod(BatchParamSchema, "CommandBatchParams");
+
+const BatchQuerySchema = z.object({
+  command_name: z.string().min(1).optional(),
+  property_id: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+const BatchQueryJsonSchema = schemaFromZod(BatchQuerySchema, "CommandBatchQuery");
+const CommandBatchDetailJsonSchema = schemaFromZod(CommandBatchDetailSchema, "CommandBatchDetail");
+const CommandBatchListJsonSchema = schemaFromZod(
+  z.array(CommandBatchSummarySchema),
+  "CommandBatchList",
+);
 const CommandParamJsonSchema = schemaFromZod(CommandParamSchema, "CommandCenterParams");
 
 const CommandDefinitionListJsonSchema = schemaFromZod(
@@ -188,6 +214,64 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         }
         throw error;
       }
+    },
+  );
+
+  // ─── Batch command results ────────────────────────────────────────────────
+  //
+  // A batch command is accepted with 202 and runs asynchronously, so its
+  // per-item outcomes have nowhere to be returned to. These two reads are where
+  // an operator finds out which of the two hundred bookings did not cancel.
+
+  const batchScopeFromParams = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: "MANAGER",
+    requiredModules: "core",
+  });
+
+  app.get(
+    "/v1/tenants/:tenantId/commands/batches",
+    {
+      preHandler: batchScopeFromParams,
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "List recent batch command runs",
+        params: BatchListParamJsonSchema,
+        querystring: BatchQueryJsonSchema,
+        response: { 200: CommandBatchListJsonSchema },
+      }),
+    },
+    async (request) => {
+      const { tenantId } = BatchListParamSchema.parse(request.params);
+      const filters = BatchQuerySchema.parse(request.query ?? {});
+      const rows = await listCommandBatches({
+        tenantId,
+        commandName: filters.command_name,
+        propertyId: filters.property_id,
+        limit: filters.limit,
+      });
+      return z.array(CommandBatchSummarySchema).parse(rows);
+    },
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/commands/batches/:batchId",
+    {
+      preHandler: batchScopeFromParams,
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "Read one batch command run with every item outcome",
+        params: BatchParamJsonSchema,
+        response: { 200: CommandBatchDetailJsonSchema },
+      }),
+    },
+    async (request, reply) => {
+      const { tenantId, batchId } = BatchParamSchema.parse(request.params);
+      const batch = await findCommandBatch(tenantId, batchId);
+      if (!batch) {
+        return reply.notFound(`Batch "${batchId}" not found.`);
+      }
+      return CommandBatchDetailSchema.parse(batch);
     },
   );
 

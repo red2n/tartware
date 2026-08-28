@@ -184,7 +184,7 @@ TTF for anything else — the UI already ships `zh-TW`, which needs one. Not shi
 3 of the workstream's 13 items are closed (PMS-11-01, PMS-11-03, PMS-15-17); the other 10 are
 unblocked but not built.
 
-### WS-04 — lifecycle reversals (reversals done, batch envelope open)
+### WS-04 — lifecycle reversals and bulk operations (room move open)
 
 Three commands in `reservations-command-service/src/services/reservation-commands/reversals.ts`:
 `reservation.reverse_check_in`, `reservation.reverse_check_out`, `reservation.reinstate`.
@@ -206,9 +206,40 @@ guest's bar tab. `force` proceeds and leaves the foreign charges standing.
 - Every reversal writes twice: `flow_approvals` for operations, `audit_logs` for compliance,
   carrying `balance_before` / `balance_after` so it is auditable without re-deriving.
 - New commands need a row in the **flow registry** (`schema/src/flows/flow-registry.ts`), not just
-  the service manifest — boot fails with `phantom_command` otherwise.
+  the service manifest — boot fails with `phantom_command` otherwise. Three more guardrails fire on
+  a new command: a payload validator in `schema/src/command-validators.ts`, a catalogue row in
+  `scripts/tables/01-core/10_command_center.sql`, and a **name literal somewhere in
+  `Apps/api-gateway/src`** — the dispatchability test scans for it, so a command reachable only
+  through the generic `execute` endpoint reads as unreachable.
 
-Open: room move for an in-house guest (the remaining P0) and the batch envelope, which WS-15 reuses.
+#### Batch envelope
+
+One `BatchCommand<T>` for every mass operation. `buildBatchCommandSchema(itemSchema, extraFields)`
+in `schema/src/events/commands/batch.ts` stamps the command; `runBatchCommand` in
+`@tartware/command-consumer-utils/batch` executes it. Mass cancel, mass check-in and mass update
+ride it today (`reservation-commands/mass-operations.ts`); WS-15's group bulk actions reuse it.
+
+- **One transaction per target, none around the batch.** The runner opens no transaction: each
+  item's handler owns its own, so item 7 failing leaves 1–6 applied and durable. A batch is
+  therefore *not* atomic, which is why the per-item record exists.
+- **Each mass command is the single command applied N times** — `cancelReservation`,
+  `checkInReservation`, `modifyReservation` verbatim. A rule added to one reaches the mass path the
+  same day. This is why the handlers are eight lines each.
+- **`dry_run` calls a separate `validateItem`, never `applyItem`.** The writing function is not
+  reachable in a dry run, rather than trusted to check a flag. A command with no validator reports
+  `DRY_RUN_NOT_SUPPORTED` instead of a clean run it never performed.
+- **Results are persisted, not returned.** A batch is 202-accepted and the consumer discards handler
+  return values — which is why `group.check_in` has always built a detailed summary and thrown it
+  away. `command_batches` + `command_batch_items` hold one row per run and one per requested item,
+  read at `GET /v1/tenants/:tenantId/commands/batches/:batchId`.
+  `succeeded + failed + skipped === total` always holds.
+- **A client-supplied `batch_id` makes a replay safe**: a finished batch returns its stored result
+  instead of cancelling two hundred bookings twice. A killed run leaves the row `RUNNING` and needs
+  a new id.
+- Ceiling of 500 items: a batch is one Kafka message on one consumer, so its whole run time is
+  head-of-line blocking for everything queued behind it.
+
+Open: room move for an in-house guest (the remaining P0).
 
 ### Throughput (20K ops/sec target)
 

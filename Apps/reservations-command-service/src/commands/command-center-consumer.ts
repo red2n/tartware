@@ -40,6 +40,9 @@ import {
   ReservationExpireCommandSchema,
   ReservationExtendStayCommandSchema,
   ReservationGenerateRegCardCommandSchema,
+  ReservationMassCancelCommandSchema,
+  ReservationMassCheckInCommandSchema,
+  ReservationMassUpdateCommandSchema,
   ReservationModifyCommandSchema,
   ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
@@ -73,6 +76,9 @@ import {
   generateRegistrationCard,
   groupCheckIn,
   markNoShow,
+  massCancelReservations,
+  massCheckInReservations,
+  massUpdateReservations,
   modifyReservation,
   otaContentSync,
   otaRatePush,
@@ -154,6 +160,21 @@ const routeReservationCommand = async (
     case "reservation.reinstate": {
       const commandPayload = ReservationReinstateCommandSchema.parse(envelope.payload);
       await reinstateReservation(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mass_cancel": {
+      const commandPayload = ReservationMassCancelCommandSchema.parse(envelope.payload);
+      await massCancelReservations(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mass_check_in": {
+      const commandPayload = ReservationMassCheckInCommandSchema.parse(envelope.payload);
+      await massCheckInReservations(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mass_update": {
+      const commandPayload = ReservationMassUpdateCommandSchema.parse(envelope.payload);
+      await massUpdateReservations(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.assign_room": {
