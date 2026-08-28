@@ -77,7 +77,12 @@ is_migration_applied() {
 }
 
 # Get migration version from filename
-# Format: YYYY-MM-DD-NNN-description.sql
+# Format: NNN-description.sql
+#
+# Date prefixes are forbidden by AGENTS.md § SQL Migration Execution: schema
+# changes belong in the canonical scripts/tables/<category>/ files, not in
+# dated one-off migrations. The sequence number is what orders the few that
+# remain, and plain `sort` over the filename is the execution order.
 get_version_from_filename() {
     local filename="$1"
     basename "$filename" .sql | sed 's/-[a-z].*$//'
