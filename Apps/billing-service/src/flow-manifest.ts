@@ -72,6 +72,20 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
       ],
     },
 
+    [FlowId.CASHIER_SHIFT]: {
+      commands: [
+        { commandName: "billing.cashier.open", description: "Open a drawer with a float" },
+        {
+          commandName: "billing.cashier.handover",
+          description: "Hand the drawer to the next cashier",
+        },
+        {
+          commandName: "billing.cashier.close",
+          description: "Close the drawer with a counted variance",
+        },
+      ],
+    },
+
     [FlowId.AR_COLLECTIONS]: {
       commands: [
         { commandName: "billing.ar.post", description: "Post to accounts receivable" },

@@ -49,6 +49,14 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           commandName: "reservation.generate_registration_card",
           description: "Generate reg card PDF",
         },
+        {
+          commandName: "reservation.add_deposit",
+          description: "Take a guarantee before the guest travels",
+        },
+        {
+          commandName: "reservation.release_deposit",
+          description: "Release a held guarantee",
+        },
       ],
     },
 

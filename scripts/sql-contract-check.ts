@@ -293,6 +293,62 @@ function extractTemplateLiterals(source: string): { sql: string; offset: number 
 }
 
 /**
+ * Blank quoted values and `--` comments in a single left-to-right pass.
+ *
+ * Neither one can be blanked first without breaking the other. As two
+ * independent replaces with strings going first, an apostrophe inside a
+ * comment ("one night's price", "that date's rates") opens a phantom string
+ * that swallows everything up to the query's next quote — which ate the
+ * `WITH group_blocks AS (` and `current_otb AS (` headers in the revenue
+ * queries and reported both CTEs as missing tables. Blanking comments first
+ * has the mirror failure on a `--` inside a quoted value. Taking whichever
+ * opens first is what Postgres itself does.
+ *
+ * Offsets are preserved so reported line numbers stay correct, and newlines
+ * survive inside a blanked span so a comment still ends where its line does.
+ */
+function blankStringsAndComments(sql: string): string {
+  const blankSpan = (s: string) => s.replace(/[^\n]/g, " ");
+  let out = "";
+  let i = 0;
+
+  while (i < sql.length) {
+    // A quoted SQL value is data, not syntax: 'Auto-transferred from folio'
+    // would otherwise read as a reference to a table named "folio".
+    if (sql[i] === "'") {
+      const start = i++;
+      while (i < sql.length) {
+        if (sql[i] !== "'") {
+          i++;
+          continue;
+        }
+        // '' is an escaped quote inside the value, not the end of it.
+        if (sql[i + 1] === "'") {
+          i += 2;
+          continue;
+        }
+        i++;
+        break;
+      }
+      out += blankSpan(sql.slice(start, i));
+      continue;
+    }
+
+    // `-- note` inside a query would otherwise be read as prose SQL.
+    if (sql[i] === "-" && sql[i + 1] === "-") {
+      const start = i;
+      while (i < sql.length && sql[i] !== "\n") i++;
+      out += blankSpan(sql.slice(start, i));
+      continue;
+    }
+
+    out += sql[i++];
+  }
+
+  return out;
+}
+
+/**
  * Blank out functions that take a SQL keyword as an argument — EXTRACT(DOW FROM
  * col), SUBSTRING(s FROM 2), TRIM(BOTH ' ' FROM s). Their `FROM` is not a table
  * reference, and `EXTRACT(DOW FROM d.calendar_date)` otherwise reads as a query
@@ -311,12 +367,7 @@ function neutralizeKeywordFunctions(sql: string): string {
 
   const blank = (s: string) => " ".repeat(s.length);
   return (
-    out
-      // A quoted SQL value is data, not syntax: 'Auto-transferred from folio'
-      // would otherwise read as a reference to a table named "folio".
-      .replace(/'(?:[^']|'')*'/g, blank)
-      // `-- note` inside a query would otherwise be read as prose SQL.
-      .replace(/--[^\n]*/g, blank)
+    blankStringsAndComments(out)
       // ON CONFLICT ... DO UPDATE SET — "SET" is not a table.
       .replace(/\bDO\s+UPDATE\b/gi, blank)
       // Row locks: FOR UPDATE [OF x] [SKIP LOCKED | NOWAIT].
@@ -613,6 +664,18 @@ function selfTest(): boolean {
     {
       name: "system columns exist on every table",
       sql: `UPDATE public.fx_rates SET rate = $1 WHERE tenant_id = $2::uuid RETURNING xmax`,
+      expect: "clean",
+    },
+    {
+      name: "an apostrophe in a comment does not swallow the query",
+      sql: `WITH base AS (
+              SELECT rate_id FROM public.fx_rates WHERE tenant_id = $1::uuid
+            ),
+            -- last year's rows are the comparison
+            prior AS (
+              SELECT rate_id FROM public.fx_rates WHERE from_currency = 'USD'
+            )
+            SELECT b.rate_id FROM base b JOIN prior p ON p.rate_id = b.rate_id`,
       expect: "clean",
     },
     {
