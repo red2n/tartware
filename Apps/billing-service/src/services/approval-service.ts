@@ -6,6 +6,7 @@ import {
   type BillingApprovalRejectCommand,
   BillingApprovalRejectCommandSchema,
   BillingApprovalRequestCommandSchema,
+  tenantRoleAtLeast,
 } from "@tartware/schemas";
 import { auditAsync } from "../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
@@ -161,12 +162,30 @@ const _resolveRequest = async (
       );
     }
 
-    // ★ Four-Eyes Principle: approver must NOT be the same user as the requester
+    // ★ Four-Eyes Principle: approver must NOT be the same user as the requester.
+    // Both sides are now the authenticated user id the route read off the token,
+    // so this compares two identities the caller cannot choose. While they came
+    // from the request body it compared two caller-supplied strings, and the
+    // whole control was defeated by typing a colleague's id into the field.
     if (request.requested_by === command.actioned_by) {
       throw new BillingCommandError(
         "SELF_APPROVAL_FORBIDDEN",
         "The approver must be a different user than the requester (four-eyes principle).",
       );
+    }
+
+    // `required_role` is the whole point of storing a role on the request, and
+    // nothing read it — any MANAGER could approve an operation the requester
+    // had marked as needing an OWNER. Only approval is gated: declining a
+    // request needs no more authority than seeing it.
+    if (newStatus === "APPROVED") {
+      const approverRole = "actioned_by_role" in command ? command.actioned_by_role : undefined;
+      if (!tenantRoleAtLeast(approverRole, request.required_role)) {
+        throw new BillingCommandError(
+          "APPROVER_ROLE_INSUFFICIENT",
+          `This request requires ${request.required_role} to approve; the approver holds ${approverRole ?? "no recognised role"}.`,
+        );
+      }
     }
 
     // Persist the decision
@@ -240,11 +259,30 @@ export const cancelApprovalRequest = async (
          actioned_at = NOW(),
          updated_at  = NOW()
      WHERE approval_id = $1::uuid AND tenant_id = $2::uuid AND status = 'PENDING'
+       AND requested_by = $4
      RETURNING approval_id, status, requested_by`,
     [command.approval_id, tenantId, command.reason ?? null, command.cancelled_by],
   );
 
   if (!rows[0]?.approval_id) {
+    // The predicate above covers three different situations and the caller
+    // deserves to know which. "Withdrawn by the original requester" was only
+    // ever a doc comment — the statement returned `requested_by` and never
+    // compared it, so anyone who could reach the route could retract someone
+    // else's pending request and quietly kill the approval.
+    const { rows: existing } = await query<{ status: string; requested_by: string }>(
+      `SELECT status, requested_by
+         FROM public.approval_requests
+        WHERE approval_id = $1::uuid AND tenant_id = $2::uuid`,
+      [command.approval_id, tenantId],
+    );
+    const found = existing[0];
+    if (found && found.status === "PENDING" && found.requested_by !== command.cancelled_by) {
+      throw new BillingCommandError(
+        "APPROVAL_NOT_REQUESTER",
+        "Only the user who raised an approval request may withdraw it.",
+      );
+    }
     throw new BillingCommandError(
       "APPROVAL_CANCEL_FAILED",
       "Approval not found or is not in PENDING state.",

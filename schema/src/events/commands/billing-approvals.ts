@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TenantRoleEnum } from "../../shared/enums.js";
+
 // ─── Approval Request Commands ────────────────────────────────────────────────
 
 /** Operations that can require a dual-control approval before execution */
@@ -36,7 +38,10 @@ export const BillingApprovalRequestCommandSchema = z.object({
 	entity_id: z.string().uuid(),
 	operation_payload: z.record(z.unknown()).default({}),
 	description: z.string().max(500).optional(),
-	required_role: z.string().max(60).default("MANAGER"),
+	// Who may approve this. Constrained to the role enum because the stored
+	// value is later compared against the approver's role: a free-form string
+	// that matches no known role would score nothing and admit everyone.
+	required_role: TenantRoleEnum.default("MANAGER"),
 	requested_by: z.string().min(1).max(100),
 	requested_by_name: z.string().max(200).optional(),
 });
@@ -51,7 +56,14 @@ export type BillingApprovalRequestCommand = z.infer<
  */
 export const BillingApprovalApproveCommandSchema = z.object({
 	approval_id: z.string().uuid(),
+	/**
+	 * The approver. Set by the route from the authenticated token, never from
+	 * the request body — four-eyes compares this against `requested_by`, so a
+	 * caller-supplied value lets one person play both parts.
+	 */
 	actioned_by: z.string().min(1).max(100),
+	/** The approver's role at the moment of approval, checked against `required_role`. */
+	actioned_by_role: TenantRoleEnum.optional(),
 	actioned_by_name: z.string().max(200).optional(),
 	reason: z.string().max(500).optional(),
 });

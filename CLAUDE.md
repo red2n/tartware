@@ -146,11 +146,13 @@ Working through these one at a time. Update the status column when one lands.
 Findings 01–05 landed 25–26 Aug on `SOLID_Gaps`; detail per finding in
 `docs/PATTERN_AUDIT.md`, published summary in the artifact linked in §5.
 
-**CI note:** the Guardrails workflow builds workspace libraries before Lint.
-eslint's type-aware rules resolve a workspace import through the target package's
-`dist`, so a service holding a type from another package (e.g. `createKafkaClient`'s
-return) reports a wall of `no-unsafe-*` errors when that dist is absent. If lint
-fails in CI but passes locally, that is the reason — check the build step ran.
+**CI note:** eslint's type-aware rules resolve a workspace import through the target
+package's `dist`, so a service holding a type from another package (e.g.
+`createKafkaClient`'s return) reported a wall of `no-unsafe-*` errors when that dist
+was absent — green locally, red in CI, and only in the workflows that did not happen
+to build first. `lint` now carries `dependsOn: ["^build"]` in `nx.json`, matching
+`test` and `typecheck`, so Nx builds upstream packages before linting anything and the
+trap is gone. Don't remove it to make lint faster.
 
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
@@ -239,7 +241,59 @@ ride it today (`reservation-commands/mass-operations.ts`); WS-15's group bulk ac
 - Ceiling of 500 items: a batch is one Kafka message on one consumer, so its whole run time is
   head-of-line blocking for everything queued behind it.
 
-Open: room move for an in-house guest (the remaining P0).
+Room move for an in-house guest landed in `66413d55` — `reservation.room_move`, guarded by
+reason code, category, `requires_approval`, room sellability and a fresh availability hold.
+It is the most complete override implementation in the repo and the model the findings below
+point at.
+
+### Override & authorization audit (28 Aug 2026)
+
+Measured against OPERA. **Command breadth is already OPERA-class** — cashier shifts with
+counted variance, fiscal period locking, folio windows and routing, comp accounting, walk,
+waitlist, dunning, chargebacks, a night audit with a trial balance. The divergence is not what
+the system can do, it is **who is allowed to do it**.
+
+Three facts frame everything below:
+
+- **One permission level for all 203 commands.** `POST /v1/commands/:name/execute` requires
+  `MANAGER`, so the clerk who checks a guest in has the same authority as the one who writes off
+  bad debt. `user_tenant_associations.permissions` (JSONB) is loaded into every request's auth
+  context and read by nothing.
+- **Overrides are logged, never authorized.** Every bypass writes `flow_approvals`; nothing checks
+  entitlement first. `force: true` on a payload is the whole mechanism — there is no supervisor
+  step-up, no second actor, no re-auth anywhere in the repo.
+- **The flow guard is static.** It proves a command is wired up, not that an operator may run it.
+  `dependsOn` is checked for cycles and never consulted again; 66 of 203 catalogued commands are
+  named by a flow, and the 137 that are not include `billing.charge.void`, `billing.comp.post`,
+  `billing.deposit.waive`, `billing.folio.reopen`, `billing.fiscal_period.reopen`,
+  `ar.city_ledger.write_off` and `reservation.walk_guest`.
+
+Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b907>
+
+| # | Severity | Finding | Status |
+|---|----------|---------|--------|
+| A01 | Critical | Four-eyes took `actioned_by` / `requested_by` from the **request body**, so the self-approval check compared two caller-supplied strings — defeated by typing a colleague's id. `required_role` was stored and never compared. | **done 28 Aug** |
+| A02 | Critical | No per-command permission, so no way to express an override as a distinct right. Everything is `MANAGER`. | open |
+| A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | open |
+| A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | open |
+| A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | open |
+| A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | open |
+| A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | open |
+| A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | open |
+| A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
+| A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | open |
+| A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | open |
+
+**A01, as landed.** The role ladder now lives once, in `schema/src/shared/enums.ts` as
+`TENANT_ROLE_PRIORITY` + `tenantRoleAtLeast()` — the same five numbers had been copied into
+api-gateway, core-service and tenant-auth, and a fourth copy was about to be written. Routes are
+the trust boundary: `Apps/billing-service/src/routes/approvals.ts` derives every identity from
+`request.auth.userId` and passes the approver's membership role down, so the body can no longer
+name who acted. `required_role` is enforced inside the same transaction that reads the row, and
+**fails closed** on a value that is not a known role — the column is `VARCHAR(60)`, and an
+unrecognised string scoring 0 would have admitted everyone. Approval is gated; rejection is not,
+since declining needs no more authority than seeing the request. 8 tests in
+`Apps/billing-service/tests/approval-service.test.ts`.
 
 ### Throughput (20K ops/sec target)
 

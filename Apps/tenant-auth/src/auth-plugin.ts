@@ -1,3 +1,4 @@
+import { TENANT_ROLE_PRIORITY } from "@tartware/schemas";
 import type { FastifyPluginAsync } from "fastify";
 
 import type { AuthContext, TenantScopeDecorator } from "./index.js";
@@ -27,14 +28,6 @@ declare module "fastify" {
   }
 }
 
-const STANDARD_ROLE_PRIORITY: Record<string, number> = {
-  OWNER: 500,
-  ADMIN: 400,
-  MANAGER: 300,
-  STAFF: 200,
-  VIEWER: 100,
-};
-
 /**
  * Pre-wired auth plugin for standard domain services (billing, rooms, guests, etc.).
  *
@@ -63,7 +56,7 @@ export const createStandardAuthPlugin = (
     getUserMemberships,
     extractBearerToken,
     verifyAccessToken,
-    rolePriority: STANDARD_ROLE_PRIORITY,
+    rolePriority: TENANT_ROLE_PRIORITY,
     onTenantResolved: options.onTenantResolved,
   });
 };
