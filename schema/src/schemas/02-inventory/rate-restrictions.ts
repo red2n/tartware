@@ -12,6 +12,7 @@
 
 import { z } from "zod";
 
+import { RestrictionScopeEnum } from "../../api/restrictions.js";
 import { uuid } from "../../shared/base-schemas.js";
 
 /** Restriction type enum aligned with rate_restrictions table CHECK constraint */
@@ -23,6 +24,8 @@ export const RateRestrictionTypeEnum = z.enum([
 	"MIN_ADVANCE",
 	"MAX_ADVANCE",
 	"CLOSED",
+	/** Ceiling on rooms sellable for the date within this row's scope. */
+	"SELL_LIMIT",
 ]);
 
 /** Source enum for how the restriction was created */
@@ -42,6 +45,14 @@ export const RateRestrictionsSchema = z.object({
 	property_id: uuid,
 	room_type_id: uuid.nullable().optional(),
 	rate_plan_id: uuid.nullable().optional(),
+	/** Distribution channel targeted; NULL applies to every channel. */
+	channel_code: z.string().max(50).nullable().optional(),
+	/**
+	 * What this row is about. Precedence runs PROPERTY < ROOM_TYPE < RATE <
+	 * CHANNEL and the most specific rule for a date and type is the one
+	 * enforced — see `evaluateRestrictions` in `api/restrictions.ts`.
+	 */
+	scope: RestrictionScopeEnum,
 	restriction_date: z.coerce.date(),
 	restriction_type: RateRestrictionTypeEnum,
 	restriction_value: z.number().int(),

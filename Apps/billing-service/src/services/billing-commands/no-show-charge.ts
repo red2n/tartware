@@ -4,6 +4,7 @@ import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNoShowChargeCommandSchema } from "../../schemas/billing-commands.js";
+import { firstNightTotalSql } from "../../sql/stay-night-basis.js";
 import {
   asUuid,
   BillingCommandError,
@@ -33,12 +34,14 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     property_id: string;
     status: string;
     room_rate: string | null;
+    first_night_total: string | null;
     currency: string | null;
     version: number;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency, version
-     FROM public.reservations
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
+    `SELECT r.id AS reservation_id, r.property_id, r.status, r.room_rate, r.currency, r.version,
+            ${firstNightTotalSql("r")} AS first_night_total
+     FROM public.reservations r
+     WHERE r.tenant_id = $1::uuid AND r.id = $2::uuid
      LIMIT 1`,
     [context.tenantId, command.reservation_id],
   );
@@ -58,12 +61,18 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     );
   }
 
+  // The forfeit is the stay's first night across every room held — a two-room
+  // booking that never arrived forfeits two rooms. `room_rate` is the fallback
+  // for a reservation written before the nights table existed.
+  const firstNight = reservation.first_night_total ? Number(reservation.first_night_total) : null;
   const chargeAmount =
-    command.charge_amount ?? (reservation.room_rate ? Number(reservation.room_rate) : null);
+    command.charge_amount ??
+    firstNight ??
+    (reservation.room_rate ? Number(reservation.room_rate) : null);
   if (!chargeAmount || chargeAmount <= 0) {
     throw new BillingCommandError(
       "NO_SHOW_CHARGE_AMOUNT_MISSING",
-      "Cannot determine no-show charge amount. Provide charge_amount or ensure room_rate is set on the reservation.",
+      "Cannot determine no-show charge amount. Provide charge_amount, or price the reservation's first night.",
     );
   }
 

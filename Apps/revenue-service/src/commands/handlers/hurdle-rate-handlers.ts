@@ -1,4 +1,5 @@
 import type { CommandMetadata } from "@tartware/command-consumer-utils";
+
 import { forEachDateInRange } from "../../lib/date-range.js";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
@@ -51,27 +52,43 @@ export const handleHurdleRateSet = async (
  */
 const DISPLACEMENT_HURDLE_SQL = `
   WITH room_type_ids AS (
-    SELECT id AS room_type_id, type_name, base_rate
+    -- room_types has base_price, not base_rate — 42703 on every call.
+    SELECT id AS room_type_id, type_name, base_price AS base_rate
     FROM room_types
     WHERE tenant_id = $1::uuid
       AND property_id = $2::uuid
       AND ($5::uuid IS NULL OR id = $5::uuid)
       AND COALESCE(is_deleted, false) = false
   ),
+  -- Transient ADR over the trailing 90 nights, per room type.
+  --
+  -- Two fixes here. The room type comes off reservation_rooms, because a
+  -- booking can hold rooms of more than one type; and the filter is
+  -- group_booking_id, which is what the column is called: group_id does not
+  -- exist on reservations, so this statement failed with 42703 every time it
+  -- ran.
   transient_adr AS (
     SELECT
-      r.room_type_id,
-      AVG(r.room_rate) AS avg_transient_adr,
-      COUNT(DISTINCT r.id) AS transient_bookings
-    FROM reservations r
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
-      AND r.group_id IS NULL
+      rr.room_type_id,
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+        THEN SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+             / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary)
+        END AS avg_transient_adr,
+      COUNT(DISTINCT n.reservation_id) AS transient_bookings
+    FROM reservation_nights n
+    JOIN reservation_rooms rr
+      ON rr.reservation_room_id = n.reservation_room_id
+    JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND COALESCE(n.is_deleted, false) = false
+      AND n.stay_date >= ($3::date - INTERVAL '90 days')
+      AND n.stay_date <= $4::date
+      AND r.group_booking_id IS NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-      AND r.check_in_date >= ($3::date - INTERVAL '90 days')
-      AND r.check_in_date <= $4::date
-    GROUP BY r.room_type_id
+    GROUP BY rr.room_type_id
   ),
   total_rooms AS (
     SELECT
@@ -97,7 +114,9 @@ const DISPLACEMENT_HURDLE_SQL = `
 `;
 
 const DEMAND_FOR_DATE_SQL = `
-  SELECT demand_level, occupancy_forecast
+  -- demand_calendar has forecasted_occupancy_percent, not occupancy_forecast:
+  -- 42703 on every call. Aliased to the name the caller destructures.
+  SELECT demand_level, forecasted_occupancy_percent AS occupancy_forecast
   FROM demand_calendar
   WHERE tenant_id = $1::uuid
     AND property_id = $2::uuid
@@ -107,7 +126,8 @@ const DEMAND_FOR_DATE_SQL = `
 `;
 
 const FORECAST_FOR_DATE_SQL = `
-  SELECT occupancy_percent
+  -- Same 42703: the column is forecasted_occupancy_percent.
+  SELECT forecasted_occupancy_percent AS occupancy_percent
   FROM revenue_forecasts
   WHERE tenant_id = $1::uuid
     AND property_id = $2::uuid

@@ -11,7 +11,9 @@
 import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import { query } from "../lib/db.js";
+import { roomNotHeldForWindow } from "../sql/room-occupancy.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
+
 import { type RoomQueryRow, rowToRoomCandidate } from "./room-query-utils.js";
 
 export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
@@ -49,7 +51,10 @@ export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, Room
     // - Not already in the available pool (handled by dedup filter)
     const result = await query<RoomQueryRow>(
       `
-      SELECT DISTINCT
+      -- Not DISTINCT: r.id already makes every row unique, and DISTINCT made
+      -- Postgres reject the ORDER BY below ("ORDER BY expressions must appear
+      -- in select list") — this statement failed outright on every call.
+      SELECT
         r.id AS room_id,
         r.room_type_id,
         rt.type_name AS room_type_name,
@@ -73,15 +78,7 @@ export class SimilarRoomsSource extends BaseSource<RoomRecommendationQuery, Room
           -- Or similar price range
           OR COALESCE(rt.base_price, 100) BETWEEN $7 * 0.8 AND $7 * 1.2
         )
-        AND NOT EXISTS (
-          SELECT 1 FROM reservations res
-          WHERE res.tenant_id = r.tenant_id
-            AND res.property_id = r.property_id
-            AND res.room_number = r.room_number
-            AND LOWER(res.status::TEXT) NOT IN ('cancelled', 'no_show', 'checked_out')
-            AND res.check_in_date < $5
-            AND res.check_out_date > $4
-        )
+        AND ${roomNotHeldForWindow("r", "$4", "$5")}
       ORDER BY
         CASE WHEN rt.id = ANY($3::uuid[]) THEN 0 ELSE 1 END,
         ABS(COALESCE(rt.base_price, 100) - $7) ASC

@@ -80,6 +80,9 @@
 \echo '>>> Category 3/8: BOOKINGS & GUEST RELATIONS'
 \ir 03-bookings/10_reservations.sql
 \ir 03-bookings/11_reservation_status_history.sql
+\ir 03-bookings/14_reservation_rooms.sql
+\ir 03-bookings/15_reservation_nights.sql
+\ir 03-bookings/16_reservation_occupants.sql
 \ir 03-bookings/30_deposit_schedules.sql
 \ir 03-bookings/31_allotments.sql
 \ir 03-bookings/32_booking_sources.sql

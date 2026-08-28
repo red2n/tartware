@@ -55,6 +55,7 @@ export * from "./recommendations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./report-rows.js";
 export * from "./reservations.js";
+export * from "./restrictions.js";
 export * from "./revenue.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./revenue-rows.js";
@@ -63,6 +64,7 @@ export * from "./rooms.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./rooms-rows.js";
 export * from "./settings.js";
+export * from "./stay-plan.js";
 export * from "./system-admin.js";
 export * from "./system-session.js";
 export * from "./tenants.js";

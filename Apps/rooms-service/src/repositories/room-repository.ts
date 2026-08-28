@@ -12,6 +12,7 @@
 import type { AmenityCatalogItem, RoomListRow, UpdateRoomInput } from "@tartware/schemas";
 
 import { query } from "../lib/db.js";
+import { roomNotHeldForWindow, unassignedRoomNightsByType } from "../sql/room-occupancy.js";
 
 /** Search window and filters for {@link selectAvailableRooms}. */
 export type AvailableRoomSearchOptions = {
@@ -180,19 +181,10 @@ const SELECT_AVAILABLE_ROOMS_SQL = `WITH group_holds AS (
        GROUP BY a.room_type_id
      ),
      unassigned_reservations AS (
-       -- Pre-aggregate unassigned reservation counts per room type.
+       -- Pre-aggregate rooms sold but not yet allocated, per room type.
        -- Excludes the current reservation ($10) so its own vacant slot is
        -- not hidden when the room picker is opened during check-in.
-       SELECT ures.room_type_id, COUNT(ures.id) AS unassigned_count
-       FROM public.reservations ures
-       WHERE ures.tenant_id = $1::uuid
-         AND ures.property_id = $2::uuid
-         AND (ures.room_number IS NULL OR ures.room_number = '')
-         AND ures.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
-         AND ures.check_in_date < $4::date
-         AND ures.check_out_date > $3::date
-         AND ($10::uuid IS NULL OR ures.id != $10::uuid)
-       GROUP BY ures.room_type_id
+       ${unassignedRoomNightsByType("$1", "$2", "$3", "$4", "$10")}
      ),
      available_rooms AS (
        SELECT
@@ -239,16 +231,8 @@ const SELECT_AVAILABLE_ROOMS_SQL = `WITH group_holds AS (
              AND ils.stay_start < $4::date
              AND ils.stay_end > $3::date
          )
-         -- Exclude rooms with overlapping active reservations (room assigned)
-         AND NOT EXISTS (
-           SELECT 1 FROM public.reservations res
-           WHERE res.room_number = r.room_number
-             AND res.tenant_id = r.tenant_id
-             AND res.property_id = r.property_id
-             AND res.status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN')
-             AND res.check_in_date < $4::date
-             AND res.check_out_date > $3::date
-         )
+         -- Exclude rooms already held for any night of the window
+         AND ${roomNotHeldForWindow("r", "$3", "$4")}
      )
      SELECT ar.room_id, ar.room_number, ar.room_type_id, ar.type_name, ar.floor,
             ar.building_id, ar.building_name,

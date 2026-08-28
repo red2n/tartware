@@ -59,6 +59,16 @@ type LockReservationInput = {
   reason: string;
   correlationId?: string;
   ttlSeconds?: number;
+  /**
+   * The lock's identity, and what makes a retry idempotent — the guard stores
+   * it as the lock id and excludes it from its own conflict search.
+   *
+   * It defaults to the reservation id, which was correct while a booking held
+   * exactly one room. A multi-room booking must pass one key per room, or the
+   * second room's lock overwrites the first and the reservation ends up
+   * holding a single room's worth of inventory.
+   */
+  idempotencyKey?: string;
 };
 
 export type { AvailabilityGuardMetadata };
@@ -268,7 +278,8 @@ export const lockReservationHold = async (
 
   const method = "lockRoom";
   const startedAt = performance.now(); // L1 Cache Check: Key by full lock scope (room + dates, not just reservationId)
-  const cacheKey = `${input.reservationId}:${input.roomId ?? "any"}:${input.stayStart.toISOString()}:${input.stayEnd.toISOString()}`;
+  const lockKey = input.idempotencyKey ?? input.reservationId;
+  const cacheKey = `${lockKey}:${input.roomId ?? "any"}:${input.stayStart.toISOString()}:${input.stayEnd.toISOString()}`;
   const cached = await LOCK_CACHE.get(cacheKey);
   if (cached) {
     recordAvailabilityGuardRequest(method, "L1_CACHE_HIT");
@@ -288,7 +299,7 @@ export const lockReservationHold = async (
           stayEnd: input.stayEnd.toISOString(),
           reason: input.reason,
           correlationId: input.correlationId ?? "",
-          idempotencyKey: input.reservationId,
+          idempotencyKey: lockKey,
           ttlSeconds: input.ttlSeconds ?? 0,
           metadata: {},
         }),
@@ -314,7 +325,7 @@ export const lockReservationHold = async (
     if (status === "LOCKED") {
       const result: AvailabilityGuardMetadata = {
         status,
-        lockId: response.lock?.id ?? input.reservationId,
+        lockId: response.lock?.id ?? lockKey,
       };
       // Populate L1 cache for 5 seconds with full scope key
       LOCK_CACHE.primeMany([[cacheKey, result]]);

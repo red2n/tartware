@@ -6,13 +6,19 @@ import {
   ReservationDetailSchema,
   type ReservationGridRow,
   type ReservationListRow,
+  type ReservationNightSummary,
+  type ReservationRoomSummary,
   type ReservationGridItem as SchemaReservationGridItem,
   ReservationGridItemSchema as SchemaReservationGridItemSchema,
   type ReservationListItem as SchemaReservationListItem,
   ReservationListItemSchema as SchemaReservationListItemSchema,
 } from "@tartware/schemas";
 import { query } from "../lib/db.js";
-import { RESERVATION_GRID_SQL, RESERVATION_LIST_SQL } from "../sql/reservation-queries.js";
+import {
+  RESERVATION_GRID_SQL,
+  RESERVATION_LIST_SQL,
+  RESERVATION_ROOMS_SQL,
+} from "../sql/reservation-queries.js";
 
 export { ReservationDetailSchema, type ReservationDetail };
 export { CheckInBriefSchema, type CheckInBrief };
@@ -366,6 +372,14 @@ export const getReservationById = async (options: {
     [options.reservationId, options.tenantId],
   );
 
+  // Fetch the rooms this booking holds, each with its per-night rates. A
+  // reservation is no longer one room at one price, so the detail response has
+  // to carry the shape the record actually has.
+  const { rows: roomRows } = await query<Record<string, unknown>>(RESERVATION_ROOMS_SQL, [
+    options.reservationId,
+    options.tenantId,
+  ]);
+
   // Fetch status history
   const { rows: historyRows } = await query<Record<string, unknown>>(
     `SELECT previous_status, new_status, change_reason, changed_by, changed_at
@@ -386,6 +400,32 @@ export const getReservationById = async (options: {
         balance: toNumberOrFallback(folioRows[0].balance, 0),
       }
     : undefined;
+
+  const rooms = roomRows.map((rm) => ({
+    reservation_room_id: String(rm.reservation_room_id),
+    room_sequence: toNonNegativeInt(rm.room_sequence, 1) || 1,
+    room_type_id: String(rm.room_type_id),
+    room_type_name: rm.room_type_name ? String(rm.room_type_name) : undefined,
+    room_id: rm.room_id ? String(rm.room_id) : undefined,
+    room_number: rm.room_number ? String(rm.room_number) : undefined,
+    status: String(rm.status ?? "PENDING"),
+    adults: toNonNegativeInt(rm.adults, 1),
+    children: toNonNegativeInt(rm.children, 0),
+    infants: toNonNegativeInt(rm.infants, 0),
+    do_not_move: Boolean(rm.do_not_move),
+    check_in_date: String(rm.check_in_date ?? ""),
+    check_out_date: String(rm.check_out_date ?? ""),
+    total_amount: toNumberOrFallback(rm.total_amount, 0),
+    nights:
+      (rm.nights as ReservationNightSummary[] | null)?.map((night) => ({
+        stay_date: String(night.stay_date),
+        rate_amount: toNumberOrFallback(night.rate_amount, 0),
+        currency: String(night.currency ?? "USD"),
+        rate_code: night.rate_code ? String(night.rate_code) : undefined,
+        is_complimentary: Boolean(night.is_complimentary),
+      })) ?? [],
+    occupants: (rm.occupants as ReservationRoomSummary["occupants"]) ?? undefined,
+  }));
 
   const statusHistory = historyRows.map((h) => ({
     previous_status: String(h.previous_status ?? ""),
@@ -442,6 +482,7 @@ export const getReservationById = async (options: {
     no_show_fee: row.no_show_fee != null ? toNumberOrFallback(row.no_show_fee) : undefined,
     promo_code: row.promo_code ?? undefined,
     folio,
+    rooms: rooms.length > 0 ? rooms : undefined,
     status_history: statusHistory.length > 0 ? statusHistory : undefined,
     created_at: toStringDate(row.created_at as string | Date | null) ?? "",
     updated_at: toStringDate(row.updated_at as string | Date | null),

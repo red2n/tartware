@@ -358,7 +358,9 @@ export interface CommandDispatchWriter {
 	 * out. Callers treat `false` as "replay" rather than letting the unique
 	 * index surface as a 500.
 	 */
-	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<boolean>;
+	insertCommandDispatch: (
+		input: InsertCommandDispatchInput,
+	) => Promise<boolean>;
 	findCommandDispatchByRequest: (
 		tenantId: string,
 		commandName: string,
@@ -373,7 +375,9 @@ export interface CommandDispatchDependencies<Membership = unknown> {
 	) => CommandResolution<Membership>;
 	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
 	/** See {@link CommandDispatchWriter.insertCommandDispatch} for the `false` case. */
-	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<boolean>;
+	insertCommandDispatch: (
+		input: InsertCommandDispatchInput,
+	) => Promise<boolean>;
 	findCommandDispatchByRequest: (
 		tenantId: string,
 		commandName: string,

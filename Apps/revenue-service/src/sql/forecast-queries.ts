@@ -10,19 +10,32 @@
  * Params: $1 tenant_id, $2 property_id, $3 business_date, $4 actor_id
  */
 export const FORECAST_EVALUATE_SQL = `
+  -- Occupancy, revenue and ADR are all defined per room-night, which is the
+  -- grain reservation_nights is stored at. Counting reservations made a
+  -- three-room booking one occupied room; SUM(room_rate) summed a nightly
+  -- scalar as if it were the night's revenue. Complimentary nights occupy a
+  -- room and earn nothing, so they count towards occupancy only.
   WITH actuals AS (
     SELECT
-      COUNT(DISTINCT r.id) AS occupied_rooms,
-      COALESCE(SUM(r.room_rate), 0) AS room_revenue,
-      CASE WHEN COUNT(r.id) > 0
-        THEN ROUND(AVG(r.room_rate)::numeric, 2) ELSE 0 END AS actual_adr
-    FROM reservations r
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
-      AND r.status IN ('CHECKED_IN', 'CHECKED_OUT')
-      AND r.is_deleted = false
-      AND r.check_in_date <= $3::date
-      AND r.check_out_date > $3::date
+      COUNT(n.reservation_night_id) AS occupied_rooms,
+      COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS room_revenue,
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+        THEN ROUND(
+          (SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+           / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary))::numeric,
+          2)
+        ELSE 0 END AS actual_adr
+    FROM reservation_nights n
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND n.stay_date = $3::date
+      AND COALESCE(n.is_deleted, false) = false
+      AND EXISTS (
+        SELECT 1 FROM reservations r
+        WHERE r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+          AND r.status IN ('CHECKED_IN', 'CHECKED_OUT')
+          AND r.is_deleted = false
+      )
   ),
   room_count AS (
     SELECT COUNT(id) AS total_rooms
@@ -144,7 +157,16 @@ export const FORECAST_ADJUST_SQL = `
         THEN ROUND((COALESCE(forecasted_occupancy_percent, 0) / 100) * $7::numeric, 2)
       ELSE forecasted_revpar
     END,
-    manual_adjustment = TRUE,
+    -- manual_adjustment is the override *delta* (DECIMAL), not a flag. It was
+    -- assigned TRUE, so every manual adjustment failed with 42804 and no
+    -- forecast could be overridden at all. The delta is the room-revenue
+    -- movement this adjustment causes; adjustments that leave revenue alone
+    -- record no delta. adjusted_at is what marks a row as manually touched.
+    manual_adjustment = CASE
+      WHEN $8 IS NOT NULL
+        THEN ROUND($8::numeric - COALESCE(room_revenue_forecast, 0), 2)
+      ELSE COALESCE(manual_adjustment, 0)
+    END,
     manual_adjustment_reason = $9,
     adjusted_by = $10::uuid,
     adjusted_at = CURRENT_TIMESTAMP,

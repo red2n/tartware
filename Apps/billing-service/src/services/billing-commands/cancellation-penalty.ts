@@ -3,6 +3,7 @@ import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingCancellationPenaltyCommandSchema } from "../../schemas/billing-commands.js";
+import { firstNightTotalSql } from "../../sql/stay-night-basis.js";
 import {
   asUuid,
   BillingCommandError,
@@ -34,16 +35,19 @@ export const chargeCancellationPenalty = async (
     property_id: string;
     status: string;
     room_rate: string | null;
+    first_night_total: string | null;
     currency_code: string | null;
     rate_id: string | null;
     cancellation_policy_snapshot: { type: string; hours: number; penalty: number } | null;
     check_in_date: string | null;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code, rate_id,
-            cancellation_policy_snapshot,
-            check_in_date::text AS check_in_date
-     FROM public.reservations
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
+    `SELECT r.id AS reservation_id, r.property_id, r.status, r.room_rate,
+            r.currency AS currency_code, r.rate_id,
+            r.cancellation_policy_snapshot,
+            r.check_in_date::text AS check_in_date,
+            ${firstNightTotalSql("r")} AS first_night_total
+     FROM public.reservations r
+     WHERE r.tenant_id = $1::uuid AND r.id = $2::uuid
      LIMIT 1`,
     [context.tenantId, command.reservation_id],
   );
@@ -135,8 +139,16 @@ export const chargeCancellationPenalty = async (
         );
       }
 
-      // Fall back to first-night room rate
-      penaltyAmount = ratePenalty ?? (reservation.room_rate ? Number(reservation.room_rate) : 0);
+      // Fall back to the stay's actual first night, summed across every room
+      // held. room_rate is the last resort for reservations written before the
+      // nights table existed.
+      penaltyAmount =
+        ratePenalty ??
+        (reservation.first_night_total
+          ? Number(reservation.first_night_total)
+          : reservation.room_rate
+            ? Number(reservation.room_rate)
+            : 0);
 
       if (penaltyAmount <= 0) {
         throw new BillingCommandError(

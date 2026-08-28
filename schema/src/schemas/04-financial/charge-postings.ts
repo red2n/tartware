@@ -30,6 +30,11 @@ export const ChargePostingsSchema = z.object({
 	property_id: uuid,
 	folio_id: uuid,
 	reservation_id: uuid.optional(),
+	/**
+	 * Which room of a multi-room booking this line belongs to. Room charges post
+	 * per room per night, so `reservation_id` alone no longer identifies a line.
+	 */
+	reservation_room_id: uuid.optional(),
 	guest_id: uuid.optional(),
 	posting_date: z.coerce.date(),
 	posting_time: z.coerce.date(),

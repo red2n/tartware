@@ -10,6 +10,8 @@ import { z } from "zod";
 import { uuid } from "../shared/base-schemas.js";
 import { HousekeepingStatusEnum, RoomStatusEnum } from "../shared/enums.js";
 
+import { RestrictionRefusalSchema } from "./restrictions.js";
+
 // -----------------------------------------------------------------------------
 // Room Type Schemas
 // -----------------------------------------------------------------------------
@@ -535,6 +537,21 @@ export const AvailabilityResponseSchema = z.object({
 	check_out_date: z.string(),
 	nights: z.number(),
 	offset: z.number(),
+	/**
+	 * Room types the search dropped because a booking restriction forbids this
+	 * stay, with the reasons. Returned rather than silently omitted so a front
+	 * desk can see *why* a room type is not on offer — "closed to arrival on
+	 * the 10th" is actionable, an empty list is not.
+	 */
+	restricted_room_types: z
+		.array(
+			z.object({
+				room_type_id: z.string(),
+				room_type_name: z.string().optional(),
+				refusals: z.array(RestrictionRefusalSchema),
+			}),
+		)
+		.optional(),
 });
 
 export type AvailabilityResponse = z.infer<typeof AvailabilityResponseSchema>;

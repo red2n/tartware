@@ -8,7 +8,9 @@
 import { BaseSource, type PipelineContext } from "@tartware/candidate-pipeline";
 
 import { query } from "../lib/db.js";
+import { roomNotHeldForWindow } from "../sql/room-occupancy.js";
 import type { RoomCandidate, RoomRecommendationQuery } from "../types.js";
+
 import { type RoomQueryRow, rowToRoomCandidate } from "./room-query-utils.js";
 
 export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery, RoomCandidate> {
@@ -69,15 +71,7 @@ export class UpgradeOpportunitySource extends BaseSource<RoomRecommendationQuery
         AND COALESCE(rt.base_price, 100) > $6 * 1.2
         -- But within reasonable upgrade range (< 2x average)
         AND COALESCE(rt.base_price, 100) < $6 * 2.0
-        AND NOT EXISTS (
-          SELECT 1 FROM reservations res
-          WHERE res.tenant_id = r.tenant_id
-            AND res.property_id = r.property_id
-            AND res.room_number = r.room_number
-            AND LOWER(res.status::TEXT) NOT IN ('cancelled', 'no_show', 'checked_out')
-            AND res.check_in_date < $4
-            AND res.check_out_date > $3
-        )
+        AND ${roomNotHeldForWindow("r", "$3", "$4")}
       ORDER BY COALESCE(rt.base_price, 100) ASC
       LIMIT 20
       `,

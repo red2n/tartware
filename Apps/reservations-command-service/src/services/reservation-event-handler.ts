@@ -7,9 +7,16 @@ import type {
   ReservationEventHandlerResult,
   ReservationUpdatedEvent,
 } from "@tartware/schemas";
+import { expandStayPlan, StayPlanError } from "@tartware/schemas";
 
-import { query } from "../lib/db.js";
+import { query, withTransaction } from "../lib/db.js";
 import { reservationsLogger } from "../logger.js";
+import {
+  resyncStayWindow,
+  syncReservationTotalsFromNights,
+  writeReservationStay,
+} from "../repositories/reservation-stay-repository.js";
+
 import { dispatchNotificationCommand } from "./reservation-commands/notification-dispatch.js";
 
 /**
@@ -118,6 +125,23 @@ export const processReservationEvent = async (
   }
 };
 
+/**
+ * `reservation_rooms.status` is the per-room lifecycle, which is narrower than
+ * the reservation's own: a room is never INQUIRY, QUOTED, WAITLISTED or
+ * EXPIRED. Anything outside the room lifecycle starts the room at PENDING.
+ */
+const ROOM_STATUSES = new Set([
+  "PENDING",
+  "CONFIRMED",
+  "CHECKED_IN",
+  "CHECKED_OUT",
+  "CANCELLED",
+  "NO_SHOW",
+]);
+
+const toRoomStatus = (reservationStatus: string | undefined): string =>
+  reservationStatus && ROOM_STATUSES.has(reservationStatus) ? reservationStatus : "PENDING";
+
 const handleReservationCreated = async (event: ReservationCreatedEvent): Promise<string> => {
   const payload = event.payload;
   const tenantId = event.metadata.tenantId;
@@ -136,18 +160,48 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
     : "Unknown Guest";
   const guestEmail = guest?.email ?? "unknown@unknown.com";
 
-  // Calculate nightly room_rate from total_amount / nights
   const checkIn = new Date(payload.check_in_date);
   const checkOut = new Date(payload.check_out_date);
-  const nights = Math.max(
-    1,
-    Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)),
-  );
   const totalAmount = Number(payload.total_amount ?? 0);
-  const roomRate = Number((totalAmount / nights).toFixed(2));
+  const currency = payload.currency ?? "USD";
 
-  await query(
-    `
+  // The stay is the source of truth for what this booking holds and what it
+  // costs. `rooms` on the event is what the command accepted; when it is
+  // absent this expands to the pre-multi-room shape — one room for the whole
+  // window at an even split of total_amount — so an old producer keeps
+  // working unchanged.
+  let plan: ReturnType<typeof expandStayPlan>;
+  try {
+    plan = expandStayPlan(
+      {
+        check_in_date: checkIn,
+        check_out_date: checkOut,
+        room_type_id: payload.room_type_id,
+        guest_id: payload.guest_id,
+        currency,
+        rate_code: payload.rate_code,
+        total_amount: totalAmount,
+      },
+      payload.rooms,
+    );
+  } catch (error) {
+    if (error instanceof StayPlanError) {
+      // A plan this malformed will never expand, however many times it is
+      // redelivered — fail it straight to the DLQ rather than burn the ladder.
+      throw new ReservationEventError(error.code, error.message);
+    }
+    throw error;
+  }
+
+  // `reservations.room_rate` is the deprecated scalar kept for readers that
+  // have not moved to reservation_nights yet. The first night of the first
+  // room is the advertised nightly rate; total_amount / nights stopped being
+  // that the moment a booking could hold more than one room.
+  const roomRate = plan.rooms[0]?.nights[0]?.rate_amount ?? 0;
+
+  await withTransaction(async (client) => {
+    await client.query(
+      `
       INSERT INTO reservations (
         id,
         tenant_id,
@@ -208,33 +262,47 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
           travel_agent_id = COALESCE(reservations.travel_agent_id, EXCLUDED.travel_agent_id),
           updated_at = NOW();
     `,
-    [
-      reservationId,
+      [
+        reservationId,
+        tenantId,
+        payload.property_id,
+        payload.guest_id,
+        payload.room_type_id,
+        payload.check_in_date,
+        payload.check_out_date,
+        payload.booking_date ?? new Date().toISOString(),
+        payload.status ?? "PENDING",
+        payload.source ?? "DIRECT",
+        (payload as { reservation_type?: string }).reservation_type ?? "TRANSIENT",
+        roomRate,
+        totalAmount,
+        payload.currency ?? "USD",
+        guestName,
+        guestEmail,
+        confirmation,
+        payload.cancellation_policy_snapshot
+          ? JSON.stringify(payload.cancellation_policy_snapshot)
+          : null,
+        payload.market_segment_id ?? null,
+        payload.eta ?? null,
+        payload.company_id ?? null,
+        payload.travel_agent_id ?? null,
+      ],
+    );
+
+    // Rooms, nights and occupants share the reservation's transaction: a room
+    // with no nights, or nights with no room, is not a state any reader should
+    // ever observe.
+    await writeReservationStay(client, {
       tenantId,
-      payload.property_id,
-      payload.guest_id,
-      payload.room_type_id,
-      payload.check_in_date,
-      payload.check_out_date,
-      payload.booking_date ?? new Date().toISOString(),
-      payload.status ?? "PENDING",
-      payload.source ?? "DIRECT",
-      (payload as { reservation_type?: string }).reservation_type ?? "TRANSIENT",
-      roomRate,
-      totalAmount,
-      payload.currency ?? "USD",
-      guestName,
-      guestEmail,
-      confirmation,
-      payload.cancellation_policy_snapshot
-        ? JSON.stringify(payload.cancellation_policy_snapshot)
-        : null,
-      payload.market_segment_id ?? null,
-      payload.eta ?? null,
-      payload.company_id ?? null,
-      payload.travel_agent_id ?? null,
-    ],
-  );
+      propertyId: payload.property_id,
+      reservationId,
+      plan,
+      status: toRoomStatus(payload.status),
+      fallbackName: guestName,
+      fallbackEmail: guestEmail,
+    });
+  });
 
   // N+1 fix: Auto-create folio AND increment guest booking count in parallel.
   // Both are best-effort (errors are logged inside each helper, never thrown);
@@ -339,7 +407,51 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
     WHERE id = $1 AND tenant_id = $2
   `;
 
-  await query(sql, values);
+  // A stay-date change is a diff over reservation_nights, not an overwrite of
+  // a scalar: extend inserts the nights the window gained, shorten deletes the
+  // ones it lost, and the surviving nights keep the price they were booked at.
+  // Both halves share the reservation's transaction so the row and its nights
+  // can never disagree about how long the stay is.
+  const stayWindowChanged =
+    payload.check_in_date !== undefined || payload.check_out_date !== undefined;
+
+  if (!stayWindowChanged) {
+    await query(sql, values);
+    return payload.id;
+  }
+
+  await withTransaction(async (client) => {
+    await client.query(sql, values);
+
+    const { rows } = await client.query<{ check_in_date: Date; check_out_date: Date }>(
+      `SELECT check_in_date, check_out_date
+         FROM reservations
+        WHERE id = $1::uuid AND tenant_id = $2::uuid
+        LIMIT 1`,
+      [payload.id, tenantId],
+    );
+    const stay = rows[0];
+    if (!stay) {
+      throw new ReservationEventError(
+        "RESERVATION_NOT_FOUND",
+        `Reservation ${payload.id} not found for tenant ${tenantId}`,
+      );
+    }
+
+    await resyncStayWindow(client, {
+      tenantId,
+      reservationId: payload.id,
+      checkInDate: stay.check_in_date,
+      checkOutDate: stay.check_out_date,
+    });
+
+    // The caller's own total wins when it sent one; otherwise the nights are
+    // the price, which is what makes an extend actually cost more.
+    if (payload.total_amount === undefined) {
+      await syncReservationTotalsFromNights(client, tenantId, payload.id);
+    }
+  });
+
   return payload.id;
 };
 

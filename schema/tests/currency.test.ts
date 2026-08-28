@@ -26,7 +26,11 @@ describe("ISO 4217 exponents", () => {
 		expect(getCurrencyExponent(code)).toBe(exponent);
 	});
 
-	it.each(["usd", " USD ", "Usd"])("normalises casing and padding for %s", (code) => {
+	it.each([
+		"usd",
+		" USD ",
+		"Usd",
+	])("normalises casing and padding for %s", (code) => {
 		expect(getCurrencyExponent(code)).toBe(2);
 	});
 

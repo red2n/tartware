@@ -9,6 +9,8 @@
 
 import { z } from "zod";
 
+import { StayPlanInputSchema } from "../../api/stay-plan.js";
+
 const RateCodeSchema = z
 	.string()
 	.min(2)
@@ -79,6 +81,14 @@ export const ReservationCreateCommandSchema = z.object({
 	 * bookings report as UNCLASSIFIED rather than being forced into a segment.
 	 */
 	market_segment_id: z.string().uuid().optional(),
+	/**
+	 * Rooms held by this booking, each with its own nights. Omit it and the
+	 * booking is one room of `room_type_id` for the whole window, priced at an
+	 * even split of `total_amount` — the behaviour that existed before the
+	 * stay tables. See `expandStayPlan` in @tartware/schemas for what each
+	 * omitted field falls back to.
+	 */
+	rooms: StayPlanInputSchema.optional(),
 });
 
 export type ReservationCreateCommand = z.infer<

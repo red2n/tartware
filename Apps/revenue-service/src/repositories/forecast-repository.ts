@@ -26,18 +26,38 @@ const ACTIVE_ROOM_COUNT_SQL = `SELECT COUNT(id) AS total_rooms FROM rooms
        AND status NOT IN ('OUT_OF_ORDER')
        AND is_deleted = false`;
 
+/**
+ * Occupancy and ADR per historic day, read off the per-night ledger.
+ *
+ * Counting reservations undercounted a booking that held three rooms as one
+ * occupied room, and `SUM(room_rate)` summed a nightly scalar as though it
+ * were the night's revenue. `reservation_nights` already is one row per room
+ * per night, which is exactly the grain occupancy and ADR are defined at.
+ *
+ * Complimentary nights occupy a room but earn nothing, so they count towards
+ * occupancy and are excluded from both halves of the ADR ratio.
+ */
 const TRAINING_HISTORY_SQL = `SELECT
        d.dt::date AS business_date,
-       COUNT(DISTINCT r.id) AS occupied,
-       COALESCE(SUM(r.room_rate), 0) AS room_revenue,
-       CASE WHEN COUNT(r.id) > 0
-         THEN ROUND(AVG(r.room_rate)::numeric, 2) ELSE 0 END AS adr
+       COUNT(n.reservation_night_id) AS occupied,
+       COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS room_revenue,
+       CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+         THEN ROUND(
+           (SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+            / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary))::numeric,
+           2)
+         ELSE 0 END AS adr
      FROM generate_series($3::date, CURRENT_DATE - 1, '1 day') AS d(dt)
-     LEFT JOIN reservations r
-       ON r.tenant_id = $1::uuid AND r.property_id = $2::uuid
-       AND r.status IN ('CHECKED_IN', 'CHECKED_OUT')
-       AND r.is_deleted = false
-       AND r.check_in_date <= d.dt AND r.check_out_date > d.dt
+     LEFT JOIN reservation_nights n
+       ON n.tenant_id = $1::uuid AND n.property_id = $2::uuid
+       AND n.stay_date = d.dt
+       AND COALESCE(n.is_deleted, false) = false
+       AND EXISTS (
+         SELECT 1 FROM reservations r
+         WHERE r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+           AND r.status IN ('CHECKED_IN', 'CHECKED_OUT')
+           AND r.is_deleted = false
+       )
      GROUP BY d.dt
      ORDER BY d.dt`;
 

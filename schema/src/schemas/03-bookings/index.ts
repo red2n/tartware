@@ -3,7 +3,7 @@
  * Module: schemas/03-bookings/index.ts
  * Description: Bookings & Reservations Schemas (Category 03)
  * Category: 03-bookings
- * Primary exports: reservations, reservation-status-history, reservation-traces, guest-preferences, guest-notes, guest-feedback, guest-loyalty-programs, guest-documents, guest-communications, booking-sources, market-segments, allotments, deposit-schedules, communication-templates, automated-messages, waitlist-entries, reservation-event-offsets, reservation-command-lifecycle, reservation-rate-fallbacks, inventory-lock-audits, reservation-guard-locks, roll-service-shadow-ledgers, roll-service-backfill-checkpoint, roll-service-consumer-offsets
+ * Primary exports: reservations, reservation-status-history, reservation-traces, guest-preferences, guest-notes, guest-feedback, guest-loyalty-programs, guest-documents, guest-communications, booking-sources, market-segments, allotments, deposit-schedules, communication-templates, automated-messages, waitlist-entries, reservation-event-offsets, reservation-command-lifecycle, reservation-rate-fallbacks, reservation-rooms, reservation-nights, reservation-occupants, inventory-lock-audits, reservation-guard-locks, roll-service-shadow-ledgers, roll-service-backfill-checkpoint, roll-service-consumer-offsets
  * @table n/a
  * @category 03-bookings
  * Ownership: Schema package
@@ -13,7 +13,7 @@
  * Bookings & Reservations Schemas (Category 03)
  * Reservations, allotments, guest communications, feedback
  *
- * Tables: 23
+ * Tables: 26
  */
 
 export * from "./allotments.js";
@@ -37,7 +37,10 @@ export * from "./market-segments.js";
 export * from "./reservation-command-lifecycle.js";
 export * from "./reservation-event-offsets.js";
 export * from "./reservation-guard-locks.js";
+export * from "./reservation-nights.js";
+export * from "./reservation-occupants.js";
 export * from "./reservation-rate-fallbacks.js";
+export * from "./reservation-rooms.js";
 export * from "./reservation-status-history.js";
 export * from "./reservation-traces.js";
 export * from "./reservations.js";

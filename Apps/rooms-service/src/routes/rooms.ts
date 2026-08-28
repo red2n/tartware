@@ -17,6 +17,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { rankRooms } from "../services/index.js";
+import { filterRestrictedRoomTypes } from "../services/restriction-filter.js";
 import {
   activateRoom,
   createRoom,
@@ -692,13 +693,25 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
       const coutDate = new Date(q.check_out_date);
       const nights = Math.max(1, Math.round((coutDate.getTime() - cinDate.getTime()) / 86400000));
 
+      // A search must not offer a stay the booking path would refuse. Same
+      // evaluator, same rules — the only difference is that a refusal here
+      // drops the room type from the results instead of raising.
+      const { rooms: sellableRooms, restricted } = await filterRestrictedRoomTypes({
+        tenantId: q.tenant_id,
+        propertyId: q.property_id,
+        arrival: cinDate,
+        departure: coutDate,
+        rooms,
+      });
+
       return {
-        available_rooms: rooms,
-        total_count: rooms.length,
+        available_rooms: sellableRooms,
+        total_count: sellableRooms.length,
         check_in_date: q.check_in_date,
         check_out_date: q.check_out_date,
         nights,
         offset: q.offset,
+        ...(restricted.length > 0 ? { restricted_room_types: restricted } : {}),
       };
     },
   );

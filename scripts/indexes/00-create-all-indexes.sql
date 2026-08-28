@@ -52,6 +52,9 @@
 
 \ir 03-bookings/10_reservations_indexes.sql
 \ir 03-bookings/11_reservation_status_history_indexes.sql
+\ir 03-bookings/14_reservation_rooms_indexes.sql
+\ir 03-bookings/15_reservation_nights_indexes.sql
+\ir 03-bookings/16_reservation_occupants_indexes.sql
 \ir 03-bookings/30_deposit_schedules_indexes.sql
 \ir 03-bookings/31_allotments_indexes.sql
 \ir 03-bookings/32_booking_sources_indexes.sql

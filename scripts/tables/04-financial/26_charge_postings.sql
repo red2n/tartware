@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS charge_postings (
     -- Folio Association
     folio_id UUID NOT NULL,
     reservation_id UUID, -- Optional: may not be linked to reservation
+    reservation_room_id UUID, -- Which room of the booking this line belongs to (reservation_rooms); NULL for charges that are not room-specific
     guest_id UUID,
 
     -- Transaction Details
@@ -170,6 +171,8 @@ COMMENT ON COLUMN charge_postings.void_posting_id IS 'Reference to the void tran
 COMMENT ON COLUMN charge_postings.gl_account IS 'General ledger account code for accounting integration';
 COMMENT ON COLUMN charge_postings.routing_rule_id IS 'FK to folio_routing_rules — set when charge was auto-routed by the routing engine';
 COMMENT ON COLUMN charge_postings.audit_run_id IS 'UUID of the night audit run that created this posting; NULL for manually-posted charges';
+-- reservation_room_id is commented in the migration section below: on an
+-- already deployed database the column does not exist until the ALTER runs.
 
 -- Idempotent migration: add audit_run_id to existing deployments
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS audit_run_id UUID;
@@ -238,6 +241,12 @@ ALTER TABLE charge_postings SET (
 -- Kept in lockstep with migration 2026-08-10-001.
 ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 COMMENT ON COLUMN charge_postings.created_at IS 'Row creation timestamp; backfilled from posting_date for rows predating this column';
+
+-- Which room of a multi-room booking a line belongs to. Night audit posts one
+-- room charge per room per night, so (reservation_id, business_date) stopped
+-- being unique for a ROOM posting the moment a booking could hold two rooms.
+ALTER TABLE charge_postings ADD COLUMN IF NOT EXISTS reservation_room_id UUID;
+COMMENT ON COLUMN charge_postings.reservation_room_id IS 'FK to reservation_rooms — which room of a multi-room booking this line is for. Room charges are posted per room per night, so reservation_id alone no longer identifies a folio line.';
 
 
 

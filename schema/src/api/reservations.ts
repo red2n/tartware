@@ -44,6 +44,61 @@ export type ReservationStatusHistoryEntry = z.infer<
 >;
 
 /**
+ * One priced night of one room, as returned on a reservation detail.
+ */
+export const ReservationNightSummarySchema = z.object({
+	stay_date: z.string(),
+	rate_amount: z.number(),
+	currency: z.string(),
+	rate_code: z.string().optional(),
+	is_complimentary: z.boolean(),
+});
+export type ReservationNightSummary = z.infer<
+	typeof ReservationNightSummarySchema
+>;
+
+/**
+ * One room held by a reservation, with the nights it is held for.
+ *
+ * The detail response carried a single `room_number` and a flat `room_rate`,
+ * which cannot describe a booking of three rooms or a rate that changes on
+ * night 3. Those two fields remain for readers that have not moved; `rooms` is
+ * the shape that actually matches the reservation.
+ */
+export const ReservationRoomSummarySchema = z.object({
+	reservation_room_id: z.string(),
+	room_sequence: z.number().int(),
+	room_type_id: z.string(),
+	room_type_name: z.string().optional(),
+	room_id: z.string().optional(),
+	room_number: z.string().optional(),
+	status: z.string(),
+	adults: z.number().int(),
+	children: z.number().int(),
+	infants: z.number().int(),
+	do_not_move: z.boolean(),
+	check_in_date: z.string(),
+	check_out_date: z.string(),
+	/** Sum of this room's chargeable nights. */
+	total_amount: z.number(),
+	nights: z.array(ReservationNightSummarySchema),
+	occupants: z
+		.array(
+			z.object({
+				occupant_id: z.string(),
+				guest_id: z.string().optional(),
+				full_name: z.string(),
+				occupant_type: z.string(),
+				is_primary: z.boolean(),
+			}),
+		)
+		.optional(),
+});
+export type ReservationRoomSummary = z.infer<
+	typeof ReservationRoomSummarySchema
+>;
+
+/**
  * Detail schema for single reservation fetch — richer than list item.
  * Includes nested folio summary, status history, and display fields.
  */
@@ -97,6 +152,11 @@ export const ReservationDetailSchema = z.object({
 	created_at: z.string(),
 	updated_at: z.string().optional(),
 	version: z.string().default("0"),
+	/**
+	 * Rooms held by this booking, each with its per-night rates. Always at
+	 * least one room for a reservation created since the stay tables existed.
+	 */
+	rooms: z.array(ReservationRoomSummarySchema).optional(),
 });
 export type ReservationDetail = z.infer<typeof ReservationDetailSchema>;
 

@@ -208,7 +208,6 @@ export type GuestGdprEraseCommand = z.infer<typeof GuestGdprEraseCommandSchema>;
  * `operations.incident.report` on 2026-08-13. See ui-gaps/17-command-reachability.md.
  */
 
-
 export const GuestPreferenceUpdateCommandSchema = z.object({
 	guest_id: z.string().uuid(),
 	preferences: GuestPreferencesSchema,

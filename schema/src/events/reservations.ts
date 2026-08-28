@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 
+import { StayPlanInputSchema } from "../api/stay-plan.js";
 import { ReservationsSchema } from "../schemas/03-bookings/reservations.js";
 
 const RateCodeSchema = z
@@ -105,6 +106,13 @@ const ReservationCreatePayloadSchema = z.object({
 	 */
 	cancellation_policy_snapshot:
 		CancellationPolicySnapshotSchema.nullable().optional(),
+	/**
+	 * Rooms and per-night rates as accepted by the command. Carried on the
+	 * event so the handler writes exactly what was quoted rather than
+	 * re-deriving a price the guest never saw. Absent = one room for the whole
+	 * window at an even split of `total_amount`.
+	 */
+	rooms: StayPlanInputSchema.optional(),
 });
 
 export const ReservationCreatedEventSchema = z.object({

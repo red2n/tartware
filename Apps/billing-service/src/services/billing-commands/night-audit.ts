@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
 import type { NightAuditCheckpointStatus } from "@tartware/schemas";
 import { roundToCurrency } from "@tartware/schemas";
@@ -8,6 +9,7 @@ import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { getPropertyBaseCurrency } from "../../lib/fx-rate-lookup.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.js";
+
 import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
 import { buildGlBatchForDate } from "./ledger.js";
 
@@ -268,11 +270,27 @@ export const executeNightAudit = async (
             for (const ns of noShows) {
               const res = await queryWithClient(
                 client,
-                `UPDATE reservations
+                // The no-show fee is the first night of the stay across every room
+                // held — a two-room booking that never arrived forfeits two rooms,
+                // and a split-rate stay forfeits the rate it was actually booked at
+                // for that night rather than an averaged scalar. Falls back to
+                // room_rate for rows that have no nights yet.
+                `UPDATE reservations r
                  SET status = 'NO_SHOW', is_no_show = true,
-                     no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                     no_show_date = NOW(),
+                     no_show_fee = COALESCE(
+                       (SELECT SUM(n.rate_amount)
+                          FROM reservation_nights n
+                         WHERE n.reservation_id = r.id
+                           AND n.tenant_id = r.tenant_id
+                           AND n.stay_date = r.check_in_date
+                           AND n.is_complimentary = false
+                           AND COALESCE(n.is_deleted, false) = false),
+                       r.room_rate,
+                       0
+                     ),
                      version = version + 1, updated_at = NOW()
-                 WHERE id = $1 AND version = $2`,
+                 WHERE r.id = $1 AND r.version = $2`,
                 [ns.id, ns.version],
               );
               rowCount += res.rowCount ?? 0;
@@ -384,11 +402,27 @@ export const executeNightAudit = async (
         for (const ns of noShows) {
           const res = await queryWithClient(
             client,
-            `UPDATE reservations
+            // The no-show fee is the first night of the stay across every room
+            // held — a two-room booking that never arrived forfeits two rooms,
+            // and a split-rate stay forfeits the rate it was actually booked at
+            // for that night rather than an averaged scalar. Falls back to
+            // room_rate for rows that have no nights yet.
+            `UPDATE reservations r
              SET status = 'NO_SHOW', is_no_show = true,
-                 no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                 no_show_date = NOW(),
+                 no_show_fee = COALESCE(
+                   (SELECT SUM(n.rate_amount)
+                      FROM reservation_nights n
+                     WHERE n.reservation_id = r.id
+                       AND n.tenant_id = r.tenant_id
+                       AND n.stay_date = r.check_in_date
+                       AND n.is_complimentary = false
+                       AND COALESCE(n.is_deleted, false) = false),
+                   r.room_rate,
+                   0
+                 ),
                  version = version + 1, updated_at = NOW()
-             WHERE id = $1 AND version = $2`,
+             WHERE r.id = $1 AND r.version = $2`,
             [ns.id, ns.version],
           );
           rowCount += res.rowCount ?? 0;
@@ -722,19 +756,50 @@ async function postRoomChargesAndTaxes(
   // once per run rather than per reservation.
   const baseCurrency = await getPropertyBaseCurrency(client, tenantId, propertyId);
 
+  // One row per room per night, not per reservation. The rate comes from
+  // reservation_nights for *this* business date, so a stay whose rate changes
+  // on night 3 posts the night-3 price on night 3 — the flat
+  // `reservations.room_rate` posted the same number every night and silently
+  // lost every split-rate stay. A booking holding three rooms posts three
+  // lines. Complimentary nights occupy the room and post nothing, so they are
+  // filtered out here rather than skipped by the zero-amount guard below.
   const inHouseResult = await queryWithClient<{
     id: string;
+    reservation_room_id: string;
     room_rate: string;
     room_number: string;
+    room_sequence: number;
     total_amount: string;
     guest_id: string;
     folio_id: string | null;
-    version: number | null;
+    /** BIGINT — the driver returns it as bigint, not number. */
+    version: string | number | bigint | null;
   }>(
     client,
-    `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id,
+    `SELECT r.id,
+            rr.reservation_room_id,
+            n.rate_amount AS room_rate,
+            -- This room's own number only. Borrowing the reservation's scalar
+            -- labelled every room of a multi-room booking with the one room
+            -- that happened to be assigned; an unassigned room falls back to
+            -- its sequence instead.
+            rr.room_number,
+            rr.room_sequence,
+            r.total_amount,
+            r.guest_id,
             f.folio_id, f.version
      FROM reservations r
+     JOIN reservation_rooms rr
+       ON rr.reservation_id = r.id
+      AND rr.tenant_id = r.tenant_id
+      AND COALESCE(rr.is_deleted, false) = false
+      AND rr.status <> 'CANCELLED'
+     JOIN reservation_nights n
+       ON n.reservation_room_id = rr.reservation_room_id
+      AND n.tenant_id = r.tenant_id
+      AND n.stay_date = $3::date
+      AND COALESCE(n.is_deleted, false) = false
+      AND n.is_complimentary = false
      LEFT JOIN LATERAL (
        SELECT folio_id, version FROM public.folios
        WHERE tenant_id = $1 AND reservation_id = r.id
@@ -742,8 +807,9 @@ async function postRoomChargesAndTaxes(
        ORDER BY created_at DESC LIMIT 1
      ) f ON true
      WHERE r.tenant_id = $1 AND r.property_id = $2 AND r.status = 'CHECKED_IN'
-       AND r.is_deleted = false`,
-    [tenantId, propertyId],
+       AND r.is_deleted = false
+     ORDER BY r.id, rr.room_sequence`,
+    [tenantId, propertyId, auditDate],
   );
 
   // Fetch tax config ONCE: include compound order for cascading tax support
@@ -771,6 +837,12 @@ async function postRoomChargesAndTaxes(
   );
   const taxes = taxResult.rows;
 
+  // Folio version as this run has advanced it, keyed by folio. Seeded from the
+  // snapshot each row carries and bumped on every successful update below.
+  // `folios.version` is BIGINT, which the driver hands back as a bigint, so the
+  // arithmetic has to stay in bigint and bind as a string.
+  const folioVersions = new Map<string, bigint>();
+
   for (const res of inHouseResult.rows) {
     const roomRate = Number(res.room_rate ?? 0);
     if (roomRate <= 0) continue;
@@ -779,19 +851,27 @@ async function postRoomChargesAndTaxes(
     if (!folioId) continue;
 
     // Idempotency: skip if a non-voided room charge already exists for this
-    // reservation on this business date from any prior audit run.
+    // *room* on this business date from any prior audit run. Keying on the
+    // reservation alone would post one room of a multi-room booking and call
+    // the rest done. Rows written before reservation_room_id existed carry
+    // NULL, so they are matched on the reservation instead — a re-run over
+    // historic dates must not double-post them.
     const { rows: existing } = await queryWithClient<{ cnt: string }>(
       client,
       `SELECT COUNT(posting_id) AS cnt FROM charge_postings
-       WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
+       WHERE tenant_id = $1::uuid
          AND business_date = $3::date AND charge_code = 'ROOM'
          AND audit_run_id IS NOT NULL
-         AND COALESCE(is_voided, false) = false`,
-      [tenantId, res.id, auditDate],
+         AND COALESCE(is_voided, false) = false
+         AND (
+           reservation_room_id = $4::uuid
+           OR (reservation_room_id IS NULL AND reservation_id = $2::uuid)
+         )`,
+      [tenantId, res.id, auditDate, res.reservation_room_id],
     );
     if (Number(existing[0]?.cnt ?? 0) > 0) {
       appLogger.debug(
-        { reservationId: res.id, auditDate },
+        { reservationId: res.id, reservationRoomId: res.reservation_room_id, auditDate },
         "Night audit: room charge already posted, skipping",
       );
       chargesPosted++; // count as posted for metrics
@@ -799,17 +879,18 @@ async function postRoomChargesAndTaxes(
     }
 
     // Post room charge (inside the outer withTransaction — no nested TX needed)
+    const roomLabel = res.room_number ? `Room ${res.room_number}` : `Room ${res.room_sequence}`;
     await queryWithClient(
       client,
       `INSERT INTO public.charge_postings (
-         tenant_id, property_id, folio_id, reservation_id,
+         tenant_id, property_id, folio_id, reservation_id, reservation_room_id,
          transaction_type, posting_type, charge_code, charge_description,
          quantity, unit_price, subtotal, total_amount,
          currency_code, posting_time, business_date,
          notes, audit_run_id, created_by, updated_by
        ) VALUES (
-         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-         'CHARGE', 'DEBIT', 'ROOM', 'Room charge - night audit',
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $10::uuid,
+         'CHARGE', 'DEBIT', 'ROOM', $11,
          1, $5, $5, $5,
          UPPER($9), NOW(), $6::date,
          'Auto-posted by night audit', $7::uuid, $8::uuid, $8::uuid
@@ -824,6 +905,8 @@ async function postRoomChargesAndTaxes(
         auditRunId,
         actorId,
         baseCurrency,
+        res.reservation_room_id,
+        `Room charge - night audit (${roomLabel})`,
       ],
     );
 
@@ -842,13 +925,13 @@ async function postRoomChargesAndTaxes(
       await queryWithClient(
         client,
         `INSERT INTO public.charge_postings (
-           tenant_id, property_id, folio_id, reservation_id,
+           tenant_id, property_id, folio_id, reservation_id, reservation_room_id,
            transaction_type, posting_type, charge_code, charge_description,
            quantity, unit_price, subtotal, total_amount,
            currency_code, posting_time, business_date,
            department_code, notes, audit_run_id, created_by, updated_by
          ) VALUES (
-           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid, $12::uuid,
            'CHARGE', 'DEBIT', 'ROOM_TAX', $5,
            1, $6, $6, $6,
            UPPER($11), NOW(), $7::date,
@@ -866,6 +949,7 @@ async function postRoomChargesAndTaxes(
           auditRunId,
           actorId,
           baseCurrency,
+          res.reservation_room_id,
         ],
       );
       totalTaxAmount += taxAmount;
@@ -874,8 +958,15 @@ async function postRoomChargesAndTaxes(
 
     // Update folio balance (room charge + all taxes)
     const chargeTotal = roomRate + totalTaxAmount;
-    const folioVersion = res.version;
-    if (folioVersion === null || folioVersion === undefined) {
+
+    // Every room of a booking posts to the same folio, so the version read at
+    // the top of this function is only right for the first of them. Tracking
+    // our own increments keeps the optimistic check meaningful — it still
+    // catches a writer outside this transaction — without a multi-room booking
+    // failing the audit against itself on its second room.
+    const trackedVersion = folioVersions.get(folioId);
+    const snapshotVersion = trackedVersion ?? (res.version == null ? null : BigInt(res.version));
+    if (snapshotVersion === null) {
       throw new Error(`Night audit: version missing for folio ${folioId} on reservation ${res.id}`);
     }
 
@@ -887,7 +978,7 @@ async function postRoomChargesAndTaxes(
            version = version + 1,
            updated_at = NOW(), updated_by = $3::uuid
        WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
-      [tenantId, chargeTotal, actorId, folioId, folioVersion],
+      [tenantId, chargeTotal, actorId, folioId, snapshotVersion.toString()],
     );
 
     if (rowCount === 0) {
@@ -897,6 +988,7 @@ async function postRoomChargesAndTaxes(
         `Night audit: concurrent modification on folio ${folioId} for reservation ${res.id}`,
       );
     }
+    folioVersions.set(folioId, snapshotVersion + 1n);
     chargesPosted++;
   }
 

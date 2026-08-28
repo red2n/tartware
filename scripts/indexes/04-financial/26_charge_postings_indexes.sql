@@ -41,6 +41,15 @@ CREATE INDEX idx_charge_postings_reservation
 
 COMMENT ON INDEX idx_charge_postings_reservation IS 'Reservation charge tracking';
 
+-- Room-night idempotency: night audit asks "has this room already been posted
+-- for this business date?" once per room per run, so the lookup has to be
+-- indexed or the audit degrades to a sequential scan per room.
+CREATE INDEX IF NOT EXISTS idx_charge_postings_reservation_room_night
+    ON charge_postings(tenant_id, reservation_room_id, business_date, charge_code)
+    WHERE deleted_at IS NULL AND reservation_room_id IS NOT NULL;
+
+COMMENT ON INDEX idx_charge_postings_reservation_room_night IS 'Per-room-per-night posting idempotency for night audit';
+
 -- Guest transaction history
 CREATE INDEX idx_charge_postings_guest
     ON charge_postings(tenant_id, guest_id, posting_date DESC)
@@ -99,6 +108,6 @@ COMMENT ON INDEX idx_charge_postings_department IS 'Departmental revenue reporti
 
 -- Success message
 \echo '✓ Indexes created: charge_postings (26/37)'
-\echo '  - 11 performance indexes'
+\echo '  - 12 performance indexes'
 \echo '  - Critical for financial operations'
 \echo ''

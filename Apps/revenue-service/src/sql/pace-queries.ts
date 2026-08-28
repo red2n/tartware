@@ -8,8 +8,8 @@
 
 /**
  * Booking pace report: for each future calendar date in the range, return:
- * - OTB rooms (confirmed reservations covering that date)
- * - OTB revenue (sum of room_rate for those reservations)
+ * - OTB rooms (room-nights held for that date)
+ * - OTB revenue (sum of the per-night rates for those room-nights)
  * - Last year OTB rooms & revenue for the equivalent date
  * - 7-day and 30-day pickup from demand_calendar
  * - rooms_available and occupancy forecast from demand_calendar
@@ -22,34 +22,45 @@ export const BOOKING_PACE_REPORT_SQL = `
            EXTRACT(DOW FROM d)::int AS day_of_week
     FROM generate_series($3::date, $4::date, '1 day') AS d
   ),
+  -- On the books is counted in room-nights, not reservations: a booking that
+  -- holds three rooms puts three rooms on the books, and its revenue for a
+  -- given date is that date's rates, not a flat scalar repeated per night.
   current_otb AS (
     SELECT
       d.calendar_date,
-      COUNT(DISTINCT r.id) AS otb_rooms,
-      COALESCE(SUM(r.room_rate), 0) AS otb_revenue
+      COUNT(n.reservation_night_id) AS otb_rooms,
+      COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS otb_revenue
     FROM date_series d
-    LEFT JOIN reservations r
-      ON r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
-      AND r.status IN ('CONFIRMED', 'CHECKED_IN')
-      AND r.is_deleted = false
-      AND r.check_in_date <= d.calendar_date
-      AND r.check_out_date > d.calendar_date
+    LEFT JOIN reservation_nights n
+      ON n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND n.stay_date = d.calendar_date
+      AND COALESCE(n.is_deleted, false) = false
+      AND EXISTS (
+        SELECT 1 FROM reservations r
+        WHERE r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+          AND r.status IN ('CONFIRMED', 'CHECKED_IN')
+          AND r.is_deleted = false
+      )
     GROUP BY d.calendar_date
   ),
   ly_otb AS (
     SELECT
       (d.calendar_date + INTERVAL '1 year')::date AS future_date,
-      COUNT(DISTINCT r.id) AS ly_otb_rooms,
-      COALESCE(SUM(r.room_rate), 0) AS ly_otb_revenue
+      COUNT(n.reservation_night_id) AS ly_otb_rooms,
+      COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS ly_otb_revenue
     FROM date_series d
-    LEFT JOIN reservations r
-      ON r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
-      AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
-      AND r.is_deleted = false
-      AND r.check_in_date <= (d.calendar_date - INTERVAL '1 year')::date
-      AND r.check_out_date > (d.calendar_date - INTERVAL '1 year')::date
+    LEFT JOIN reservation_nights n
+      ON n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND n.stay_date = (d.calendar_date - INTERVAL '1 year')::date
+      AND COALESCE(n.is_deleted, false) = false
+      AND EXISTS (
+        SELECT 1 FROM reservations r
+        WHERE r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+          AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
+          AND r.is_deleted = false
+      )
     GROUP BY d.calendar_date
   ),
   dc AS (
