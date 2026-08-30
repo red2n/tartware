@@ -10,6 +10,7 @@
  * @module reservation-routes
  */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { COMMAND_AUTHORITY_FLOOR } from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
@@ -54,10 +55,17 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
-  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  /**
+   * Write scope for the command routes below.
+   *
+   * `COMMAND_AUTHORITY_FLOOR` is the lowest role any command declares, not a
+   * blanket relaxation: the command's own floor in `COMMAND_MIN_ROLE` decides
+   * the outcome inside `acceptCommand`. Holding this at MANAGER, as it was,
+   * refused a clerk their own routine work before that check could run.
+   */
   const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "MANAGER",
+    minRole: COMMAND_AUTHORITY_FLOOR,
     requiredModules: "core",
   });
 

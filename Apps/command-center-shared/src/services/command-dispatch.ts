@@ -194,6 +194,18 @@ export const createCommandDispatchService = <Membership>(
       );
     }
 
+    if (resolution.status === "PERMISSION_DENIED") {
+      // One message for every refusal shape. Telling an unauthorised caller
+      // whether the command exists, what role it needs, or whether someone
+      // denied it to them specifically maps out the permission model for
+      // anyone with a login; the reason travels in the log, not the response.
+      throw new CommandDispatchError(
+        403,
+        "COMMAND_PERMISSION_DENIED",
+        `Not authorised to run ${input.commandName}.`,
+      );
+    }
+
     if (resolution.status === "DISABLED") {
       throw new CommandDispatchError(
         409,

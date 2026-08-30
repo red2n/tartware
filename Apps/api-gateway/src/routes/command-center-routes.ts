@@ -21,6 +21,7 @@ import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   BatchUpdateCommandFeaturesRequestSchema,
   BatchUpdateCommandFeaturesResponseSchema,
+  COMMAND_AUTHORITY_FLOOR,
   CommandBatchDetailSchema,
   CommandBatchSummarySchema,
   CommandDefinitionSchema,
@@ -280,10 +281,15 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
   app.post(
     "/v1/commands/:commandName/execute",
     {
+      // The route gate is membership, not authority: `COMMAND_AUTHORITY_FLOOR`
+      // is the lowest role any command declares, so anything stricter here
+      // would refuse a clerk their own check-in before the per-command floor
+      // in `COMMAND_MIN_ROLE` ever got to answer. That floor is computed from
+      // the declarations, so it cannot fall out of step with them.
       preHandler: app.withTenantScope({
         resolveTenantId: (request) =>
           (request.body as { tenant_id?: string })?.tenant_id ?? undefined,
-        minRole: "MANAGER",
+        minRole: COMMAND_AUTHORITY_FLOOR,
         requiredModules: "core",
       }),
       config: {
@@ -316,7 +322,6 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         commandName,
         tenantId: body.tenant_id,
         payload: body.payload,
-        requiredRole: "MANAGER",
         requiredModules: "core",
       });
     },

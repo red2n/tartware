@@ -1,3 +1,5 @@
+import { resolveCommandAuthority } from "@tartware/schemas";
+
 import { commandRegistryConfig, gatewayConfig } from "../config.js";
 import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
@@ -68,6 +70,11 @@ type CommandResolution =
     }
   | { status: "NOT_FOUND" }
   | { status: "MODULES_MISSING"; missingModules: string[] }
+  | {
+      status: "PERMISSION_DENIED";
+      reason: ReturnType<typeof resolveCommandAuthority>["reason"];
+      requiredRole: string | null;
+    }
   | { status: "DISABLED"; reason: string };
 
 export const startCommandRegistry = async (): Promise<void> => {
@@ -203,6 +210,33 @@ export const resolveCommandForTenant = ({
   const missingModules = requiredModules.filter((moduleId) => !tenantModules.has(moduleId));
   if (missingModules.length > 0) {
     return { status: "MODULES_MISSING", missingModules };
+  }
+
+  // Authority before availability: a caller who may not run this command should
+  // be told that, not that the command happens to be switched off for their
+  // tenant. `resolveCommandAuthority` refuses a command with no declared floor,
+  // so a new command is unreachable until someone decides who may run it.
+  const authority = resolveCommandAuthority({
+    commandName,
+    role: membership.role,
+    permissions: membership.permissions,
+  });
+  if (!authority.allowed) {
+    registryLogger.warn(
+      {
+        commandName,
+        tenantId,
+        role: membership.role,
+        requiredRole: authority.requiredRole,
+        reason: authority.reason,
+      },
+      "command refused: caller lacks the authority for this command",
+    );
+    return {
+      status: "PERMISSION_DENIED",
+      reason: authority.reason,
+      requiredRole: authority.requiredRole,
+    };
   }
 
   const feature = resolveFeature(commandName, tenantId);

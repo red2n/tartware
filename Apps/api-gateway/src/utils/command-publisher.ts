@@ -20,7 +20,6 @@ type SubmitCommandOptions = {
   commandName: string;
   tenantId: string;
   payload: Record<string, unknown>;
-  requiredRole?: TenantMembership["role"];
   requiredModules?: string | string[];
 };
 
@@ -29,7 +28,6 @@ const ensureTenantAccess = (
   reply: FastifyReply,
   tenantId: string,
   options: {
-    minRole?: TenantMembership["role"];
     requiredModules?: string | string[];
   } = {},
 ): TenantMembership | null => {
@@ -41,11 +39,6 @@ const ensureTenantAccess = (
   const membership = request.auth.getMembership(tenantId);
   if (!membership) {
     reply.forbidden("TENANT_ACCESS_DENIED");
-    return null;
-  }
-
-  if (options.minRole && !request.auth.hasRole(tenantId, options.minRole)) {
-    reply.forbidden("TENANT_ROLE_INSUFFICIENT");
     return null;
   }
 
@@ -72,11 +65,15 @@ export const submitCommand = async ({
   commandName,
   tenantId,
   payload,
-  requiredRole = "MANAGER",
   requiredModules,
 }: SubmitCommandOptions): Promise<FastifyReply> => {
+  // No `minRole` here on purpose. Every caller used to pass `"MANAGER"`, which
+  // is the finding: one level for all 202 commands. The per-command floor is
+  // declared in `COMMAND_MIN_ROLE` and applied inside `acceptCommand`, where the
+  // command name and the membership are both in hand — checking a second,
+  // coarser ladder first would only mask it. Membership and module entitlement
+  // still gate here, because neither depends on which command was asked for.
   const membership = ensureTenantAccess(request, reply, tenantId, {
-    minRole: requiredRole,
     requiredModules,
   });
 

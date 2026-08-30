@@ -19,6 +19,7 @@
 #   PHASE 4   USALI property-level isolation assertions
 #   PHASE 5   Cross-tenant isolation assertions (DB + API)
 #   PHASE 5b  Module access requests (raise → review → module toggled)
+#   PHASE 5c  Per-command authority — role tiers, grants and denies (A02)
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -2365,6 +2366,215 @@ if [[ -n "${MODREQ_MOD:-}" && -n "${MODREQ_MOD2:-}" ]]; then
   echo ""
 else
   skip "Module access requests" "no locked modules available on Tenant B"
+  echo ""
+fi
+
+TOKEN="$TOKEN_A"
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5c — PER-COMMAND AUTHORITY (A02)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Every command used to require MANAGER, so the clerk who checks a guest in held
+# the same authority as the one who writes off bad debt. Each command now
+# declares its own floor (COMMAND_MIN_ROLE, schema/src/api/command-permissions.ts)
+# and one membership can be granted or denied a single command on top of that
+# (user_tenant_associations.permissions).
+#
+# Four behaviours, all through the gateway:
+#
+#   STAFF runs a STAFF-tier command                      202  — not locked out
+#   STAFF is refused MANAGER / ADMIN / OWNER tiers       403  — tiers discriminate
+#   A grant admits one command without promoting anyone  202  — the escape hatch
+#   A deny beats the role that would otherwise pass      403  — separation of duties
+#
+# Runs against Tenant B: it creates two users and dispatches one guest VIP
+# update, none of which should land on the long-lived seeded Tenant A. The
+# grants are cleared at the end so a re-run starts from the same place.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5c: Per-Command Authority                                    ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+AUTH_STAFF_USER="clerk.${RUN_TAG}"
+AUTH_STAFF_PASS="ClerkPass123!"
+AUTH_ADMIN_USER="controller.${RUN_TAG}"
+AUTH_ADMIN_PASS="ControllerPass123!"
+
+# Log in and echo the token, or an empty string. Used for the two users this
+# phase creates; the shared get-token.sh assumes the seeded credentials.
+auth_login() {
+  curl -s -X POST "$GW/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$1\",\"password\":\"$2\"}" \
+    | jq -r '.access_token // .token // .data.access_token // empty'
+}
+
+# Assert a command was refused *for lack of authority*.
+#
+# `assert_http ... 403` alone is not enough and quietly cost this phase three
+# real assertions: the module gate (COMMAND_MODULES_NOT_ENABLED) also answers
+# 403 and is checked first, so a probe aimed at a module the membership does
+# not hold passes while never reaching the authority code at all.
+assert_denied() {
+  local label="$1" code="$2"
+  local body_code; body_code=$(jq -r '.code // empty' "$RESP_FILE" 2>/dev/null)
+  if [[ "$code" == "403" && "$body_code" == "COMMAND_PERMISSION_DENIED" ]]; then
+    pass "$label"
+  else
+    fail "$label" "http=$code code=${body_code:-none}"
+  fi
+}
+
+# Submit a command as an explicit token and echo only the status code. The
+# shared post() helper reads $TOKEN, and this phase needs three different ones
+# interleaved.
+auth_cmd() {
+  local tok="$1" name="$2" payload="$3"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/commands/$name/execute" \
+    -H "Authorization: Bearer $tok" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $(gen_uuid)" \
+    -d "{\"tenant_id\":\"$TID_B\",\"payload\":$payload}"
+}
+
+TOKEN="$TOKEN_B"
+
+# A room and a guest in Tenant B to aim the two accepted commands at.
+# The rooms list keys its identifier `room_id`, the guests list `id`; take
+# either from either so a shape change here degrades to a SKIP, not a wrong id.
+get "$GW/v1/rooms?tenant_id=$TID_B&property_id=$PID_B1&limit=5" >/dev/null
+AUTH_ROOM_ID=$(resp_first "room_id"); [[ -z "$AUTH_ROOM_ID" ]] && AUTH_ROOM_ID=$(resp_first "id")
+get "$GW/v1/guests?tenant_id=$TID_B&limit=5" >/dev/null
+AUTH_GUEST_ID=$(resp_first "id"); [[ -z "$AUTH_GUEST_ID" ]] && AUTH_GUEST_ID=$(resp_first "guest_id")
+
+if [[ -z "$AUTH_ROOM_ID" || -z "$AUTH_GUEST_ID" ]]; then
+  skip "Per-command authority" "no room/guest available on Tenant B"
+else
+  # ── The two users ──────────────────────────────────────────────────────────
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID_B\",
+    \"username\": \"$AUTH_STAFF_USER\",
+    \"email\": \"${AUTH_STAFF_USER}@beaconhotels.test\",
+    \"password\": \"$AUTH_STAFF_PASS\",
+    \"first_name\": \"Dana\", \"last_name\": \"Okafor\",
+    \"role\": \"STAFF\"
+  }")
+  assert_http "A02: STAFF user created on Tenant B" "2" "$code"
+  AUTH_STAFF_UID=$(resp_field "id")
+
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID_B\",
+    \"username\": \"$AUTH_ADMIN_USER\",
+    \"email\": \"${AUTH_ADMIN_USER}@beaconhotels.test\",
+    \"password\": \"$AUTH_ADMIN_PASS\",
+    \"first_name\": \"Ines\", \"last_name\": \"Varga\",
+    \"role\": \"ADMIN\"
+  }")
+  assert_http "A02: ADMIN user created on Tenant B" "2" "$code"
+
+  # POST /v1/users inserts the association without `modules`, so it defaults to
+  # ["core"] and every billing/AR probe below would be refused by the module
+  # gate before the authority check ever ran. Writing the tenant's current list
+  # back re-syncs it onto every association, these two included.
+  TOKEN="$TOKEN_B"
+  get "$GW/v1/tenants/$TID_B/modules" >/dev/null
+  AUTH_MODS=$(jq -c '.modules // ["core"]' "$RESP_FILE" 2>/dev/null || echo '["core"]')
+  code=$(put "$GW/v1/tenants/$TID_B/modules" "{\"modules\":$AUTH_MODS}")
+  assert_http "A02: modules re-synced onto the new memberships" "200" "$code"
+
+  TOKEN_STAFF=$(auth_login "$AUTH_STAFF_USER" "$AUTH_STAFF_PASS")
+  TOKEN_ADMIN=$(auth_login "$AUTH_ADMIN_USER" "$AUTH_ADMIN_PASS")
+
+  if [[ -z "$TOKEN_STAFF" || -z "$TOKEN_ADMIN" ]]; then
+    fail "A02: tokens for the new users" "staff=[${TOKEN_STAFF:0:6}] admin=[${TOKEN_ADMIN:0:6}]"
+  else
+    pass "A02: tokens issued for the STAFF and ADMIN users"
+
+    # ── STAFF reaches its own tier ───────────────────────────────────────────
+    # The route gate used to be MANAGER, so this was a 403 before A02 — a clerk
+    # could not mark a room clean without a manager's login.
+    code=$(auth_cmd "$TOKEN_STAFF" "rooms.status.update" \
+      "{\"room_id\":\"$AUTH_ROOM_ID\",\"status\":\"AVAILABLE\"}")
+    assert_http "A02: STAFF may run a STAFF-tier command" "202" "$code"
+
+    # ── and is refused each tier above it ────────────────────────────────────
+    code=$(auth_cmd "$TOKEN_STAFF" "guest.set_vip" \
+      "{\"guest_id\":\"$AUTH_GUEST_ID\",\"vip_level\":\"VIP2\"}")
+    assert_denied "A02: STAFF refused a MANAGER-tier command" "$code"
+    # The response must not name the role it wanted, or a failed caller can map
+    # the whole model by walking the catalogue.
+    if grep -qiE "OWNER|ADMIN|MANAGER|STAFF" "$RESP_FILE"; then
+      fail "A02: refusal does not disclose the required role" "$(cat "$RESP_FILE")"
+    else
+      pass "A02: refusal does not disclose the required role"
+    fi
+
+    code=$(auth_cmd "$TOKEN_STAFF" "billing.comp.post" \
+      "{\"property_id\":\"$PID_B1\",\"folio_id\":\"$(gen_uuid)\",\"comp_type\":\"MISCELLANEOUS\",\"amount\":10}")
+    assert_denied "A02: STAFF refused an ADMIN-tier command" "$code"
+
+    code=$(auth_cmd "$TOKEN_STAFF" "ar.city_ledger.write_off" \
+      "{\"property_id\":\"$PID_B1\",\"city_ledger_id\":\"$(gen_uuid)\",\"amount\":10,\"reason\":\"A02 authority probe\"}")
+    assert_denied "A02: STAFF refused an OWNER-tier command" "$code"
+
+    # ── the grant admits one command, without promoting anyone ───────────────
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [\"guest.set_vip\"], \"deny\": []
+    }")
+    assert_http "A02: grant recorded on the membership" "200" "$code"
+
+    code=$(auth_cmd "$TOKEN_STAFF" "guest.set_vip" \
+      "{\"guest_id\":\"$AUTH_GUEST_ID\",\"vip_level\":\"VIP2\"}")
+    assert_http "A02: granted command now accepted for the same STAFF user" "202" "$code"
+
+    # The grant is one command, not a promotion.
+    code=$(auth_cmd "$TOKEN_STAFF" "billing.comp.post" \
+      "{\"property_id\":\"$PID_B1\",\"folio_id\":\"$(gen_uuid)\",\"comp_type\":\"MISCELLANEOUS\",\"amount\":10}")
+    assert_denied "A02: grant does not carry to its neighbours" "$code"
+
+    # ── a deny beats the role that would otherwise pass ──────────────────────
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [], \"deny\": [\"rooms.status.update\"]
+    }")
+    assert_http "A02: deny recorded on the membership" "200" "$code"
+
+    code=$(auth_cmd "$TOKEN_STAFF" "rooms.status.update" \
+      "{\"room_id\":\"$AUTH_ROOM_ID\",\"status\":\"AVAILABLE\"}")
+    assert_denied "A02: denied command refused although the role reaches it" "$code"
+
+    # ── no granting upward past yourself ─────────────────────────────────────
+    TOKEN="$TOKEN_ADMIN"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [\"ar.city_ledger.write_off\"], \"deny\": []
+    }")
+    assert_http "A02: ADMIN cannot grant an OWNER-tier command" "403" "$code"
+    assert_eq "A02: escalation refusal names the rule" "true" \
+      "$(grep -qi "GRANT_EXCEEDS_GRANTOR_AUTHORITY" "$RESP_FILE" && echo true || echo false)"
+
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [\"billing.charge.viod\"], \"deny\": []
+    }")
+    assert_http "A02: a mistyped command name is rejected, not stored" "400" "$code"
+
+    # ── leave the membership as it was found ─────────────────────────────────
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [], \"deny\": []
+    }")
+    assert_http "A02: grants cleared" "200" "$code"
+  fi
   echo ""
 fi
 

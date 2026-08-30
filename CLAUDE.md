@@ -255,10 +255,10 @@ the system can do, it is **who is allowed to do it**.
 
 Three facts frame everything below:
 
-- **One permission level for all 203 commands.** `POST /v1/commands/:name/execute` requires
-  `MANAGER`, so the clerk who checks a guest in has the same authority as the one who writes off
-  bad debt. `user_tenant_associations.permissions` (JSONB) is loaded into every request's auth
-  context and read by nothing.
+- ~~**One permission level for all 202 commands.**~~ **Fixed by A02, 29 Aug.** Every command
+  required `MANAGER`, so the clerk who checked a guest in had the same authority as the one who
+  writes off bad debt, and `user_tenant_associations.permissions` (JSONB) was loaded into every
+  request's auth context and read by nothing. Both are now load-bearing — see "A02, as landed".
 - **Overrides are logged, never authorized.** Every bypass writes `flow_approvals`; nothing checks
   entitlement first. `force: true` on a payload is the whole mechanism — there is no supervisor
   step-up, no second actor, no re-auth anywhere in the repo.
@@ -273,7 +273,7 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
 | A01 | Critical | Four-eyes took `actioned_by` / `requested_by` from the **request body**, so the self-approval check compared two caller-supplied strings — defeated by typing a colleague's id. `required_role` was stored and never compared. | **done 28 Aug** |
-| A02 | Critical | No per-command permission, so no way to express an override as a distinct right. Everything is `MANAGER`. | open |
+| A02 | Critical | No per-command permission, so no way to express an override as a distinct right. Everything is `MANAGER`. | **done 29 Aug** |
 | A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | **done 28 Aug** |
 | A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | open |
 | A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | open |
@@ -283,6 +283,45 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
 | A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | open |
 | A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | open |
+
+**A02, as landed.** `COMMAND_MIN_ROLE` in `schema/src/api/command-permissions.ts` declares a floor
+for each of the 202 commands, on the same `TENANT_ROLE_PRIORITY` ladder A01 consolidated — no second
+ordering. Four tiers with a stated principle each: **STAFF** the work of a shift (check-in, post a
+charge, room status), **MANAGER** anything that reverses, waives, overrides or applies in bulk,
+**ADMIN** permanent ledger movements and the config that decides how money is recorded, and
+**OWNER** the five that undo a completed accounting control (`fiscal_period.reopen`,
+`date_roll.manual`, the three write-offs). No command is within reach of VIEWER, and a test asserts
+that.
+
+It is enforced in exactly one place — `resolveCommandForTenant`, which is the choke point inside
+`acceptCommand` and the first point that knows both the command name and the membership. So the
+13 `requiredRole: "MANAGER"` literals are gone rather than relaxed: a coarser ladder in front of the
+declared one silently wins whenever it is stricter. The route gates now use
+`COMMAND_AUTHORITY_FLOOR`, **computed** from the declarations so it cannot drift below them, and the
+proxy write scopes are untouched at `MANAGER`.
+
+**`user_tenant_associations.permissions` finally means something.** `{"commands":{"allow":[…],
+"deny":[…]}}` grants or removes one named command on one membership, written by
+`POST /v1/user-tenant-associations/command-permissions` (ADMIN, core-service) — the column had no
+write path at all, which would have left the grant unreachable. Both lists are absolute, an
+unknown command name is a 400 rather than a stored grant of nothing, and **a grantor cannot grant
+past their own role** (`GRANT_EXCEEDS_GRANTOR_AUTHORITY`), or an ADMIN could hand themselves an
+OWNER-tier command and the ladder would be one call deep. Exact names only — a
+`billing.*` wildcard is the shortcut this finding exists to remove. **Deny beats everything,
+including OWNER** (a hotel keeping its GM out of `charge.void` is separating duties), and an
+**undeclared command is refused outright** — a new command is unreachable until someone decides who
+may run it, which is how the single-`MANAGER` model happened in the first place. The 403 says only
+"not authorised"; the reason is logged, not returned, so a failed caller cannot map the model.
+Guardrail rule `command-required-role`, verified by reintroducing a literal. 37 unit tests
+(23 schema, 9 gateway, 5 core-service) plus **Phase 5c** of
+`executables/test-accounts-realdata/test-multi-tenant.sh`, which walks the four behaviours
+end-to-end on a real STAFF login.
+
+Two things this does **not** do: it is a floor per command, not per amount, so A06's
+`discountApprovalThresholds` still reads nothing; and it authorizes the *caller*, not a second
+actor, so A04's approval queue is still unentered. Noted while here: `guest.gdpr.rectify` and
+`guest.gdpr.restrict` are gateway routes naming commands that exist in neither the validator map
+nor the catalogue — they 400 on payload validation today and did before this change.
 
 **A03, as landed.** `resolveActorRole()` sits beside `resolveActorId` in `command-utils` and
 validates against `TenantRoleEnum`, so the literals it replaced cannot come back through it;

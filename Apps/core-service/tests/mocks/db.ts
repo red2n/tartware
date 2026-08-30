@@ -236,6 +236,26 @@ export const getMockModuleRequest = (id: string): MockModuleRequest | undefined 
 export const resetMockData = (): void => {
   mockUsers.clear();
   mockAssociations.clear();
+  // The auth plugin resolves roles from the hardcoded branch above, but routes
+  // that read or write the association row itself need a row to find. Seed the
+  // standard test memberships so "not found" stays a real outcome.
+  for (const [userId, role] of [
+    [TEST_USER_ID, "ADMIN"],
+    [OWNER_USER_ID, "OWNER"],
+    [MANAGER_USER_ID, "MANAGER"],
+    [STAFF_USER_ID, "STAFF"],
+    [VIEWER_USER_ID, "VIEWER"],
+  ] as const) {
+    mockAssociations.set(`seed-${userId}`, {
+      id: `seed-${userId}`,
+      user_id: userId,
+      tenant_id: TEST_TENANT_ID,
+      role,
+      is_active: true,
+      is_deleted: false,
+      deleted_at: null,
+    });
+  }
   mockTenants.clear();
   mockModuleRequests.clear();
   mockTenantModules = ["core"];
@@ -1036,6 +1056,27 @@ export const query = vi.fn(async <T extends pg.QueryResultRow = pg.QueryResultRo
       rows: [] as unknown as T[],
       rowCount: 1,
       command: "INSERT",
+      oid: 0,
+      fields: [],
+    };
+  }
+
+  if (
+    sql.startsWith("update public.user_tenant_associations") &&
+    sql.includes("set permissions =")
+  ) {
+    const userId = params?.[0];
+    const tenantId = params?.[1];
+    const association = Array.from(mockAssociations.values()).find(
+      (assoc) => assoc.user_id === userId && assoc.tenant_id === tenantId,
+    );
+    if (!association) {
+      return { rows: [] as T[], rowCount: 0, command: "UPDATE", oid: 0, fields: [] };
+    }
+    return {
+      rows: [{ id: association.id }] as unknown as T[],
+      rowCount: 1,
+      command: "UPDATE",
       oid: 0,
       fields: [],
     };

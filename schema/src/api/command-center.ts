@@ -10,6 +10,8 @@ import { z } from "zod";
 import { uuid } from "../shared/base-schemas.js";
 import { CommandFeatureStatusEnum } from "../shared/enums.js";
 
+import type { CommandAuthorityReason } from "./command-permissions.js";
+
 // =====================================================
 // IDEMPOTENCY — envelope-level deduplication contract
 // =====================================================
@@ -312,6 +314,17 @@ export type CommandResolution<Membership = unknown> =
 	| { status: "NOT_FOUND" }
 	| { status: "MODULES_MISSING"; missingModules: string[] }
 	| { status: "DISABLED"; reason: string }
+	/**
+	 * The caller holds the tenant and the module but not the authority for this
+	 * particular command. Resolved here rather than at the route because this is
+	 * the one point every accepted command passes through, and it is the first
+	 * point that knows both the command name and the membership.
+	 */
+	| {
+			status: "PERMISSION_DENIED";
+			reason: CommandAuthorityReason;
+			requiredRole: string | null;
+	  }
 	| {
 			status: "RESOLVED";
 			route: CommandRouteInfo;

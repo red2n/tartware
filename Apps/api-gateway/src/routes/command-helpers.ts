@@ -45,7 +45,6 @@ export const forwardGuestRegisterCommand = async (
     commandName: "guest.register",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -78,7 +77,6 @@ export const forwardGuestMergeCommand = async (
     commandName: "guest.merge",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -116,7 +114,6 @@ export const forwardCommandWithTenant = async ({
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
   });
 };
 
@@ -156,7 +153,6 @@ export const forwardCommandWithParamId = async ({
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
   });
 };
 
@@ -188,7 +184,6 @@ export const forwardTenantCommand = async ({
     commandName,
     tenantId,
     payload: normalizePayloadObject(request.body),
-    requiredRole: "MANAGER",
   });
 };
 
@@ -215,7 +210,6 @@ export const forwardGenericCommand = async (
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
   });
 };
 
@@ -279,7 +273,6 @@ export const forwardReservationCommand = async (
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -339,7 +332,6 @@ export const forwardHousekeepingAssignCommand = async (
     commandName: "housekeeping.task.assign",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -363,7 +355,6 @@ export const forwardHousekeepingCompleteCommand = async (
     commandName: "housekeeping.task.complete",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -405,7 +396,6 @@ export const forwardRoomInventoryCommand = async ({
     commandName: action === "release" ? "rooms.inventory.release" : "rooms.inventory.block",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -433,7 +423,6 @@ export const forwardBillingCaptureCommand = async (
     commandName: "billing.payment.capture",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -458,7 +447,6 @@ export const forwardBillingRefundCommand = async (
     commandName: "billing.payment.refund",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };

@@ -184,7 +184,7 @@
 | [ ] | PMS-18-05 | Pre-arrival upsell | PARTIAL | WS-05 | S | |
 | [ ] | PMS-18-06 | Multi-language guest communications | PARTIAL | WS-11 | S | |
 | [ ] | PMS-18-07 | Accessibility to WCAG 2.2 AA | PARTIAL | WS-24 | S | |
-| [ ] | PMS-19-02 | Screen and field-level permissions | PARTIAL | WS-22 | S | |
+| [ ] | PMS-19-02 | Screen and field-level permissions | PARTIAL | WS-22 | S | unchanged — this item is `field_configurations` enforcement. Adjacent and now done: **command**-level authority (audit A02, 29 Aug) — every command declares a role floor in `COMMAND_MIN_ROLE`, and `user_tenant_associations.permissions` grants or denies one command per membership via `POST /v1/user-tenant-associations/command-permissions`. |
 | [ ] | PMS-19-03 | Data-level restrictions | PARTIAL | WS-22 | S | |
 | [ ] | PMS-19-04 | Single sign-on | PARTIAL | WS-22 | S | |
 | [ ] | PMS-19-05 | Template and stationery editor | PARTIAL | WS-22 | S | |

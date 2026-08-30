@@ -77,6 +77,20 @@ const RULES = [
       "`forced` flag to record that a gate was bypassed",
   },
   {
+    id: "command-required-role",
+    // A role literal handed to the command path — `requiredRole: "MANAGER"`, or
+    // `minRole` on a scope that guards command submissions. Both were the same
+    // single level for all 202 commands, which is A02.
+    pattern: /\brequiredRole\s*:\s*["'`]/,
+    allow: [],
+    use: 'the per-command floor in COMMAND_MIN_ROLE (schema/src/api/command-permissions.ts), applied inside acceptCommand; COMMAND_AUTHORITY_FLOOR for a route-level membership gate',
+    why:
+      "every command write in the gateway passed requiredRole: \"MANAGER\", so the clerk who checks " +
+      "a guest in held the same authority as the one who writes off bad debt, and there was no way " +
+      "to express an override as a distinct right. A literal here re-establishes a second, coarser " +
+      "ladder in front of the declared one and silently wins whenever it is stricter",
+  },
+  {
     id: "command-error",
     pattern: /class \w*(Command|Event)Error extends Error\b/,
     allow: ["Apps/command-consumer-utils/src/command-utils.ts"],
