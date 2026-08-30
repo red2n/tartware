@@ -216,12 +216,21 @@ export class FiscalPeriodsComponent {
 
 		this.actionLoading.set(true);
 		try {
-			await this.api.post(`/tenants/${tenantId}/commands/billing.fiscal_period.reopen`, {
-				property_id: propertyId,
-				period_id: periodId,
-				reason: this.reopenReason(),
-			});
-			this.toast.success(this.i18n.t("Fiscal period reopen submitted. Refreshing periods..."));
+			const outcome = await this.api.post<{ status?: string }>(
+				`/tenants/${tenantId}/commands/billing.fiscal_period.reopen`,
+				{
+					property_id: propertyId,
+					period_id: periodId,
+					reason: this.reopenReason(),
+				},
+			);
+			// Reopening a closed period takes two people — see the write-off on
+			// the AR screen for the same handling.
+			this.toast.success(
+				outcome?.status === "pending_approval"
+					? this.i18n.t("Sent for a second approval — it runs when another owner releases it.")
+					: this.i18n.t("Fiscal period reopen submitted. Refreshing periods..."),
+			);
 			this.reopeningPeriodId.set(null);
 			await settleCommandReadModel(() => this.loadPeriods());
 		} catch (e) {

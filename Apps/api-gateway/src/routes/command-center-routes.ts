@@ -12,16 +12,24 @@
  *  GET  /v1/commands/features          — list commands with feature-flag status (authenticated)
  *  PATCH /v1/commands/:commandName/features  — update a single command's feature status
  *  PATCH /v1/commands/features/batch         — bulk-update feature statuses
- *  POST /v1/commands/:commandName/execute    — generic command execution (MANAGER+ role)
+ *  POST /v1/commands/:commandName/execute    — generic command execution (per-command floor)
  *  GET  /v1/tenants/:tenantId/commands/batches           — recent batch command runs
  *  GET  /v1/tenants/:tenantId/commands/batches/:batchId  — one run, every item outcome
+ *  GET  /v1/tenants/:tenantId/commands/approvals              — commands awaiting a second approver
+ *  GET  /v1/tenants/:tenantId/commands/approvals/:approvalId  — one request, with its payload
+ *  POST /v1/tenants/:tenantId/commands/approvals/:approvalId/approve — release it, and dispatch it
+ *  POST /v1/tenants/:tenantId/commands/approvals/:approvalId/reject  — refuse it, with a reason
  */
 
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
 import {
   BatchUpdateCommandFeaturesRequestSchema,
   BatchUpdateCommandFeaturesResponseSchema,
+  COMMAND_APPROVER_FLOOR,
   COMMAND_AUTHORITY_FLOOR,
+  CommandApprovalActionRequestSchema,
+  CommandApprovalDecisionSchema,
+  CommandApprovalViewSchema,
   CommandBatchDetailSchema,
   CommandBatchSummarySchema,
   CommandDefinitionSchema,
@@ -30,10 +38,17 @@ import {
   UpdateCommandFeatureRequestSchema,
   UpdateCommandFeatureResponseSchema,
 } from "@tartware/schemas";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { listCommandDefinitions } from "../command-center/index.js";
+import {
+  approveCommandRequest,
+  CommandDispatchError,
+  findCommandApproval,
+  listCommandDefinitions,
+  listPendingCommandApprovals,
+  rejectCommandRequest,
+} from "../command-center/index.js";
 import { findCommandBatch, listCommandBatches } from "../command-center/sql/command-batches.js";
 import {
   batchUpdateCommandFeatureStatuses,
@@ -42,7 +57,7 @@ import {
 } from "../command-center/sql/command-features.js";
 import { gatewayConfig } from "../config.js";
 import { extractBearerToken, verifyAccessToken, verifySystemAdminToken } from "../lib/jwt.js";
-import { submitCommand } from "../utils/command-publisher.js";
+import { sendCommandProblem, submitCommand } from "../utils/command-publisher.js";
 
 import { commandAcceptedSchema } from "./schemas.js";
 
@@ -71,6 +86,34 @@ const CommandBatchListJsonSchema = schemaFromZod(
   "CommandBatchList",
 );
 const CommandParamJsonSchema = schemaFromZod(CommandParamSchema, "CommandCenterParams");
+
+const ApprovalParamSchema = z.object({
+  tenantId: z.string().uuid(),
+  approvalId: z.string().uuid(),
+});
+const ApprovalParamJsonSchema = schemaFromZod(ApprovalParamSchema, "CommandApprovalParams");
+const ApprovalListQuerySchema = z.object({
+  command_name: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+const ApprovalListQueryJsonSchema = schemaFromZod(
+  ApprovalListQuerySchema,
+  "CommandApprovalListQuery",
+);
+const ApprovalActionBodyJsonSchema = schemaFromZod(
+  CommandApprovalActionRequestSchema,
+  "CommandApprovalActionBody",
+);
+const ApprovalViewJsonSchema = schemaFromZod(CommandApprovalViewSchema, "CommandApproval");
+const ApprovalListJsonSchema = schemaFromZod(
+  z.array(CommandApprovalViewSchema),
+  "CommandApprovalList",
+);
+const ApprovalDecisionJsonSchema = schemaFromZod(
+  CommandApprovalDecisionSchema,
+  "CommandApprovalDecision",
+);
 
 const CommandDefinitionListJsonSchema = schemaFromZod(
   z.array(CommandDefinitionSchema),
@@ -273,6 +316,179 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         return reply.notFound(`Batch "${batchId}" not found.`);
       }
       return CommandBatchDetailSchema.parse(batch);
+    },
+  );
+
+  // ─── Dual control: releasing a deferred command ───────────────────────────
+  //
+  // A command in `COMMAND_DUAL_CONTROL` never reaches the outbox on one
+  // person's authority — `acceptCommand` records it here instead. These routes
+  // are the other half: approving *dispatches the stored payload*, so the
+  // approval causes the operation rather than annotating it.
+
+  /**
+   * The person acting, always from the token.
+   *
+   * Same rule as billing's approval routes after A01: an identity that arrives
+   * in a request body is one the caller chose, and a four-eyes check on two
+   * caller-chosen strings is not a check.
+   */
+  const approvalActor = (request: FastifyRequest, tenantId: string) => {
+    const id = request.auth.userId;
+    if (!id) return null;
+    const membership = request.auth.getMembership(tenantId);
+    return {
+      // No display name on the token; `actioned_by_name` stays null rather than
+      // being invented, and the id is what the record is read by anyway.
+      actor: { id, name: null, role: membership?.role },
+      membership,
+    };
+  };
+
+  // Seeing the queue is not deciding on it, so this is the same membership gate
+  // as submitting a command: a requester must be able to watch the request they
+  // raised. The decision routes below are gated at the approver floor, and the
+  // row's own `required_role` decides in the end.
+  const approvalReadScope = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: COMMAND_AUTHORITY_FLOOR,
+    requiredModules: "core",
+  });
+  const approvalDecideScope = app.withTenantScope({
+    resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+    minRole: COMMAND_APPROVER_FLOOR,
+    requiredModules: "core",
+  });
+
+  app.get(
+    "/v1/tenants/:tenantId/commands/approvals",
+    {
+      preHandler: approvalReadScope,
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "List commands waiting on a second approver",
+        params: BatchListParamJsonSchema,
+        querystring: ApprovalListQueryJsonSchema,
+        response: { 200: ApprovalListJsonSchema },
+      }),
+    },
+    async (request) => {
+      const { tenantId } = BatchListParamSchema.parse(request.params);
+      const query = ApprovalListQuerySchema.parse(request.query ?? {});
+      const rows = await listPendingCommandApprovals({
+        tenantId,
+        commandName: query.command_name,
+        limit: query.limit,
+        offset: query.offset,
+      });
+      return z.array(CommandApprovalViewSchema).parse(rows);
+    },
+  );
+
+  app.get(
+    "/v1/tenants/:tenantId/commands/approvals/:approvalId",
+    {
+      preHandler: approvalReadScope,
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "Read one approval request, including the payload to be run",
+        params: ApprovalParamJsonSchema,
+        response: { 200: ApprovalViewJsonSchema },
+      }),
+    },
+    async (request, reply) => {
+      const { tenantId, approvalId } = ApprovalParamSchema.parse(request.params);
+      const row = await findCommandApproval(tenantId, approvalId);
+      if (!row) {
+        return reply.notFound(`Approval "${approvalId}" not found.`);
+      }
+      return CommandApprovalViewSchema.parse(row);
+    },
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/commands/approvals/:approvalId/approve",
+    {
+      preHandler: approvalDecideScope,
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "Approve a deferred command and dispatch it",
+        description:
+          "Four-eyes: the approver must hold the request's `required_role` and must not be the requester. On success the stored payload is dispatched and the resulting command id is returned.",
+        params: ApprovalParamJsonSchema,
+        body: ApprovalActionBodyJsonSchema,
+        response: { 200: ApprovalDecisionJsonSchema },
+      }),
+    },
+    async (request, reply) => {
+      const { tenantId, approvalId } = ApprovalParamSchema.parse(request.params);
+      const body = CommandApprovalActionRequestSchema.parse(request.body ?? {});
+      const who = approvalActor(request, tenantId);
+      if (!who?.membership) {
+        return reply.unauthorized("An authenticated user is required to approve a command.");
+      }
+
+      try {
+        const result = await approveCommandRequest({
+          tenantId,
+          approvalId,
+          actor: who.actor,
+          membership: who.membership,
+          reason: body.reason,
+          correlationId: (request.headers["x-correlation-id"] as string | undefined) ?? undefined,
+        });
+        return CommandApprovalDecisionSchema.parse({
+          approval: CommandApprovalViewSchema.parse(result.approval),
+          command_id: result.commandId,
+        });
+      } catch (error) {
+        if (error instanceof CommandDispatchError) {
+          return sendCommandProblem(request, reply, error);
+        }
+        throw error;
+      }
+    },
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/commands/approvals/:approvalId/reject",
+    {
+      preHandler: approvalDecideScope,
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "Refuse a deferred command",
+        description:
+          "Nothing is dispatched. A reason is required — the refusal is the record of why the operation did not happen.",
+        params: ApprovalParamJsonSchema,
+        body: ApprovalActionBodyJsonSchema,
+        response: { 200: ApprovalViewJsonSchema },
+      }),
+    },
+    async (request, reply) => {
+      const { tenantId, approvalId } = ApprovalParamSchema.parse(request.params);
+      const body = CommandApprovalActionRequestSchema.parse(request.body ?? {});
+      if (!body.reason || body.reason.trim() === "") {
+        return reply.badRequest("A reason is required to reject an approval request.");
+      }
+      const who = approvalActor(request, tenantId);
+      if (!who) {
+        return reply.unauthorized("An authenticated user is required to reject a command.");
+      }
+
+      try {
+        const row = await rejectCommandRequest({
+          tenantId,
+          approvalId,
+          actor: who.actor,
+          reason: body.reason,
+        });
+        return CommandApprovalViewSchema.parse(row);
+      } catch (error) {
+        if (error instanceof CommandDispatchError) {
+          return sendCommandProblem(request, reply, error);
+        }
+        throw error;
+      }
     },
   );
 

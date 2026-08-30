@@ -4147,5 +4147,6 @@
   "{amount} vs base": "{amount} frente a la base",
   "{hours}h remaining": "Quedan {hours} h",
   "{modules} aren't switched on": "{modules} no están activados",
-  "{modules} isn't switched on": "{modules} no está activado"
+  "{modules} isn't switched on": "{modules} no está activado",
+  "Sent for a second approval — it runs when another owner releases it.": "Enviado para una segunda aprobación: se ejecutará cuando otro propietario lo autorice."
 }

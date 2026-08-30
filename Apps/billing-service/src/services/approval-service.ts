@@ -6,7 +6,7 @@ import {
   type BillingApprovalRejectCommand,
   BillingApprovalRejectCommandSchema,
   BillingApprovalRequestCommandSchema,
-  tenantRoleAtLeast,
+  evaluateApprovalAction,
 } from "@tartware/schemas";
 import { auditAsync } from "../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
@@ -142,50 +142,36 @@ const _resolveRequest = async (
       throw new BillingCommandError("APPROVAL_NOT_FOUND", "Approval request not found.");
     }
 
-    if (request.status !== "PENDING") {
-      throw new BillingCommandError(
-        "APPROVAL_NOT_PENDING",
-        `Approval is ${request.status} — only PENDING requests can be actioned.`,
-      );
-    }
+    // Pending, unexpired, a different person, and a person senior enough — the
+    // four rules of a four-eyes decision, evaluated by the one function both
+    // queues share. The gateway runs the same call over deferred commands
+    // (`command-approvals.ts` in `schema/`); a second copy here is how one of
+    // the two ends up missing a rule.
+    //
+    // Both identities in it now come from tokens: while `actioned_by` arrived
+    // in the request body this compared two caller-supplied strings, and the
+    // control was defeated by typing a colleague's id into the field.
+    const decision = evaluateApprovalAction({
+      action: newStatus === "APPROVED" ? "APPROVE" : "REJECT",
+      status: request.status,
+      expiresAt: request.expires_at,
+      requestedBy: request.requested_by,
+      requiredRole: request.required_role,
+      actorId: command.actioned_by,
+      actorRole: "actioned_by_role" in command ? command.actioned_by_role : undefined,
+    });
 
-    // Check expiry
-    if (new Date(request.expires_at) < new Date()) {
-      await queryWithClient(
-        client,
-        `UPDATE public.approval_requests SET status = 'EXPIRED', updated_at = NOW() WHERE approval_id = $1::uuid`,
-        [command.approval_id],
-      );
-      throw new BillingCommandError(
-        "APPROVAL_EXPIRED",
-        "Approval request has expired. Please submit a new request.",
-      );
-    }
-
-    // ★ Four-Eyes Principle: approver must NOT be the same user as the requester.
-    // Both sides are now the authenticated user id the route read off the token,
-    // so this compares two identities the caller cannot choose. While they came
-    // from the request body it compared two caller-supplied strings, and the
-    // whole control was defeated by typing a colleague's id into the field.
-    if (request.requested_by === command.actioned_by) {
-      throw new BillingCommandError(
-        "SELF_APPROVAL_FORBIDDEN",
-        "The approver must be a different user than the requester (four-eyes principle).",
-      );
-    }
-
-    // `required_role` is the whole point of storing a role on the request, and
-    // nothing read it — any MANAGER could approve an operation the requester
-    // had marked as needing an OWNER. Only approval is gated: declining a
-    // request needs no more authority than seeing it.
-    if (newStatus === "APPROVED") {
-      const approverRole = "actioned_by_role" in command ? command.actioned_by_role : undefined;
-      if (!tenantRoleAtLeast(approverRole, request.required_role)) {
-        throw new BillingCommandError(
-          "APPROVER_ROLE_INSUFFICIENT",
-          `This request requires ${request.required_role} to approve; the approver holds ${approverRole ?? "no recognised role"}.`,
+    if (!decision.ok) {
+      if (decision.code === "APPROVAL_EXPIRED") {
+        // Recorded, not just refused: the row is dead and should read that way
+        // to everyone who lists the queue afterwards.
+        await queryWithClient(
+          client,
+          `UPDATE public.approval_requests SET status = 'EXPIRED', updated_at = NOW() WHERE approval_id = $1::uuid`,
+          [command.approval_id],
         );
       }
+      throw new BillingCommandError(decision.code, decision.message);
     }
 
     // Persist the decision

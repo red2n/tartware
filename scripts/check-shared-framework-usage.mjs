@@ -91,6 +91,24 @@ const RULES = [
       "ladder in front of the declared one and silently wins whenever it is stricter",
   },
   {
+    id: "approval-grant",
+    // `approvalGrant:` on an accept-command input. It is the token that
+    // satisfies dual control inside acceptCommand, so anywhere it can be built
+    // from caller input the control is a caller-set boolean again.
+    pattern: /\bapprovalGrant\s*:/,
+    allow: [
+      // The one place a grant is legitimately minted: after a second person's
+      // decision has been evaluated against a locked row.
+      "Apps/api-gateway/src/command-center/command-approval-service.ts",
+    ],
+    use: "approveCommandRequest() in Apps/api-gateway/src/command-center/command-approval-service.ts",
+    why:
+      "a command in COMMAND_DUAL_CONTROL is deferred to approval_requests unless the accept " +
+      "input already carries an approval grant. Building that grant anywhere else — from a " +
+      "request body, from a handler, from a flag — waives the second signature on the caller's " +
+      "own authority, which is the force: true problem the finding exists to remove",
+  },
+  {
     id: "command-error",
     pattern: /class \w*(Command|Event)Error extends Error\b/,
     allow: ["Apps/command-consumer-utils/src/command-utils.ts"],

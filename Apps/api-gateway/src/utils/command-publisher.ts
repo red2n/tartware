@@ -1,5 +1,6 @@
 import { STATUS_CODES } from "node:http";
 
+import type { CommandDeferredForApproval } from "@tartware/schemas";
 import { IdempotencyKeySchema, validateCommandPayload } from "@tartware/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
@@ -21,6 +22,84 @@ type SubmitCommandOptions = {
   tenantId: string;
   payload: Record<string, unknown>;
   requiredModules?: string | string[];
+};
+
+/**
+ * Render a command failure as RFC 7807, the shape every other refusal on these
+ * routes already uses.
+ *
+ * Shared with the approval routes: a caller who is refused approving a
+ * write-off should read the same envelope as one refused submitting it.
+ */
+export const sendCommandProblem = (
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error: CommandDispatchError,
+): FastifyReply =>
+  reply
+    .status(error.statusCode)
+    .header("content-type", "application/problem+json")
+    .send({
+      type: "about:blank",
+      title: STATUS_CODES[error.statusCode] ?? "Error",
+      status: error.statusCode,
+      detail: error.message,
+      instance: request.url,
+      code: error.code,
+    });
+
+/**
+ * Answer a command that was queued for a second person instead of dispatched.
+ *
+ * Three outcomes, because a replayed idempotency key re-reads the request it
+ * already raised: still pending (202, here is the approval to watch), already
+ * released (202 accepted, here is the command it became), or dead — rejected,
+ * withdrawn, expired — which is a 409 rather than a cheerful 202 for a command
+ * that will never run.
+ */
+const replyDeferred = (
+  request: FastifyRequest,
+  reply: FastifyReply,
+  deferred: CommandDeferredForApproval,
+): FastifyReply => {
+  const { approval } = deferred;
+
+  if (approval.status === "APPROVED" && approval.dispatchedCommandId) {
+    return reply.status(202).send({
+      status: "accepted",
+      command_id: approval.dispatchedCommandId,
+      command_name: deferred.commandName,
+      accepted_at: approval.requestedAt,
+      tenant_id: deferred.tenantId,
+      approval_id: approval.approvalId,
+      approval_status: approval.status,
+    });
+  }
+
+  if (approval.status !== "PENDING") {
+    return sendCommandProblem(
+      request,
+      reply,
+      new CommandDispatchError(
+        409,
+        `COMMAND_APPROVAL_${approval.status}`,
+        `This request was already raised for approval and is ${approval.status.toLowerCase()}. Submit a new request with a new idempotency key.`,
+      ),
+    );
+  }
+
+  return reply.status(202).send({
+    status: "pending_approval",
+    command_name: deferred.commandName,
+    accepted_at: approval.requestedAt,
+    tenant_id: deferred.tenantId,
+    correlation_id: deferred.correlationId,
+    approval_id: approval.approvalId,
+    approval_status: approval.status,
+    required_role: approval.requiredRole,
+    expires_at: approval.expiresAt,
+    detail: `${deferred.commandName} requires a second approver holding ${approval.requiredRole}. It runs when the request is approved, and not before.`,
+  });
 };
 
 const ensureTenantAccess = (
@@ -140,7 +219,7 @@ export const submitCommand = async ({
       ? { userId: request.auth.userId, role: membership.role }
       : null;
 
-  let acceptance: AcceptedCommand;
+  let acceptance: AcceptedCommand | CommandDeferredForApproval;
   try {
     acceptance = await acceptCommand({
       commandName,
@@ -153,19 +232,18 @@ export const submitCommand = async ({
     });
   } catch (error) {
     if (error instanceof CommandDispatchError) {
-      return reply
-        .status(error.statusCode)
-        .header("content-type", "application/problem+json")
-        .send({
-          type: "about:blank",
-          title: STATUS_CODES[error.statusCode] ?? "Error",
-          status: error.statusCode,
-          detail: error.message,
-          instance: request.url,
-          code: error.code,
-        });
+      return sendCommandProblem(request, reply, error);
     }
     throw error;
+  }
+
+  // Dual control: the command did not reach the outbox, it became an approval
+  // request. Nothing is counted as accepted, because nothing was.
+  if (acceptance.status === "pending_approval") {
+    if (idempotencyKey) {
+      reply.header("Idempotency-Key", idempotencyKey);
+    }
+    return replyDeferred(request, reply, acceptance);
   }
 
   // The command is durable in the outbox now, inside the same transaction that

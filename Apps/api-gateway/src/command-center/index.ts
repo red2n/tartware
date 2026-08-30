@@ -1,3 +1,9 @@
+export {
+  approveCommandRequest,
+  findCommandApproval,
+  listPendingCommandApprovals,
+  rejectCommandRequest,
+} from "./command-approval-service.js";
 export type { AcceptedCommand } from "./command-dispatch-service.js";
 export {
   acceptCommand,

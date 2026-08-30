@@ -27,6 +27,15 @@ CREATE TABLE IF NOT EXISTS public.approval_requests (
     operation_payload JSONB      NOT NULL DEFAULT '{}',               -- Full command payload; snapshot of what was requested
     description     TEXT,                                             -- Human-readable reason for the request
 
+    -- Deferred command (dual control at the Command Center)
+    -- A request raised by `acceptCommand` instead of dispatching a command
+    -- declared in COMMAND_DUAL_CONTROL. NULL on the REST-raised billing
+    -- requests, which name their operation in operation_type alone.
+    command_name    VARCHAR(120),                                     -- Command the approval releases, e.g. 'ar.city_ledger.write_off'
+    request_id      VARCHAR(128),                                     -- Idempotency key of the submission that raised it
+    requested_by_role VARCHAR(60),                                    -- Role the requester held; travels to the override record
+    dispatched_command_id UUID,                                       -- Command actually dispatched once released
+
     -- Requester
     requested_by    VARCHAR(100) NOT NULL,                            -- User ID or email of the requester
     requested_by_name VARCHAR(200),                                   -- Display name for notification
@@ -68,6 +77,10 @@ COMMENT ON COLUMN public.approval_requests.status          IS 'PENDING=awaiting 
 COMMENT ON COLUMN public.approval_requests.required_role   IS 'Minimum PMS role level required to approve this request';
 COMMENT ON COLUMN public.approval_requests.expires_at      IS 'After this timestamp the request auto-expires and must be re-submitted';
 COMMENT ON COLUMN public.approval_requests.actioned_by     IS 'User who approved or rejected (must differ from requested_by)';
+COMMENT ON COLUMN public.approval_requests.command_name    IS 'Command this approval releases; NULL for REST-raised billing requests';
+COMMENT ON COLUMN public.approval_requests.request_id      IS 'Idempotency key of the submission that raised the request — resubmitting it re-reads this row rather than raising a second';
+COMMENT ON COLUMN public.approval_requests.requested_by_role IS 'Role the requester held at submission, carried into the dispatched command envelope';
+COMMENT ON COLUMN public.approval_requests.dispatched_command_id IS 'command_dispatches.id of the command this approval released, set when it is approved';
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_approval_requests_pending
@@ -76,6 +89,13 @@ CREATE INDEX IF NOT EXISTS idx_approval_requests_pending
 
 CREATE INDEX IF NOT EXISTS idx_approval_requests_entity
     ON public.approval_requests (tenant_id, entity_type, entity_id);
+
+-- One approval per (tenant, command, idempotency key). This is what makes a
+-- resubmitted key report the request it already raised instead of queueing a
+-- second approval for the same write-off.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_approval_requests_command_request
+    ON public.approval_requests (tenant_id, command_name, request_id)
+    WHERE command_name IS NOT NULL AND request_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_approval_requests_property
     ON public.approval_requests (tenant_id, property_id, status)

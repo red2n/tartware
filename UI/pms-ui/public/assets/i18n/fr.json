@@ -4147,5 +4147,6 @@
   "{amount} vs base": "{amount} par rapport au tarif de base",
   "{hours}h remaining": "{hours} h restantes",
   "{modules} aren't switched on": "{modules} ne sont pas activés",
-  "{modules} isn't switched on": "{modules} n'est pas activé"
+  "{modules} isn't switched on": "{modules} n'est pas activé",
+  "Sent for a second approval — it runs when another owner releases it.": "Envoyé pour une seconde approbation — l'opération s'exécutera lorsqu'un autre propriétaire l'aura validée."
 }

@@ -428,12 +428,33 @@ export const paginatedListSchema = (itemSchema: JsonSchema): JsonSchema => ({
 export const commandAcceptedSchema = {
   type: "object",
   properties: {
-    status: { type: "string", enum: ["accepted"], description: "Always 'accepted'." },
-    command_id: { type: "string", format: "uuid", description: "Idempotency key / tracking ID." },
+    status: {
+      type: "string",
+      enum: ["accepted", "pending_approval"],
+      description:
+        "'accepted' — recorded in the outbox and it will run. 'pending_approval' — the command is under dual control and was recorded as an approval request instead; it runs only when a second person with `required_role` approves it.",
+    },
+    command_id: {
+      type: "string",
+      format: "uuid",
+      description: "Idempotency key / tracking ID. Absent while a command is awaiting approval.",
+    },
     command_name: { type: "string", description: "Name of the dispatched command." },
     accepted_at: { type: "string", format: "date-time", description: "Timestamp of acceptance." },
+    approval_id: {
+      type: "string",
+      format: "uuid",
+      description: "The approval request to watch, on a deferred command.",
+    },
+    approval_status: { type: "string", description: "State of that approval request." },
+    required_role: { type: "string", description: "Role a second person needs to release it." },
+    expires_at: {
+      type: "string",
+      format: "date-time",
+      description: "When the approval request lapses and the command must be resubmitted.",
+    },
   },
-  required: ["status", "command_id", "command_name", "accepted_at"],
+  required: ["status", "command_name", "accepted_at"],
   additionalProperties: true,
 } as const satisfies JsonSchema;
 

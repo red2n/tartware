@@ -2,7 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import type {
   AcceptCommandInput,
   AcceptedCommand,
+  CommandAcceptanceOutcome,
   CommandAcceptanceResult,
+  CommandApprovalTicket,
+  CommandDeferredForApproval,
   CommandDispatchDependencies,
   CommandDispatchLookup,
   CommandDispatchWriter,
@@ -12,6 +15,8 @@ import type {
   CommandRouteInfo,
   Initiator,
 } from "@tartware/schemas";
+import { commandApproverRole } from "@tartware/schemas";
+
 import { resolveCommandPartitionKey } from "./partition-key.js";
 
 export type {
@@ -24,6 +29,9 @@ export type {
   CommandDispatchDependencies,
   CommandDispatchWriter,
   CommandAcceptanceResult,
+  CommandAcceptanceOutcome,
+  CommandApprovalTicket,
+  CommandDeferredForApproval,
   AcceptedCommand,
 };
 
@@ -151,7 +159,7 @@ export const createCommandDispatchService = <Membership>(
     writer: CommandDispatchWriter,
     input: AcceptCommandInput<Membership>,
     payloadHash: string,
-  ): Promise<CommandAcceptanceResult> => {
+  ): Promise<CommandAcceptanceOutcome> => {
     const existing = await writer.findCommandDispatchByRequest(
       input.tenantId,
       input.commandName,
@@ -226,6 +234,48 @@ export const createCommandDispatchService = <Membership>(
         throw new CommandDispatchError(429, "COMMAND_THROTTLED", "Command rate limit exceeded.");
       }
     }
+
+    // ─── Dual control ──────────────────────────────────────────────────────
+    //
+    // A command that permanently removes money from the ledger, or reopens a
+    // control that has already closed, does not reach the outbox on one
+    // person's say-so. It becomes a row in `approval_requests` — the queue that
+    // has existed since 2025 and that nothing ever entered — and is dispatched
+    // by the approval path, from the stored payload, once a second person with
+    // the declared role releases it.
+    //
+    // This sits here rather than in a handler for the same reason the
+    // per-command floor does: it is the one point every accepted command passes
+    // through, so there is no other route a requester could use instead.
+    const approverRole = commandApproverRole(input.commandName);
+    if (approverRole && !input.approvalGrant) {
+      if (!deps.requireCommandApproval) {
+        // Fail closed. Dispatching because the control could not run is the
+        // exact failure dual control exists to prevent.
+        throw new CommandDispatchError(
+          503,
+          "COMMAND_APPROVAL_UNAVAILABLE",
+          `${input.commandName} requires a second approver and the approval queue is not available.`,
+        );
+      }
+      const ticket = await deps.requireCommandApproval({
+        commandName: input.commandName,
+        tenantId: input.tenantId,
+        payload: input.payload,
+        requestId: input.requestId,
+        correlationId: input.correlationId,
+        initiatedBy: input.initiatedBy,
+        approverRole,
+      });
+      return {
+        status: "pending_approval",
+        commandName: input.commandName,
+        tenantId: input.tenantId,
+        correlationId: input.correlationId,
+        approval: ticket,
+      };
+    }
+
     const commandId = randomUUID();
     const targetService = route.service_id;
     const targetTopic = route.topic;
@@ -259,6 +309,11 @@ export const createCommandDispatchService = <Membership>(
           source: route.source,
         },
         initiatedBy: input.initiatedBy ?? undefined,
+        // Who released it, for the consumer that writes the override record.
+        // `initiatedBy` stays the requester: the operator ran the command, the
+        // approver authorised it, and collapsing the two would lose which is
+        // which on the one record that has to say.
+        approval: input.approvalGrant ?? undefined,
         issuedAt,
         featureStatus,
       },
@@ -338,7 +393,7 @@ export const createCommandDispatchService = <Membership>(
 
   const acceptCommand = async (
     input: AcceptCommandInput<Membership>,
-  ): Promise<CommandAcceptanceResult> => {
+  ): Promise<CommandAcceptanceOutcome> => {
     const payloadHash = createHash("sha256").update(JSON.stringify(input.payload)).digest("hex");
     const runInTransaction = deps.withDispatchTransaction;
 

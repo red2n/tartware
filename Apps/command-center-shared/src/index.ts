@@ -1,4 +1,10 @@
 export {
+  type CommandApprovalRow,
+  createCommandApprovalRepository,
+  type RaiseCommandApprovalInput,
+  toApprovalTicket,
+} from "./repositories/command-approvals.js";
+export {
   type CommandBatchDetail,
   type CommandBatchItemRow,
   type CommandBatchRow,
@@ -22,7 +28,10 @@ export {
 } from "./repositories/command-registry.js";
 export {
   type AcceptCommandInput,
+  type CommandAcceptanceOutcome,
   type CommandAcceptanceResult,
+  type CommandApprovalTicket,
+  type CommandDeferredForApproval,
   type CommandDispatchDependencies,
   CommandDispatchError,
   type CommandFeatureInfo,

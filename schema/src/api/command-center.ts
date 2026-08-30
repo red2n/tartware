@@ -333,6 +333,21 @@ export type CommandResolution<Membership = unknown> =
 			membership?: Membership;
 	  };
 
+/**
+ * The second signature a deferred command was released on.
+ *
+ * Present only on the dispatch the approval path performs, and never settable
+ * from a request body: it is the proof that the dual-control gate in
+ * `acceptCommand` has already been satisfied, so a caller who could supply it
+ * would be able to waive their own control.
+ */
+export type CommandApprovalGrant = {
+	approvalId: string;
+	approverId: string;
+	approverRole: string | null;
+	approvedAt: string;
+};
+
 /** Input to the command acceptance pipeline. */
 export interface AcceptCommandInput<Membership = unknown> {
 	commandName: string;
@@ -342,7 +357,28 @@ export interface AcceptCommandInput<Membership = unknown> {
 	requestId: string;
 	initiatedBy: Initiator;
 	membership: Membership;
+	/** Set only by the approval path. See {@link CommandApprovalGrant}. */
+	approvalGrant?: CommandApprovalGrant;
 }
+
+/**
+ * An approval row as the dispatch path needs to see it.
+ *
+ * Returned whatever state the row is in, because a resubmitted idempotency key
+ * has to be answered from the request it already raised rather than raise a
+ * second one — including when that request has since been approved, rejected
+ * or left to expire.
+ */
+export type CommandApprovalTicket = {
+	approvalId: string;
+	status: string;
+	requiredRole: string;
+	requestedBy: string;
+	requestedAt: string;
+	expiresAt: string;
+	/** The command id this approval dispatched, once it has been released. */
+	dispatchedCommandId: string | null;
+};
 
 /** Outbox record written to the DB before Kafka publish (transactional outbox pattern). */
 export interface CommandOutboxRecord {
@@ -419,6 +455,24 @@ export interface CommandDispatchDependencies<Membership = unknown> {
 		requestId: string;
 		feature: CommandFeatureInfo | null;
 	}) => Promise<boolean>;
+	/**
+	 * Raise (or re-read) the approval request standing between this command and
+	 * the outbox.
+	 *
+	 * Optional in the type and mandatory in effect: a command declared in
+	 * `COMMAND_DUAL_CONTROL` is refused outright when this is not wired, because
+	 * the alternative — dispatching it because the control could not run — is
+	 * the failure mode dual control exists to prevent.
+	 */
+	requireCommandApproval?: (input: {
+		commandName: string;
+		tenantId: string;
+		payload: Record<string, unknown>;
+		requestId: string;
+		correlationId?: string;
+		initiatedBy: Initiator;
+		approverRole: string;
+	}) => Promise<CommandApprovalTicket>;
 }
 
 /** Full result returned internally after successfully accepting a command. */
@@ -443,6 +497,27 @@ export type CommandAcceptanceResult = {
 		tenantId: string | null;
 	};
 };
+
+/**
+ * A command that was recorded as an approval request instead of dispatched.
+ *
+ * It is not a rejection and not an acceptance: the request is durable, the
+ * command has not run, and whether it ever does is now someone else's
+ * decision. The ticket is returned in whatever state it is in so a replayed
+ * idempotency key reports the fate of the request it already raised.
+ */
+export type CommandDeferredForApproval = {
+	status: "pending_approval";
+	commandName: string;
+	tenantId: string;
+	correlationId?: string;
+	approval: CommandApprovalTicket;
+};
+
+/** What `acceptCommand` can answer: dispatched, or waiting on a second person. */
+export type CommandAcceptanceOutcome =
+	| CommandAcceptanceResult
+	| CommandDeferredForApproval;
 
 /** Slim command acceptance response returned by the API gateway to callers. */
 export type AcceptedCommand = {
@@ -471,7 +546,7 @@ export type AcceptedCommand = {
  * the rest with `new Date(...)` has no reason to expect this field to be
  * different.
  */
-const IsoTimestampSchema = z
+export const IsoTimestampSchema = z
 	.union([z.string(), z.date()])
 	.transform((value) => (value instanceof Date ? value.toISOString() : value));
 

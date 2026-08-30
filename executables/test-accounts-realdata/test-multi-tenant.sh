@@ -20,6 +20,7 @@
 #   PHASE 5   Cross-tenant isolation assertions (DB + API)
 #   PHASE 5b  Module access requests (raise → review → module toggled)
 #   PHASE 5c  Per-command authority — role tiers, grants and denies (A02)
+#   PHASE 5d  Dual control — the five commands one person may not run (A04)
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -2574,6 +2575,175 @@ else
       \"allow\": [], \"deny\": []
     }")
     assert_http "A02: grants cleared" "200" "$code"
+  fi
+  echo ""
+fi
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5d — DUAL CONTROL ON THE FIVE IRREVERSIBLE COMMANDS (A04)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# approval_requests has existed since 2025 with the four-eyes rationale in its
+# DDL header and a full service layer behind it. Nothing ever entered it, and
+# approving flipped a status without executing anything, so approval and
+# execution were unrelated events.
+#
+# Now the five commands that undo a completed accounting control — the three
+# write-offs, a fiscal period reopen, a manual date roll (COMMAND_DUAL_CONTROL,
+# schema/src/api/command-approvals.ts) — are recorded as approval requests by
+# acceptCommand instead of dispatched, and releasing one dispatches the stored
+# payload. Six behaviours, end to end on a real AR balance:
+#
+#   The command is queued, not run                202 pending_approval, no command_id
+#   The requester cannot release their own        403 SELF_APPROVAL_FORBIDDEN
+#   Nor can someone below the approver role       403
+#   A refusal is final for that idempotency key   409 COMMAND_APPROVAL_REJECTED
+#   A second OWNER releases it                    200 + command_id
+#   …and the balance actually moves               the operation happened
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5d: Dual Control (four-eyes on the irreversible five)         ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+DC_USER="approver.${RUN_TAG}"
+DC_PASS="ApproverPass123!"
+
+# Submit a command as an explicit token, echoing only the status code.
+dc_cmd() {
+  local tok="$1" name="$2" payload="$3" idem="${4:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/commands/$name/execute" \
+    -H "Authorization: Bearer $tok" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "{\"tenant_id\":\"$TID_B\",\"payload\":$payload}"
+}
+
+# Act on an approval request as an explicit token.
+dc_decide() {
+  local tok="$1" approval_id="$2" action="$3" reason="$4"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/tenants/$TID_B/commands/approvals/$approval_id/$action" \
+    -H "Authorization: Bearer $tok" \
+    -H "Content-Type: application/json" \
+    -d "{\"reason\":\"$reason\"}"
+}
+
+TOKEN="$TOKEN_B"
+get "$GW/v1/billing/accounts-receivable?tenant_id=$TID_B&limit=20" >/dev/null
+DC_AR_ID=$(resp_ffirst '.ar_status == "open" or .ar_status == "partial"' "ar_id")
+DC_AR_BEFORE=$(resp_ffirst ".ar_id == \"${DC_AR_ID:-none}\"" "outstanding_balance")
+
+if [[ -z "$DC_AR_ID" ]]; then
+  skip "A04: dual control" "no open AR account on Tenant B to write off"
+else
+  # ── The second pair of eyes ────────────────────────────────────────────────
+  # A write-off asks for OWNER, so the approver must be a second OWNER. One
+  # OWNER login cannot write anything off, which is the control working.
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID_B\",
+    \"username\": \"$DC_USER\",
+    \"email\": \"${DC_USER}@beaconhotels.test\",
+    \"password\": \"$DC_PASS\",
+    \"first_name\": \"Rafael\", \"last_name\": \"Mendes\",
+    \"role\": \"OWNER\"
+  }")
+  assert_http "A04: second OWNER created on Tenant B" "2" "$code"
+
+  # POST /v1/users defaults the association's modules to ["core"]; the approver
+  # dispatches the command, so it needs the tenant's billing modules too.
+  get "$GW/v1/tenants/$TID_B/modules" >/dev/null
+  DC_MODS=$(jq -c '.modules // ["core"]' "$RESP_FILE" 2>/dev/null || echo '["core"]')
+  code=$(put "$GW/v1/tenants/$TID_B/modules" "{\"modules\":$DC_MODS}")
+  assert_http "A04: modules re-synced onto the approver's membership" "200" "$code"
+
+  TOKEN_APPROVER=$(auth_login "$DC_USER" "$DC_PASS")
+
+  if [[ -z "$TOKEN_APPROVER" ]]; then
+    fail "A04: token for the second approver" "login returned nothing"
+  else
+    pass "A04: token issued for the second approver"
+
+    DC_PAYLOAD="{\"ar_id\":\"$DC_AR_ID\",\"write_off_amount\":1.00,\"reason\":\"A04 dual-control probe\"}"
+
+    # ── 1. The command is queued, not run ────────────────────────────────────
+    DC_KEY_1=$(gen_uuid)
+    code=$(dc_cmd "$TOKEN_B" "billing.ar.write_off" "$DC_PAYLOAD" "$DC_KEY_1")
+    assert_http "A04: write-off accepted for review" "202" "$code"
+    DC_STATUS=$(jq -r '.status // empty' "$RESP_FILE")
+    DC_APPROVAL=$(jq -r '.approval_id // empty' "$RESP_FILE")
+    assert_eq "A04: it was queued rather than dispatched" "pending_approval" "$DC_STATUS"
+    assert_eq "A04: no command id, because no command ran" "true" \
+      "$([[ -z "$(jq -r '.command_id // empty' "$RESP_FILE")" ]] && echo true || echo false)"
+
+    if [[ -z "$DC_APPROVAL" ]]; then
+      fail "A04: approval request id returned" "none"
+    else
+      pass "A04: approval request id returned"
+
+      # ── 2. It is visible in the queue, with what it would run ──────────────
+      TOKEN="$TOKEN_B"
+      code=$(get "$GW/v1/tenants/$TID_B/commands/approvals?limit=50")
+      assert_http "A04: pending approvals listed" "200" "$code"
+      assert_eq "A04: the request is in the queue" "1" \
+        "$(resp_fcount ".approval_id == \"$DC_APPROVAL\"")"
+      assert_eq "A04: the approver can see the payload they would release" "$DC_AR_ID" \
+        "$(resp_ffirst ".approval_id == \"$DC_APPROVAL\"" "operation_payload.ar_id")"
+
+      # ── 3. The requester cannot release their own request ──────────────────
+      code=$(dc_decide "$TOKEN_B" "$DC_APPROVAL" "approve" "approving my own write-off")
+      assert_http "A04: requester refused their own approval" "403" "$code"
+      assert_eq "A04: refusal names the four-eyes rule" "SELF_APPROVAL_FORBIDDEN" \
+        "$(jq -r '.code // empty' "$RESP_FILE")"
+
+      # ── 4. Nor can someone below the approver role ─────────────────────────
+      if [[ -n "${TOKEN_STAFF:-}" ]]; then
+        code=$(dc_decide "$TOKEN_STAFF" "$DC_APPROVAL" "approve" "clerk approving a write-off")
+        assert_http "A04: a clerk cannot release a write-off" "403" "$code"
+      else
+        skip "A04: a clerk cannot release a write-off" "no STAFF token from Phase 5c"
+      fi
+
+      # ── 5. A refusal is final for that idempotency key ─────────────────────
+      code=$(dc_decide "$TOKEN_APPROVER" "$DC_APPROVAL" "reject" "the debt is disputed, not uncollectable")
+      assert_http "A04: second OWNER may refuse it" "200" "$code"
+      assert_eq "A04: the request reads REJECTED" "REJECTED" \
+        "$(jq -r '.status // empty' "$RESP_FILE")"
+
+      code=$(dc_cmd "$TOKEN_B" "billing.ar.write_off" "$DC_PAYLOAD" "$DC_KEY_1")
+      assert_http "A04: resubmitting the refused key is refused" "409" "$code"
+      assert_eq "A04: and says why" "COMMAND_APPROVAL_REJECTED" \
+        "$(jq -r '.code // empty' "$RESP_FILE")"
+
+      # ── 6. A second OWNER releases it, and the operation happens ───────────
+      code=$(dc_cmd "$TOKEN_B" "billing.ar.write_off" "$DC_PAYLOAD" "$(gen_uuid)")
+      assert_http "A04: the write-off is raised again" "202" "$code"
+      DC_APPROVAL_2=$(jq -r '.approval_id // empty' "$RESP_FILE")
+
+      code=$(dc_decide "$TOKEN_APPROVER" "$DC_APPROVAL_2" "approve" "reviewed the ledger, write it off")
+      assert_http "A04: second OWNER releases it" "200" "$code"
+      DC_COMMAND_ID=$(jq -r '.command_id // empty' "$RESP_FILE")
+      assert_eq "A04: approving dispatched the stored payload" "true" \
+        "$([[ -n "$DC_COMMAND_ID" ]] && echo true || echo false)"
+      assert_eq "A04: the approval records the command it caused" "$DC_COMMAND_ID" \
+        "$(jq -r '.approval.dispatched_command_id // empty' "$RESP_FILE")"
+
+      wait_kafka 8
+      TOKEN="$TOKEN_B"
+      get "$GW/v1/billing/accounts-receivable/$DC_AR_ID?tenant_id=$TID_B" >/dev/null
+      DC_AR_AFTER=$(resp_field "outstanding_balance")
+      if [[ -n "$DC_AR_BEFORE" && -n "$DC_AR_AFTER" ]] &&
+         (( $(echo "$DC_AR_AFTER < $DC_AR_BEFORE" | bc -l 2>/dev/null || echo 0) )); then
+        pass "A04: the balance moved — the approval caused the write-off"
+      else
+        fail "A04: the balance moved — the approval caused the write-off" \
+          "before=${DC_AR_BEFORE:-?} after=${DC_AR_AFTER:-?}"
+      fi
+    fi
   fi
   echo ""
 fi

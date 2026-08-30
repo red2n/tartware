@@ -365,11 +365,20 @@ export class NightAuditComponent {
 		this.confirmingDateRoll.set(false);
 
 		try {
-			await this.api.post(`/tenants/${tenantId}/commands/billing.date_roll.manual`, {
-				property_id: propertyId,
-				reason: this.dateRollReason() || "Manual date advance from UI",
-			});
-			this.toast.success(this.i18n.t("Business date advanced successfully."));
+			const outcome = await this.api.post<{ status?: string }>(
+				`/tenants/${tenantId}/commands/billing.date_roll.manual`,
+				{
+					property_id: propertyId,
+					reason: this.dateRollReason() || "Manual date advance from UI",
+				},
+			);
+			// Moving the business date without the night audit that justifies it
+			// is a second-signature command; it has not advanced yet.
+			this.toast.success(
+				outcome?.status === "pending_approval"
+					? this.i18n.t("Sent for a second approval — it runs when another owner releases it.")
+					: this.i18n.t("Business date advanced successfully."),
+			);
 			this.dateRollReason.set("");
 			await Promise.all([this.loadBusinessDateStatus(), this.loadTrialBalance()]);
 		} catch (e) {

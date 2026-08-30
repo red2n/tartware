@@ -261,7 +261,9 @@ Three facts frame everything below:
   request's auth context and read by nothing. Both are now load-bearing — see "A02, as landed".
 - **Overrides are logged, never authorized.** Every bypass writes `flow_approvals`; nothing checks
   entitlement first. `force: true` on a payload is the whole mechanism — there is no supervisor
-  step-up, no second actor, no re-auth anywhere in the repo.
+  step-up or re-auth anywhere in the repo. **Partly fixed by A04, 30 Aug:** the five commands that
+  undo a completed accounting control now need a *second actor*, and cannot be run by one login at
+  all. Everything else still bypasses on the caller's own authority.
 - **The flow guard is static.** It proves a command is wired up, not that an operator may run it.
   `dependsOn` is checked for cycles and never consulted again; 66 of 203 catalogued commands are
   named by a flow, and the 137 that are not include `billing.charge.void`, `billing.comp.post`,
@@ -275,7 +277,7 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A01 | Critical | Four-eyes took `actioned_by` / `requested_by` from the **request body**, so the self-approval check compared two caller-supplied strings — defeated by typing a colleague's id. `required_role` was stored and never compared. | **done 28 Aug** |
 | A02 | Critical | No per-command permission, so no way to express an override as a distinct right. Everything is `MANAGER`. | **done 29 Aug** |
 | A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | **done 28 Aug** |
-| A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | open |
+| A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | **done 30 Aug** |
 | A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | open |
 | A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | open |
 | A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | open |
@@ -322,6 +324,39 @@ Two things this does **not** do: it is a floor per command, not per amount, so A
 actor, so A04's approval queue is still unentered. Noted while here: `guest.gdpr.rectify` and
 `guest.gdpr.restrict` are gateway routes naming commands that exist in neither the validator map
 nor the catalogue — they 400 on payload validation today and did before this change.
+
+**A04, as landed.** `COMMAND_DUAL_CONTROL` in `schema/src/api/command-approvals.ts` names the
+commands one person may not run alone, and `acceptCommand` records them as `approval_requests` rows
+instead of writing them to the outbox — the same choke point A02's floor is enforced at, so there is
+no second route into the pipeline for a requester to use instead. Releasing one **dispatches the
+stored payload**: approving now *causes* the operation rather than annotating it, which is the half
+the queue never had.
+
+The set is the **OWNER tier, exactly** — the three write-offs, `fiscal_period.reopen`,
+`date_roll.manual` — and a test asserts the two declarations stay identical. It is not the wider
+"high risk" list: a charge void or a folio reopen is correctable inside the front office and already
+carries a floor, and a queue that fills with routine work gets rubber-stamped. Extending the map is
+one line once A06/A08 give those commands thresholds. **A property needs two OWNER logins** to write
+anything off — that is the control, not a bug, and the E2E suites now create their second approver
+rather than working around it.
+
+Mechanics worth knowing: `evaluateApprovalAction` in the same file is the *one* implementation of
+the four rules (pending → unexpired → not the requester → clears `required_role`), and billing's
+`approval-service` was moved onto it, so the two queues cannot drift. The approval carries
+`command_name` / `request_id` / `requested_by_role` / `dispatched_command_id` (migration `005`), and
+a unique index on `(tenant_id, command_name, request_id)` makes a resubmitted idempotency key report
+the request it already raised instead of queueing a second write-off. The claim is a conditional
+`UPDATE`, so two approvers pressing at once cannot both win; the dispatch that follows is a separate
+transaction, and a failure there **releases the claim back to PENDING** rather than leaving a row
+that reads APPROVED for a command that never ran. The dispatched envelope keeps the requester as
+`initiatedBy` and carries the approver alongside as `metadata.approval` — the record has to say
+which is which. Guardrail rule `approval-grant` keeps the grant that satisfies the gate mintable in
+exactly one file. Routes: `GET|POST /v1/tenants/:tenantId/commands/approvals[/:approvalId][/approve|/reject]`.
+33 tests (17 schema, 6 command-center-shared, 10 gateway; billing's 11 pass unchanged on the
+shared evaluator) plus **Phase 5d** of `test-multi-tenant.sh`, which walks queue → refuse self → refuse a clerk → reject → replay → release
+on a real AR balance. Not built: an approvals inbox in `pms-ui` — the three screens that submit
+these commands now say the request was queued instead of claiming it ran, and the queue is readable
+over the API only.
 
 **A03, as landed.** `resolveActorRole()` sits beside `resolveActorId` in `command-utils` and
 validates against `TenantRoleEnum`, so the literals it replaced cannot come back through it;

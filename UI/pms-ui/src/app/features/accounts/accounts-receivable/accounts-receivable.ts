@@ -383,12 +383,23 @@ export class AccountsReceivableComponent {
 		this.writingOff.set(true);
 		try {
 			const form = this.writeOffForm();
-			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.write_off`, {
-				ar_id: detail.ar_id,
-				write_off_amount: form.write_off_amount,
-				reason: form.reason,
-			});
-			this.toast.success(this.i18n.t("Write-off submitted. Refreshing AR..."));
+			const outcome = await this.api.post<{ status?: string }>(
+				`/tenants/${tenantId}/commands/billing.ar.write_off`,
+				{
+					ar_id: detail.ar_id,
+					write_off_amount: form.write_off_amount,
+					reason: form.reason,
+				},
+			);
+			// A write-off is one of the five commands one login cannot run on its
+			// own: the gateway records an approval request and a second owner
+			// releases it. Saying "submitted" and refreshing would show the same
+			// balance a moment later, which reads as a failure.
+			this.toast.success(
+				outcome?.status === "pending_approval"
+					? this.i18n.t("Sent for a second approval — it runs when another owner releases it.")
+					: this.i18n.t("Write-off submitted. Refreshing AR..."),
+			);
 			this.showWriteOffForm.set(false);
 			this.closeDetail();
 			await settleCommandReadModel(() => this.loadArData());
