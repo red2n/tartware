@@ -268,7 +268,8 @@ Three facts frame everything below:
   `dependsOn` is still checked for cycles and never consulted again. **Coverage improved 30 Aug:**
   a `LEDGER_CONTROL` flow took 66/202 to 80/202 and, more to the point, is the first flow whose
   `requiredGates` name a control that exists — dual control on the five. The runtime question
-  ("legal in this state?") is still unanswered; that is A10.
+  ("legal in this state?") is answered for reservations as of A10, and only for reservations —
+  the other 200 commands still have no declared state rule.
 
 Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b907>
 
@@ -283,7 +284,7 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | open |
 | A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | open |
 | A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
-| A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | open |
+| A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | **done 30 Aug** |
 | A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | **done 30 Aug** |
 
 **A02, as landed.** `COMMAND_MIN_ROLE` in `schema/src/api/command-permissions.ts` declares a floor
@@ -354,6 +355,59 @@ Two things the registry work turned up, both fixed rather than recorded:
 Verified by breaking it three ways: dropping a gate from the gateway manifest fails the compliance
 test with `unclaimed_gate`, and dropping a command from `COMMAND_DUAL_CONTROL` fails both
 `flow:integrity` and the schema test that pins the set to A02's OWNER tier.
+
+**A10, as landed.** `RESERVATION_LEGAL_TRANSITIONS` in `schema/src/api/reservations.ts` sits beside
+the allotment table it was modelled on. Writing it turned up the thing the finding predicted:
+the eight handler literals and pms-ui's own set had **already drifted in both directions** — the
+reservation screen offered Cancel on a WAITLISTED booking the service refused, and hid it on the
+INQUIRY and QUOTED bookings the service accepted. Neither side had the whole set; the table is the
+union, and both now read it.
+
+**A legality table alone cannot gate a command**, which is the part worth knowing. CHECKED_OUT →
+CHECKED_IN is a perfectly legal edge — it is `reservation.reverse_check_out`'s, which reopens the
+folio and refuses once the balance has gone to city ledger. Gating check-in on legality alone would
+have let a caller undo a check-out by pressing Check In, and the first draft did exactly that until
+an existing reversal test caught it. So `RESERVATION_COMMAND_TRANSITIONS` maps each edge to the
+command that owns it, and a handler asks *"may **this command** make this move?"*. Two tests hold
+the two halves together: no claim exceeds the legality table, and no `forcedFrom` exists that the
+forced table does not declare.
+
+**The hole this closed was `reservation.modify`.** It takes an optional status and wrote whatever it
+was handed — CHECKED_OUT back to CONFIRMED with no reversal, CANCELLED to CHECKED_IN with no
+reinstatement and no availability hold, a folio stranded either way — and `reservation.mass_update`
+re-enters the same handler, so it was that 500 bookings at a time. What it may still do is
+**derived, not listed**: `RESERVATION_UNCLAIMED_TRANSITIONS` is the legal edges no dedicated command
+claims, today PENDING → CONFIRMED (a deposit landing) and WAITLISTED → PENDING/CONFIRMED. The day
+someone writes a real command for one, that edge leaves the set on its own and the general editor
+stops being able to shortcut it. `reservation.create` gained the matching entry rule
+(`RESERVATION_INITIAL_STATUSES`) — booking straight into CHECKED_OUT was the other way past every
+edge.
+
+Three deliberate behaviour changes, each because the table forced a decision the literals had been
+dodging: **cancel now accepts WAITLISTED** (the screen always offered it; a guest who no longer
+wants to wait cancels); **`billing.no_show_charge` accepts PENDING**, matching `reservation.no_show`
+— it is the one command outside the reservation aggregate that writes `reservations.status`, with a
+raw UPDATE, and it now reads the same table rather than its own list; and **a reversal is refused
+from a state that has nothing to reverse** rather than passing as a no-op. `force` opens only what
+`RESERVATION_FORCED_TRANSITIONS` declares — NO_SHOW → CHECKED_IN, on check-in alone — and `modify`
+does not consult it at all, because an override owes a `flow_approvals` row and only the specific
+command writes one.
+
+Guardrail rule `reservation-status-literal` fires on two adjacent double-quoted statuses, verified
+by reintroducing `["INQUIRY", "QUOTED", "PENDING", "CONFIRMED"]` and watching it trip. It is
+double-quotes-only on purpose: ~40 read-side SQL filters (`status IN ('CONFIRMED','CHECKED_IN')`)
+say which bookings a report counts, not where one may move, and converting them would be wrong.
+The script scans `Apps/*/src` only, so the pms-ui half rests on the shared import. 49 tests
+(37 schema, 12 service) plus **Phase 4** of `test-ws04-lifecycle.sh`, which proves it on real data:
+modify is 202-accepted and the booking does not move, while a statusless edit and the PENDING →
+CONFIRMED deposit both still apply — the controlled comparison that says the pipeline works and the
+guard is what stopped the rest.
+
+Not done: `reservation_status_history` has a reader (core-service) and exactly one writer (a room
+move in rooms-service), so the table its own DDL calls an audit trail of "every check-in/out/cancel"
+holds room moves and nothing else. Now that every move goes through one guard that knows both
+statuses, filling it is a small change — but it belongs in the event applier, which is a different
+layer, so it is a finding rather than a silent extra.
 
 **A04, as landed.** `COMMAND_DUAL_CONTROL` in `schema/src/api/command-approvals.ts` names the
 commands one person may not run alone, and `acceptCommand` records them as `approval_requests` rows

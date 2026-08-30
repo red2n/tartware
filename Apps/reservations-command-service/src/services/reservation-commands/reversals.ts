@@ -27,6 +27,7 @@ import type {
   ReservationReversalStateRow,
   ReservationReverseCheckInCommand,
   ReservationReverseCheckOutCommand,
+  ReservationStatus,
 } from "@tartware/schemas";
 import {
   ReservationReinstateCommandSchema,
@@ -41,6 +42,7 @@ import { reservationsLogger } from "../../logger.js";
 import { recordAuditLog, recordFlowApproval } from "../../utils/audit.js";
 
 import {
+  assertReservationTransition,
   type CreateReservationResult,
   enqueueReservationUpdate,
   ReservationCommandError,
@@ -316,18 +318,24 @@ const loadReservation = async (
   return row;
 };
 
-/** Refuse a reversal against a reservation that is not in the reversible state. */
-const requireStatus = (
+/**
+ * Refuse a reversal the lifecycle does not allow.
+ *
+ * A reversal is a legal move backwards, not an override, so it clears the same
+ * table every forward command does: CHECKED_IN → CONFIRMED, CHECKED_OUT →
+ * CHECKED_IN, CANCELLED → CONFIRMED/PENDING are declared edges. Naming the
+ * target rather than just the expected source is what makes that true — it is
+ * `RESERVATION_LEGAL_TRANSITIONS` that answers, not a literal here.
+ */
+const requireReversal = (
   reservation: ReservationReversalStateRow,
-  expected: string,
+  commandName: string,
+  target: ReservationStatus,
   code: string,
 ): void => {
-  if (reservation.status !== expected) {
-    throw new ReservationCommandError(
-      code,
-      `Cannot reverse: reservation is ${reservation.status}, must be ${expected}`,
-    );
-  }
+  assertReservationTransition(commandName, reservation.status as ReservationStatus, target, {
+    code,
+  });
 };
 
 /** Put a room back to the status the operator asked for. Best-effort, like check-in. */
@@ -448,7 +456,12 @@ export const reverseCheckIn = async (
   // them from its caller would silently no-op when called unparsed.
   const input = ReservationReverseCheckInCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
-  requireStatus(reservation, "CHECKED_IN", "INVALID_STATUS_FOR_REVERSE_CHECKIN");
+  requireReversal(
+    reservation,
+    "reservation.reverse_check_in",
+    "CONFIRMED",
+    "INVALID_STATUS_FOR_REVERSE_CHECKIN",
+  );
 
   const propertyId = reservation.property_id ?? input.property_id ?? null;
   const reason = await resolveReasonCode(tenantId, propertyId, input.reason_code, "REVERSAL");
@@ -551,7 +564,12 @@ export const reverseCheckOut = async (
 ): Promise<CreateReservationResult> => {
   const input = ReservationReverseCheckOutCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
-  requireStatus(reservation, "CHECKED_OUT", "INVALID_STATUS_FOR_REVERSE_CHECKOUT");
+  requireReversal(
+    reservation,
+    "reservation.reverse_check_out",
+    "CHECKED_IN",
+    "INVALID_STATUS_FOR_REVERSE_CHECKOUT",
+  );
 
   const propertyId = reservation.property_id ?? input.property_id ?? null;
   const reason = await resolveReasonCode(tenantId, propertyId, input.reason_code, "REVERSAL");
@@ -667,7 +685,12 @@ export const reinstateReservation = async (
 ): Promise<CreateReservationResult> => {
   const input = ReservationReinstateCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
-  requireStatus(reservation, "CANCELLED", "INVALID_STATUS_FOR_REINSTATE");
+  requireReversal(
+    reservation,
+    "reservation.reinstate",
+    input.restore_status,
+    "INVALID_STATUS_FOR_REINSTATE",
+  );
 
   const propertyId = reservation.property_id ?? input.property_id ?? null;
   const reason = await resolveReasonCode(tenantId, propertyId, input.reason_code, "REVERSAL");

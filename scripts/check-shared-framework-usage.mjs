@@ -109,6 +109,41 @@ const RULES = [
       "own authority, which is the force: true problem the finding exists to remove",
   },
   {
+    id: "reservation-status-literal",
+    // A TypeScript array or Set of reservation statuses — the shape every
+    // lifecycle guard used before A10: ["PENDING", "CONFIRMED"] in the handler,
+    // new Set(["CHECKED_IN"]) in the screen. Two or more in a row is the
+    // giveaway; one status compared with === is left alone, because that is
+    // usually a display branch rather than a movement rule.
+    //
+    // Double quotes only, deliberately. Roughly forty read-side SQL filters
+    // ("... WHERE status IN ('CONFIRMED', 'CHECKED_IN')") say which bookings a
+    // report counts, not where one may move, and converting them would be
+    // wrong. Biome quotes every TS string double, and every SQL literal in this
+    // repo is single-quoted inside a template, so the quote style separates the
+    // two cleanly.
+    pattern:
+      /"(?:INQUIRY|QUOTED|PENDING|CONFIRMED|WAITLISTED|CHECKED_IN|CHECKED_OUT|CANCELLED|NO_SHOW|EXPIRED)"\s*,\s*"(?:INQUIRY|QUOTED|PENDING|CONFIRMED|WAITLISTED|CHECKED_IN|CHECKED_OUT|CANCELLED|NO_SHOW|EXPIRED)"/,
+    // Scope note: this script scans Apps/*/src only, so the declaration in
+    // schema/ needs no exemption and the pms-ui half of the old drift is not
+    // covered here — that side rests on the shared import plus review.
+    allow: [
+      // A charge precondition, not a movement: a cancellation penalty is
+      // postable against a booking that is already CANCELLED or NO_SHOW, and
+      // posting it moves nothing. Its sibling billing.no_show_charge *does*
+      // move the reservation, and reads the transition table instead.
+      "Apps/billing-service/src/services/billing-commands/cancellation-penalty.ts",
+    ],
+    use: 'reservationStatusesFor("<command>") or classifyReservationCommandTransition() from "@tartware/schemas"',
+    why:
+      "the reservation lifecycle was eight literal arrays across the command handlers plus a " +
+      "second, differently-worded set in pms-ui, and they had already drifted: the screen offered " +
+      "Cancel on a WAITLISTED booking the service refused and hid it on the INQUIRY and QUOTED " +
+      "bookings it accepted, while reservation.modify wrote any status it was handed and " +
+      "reservation.mass_update did it 500 at a time. RESERVATION_COMMAND_TRANSITIONS is the one " +
+      "ordering both ends read",
+  },
+  {
     id: "command-error",
     pattern: /class \w*(Command|Event)Error extends Error\b/,
     allow: ["Apps/command-consumer-utils/src/command-utils.ts"],

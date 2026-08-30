@@ -1,3 +1,10 @@
+import {
+  classifyReservationCommandTransition,
+  describeReservationStatuses,
+  type ReservationStatus,
+  reservationStatusesFor,
+} from "@tartware/schemas";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
@@ -54,10 +61,24 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     );
   }
 
-  if (!["CONFIRMED", "NO_SHOW"].includes(reservation.status)) {
+  // This command posts the penalty *and* marks the booking NO_SHOW below, so it
+  // is a lifecycle move made from outside the reservation aggregate — the only
+  // one in the repo. It reads the same table `reservation.no_show` does rather
+  // than its own list, which is what stops the two disagreeing: they used to,
+  // and a PENDING booking whose guest never arrived could be marked no-show by
+  // one route and refused a no-show charge by the other.
+  const reservationStatus = reservation.status as ReservationStatus;
+  const alreadyNoShow = reservationStatus === "NO_SHOW";
+  const mayBecomeNoShow =
+    classifyReservationCommandTransition("reservation.no_show", reservationStatus, "NO_SHOW") ===
+    "LEGAL";
+
+  if (!alreadyNoShow && !mayBecomeNoShow) {
     throw new BillingCommandError(
       "INVALID_RESERVATION_STATUS",
-      `No-show charge requires CONFIRMED or NO_SHOW status. Current: ${reservation.status}.`,
+      `No-show charge requires NO_SHOW status, or ${describeReservationStatuses(
+        reservationStatusesFor("reservation.no_show"),
+      )}. Current: ${reservation.status}.`,
     );
   }
 
@@ -178,8 +199,10 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
       created_by: actorId,
     });
 
-    // Mark reservation as NO_SHOW if still CONFIRMED
-    if (reservation.status === "CONFIRMED") {
+    // Mark the reservation NO_SHOW if it has not been already. Gated on the
+    // transition table above, so this raw UPDATE cannot make a move
+    // `reservation.no_show` itself would refuse.
+    if (mayBecomeNoShow) {
       const { rowCount } = await queryWithClient(
         client,
         `UPDATE public.reservations

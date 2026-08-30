@@ -399,4 +399,95 @@ else
   fi
 fi
 
+###############################################################################
+# PHASE 4 — Declared lifecycle transitions (A10)
+###############################################################################
+
+section "PHASE 4 · Lifecycle transitions are declared, not implied"
+
+# reservation.modify took an optional status and wrote whatever it was handed,
+# so it was a way past every guard the dedicated commands hold — and
+# reservation.mass_update re-enters the same handler, so it was that 500
+# bookings at a time. These assertions are negative on purpose: the command is
+# still 202-accepted (the refusal happens in the consumer), so what proves the
+# guard is that the reservation never moves.
+
+MOD=$(make_reservation 20)
+if [[ -z "$MOD" ]]; then
+  fail "Transition fixture created" "reservation.create did not land"
+else
+  wait_sql 40 "CONFIRMED" "select status from reservations where id='$MOD'"
+  assert_eq "Transition fixture is CONFIRMED" "CONFIRMED" \
+    "$(sql "select status from reservations where id='$MOD'")"
+
+  # Check-in through the back door: no room, no folio, no key.
+  code=$(post "$GW/v1/commands/reservation.modify/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$MOD\",\"status\":\"CHECKED_IN\"}}")
+  assert_http "Illegal modify is accepted for async refusal" "20[02]" "$code"
+  if wait_sql 20 "CHECKED_IN" "select status from reservations where id='$MOD'"; then
+    fail "modify cannot check a guest in" "reservation reached CHECKED_IN without reservation.check_in"
+  else
+    pass "modify cannot check a guest in"
+  fi
+
+  # Cancel through the back door, skipping the cancellation fee.
+  code=$(post "$GW/v1/commands/reservation.modify/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$MOD\",\"status\":\"CANCELLED\"}}")
+  assert_http "Illegal modify is accepted for async refusal (cancel)" "20[02]" "$code"
+  if wait_sql 20 "CANCELLED" "select status from reservations where id='$MOD'"; then
+    fail "modify cannot cancel" "reservation reached CANCELLED without reservation.cancel"
+  else
+    pass "modify cannot cancel"
+  fi
+
+  assert_eq "Booking is untouched after both refusals" "CONFIRMED" \
+    "$(sql "select status from reservations where id='$MOD'")"
+
+  # An edit carrying no status at all is ordinary work and must still apply —
+  # the guard gates status changes, not modification.
+  code=$(post "$GW/v1/commands/reservation.modify/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$MOD\",\"notes\":\"ws04 $RUN transition probe\"}}")
+  assert_http "Statusless edit accepted" "20[02]" "$code"
+  if wait_sql 40 "ws04 $RUN transition probe" \
+      "select coalesce(internal_notes,'') from reservations where id='$MOD'"; then
+    pass "Statusless edit still applies"
+  else
+    fail "Statusless edit still applies" "internal_notes never updated"
+  fi
+fi
+
+# The legal move modify is still the only route for: a deposit landing takes a
+# PENDING booking to CONFIRMED, and no command of its own covers it. If one is
+# ever added, this edge leaves RESERVATION_UNCLAIMED_TRANSITIONS and this
+# assertion is the one that will notice.
+PEND=$(gen_uuid)
+code=$(post "$GW/v1/commands/reservation.create/execute" \
+  "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$PEND\",\"property_id\":\"$PROPERTY\",\"guest_id\":\"$GUEST\",\"room_type_id\":\"$ROOM_TYPE\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN4DAYS\",\"total_amount\":400,\"currency\":\"USD\"}}")
+if [[ "$code" =~ ^20 ]] && wait_sql 40 "PENDING" "select status from reservations where id='$PEND'"; then
+  CREATED_RESERVATIONS+=("$PEND")
+  pass "Pending fixture created"
+  code=$(post "$GW/v1/commands/reservation.modify/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$PEND\",\"status\":\"CONFIRMED\"}}")
+  assert_http "Deposit confirmation accepted" "20[02]" "$code"
+  if wait_sql 40 "CONFIRMED" "select status from reservations where id='$PEND'"; then
+    pass "modify still confirms a pending booking — the edge no command claims"
+  else
+    fail "modify still confirms a pending booking" "still PENDING; the unclaimed edge was closed too"
+  fi
+else
+  skip "Pending fixture created" "reservation.create did not land a PENDING booking"
+fi
+
+# A reservation cannot be created straight into a state it has to arrive at.
+BADSTART=$(gen_uuid)
+code=$(post "$GW/v1/commands/reservation.create/execute" \
+  "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$BADSTART\",\"property_id\":\"$PROPERTY\",\"guest_id\":\"$GUEST\",\"room_type_id\":\"$ROOM_TYPE\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN4DAYS\",\"status\":\"CHECKED_OUT\",\"total_amount\":400,\"currency\":\"USD\"}}")
+assert_http "Create with a terminal status accepted for async refusal" "20[02]|4" "$code"
+if wait_sql 20 "1" "select count(*) from reservations where id='$BADSTART'"; then
+  CREATED_RESERVATIONS+=("$BADSTART")
+  fail "create cannot start a booking CHECKED_OUT" "the row was written anyway"
+else
+  pass "create cannot start a booking CHECKED_OUT"
+fi
+
 harness_summary "WS-04 LIFECYCLE"

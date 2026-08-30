@@ -1,4 +1,5 @@
 import { SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
+import type { ReservationStatus } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import {
@@ -23,6 +24,7 @@ import {
   redactPayload,
 } from "../../utils/audit.js";
 import {
+  assertReservationTransition,
   type CreateReservationResult,
   DEFAULT_CURRENCY,
   enqueueReservationUpdate,
@@ -74,21 +76,17 @@ export const checkInReservation = async (
   }
 
   // A guest marked NO_SHOW who then turns up is a routine front-desk situation,
-  // so force=true reinstates them. It deliberately does not extend to CHECKED_IN
-  // (already in-house), CHECKED_OUT (stay is over) or CANCELLED (needs an
-  // explicit reinstatement, not a side effect of check-in).
-  const allowedStatuses = ["PENDING", "CONFIRMED"];
-  const forceReinstatableStatuses = ["NO_SHOW"];
-  const isForcedReinstatement =
-    Boolean(command.force) && forceReinstatableStatuses.includes(reservation.status);
-
-  if (!allowedStatuses.includes(reservation.status) && !isForcedReinstatement) {
-    const permitted = command.force ? "PENDING, CONFIRMED or NO_SHOW" : "PENDING or CONFIRMED";
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_CHECKIN",
-      `Cannot check in reservation with status ${reservation.status}; must be ${permitted}`,
-    );
-  }
+  // so force=true reinstates them. That single override is declared in
+  // RESERVATION_FORCED_TRANSITIONS; it deliberately does not extend to
+  // CHECKED_IN (already in-house), CHECKED_OUT (stay is over) or CANCELLED
+  // (needs an explicit reinstatement, not a side effect of check-in), and the
+  // table is what says so rather than a literal array here.
+  const { forced: isForcedReinstatement } = assertReservationTransition(
+    "reservation.check_in",
+    reservation.status as ReservationStatus,
+    "CHECKED_IN",
+    { code: "INVALID_STATUS_FOR_CHECKIN", force: Boolean(command.force) },
+  );
 
   if (isForcedReinstatement) {
     // Overriding a lifecycle guard is a financial/operational control bypass —
@@ -462,12 +460,12 @@ export const checkOutReservation = async (
     );
   }
 
-  if (reservation.status !== "CHECKED_IN") {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_CHECKOUT",
-      `Cannot check out reservation with status ${reservation.status}; must be CHECKED_IN`,
-    );
-  }
+  assertReservationTransition(
+    "reservation.check_out",
+    reservation.status as ReservationStatus,
+    "CHECKED_OUT",
+    { code: "INVALID_STATUS_FOR_CHECKOUT" },
+  );
 
   // 2. Enforce folio settlement (blocks checkout unless force=true or express=true)
   try {

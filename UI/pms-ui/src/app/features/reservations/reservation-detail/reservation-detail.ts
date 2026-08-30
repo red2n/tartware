@@ -16,6 +16,7 @@ import type {
 	GuestWithStats,
 	ReservationDetail,
 } from "@tartware/schemas";
+import { reservationStatusesFor } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
@@ -35,12 +36,22 @@ import { CHARGE_CODE_OPTIONS } from "../../billing/billing-constants";
 
 type DetailRow = { label: string; value: string; badge?: string; icon?: string; hint?: string };
 
-/** Statuses that allow front-desk check-in per PMS industry standard. */
-const CHECKIN_ALLOWED = new Set(["PENDING", "CONFIRMED"]);
-/** Statuses that allow check-out. */
-const CHECKOUT_ALLOWED = new Set(["CHECKED_IN"]);
-/** Statuses that allow cancellation. */
-const CANCEL_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
+/**
+ * Which buttons a reservation's current status earns.
+ *
+ * Read from `RESERVATION_COMMAND_TRANSITIONS` rather than restated here, because
+ * restating them is what went wrong: this file used to declare cancellation as
+ * PENDING/CONFIRMED/WAITLISTED while the service accepted
+ * INQUIRY/QUOTED/PENDING/CONFIRMED, so the screen showed Cancel on a waiting
+ * booking that always failed and hid it on the two the service would have taken.
+ * One table, both ends.
+ *
+ * The forced moves are deliberately excluded: NO_SHOW → CHECKED_IN needs an
+ * override the operator has not been asked for at the point a button is drawn.
+ */
+const CHECKIN_ALLOWED = new Set<string>(reservationStatusesFor("reservation.check_in"));
+const CHECKOUT_ALLOWED = new Set<string>(reservationStatusesFor("reservation.check_out"));
+const CANCEL_ALLOWED = new Set<string>(reservationStatusesFor("reservation.cancel"));
 /** Statuses that allow a no-show charge. */
 const NO_SHOW_CHARGE_ALLOWED = new Set(["CONFIRMED", "NO_SHOW"]);
 /** Statuses that allow a late checkout fee. */

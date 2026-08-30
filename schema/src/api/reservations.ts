@@ -8,7 +8,11 @@
 import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
-import type { ReservationCommandLifecycleState } from "../shared/enums.js";
+import {
+	ReservationStatusEnum,
+	type ReservationCommandLifecycleState,
+	type ReservationStatus,
+} from "../shared/enums.js";
 
 // =====================================================
 // RESERVATION DETAIL (single reservation fetch)
@@ -159,6 +163,318 @@ export const ReservationDetailSchema = z.object({
 	rooms: z.array(ReservationRoomSummarySchema).optional(),
 });
 export type ReservationDetail = z.infer<typeof ReservationDetailSchema>;
+
+// =====================================================
+// RESERVATION LIFECYCLE — legal transitions (A10)
+// =====================================================
+
+/**
+ * Where a reservation may go next.
+ *
+ * `reservation_status` is a Postgres enum, so the column constrains the *value*
+ * and nothing constrains the *movement*. Until this table existed the movement
+ * rules lived as literal arrays inside each command handler — `["PENDING",
+ * "CONFIRMED"]` in check-in, `["INQUIRY", "QUOTED", "PENDING", "CONFIRMED"]` in
+ * cancel, and so on — plus a second, differently-worded copy in the UI. They had
+ * already drifted: the reservation screen offered Cancel on a WAITLISTED booking
+ * that the service refused, and hid it on the INQUIRY and QUOTED bookings the
+ * service accepted. This is the single ordering both ends read, for the same
+ * reason `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS`
+ * exist — and reservations are the aggregate that most needed one.
+ *
+ * The edges are the commands, not an idealised lifecycle:
+ *
+ * - INQUIRY → QUOTED is `reservation.send_quote`; QUOTED → PENDING is
+ *   `reservation.convert_quote`.
+ * - PENDING → CONFIRMED has no command of its own. It is a deposit or a
+ *   guarantee landing, applied through `reservation.modify` — which is exactly
+ *   why {@link RESERVATION_UNCLAIMED_TRANSITIONS} has to be derived rather than
+ *   letting that command write any status it is handed.
+ * - CHECKED_IN → CONFIRMED, CHECKED_OUT → CHECKED_IN and CANCELLED →
+ *   CONFIRMED/PENDING are the three WS-04 reversals. A reversal is a legal move
+ *   backwards, not an override — it carries a reason code and a `flow_approvals`
+ *   row, and it is refused outright from any other state.
+ * - EXPIRED and NO_SHOW are terminal here. NO_SHOW has one way out, and it needs
+ *   an override — see {@link RESERVATION_FORCED_TRANSITIONS}.
+ *
+ * WAITLISTED is reachable only as an initial status (see
+ * {@link RESERVATION_INITIAL_STATUSES}); no command moves a booking into it,
+ * because the waiting itself lives on `waitlist_entries.waitlist_status` and
+ * `reservation.waitlist_convert` creates a fresh reservation rather than
+ * promoting one. It still needs its outgoing edges: a guest who no longer wants
+ * to wait cancels, and a room that frees up confirms them.
+ *
+ * **This table says a move is legal. It does not say who may make it** — two
+ * commands reach CHECKED_IN, and `reservation.check_out` must not be undoable by
+ * calling check-in again. {@link RESERVATION_COMMAND_TRANSITIONS} is what maps
+ * an edge to the command that owns it.
+ */
+export const RESERVATION_LEGAL_TRANSITIONS: Readonly<
+	Record<ReservationStatus, readonly ReservationStatus[]>
+> = Object.freeze({
+	INQUIRY: ["QUOTED", "CANCELLED", "EXPIRED"],
+	QUOTED: ["PENDING", "CANCELLED", "EXPIRED"],
+	PENDING: ["CONFIRMED", "CHECKED_IN", "CANCELLED", "NO_SHOW", "EXPIRED"],
+	CONFIRMED: ["CHECKED_IN", "CANCELLED", "NO_SHOW"],
+	WAITLISTED: ["PENDING", "CONFIRMED", "CANCELLED"],
+	CHECKED_IN: ["CHECKED_OUT", "CONFIRMED"],
+	CHECKED_OUT: ["CHECKED_IN"],
+	CANCELLED: ["CONFIRMED", "PENDING"],
+	NO_SHOW: [],
+	EXPIRED: [],
+});
+
+/**
+ * Moves that are legal only on an operator's override.
+ *
+ * A guest marked NO_SHOW who then walks up to the desk is routine, so
+ * `reservation.check_in` accepts them with `force: true` and writes a
+ * `flow_approvals` row for the bypass. That is a different fact from an ordinary
+ * transition and belongs in a different map: putting NO_SHOW → CHECKED_IN in the
+ * table above would let the UI offer a Check In button that fails without a
+ * force flag the operator was never asked for, and would let the unclaimed-edge
+ * set launder the same move with no approval record at all.
+ *
+ * Kept deliberately small. An entry here is a claim that some handler both
+ * accepts the move under an explicit override *and* records it.
+ */
+export const RESERVATION_FORCED_TRANSITIONS: Readonly<
+	Partial<Record<ReservationStatus, readonly ReservationStatus[]>>
+> = Object.freeze({
+	NO_SHOW: ["CHECKED_IN"],
+});
+
+/**
+ * Statuses a reservation may be *created* in.
+ *
+ * `reservation.create` takes an optional status and defaults to PENDING, so
+ * without this the create path is a way around every edge in the table above —
+ * book a stay straight into CHECKED_OUT and no transition was ever attempted.
+ *
+ * CHECKED_IN is here for the walk-in: `reservation.walkin_checkin` creates the
+ * booking and seats the guest in one command, because a walk-in has no prior
+ * state to move from.
+ */
+export const RESERVATION_INITIAL_STATUSES: readonly ReservationStatus[] =
+	Object.freeze([
+		"INQUIRY",
+		"QUOTED",
+		"PENDING",
+		"CONFIRMED",
+		"WAITLISTED",
+		"CHECKED_IN",
+	] as const);
+
+/** One command's claim on the lifecycle: which states it moves, and to what. */
+export type ReservationCommandTransition = {
+	/** Statuses the command accepts. Must be a subset of what the table allows. */
+	readonly from: readonly ReservationStatus[];
+	/** Statuses it writes. More than one only where the caller chooses. */
+	readonly to: readonly ReservationStatus[];
+	/** Statuses it accepts only under `force`, declared in the forced table. */
+	readonly forcedFrom?: readonly ReservationStatus[];
+};
+
+/**
+ * Which command owns which edge.
+ *
+ * The legality table alone cannot gate a handler, and finding that out is worth
+ * writing down: CHECKED_OUT → CHECKED_IN is a legal move, but it is
+ * `reservation.reverse_check_out`'s — it reopens the folio, checks the balance
+ * has not already gone to city ledger, and writes a reversal record. Gating
+ * `reservation.check_in` on the legality table alone would have let a caller
+ * un-check-out a departed guest by pressing Check In, skipping all of it. A
+ * command's `from` is therefore its own, narrower claim.
+ *
+ * Two properties are enforced by test rather than by construction, because both
+ * are the kind of thing an edit breaks quietly:
+ *
+ * - **No claim exceeds the table.** Every `from → to` pair here is LEGAL, and
+ *   every `forcedFrom → to` pair is REQUIRES_OVERRIDE. A command cannot widen
+ *   the lifecycle by declaring more than the table permits.
+ * - **Every edge is claimed, or it is unclaimed on purpose** — see
+ *   {@link RESERVATION_UNCLAIMED_TRANSITIONS}.
+ *
+ * `reservation.mass_cancel`, `mass_check_in` and `mass_update` are absent
+ * because they are the single command applied N times and re-enter the handler
+ * named here; a second entry would be a second place to get it wrong.
+ */
+export const RESERVATION_COMMAND_TRANSITIONS: Readonly<
+	Record<string, ReservationCommandTransition>
+> = Object.freeze({
+	"reservation.send_quote": { from: ["INQUIRY"], to: ["QUOTED"] },
+	"reservation.convert_quote": { from: ["QUOTED"], to: ["PENDING"] },
+	"reservation.check_in": {
+		from: ["PENDING", "CONFIRMED"],
+		to: ["CHECKED_IN"],
+		forcedFrom: ["NO_SHOW"],
+	},
+	"reservation.check_out": { from: ["CHECKED_IN"], to: ["CHECKED_OUT"] },
+	"reservation.cancel": {
+		from: ["INQUIRY", "QUOTED", "PENDING", "CONFIRMED", "WAITLISTED"],
+		to: ["CANCELLED"],
+	},
+	"reservation.no_show": { from: ["PENDING", "CONFIRMED"], to: ["NO_SHOW"] },
+	"reservation.expire": {
+		from: ["INQUIRY", "QUOTED", "PENDING"],
+		to: ["EXPIRED"],
+	},
+	// Walking a guest cancels the booking here and rebooks them elsewhere, so it
+	// is a cancel with a room commitment behind it — never an INQUIRY or a
+	// WAITLISTED booking, which have no room to be walked out of.
+	"reservation.walk_guest": {
+		from: ["PENDING", "CONFIRMED"],
+		to: ["CANCELLED"],
+	},
+	"reservation.reverse_check_in": {
+		from: ["CHECKED_IN"],
+		to: ["CONFIRMED"],
+	},
+	"reservation.reverse_check_out": {
+		from: ["CHECKED_OUT"],
+		to: ["CHECKED_IN"],
+	},
+	// `restore_status` lets the operator choose which side of the quote funnel
+	// the booking comes back to.
+	"reservation.reinstate": {
+		from: ["CANCELLED"],
+		to: ["CONFIRMED", "PENDING"],
+	},
+});
+
+/**
+ * The edges no dedicated command claims — and therefore the only status changes
+ * `reservation.modify` may apply.
+ *
+ * Derived, not listed. `reservation.modify` takes an optional status and used to
+ * write whatever it was given, which made it a way past every guard above:
+ * CHECKED_OUT back to CONFIRMED with no reversal, CANCELLED to CHECKED_IN with
+ * no reinstatement and no availability hold, a folio left behind either way. And
+ * `reservation.mass_update` re-enters the same handler, so it was that 500
+ * bookings at a time.
+ *
+ * Deriving it is what keeps it honest: the day someone adds a real command for
+ * PENDING → CONFIRMED, that edge leaves this set on its own and the general
+ * editor stops being able to shortcut it.
+ *
+ * Today: PENDING → CONFIRMED (a deposit or guarantee landing) and WAITLISTED →
+ * PENDING/CONFIRMED (a room freeing up for a waiting guest).
+ */
+export const RESERVATION_UNCLAIMED_TRANSITIONS: Readonly<
+	Partial<Record<ReservationStatus, readonly ReservationStatus[]>>
+> = Object.freeze(
+	ReservationStatusEnum.options.reduce<
+		Partial<Record<ReservationStatus, readonly ReservationStatus[]>>
+	>((unclaimed, from) => {
+		const orphans = RESERVATION_LEGAL_TRANSITIONS[from].filter(
+			(to) =>
+				!Object.values(RESERVATION_COMMAND_TRANSITIONS).some(
+					(claim) => claim.from.includes(from) && claim.to.includes(to),
+				),
+		);
+		if (orphans.length > 0) {
+			unclaimed[from] = orphans;
+		}
+		return unclaimed;
+	}, {}),
+);
+
+/** How a requested status change is classified against the tables above. */
+export type ReservationTransitionVerdict =
+	| "LEGAL"
+	| "REQUIRES_OVERRIDE"
+	| "ILLEGAL";
+
+/**
+ * Classify a status change against the lifecycle, ignoring which command asked.
+ *
+ * A no-op (`from === to`) is LEGAL: handlers reach this with a status the caller
+ * echoed back unchanged, and refusing that would turn "set the notes and leave
+ * the status alone" into an error.
+ */
+export const classifyReservationTransition = (
+	from: ReservationStatus,
+	to: ReservationStatus,
+): ReservationTransitionVerdict => {
+	if (from === to) {
+		return "LEGAL";
+	}
+	if (RESERVATION_LEGAL_TRANSITIONS[from]?.includes(to)) {
+		return "LEGAL";
+	}
+	if (RESERVATION_FORCED_TRANSITIONS[from]?.includes(to)) {
+		return "REQUIRES_OVERRIDE";
+	}
+	return "ILLEGAL";
+};
+
+/** True when `to` is reachable from `from` without an override. */
+export const isLegalReservationTransition = (
+	from: ReservationStatus,
+	to: ReservationStatus,
+): boolean => classifyReservationTransition(from, to) === "LEGAL";
+
+/**
+ * Classify a status change as *this command*, which is the question a handler
+ * actually has.
+ *
+ * An unknown command name is ILLEGAL rather than waved through — the same
+ * default A02 chose for an undeclared permission floor, and for the same
+ * reason: a new lifecycle command should be unreachable until someone says
+ * where it sits, instead of inheriting the loosest rule in the file.
+ */
+export const classifyReservationCommandTransition = (
+	commandName: string,
+	from: ReservationStatus,
+	to: ReservationStatus,
+): ReservationTransitionVerdict => {
+	const claim = RESERVATION_COMMAND_TRANSITIONS[commandName];
+	if (!claim?.to.includes(to)) {
+		return "ILLEGAL";
+	}
+	if (claim.from.includes(from)) {
+		return "LEGAL";
+	}
+	if (claim.forcedFrom?.includes(from)) {
+		return "REQUIRES_OVERRIDE";
+	}
+	return "ILLEGAL";
+};
+
+/**
+ * The statuses a given command accepts.
+ *
+ * This is the form a handler and a screen both want: check-in asks "who may I
+ * check in?" rather than "where may a PENDING booking go?". Callers use this
+ * instead of holding their own array, so the guard and the button cannot
+ * disagree about one command.
+ *
+ * Returned in enum order so the message a refused caller sees is stable.
+ */
+export const reservationStatusesFor = (
+	commandName: string,
+	options: { includeForced?: boolean } = {},
+): readonly ReservationStatus[] => {
+	const claim = RESERVATION_COMMAND_TRANSITIONS[commandName];
+	if (!claim) {
+		return [];
+	}
+	const accepted = new Set<ReservationStatus>(claim.from);
+	if (options.includeForced === true) {
+		for (const status of claim.forcedFrom ?? []) {
+			accepted.add(status);
+		}
+	}
+	return ReservationStatusEnum.options.filter((status) => accepted.has(status));
+};
+
+/** Render an allowed-from set the way the refusal messages phrase it. */
+export const describeReservationStatuses = (
+	statuses: readonly ReservationStatus[],
+): string =>
+	statuses.length <= 1
+		? (statuses[0] ?? "none")
+		: `${statuses.slice(0, -1).join(", ")} or ${statuses[statuses.length - 1]}`;
 
 // =====================================================
 // S23: CHECK-IN BRIEF (Guest Recognition)

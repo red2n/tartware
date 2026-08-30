@@ -1,9 +1,12 @@
 import {
+  describeReservationStatuses,
   expandStayPlan,
+  RESERVATION_INITIAL_STATUSES,
   type ReservationCancelledEvent,
   ReservationCancelledEventSchema,
   type ReservationCreatedEvent,
   ReservationCreatedEventSchema,
+  type ReservationStatus,
   type ReservationUpdatedEvent,
   ReservationUpdatedEventSchema,
   StayPlanError,
@@ -46,6 +49,8 @@ import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit
 import { calculateCancellationFee } from "../cancellation-fee-service.js";
 
 import {
+  assertModifiableStatusChange,
+  assertReservationTransition,
   buildReservationUpdatePayload,
   type CreateReservationResult,
   DEFAULT_CURRENCY,
@@ -131,6 +136,20 @@ export const createReservation = async (
   // Validate check_out_date is after check_in_date
   if (stayEnd <= stayStart) {
     throw new Error("INVALID_DATES: check_out_date must be after check_in_date");
+  }
+
+  // A create with an explicit status is the other way around the transition
+  // table: book the stay directly into CHECKED_OUT and no edge was ever
+  // traversed. Only the states a booking can genuinely begin in are accepted —
+  // CHECKED_IN among them, for the walk-in that has no prior state to move from.
+  if (
+    command.status !== undefined &&
+    !RESERVATION_INITIAL_STATUSES.includes(command.status as ReservationStatus)
+  ) {
+    throw new ReservationCommandError(
+      "INVALID_INITIAL_STATUS",
+      `Cannot create a reservation in ${command.status}; must be ${describeReservationStatuses(RESERVATION_INITIAL_STATUSES)}`,
+    );
   }
 
   // ── Gate: Guest blacklist check (Flow 3 → Flow 4 cross-flow gate) ──────
@@ -472,6 +491,20 @@ export const modifyReservation = async (
     throw new Error(`Reservation ${command.reservation_id} not found for tenant ${tenantId}`);
   }
 
+  // A modify carrying a status is a lifecycle move wearing an edit's clothes,
+  // and until the transition table existed this handler applied whatever it was
+  // given. That made `reservation.modify` a way past every guard the dedicated
+  // commands enforce — CHECKED_OUT straight back to CONFIRMED with no reversal,
+  // CANCELLED to CHECKED_IN with no reinstatement, a folio left behind either
+  // way — and `reservation.mass_update` rides the same handler, so it was that
+  // 500 bookings at a time. The legal moves it still permits are the ones no
+  // command of their own covers, chiefly PENDING → CONFIRMED when a deposit
+  // lands. `force` is not consulted: an override has to leave a flow_approvals
+  // row, and the command that writes one is the specific command.
+  if (command.status !== undefined) {
+    assertModifiableStatusChange(snapshot.status as ReservationStatus, command.status);
+  }
+
   const targetPropertyId = command.property_id ?? snapshot.propertyId;
   const targetRoomTypeId = command.room_type_id ?? snapshot.roomTypeId;
   const stayStart = new Date(command.check_in_date ?? snapshot.checkInDate);
@@ -737,13 +770,12 @@ export const markNoShow = async (
     );
   }
 
-  const eligibleStatuses = ["PENDING", "CONFIRMED"];
-  if (!eligibleStatuses.includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_NO_SHOW",
-      `Cannot mark no-show for reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
-    );
-  }
+  assertReservationTransition(
+    "reservation.no_show",
+    reservation.status as ReservationStatus,
+    "NO_SHOW",
+    { code: "INVALID_STATUS_FOR_NO_SHOW" },
+  );
 
   // 2. Calculate no-show fee (default to 1 night room rate if not specified)
   const noShowFee = command.no_show_fee ?? Number(reservation.room_rate ?? 0);
@@ -931,13 +963,15 @@ export const cancelReservation = async (
       `Reservation ${command.reservation_id} not found`,
     );
   }
-  const cancelAllowed = ["INQUIRY", "QUOTED", "PENDING", "CONFIRMED"];
-  if (!cancelAllowed.includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_CANCEL",
-      `Cannot cancel reservation with status ${reservation.status}; must be INQUIRY, QUOTED, PENDING, or CONFIRMED`,
-    );
-  }
+  // WAITLISTED joined the permitted set with the transition table: the screen
+  // had always offered Cancel on a waiting booking and this handler had always
+  // refused it. A guest who no longer wants to wait cancels.
+  assertReservationTransition(
+    "reservation.cancel",
+    reservation.status as ReservationStatus,
+    "CANCELLED",
+    { code: "INVALID_STATUS_FOR_CANCEL" },
+  );
 
   // Calculate cancellation fee from rate policy
   let cancellationFee = 0;
@@ -1144,12 +1178,15 @@ export const walkGuest = async (
     );
   }
 
-  if (!["CONFIRMED", "PENDING"].includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS",
-      `Cannot walk a reservation in ${reservation.status} status. Must be CONFIRMED or PENDING.`,
-    );
-  }
+  // Walking a guest cancels their booking here and rebooks them elsewhere, so
+  // it clears the same gate as a cancel — minus INQUIRY/QUOTED/WAITLISTED,
+  // which have no room held to be walked out of.
+  assertReservationTransition(
+    "reservation.walk_guest",
+    reservation.status as ReservationStatus,
+    "CANCELLED",
+    { code: "INVALID_STATUS" },
+  );
 
   // Build the cancelled event envelope (same shape as cancelReservation)
   const payload: ReservationCancelledEvent = {
