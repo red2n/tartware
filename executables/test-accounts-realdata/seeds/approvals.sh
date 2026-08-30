@@ -54,10 +54,19 @@ seed_approvals() {
     return
   fi
 
+  # required_role must be a real TenantRoleEnum value. It was a free-form
+  # VARCHAR when this seeder was written, and "FINANCE" — a role the product has
+  # never had — was accepted and stored. A01 made the column load-bearing (the
+  # approver's role is now compared against it, failing closed on a value that
+  # is not a known role), so the route validates it and this row 400'd: three
+  # approvals were posted and two landed.
+  #
+  # OWNER matches where a write-off actually sits on the ladder — it is the
+  # approver role COMMAND_DUAL_CONTROL demands for the write-off commands.
   local specs=(
     "COMP_LARGE|MANAGER|Comp dinner for service recovery"
     "FOLIO_REOPEN|MANAGER|Reopen folio to post a late minibar charge"
-    "WRITEOFF|FINANCE|Write off uncollectable balance under policy"
+    "WRITEOFF|OWNER|Write off uncollectable balance under policy"
   )
   local spec op role desc n=0
   for spec in "${specs[@]}"; do
