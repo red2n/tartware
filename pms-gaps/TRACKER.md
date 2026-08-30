@@ -18,7 +18,7 @@
 | [ ] | PMS-01-08 | Preferences | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-09 | Confirmation letters | PARTIAL | WS-05 | M | |
 | [x] | PMS-02-01 | Check-in reversal | MISSING | WS-04 | M | `reservation.reverse_check_in`. Returns to CONFIRMED, clears `actual_check_in` and the room assignment, voids only what check-in posted. Verified through the gateway: folio 111.40 → 86.40 with the EARLY_CHECKIN 25.00 voided and the guest's FNB 86.40 left intact; room → DIRTY; `actual_check_in` NULL (not the epoch — `ReservationsSchema` now makes it nullable so a reversal can transmit "clear this"). |
-| [ ] | PMS-02-02 | Room move for in-house guest | PARTIAL | WS-04 | M | |
+| [x] | PMS-02-02 | Room move for in-house guest | PARTIAL | WS-04 | M | `reservation.room_move` (66413d55). Guarded by reason code, category, `requires_approval`, room sellability and a fresh availability hold — the most complete override implementation in the repo, and the model the authorization audit's findings point at. |
 | [ ] | PMS-02-03 | Credit card pre-authorization | PARTIAL | WS-07 | M | |
 | [x] | PMS-03-01 | Physical vs sellable inventory | PARTIAL | WS-02 | M | `rooms_to_sell − rooms_sold` is the ceiling the booking path checks. Verified: with rooms_to_sell=1 and one room sold, a second booking was refused RESTRICTION_SELL_LIMIT although physical rooms were free. |
 | [x] | PMS-03-02 | Restrictions engine | PARTIAL | WS-02 | L | `evaluateRestrictions()` in `schema/src/api/restrictions.ts` (pure, 24 tests) called by createReservation and modifyReservation before the lock, and by the availability search. Verified through the gateway: a 2-night stay on a 3-night minimum is refused RESTRICTION_MIN_LOS, non-retryable, no row and no lock; 3 nights books. |
