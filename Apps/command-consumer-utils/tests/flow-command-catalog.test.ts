@@ -336,6 +336,12 @@ describe("flow registry ↔ dispatchability", () => {
     const prefixes: string[] = [];
 
     for (const file of walk(`${ROOT}Apps/api-gateway/src`)) {
+      // The gateway's flow manifest names commands to declare the *gates* in
+      // front of them, not a way to send them. Counting those literals credited
+      // five write-off and reopen commands with a dispatch path they do not
+      // have — the permissiveness this scanner accepts everywhere else becomes
+      // a false negative here, because the file exists to talk about commands.
+      if (file.endsWith("/flow-manifest.ts")) continue;
       for (const m of readFileSync(file, "utf8").matchAll(COMMAND_LITERAL)) names.add(m[1]!);
     }
     for (const app of ["UI/pms-ui/src", "UI/guest-portal/src"]) {

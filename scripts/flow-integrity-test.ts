@@ -300,11 +300,37 @@ function checkFlow9() {
     fail(flow, "Handler: rooms.out_of_order", "NOT found");
   }
 
-  const hkConsumer = join(APPS, "housekeeping-service/src/commands/command-center-consumer.ts");
-  if (fileContains(hkConsumer, "operations.maintenance")) {
-    pass(flow, "Handler: operations.maintenance.*", "Registered in housekeeping-service");
+  // Maintenance is REST on housekeeping-service, not a command.
+  //
+  // This asserted a handler for `operations.maintenance.*` in the housekeeping
+  // consumer. There is no such command: not in the catalogue, not in the
+  // validator map, not in any consumer — a work order is raised over
+  // `/v1/maintenance/requests` and moved with assign / complete / escalate.
+  // So the check failed against a handler nobody ever built, which is the whole
+  // argument for putting this script in `pnpm run check`: it had been red for
+  // long enough that nobody knew.
+  //
+  // The commands were in fact retired on 2026-08-18 along with `inventory.*`,
+  // because plain HTTP was already the live path — see
+  // ui-gaps/17-command-reachability.md, and the note in
+  // flow-command-catalog.test.ts that records the same removal. Everything was
+  // updated except this file. Same resolution as `reservation.mobile_checkin.*`
+  // in the flow registry: when a capability is REST, assert the REST surface
+  // rather than invent a command for it.
+  const maintenanceRoutes = join(APPS, "housekeeping-service/src/routes/maintenance.ts");
+  const maintenanceVerbs = [
+    "/v1/maintenance/requests",
+    "/v1/maintenance/requests/:requestId/assign",
+    "/v1/maintenance/requests/:requestId/complete",
+    "/v1/maintenance/requests/:requestId/escalate",
+  ];
+  const missingVerbs = maintenanceVerbs.filter(
+    (route) => !fileContains(maintenanceRoutes, route),
+  );
+  if (missingVerbs.length === 0) {
+    pass(flow, "REST: maintenance work orders", "raise / assign / complete / escalate on housekeeping-service");
   } else {
-    fail(flow, "Handler: operations.maintenance.*", "NOT found");
+    fail(flow, "REST: maintenance work orders", `missing ${missingVerbs.join(", ")}`);
   }
 }
 
@@ -429,6 +455,75 @@ function checkFlow12() {
   }
 }
 
+// ─── Flow 13: Ledger Control ────────────────────────────────────────────────
+
+/**
+ * The commands that reverse, forgive or reopen a posted entry, and the control
+ * in front of the five that undo a completed accounting control.
+ *
+ * The registry can require a gate and a manifest can claim it; neither knows
+ * whether the code still enforces one. That matters more here than anywhere
+ * else, because removing dual control breaks nothing observable — a write-off
+ * still writes off, and every test of its behaviour stays green. This asserts
+ * the three pieces that have to be present for the claim to be true: the
+ * declaration, the deferral inside the accept path, and a way for the second
+ * person to release what was deferred.
+ */
+function checkFlow13() {
+  const flow = "Flow 13: Ledger Control";
+
+  const declaration = join(SCHEMA_SRC, "api/command-approvals.ts");
+  const dualControlCommands = [
+    "ar.city_ledger.write_off",
+    "billing.ar.write_off",
+    "billing.suspense.write_off",
+    "billing.fiscal_period.reopen",
+    "billing.date_roll.manual",
+  ];
+  for (const cmd of dualControlCommands) {
+    if (fileContains(declaration, `"${cmd}"`)) {
+      pass(flow, `Dual control declared: ${cmd}`, "In COMMAND_DUAL_CONTROL");
+    } else {
+      fail(flow, `Dual control declared: ${cmd}`, "NOT in COMMAND_DUAL_CONTROL");
+    }
+  }
+
+  // The deferral itself. A declaration nothing reads is the state this whole
+  // finding started in — approval_requests had a full service layer and no
+  // caller.
+  const acceptPath = join(APPS, "command-center-shared/src/services/command-dispatch.ts");
+  if (fileContains(acceptPath, "commandApproverRole") && fileContains(acceptPath, "pending_approval")) {
+    pass(flow, "Gate: dual_control enforced in acceptCommand", "Deferred before the outbox write");
+  } else {
+    fail(
+      flow,
+      "Gate: dual_control enforced in acceptCommand",
+      "acceptCommand does not defer declared commands — the queue is unreachable again",
+    );
+  }
+
+  // And a way out of the queue. Without the release path an approved request is
+  // a status change that executes nothing, which is exactly what A04 found.
+  const approvalService = join(APPS, "api-gateway/src/command-center/command-approval-service.ts");
+  if (fileContains(approvalService, "approveCommandRequest") && fileContains(approvalService, "acceptCommand")) {
+    pass(flow, "Release path: approval dispatches the stored payload", "Registered in api-gateway");
+  } else {
+    fail(flow, "Release path: approval dispatches the stored payload", "NOT found");
+  }
+
+  // Where the deferred command waits.
+  const approvalsSql = join(SCRIPTS, "04-financial/80_approval_requests.sql");
+  if (fileContains(approvalsSql, "command_name") && fileContains(approvalsSql, "dispatched_command_id")) {
+    pass(flow, "Table: approval_requests carries the deferred command", "command_name + dispatched_command_id");
+  } else {
+    fail(
+      flow,
+      "Table: approval_requests carries the deferred command",
+      "columns missing — a released approval cannot say what it dispatched",
+    );
+  }
+}
+
 // ─── Cross-Flow Structural Checks ───────────────────────────────────────────
 
 function checkCrossFlow() {
@@ -473,6 +568,7 @@ checkFlow9();
 checkFlow10();
 checkFlow11();
 checkFlow12();
+checkFlow13();
 checkCrossFlow();
 
 // ─── Cross-validation: manifest compliance ──────────────────────────────────

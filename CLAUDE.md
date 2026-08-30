@@ -265,10 +265,10 @@ Three facts frame everything below:
   undo a completed accounting control now need a *second actor*, and cannot be run by one login at
   all. Everything else still bypasses on the caller's own authority.
 - **The flow guard is static.** It proves a command is wired up, not that an operator may run it.
-  `dependsOn` is checked for cycles and never consulted again; 66 of 203 catalogued commands are
-  named by a flow, and the 137 that are not include `billing.charge.void`, `billing.comp.post`,
-  `billing.deposit.waive`, `billing.folio.reopen`, `billing.fiscal_period.reopen`,
-  `ar.city_ledger.write_off` and `reservation.walk_guest`.
+  `dependsOn` is still checked for cycles and never consulted again. **Coverage improved 30 Aug:**
+  a `LEDGER_CONTROL` flow took 66/202 to 80/202 and, more to the point, is the first flow whose
+  `requiredGates` name a control that exists — dual control on the five. The runtime question
+  ("legal in this state?") is still unanswered; that is A10.
 
 Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b907>
 
@@ -284,7 +284,7 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | open |
 | A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
 | A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | open |
-| A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | open |
+| A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | **done 30 Aug** |
 
 **A02, as landed.** `COMMAND_MIN_ROLE` in `schema/src/api/command-permissions.ts` declares a floor
 for each of the 202 commands, on the same `TENANT_ROLE_PRIORITY` ladder A01 consolidated — no second
@@ -324,6 +324,36 @@ Two things this does **not** do: it is a floor per command, not per amount, so A
 actor, so A04's approval queue is still unentered. Noted while here: `guest.gdpr.rectify` and
 `guest.gdpr.restrict` are gateway routes naming commands that exist in neither the validator map
 nor the catalogue — they 400 on payload validation today and did before this change.
+
+**A11 + registry coverage, as landed.** `pnpm run flow:integrity` is now in `pnpm run check` (so
+`build` runs it) and a step in `ci-guardrails.yml`. It had been **failing** the whole time it sat in
+no gate: it asserted a handler for `operations.maintenance.*`, three commands retired on 2026-08-18
+when plain HTTP became the live path — every other file was updated and this one was not, which is
+what a check nobody runs decays into. Now 78 checks, all green.
+
+`FlowId.LEDGER_CONTROL` is the first new flow since the guest lifecycle: 14 commands that reverse,
+forgive or reopen a posted entry, claimed by billing-service. Its `requiredGates` are the five
+`dual_control` gates from A04, and **api-gateway now has a flow manifest** — its first — claiming
+those gates and nothing else, because it is the service that enforces them (`acceptCommand`), while
+the domain services still handle the commands. `validateServiceManifest` runs at gateway startup
+with `mode: "throw"` like everywhere else. Deleting the deferral now breaks the boot instead of
+breaking nothing: a void still voids and a write-off still writes off, so no behavioural test would
+have noticed.
+
+Two things the registry work turned up, both fixed rather than recorded:
+- **The dispatchability test can be fooled by a manifest.** It counts any command literal in
+  `api-gateway/src` as a dispatch path, and a *gate* declaration is not one. `flow-manifest.ts` is
+  now excluded from that scan — otherwise declaring a gate would have credited five commands with a
+  path they do not have.
+- **Four commands had a handler, a catalogue row, a permission floor and no route**:
+  `ar.city_ledger.write_off`, `billing.suspense.write_off`, `billing.deposit.waive`,
+  `ar.payment.unapply` — reachable only through the generic execute endpoint, which is exactly how
+  they stayed outside every flow. They now have routes under
+  `/v1/tenants/:tenantId/billing/{city-ledger,suspense,deposits,cash-applications}/:entryId/...`.
+
+Verified by breaking it three ways: dropping a gate from the gateway manifest fails the compliance
+test with `unclaimed_gate`, and dropping a command from `COMMAND_DUAL_CONTROL` fails both
+`flow:integrity` and the schema test that pins the set to A02's OWNER tier.
 
 **A04, as landed.** `COMMAND_DUAL_CONTROL` in `schema/src/api/command-approvals.ts` names the
 commands one person may not run alone, and `acceptCommand` records them as `approval_requests` rows

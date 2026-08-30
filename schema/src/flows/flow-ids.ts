@@ -22,6 +22,7 @@ export const FlowId = {
 	HOUSEKEEPING: "flow.housekeeping",
 	CASHIER_SHIFT: "flow.cashier_shift",
 	AR_COLLECTIONS: "flow.ar_collections",
+	LEDGER_CONTROL: "flow.ledger_control",
 	CHANNEL_DISTRIBUTION: "flow.channel_distribution",
 } as const;
 

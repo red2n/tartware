@@ -1,5 +1,6 @@
 import process from "node:process";
 
+import { validateServiceManifest } from "@tartware/command-consumer-utils/flow-compliance";
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
 import {
@@ -12,6 +13,7 @@ import {
   startCommandOutboxDispatcher,
 } from "./command-center/outbox-dispatcher.js";
 import { dbConfig, gatewayConfig, kafkaConfig } from "./config.js";
+import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownProducer, startProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
@@ -54,6 +56,12 @@ const start = async () => {
         return;
       }
     }
+    // Every other service validates its manifest through `bootstrapService`;
+    // the gateway builds its own server, so it makes the same call itself.
+    // `mode: "throw"` for the same reason as the rest: a gate this service
+    // claims to enforce and no longer does is worth failing to start over.
+    validateServiceManifest(FLOW_MANIFEST, { mode: "throw", logger: app.log });
+
     await startCommandRegistry();
     await startProducer();
     // After the producer connects: the dispatcher publishes as soon as it claims

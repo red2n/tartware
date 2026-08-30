@@ -103,6 +103,15 @@ jobs:
       - name: SQL contracts
         run: pnpm run sql:contracts
 
+      # 70 checks that each flow is actually wired end to end — handler
+      # registered, table present, gate implemented. It ran in no gate at all
+      # until 30 Aug, and had been failing on an assertion for a command
+      # (`operations.maintenance.*`) that never existed, which is exactly what
+      # a check nobody runs decays into. Also in `pnpm run check`; kept here
+      # because this workflow enumerates its steps rather than calling `check`.
+      - name: Flow integrity
+        run: pnpm run flow:integrity
+
       # Gateway ↔ downstream routing, command catalog ↔ flow registry ↔ payload
       # validators ↔ consumers, and outbox enqueue ↔ dispatcher: each of those
       # links has been broken at least once, and each break is silent — a

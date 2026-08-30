@@ -1,7 +1,7 @@
 /**
  * DEV DOC
  * Module: flow-registry.ts
- * Purpose: Master registry of all 12 PMS flows and their requirements.
+ * Purpose: Master registry of all 14 PMS flows and their requirements.
  * Ownership: Schema package (single source of truth)
  *
  * This defines WHAT each flow needs — the boot-time validator checks that
@@ -221,6 +221,73 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"billing.ar.write_off",
 		],
 		dependsOn: [FlowId.CHECK_OUT],
+	},
+
+	/**
+	 * Everything that reverses, forgives or reopens an entry the ledger has
+	 * already accepted.
+	 *
+	 * The registry grew around the guest lifecycle and stopped at the ledger:
+	 * 136 of 202 catalogued commands were named by no flow, and they included
+	 * almost every operation an auditor would call high-risk — voids, comps,
+	 * write-offs, folio and invoice reopens, the fiscal period calendar. Nothing
+	 * asserted that any of them had a handler, a catalogue row, or a control in
+	 * front of them.
+	 *
+	 * `requiredGates` is the part that earns this entry. Until dual control
+	 * landed (A04), a gate here could only have named a check that did not
+	 * exist; now the five commands that undo a completed accounting control are
+	 * refused at `acceptCommand` unless a second person releases them, and the
+	 * boot validator refuses to start a system where that has been removed.
+	 * A regression there is otherwise silent — the command keeps working, which
+	 * is the problem.
+	 */
+	[FlowId.LEDGER_CONTROL]: {
+		name: "Ledger Control",
+		requiredCommands: [
+			// Reversal of a posted document. The void is the transaction of
+			// record afterwards.
+			"billing.charge.void",
+			"billing.payment.void",
+			"billing.payment.refund",
+			"billing.invoice.void",
+			"billing.credit_note.create",
+			// Revenue given away against a budget.
+			"billing.comp.post",
+			"billing.deposit.waive",
+			// A closed record reopened.
+			"billing.folio.reopen",
+			"billing.invoice.reopen",
+			"billing.fiscal_period.lock",
+			"billing.fiscal_period.reopen",
+			// Debt that leaves the books, and the payment application that
+			// decides which invoice it left.
+			"billing.suspense.write_off",
+			"ar.city_ledger.write_off",
+			"ar.payment.unapply",
+		],
+		requiredGates: [
+			// The five commands under dual control (COMMAND_DUAL_CONTROL in
+			// schema/src/api/command-approvals.ts). `billing.ar.write_off` and
+			// `billing.date_roll.manual` are required by AR_COLLECTIONS and
+			// NIGHT_AUDIT respectively — a command is claimed once, but the gate
+			// in front of it belongs here with the rest of the set.
+			{
+				gateName: "dual_control",
+				guardsCommand: "ar.city_ledger.write_off",
+			},
+			{ gateName: "dual_control", guardsCommand: "billing.ar.write_off" },
+			{
+				gateName: "dual_control",
+				guardsCommand: "billing.suspense.write_off",
+			},
+			{
+				gateName: "dual_control",
+				guardsCommand: "billing.fiscal_period.reopen",
+			},
+			{ gateName: "dual_control", guardsCommand: "billing.date_roll.manual" },
+		],
+		dependsOn: [FlowId.NIGHT_AUDIT, FlowId.AR_COLLECTIONS],
 	},
 
 	[FlowId.CHANNEL_DISTRIBUTION]: {

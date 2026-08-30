@@ -86,6 +86,38 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
       ],
     },
 
+    // Everything that reverses, forgives or reopens a posted entry. These were
+    // named by no flow at all until 30 Aug — the registry covered the guest
+    // lifecycle and stopped at the ledger, so nothing asserted that a void or a
+    // write-off still had a handler behind it.
+    [FlowId.LEDGER_CONTROL]: {
+      commands: [
+        { commandName: "billing.charge.void", description: "Void a posted charge" },
+        { commandName: "billing.payment.void", description: "Void a payment" },
+        { commandName: "billing.payment.refund", description: "Refund a captured payment" },
+        { commandName: "billing.invoice.void", description: "Void a finalised invoice" },
+        { commandName: "billing.credit_note.create", description: "Issue a credit note" },
+        { commandName: "billing.comp.post", description: "Post a comp against a budget" },
+        { commandName: "billing.deposit.waive", description: "Waive a required deposit" },
+        { commandName: "billing.folio.reopen", description: "Reopen a closed folio" },
+        { commandName: "billing.invoice.reopen", description: "Reopen a finalised invoice" },
+        { commandName: "billing.fiscal_period.lock", description: "Lock a fiscal period" },
+        { commandName: "billing.fiscal_period.reopen", description: "Reopen a locked period" },
+        {
+          commandName: "billing.suspense.write_off",
+          description: "Write off an unresolved suspense balance",
+        },
+        {
+          commandName: "ar.city_ledger.write_off",
+          description: "Write off a city ledger balance as bad debt",
+        },
+        {
+          commandName: "ar.payment.unapply",
+          description: "Unapply a payment from an invoice",
+        },
+      ],
+    },
+
     [FlowId.AR_COLLECTIONS]: {
       commands: [
         { commandName: "billing.ar.post", description: "Post to accounts receivable" },

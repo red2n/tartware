@@ -293,6 +293,33 @@ export const tenantFolioParamsSchema = {
   additionalProperties: false,
 } as const satisfies JsonSchema;
 
+/**
+ * Path params for the four ledger-control routes.
+ *
+ * These commands had handlers, catalogue rows and permission floors, and no
+ * named path to send them down — reachable only through the generic execute
+ * endpoint, which is how they stayed outside every flow. One shape covers all
+ * four: the entity being written off, waived or unapplied.
+ */
+export const tenantLedgerEntryParamsSchema = {
+  type: "object",
+  properties: {
+    tenantId: {
+      type: "string",
+      format: "uuid",
+      description: "Tenant identifier.",
+    },
+    entryId: {
+      type: "string",
+      format: "uuid",
+      description:
+        "The entry being acted on — city ledger account, suspense posting, deposit schedule or cash application.",
+    },
+  },
+  required: ["tenantId", "entryId"],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
 /** Path params schema for tenant + charge posting routes. */
 export const tenantChargeParamsSchema = {
   type: "object",

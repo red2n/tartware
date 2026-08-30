@@ -12,6 +12,7 @@
  * architecture conformance check that sits above the packages it inspects.
  */
 
+import { FLOW_MANIFEST as gatewayManifest } from "../../api-gateway/src/flow-manifest.js";
 import { FLOW_MANIFEST as billingManifest } from "../../billing-service/src/flow-manifest.js";
 import { FLOW_MANIFEST as guestsManifest } from "../../guests-service/src/flow-manifest.js";
 import { FLOW_MANIFEST as housekeepingManifest } from "../../housekeeping-service/src/flow-manifest.js";
@@ -29,6 +30,9 @@ import { type FlowViolation, validateFlowCompliance } from "../src/flow-complian
  * new service means adding it to this list.
  */
 const ALL_MANIFESTS = [
+  // Gates only — the gateway enforces authorization, the domain services
+  // handle the commands. See Apps/api-gateway/src/flow-manifest.ts.
+  gatewayManifest,
   billingManifest,
   guestsManifest,
   housekeepingManifest,
