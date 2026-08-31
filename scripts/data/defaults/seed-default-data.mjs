@@ -610,17 +610,20 @@ const upsertReasonCodes = async (client, reasonCodes = []) => {
       `
         INSERT INTO reason_codes AS rc (
           tenant_id, property_id, reason_code, reason_name, reason_description,
-          reason_category, requires_approval, has_financial_impact, display_order
+          reason_category, requires_approval, approval_level,
+          has_financial_impact, display_order
         )
         VALUES (
           $1, $2, $3, $4, $5,
-          $6, COALESCE($7, false), COALESCE($8, false), COALESCE($9, 0)
+          $6, COALESCE($7, false), COALESCE($8, 'NONE'),
+          COALESCE($9, false), COALESCE($10, 0)
         )
         ON CONFLICT (tenant_id, property_id, reason_code, reason_category) DO UPDATE
         SET
           reason_name = EXCLUDED.reason_name,
           reason_description = EXCLUDED.reason_description,
           requires_approval = EXCLUDED.requires_approval,
+          approval_level = EXCLUDED.approval_level,
           has_financial_impact = EXCLUDED.has_financial_impact,
           display_order = EXCLUDED.display_order,
           is_active = true,
@@ -634,6 +637,10 @@ const upsertReasonCodes = async (client, reasonCodes = []) => {
         reason.reasonDescription ?? null,
         reason.reasonCategory,
         reason.requiresApproval ?? false,
+        // Left at the table default unless the dataset states one. A code that
+        // silently acquired an authority level would start refusing overrides
+        // that work today; every code seeded before A05 keeps 'NONE'.
+        reason.approvalLevel ?? null,
         reason.hasFinancialImpact ?? false,
         reason.displayOrder ?? 0,
       ],

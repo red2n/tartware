@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 
+import { resolveReasonCode } from "@tartware/command-consumer-utils/command-utils";
 import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
-import type { NightAuditCheckpointStatus } from "@tartware/schemas";
-import { roundToCurrency } from "@tartware/schemas";
+import type { NightAuditCheckpointStatus, ReasonCodeRow } from "@tartware/schemas";
+import { FlowId, flowControlNames, roundToCurrency } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
@@ -18,6 +19,21 @@ import {
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 import { buildGlBatchForDate } from "./ledger.js";
+
+/**
+ * The preconditions `skip_preconditions` bypasses, read from the flow registry.
+ *
+ * Not a literal array. These three names already existed in the registry, in
+ * billing's flow manifest and in the checks below; a fourth copy beside the
+ * bypass is where a control quietly stops matching what is declared — and this
+ * one is the copy that decides what the audit trail records, so a drift here
+ * means logging a bypass of a gate that no longer exists, or missing one that
+ * does.
+ */
+const NIGHT_AUDIT_PRECONDITION_GATES = flowControlNames(FlowId.NIGHT_AUDIT, {
+  guardsCommand: "billing.night_audit.execute",
+  kind: "gate",
+});
 
 /**
  * Execute the nightly audit process (industry-standard 8-step sequence):
@@ -149,19 +165,29 @@ export const executeNightAudit = async (
       throw new Error(`NIGHT_AUDIT_PRECONDITIONS_FAILED: ${preconditionFailures.join("; ")}`);
     }
   } else {
-    // Gate bypass: record approval in flow_approvals audit log
-    // skip_preconditions=true is an override of a blocking control — logged
-    // with the role the operator actually held. It used to record the literal
-    // "GM_OVERRIDE", which named an authority the product does not define and
-    // nothing had checked.
+    // Gate bypass: recorded in flow_approvals with the role the operator
+    // actually held (it used to be the literal "GM_OVERRIDE", an authority the
+    // product does not define).
+    //
+    // Resolved first, and an unknown or wrong-category code refuses the audit
+    // before anything is skipped. The row was always written; what it carried
+    // was the hardcoded literal "SKIP_PRECONDITIONS", so the code needed no
+    // row and its requires_approval / approval_level were unreadable. The
+    // schema makes skip_reason_code mandatory alongside skip_preconditions, so
+    // `?? ""` only satisfies the optional type.
+    const skipReason: ReasonCodeRow = await resolveReasonCode<ReasonCodeRow>(
+      (sql, params) => query<ReasonCodeRow>(sql, params),
+      {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        reasonCode: command.skip_reason_code ?? "",
+        category: "NIGHT_AUDIT",
+      },
+    );
+
     try {
       const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
-      const gatesToLog = [
-        "open_arrivals_check",
-        "open_departures_check",
-        "unbalanced_folios_check",
-      ];
-      for (const gateName of gatesToLog) {
+      for (const gateName of NIGHT_AUDIT_PRECONDITION_GATES) {
         await recordFlowApproval({
           tenant_id: context.tenantId,
           property_id: command.property_id,
@@ -172,12 +198,19 @@ export const executeNightAudit = async (
           approved_by: actorId,
           role_at_approval: resolveActorRole(context.initiatedBy),
           forced: true,
-          reason_code: "SKIP_PRECONDITIONS",
-          reason_notes: `Night audit precondition gates bypassed via skip_preconditions=true for ${auditDate}`,
+          reason_code: skipReason.reason_code,
+          reason_notes:
+            command.skip_reason_notes ??
+            `${skipReason.reason_name}: night audit preconditions bypassed for ${auditDate}`,
           correlation_id: context.correlationId ?? null,
         });
       }
     } catch (approvalErr) {
+      // Left fail-open deliberately, matching every other bypass writer: an
+      // override that cannot be logged must not also fail the operation the
+      // operator deliberately forced (see recordFlowApproval in
+      // @tartware/config). The reason-code resolution above is the part that
+      // fails closed, and it runs first.
       appLogger.warn(
         { approvalErr, auditRunId },
         "Night audit: failed to record gate bypass approval (non-fatal)",

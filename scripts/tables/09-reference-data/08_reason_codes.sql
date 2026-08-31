@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS reason_codes (
             'COMPLAINT',            -- Guest complaint reasons
             'WRITE_OFF',            -- AR write-off reasons
             'REVERSAL',             -- Undoing a lifecycle event: check-in, check-out, cancellation
+            'NIGHT_AUDIT',          -- Overriding a night-audit precondition (skip_preconditions)
+            'BLACKLIST',            -- Booking a guest the property has blacklisted
+            'CREDIT_LIMIT',         -- Taking a balance past a configured credit limit
             'OTHER'                 -- Uncategorized
         )
     ),                                                      -- Category grouping for filtering

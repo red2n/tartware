@@ -40,6 +40,11 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           guardsCommand: "reservation.create",
           description: "Block blacklisted guests from booking",
         },
+        {
+          gateName: "reinstate_reservation",
+          guardsCommand: "reservation.reinstate",
+          description: "Records the reinstatement and the hold it had to take back",
+        },
       ],
     },
 
@@ -73,6 +78,23 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           description: "Check in many reservations in one batch",
         },
       ],
+      gates: [
+        {
+          gateName: "reservation_status_check",
+          guardsCommand: "reservation.check_in",
+          description: "Refuse an arrival the lifecycle does not allow",
+        },
+        {
+          gateName: "deposit_required_check",
+          guardsCommand: "reservation.check_in",
+          description: "Refuse an arrival with a blocking deposit outstanding",
+        },
+        {
+          gateName: "reverse_check_in",
+          guardsCommand: "reservation.reverse_check_in",
+          description: "Records every check-in reversal",
+        },
+      ],
     },
 
     [FlowId.IN_HOUSE]: {
@@ -84,6 +106,13 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           description: "Move an in-house guest to a different room",
         },
       ],
+      gates: [
+        {
+          gateName: "room_move",
+          guardsCommand: "reservation.room_move",
+          description: "Records every move, with the reason code and whether a gate was forced",
+        },
+      ],
     },
 
     [FlowId.CHECK_OUT]: {
@@ -92,6 +121,18 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         {
           commandName: "reservation.reverse_check_out",
           description: "Undo a check-out and reopen the folio",
+        },
+      ],
+      gates: [
+        {
+          gateName: "folio_settlement_check",
+          guardsCommand: "reservation.check_out",
+          description: "Refuse a departure over an unsettled folio",
+        },
+        {
+          gateName: "reverse_check_out",
+          guardsCommand: "reservation.reverse_check_out",
+          description: "Records every check-out reversal",
         },
       ],
     },

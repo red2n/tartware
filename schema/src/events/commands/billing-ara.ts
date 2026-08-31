@@ -82,7 +82,8 @@ export const ArCityLedgerTransferCommandSchema = z.object({
 	due_date: z.coerce.date().optional(),
 	notes: z.string().max(2000).optional(),
 	idempotency_key: z.string().max(120).optional(),
-});
+	...CREDIT_LIMIT_OVERRIDE_FIELDS,
+}).refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
 
 export type ArCityLedgerTransferCommand = z.infer<
 	typeof ArCityLedgerTransferCommandSchema

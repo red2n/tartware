@@ -67,12 +67,19 @@ export type ReservationReversalPostingRow = {
 	is_voided: boolean | null;
 };
 
-/** A reason code resolved for a reversal. */
+/** A reason code resolved for an override — a reversal, a bypass, a force. */
 export type ReasonCodeRow = {
 	reason_id: string;
 	reason_code: string;
 	reason_name: string;
 	reason_category: string;
 	requires_approval: boolean | null;
+	/**
+	 * The minimum authority an override under this code takes, on the
+	 * reference table's own ladder (NONE / SUPERVISOR / MANAGER / DIRECTOR /
+	 * GM). Translated to a membership role by `approvalLevelMinRole` in
+	 * `api/override-authority.ts` — the two vocabularies are not the same one.
+	 */
+	approval_level: string | null;
 	has_financial_impact: boolean | null;
 };

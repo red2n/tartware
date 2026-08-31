@@ -13,8 +13,14 @@
  * Exit code 0 = all checks pass, non-zero = failures detected
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+
+// Imported from source, not from "@tartware/schemas": this script runs inside
+// `pnpm run check`, which happens *before* the build, so a workspace import
+// would resolve to a dist that may not exist yet. That is the same trap the
+// eslint type-aware rules hit — green locally, red in CI.
+import { FLOW_REGISTRY } from "../schema/src/flows/flow-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -131,16 +137,8 @@ function checkFlow3() {
     }
   }
 
-  // Blacklist gate on reservation.create
-  const coreTs = join(
-    APPS,
-    "reservations-command-service/src/services/reservation-commands/core.ts",
-  );
-  if (fileContains(coreTs, "is_blacklisted")) {
-    pass(flow, "Gate: blacklist check on reservation.create", "Implemented");
-  } else {
-    fail(flow, "Gate: blacklist check on reservation.create", "NOT implemented");
-  }
+  // The blacklist gate is verified by checkDeclaredControls, from the evidence
+  // on its registry declaration — not hand-written here any more.
 }
 
 // ─── Flow 4: Reservation Lifecycle ──────────────────────────────────────────
@@ -472,44 +470,11 @@ function checkFlow12() {
 function checkFlow13() {
   const flow = "Flow 13: Ledger Control";
 
-  const declaration = join(SCHEMA_SRC, "api/command-approvals.ts");
-  const dualControlCommands = [
-    "ar.city_ledger.write_off",
-    "billing.ar.write_off",
-    "billing.suspense.write_off",
-    "billing.fiscal_period.reopen",
-    "billing.date_roll.manual",
-  ];
-  for (const cmd of dualControlCommands) {
-    if (fileContains(declaration, `"${cmd}"`)) {
-      pass(flow, `Dual control declared: ${cmd}`, "In COMMAND_DUAL_CONTROL");
-    } else {
-      fail(flow, `Dual control declared: ${cmd}`, "NOT in COMMAND_DUAL_CONTROL");
-    }
-  }
-
-  // The deferral itself. A declaration nothing reads is the state this whole
-  // finding started in — approval_requests had a full service layer and no
-  // caller.
-  const acceptPath = join(APPS, "command-center-shared/src/services/command-dispatch.ts");
-  if (fileContains(acceptPath, "commandApproverRole") && fileContains(acceptPath, "pending_approval")) {
-    pass(flow, "Gate: dual_control enforced in acceptCommand", "Deferred before the outbox write");
-  } else {
-    fail(
-      flow,
-      "Gate: dual_control enforced in acceptCommand",
-      "acceptCommand does not defer declared commands — the queue is unreachable again",
-    );
-  }
-
-  // And a way out of the queue. Without the release path an approved request is
-  // a status change that executes nothing, which is exactly what A04 found.
-  const approvalService = join(APPS, "api-gateway/src/command-center/command-approval-service.ts");
-  if (fileContains(approvalService, "approveCommandRequest") && fileContains(approvalService, "acceptCommand")) {
-    pass(flow, "Release path: approval dispatches the stored payload", "Registered in api-gateway");
-  } else {
-    fail(flow, "Release path: approval dispatches the stored payload", "NOT found");
-  }
+  // The five declarations, the deferral inside acceptCommand and the release
+  // path are all verified by checkDeclaredControls now — they are the evidence
+  // on the five dual_control entries in the registry. Hand-writing them here
+  // was how three of nine declared gates ended up verified by nothing: the
+  // check had to be remembered separately from the declaration.
 
   // Where the deferred command waits.
   const approvalsSql = join(SCRIPTS, "04-financial/80_approval_requests.sql");
@@ -575,6 +540,122 @@ checkCrossFlow();
 // Bridge the file-pattern checks above with the registry-based contract system.
 // Import all service flow manifests and run the system-wide validateFlowCompliance.
 
+/**
+ * Every control the registry declares, verified against the code that enforces it.
+ *
+ * This replaces the two hand-written gate checks that used to live inside
+ * `checkFlow3` and `checkFlow13`. Hand-writing them is why only 2 of 9 declared
+ * gates were verified: the check had to be remembered separately from the
+ * declaration, and for the three night-audit gates nobody did. Now the
+ * declaration carries its own evidence and this loop reads all of it, so adding
+ * a gate to the registry cannot leave it unverified — `evidence` is a required
+ * field, so a new declaration will not compile without one.
+ *
+ * One result per control rather than per token: a control is enforced or it is
+ * not, and the failure detail names the token that went missing.
+ */
+function checkDeclaredControls() {
+	const flow = "Cross-Flow";
+
+	for (const requirement of Object.values(FLOW_REGISTRY)) {
+		for (const control of requirement.requiredGates ?? []) {
+			const kind = control.kind ?? "gate";
+			const label = `${kind === "record" ? "Record" : "Gate"}: ${control.gateName} on ${control.guardsCommand}`;
+			const missing: string[] = [];
+
+			for (const evidence of control.evidence) {
+				const full = join(ROOT, evidence.file);
+				if (!existsSync(full)) {
+					missing.push(`${evidence.file} (file not found)`);
+				} else if (!fileContains(full, evidence.token)) {
+					missing.push(`${evidence.token} in ${evidence.file}`);
+				}
+			}
+
+			if (missing.length === 0) {
+				pass(
+					flow,
+					label,
+					`${control.evidence.length} evidence token(s) present`,
+				);
+			} else {
+				fail(
+					flow,
+					label,
+					`declared but NOT enforced — missing ${missing.join("; ")}`,
+				);
+			}
+		}
+	}
+}
+
+/**
+ * The inverse: no control may be enforced without being declared.
+ *
+ * `flow_approvals.gate_name` is a free-text column, so before this the only
+ * thing deciding its vocabulary was whatever string a handler happened to pass.
+ * Seven names were written by the reservation service and none of them appeared
+ * in the registry, which meant the audit trail recorded controls the system had
+ * no declared knowledge of.
+ *
+ * Manifests are excluded because a *claim* is not enforcement — the same reason
+ * the dispatchability scan excludes them.
+ */
+function checkNoUndeclaredControls() {
+	const flow = "Cross-Flow";
+
+	const declared = new Set<string>();
+	for (const requirement of Object.values(FLOW_REGISTRY)) {
+		for (const control of requirement.requiredGates ?? []) {
+			declared.add(control.gateName);
+		}
+	}
+
+	const found = new Map<string, string>();
+	const walk = (dir: string): void => {
+		if (!existsSync(dir)) return;
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(full);
+			} else if (
+				entry.name.endsWith(".ts") &&
+				entry.name !== "flow-manifest.ts"
+			) {
+				const content = readFileSync(full, "utf-8");
+				for (const match of content.matchAll(
+					/gate_?[Nn]ame:\s*"([a-z0-9_]+)"/g,
+				)) {
+					const name = match[1];
+					if (name && !found.has(name)) found.set(name, relative(ROOT, full));
+				}
+			}
+		}
+	};
+	for (const service of readdirSync(APPS, { withFileTypes: true })) {
+		if (service.isDirectory()) walk(join(APPS, service.name, "src"));
+	}
+
+	const undeclared = [...found.entries()].filter(
+		([name]) => !declared.has(name),
+	);
+	if (undeclared.length === 0) {
+		pass(
+			flow,
+			"Every enforced control is declared",
+			`${found.size} gate name(s) in Apps/, all in FLOW_REGISTRY`,
+		);
+	} else {
+		for (const [name, file] of undeclared) {
+			fail(
+				flow,
+				`Undeclared control: ${name}`,
+				`written to flow_approvals by ${file}, declared by no flow`,
+			);
+		}
+	}
+}
+
 function checkManifestCompliance() {
   const manifestPaths = [
     join(APPS, "billing-service", "src", "flow-manifest.ts"),
@@ -623,6 +704,8 @@ function checkManifestCompliance() {
   }
 }
 
+checkDeclaredControls();
+checkNoUndeclaredControls();
 checkManifestCompliance();
 
 // ─── Report ─────────────────────────────────────────────────────────────────

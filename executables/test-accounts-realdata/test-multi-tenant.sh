@@ -21,6 +21,7 @@
 #   PHASE 5b  Module access requests (raise → review → module toggled)
 #   PHASE 5c  Per-command authority — role tiers, grants and denies (A02)
 #   PHASE 5d  Dual control — the five commands one person may not run (A04)
+#   PHASE 5e  Night audit precondition bypass — a reason code that has to exist
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -2749,6 +2750,95 @@ else
 fi
 
 TOKEN="$TOKEN_A"
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5e — NIGHT AUDIT PRECONDITION BYPASS (flow-guard gates)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# The NIGHT_AUDIT flow declares three gates — open arrivals, open departures,
+# unbalanced folios — and `skip_preconditions: true` bypasses all three. The
+# bypass always wrote a flow_approvals row, so it was never silent. What it
+# lacked was a reason anyone could act on: the row carried the hardcoded
+# literal "SKIP_PRECONDITIONS", a code that did not have to exist in
+# reason_codes, could not be grouped, and carried neither requires_approval nor
+# approval_level. Every other override in the product resolves its code.
+#
+#   A skip with no reason at all           refused at validation
+#   A skip citing a code that is not real  refused, no audit runs
+#   A code from the wrong category         refused — the trail would read as a lie
+#   A skip with a real NIGHT_AUDIT code    accepted
+#   …and it records one row per gate       three rows, the resolved code, forced
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5e: Night Audit Precondition Bypass                          ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# This suite drives everything over HTTP and keeps no psql helper, so the two
+# reads below get a local one. They check `flow_approvals`, which has no API.
+na_sql() {
+  PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+    -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" \
+    -d "${DB_NAME:-tartware}" -tAc "$1" 2>/dev/null | head -1 | tr -d '[:space:]'
+}
+
+NA_PROP=$(na_sql "select id from properties where tenant_id='$TID_A' limit 1")
+
+if [[ -z "$NA_PROP" ]]; then
+  skip "Night audit bypass fixture" "no property for tenant A"
+else
+  na_cmd() {
+    local payload="$1"
+    curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X POST "$GW/v1/commands/billing.night_audit.execute/execute" \
+      -H "Authorization: Bearer $TOKEN_A" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $(gen_uuid)" \
+      -d "{\"tenant_id\":\"$TID_A\",\"payload\":$payload}"
+  }
+
+  # 1. No reason at all — refused by the schema, before anything is skipped.
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true}")
+  assert_http "Skip with no reason code is refused" "4" "$code"
+
+  # 2. A code that does not exist. This one is only caught when the handler
+  #    resolves it, so it is 202-accepted and refused on apply — what proves it
+  #    is that no bypass row appears for it.
+  BEFORE=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit'")
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true,\"skip_reason_code\":\"NOT_A_REAL_CODE\"}")
+  assert_http "Skip citing an unknown code is accepted for async refusal" "20[02]|4" "$code"
+  sleep 6
+  AFTER=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit'")
+  assert_eq "Unknown reason code records no bypass" "$BEFORE" "$AFTER"
+
+  # 3. A real code from the wrong category — a room-move reason on a night
+  #    audit produces an audit trail that reads as a lie.
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true,\"skip_reason_code\":\"RM_MAINT\"}")
+  assert_http "Skip citing the wrong category is accepted for async refusal" "20[02]|4" "$code"
+  sleep 6
+  AFTER=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit'")
+  assert_eq "Wrong-category reason code records no bypass" "$BEFORE" "$AFTER"
+
+  # 4. The real thing.
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true,\"skip_reason_code\":\"NA_SYSTEM_RECOVERY\",\"skip_reason_notes\":\"multi-tenant suite $RUN_TAG\",\"advance_date\":false}")
+  assert_http "Skip with a seeded NIGHT_AUDIT code accepted" "20[02]" "$code"
+  sleep 10
+
+  GATES=$(na_sql "select count(distinct gate_name) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit' and reason_code='NA_SYSTEM_RECOVERY'")
+  assert_eq "One bypass row per declared gate" "3" "$GATES"
+
+  RESOLVED=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit' and reason_code='NA_SYSTEM_RECOVERY' and gate_name in ('open_arrivals_check','open_departures_check','unbalanced_folios_check')")
+  assert_eq "Rows name the gates the registry declares" "3" "$RESOLVED"
+
+  ROLE=$(na_sql "select distinct role_at_approval from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit' and reason_code='NA_SYSTEM_RECOVERY' limit 1")
+  if [[ -n "$ROLE" && "$ROLE" != "GM_OVERRIDE" && "$ROLE" != "SKIP_PRECONDITIONS" ]]; then
+    pass "Bypass records a real role, not a literal (role=$ROLE)"
+  else
+    fail "Bypass records a real role" "role_at_approval=$ROLE"
+  fi
+fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 6 — MULTI-TENANT API READ VALIDATION

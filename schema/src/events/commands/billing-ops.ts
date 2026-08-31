@@ -24,9 +24,25 @@ export const BillingNightAuditCommandSchema = z.object({
 	generate_trial_balance: z.boolean().optional(),
 	auto_cancel_tentatives: z.boolean().optional(),
 	skip_preconditions: z.boolean().optional(),
+	/**
+	 * Why the preconditions were skipped. Required when `skip_preconditions` is
+	 * set, and resolved against `reason_codes` — the bypass used to record the
+	 * hardcoded literal "SKIP_PRECONDITIONS", a reason code that did not have to
+	 * exist and carried no `requires_approval` or `approval_level`.
+	 */
+	skip_reason_code: z.string().min(2).max(50).optional(),
+	skip_reason_notes: z.string().max(500).optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
-});
+})
+	.refine(
+		(value) => value.skip_preconditions !== true || Boolean(value.skip_reason_code),
+		{
+			message:
+				"skip_reason_code is required when skip_preconditions is true — an override with no stated reason is the control this gate exists to prevent",
+			path: ["skip_reason_code"],
+		},
+	);
 
 export type BillingNightAuditCommand = z.infer<
 	typeof BillingNightAuditCommandSchema

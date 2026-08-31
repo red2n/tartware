@@ -326,6 +326,52 @@ actor, so A04's approval queue is still unentered. Noted while here: `guest.gdpr
 `guest.gdpr.restrict` are gateway routes naming commands that exist in neither the validator map
 nor the catalogue — they 400 on payload validation today and did before this change.
 
+**Flow-guard gates, as landed (30 Aug).** A10 answered "is this legal in this state?" for
+reservations; this is the gate column of the registry finally meaning something. Three findings,
+measured rather than inherited from the audit:
+
+- **The gate model was disconnected in both directions.** Seven `gateName` literals were written to
+  `flow_approvals` by reservations-command-service and declared by no flow, while three declared
+  gates (night audit's) were verified by nothing — `flow:integrity` hand-wrote a check for
+  `blacklist_check` and `dual_control` and for the other three nobody remembered. So the registry
+  knew 5 gate names, the running system enforced 12, and it could not tell you whether 3 of its own
+  5 still existed.
+- **Only 2 of 5 declared gates were verified**, because the check lived apart from the declaration.
+- **`skip_preconditions` recorded a reason code that did not have to exist.**
+
+**`evidence` is the ratchet.** `FlowGateRequirement` now requires it — repo-relative file plus a
+literal that must appear there — so a new gate *will not compile* without proof, and
+`checkDeclaredControls` reads all of it in one loop instead of per-flow hand-written cases. The two
+subsumed hand-written checks are gone rather than left duplicating it. `checkNoUndeclaredControls`
+closes the other direction: no `gateName:` literal in `Apps/*/src` may be undeclared, which gives
+`flow_approvals.gate_name` — free text, `VARCHAR` — a closed vocabulary for the first time. 88
+checks, verified by breaking both directions (rename an enforced gate → `Undeclared control`; delete
+the enforcing code → `declared but NOT enforced`).
+
+**Not all seven were gates, and that distinction is now in the type.** Only three refuse:
+`reservation_status_check` and `deposit_required_check` on check-in, `folio_settlement_check` on
+check-out — each written inside an `if (force)`. The other four (`room_move`, the three reversals)
+are written *unconditionally*: the operation is the controlled thing, and `forced` says whether a
+gate was bypassed. `FlowControlKind` is `"gate" | "record"`, defaulting to `"gate"`. Declaring a
+reversal as a precondition would have made the registry lie in a new way.
+
+**Night audit's bypass.** It always wrote its `flow_approvals` rows — A03 already gave them the real
+role — so the gap was narrower than "no audit trail": the row carried the hardcoded literal
+`"SKIP_PRECONDITIONS"`, a code that needed no row, could not be grouped, and whose
+`requires_approval` / `approval_level` were therefore unreadable. `skip_reason_code` is now
+mandatory whenever `skip_preconditions` is set (a schema `.refine`), resolved against `reason_codes`
+under a new `NIGHT_AUDIT` category (migration `006`, four seeded codes), and an unknown or
+wrong-category code refuses the audit *before* anything is skipped. `resolveReasonCode` moved to
+`@tartware/command-consumer-utils/command-utils` to make that possible — billing had none at all,
+which is why it had a literal — and reservations' copy now delegates to it. The gate list it logs
+against comes from `flowControlNames(FlowId.NIGHT_AUDIT)`, deleting a fourth copy of three names.
+
+**Left alone deliberately:** `recordFlowApproval` still never throws. Its own comment states the
+call — "an override that cannot be logged must not also fail the operation the operator deliberately
+forced" — and reversing that is a repo-wide behavioural decision, not part of this change. The
+reason-code resolution is the part that fails closed, and it runs first. 20 tests (15
+command-consumer-utils, 5 billing) plus **Phase 5e** of `test-multi-tenant.sh`.
+
 **A11 + registry coverage, as landed.** `pnpm run flow:integrity` is now in `pnpm run check` (so
 `build` runs it) and a step in `ci-guardrails.yml`. It had been **failing** the whole time it sat in
 no gate: it asserted a handler for `operations.maintenance.*`, three commands retired on 2026-08-18

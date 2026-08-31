@@ -807,6 +807,122 @@
       "hasFinancialImpact": true,
       "requiresApproval": true,
       "displayOrder": 7
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "NA_ARRIVALS_PENDING",
+      "reasonName": "Arrivals unresolved at roll",
+      "reasonCategory": "NIGHT_AUDIT",
+      "reasonDescription": "Audit run with arrivals still due in; they are carried to the next business date.",
+      "hasFinancialImpact": true,
+      "requiresApproval": true,
+      "displayOrder": 1
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "NA_DEPARTURES_PENDING",
+      "reasonName": "Departures unresolved at roll",
+      "reasonCategory": "NIGHT_AUDIT",
+      "reasonDescription": "Audit run with in-house guests past their departure date.",
+      "hasFinancialImpact": true,
+      "requiresApproval": true,
+      "displayOrder": 2
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "NA_FOLIOS_UNBALANCED",
+      "reasonName": "Folios unbalanced at roll",
+      "reasonCategory": "NIGHT_AUDIT",
+      "reasonDescription": "Audit run over open folios that do not balance; variance is carried forward.",
+      "hasFinancialImpact": true,
+      "requiresApproval": true,
+      "displayOrder": 3
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "NA_SYSTEM_RECOVERY",
+      "reasonName": "System recovery",
+      "reasonCategory": "NIGHT_AUDIT",
+      "reasonDescription": "Audit re-run after an outage or failed run; preconditions already assessed.",
+      "hasFinancialImpact": false,
+      "requiresApproval": true,
+      "displayOrder": 4
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "BL_GM_CLEARED",
+      "reasonName": "Blacklist cleared by the GM",
+      "reasonCategory": "BLACKLIST",
+      "reasonDescription": "The general manager has personally authorised this booking despite the listing.",
+      "hasFinancialImpact": false,
+      "requiresApproval": true,
+      "approvalLevel": "GM",
+      "displayOrder": 1
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "BL_LISTING_DISPUTED",
+      "reasonName": "Listing disputed, under review",
+      "reasonCategory": "BLACKLIST",
+      "reasonDescription": "The guest contests the listing and it is being reviewed; the booking is taken meanwhile.",
+      "hasFinancialImpact": false,
+      "requiresApproval": true,
+      "approvalLevel": "MANAGER",
+      "displayOrder": 2
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "BL_WRONG_PROFILE",
+      "reasonName": "Listing belongs to another profile",
+      "reasonCategory": "BLACKLIST",
+      "reasonDescription": "A duplicate or mismatched guest profile carries the listing; merge is pending.",
+      "hasFinancialImpact": false,
+      "requiresApproval": true,
+      "approvalLevel": "MANAGER",
+      "displayOrder": 3
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "CL_COMPANY_GUARANTEED",
+      "reasonName": "Guaranteed by the company account",
+      "reasonCategory": "CREDIT_LIMIT",
+      "reasonDescription": "The balance is guaranteed by a corporate account in good standing.",
+      "hasFinancialImpact": true,
+      "requiresApproval": true,
+      "approvalLevel": "MANAGER",
+      "displayOrder": 1
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "CL_LIMIT_UNDER_REVIEW",
+      "reasonName": "Limit under review",
+      "reasonCategory": "CREDIT_LIMIT",
+      "reasonDescription": "A credit review is in progress and the configured limit is known to be stale.",
+      "hasFinancialImpact": true,
+      "requiresApproval": true,
+      "approvalLevel": "MANAGER",
+      "displayOrder": 2
+    },
+    {
+      "tenantId": "11111111-1111-1111-1111-111111111111",
+      "propertyId": null,
+      "reasonCode": "CL_DIRECTOR_AUTHORIZED",
+      "reasonName": "Authorised by the director of finance",
+      "reasonCategory": "CREDIT_LIMIT",
+      "reasonDescription": "Exposure beyond the configured limit accepted on the finance director's authority.",
+      "hasFinancialImpact": true,
+      "requiresApproval": true,
+      "approvalLevel": "DIRECTOR",
+      "displayOrder": 3
     }
   ]
 }

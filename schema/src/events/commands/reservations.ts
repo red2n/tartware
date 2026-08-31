@@ -91,7 +91,31 @@ export const ReservationCreateCommandSchema = z.object({
 	 * omitted field falls back to.
 	 */
 	rooms: StayPlanInputSchema.optional(),
-});
+	/**
+	 * Book a guest the property has blacklisted (A05).
+	 *
+	 * The blacklist gate used to be a hard throw whose message told the
+	 * operator that "a GM override with documented reason is required" — an
+	 * authority the product did not define and no code path offered, so the
+	 * only way past it was to edit `guests.is_blacklisted` and lose the fact
+	 * that a decision had been made. This is that override, and it is not a
+	 * bare `force`: the reason code is mandatory, resolved against the
+	 * BLACKLIST category, and its `approval_level` is checked against the role
+	 * on the command envelope before the booking is taken.
+	 */
+	blacklist_override: z.boolean().optional(),
+	blacklist_override_reason_code: z.string().min(2).max(50).optional(),
+	blacklist_override_notes: z.string().max(500).optional(),
+}).refine(
+	(value) =>
+		value.blacklist_override !== true ||
+		Boolean(value.blacklist_override_reason_code),
+	{
+		message:
+			"blacklist_override_reason_code is required when blacklist_override is true — an override with no stated reason is the control this gate exists to provide",
+		path: ["blacklist_override_reason_code"],
+	},
+);
 
 export type ReservationCreateCommand = z.infer<
 	typeof ReservationCreateCommandSchema

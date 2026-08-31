@@ -54,6 +54,11 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           guardsCommand: "billing.night_audit.execute",
           description: "Block audit if folios unbalanced",
         },
+        {
+          gateName: "night_audit_precondition_bypass",
+          guardsCommand: "billing.night_audit.execute",
+          description: "Records a skip_preconditions override, one row per gate bypassed",
+        },
       ],
     },
 
