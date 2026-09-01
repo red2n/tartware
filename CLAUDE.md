@@ -547,6 +547,32 @@ and tsc then believes declarations are current — emitting `.js` and `.d.ts.map
 surfaces far away as `TS7016 … implicitly has an 'any' type` in whichever service imports the
 subpath. A real clean is `nx reset` + `rm -rf */dist` + `rm **/*.tsbuildinfo`.
 
+### Room blocks were never broken — the cache was (1 Sep 2026)
+
+`INVARIANT: a 2-room block removes 2 rooms from sale — expected=2 actual=4` failed in every E2E run
+for weeks, and reads exactly like an allotment that does not hold inventory. It is not. The
+availability query subtracts allotment holds correctly; the gateway's 2-second availability cache
+was answering the check from before the block existed.
+
+**Rate writes invalidated that cache and allotment writes did not** — not by decision, but because
+both caches were created inside `registerRoomRoutes`, so only that file could reach them. Any other
+route family that moves inventory had no way to drop them. They now live in
+`utils/read-caches.ts` as module singletons with `invalidateFunnelReads(tenantId)`, called by rate
+writes as before and by every allotment verb: create, `PUT /:id` (pickup, cutoff) and
+`POST /:id/status` (cancel) all change how many rooms the block holds.
+
+Two seconds is a small window, and it opens in the least forgiving direction: immediately after
+someone deliberately takes rooms out of sale, the funnel goes on offering them. Verified with no
+sleeps — 4 → block 2 rooms → 2 → pick up 1 → 3 → cancel → 4, which is the assertion sequence the
+E2E makes.
+
+**The 429s beneath it were a second mask.** `http_test/smoke-operations.sh` writes faster than the
+gateway's rate limiter allows and shares a token and address with the rest of the run, so it
+out-runs whatever the ceiling is; twelve failures were four 429s and eight assertions downstream of
+them reading `expected 2 got 0`. Its one request helper now passes `--retry`, which curl treats 429
+as transient for and backs off from, honouring `Retry-After`. 12 failures → 1, and that one is a
+fixture (no sellable room type in the window on a churned database), not an invariant.
+
 ### `ar.city_ledger.transfer` had never worked (1 Sep 2026)
 
 Found by giving Phase 5f the fixture it had always been missing — `companies` is empty on a fresh

@@ -41,14 +41,29 @@ declare -a FAILURES=()
 
 uuid() { cat /proc/sys/kernel/random/uuid; }
 
+# `--retry` covers the gateway's rate limiter, which curl counts as a transient
+# error and backs off from, honouring `Retry-After`.
+#
+# Worth stating why this is the suite's problem to solve rather than a limit to
+# raise: this script writes faster than a person can, and it shares one token
+# and one source address with everything else the multi-tenant run is doing, so
+# it will out-run whatever the ceiling is set to. Without this it reported
+# twelve failures — four 429s and eight assertions downstream of them reading
+# `expected 2 got 0`, which looks exactly like a broken room-block invariant and
+# is not. A masked result is worse than a slow one.
+#
+# The same Idempotency-Key is reused across attempts on purpose: a request the
+# limiter refused never reached a handler, and if one did, the key is what makes
+# the replay safe.
 req() { # method url [body] -> echoes http code, body lands in $RESP
   local m="$1" url="$2" body="${3:-}"
+  local retry=(--retry 4 --retry-max-time 90)
   if [[ -n "$body" ]]; then
-    curl -s -o "$RESP" -w "%{http_code}" -X "$m" "$url" \
+    curl -s "${retry[@]}" -o "$RESP" -w "%{http_code}" -X "$m" "$url" \
       -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
       -H "Idempotency-Key: $(uuid)" -d "$body"
   else
-    curl -s -o "$RESP" -w "%{http_code}" -X "$m" "$url" \
+    curl -s "${retry[@]}" -o "$RESP" -w "%{http_code}" -X "$m" "$url" \
       -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: $(uuid)"
   fi
 }
