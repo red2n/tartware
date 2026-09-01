@@ -19,7 +19,10 @@ import {
   BillingPaymentAuthorizeCommandSchema,
   BillingPaymentCaptureCommandSchema,
 } from "../src/schemas/billing-commands.js";
-import { clearCreditLimitGate } from "../src/services/billing-commands/credit-limit-gate.js";
+import {
+  clearCreditLimitGate,
+  recordCreditLimitOverride,
+} from "../src/services/billing-commands/credit-limit-gate.js";
 
 const { queryMock, recordFlowApprovalMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -149,11 +152,22 @@ describe("the role has to clear the code's approval level", () => {
   });
 });
 
-describe("an authorised override is recorded", () => {
+describe("an authorised override is recorded, but only once it happened", () => {
+  it("writes nothing at the gate itself", async () => {
+    // The gate authorises; the caller records after the operation commits. The
+    // first version wrote here, and the city-ledger transfer — which failed
+    // after the gate on a 42P10 and retried — produced three rows for one
+    // decision and a transfer that never occurred.
+    queryMock.mockResolvedValue({ rows: [reasonRow()] });
+    await clearCreditLimitGate(gateInput("MANAGER"), override());
+    expect(recordFlowApprovalMock).not.toHaveBeenCalled();
+  });
+
   it("writes one flow_approvals row carrying the resolved code and the real role", async () => {
     queryMock.mockResolvedValue({ rows: [reasonRow()] });
 
     const reason = await clearCreditLimitGate(gateInput("MANAGER"), override());
+    await recordCreditLimitOverride(gateInput("MANAGER"), reason);
 
     expect(reason.reason_code).toBe("CL_COMPANY_GUARANTEED");
     expect(recordFlowApprovalMock).toHaveBeenCalledTimes(1);
@@ -173,14 +187,14 @@ describe("an authorised override is recorded", () => {
   });
 
   it("does not fail the operation when the record cannot be written", async () => {
-    // Fail-open on the write only. The two parts that fail closed — resolving
-    // the code and checking the authority — both ran before it.
+    // Fail-open on the write only, and by then the money has moved: failing
+    // here would report an override that did happen as one that did not.
     queryMock.mockResolvedValue({ rows: [reasonRow()] });
     recordFlowApprovalMock.mockRejectedValue(new Error("flow_approvals unavailable"));
 
     await expect(
-      clearCreditLimitGate(gateInput("MANAGER"), override()),
-    ).resolves.toMatchObject({ reason_code: "CL_COMPANY_GUARANTEED" });
+      recordCreditLimitOverride(gateInput("MANAGER"), reasonRow()),
+    ).resolves.toBeUndefined();
   });
 });
 

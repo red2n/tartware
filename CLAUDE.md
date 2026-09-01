@@ -547,6 +547,28 @@ and tsc then believes declarations are current — emitting `.js` and `.d.ts.map
 surfaces far away as `TS7016 … implicitly has an 'any' type` in whichever service imports the
 subpath. A real clean is `nx reset` + `rm -rf */dist` + `rm **/*.tsbuildinfo`.
 
+### `ar.city_ledger.transfer` had never worked (1 Sep 2026)
+
+Found by giving Phase 5f the fixture it had always been missing — `companies` is empty on a fresh
+database and an AR account hangs off one, so the phase skipped silently on every run and the
+credit-limit gate went unproven on real data.
+
+**`42P10` on every transfer.** The insert infers `ON CONFLICT (tenant_id, folio_id, ar_account_id)
+WHERE entry_status NOT IN (…)`, but `ar_city_ledger_folio_account_ux` is partial on
+`folio_id IS NOT NULL AND entry_status NOT IN (…)`. Postgres requires the inference predicate to
+*imply* the index predicate, and the missing null test meant it matched no index at all — "no unique
+or exclusion constraint matching the ON CONFLICT specification". The command had no gateway route
+until A11 and no test ever drove it, so taking a folio balance to a company's account has never once
+succeeded. One clause.
+
+**And an override recorded three times for a transfer that never happened.** `clearCreditLimitGate`
+wrote its `flow_approvals` row *at the decision*, copying the blacklist gate. With the transfer
+failing after it, the retry ladder re-ran the handler and wrote the row again per attempt. The
+blacklist reasoning does not transfer: there the controlled thing is a refusal that was overridden,
+here the row's whole meaning is that a balance moved, so a record per attempt is worse than none.
+The gate now only authorises; `recordCreditLimitOverride` is called by each of the three sites after
+its write commits. Verified on real data — one row, one ledger entry, role `OWNER`.
+
 ### Schema-first, now enforced (1 Sep 2026)
 
 `pnpm run check:schema-first` (`scripts/check-schema-first-tables.mjs`, wired into `check`, so

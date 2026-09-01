@@ -26,11 +26,15 @@
  *    authorized, so a clerk naming a GM-level code was recorded as though a GM
  *    had decided it.
  *
- * The row is written here, at the gate, rather than after the payment or the
- * transfer succeeds — matching the blacklist gate in reservations. The decision
- * to override was made and authorised at this point; a later failure leaves a
- * record of a decision that was genuinely taken, which is the safer way to be
- * wrong about an override.
+ * **Authorising and recording are two calls, in that order, with the operation
+ * between them.** The first draft did both at the gate, reasoning that the
+ * decision was taken there whether or not the transfer completed. Driving it on
+ * real data showed what that costs: the city-ledger transfer failed after the
+ * gate cleared, the consumer retried, and one operator decision produced three
+ * `flow_approvals` rows for a transfer that never happened. An override record
+ * is read as evidence that money moved on someone's authority, so recording one
+ * per attempt is worse than recording none — and the retry ladder makes it
+ * three, not one.
  */
 
 import {
@@ -84,7 +88,9 @@ export type CreditLimitGateInput = {
  * Let a balance past its credit limit, or refuse it.
  *
  * Throws `BillingCommandError` in every refusing case; returns the resolved
- * reason code when the override stands, so the caller can log what it allowed.
+ * reason code when the override stands. Nothing is written here — the caller
+ * passes what this returns to {@link recordCreditLimitOverride} once the
+ * operation it authorised has actually happened.
  */
 export const clearCreditLimitGate = async (
   input: CreditLimitGateInput,
@@ -120,33 +126,6 @@ export const clearCreditLimitGate = async (
     gateName: "credit_limit_check",
   });
 
-  try {
-    const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
-    await recordFlowApproval({
-      tenant_id: input.context.tenantId,
-      property_id: input.propertyId,
-      flow_name: input.flowName,
-      gate_name: "credit_limit_check",
-      entity_type: input.entityType,
-      entity_id: input.entityId,
-      approved_by: resolveActorId(input.context.initiatedBy),
-      role_at_approval: resolveActorRole(input.context.initiatedBy),
-      forced: true,
-      reason_code: reason.reason_code,
-      reason_notes: override.notes ?? `${reason.reason_name}: ${input.detail}`,
-      correlation_id: input.context.correlationId ?? null,
-    });
-  } catch (approvalErr) {
-    // Fail-open on the write, matching every other bypass writer: an override
-    // that cannot be logged must not also fail the operation the operator was
-    // entitled to make. The two parts that fail closed — resolving the code and
-    // checking the authority — both ran above this.
-    appLogger.warn(
-      { approvalErr, commandName: input.commandName, entityId: input.entityId },
-      "Credit limit override: failed to record gate approval (non-fatal)",
-    );
-  }
-
   appLogger.warn(
     {
       tenantId: input.context.tenantId,
@@ -160,4 +139,41 @@ export const clearCreditLimitGate = async (
   );
 
   return reason;
+};
+
+/**
+ * Record an override that has already happened.
+ *
+ * Separate from the gate above, and called after the write it authorised
+ * commits — see that function's note. Fail-open on the write itself, like every
+ * other bypass writer in the product: the money has moved, and failing here
+ * would report an override that did occur as one that did not.
+ */
+export const recordCreditLimitOverride = async (
+  input: CreditLimitGateInput,
+  reason: ReasonCodeRow,
+  notes?: string | undefined,
+): Promise<void> => {
+  try {
+    const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
+    await recordFlowApproval({
+      tenant_id: input.context.tenantId,
+      property_id: input.propertyId,
+      flow_name: input.flowName,
+      gate_name: "credit_limit_check",
+      entity_type: input.entityType,
+      entity_id: input.entityId,
+      approved_by: resolveActorId(input.context.initiatedBy),
+      role_at_approval: resolveActorRole(input.context.initiatedBy),
+      forced: true,
+      reason_code: reason.reason_code,
+      reason_notes: notes ?? `${reason.reason_name}: ${input.detail}`,
+      correlation_id: input.context.correlationId ?? null,
+    });
+  } catch (approvalErr) {
+    appLogger.warn(
+      { approvalErr, commandName: input.commandName, entityId: input.entityId },
+      "Credit limit override: failed to record the decision (non-fatal)",
+    );
+  }
 };

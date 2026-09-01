@@ -2880,6 +2880,17 @@ CL_PROP=$(cl_sql "select id from properties where tenant_id='$TID_A' limit 1")
 CL_FOLIO=$(cl_sql "select folio_id from folios where tenant_id='$TID_A' and COALESCE(balance,0) > 1 order by balance desc limit 1")
 CL_COMPANY=$(cl_sql "select company_id from companies where tenant_id='$TID_A' limit 1")
 
+# An AR account hangs off a company, and `companies` is empty on a fresh
+# database — nothing in the setup seeds one, which is why this phase skipped
+# silently on every run before this one and the credit-limit gate went unproven
+# on real data. Create one rather than skip: a corporate account is the exact
+# situation the override exists for.
+if [[ -z "$CL_COMPANY" ]]; then
+  seed_rest "Corporate account for the credit test" "$GW/v1/companies" \
+    "{\"tenant_id\":\"$TID_A\",\"company_name\":\"Tight Credit Ltd $RUN_TAG\",\"company_type\":\"corporate\"}"
+  CL_COMPANY=$(cl_sql "select company_id from companies where tenant_id='$TID_A' order by created_at desc limit 1")
+fi
+
 if [[ -z "$CL_PROP" || -z "$CL_FOLIO" || -z "$CL_COMPANY" ]]; then
   skip "Credit limit override fixture" "no property/folio-with-balance/company for tenant A"
 else

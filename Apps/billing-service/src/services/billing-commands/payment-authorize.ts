@@ -16,6 +16,7 @@ import {
   resolveActorId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import { recordCreditLimitOverride } from "./credit-limit-gate.js";
 import { enforceCreditLimit } from "./payment.js";
 
 /**
@@ -30,25 +31,20 @@ export const authorizePayment = async (
   const actor = resolveActorId(context.initiatedBy);
 
   // Enforce credit limit before authorizing
-  const creditWarning = await enforceCreditLimit(
-    context.tenantId,
-    command.guest_id,
-    command.amount,
-    {
-      context,
-      propertyId: command.property_id,
-      commandName: "billing.payment.authorize",
-      flowName: "check_in",
-      override: {
-        requested: command.credit_limit_override,
-        reasonCode: command.credit_limit_override_reason_code,
-        notes: command.credit_limit_override_notes,
-      },
+  const creditLimit = await enforceCreditLimit(context.tenantId, command.guest_id, command.amount, {
+    context,
+    propertyId: command.property_id,
+    commandName: "billing.payment.authorize",
+    flowName: "check_in",
+    override: {
+      requested: command.credit_limit_override,
+      reasonCode: command.credit_limit_override_reason_code,
+      notes: command.credit_limit_override_notes,
     },
-  );
-  if (creditWarning) {
+  });
+  if (creditLimit.warning) {
     appLogger.warn(
-      { guestId: command.guest_id, creditWarning },
+      { guestId: command.guest_id, creditWarning: creditLimit.warning },
       "Credit limit warning on authorize",
     );
   }
@@ -130,6 +126,17 @@ export const authorizePayment = async (
       "Failed to record payment authorization.",
     );
   }
+
+  // Only now: the authorisation exists, so the override row documents a block
+  // that was actually lifted rather than one attempt out of four.
+  if (creditLimit.override) {
+    await recordCreditLimitOverride(
+      creditLimit.override.gate,
+      creditLimit.override.reason,
+      command.credit_limit_override_notes,
+    );
+  }
+
   return paymentId;
 };
 

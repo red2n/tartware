@@ -33,7 +33,11 @@ import {
   resolveActorRole,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
-import { clearCreditLimitGate } from "./credit-limit-gate.js";
+import {
+  type CreditLimitGateInput,
+  clearCreditLimitGate,
+  recordCreditLimitOverride,
+} from "./credit-limit-gate.js";
 
 // ─── GL constants ─────────────────────────────────────────────────────────────
 const CITY_LEDGER_ACCOUNT = "1300"; // City Ledger / AR
@@ -208,25 +212,24 @@ export const transferToCityLedger = async (
   // Credit limit check. The AR account's own available credit, not a guest's —
   // same refusal, same override, different entity, which is why the gate takes
   // the entity rather than assuming one.
+  const creditGate: CreditLimitGateInput = {
+    context,
+    propertyId: command.property_id,
+    commandName: "ar.city_ledger.transfer",
+    flowName: "ar_collections",
+    entityType: "folio",
+    entityId: command.folio_id,
+    detail:
+      `Transfer of ${transferAmount} exceeds available credit ` +
+      `${account.available_credit} on AR account ${command.ar_account_id}.`,
+  };
+  let creditOverride: ReasonCodeRow | null = null;
   if (Number(account.available_credit) < transferAmount) {
-    await clearCreditLimitGate(
-      {
-        context,
-        propertyId: command.property_id,
-        commandName: "ar.city_ledger.transfer",
-        flowName: "ar_collections",
-        entityType: "folio",
-        entityId: command.folio_id,
-        detail:
-          `Transfer of ${transferAmount} exceeds available credit ` +
-          `${account.available_credit} on AR account ${command.ar_account_id}.`,
-      },
-      {
-        requested: command.credit_limit_override,
-        reasonCode: command.credit_limit_override_reason_code,
-        notes: command.credit_limit_override_notes,
-      },
-    );
+    creditOverride = await clearCreditLimitGate(creditGate, {
+      requested: command.credit_limit_override,
+      reasonCode: command.credit_limit_override_reason_code,
+      notes: command.credit_limit_override_notes,
+    });
   }
 
   // Compute due date from payment terms
@@ -265,8 +268,17 @@ export const transferToCityLedger = async (
           $10, $10, UPPER($11),
           $12, $13::uuid
         )
+        -- The inference predicate has to *imply* the index predicate, and
+        -- ar_city_ledger_folio_account_ux is partial on
+        -- (folio_id IS NOT NULL AND entry_status NOT IN (…)). Omitting the
+        -- null test left Postgres unable to match any index, so every transfer
+        -- failed with 42P10 — "no unique or exclusion constraint matching the
+        -- ON CONFLICT specification" — and then burned the retry ladder. The
+        -- command had no route until A11 and no test ever drove it, so it had
+        -- never once succeeded.
         ON CONFLICT (tenant_id, folio_id, ar_account_id)
-          WHERE entry_status NOT IN ('CANCELLED', 'WRITTEN_OFF')
+          WHERE folio_id IS NOT NULL
+            AND entry_status NOT IN ('CANCELLED', 'WRITTEN_OFF')
         DO NOTHING
         RETURNING entry_id`,
       [
@@ -333,6 +345,19 @@ export const transferToCityLedger = async (
   });
 
   const entryId = rows[0]?.entry_id ?? entryNumber;
+
+  // Recorded here rather than at the gate: the transfer has committed, so the
+  // row documents an override that actually moved money. Recording at the gate
+  // wrote one per attempt, and this command spent its whole life failing after
+  // the gate on a 42P10 — three rows for one decision.
+  if (creditOverride) {
+    await recordCreditLimitOverride(
+      { ...creditGate, entityId: command.folio_id },
+      creditOverride,
+      command.credit_limit_override_notes,
+    );
+  }
+
   appLogger.info(
     { entryId, entryNumber, arAccountId: command.ar_account_id, amount: transferAmount },
     "City ledger transfer complete",
