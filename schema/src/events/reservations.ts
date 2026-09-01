@@ -164,10 +164,59 @@ export type ReservationCancelledEvent = z.infer<
 	typeof ReservationCancelledEventSchema
 >;
 
+/**
+ * Reservation Quoted Event
+ *
+ * `reservation.send_quote` emitted this from the day it was written, and the
+ * reservation applier had no case for it — so a quote moved nothing. The
+ * booking stayed INQUIRY, and `reservation.convert_quote`, which requires
+ * QUOTED, could never run: the whole enquiry → quote → convert path was dead
+ * while every command in it answered 202. notification-service consumed the
+ * event and would have sent the guest a quote for a booking the system did not
+ * consider quoted.
+ *
+ * Same payload shape as an update, because that is what it is — a status, the
+ * two quote stamps, and the price being offered.
+ */
+export const ReservationQuotedEventSchema = z.object({
+	metadata: EventMetadataSchema.extend({
+		type: z.literal("reservation.quoted"),
+	}),
+	payload: ReservationsSchema.partial().extend({
+		id: ReservationsSchema.shape.id,
+		rate_code: RateCodeSchema.optional(),
+	}),
+});
+
+export type ReservationQuotedEvent = z.infer<
+	typeof ReservationQuotedEventSchema
+>;
+
+/**
+ * Reservation Expired Event
+ *
+ * A quote whose expiry passed, or a hold nobody took up. Emitted and dropped
+ * for the same reason as the quote above.
+ */
+export const ReservationExpiredEventSchema = z.object({
+	metadata: EventMetadataSchema.extend({
+		type: z.literal("reservation.expired"),
+	}),
+	payload: ReservationsSchema.partial().extend({
+		id: ReservationsSchema.shape.id,
+	}),
+});
+
+export type ReservationExpiredEvent = z.infer<
+	typeof ReservationExpiredEventSchema
+>;
+
 export const ReservationEventSchema = z.union([
 	ReservationCreatedEventSchema,
 	ReservationUpdatedEventSchema,
 	ReservationCancelledEventSchema,
+	ReservationQuotedEventSchema,
+	ReservationExpiredEventSchema,
 ]);
 
 export type ReservationEvent = z.infer<typeof ReservationEventSchema>;

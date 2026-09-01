@@ -120,6 +120,19 @@ export const processReservationEvent = async (
       return {
         reservationId: await handleReservationCancelled(event as ReservationCancelledEvent),
       };
+    // `reservation.quoted` and `reservation.expired` were emitted by their
+    // handlers, consumed by notification-service, and applied to the
+    // reservation by nothing: `send_quote` returned 202, an email would go out,
+    // and the booking still read INQUIRY. The whole enquiry → quote → convert
+    // path was therefore dead, because `convert_quote` requires QUOTED and the
+    // booking never got there. Both carry the same update-shaped payload as
+    // `reservation.updated`, so they apply through the same handler rather than
+    // a copy of it.
+    case "reservation.quoted":
+    case "reservation.expired":
+      return {
+        reservationId: await handleReservationUpdated(event as ReservationUpdatedEvent),
+      };
     default:
       reservationsLogger.warn({ eventType }, "Unhandled reservation event type");
       return {};
@@ -450,6 +463,13 @@ const handleReservationUpdated = async (event: ReservationUpdatedEvent): Promise
     addField("actual_check_out", payload.actual_check_out);
   if (payload.room_number !== undefined) addField("room_number", payload.room_number);
   if (payload.status !== undefined) addField("status", payload.status);
+  // The quote stamps. Without these `reservation.quoted` could move the status
+  // and still leave a QUOTED booking with no record of when it was quoted or
+  // when the price stops being honoured — which is the whole content of a quote.
+  if ((payload as { quoted_at?: unknown }).quoted_at !== undefined)
+    addField("quoted_at", (payload as { quoted_at?: unknown }).quoted_at);
+  if ((payload as { quote_expires_at?: unknown }).quote_expires_at !== undefined)
+    addField("quote_expires_at", (payload as { quote_expires_at?: unknown }).quote_expires_at);
   if (payload.source !== undefined) addField("source", payload.source);
   if (payload.total_amount !== undefined)
     addField("total_amount", Number(payload.total_amount ?? 0));

@@ -3628,8 +3628,18 @@ else
       return
     fi
     out=$(bash "$REPO_ROOT/$script" 2>&1) && rc=0 || rc=$?
-    # Both suites end with "  N passed, M failed".
+    # Two summary shapes: the smoke scripts print "N passed, M failed", the
+    # lifecycle suites go through lib/harness.sh and print
+    # "TITLE: P/T passed, F FAILED, S skipped" — normalised to the first here so
+    # one runner can take both. Without this the lifecycle suites report "no
+    # summary line" and look broken when they are merely different.
     line=$(printf '%s\n' "$out" | grep -oE "[0-9]+ passed, [0-9]+ failed" | tail -1)
+    if [[ -z "$line" ]]; then
+      local hp hf
+      hp=$(printf '%s\n' "$out" | grep -oE "[0-9]+/[0-9]+ passed" | tail -1 | grep -oE "^[0-9]+")
+      hf=$(printf '%s\n' "$out" | grep -oE "[0-9]+ FAILED" | tail -1 | grep -oE "^[0-9]+")
+      [[ -n "$hp" ]] && line="$hp passed, ${hf:-0} failed"
+    fi
     if [[ -z "$line" ]]; then
       fail "$label" "suite produced no summary line (exit $rc)"
       printf '%s\n' "$out" | tail -15
@@ -3648,6 +3658,15 @@ else
 
   run_domain_suite "Function space, BEOs and event billing" "http_test/smoke-events.sh"
   run_domain_suite "Operations write paths and room-block holds" "http_test/smoke-operations.sh"
+  # The two lifecycle suites existed for weeks and were invoked by nothing —
+  # not by this file, not by test-multi-tenant.sh, not by package.json. Between
+  # them they are the only coverage of nine commands (assign_room, extend_stay,
+  # room_move, reverse_check_in, modify and the three mass operations), and a
+  # suite nobody runs proves nothing. Same decay `flow:integrity` had before A11.
+  run_domain_suite "Stay lifecycle: shop → book → arrive → in-house → depart" \
+    "executables/test-accounts-realdata/test-stay-lifecycle.sh"
+  run_domain_suite "WS-04 lifecycle: reversals, transitions and mass operations" \
+    "executables/test-accounts-realdata/test-ws04-lifecycle.sh"
   echo ""
 fi
 

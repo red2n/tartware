@@ -36,7 +36,11 @@ cd "$REPO_ROOT"
 source "$SCRIPT_DIR/ensure-deps.sh"
 source "$SCRIPT_DIR/lib/harness.sh"
 
-TID="11111111-1111-1111-1111-111111111111"
+# The tenant this stay is walked for. Overridable on purpose: the product is
+# multi-tenant, and a lifecycle proven only against the seed tenant proves the
+# seed data, not the flow. `STAY_TENANT_ID=<uuid>` runs the identical walk for
+# any tenant, which is how the multi-tenant suite drives it for its own.
+TID="${STAY_TENANT_ID:-11111111-1111-1111-1111-111111111111}"
 PSQL_ARGS=(-h "${DB_HOST:-127.0.0.1}" -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" -tAc)
 sql() { PGPASSWORD="${DB_PASSWORD:-postgres}" psql "${PSQL_ARGS[@]}" "$1" 2>/dev/null | head -1; }
 
@@ -52,6 +56,7 @@ wait_sql() {
 TODAY=$(date +%Y-%m-%d)
 OUT_3=$(date -d "+3 days" +%Y-%m-%d 2>/dev/null || date -v+3d +%Y-%m-%d)
 OUT_5=$(date -d "+5 days" +%Y-%m-%d 2>/dev/null || date -v+5d +%Y-%m-%d)
+OUT_7=$(date -d "+7 days" +%Y-%m-%d 2>/dev/null || date -v+7d +%Y-%m-%d)
 RUN=$(date +%H%M%S)$((RANDOM % 100))
 
 echo "┌─ Stay lifecycle suite · run $RUN · $TODAY → $OUT_3"
@@ -399,6 +404,314 @@ if wait_sql 60 "CHECKED_OUT" "select status from reservations where id='$RES'"; 
   assert_ne "Departed room is no longer OCCUPIED" "OCCUPIED" "$(sql "select status from rooms where id='$FINAL_ROOM'")"
 else
   fail "Guest checked out" "check-out did not apply"
+fi
+
+###############################################################################
+# PHASE 10 — Enquiry → quote → conversion
+#
+# The front half of the funnel, driven by nothing until now: a booking that
+# starts as an enquiry, is quoted with an expiry, and converts. INQUIRY and
+# QUOTED are two of the states `RESERVATION_INITIAL_STATUSES` allows a booking
+# to begin in, and no suite had ever created one.
+###############################################################################
+
+section "PHASE 10 · Enquiry, quote and conversion"
+
+QRES=$(gen_uuid)
+code=$(post "$GW/v1/commands/reservation.create/execute" \
+  "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"property_id\":\"$PROPERTY\",\"guest_id\":\"$GUEST\",\"room_type_id\":\"$ROOM_TYPE\",\"check_in_date\":\"$OUT_3\",\"check_out_date\":\"$OUT_5\",\"status\":\"INQUIRY\",\"total_amount\":300,\"currency\":\"USD\"}}")
+assert_http "Enquiry accepted" "202" "$code"
+
+if wait_sql 60 "INQUIRY" "select status from reservations where id='$QRES'"; then
+  CREATED_RESERVATIONS+=("$QRES")
+  pass "Enquiry persisted as INQUIRY"
+
+  code=$(post "$GW/v1/commands/reservation.send_quote/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"total_amount\":320,\"currency\":\"USD\",\"quote_expires_at\":\"${OUT_3}T12:00:00Z\"}}")
+  assert_http "Quote sent" "202" "$code"
+  if wait_sql 60 "QUOTED" "select status from reservations where id='$QRES'"; then
+    pass "Enquiry became QUOTED"
+    assert_ne "Quote carries a sent timestamp" "" "$(sql "select coalesce(quoted_at::text,'') from reservations where id='$QRES'")"
+    assert_ne "Quote carries an expiry"        "" "$(sql "select coalesce(quote_expires_at::text,'') from reservations where id='$QRES'")"
+  else
+    fail "Enquiry became QUOTED" "send_quote did not apply"
+  fi
+
+  code=$(post "$GW/v1/commands/reservation.convert_quote/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"total_amount\":320,\"currency\":\"USD\"}}")
+  assert_http "Quote conversion accepted" "202" "$code"
+  # PENDING, not CONFIRMED: a converted quote is a booking awaiting its deposit,
+  # and PENDING → CONFIRMED is one of the edges A10 left to the general editor
+  # for exactly that reason — the deposit landing is what confirms it.
+  if wait_sql 60 "PENDING" "select status from reservations where id='$QRES'"; then
+    pass "Quote converted into a booking"
+  else
+    fail "Quote converted into a booking" "convert_quote did not apply"
+  fi
+else
+  fail "Enquiry persisted as INQUIRY" "reservation.create did not land"
+fi
+
+###############################################################################
+# PHASE 11 — Deposit taken, then released
+#
+# A deposit is what makes a booking real for most properties, and check-in has
+# a gate that refuses arrival while a blocking one is unpaid. Both commands
+# existed; neither had ever been called.
+###############################################################################
+
+section "PHASE 11 · Deposit"
+
+if [[ -n "${QRES:-}" ]]; then
+  code=$(post "$GW/v1/commands/reservation.add_deposit/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"amount\":150,\"currency\":\"USD\",\"method\":\"CREDIT_CARD\",\"notes\":\"stay-lifecycle deposit\"}}")
+  assert_http "Deposit accepted" "202" "$code"
+  if wait_sql 60 "add" "select coalesce(metadata->'deposit_event'->>'type','') from reservations where id='$QRES'"; then
+    pass "Deposit recorded against the booking"
+    assert_eq "Deposit amount stored" "150" \
+      "$(sql "select coalesce((metadata->'deposit_event'->>'amount')::numeric::int::text,'') from reservations where id='$QRES'")"
+  else
+    fail "Deposit recorded against the booking" "add_deposit did not apply"
+  fi
+
+  code=$(post "$GW/v1/commands/reservation.release_deposit/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"amount\":150,\"reason\":\"stay-lifecycle release\"}}")
+  assert_http "Deposit release accepted" "202" "$code"
+  if wait_sql 60 "release" "select coalesce(metadata->'deposit_event'->>'type','') from reservations where id='$QRES'"; then
+    pass "Deposit release recorded"
+  else
+    fail "Deposit release recorded" "release_deposit did not apply"
+  fi
+else
+  skip "Deposit" "no quoted booking to attach one to"
+fi
+
+###############################################################################
+# PHASE 12 — Registration card
+#
+# What the guest signs at the desk. It has a handler, a catalogue row and a
+# route, and had never been called.
+###############################################################################
+
+section "PHASE 12 · Registration card"
+
+if [[ -n "${QRES:-}" ]]; then
+  code=$(post "$GW/v1/commands/reservation.generate_registration_card/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"property_id\":\"$PROPERTY\",\"visit_purpose\":\"leisure\"}}")
+  assert_http "Registration card accepted" "202" "$code"
+  if wait_sql 60 "1" "select count(*) from digital_registration_cards where reservation_id='$QRES'"; then
+    pass "Registration card produced"
+  else
+    fail "Registration card produced" "no digital_registration_cards row within 60s"
+  fi
+else
+  skip "Registration card" "no booking to card"
+fi
+
+###############################################################################
+# PHASE 13 — Unassign and reassign
+#
+# A room given back before arrival, which the desk does whenever a better one
+# frees up.
+###############################################################################
+
+section "PHASE 13 · Unassign and reassign a room"
+
+if [[ -n "${QRES:-}" ]]; then
+  pick_free_room; QROOM="$PICKED_ROOM"
+  if [[ -z "$QROOM" ]]; then
+    skip "Unassign and reassign" "no free room to assign"
+  else
+    code=$(post "$GW/v1/commands/reservation.assign_room/execute" \
+      "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"room_id\":\"$QROOM\"}}")
+    assert_http "Room assigned" "202" "$code"
+    if wait_sql 60 "1" "select count(*) from reservation_rooms where reservation_id='$QRES' and room_id='$QROOM'"; then
+      pass "Assignment landed"
+    else
+      fail "Assignment landed" "assign_room did not apply"
+    fi
+
+    code=$(post "$GW/v1/commands/reservation.unassign_room/execute" \
+      "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"reason\":\"stay-lifecycle unassign\"}}")
+    assert_http "Unassign accepted" "202" "$code"
+    if wait_sql 60 "0" "select count(*) from reservation_rooms where reservation_id='$QRES' and room_id='$QROOM'"; then
+      pass "Room released back to inventory"
+    else
+      fail "Room released back to inventory" "unassign_room did not apply"
+    fi
+  fi
+else
+  skip "Unassign and reassign" "no booking to assign"
+fi
+
+###############################################################################
+# PHASE 14 — Rate override
+#
+# A06 made this state a reason code from the RATE_OVERRIDE category, and check
+# the caller's role against that code's approval level. Nothing drove it, so
+# the control had never run outside its unit tests.
+###############################################################################
+
+section "PHASE 14 · Rate override"
+
+if [[ -n "${QRES:-}" ]]; then
+  code=$(post "$GW/v1/commands/reservation.rate_override/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"total_amount\":275,\"reason_code\":\"RO_MGR_DISC\",\"reason\":\"stay-lifecycle manager discount\"}}")
+  assert_http "Rate override accepted" "202" "$code"
+  if wait_sql 60 "275" "select coalesce(total_amount::numeric::int::text,'') from reservations where id='$QRES'"; then
+    pass "The new rate is on the booking"
+    assert_eq "The override is recorded under its reason code" "RO_MGR_DISC" \
+      "$(sql "select coalesce(reason_code,'') from flow_approvals where gate_name='rate_override' and entity_id='$QRES' limit 1")"
+    assert_ne "…with the operator's real role, not a literal" "" \
+      "$(sql "select coalesce(role_at_approval,'') from flow_approvals where gate_name='rate_override' and entity_id='$QRES' limit 1")"
+  else
+    fail "The new rate is on the booking" "rate_override did not apply"
+  fi
+
+  # An override naming no code is refused before the command is accepted, which
+  # is the half of A06 that makes the code mandatory rather than decorative.
+  code=$(post "$GW/v1/commands/reservation.rate_override/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$QRES\",\"total_amount\":100}}")
+  assert_http "Override with no reason code is refused" "4" "$code"
+else
+  skip "Rate override" "no booking to reprice"
+fi
+
+###############################################################################
+# PHASE 15 — Walk-in arrival
+#
+# No booking, guest at the desk: create and check in in one command. A
+# meaningful share of rooms are sold this way and none were tested this way.
+###############################################################################
+
+section "PHASE 15 · Walk-in arrival"
+
+pick_free_room; WALK_ROOM="$PICKED_ROOM"
+if [[ -z "$WALK_ROOM" ]]; then
+  skip "Walk-in arrival" "no free room for a walk-in"
+else
+  WRES=$(gen_uuid)
+  code=$(post "$GW/v1/commands/reservation.walkin_checkin/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$WRES\",\"property_id\":\"$PROPERTY\",\"guest_id\":\"$GUEST\",\"room_type_id\":\"$ROOM_TYPE\",\"room_id\":\"$WALK_ROOM\",\"check_out_date\":\"$OUT_3\",\"allow_rate_fallback\":true}}")
+  assert_http "Walk-in accepted" "202" "$code"
+  if wait_sql 90 "CHECKED_IN" "select status from reservations where id='$WRES'"; then
+    CREATED_RESERVATIONS+=("$WRES")
+    pass "Walk-in guest is in-house"
+    assert_ne "Arrival stamped" "" "$(sql "select coalesce(actual_check_in::text,'') from reservations where id='$WRES'")"
+    assert_eq "Their room reads OCCUPIED" "OCCUPIED" "$(sql "select status from rooms where id='$WALK_ROOM'")"
+  else
+    fail "Walk-in guest is in-house" "walkin_checkin did not apply"
+  fi
+fi
+
+###############################################################################
+# PHASE 16 — The guest who never left
+#
+# Reversing a check-out: WS-04 built it, the flow registry declares it, and no
+# suite had ever undone a departure — the only recovery from a mis-keyed one.
+###############################################################################
+
+section "PHASE 16 · Reverse a check-out"
+
+if [[ -n "${RES:-}" && "$(sql "select status from reservations where id='$RES'")" == "CHECKED_OUT" ]]; then
+  code=$(post "$GW/v1/commands/reservation.reverse_check_out/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"reservation_id\":\"$RES\",\"property_id\":\"$PROPERTY\",\"reason_code\":\"EARLY_DEPARTURE_REVERSED\",\"reason_notes\":\"stay-lifecycle reversal\",\"force\":true}}")
+  assert_http "Reversal accepted" "202" "$code"
+  if wait_sql 60 "CHECKED_IN" "select status from reservations where id='$RES'"; then
+    pass "The departed guest is in-house again"
+    assert_eq "Departure stamp cleared" "" "$(sql "select coalesce(actual_check_out::text,'') from reservations where id='$RES'")"
+    assert_eq "The reversal is recorded" "reverse_check_out" \
+      "$(sql "select coalesce(gate_name,'') from flow_approvals where entity_id='$RES' and gate_name='reverse_check_out' limit 1")"
+  else
+    fail "The departed guest is in-house again" "reverse_check_out did not apply"
+  fi
+else
+  skip "Reverse a check-out" "the stay did not reach CHECKED_OUT"
+fi
+
+###############################################################################
+# PHASE 17 — Waitlist
+#
+# A sold-out date, a guest who wants it anyway, an offer when a room frees up.
+# Three commands and a table of their own, with no coverage at all.
+###############################################################################
+
+section "PHASE 17 · Waitlist"
+
+code=$(post "$GW/v1/commands/reservation.waitlist_add/execute" \
+  "{\"tenant_id\":\"$TID\",\"payload\":{\"property_id\":\"$PROPERTY\",\"guest_id\":\"$GUEST\",\"requested_room_type_id\":\"$ROOM_TYPE\",\"arrival_date\":\"$OUT_5\",\"departure_date\":\"$OUT_7\",\"number_of_rooms\":1}}")
+assert_http "Waitlist entry accepted" "202" "$code"
+if wait_sql 60 "1" "select count(*) from waitlist_entries where tenant_id='$TID' and guest_id='$GUEST' and arrival_date='$OUT_5'"; then
+  pass "Guest is on the waitlist"
+  WL=$(sql "select waitlist_id from waitlist_entries where tenant_id='$TID' and guest_id='$GUEST' and arrival_date='$OUT_5' order by created_at desc limit 1")
+
+  code=$(post "$GW/v1/commands/reservation.waitlist_offer/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"waitlist_id\":\"$WL\",\"property_id\":\"$PROPERTY\",\"offer_ttl_hours\":24,\"notify_via\":\"EMAIL\"}}")
+  assert_http "Offer accepted" "202" "$code"
+  if wait_sql 60 "OFFERED" "select waitlist_status from waitlist_entries where waitlist_id='$WL'"; then
+    pass "The entry reads OFFERED"
+  else
+    fail "The entry reads OFFERED" "waitlist_offer did not apply"
+  fi
+
+  code=$(post "$GW/v1/commands/reservation.waitlist_convert/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"waitlist_id\":\"$WL\",\"property_id\":\"$PROPERTY\",\"room_type_id\":\"$ROOM_TYPE\"}}")
+  assert_http "Conversion accepted" "202" "$code"
+  if wait_sql 60 "CONVERTED" "select waitlist_status from waitlist_entries where waitlist_id='$WL'"; then
+    pass "The waitlisted guest became a booking"
+  else
+    fail "The waitlisted guest became a booking" "waitlist_convert did not apply"
+  fi
+else
+  fail "Guest is on the waitlist" "waitlist_add did not land"
+fi
+
+###############################################################################
+# PHASE 18 — Out of service, and keys
+#
+# Maintenance takes a room off sale; the desk cuts and cancels keys. Six room
+# commands, none of them ever driven.
+###############################################################################
+
+section "PHASE 18 · Out of order, out of service, and keys"
+
+pick_free_room; OOO_ROOM="$PICKED_ROOM"
+if [[ -z "$OOO_ROOM" ]]; then
+  skip "Out of order and keys" "no free room to take out of service"
+else
+  code=$(post "$GW/v1/tenants/$TID/rooms/$OOO_ROOM/out-of-order" \
+    "{\"reason\":\"stay-lifecycle maintenance\",\"start_date\":\"$TODAY\",\"end_date\":\"$OUT_3\"}")
+  assert_http "Out-of-order accepted" "20" "$code"
+  if wait_sql 60 "t" "select coalesce(is_out_of_order,false)::text from rooms where id='$OOO_ROOM'"; then
+    pass "The room is out of order"
+  else
+    fail "The room is out of order" "out_of_order did not apply"
+  fi
+
+  code=$(post "$GW/v1/tenants/$TID/rooms/$OOO_ROOM/out-of-service" \
+    "{\"reason\":\"stay-lifecycle deep clean\",\"start_date\":\"$TODAY\",\"end_date\":\"$OUT_3\"}")
+  assert_http "Out-of-service accepted" "20" "$code"
+fi
+
+if [[ -n "${WRES:-}" && -n "${WALK_ROOM:-}" ]]; then
+  code=$(post "$GW/v1/commands/rooms.key.issue/execute" \
+    "{\"tenant_id\":\"$TID\",\"payload\":{\"property_id\":\"$PROPERTY\",\"room_id\":\"$WALK_ROOM\",\"reservation_id\":\"$WRES\",\"guest_id\":\"$GUEST\",\"key_type\":\"bluetooth\",\"valid_until\":\"${OUT_3}T12:00:00Z\"}}")
+  assert_http "Key issue accepted" "202" "$code"
+  if wait_sql 60 "1" "select count(*) from mobile_keys where reservation_id='$WRES'"; then
+    pass "A key was cut for the in-house guest"
+    code=$(post "$GW/v1/commands/rooms.key.revoke/execute" \
+      "{\"tenant_id\":\"$TID\",\"payload\":{\"property_id\":\"$PROPERTY\",\"reservation_id\":\"$WRES\",\"reason\":\"stay-lifecycle revoke\"}}")
+    assert_http "Key revoke accepted" "202" "$code"
+    if wait_sql 60 "0" "select count(*) from mobile_keys where reservation_id='$WRES' and coalesce(is_active,true)=true"; then
+      pass "The key no longer opens the door"
+    else
+      fail "The key no longer opens the door" "key.revoke did not apply"
+    fi
+  else
+    fail "A key was cut for the in-house guest" "rooms.key.issue did not apply"
+  fi
+else
+  skip "Room keys" "no in-house walk-in to cut a key for"
 fi
 
 harness_summary "STAY LIFECYCLE"
