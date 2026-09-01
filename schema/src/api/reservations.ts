@@ -9,9 +9,9 @@ import { z } from "zod";
 
 import { uuid } from "../shared/base-schemas.js";
 import {
-	ReservationStatusEnum,
 	type ReservationCommandLifecycleState,
 	type ReservationStatus,
+	ReservationStatusEnum,
 } from "../shared/enums.js";
 
 // =====================================================
@@ -1090,9 +1090,31 @@ export const ReasonCodeListItemSchema = z.object({
 	reason_category: z.string(),
 	property_id: z.string().uuid().nullable().optional(),
 	requires_approval: z.boolean().nullable().optional(),
+	/**
+	 * The authority an override under this code takes — NONE / SUPERVISOR /
+	 * MANAGER / DIRECTOR / GM.
+	 *
+	 * Returned so a picker can say what a code will cost before the operator
+	 * chooses it. Without it the only way to learn that `BL_GM_CLEARED` needs an
+	 * owner is to submit the command and read the refusal, which is a poor way
+	 * to discover a control. Translate it to a membership role with
+	 * `approvalLevelMinRole` in `api/override-authority.ts` — never by comparing
+	 * the string to a role, since these are two different vocabularies.
+	 */
+	approval_level: z.string().nullable().optional(),
 	has_financial_impact: z.boolean().nullable().optional(),
 	display_order: z.number().int().nullable().optional(),
 	is_active: z.boolean().nullable().optional(),
+	/**
+	 * True when this row is one of the product's shipped reference codes rather
+	 * than something the tenant configured.
+	 *
+	 * Derived in the listing query, not stored. It exists because the resolver a
+	 * command uses reads the tenant *and* the all-zero system tenant, and a
+	 * listing that read only the tenant would show an empty picker while every
+	 * handler happily accepted forty-six codes the operator could not see.
+	 */
+	is_system_default: z.boolean().nullable().optional(),
 });
 
 export type ReasonCodeListItem = z.infer<typeof ReasonCodeListItemSchema>;
@@ -1450,6 +1472,17 @@ export type ReservationStaySnapshot = {
 	checkOutDate: Date;
 	guestId: string;
 	status: string;
+	/**
+	 * What the booking is worth before this command changes it.
+	 *
+	 * Carried so a rate override can be measured, not merely recorded: a
+	 * discount ladder needs the original to compute a percentage against, and
+	 * the override handler already loads this snapshot for the property id.
+	 * `null` when the column is unset — a booking with no prior amount has no
+	 * discount to measure, and `discountPercent` returns 0 for it rather than
+	 * inventing one.
+	 */
+	totalAmount: number | null;
 };
 
 /** Cancellation policy JSONB shape stored on the rates table. */
@@ -1530,6 +1563,8 @@ export type ReservationStayRow = {
 	check_out_date: Date;
 	guest_id: string;
 	status: string;
+	/** `numeric` — `pg` hands these back as strings. */
+	total_amount: string | number | null;
 };
 
 /** Result shape returned by reservation event handler functions. */

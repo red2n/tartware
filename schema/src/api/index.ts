@@ -53,6 +53,7 @@ export * from "./operations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./operations-rows.js";
 export * from "./override-authority.js";
+export * from "./override-thresholds.js";
 export * from "./payment-gateway.js";
 export * from "./properties.js";
 export * from "./rate-calendar.js";

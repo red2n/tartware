@@ -1,8 +1,19 @@
 import {
   assertOverrideAuthority,
+  CommandError,
   SYSTEM_ACTOR_ROLE,
 } from "@tartware/command-consumer-utils/command-utils";
+import { resolvePolicy } from "@tartware/command-consumer-utils/settings-utils";
+import {
+  actorClearsThreshold,
+  DEFAULT_RATE_APPROVAL_POLICY,
+  discountPercent,
+  RATE_APPROVAL_SETTING,
+  RateApprovalPolicySchema,
+  requiredRoleForDiscount,
+} from "@tartware/schemas";
 
+import { query } from "../../lib/db.js";
 import { fetchReservationStaySnapshot } from "../../repositories/reservation-repository.js";
 import type {
   ReservationDepositAddCommand,
@@ -40,6 +51,64 @@ import {
  * act — so every override writes a row and `forced` stays false. What is
  * refused is an override nobody was entitled to make.
  */
+/**
+ * Refuse a discount larger than the acting role is entitled to give.
+ *
+ * The reason code above authorizes the *act* of overriding a rate. This
+ * authorizes the *size* of it, which nothing in the product has ever done: a 5%
+ * courtesy and a 90% giveaway were the same command, cleared by the same role
+ * and recorded identically. A06 named the policy that should have governed it —
+ * `discountApprovalThresholds` in the settings catalogue, 10% for a revenue
+ * manager and 20% for a general manager — and observed that nothing read it.
+ *
+ * Three things are worth knowing about how this reads it:
+ *
+ * - **The percentage is measured against the booking's current total**, taken
+ *   from the snapshot this handler already loads. A booking with no prior
+ *   amount yields 0% rather than a fabricated discount, so an override on a
+ *   quote with no price is not refused at random.
+ * - **A rate going up demands nothing.** The ladder is about money leaving.
+ * - **An absent policy means the product's default, not "no rule".** The
+ *   catalogue installer writes its definitions under the demo tenant, so a real
+ *   property finds no row — and a threshold that only applied to sample data
+ *   would be worse than none, because it would read as enforced.
+ *
+ * `rate_code`-only overrides are not measured: switching a booking to another
+ * rate plan re-prices it downstream, and guessing at the resulting amount here
+ * would refuse legitimate plan changes on a number this command never saw.
+ */
+const assertDiscountWithinAuthority = async (
+  tenantId: string,
+  originalAmount: number | null,
+  command: ReservationRateOverrideCommand,
+  actorRole: string | undefined,
+): Promise<void> => {
+  if (typeof command.total_amount !== "number") return;
+
+  const percentOff = discountPercent(originalAmount, command.total_amount);
+  if (percentOff <= 0) return;
+
+  const policy = await resolvePolicy(
+    (sql, params) => query<{ code: string; value: unknown }>(sql, params),
+    {
+      tenantId,
+      code: RATE_APPROVAL_SETTING,
+      parse: (raw) => RateApprovalPolicySchema.parse(raw),
+      fallback: DEFAULT_RATE_APPROVAL_POLICY,
+    },
+  );
+
+  const requiredRole = requiredRoleForDiscount(policy, percentOff);
+  if (actorClearsThreshold(actorRole, requiredRole)) return;
+
+  throw new CommandError(
+    "DISCOUNT_EXCEEDS_AUTHORITY",
+    `A ${percentOff.toFixed(1)}% discount needs ${requiredRole}; this override was ` +
+      `initiated by ${actorRole ?? "an unidentified actor"}. The reason code authorises ` +
+      `overriding the rate — it does not authorise this size of one.`,
+  );
+};
+
 export const overrideRate = async (
   tenantId: string,
   command: ReservationRateOverrideCommand,
@@ -67,6 +136,8 @@ export const overrideRate = async (
     commandName: "reservation.rate_override",
     gateName: "rate_override",
   });
+
+  await assertDiscountWithinAuthority(tenantId, snapshot.totalAmount, command, options.actorRole);
 
   const updatePayload: ReservationUpdatePayload = {
     id: command.reservation_id,

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   approveRequest,
   cancelApprovalRequest,
+  getApprovalRequest,
+  listPendingApprovals,
   rejectRequest,
 } from "../src/services/approval-service.js";
 
@@ -176,5 +178,65 @@ describe("cancelApprovalRequest", () => {
     await expect(
       cancelApprovalRequest({ approval_id: APPROVAL, cancelled_by: REQUESTER }, TENANT),
     ).rejects.toMatchObject({ code: "APPROVAL_CANCEL_FAILED" });
+  });
+});
+
+describe("the queue boundary — operations here, deferred commands at the gateway", () => {
+  // `approval_requests` holds two populations. A row with `command_name` set is
+  // a command `acceptCommand` deferred, and releasing one has to *dispatch* the
+  // stored payload. This service does not dispatch: it flips a status and
+  // writes an audit line. So a deferred write-off actioned here would read
+  // APPROVED for a command that never ran, and the gateway would then refuse it
+  // as no longer PENDING — the write-off silently killed.
+  //
+  // These assert the SQL rather than a returned row on purpose. The filter is
+  // the whole control, it lives in six statements, and a mocked pg cannot tell
+  // us whether a predicate is present by what it hands back.
+  const sqlOf = (mock: { mock: { calls: unknown[][] } }, call: number, arg: number): string =>
+    String(mock.mock.calls[call]?.[arg] ?? "");
+
+  it("scopes the lock that gates approve and reject", async () => {
+    wire(pendingRow());
+    await approveRequest(
+      { approval_id: APPROVAL, actioned_by: APPROVER, actioned_by_role: "MANAGER" },
+      TENANT,
+    );
+    expect(sqlOf(queryWithClientMock, 0, 1)).toContain("command_name IS NULL");
+  });
+
+  it("scopes the list pms-ui renders", async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await listPendingApprovals({ tenantId: TENANT, limit: 20, offset: 0 });
+    expect(sqlOf(queryMock, 0, 0)).toContain("command_name IS NULL");
+  });
+
+  it("scopes the single-row read", async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await getApprovalRequest(APPROVAL, TENANT);
+    expect(sqlOf(queryMock, 0, 0)).toContain("command_name IS NULL");
+  });
+
+  it("scopes the cancel, and the lookup that explains a failed one", async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(
+      cancelApprovalRequest({ approval_id: APPROVAL, cancelled_by: REQUESTER }, TENANT),
+    ).rejects.toMatchObject({ code: "APPROVAL_CANCEL_FAILED" });
+    expect(sqlOf(queryMock, 0, 0)).toContain("command_name IS NULL");
+    expect(sqlOf(queryMock, 1, 0)).toContain("command_name IS NULL");
+  });
+
+  it("reports a deferred command as not found rather than actioning it", async () => {
+    // The filter turns the gateway's row into no row at all, which lands on the
+    // path a missing approval already takes. A caller who pastes a deferred
+    // approval id into billing's route is told it is not here, not told it is
+    // approved.
+    wire(undefined);
+    await expect(
+      approveRequest(
+        { approval_id: APPROVAL, actioned_by: APPROVER, actioned_by_role: "OWNER" },
+        TENANT,
+      ),
+    ).rejects.toMatchObject({ code: "APPROVAL_NOT_FOUND" });
   });
 });

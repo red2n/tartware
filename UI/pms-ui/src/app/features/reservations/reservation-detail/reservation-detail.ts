@@ -28,6 +28,7 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
+import { ReasonCodePickerComponent } from "../../../shared/components/reason-code-picker/reason-code-picker";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
@@ -83,6 +84,7 @@ const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
 		PaginationComponent,
 		TranslatePipe,
 		UnsavedGuardDirective,
+		ReasonCodePickerComponent,
 
 		SubmitOnEnterDirective,
 	],
@@ -151,7 +153,13 @@ export class ReservationDetailComponent implements OnInit {
 	readonly confirmingAddDeposit = signal(false);
 	readonly confirmingReleaseDeposit = signal(false);
 	readonly extendForm = signal({ new_check_out_date: "", reason: "" });
-	readonly rateOverrideForm = signal({ new_rate: "", reason: "" });
+	/**
+	 * `reason_code` is mandatory on the command (A06) and `total_amount` is what
+	 * the payload calls the amount. This form said `new_rate` and free text — a
+	 * field the command has never had and a code it now requires — so the button
+	 * returned 400 on both counts.
+	 */
+	readonly rateOverrideForm = signal({ new_rate: "", reason_code: "", reason: "" });
 	readonly addDepositForm = signal({ amount: "", method: "CARD", reference: "" });
 	readonly releaseDepositForm = signal({ amount: "", reason: "" });
 	readonly assignRoomForm = signal({ room_id: "" });
@@ -1075,6 +1083,7 @@ export class ReservationDetailComponent implements OnInit {
 		const r = this.reservation();
 		this.rateOverrideForm.set({
 			new_rate: r ? String(r.room_rate) : "",
+			reason_code: "",
 			reason: "",
 		});
 		this.confirmingRateOverride.set(true);
@@ -1172,15 +1181,19 @@ export class ReservationDetailComponent implements OnInit {
 			this.toast.error(this.i18n.t("Enter a valid rate."));
 			return;
 		}
-		if (!f.reason.trim()) {
-			this.toast.error(this.i18n.t("Reason is required for rate override."));
+		if (!f.reason_code) {
+			this.toast.error(this.i18n.t("Pick a reason code — the override is refused without one."));
 			return;
 		}
 		this.actionLoading.set(true);
 		try {
+			// `total_amount`, not `new_rate`: the command has never had a field by
+			// that name, so this call failed the payload's own refinement long
+			// before A06 made the reason code mandatory as well.
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/rate-override`, {
-				new_rate: rate,
-				reason: f.reason.trim(),
+				total_amount: rate,
+				reason_code: f.reason_code,
+				...(f.reason.trim() ? { reason: f.reason.trim() } : {}),
 			});
 			this.toast.success(this.i18n.t("Rate overridden."));
 			this.confirmingRateOverride.set(false);

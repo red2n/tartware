@@ -1,10 +1,17 @@
 import { randomUUID } from "node:crypto";
-
 import {
   assertOverrideAuthority,
   resolveReasonCode,
 } from "@tartware/command-consumer-utils/command-utils";
+import { resolvePolicy } from "@tartware/command-consumer-utils/settings-utils";
 import type { ReasonCodeRow } from "@tartware/schemas";
+import {
+  actorClearsThreshold,
+  DEFAULT_WRITE_OFF_APPROVAL_POLICY,
+  requiredRoleForWriteOff,
+  WRITE_OFF_APPROVAL_SETTING,
+  WriteOffApprovalPolicySchema,
+} from "@tartware/schemas";
 
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
@@ -370,6 +377,55 @@ export const transferToCityLedger = async (
  *
  * GL: DR Bad Debt Expense (5400) / CR City Ledger (1300)
  */
+/**
+ * Refuse a write-off larger than the acting role is entitled to forgive.
+ *
+ * The reason code says *why* a balance was forgiven and the OWNER floor plus
+ * dual control say *who* may forgive one. Neither has ever looked at *how
+ * much*: a £40 residual and a £40,000 bad debt are the same command, and A07
+ * closed with "amount threshold outstanding" for a concrete reason — there was
+ * no written policy to read, and `resolveSettings` lived somewhere billing
+ * could not call.
+ *
+ * Both are now true, so this reads `WORKFLOW.FINANCE.WRITE_OFF_APPROVALS`. The
+ * shipped ladder deliberately mirrors the six seeded WRITE_OFF reason codes,
+ * which already grade themselves MANAGER for a small balance and GM for
+ * insolvency: a threshold ladder that disagreed with the codes an operator
+ * picks from would be a second opinion rather than a control.
+ *
+ * In practice this rarely refuses — the command's own floor is OWNER and a
+ * second owner has already released it — and that is the point of having it
+ * anyway. The day the dual-control set is narrowed, or a property grants this
+ * command to an ADMIN through `user_tenant_associations.permissions`, the
+ * amount is still governed. A control that only holds because a stricter one
+ * happens to sit above it is not a control.
+ */
+const assertWriteOffWithinAuthority = async (
+  tenantId: string,
+  amount: number,
+  actorRole: string | null | undefined,
+): Promise<void> => {
+  const policy = await resolvePolicy(
+    (sql, params) => query<{ code: string; value: unknown }>(sql, params),
+    {
+      tenantId,
+      code: WRITE_OFF_APPROVAL_SETTING,
+      parse: (raw) => WriteOffApprovalPolicySchema.parse(raw),
+      fallback: DEFAULT_WRITE_OFF_APPROVAL_POLICY,
+    },
+  );
+
+  const requiredRole = requiredRoleForWriteOff(policy, amount);
+  if (actorClearsThreshold(actorRole, requiredRole)) return;
+
+  throw new BillingCommandError(
+    "WRITE_OFF_EXCEEDS_AUTHORITY",
+    `Writing off ${amount} needs ${requiredRole}; this command was initiated by ` +
+      `${actorRole ?? "an unidentified actor"}. The reason code authorises forgiving a ` +
+      `balance — it does not authorise this size of one.`,
+  );
+};
+
 export const writeOffCityLedger = async (
   payload: unknown,
   context: CommandContext,
@@ -432,6 +488,12 @@ export const writeOffCityLedger = async (
     commandName: "ar.city_ledger.write_off",
     gateName: "write_off",
   });
+
+  await assertWriteOffWithinAuthority(
+    tenantId,
+    writeOffAmount,
+    resolveActorRole(context.initiatedBy),
+  );
 
   await withTransaction(async (client) => {
     const { rows: dateRows } = await queryWithClient<{ today: string }>(

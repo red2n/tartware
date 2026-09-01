@@ -1,8 +1,4 @@
 import {
-  assertOverrideAuthority,
-  SYSTEM_ACTOR_ROLE,
-} from "@tartware/command-consumer-utils/command-utils";
-import {
   describeReservationStatuses,
   expandStayPlan,
   RESERVATION_INITIAL_STATUSES,
@@ -49,13 +45,10 @@ import type {
 } from "../../schemas/reservation-command.js";
 import { type RatePlanResolution, resolveRatePlan } from "../../services/rate-plan-service.js";
 import { assertStaySellable } from "../../services/restriction-service.js";
-import {
-  hashIdentifier,
-  recordAuditLog,
-  recordFlowApproval,
-  redactPayload,
-} from "../../utils/audit.js";
+import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 import { calculateCancellationFee } from "../cancellation-fee-service.js";
+
+import { clearBlacklistGate } from "./blacklist-gate.js";
 
 import {
   assertModifiableStatusChange,
@@ -67,7 +60,6 @@ import {
   hasStayCriticalChanges,
   ReservationCommandError,
   type ReservationUpdatePayload,
-  resolveReasonCode,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -128,98 +120,6 @@ const releaseAllReservationHolds = async (params: {
       );
     }
   }
-};
-
-/**
- * Let a booking past the blacklist, or refuse it (A05).
- *
- * The gate itself is older than this function and did the right thing: a
- * blacklisted guest could not be booked. What it did not have was a way
- * through. Its own message told the operator that "a GM override with
- * documented reason is required to proceed", and no such override existed
- * anywhere in the repo — no flag, no route, no record. In practice the way
- * past it was to clear `guests.is_blacklisted`, which does not document a
- * decision, it erases the listing for everyone who looks afterwards.
- *
- * Three things have to hold before the booking is taken, and they are checked
- * in this order on purpose:
- *
- * 1. The operator asked for the override explicitly. Without
- *    `blacklist_override` the refusal is what it always was.
- * 2. The reason code resolves, in the BLACKLIST category. An override filed
- *    under a room-move reason produces a trail that reads as a lie, which is
- *    the rule every other override in the product follows.
- * 3. The *acting* role clears the code's `approval_level`. This is the new
- *    part: until now a `force` flag on a payload was the entire mechanism, so
- *    an override was logged and never authorized. A code seeded at GM is
- *    enforced as OWNER, and a clerk who names it is refused rather than
- *    recorded.
- *
- * The row is written here, at the gate, rather than after the create
- * succeeds — matching how check-in records its forced reinstatement. The
- * decision to override was made and authorised at this point; a later failure
- * (an unavailable room, a closed restriction) leaves a record of a decision
- * that was genuinely taken, which is the safer way to be wrong about an
- * override.
- */
-const clearBlacklistGate = async (
-  tenantId: string,
-  command: ReservationCreateCommand,
-  reservationId: string,
-  options: { correlationId?: string; actorId?: string; actorRole?: string },
-): Promise<void> => {
-  if (!command.blacklist_override) {
-    throw new ReservationCommandError(
-      "GUEST_BLACKLISTED",
-      `Guest ${command.guest_id} is blacklisted. Reservation creation blocked. ` +
-        "To proceed, set blacklist_override with a blacklist_override_reason_code " +
-        "from the BLACKLIST reason codes — the override is recorded, and the code's " +
-        "approval level is checked against your role.",
-    );
-  }
-
-  // `?? ""` only satisfies the optional type: the command schema refuses a
-  // blacklist_override with no reason code before this handler sees it.
-  const reason = await resolveReasonCode(
-    tenantId,
-    command.property_id,
-    command.blacklist_override_reason_code ?? "",
-    "BLACKLIST",
-  );
-
-  assertOverrideAuthority(reason, options.actorRole, {
-    commandName: "reservation.create",
-    gateName: "blacklist_check",
-  });
-
-  await recordFlowApproval({
-    tenantId,
-    propertyId: command.property_id,
-    flowName: "reservation",
-    gateName: "blacklist_check",
-    entityType: "reservation",
-    entityId: reservationId,
-    approvedBy: options.actorId ?? null,
-    roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
-    forced: true,
-    reasonCode: reason.reason_code,
-    reasonNotes:
-      command.blacklist_override_notes ??
-      `${reason.reason_name}: booking taken for blacklisted guest ${command.guest_id}`,
-    correlationId: options.correlationId ?? null,
-  });
-
-  reservationsLogger.warn(
-    {
-      tenantId,
-      guestId: command.guest_id,
-      reservationId,
-      reasonCode: reason.reason_code,
-      approvalLevel: reason.approval_level,
-      actorRole: options.actorRole,
-    },
-    "blacklist gate overridden",
-  );
 };
 
 /**

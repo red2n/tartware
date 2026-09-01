@@ -89,12 +89,17 @@ export const FLOW_REGISTRY: FlowRegistry = {
 					// product did not implement. These two tokens are what make the
 					// override a control rather than a flag: the row it writes, and
 					// the authority check that has to pass before it is written.
+					// The way *through* the gate lives in its own module, so it can be
+					// called — and therefore tested — directly. It was ten private
+					// lines inside `core.ts`, which is how the override shipped with
+					// no test of any kind while billing's identical credit-limit gate
+					// shipped with fourteen.
 					{
-						file: "Apps/reservations-command-service/src/services/reservation-commands/core.ts",
+						file: "Apps/reservations-command-service/src/services/reservation-commands/blacklist-gate.ts",
 						token: 'gateName: "blacklist_check"',
 					},
 					{
-						file: "Apps/reservations-command-service/src/services/reservation-commands/core.ts",
+						file: "Apps/reservations-command-service/src/services/reservation-commands/blacklist-gate.ts",
 						token: "assertOverrideAuthority",
 					},
 				],
@@ -106,7 +111,10 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				description:
 					"Every reinstatement lands a row — the availability hold it had to take back is the controlled part",
 				evidence: [
-					{ file: "Apps/reservations-command-service/src/services/reservation-commands/reversals.ts", token: 'gateName: "reinstate_reservation"' },
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/reversals.ts",
+						token: 'gateName: "reinstate_reservation"',
+					},
 				],
 			},
 		],
@@ -165,16 +173,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				description:
 					"Only a booking the lifecycle allows in; force reinstates a NO_SHOW who turned up",
 				evidence: [
-					{ file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts", token: 'gateName: "reservation_status_check"' },
-					{ file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts", token: "assertReservationTransition" },
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts",
+						token: 'gateName: "reservation_status_check"',
+					},
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts",
+						token: "assertReservationTransition",
+					},
 				],
 			},
 			{
 				gateName: "deposit_required_check",
 				guardsCommand: "reservation.check_in",
-				description: "A blocking deposit schedule stops the arrival until it is paid",
+				description:
+					"A blocking deposit schedule stops the arrival until it is paid",
 				evidence: [
-					{ file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts", token: 'gateName: "deposit_required_check"' },
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts",
+						token: 'gateName: "deposit_required_check"',
+					},
 				],
 			},
 			{
@@ -202,7 +220,12 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				guardsCommand: "reservation.reverse_check_in",
 				kind: "record",
 				description: "Every check-in reversal lands a row, forced or not",
-				evidence: [{ file: "Apps/reservations-command-service/src/services/reservation-commands/reversals.ts", token: 'gateName: "reverse_check_in"' }],
+				evidence: [
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/reversals.ts",
+						token: 'gateName: "reverse_check_in"',
+					},
+				],
 			},
 		],
 		dependsOn: [FlowId.RESERVATION],
@@ -270,7 +293,12 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				kind: "record",
 				description:
 					"Every move lands a row carrying the reason code, and `forced` when a gate was bypassed",
-				evidence: [{ file: "Apps/reservations-command-service/src/services/reservation-commands/room-move.ts", token: 'gateName: "room_move"' }],
+				evidence: [
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/room-move.ts",
+						token: 'gateName: "room_move"',
+					},
+				],
 			},
 		],
 		dependsOn: [FlowId.CHECK_IN],
@@ -291,19 +319,34 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				gateName: "open_arrivals_check",
 				guardsCommand: "billing.night_audit.execute",
 				description: "Arrivals due today must be checked in or no-showed first",
-				evidence: [{ file: "Apps/billing-service/src/services/billing-commands/night-audit.ts", token: "rows: openArrivals" }],
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/night-audit.ts",
+						token: "rows: openArrivals",
+					},
+				],
 			},
 			{
 				gateName: "open_departures_check",
 				guardsCommand: "billing.night_audit.execute",
 				description: "In-house guests due out today must be checked out first",
-				evidence: [{ file: "Apps/billing-service/src/services/billing-commands/night-audit.ts", token: "rows: openDepartures" }],
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/night-audit.ts",
+						token: "rows: openDepartures",
+					},
+				],
 			},
 			{
 				gateName: "unbalanced_folios_check",
 				guardsCommand: "billing.night_audit.execute",
 				description: "Open in-house folios must balance before the date rolls",
-				evidence: [{ file: "Apps/billing-service/src/services/billing-commands/night-audit.ts", token: "rows: unbalancedFolios" }],
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/night-audit.ts",
+						token: "rows: unbalancedFolios",
+					},
+				],
 			},
 			// The bypass is part of the control, so it is declared with them. A
 			// skip that records nothing is an unaudited override, which is what
@@ -315,8 +358,14 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				description:
 					"skip_preconditions=true records one row per gate, against a resolved reason code",
 				evidence: [
-					{ file: "Apps/billing-service/src/services/billing-commands/night-audit.ts", token: "NIGHT_AUDIT_PRECONDITION_GATES" },
-					{ file: "Apps/billing-service/src/services/billing-commands/night-audit.ts", token: "resolveReasonCode" },
+					{
+						file: "Apps/billing-service/src/services/billing-commands/night-audit.ts",
+						token: "NIGHT_AUDIT_PRECONDITION_GATES",
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/night-audit.ts",
+						token: "resolveReasonCode",
+					},
 				],
 			},
 		],
@@ -342,7 +391,10 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				description:
 					"An unsettled folio stops the departure; forcing it moves the balance to city ledger",
 				evidence: [
-					{ file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts", token: 'gateName: "folio_settlement_check"' },
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts",
+						token: 'gateName: "folio_settlement_check"',
+					},
 				],
 			},
 			{
@@ -350,7 +402,12 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				guardsCommand: "reservation.reverse_check_out",
 				kind: "record",
 				description: "Every check-out reversal lands a row, forced or not",
-				evidence: [{ file: "Apps/reservations-command-service/src/services/reservation-commands/reversals.ts", token: 'gateName: "reverse_check_out"' }],
+				evidence: [
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/reversals.ts",
+						token: 'gateName: "reverse_check_out"',
+					},
+				],
 			},
 		],
 		dependsOn: [FlowId.IN_HOUSE],
@@ -493,14 +550,21 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			{
 				gateName: "dual_control",
 				guardsCommand: "ar.city_ledger.write_off",
-				description: "Recorded as an approval_requests row instead of dispatched",
+				description:
+					"Recorded as an approval_requests row instead of dispatched",
 				evidence: [
-					{ file: "schema/src/api/command-approvals.ts", token: '"ar.city_ledger.write_off"' },
+					{
+						file: "schema/src/api/command-approvals.ts",
+						token: '"ar.city_ledger.write_off"',
+					},
 					{
 						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
 						token: "commandApproverRole",
 					},
-					{ file: "Apps/command-center-shared/src/services/command-dispatch.ts", token: "pending_approval" },
+					{
+						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
+						token: "pending_approval",
+					},
 					{
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "approveCommandRequest",
@@ -509,19 +573,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "acceptCommand",
 					},
-				]
+				],
 			},
 			{
 				gateName: "dual_control",
 				guardsCommand: "billing.ar.write_off",
-				description: "Recorded as an approval_requests row instead of dispatched",
+				description:
+					"Recorded as an approval_requests row instead of dispatched",
 				evidence: [
-					{ file: "schema/src/api/command-approvals.ts", token: '"billing.ar.write_off"' },
+					{
+						file: "schema/src/api/command-approvals.ts",
+						token: '"billing.ar.write_off"',
+					},
 					{
 						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
 						token: "commandApproverRole",
 					},
-					{ file: "Apps/command-center-shared/src/services/command-dispatch.ts", token: "pending_approval" },
+					{
+						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
+						token: "pending_approval",
+					},
 					{
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "approveCommandRequest",
@@ -530,19 +601,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "acceptCommand",
 					},
-				]
+				],
 			},
 			{
 				gateName: "dual_control",
 				guardsCommand: "billing.suspense.write_off",
-				description: "Recorded as an approval_requests row instead of dispatched",
+				description:
+					"Recorded as an approval_requests row instead of dispatched",
 				evidence: [
-					{ file: "schema/src/api/command-approvals.ts", token: '"billing.suspense.write_off"' },
+					{
+						file: "schema/src/api/command-approvals.ts",
+						token: '"billing.suspense.write_off"',
+					},
 					{
 						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
 						token: "commandApproverRole",
 					},
-					{ file: "Apps/command-center-shared/src/services/command-dispatch.ts", token: "pending_approval" },
+					{
+						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
+						token: "pending_approval",
+					},
 					{
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "approveCommandRequest",
@@ -551,19 +629,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "acceptCommand",
 					},
-				]
+				],
 			},
 			{
 				gateName: "dual_control",
 				guardsCommand: "billing.fiscal_period.reopen",
-				description: "Recorded as an approval_requests row instead of dispatched",
+				description:
+					"Recorded as an approval_requests row instead of dispatched",
 				evidence: [
-					{ file: "schema/src/api/command-approvals.ts", token: '"billing.fiscal_period.reopen"' },
+					{
+						file: "schema/src/api/command-approvals.ts",
+						token: '"billing.fiscal_period.reopen"',
+					},
 					{
 						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
 						token: "commandApproverRole",
 					},
-					{ file: "Apps/command-center-shared/src/services/command-dispatch.ts", token: "pending_approval" },
+					{
+						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
+						token: "pending_approval",
+					},
 					{
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "approveCommandRequest",
@@ -572,19 +657,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "acceptCommand",
 					},
-				]
+				],
 			},
 			{
 				gateName: "dual_control",
 				guardsCommand: "billing.date_roll.manual",
-				description: "Recorded as an approval_requests row instead of dispatched",
+				description:
+					"Recorded as an approval_requests row instead of dispatched",
 				evidence: [
-					{ file: "schema/src/api/command-approvals.ts", token: '"billing.date_roll.manual"' },
+					{
+						file: "schema/src/api/command-approvals.ts",
+						token: '"billing.date_roll.manual"',
+					},
 					{
 						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
 						token: "commandApproverRole",
 					},
-					{ file: "Apps/command-center-shared/src/services/command-dispatch.ts", token: "pending_approval" },
+					{
+						file: "Apps/command-center-shared/src/services/command-dispatch.ts",
+						token: "pending_approval",
+					},
 					{
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "approveCommandRequest",
@@ -593,7 +685,7 @@ export const FLOW_REGISTRY: FlowRegistry = {
 						file: "Apps/api-gateway/src/command-center/command-approval-service.ts",
 						token: "acceptCommand",
 					},
-				]
+				],
 			},
 		],
 		dependsOn: [FlowId.NIGHT_AUDIT, FlowId.AR_COLLECTIONS],

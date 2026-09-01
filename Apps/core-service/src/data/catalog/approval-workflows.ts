@@ -1,3 +1,10 @@
+import {
+  DEFAULT_RATE_APPROVAL_POLICY,
+  DEFAULT_WRITE_OFF_APPROVAL_POLICY,
+  RATE_APPROVAL_SETTING,
+  WRITE_OFF_APPROVAL_SETTING,
+} from "@tartware/schemas";
+
 import type { RawCategory } from "../catalog-types.js";
 
 export const APPROVAL_WORKFLOWS: RawCategory = {
@@ -59,24 +66,44 @@ export const APPROVAL_WORKFLOWS: RawCategory = {
       icon: "percent",
       definitions: [
         {
-          code: "WORKFLOW.RATES.APPROVALS",
+          code: RATE_APPROVAL_SETTING,
           name: "Rate & Discount Approval Policy",
-          description: "Controls escalation thresholds for rate overrides, discounts, and comps.",
+          description:
+            "Escalation thresholds for rate overrides and discounts. Enforced on " +
+            "reservation.rate_override: a discount at or above a rung needs the role that " +
+            "rung names, checked against the role on the command.",
           controlType: "JSON_EDITOR",
           dataType: "JSON",
-          defaultScope: "PROPERTY",
-          allowedScopes: ["PROPERTY"],
-          defaultValue: {
-            discountApprovalThresholds: [
-              { percent: 10, approverRole: "REVENUE_MANAGER" },
-              { percent: 20, approverRole: "GENERAL_MANAGER" },
-            ],
-            compNightsLimit: 2,
-            refundPolicy: { requireApprovalAbove: 500, autoFlagReasons: ["FRAUD", "VIP"] },
-          },
+          // TENANT, not PROPERTY. The server-side resolver reads tenant scope,
+          // and a policy stored at a scope nothing reads is how these numbers
+          // sat unenforced in the first place. Widening the resolver to
+          // property precedence is a separate change; declaring a scope it does
+          // not support would re-create the gap in a new place.
+          defaultScope: "TENANT",
+          allowedScopes: ["TENANT"],
+          // The one copy lives in `schema/src/api/override-thresholds.ts`,
+          // where the handler reads it too — a screen and a control that state
+          // the same policy separately will eventually state it differently.
+          defaultValue: DEFAULT_RATE_APPROVAL_POLICY,
           tags: ["revenue", "workflow"],
           moduleDependencies: ["revenue-management"],
           referenceDocs: ["https://docs.tartware.com/settings/workflows/rate-approvals"],
+        },
+        {
+          code: WRITE_OFF_APPROVAL_SETTING,
+          name: "Write-Off Approval Policy",
+          description:
+            "Amount thresholds for writing a balance off. Enforced on the city-ledger " +
+            "write-off: the rungs mirror the seeded WRITE_OFF reason codes, so the ladder " +
+            "and the code an operator picks cannot disagree.",
+          controlType: "JSON_EDITOR",
+          dataType: "JSON",
+          defaultScope: "TENANT",
+          allowedScopes: ["TENANT"],
+          defaultValue: DEFAULT_WRITE_OFF_APPROVAL_POLICY,
+          tags: ["finance", "workflow"],
+          moduleDependencies: ["finance-automation"],
+          referenceDocs: ["https://docs.tartware.com/settings/workflows/write-off-approvals"],
         },
       ],
     },

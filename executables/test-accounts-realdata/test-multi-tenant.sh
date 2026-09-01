@@ -23,6 +23,7 @@
 #   PHASE 5d  Dual control — the five commands one person may not run (A04)
 #   PHASE 5e  Night audit precondition bypass — a reason code that has to exist
 #   PHASE 5f  Credit limit override — resolved, authorised, recorded (A05)
+#   PHASE 5g  Blacklist override — the other half of A05, on real reference data
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -2971,6 +2972,143 @@ else
     case "$NOTES" in
       FORCED:*) pass "Override row is marked forced" ;;
       *)        fail "Override row is marked forced" "reason_notes=$NOTES" ;;
+    esac
+  fi
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5g — BLACKLIST OVERRIDE (A05, the other half)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# `GUEST_BLACKLISTED` refused every booking and its own message promised "a GM
+# override with documented reason" that existed nowhere. The override exists
+# now — and shipped with no test of any kind, while the credit-limit half of the
+# same finding got fourteen and Phase 5f. This is that phase.
+#
+# It is worth having on real data for a specific reason: the seeded BLACKLIST
+# codes are reference data, and the last defect in this area was that all
+# seventeen override codes lived under the demo tenant and resolved to nothing
+# for every real property. No unit test can see that; a phase that resolves a
+# code against a live database is the only thing that can.
+#
+#   Blacklisted guest, no override              refused — no reservation, no row
+#   Override with no reason code                refused at validation (4xx)
+#   Override citing a code that is not real     refused — no bypass row
+#   Override citing a ROOM_MOVE code            refused — the trail would lie
+#   A real BLACKLIST code the role clears       booked, one blacklist_check row
+#                                               carrying the code, the operator's
+#                                               real role, and FORCED:
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5g: Blacklist Override                                        ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# `cl_sql` is defined above Phase 5f's guard, so it is in scope even when that
+# phase skipped its fixture.
+TOKEN="$TOKEN_A"
+CUR_TID="$TID_A"
+
+BL_PROP=$(cl_sql "select id from properties where tenant_id='$TID_A' limit 1")
+BL_RT=$(cl_sql "select id from room_types where tenant_id='$TID_A' and property_id='$BL_PROP' limit 1")
+
+# A guest of this phase's own, blacklisted here rather than borrowed from the
+# Phase 6c cohort — that runs later, and a guest shared with the reservation
+# cohort would be a booking this gate is supposed to refuse.
+BL_EMAIL="bl-override-${RUN_TAG}@tartware-test.local"
+post "$GW/v1/guests" \
+  "{\"tenant_id\":\"$TID_A\",\"first_name\":\"Listed\",\"last_name\":\"Override-$RUN_TAG\",\"email\":\"$BL_EMAIL\",\"phone\":\"+1-555-901-$(printf '%04d' $((RANDOM % 10000)))\",\"nationality\":\"US\"}" >/dev/null
+BL_GUEST=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
+if [[ -z "$BL_GUEST" ]]; then
+  get "$GW/v1/guests?tenant_id=$TID_A&email=$BL_EMAIL" >/dev/null
+  BL_GUEST=$(resp_first "id")
+fi
+
+if [[ -z "$BL_PROP" || -z "$BL_RT" || -z "$BL_GUEST" ]]; then
+  skip "Blacklist override fixture" "property=[$BL_PROP] room_type=[$BL_RT] guest=[$BL_GUEST]"
+else
+  send_command "CMD guest: blacklist the override subject" \
+    "guest.set_blacklist" \
+    "{\"guest_id\":\"$BL_GUEST\",\"is_blacklisted\":true,\"reason\":\"Phase 5g — repeated chargebacks\"}"
+  wait_kafka 6
+
+  LISTED=$(cl_sql "select COALESCE(is_blacklisted,false) from guests where id='$BL_GUEST'")
+  if [[ "$LISTED" != "t" && "$LISTED" != "true" ]]; then
+    skip "Blacklist override" "guest $BL_GUEST did not end up blacklisted (is_blacklisted=$LISTED)"
+  else
+    bl_cmd() {
+      local payload="$1"
+      curl -s -o "$RESP_FILE" -w "%{http_code}" \
+        -X POST "$GW/v1/commands/reservation.create/execute" \
+        -H "Authorization: Bearer $TOKEN_A" \
+        -H "Content-Type: application/json" \
+        -H "Idempotency-Key: $(gen_uuid)" \
+        -d "{\"tenant_id\":\"$TID_A\",\"payload\":$payload}"
+    }
+    bl_base="\"property_id\":\"$BL_PROP\",\"guest_id\":\"$BL_GUEST\",\"room_type_id\":\"$BL_RT\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"total_amount\":410.00,\"currency\":\"USD\",\"source\":\"DIRECT\""
+    bl_rows() { cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check'"; }
+    bl_booked() { cl_sql "select count(*) from reservations where tenant_id='$TID_A' and guest_id='$BL_GUEST'"; }
+
+    BL_BEFORE=$(bl_rows)
+
+    # 1. The refusal the product always had. Accepted at the gateway and refused
+    #    at apply, so what proves it is that no booking and no row appear.
+    code=$(bl_cmd "{$bl_base}")
+    assert_http "Blacklisted guest with no override accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "No override means no reservation" "0" "$(bl_booked)"
+    assert_eq "No override means no bypass row" "$BL_BEFORE" "$(bl_rows)"
+
+    # 2. An override with no reason code — refused at payload validation, before
+    #    the command is ever accepted. This is the schema `.refine`, not the
+    #    handler: an override with no stated reason is the control itself.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true}")
+    assert_http "Override with no reason code is refused outright" "4" "$code"
+
+    # 3. A code that resolves to nothing. This is the assertion that would have
+    #    caught the codes being seeded under the demo tenant — it passes only
+    #    because a real code exists to contrast with in step 5.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true,\"blacklist_override_reason_code\":\"NOT_A_REAL_CODE\"}")
+    assert_http "Override citing an unknown code accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Unknown reason code books nothing" "0" "$(bl_booked)"
+    assert_eq "Unknown reason code records no override" "$BL_BEFORE" "$(bl_rows)"
+
+    # 4. A real code from the wrong category — a booking taken under a room-move
+    #    reason produces a trail that reads as a lie.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true,\"blacklist_override_reason_code\":\"RM_MAINT\"}")
+    assert_http "Override citing the wrong category accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Wrong-category reason code books nothing" "0" "$(bl_booked)"
+    assert_eq "Wrong-category reason code records no override" "$BL_BEFORE" "$(bl_rows)"
+
+    # 5. The real thing. BL_GM_CLEARED is seeded at approval_level GM, which
+    #    `approvalLevelMinRole` maps to OWNER — so this also proves the level is
+    #    read and met, not merely stored.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true,\"blacklist_override_reason_code\":\"BL_GM_CLEARED\",\"blacklist_override_notes\":\"multi-tenant suite $RUN_TAG\"}")
+    assert_http "Override with a seeded BLACKLIST code accepted" "20[02]" "$code"
+    sleep 8
+
+    assert_eq "…and the booking it authorised actually happened" "1" "$(bl_booked)"
+
+    ROWS=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check' and reason_code='BL_GM_CLEARED'")
+    assert_eq "The authorised override records one row" "1" "$ROWS"
+
+    BL_ROLE=$(cl_sql "select role_at_approval from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check' and reason_code='BL_GM_CLEARED' limit 1")
+    if [[ -n "$BL_ROLE" && "$BL_ROLE" != "GM_OVERRIDE" && "$BL_ROLE" != "FORCE_OVERRIDE" ]]; then
+      pass "Blacklist override records a real role, not a literal (role=$BL_ROLE)"
+    else
+      fail "Blacklist override records a real role" "role_at_approval=$BL_ROLE"
+    fi
+
+    BL_NOTES=$(PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+      -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" \
+      -tAc "select reason_notes from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check' and reason_code='BL_GM_CLEARED' limit 1" 2>/dev/null | head -1)
+    case "$BL_NOTES" in
+      FORCED:*) pass "Blacklist override row is marked forced" ;;
+      *)        fail "Blacklist override row is marked forced" "reason_notes=$BL_NOTES" ;;
     esac
   fi
 fi

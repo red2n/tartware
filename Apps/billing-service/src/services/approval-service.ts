@@ -13,6 +13,31 @@ import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { BillingCommandError } from "./billing-commands/common.js";
 
+/**
+ * The operations approval queue.
+ *
+ * `approval_requests` holds two populations, and this file owns exactly one of
+ * them. A row raised here is an **operation**: something a person described in
+ * free text, approved through billing's routes, and then carried out by
+ * whoever asked for it. A row raised by `acceptCommand` is a **deferred
+ * command**: it carries `command_name`, its payload is a validated command
+ * envelope, and releasing it *dispatches* that payload (A04).
+ *
+ * `command_name IS NULL` is the line between them, and every statement below
+ * carries it. Without it this service could see and action the gateway's rows
+ * — and its approve path flips the status and never dispatches, so releasing a
+ * deferred write-off here would mark the request APPROVED for a command that
+ * never ran, then leave the gateway refusing it as no longer PENDING. A
+ * silently killed write-off is precisely the failure the dual-control work
+ * exists to prevent, so the two queues do not overlap at all rather than
+ * overlapping carefully.
+ *
+ * The mirror of this filter is `command_name IS NOT NULL` in
+ * `@tartware/command-center-shared`'s `command-approvals` repository. Neither
+ * side may be relaxed on its own.
+ */
+const OPERATIONS_QUEUE_ONLY = "AND command_name IS NULL";
+
 // ─── Create Approval Request ─────────────────────────────────────────────────
 
 /**
@@ -132,7 +157,7 @@ const _resolveRequest = async (
          actioned_by, actioned_by_name, actioned_at, action_reason,
          expires_at, created_at, updated_at, updated_by
        FROM public.approval_requests
-       WHERE approval_id = $1::uuid AND tenant_id = $2::uuid
+       WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY}
        FOR UPDATE`,
       [command.approval_id, tenantId],
     );
@@ -244,7 +269,8 @@ export const cancelApprovalRequest = async (
          actioned_by = $4,
          actioned_at = NOW(),
          updated_at  = NOW()
-     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid AND status = 'PENDING'
+     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY}
+       AND status = 'PENDING'
        AND requested_by = $4
      RETURNING approval_id, status, requested_by`,
     [command.approval_id, tenantId, command.reason ?? null, command.cancelled_by],
@@ -259,7 +285,7 @@ export const cancelApprovalRequest = async (
     const { rows: existing } = await query<{ status: string; requested_by: string }>(
       `SELECT status, requested_by
          FROM public.approval_requests
-        WHERE approval_id = $1::uuid AND tenant_id = $2::uuid`,
+        WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY}`,
       [command.approval_id, tenantId],
     );
     const found = existing[0];
@@ -299,7 +325,7 @@ export const listPendingApprovals = async (input: {
        actioned_by, actioned_by_name, actioned_at, action_reason,
        expires_at, created_at, updated_at, updated_by
      FROM public.approval_requests
-     WHERE tenant_id = $1::uuid
+     WHERE tenant_id = $1::uuid ${OPERATIONS_QUEUE_ONLY}
        AND status = 'PENDING'
        AND expires_at > NOW()
        AND ($2::uuid IS NULL OR property_id = $2::uuid)
@@ -333,7 +359,7 @@ export const getApprovalRequest = async (
        actioned_by, actioned_by_name, actioned_at, action_reason,
        expires_at, created_at, updated_at, updated_by
      FROM public.approval_requests
-     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
+     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY} LIMIT 1`,
     [approvalId, tenantId],
   );
   return rows[0] ?? null;

@@ -48,6 +48,10 @@
     "./flow-compliance": {
       "types": "./dist/flow-compliance.d.ts",
       "import": "./dist/flow-compliance.js"
+    },
+    "./settings-utils": {
+      "types": "./dist/settings-utils.d.ts",
+      "import": "./dist/settings-utils.js"
     }
   },
   "main": "dist/index.js",
