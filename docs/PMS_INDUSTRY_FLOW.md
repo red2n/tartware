@@ -115,9 +115,9 @@ green.
 | Extend the stay | `reservation.extend_stay` | Nights added, priced | **Covered** |
 | **Shorten the stay** | — | — | **Missing as a distinct operation.** `extend_stay` accepts an earlier date, so a reduction is recorded as an extension, with no early-departure fee, no re-pricing rule and no reason code |
 | Rate override | `reservation.rate_override` | New rate on the booking, recorded under a RATE_OVERRIDE code the caller's role clears | **Covered** |
-| **Share a room between guests** | — | — | **Missing** (PMS-01-11). One guest per reservation; no sharer model |
-| Split a folio | `billing.folio.split`, `folio.transfer`, `charge.transfer` | Charges land on the intended folio | **Covered** |
-| Route charges to a company | `billing.routing_rule.*` | Charges route by rule | **Not covered** |
+| **Share a room between two bookings** | — | — | **Missing** (PMS-01-11) — OPERA's *sharers*: two reservations in one room, each with its own folio and a split rate. Note this is not the same as extra people on one booking, which `reservation_occupants` does support |
+| Split a folio / billing windows | `billing.folio.split`, `folio.transfer`, `charge.transfer`, `folio_window.create` | Charges land on the intended folio or window | **Partial** — split and transfer covered; `folio_window.create` is not, so the company-pays-one-window case is untested |
+| Route charges to a company | `billing.routing_rule.*` | Charges route by rule | **Not covered** — `folio_routing_rules` and `folio_windows` both exist in the schema; no suite drives either, which is OPERA's routing-instruction equivalent going unproven |
 | Housekeeping | `housekeeping.task.*` | Task created, assigned, completed; room status follows | **Partial** — create/assign/complete covered; reassign, reopen, notes are not |
 | Room out of order | `rooms.out_of_order`, `rooms.out_of_service` | The room leaves the sellable set | **Partial** — driven; assertion depends on a free room being available |
 
@@ -188,16 +188,117 @@ Each has a suite phase behind it.
 
 ---
 
-## 11. Known gaps, plainly
+## 11. Measured against OPERA
 
-- **Shared reservations** (two guests, one room) do not exist.
-- **Shortening a stay** has no command of its own; it rides `extend_stay`, with
-  no early-departure fee and no reason code.
+Oracle Hospitality OPERA is what a buyer will compare this to, so this section
+maps its functional model onto ours module by module. Every "present" claim below
+was checked against the running schema and the command catalogue rather than
+recalled — the table or command that backs it is named so you can verify it in a
+demo.
+
+### Where the product stands up
+
+| OPERA module | What it means operationally | Here |
+|---|---|---|
+| **Profiles** — guest, company, travel agent, source | One record per party, reusable across stays, with preferences and negotiated terms | `guests`, `companies`, `travel_agents`, `booking_sources`, `guest_preferences`, `guest_documents`, `guest_notes` |
+| **Loyalty / membership** | Tiers, points earn and burn | `guest_loyalty_programs`, `loyalty_tier_rules`, `loyalty_point_transactions` |
+| **Reservations** | Book, modify, cancel, no-show, waitlist | Full command set; `reservations`, `reservation_rooms`, `reservation_nights` (per-night pricing) |
+| **Accompanying guests** | More than one person in the room | `reservation_occupants` with `occupant_type` |
+| **Traces** | A note routed to a department for a date — OPERA's operational nervous system | `reservation_traces` |
+| **Packages** | Rate-inclusive elements with their own posting rhythm | `packages`, `package_components`, `package_bookings` |
+| **Blocks / groups** | Contracted room blocks, pickup, cutoff | `allotments`, `group_bookings`, `group_room_blocks` — with the hold proven against live availability |
+| **Deposits & cancellation policy** | Schedules that decide what is owed and when | `deposit_schedules`, cancellation penalty command |
+| **Front desk** | Arrival, walk-in, room assignment, registration card, keys | Commands for each; `digital_registration_cards`, `mobile_keys` |
+| **Room status & housekeeping** | Clean/dirty/inspected, out of order vs out of service, task sheets | Room status commands, `housekeeping_tasks`, `maintenance_requests` |
+| **Cashiering — folio windows** | Several billing windows per folio, so a company pays one and the guest the other | `folio_windows` |
+| **Cashiering — routing** | Instructions that send charges to another window or account automatically | `folio_routing_rules` |
+| **Transaction codes → GL** | Every posting classified and mapped to the general ledger | `charge_codes`, `charge_code_gl_mapping`, `gl_chart_of_accounts` |
+| **Cashier shifts** | Open, count, hand over, close with variance | `cashier_sessions`, shift commands |
+| **Night audit** | Room and tax posting, no-shows, trial balance, date roll | `night_audit_runs`, `night_audit_checkpoints`, `general_ledger_batches` |
+| **Fiscal control** | Period close, locking, invoice numbering | `fiscal_periods`, `invoice_sequences` |
+| **AR / city ledger** | Direct bill, aging, dunning, disputes, write-off | `ar_accounts`, `ar_city_ledger`, aging/dunning/dispute tables |
+| **Commissions** | Travel agent and channel commission, statements | `travel_agent_commissions`, `commission_rules`, `commission_statements`, `commission_tracking` |
+| **Distribution** | OTA, GDS, channel manager, parity, restrictions | `channel_mappings`, `ota_*`, `gds_*`, `rate_restrictions`, `channel_rate_parity` |
+| **Revenue management** | Forecast, pace, compset, recommendations | `rate_recommendations` plus 32 `revenue.*` commands |
+| **Walk / turnaway** | Oversold: who was walked, and the business lost | `walk_history`, `lost_business` |
+| **Multi-currency** | Foreign currency postings at a held rate | `fx_rates`, rate locked at posting |
+| **Compliance** | Police/guest registration, ID capture, retention, GDPR | `police_reports`, `guest_documents`, `data_retention_policies`, GDPR commands |
+| **Interfaces** | Door lock, minibar, in-room devices | `mobile_keys`, `minibar_consumption`, `smart_room_devices`, `device_events_log` |
+
+On breadth, this is OPERA-class. The audit of 28 Aug 2026 reached the same
+conclusion from the other direction: the divergence from OPERA was never *what*
+the system can do, it was **who is allowed to do it** — and that is what findings
+A01–A11 have been closing.
+
+### Where OPERA does something this does not
+
+Named in OPERA's vocabulary, because that is how the question will be asked.
+Each was verified absent from both the schema and the command catalogue.
+
+| OPERA capability | What it is | Why a buyer cares | Effort |
+|---|---|---|---|
+| **Share reservations (sharers)** | Two *reservations* in one room, each with its own folio, the rate split between them | Standard for corporate twin-share and for conference delegates booked individually. `reservation_occupants` is not this — that is extra people on one booking, one folio | Large: a room becomes a many-to-many, and rate splitting is a pricing rule |
+| **Posting master / PM accounts** | A non-guest folio that charges post to — group masters, house accounts, staff, wastage | Every group's master bill and every internal charge lands here. Today there is no folio without a reservation | Medium |
+| **Fixed charges** | A recurring nightly charge on a reservation (parking, pet, crib) | Set once at booking, posts itself every night; without it the desk posts by hand nightly | Small–medium |
+| **Room queue** | Arrivals waiting for a room to be cleaned, with the wait visible to housekeeping | The busiest hour of the day at a full house; OPERA prioritises cleaning from this queue | Medium |
+| **Shorten a stay / early departure** | A first-class operation with its own fee and re-pricing rule | Departures move as often as extensions. Here it rides `extend_stay` with an earlier date — recorded as an extension, no fee, no reason code, and the `EARLY_DEPARTURE` reason category has no codes seeded | Small, and the highest value per hour on this list |
+| **Wake-up calls** | Scheduled, with delivery and acknowledgement | Expected at any full-service property; usually a PBX interface | Small |
+| **Day use** | Arrival and departure the same day, priced differently | Airport and city properties sell this daily | Small |
+| **Tour series** | Repeating group blocks under one contract | Tour operators contract this way | Medium |
+| **Connecting rooms** | Rooms that physically join, sold as a pair to families | Asked for constantly at resorts; needs a room-adjacency model | Medium |
+| **Upsell at check-in** | Offer and record a paid upgrade at arrival | A measurable revenue line most properties track | Small |
+
+None of these is exotic. The first two are the ones that would come up in the
+first hour of an OPERA-literate evaluation: a group's master bill has nowhere to
+post, and two colleagues sharing a twin cannot each have their own folio.
+
+### The controls, which is where this is ahead
+
+OPERA's authority model is configuration-driven and mature. What this product now
+has, and what is worth demonstrating because most systems cannot show it:
+
+- **Per-command authority** with per-membership grants and denies, where a deny
+  beats an owner and an undeclared command is refused outright.
+- **Dual control** on the five commands that undo a completed accounting control,
+  where approving *dispatches the stored payload* rather than annotating a row.
+- **Override authority** — a reason code's `approval_level` is checked against the
+  operator's real role before the override is allowed, not after.
+- **A closed vocabulary for overrides**: every gate name written to the audit
+  trail must be declared in the flow registry, with file-and-token evidence that
+  the code enforcing it still exists.
+- **Legal transitions** for the reservation lifecycle, with each edge owned by the
+  command entitled to make it.
+
+### Reading this section honestly
+
+Three caveats a serious evaluator should apply to the table above, and to any
+vendor's equivalent:
+
+1. **Present in the schema is not present in the product.** A table proves a
+   shape, not a working path. `check:command-coverage` reports that 92 of 202
+   commands are driven end to end by a suite that runs; the rest are built and
+   unproven. Ask which side of that line a feature is on.
+2. **Depth is not breadth.** Packages, traces and commissions exist as tables and
+   commands; whether they behave the way OPERA's do under a real month of
+   operations is not something any of the evidence here establishes.
+3. **The gaps above are the verified ones.** They are what was checked against
+   OPERA's model on 1 Sep 2026, not an exhaustive difference — OPERA is decades
+   of accumulated operational detail, and a like-for-like claim would be false.
+
+---
+
+## 12. Known gaps, in one list
+
+- **Share reservations**, **posting master accounts**, **fixed charges**, **room
+  queue**, **wake-up calls**, **day use**, **tour series**, **connecting rooms**
+  and **upsell** do not exist (section 11).
+- **Shortening a stay** has no command of its own.
 - **Group operations** stop at creation: rooming list upload, group check-in,
   group billing setup and cutoff enforcement are built and untested.
 - **AR long tail** — aging, dunning, disputes — is built and untested.
-- **Revenue management** (compset, forecasting, pace) is the largest untested
-  area at ~32 commands.
-- Nine reason-code categories are declared and have no codes seeded: COMP,
-  REFUND, WALK, OVERBOOKING, EARLY_DEPARTURE, LATE_CHECKOUT, MAINTENANCE,
-  COMPLAINT, OTHER — so those overrides have no vocabulary to name.
+- **Revenue management** is the largest untested area at 32 commands.
+- **Charge routing** (`folio_routing_rules`) and **folio windows** exist in the
+  schema and are driven by no suite.
+- Nine reason-code categories are declared with no codes seeded: COMP, REFUND,
+  WALK, OVERBOOKING, EARLY_DEPARTURE, LATE_CHECKOUT, MAINTENANCE, COMPLAINT,
+  OTHER — so those overrides have no vocabulary to name.
