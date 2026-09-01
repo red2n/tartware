@@ -97,6 +97,8 @@ export async function enforceCreditLimit(
       detail:
         `Payment of ${chargeAmount} would push utilization to ${utilizationPct.toFixed(1)}% ` +
         `(block threshold: ${blockPct}%). Available credit: ${(effectiveLimit - currentBalance).toFixed(2)}.`,
+      // The tender itself — what a shift's supervisor_overrides entry names.
+      amount: chargeAmount,
     };
     const reason = await clearCreditLimitGate(gateInput, gate.override);
     return {

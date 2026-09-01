@@ -1,4 +1,8 @@
-import { resolveActorId, SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
+import {
+  assertForcedOverrideAuthority,
+  resolveActorId,
+  SYSTEM_ACTOR_ROLE,
+} from "@tartware/command-consumer-utils/command-utils";
 import type { ReservationRoomMoveCommand } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
@@ -121,17 +125,23 @@ export const moveRoom = async (
     );
   }
 
+  // Resolved before any of the force-gated refusals below, so a single
+  // authority check can cover all of them: the code is the operator's stated
+  // reason for the whole move, and forcing past three different conditions on
+  // one move is one decision, not three. The visible consequence is that an
+  // invalid reason code is now reported ahead of a do-not-move refusal, which
+  // is the right order — the code is the more fundamental input.
+  const reason = await resolveReasonCode(tenantId, propertyId, command.reason_code, "ROOM_MOVE");
+
   // `do_not_move` exists because someone deliberately set it — an ADA
   // allocation, a VIP, a room booked for its specific view.
   if (source.do_not_move && !command.force) {
     throw new ReservationCommandError(
       "ROOM_IS_DO_NOT_MOVE",
       `Room ${source.room_number ?? source.reservation_room_id} is flagged do-not-move. ` +
-        `Pass force to override, which is recorded.`,
+        `Pass force to override, which is recorded and checked against your role.`,
     );
   }
-
-  const reason = await resolveReasonCode(tenantId, propertyId, command.reason_code, "ROOM_MOVE");
 
   // `requires_approval` has sat in reason_codes with nothing reading it. A code
   // configured to need a manager's sign-off should not be usable by a command
@@ -140,7 +150,8 @@ export const moveRoom = async (
     throw new ReservationCommandError(
       "REASON_CODE_REQUIRES_APPROVAL",
       `Reason code "${reason.reason_code}" requires approval and this command carries none. ` +
-        `Pass force to proceed on the authority of the caller, which is recorded.`,
+        `Pass force to proceed — the override is recorded, and the code's approval level ` +
+        `is checked against your role.`,
     );
   }
 
@@ -165,8 +176,24 @@ export const moveRoom = async (
   if (!["CLEAN", "INSPECTED"].includes(target.housekeeping_status) && !command.force) {
     throw new ReservationCommandError(
       "ROOM_NOT_CLEAN",
-      `Room ${target.room_number} is ${target.housekeeping_status}. Pass force to move anyway.`,
+      `Room ${target.room_number} is ${target.housekeeping_status}. Pass force to move anyway, ` +
+        `which is recorded and checked against your role.`,
     );
+  }
+
+  // A08. Every refusal above offers `force`, and until now `force` proceeded
+  // "on the authority of the caller" — which, under the one-permission-level
+  // model this audit began with, was every caller. The flag is the whole
+  // mechanism; this is what turns it back into a control.
+  //
+  // Only on a forced move: an ordinary room move is a clerk's daily work and
+  // A02's floor already governs who may run the command at all. What needs an
+  // authority is the decision to go past a condition someone deliberately set.
+  if (command.force) {
+    assertForcedOverrideAuthority(reason, options.actorRole, {
+      commandName: "reservation.room_move",
+      gateName: "room_move",
+    });
   }
 
   // Read the outgoing hold before taking the new one. Both locks belong to the

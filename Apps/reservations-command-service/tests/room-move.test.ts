@@ -101,6 +101,7 @@ const reasonRow = (over: Record<string, unknown> = {}) => ({
   reason_name: "Maintenance Issue",
   reason_category: "ROOM_MOVE",
   requires_approval: false,
+  approval_level: "NONE",
   has_financial_impact: false,
   ...over,
 });
@@ -285,5 +286,104 @@ describe("room move", () => {
     await moveRoom(TENANT, base);
     const payload = enqueueMock.mock.calls[0][2];
     expect(payload.metadata.room_move.key_reissue_required).toBe(true);
+  });
+});
+
+describe("forcing is a decision someone has to be entitled to make (A08)", () => {
+  // Every refusal in this handler offers `force`, and `force` proceeded "on the
+  // authority of the caller" — which, under the single-permission-level model
+  // this audit opened with, was every caller. `requires_approval` said "someone
+  // senior has to agree" and its escape hatch was a boolean the same person
+  // set. `approval_level`, the column naming *whose* agreement, was read
+  // nowhere in the repo.
+
+  it("still lets a clerk force past a routine code", async () => {
+    // Six of the seven seeded ROOM_MOVE codes are NONE / no approval. Moving a
+    // guest out of a noisy room into one housekeeping has not finished is a
+    // night manager's ordinary call, and gating it would be theatre.
+    wireQueries({ rooms: [room({ do_not_move: true })] });
+    await expect(
+      moveRoom(TENANT, { ...base, force: true }, { actorId: "u1", actorRole: "STAFF" }),
+    ).resolves.toBeDefined();
+  });
+
+  it("refuses a clerk forcing a code that demands approval", async () => {
+    // RM_VIP is seeded requires_approval TRUE, approval_level MANAGER.
+    wireQueries({
+      reason: reasonRow({
+        reason_code: "RM_VIP",
+        requires_approval: true,
+        approval_level: "MANAGER",
+      }),
+    });
+    await expect(
+      moveRoom(
+        TENANT,
+        { ...base, reason_code: "RM_VIP", force: true },
+        { actorId: "u1", actorRole: "STAFF" },
+      ),
+    ).rejects.toMatchObject({ code: "OVERRIDE_AUTHORITY_INSUFFICIENT" });
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it("lets a manager force it", async () => {
+    wireQueries({
+      reason: reasonRow({
+        reason_code: "RM_VIP",
+        requires_approval: true,
+        approval_level: "MANAGER",
+      }),
+    });
+    await expect(
+      moveRoom(
+        TENANT,
+        { ...base, reason_code: "RM_VIP", force: true },
+        { actorId: "u1", actorRole: "MANAGER" },
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it("demands a manager even when the code names no level", async () => {
+    // `requires_approval` without an `approval_level` is the case A08 is really
+    // about: the flag says a sign-off is needed and says nothing about whose.
+    // MANAGER is the lowest membership above the shift floor.
+    wireQueries({ reason: reasonRow({ requires_approval: true, approval_level: "NONE" }) });
+    await expect(
+      moveRoom(TENANT, { ...base, force: true }, { actorId: "u1", actorRole: "STAFF" }),
+    ).rejects.toMatchObject({ code: "OVERRIDE_AUTHORITY_INSUFFICIENT" });
+  });
+
+  it("takes the higher of the two demands", async () => {
+    // A GM-level code stays a GM-level code when it is forced.
+    wireQueries({ reason: reasonRow({ requires_approval: true, approval_level: "GM" }) });
+    await expect(
+      moveRoom(TENANT, { ...base, force: true }, { actorId: "u1", actorRole: "MANAGER" }),
+    ).rejects.toMatchObject({ code: "OVERRIDE_AUTHORITY_INSUFFICIENT" });
+
+    wireQueries({ reason: reasonRow({ requires_approval: true, approval_level: "GM" }) });
+    await expect(
+      moveRoom(TENANT, { ...base, force: true }, { actorId: "u1", actorRole: "OWNER" }),
+    ).resolves.toBeDefined();
+  });
+
+  it("refuses a scheduler forcing anything that demands approval", async () => {
+    wireQueries({ reason: reasonRow({ requires_approval: true }) });
+    await expect(moveRoom(TENANT, { ...base, force: true })).rejects.toMatchObject({
+      code: "OVERRIDE_AUTHORITY_INSUFFICIENT",
+    });
+  });
+
+  it("refuses a level no mapping covers rather than reading it as no demand", async () => {
+    wireQueries({ reason: reasonRow({ approval_level: "REGIONAL_VP" }) });
+    await expect(
+      moveRoom(TENANT, { ...base, force: true }, { actorId: "u1", actorRole: "OWNER" }),
+    ).rejects.toMatchObject({ code: "OVERRIDE_AUTHORITY_UNKNOWN" });
+  });
+
+  it("leaves an unforced move alone — the floor already governs who may run it", async () => {
+    wireQueries({ reason: reasonRow({ approval_level: "GM" }) });
+    await expect(
+      moveRoom(TENANT, base, { actorId: "u1", actorRole: "STAFF" }),
+    ).resolves.toBeDefined();
   });
 });

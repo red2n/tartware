@@ -111,7 +111,12 @@ CREATE TABLE IF NOT EXISTS charge_postings (
 
     -- Staff Information
     server_name VARCHAR(100), -- Waiter/server name
-    cashier_name VARCHAR(100),
+    cashier_name VARCHAR(100), -- Free text, kept for historical rows; prefer cashier_session_id
+    -- The drawer this posting was taken at (A09). NULL when none was involved —
+    -- a night audit run, a routed charge, an automated deposit. Without it a
+    -- counted variance could not be reconciled against its own takings, because
+    -- no posting knew which shift it belonged to.
+    cashier_session_id UUID, -- FK cashier_sessions.session_id
 
     -- Notes
     notes TEXT,

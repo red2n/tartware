@@ -145,6 +145,7 @@ const reasonRow = {
   reason_name: "Keyed in error",
   reason_category: "REVERSAL",
   requires_approval: false,
+  approval_level: "NONE",
   has_financial_impact: false,
 };
 
@@ -539,5 +540,68 @@ describe("every reversal is recorded twice, on purpose", () => {
     // one: who authorised it, and that a gate was bypassed rather than met.
     expect(approval.roleAtApproval).toBe("OWNER");
     expect(approval.forced).toBe(true);
+  });
+});
+
+describe("forcing a reversal is a decision someone has to be entitled to make (A08)", () => {
+  // `force` here is not a small thing: it reverses a check-in over a folio
+  // carrying a guest's bar tab, reopens a departed guest's folio with AR
+  // already raised, or reinstates a booking the availability guard could not
+  // vouch for. All three already recorded who did it. None checked whether
+  // they could.
+  const approvalReason = {
+    ...reasonRow,
+    reason_code: "REV_GM_AUTHORISED",
+    requires_approval: true,
+    approval_level: "MANAGER",
+  };
+
+  it("refuses a clerk forcing past foreign charges", async () => {
+    queueQueries(
+      { rows: [reservationRow()] },
+      { rows: [approvalReason] },
+      { rows: [folioRow()] },
+      { rows: [posting("EARLY_CHECKIN", 25), posting("FNB", 86.4)] },
+    );
+    await expect(
+      reverseCheckIn(TENANT, command({ force: true }), { actorRole: "STAFF" }),
+    ).rejects.toMatchObject({ code: "OVERRIDE_AUTHORITY_INSUFFICIENT" });
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it("lets a manager force it", async () => {
+    queueQueries(
+      { rows: [reservationRow()] },
+      { rows: [approvalReason] },
+      { rows: [folioRow()] },
+      { rows: [posting("EARLY_CHECKIN", 25), posting("FNB", 86.4)] },
+    );
+    await reverseCheckIn(TENANT, command({ force: true }), { actorRole: "MANAGER" });
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves an unforced reversal alone — it is refused outright when unsafe", async () => {
+    // Nothing to authorize: a reversal that would strand a charge does not
+    // proceed at all without force.
+    queueQueries(
+      { rows: [reservationRow()] },
+      { rows: [approvalReason] },
+      { rows: [folioRow()] },
+      { rows: [posting("EARLY_CHECKIN", 25)] },
+    );
+    await reverseCheckIn(TENANT, command(), { actorRole: "STAFF" });
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a scheduler forcing one", async () => {
+    queueQueries(
+      { rows: [reservationRow()] },
+      { rows: [approvalReason] },
+      { rows: [folioRow()] },
+      { rows: [posting("EARLY_CHECKIN", 25), posting("FNB", 86.4)] },
+    );
+    await expect(reverseCheckIn(TENANT, command({ force: true }))).rejects.toMatchObject({
+      code: "OVERRIDE_AUTHORITY_INSUFFICIENT",
+    });
   });
 });

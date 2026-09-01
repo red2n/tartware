@@ -10,7 +10,11 @@
 import { FlowId, flowControlNames } from "@tartware/schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ArCityLedgerWriteOffCommandSchema } from "../src/schemas/billing-commands.js";
+import {
+  ArCityLedgerWriteOffCommandSchema,
+  BillingArWriteOffCommandSchema,
+  BillingSuspenseWriteOffCommandSchema,
+} from "../src/schemas/billing-commands.js";
 
 const { queryMock, queryWithClientMock, withTransactionMock, postGlPairMock, recordFlowApprovalMock, auditAsyncMock } =
   vi.hoisted(() => ({
@@ -208,5 +212,93 @@ describe("the amount is measured, not only the act (A07's outstanding half)", ()
     await expect(writeOff(40, "OWNER")).rejects.toMatchObject({
       code: "OVERRIDE_POLICY_UNREADABLE",
     });
+  });
+});
+
+describe("all three write-offs demand a code, not just the one that was hardened", () => {
+  // A07 closed on `ar.city_ledger.write_off` and left the other two on free
+  // text, for a stated reason: both have UI callers and there was no
+  // reason-code picker for a screen to offer. There is one now.
+  it("refuses an AR write-off with narrative alone", () => {
+    const result = BillingArWriteOffCommandSchema.safeParse({
+      ar_id: "11111111-1111-1111-1111-111111111111",
+      write_off_amount: 250,
+      reason: "collection agency returned it",
+    });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain("reason_code");
+  });
+
+  it("accepts an AR write-off that names one", () => {
+    expect(
+      BillingArWriteOffCommandSchema.safeParse({
+        ar_id: "11111111-1111-1111-1111-111111111111",
+        write_off_amount: 250,
+        reason_code: "WO_BAD_DEBT",
+        reason: "collection agency returned it",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("refuses a suspense write-off with narrative alone", () => {
+    const result = BillingSuspenseWriteOffCommandSchema.safeParse({
+      property_id: "11111111-1111-1111-1111-111111111111",
+      suspense_posting_id: "22222222-2222-2222-2222-222222222222",
+      reason: "unattributable card settlement",
+    });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain("reason_code");
+  });
+
+  it("accepts a suspense write-off that names one", () => {
+    expect(
+      BillingSuspenseWriteOffCommandSchema.safeParse({
+        property_id: "11111111-1111-1111-1111-111111111111",
+        suspense_posting_id: "22222222-2222-2222-2222-222222222222",
+        reason_code: "WO_BILLING_ERROR",
+        reason: "unattributable card settlement",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("still demands the narrative on the AR one — the code does not replace it", () => {
+    // The code says which of six kinds of write-off this is; the sentence says
+    // what happened. `reason` was `.max(2000)` with no floor here while the
+    // city-ledger one asked for ten characters.
+    expect(
+      BillingArWriteOffCommandSchema.safeParse({
+        ar_id: "11111111-1111-1111-1111-111111111111",
+        write_off_amount: 250,
+        reason_code: "WO_BAD_DEBT",
+        reason: "n/a",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("declares a record for each of the three, in the flow that claims it", () => {
+    // `kind: "record"` — nothing is refused here, so declaring these as gates
+    // would make the registry lie in the way `FlowControlKind` exists to stop.
+    const ledger = flowControlNames(FlowId.LEDGER_CONTROL, { kind: "record" });
+    const collections = flowControlNames(FlowId.AR_COLLECTIONS, { kind: "record" });
+    expect(
+      flowControlNames(FlowId.LEDGER_CONTROL, {
+        kind: "record",
+        guardsCommand: "ar.city_ledger.write_off",
+      }),
+    ).toContain("write_off");
+    expect(
+      flowControlNames(FlowId.LEDGER_CONTROL, {
+        kind: "record",
+        guardsCommand: "billing.suspense.write_off",
+      }),
+    ).toContain("write_off");
+    expect(
+      flowControlNames(FlowId.AR_COLLECTIONS, {
+        kind: "record",
+        guardsCommand: "billing.ar.write_off",
+      }),
+    ).toContain("write_off");
+    expect(ledger.filter((name) => name === "write_off")).toHaveLength(2);
+    expect(collections).toContain("write_off");
   });
 });

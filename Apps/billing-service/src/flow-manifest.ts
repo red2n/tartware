@@ -142,6 +142,12 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           guardsCommand: "ar.city_ledger.write_off",
           description: "Records what was decided, under a resolved WRITE_OFF reason code",
         },
+        {
+          gateName: "write_off",
+          guardsCommand: "billing.suspense.write_off",
+          description:
+            "The same control on the suspense write-off — a balance nobody could attribute is still money leaving the books",
+        },
       ],
     },
 
@@ -161,6 +167,12 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           gateName: "credit_limit_check",
           guardsCommand: "ar.city_ledger.transfer",
           description: "Refuses a transfer beyond the AR account's available credit",
+        },
+        {
+          gateName: "write_off",
+          guardsCommand: "billing.ar.write_off",
+          description:
+            "The bad-debt write-off enters the same gate as the other two — one stated reason code, one authority check, one amount ladder",
         },
       ],
     },

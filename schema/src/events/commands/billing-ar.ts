@@ -67,7 +67,21 @@ export type BillingArAgeCommand = z.infer<typeof BillingArAgeCommandSchema>;
 export const BillingArWriteOffCommandSchema = z.object({
 	ar_id: z.string().uuid(),
 	write_off_amount: z.number().positive(),
-	reason: z.string().max(2000),
+	/**
+	 * Mandatory, and resolved against the WRITE_OFF category (A07).
+	 *
+	 * A07 hardened `ar.city_ledger.write_off` and left this one — and the
+	 * suspense write-off — on free text, because both had UI callers and a
+	 * reason picker had to come first. The picker exists now, so the last two
+	 * places money leaves the ledger without a stated, groupable reason are
+	 * closed.
+	 *
+	 * `reason` survives alongside it: the code says which of six kinds of
+	 * write-off this is, and the sentence says what happened. Neither replaces
+	 * the other.
+	 */
+	reason_code: z.string().min(2).max(50),
+	reason: z.string().min(10).max(2000),
 	approved_by: z.string().uuid().optional(),
 	notes: z.string().max(2000).optional(),
 	idempotency_key: z.string().max(120).optional(),

@@ -477,6 +477,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 					},
 				],
 			},
+			// The bad-debt write-off is claimed by this flow, so its control is
+			// declared here — the same `write_off` gate LEDGER_CONTROL declares
+			// for the other two, entered through the same module.
+			{
+				gateName: "write_off",
+				guardsCommand: "billing.ar.write_off",
+				kind: "record",
+				description:
+					"A stated WRITE_OFF reason code, an acting role that clears its approval level, and an amount within that role's ladder — recorded once the balance has actually gone",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/accounts-receivable.ts",
+						token: "clearWriteOffGate",
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/accounts-receivable.ts",
+						token: "recordWriteOff",
+					},
+				],
+			},
 		],
 		dependsOn: [FlowId.CHECK_OUT],
 	},
@@ -525,6 +545,10 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"ar.payment.unapply",
 		],
 		requiredGates: [
+			// All three write-offs enter one gate. A07 hardened the city-ledger one
+			// and left the other two on free text because both had UI callers and
+			// no reason-code picker existed; the picker exists now, and three
+			// copies of the same control would have become three controls.
 			{
 				gateName: "write_off",
 				guardsCommand: "ar.city_ledger.write_off",
@@ -533,12 +557,36 @@ export const FLOW_REGISTRY: FlowRegistry = {
 					"The decision itself: a WRITE_OFF reason code, resolved and authorised, recorded with the amount that left the books — dual control says who, this says what was decided",
 				evidence: [
 					{
-						file: "Apps/billing-service/src/services/billing-commands/ara.ts",
+						file: "Apps/billing-service/src/services/billing-commands/write-off-gate.ts",
 						token: 'gate_name: "write_off"',
 					},
 					{
-						file: "Apps/billing-service/src/services/billing-commands/ara.ts",
+						file: "Apps/billing-service/src/services/billing-commands/write-off-gate.ts",
 						token: "assertOverrideAuthority",
+					},
+					// The amount ladder — the half A07 could not build, because
+					// `resolveSettings` lived inside core-service where billing had
+					// no way to ask what a tenant's threshold was.
+					{
+						file: "Apps/billing-service/src/services/billing-commands/write-off-gate.ts",
+						token: "requiredRoleForWriteOff",
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/ara.ts",
+						token: "clearWriteOffGate",
+					},
+				],
+			},
+			{
+				gateName: "write_off",
+				guardsCommand: "billing.suspense.write_off",
+				kind: "record",
+				description:
+					"A suspense balance the property could not attribute to anyone, cleared to bad debt — the same stated reason and the same authority as any other write-off",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/suspense.ts",
+						token: "clearWriteOffGate",
 					},
 				],
 			},

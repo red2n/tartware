@@ -16,6 +16,7 @@ import {
   resolveActorId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import { clearWriteOffGate, recordWriteOff, type WriteOffGateInput } from "./write-off-gate.js";
 
 // ─── GL constants ─────────────────────────────────────────────────────────────
 const SUSPENSE_ACCOUNT = "1900"; // Suspense clearing account
@@ -215,6 +216,24 @@ export const writeOffSuspenseItem = async (
   const amount = Number(posting.total_amount);
   const writeOffRef = `SUSP-WO-${randomUUID().slice(0, 8)}`.toUpperCase();
 
+  // A07's remainder — the same gate the other two write-offs enter. A suspense
+  // balance is money the property could not attribute to anyone; clearing it to
+  // bad debt is still money leaving the books, and until now it said only what
+  // an operator typed.
+  const gate: WriteOffGateInput = {
+    context,
+    propertyId: posting.property_id,
+    commandName: "billing.suspense.write_off",
+    flowName: "ledger_control",
+    entityType: "charge_postings",
+    entityId: command.suspense_posting_id,
+    amount,
+    reasonCode: command.reason_code,
+    narrative: command.reason,
+    currency: posting.currency_code,
+  };
+  const reason = await clearWriteOffGate(gate);
+
   await withTransaction(async (client) => {
     // Void the suspense posting
     await queryWithClient(
@@ -274,8 +293,12 @@ export const writeOffSuspenseItem = async (
     });
   });
 
+  // A record, not a gate — after the posting moves, for the same reason the
+  // other two write it after theirs.
+  await recordWriteOff(gate, reason);
+
   appLogger.info(
-    { postingId: command.suspense_posting_id, amount, writeOffRef },
+    { postingId: command.suspense_posting_id, amount, writeOffRef, reasonCode: reason.reason_code },
     "Suspense item written off",
   );
   auditAsync({
@@ -287,7 +310,7 @@ export const writeOffSuspenseItem = async (
     entityId: command.suspense_posting_id,
     severity: "WARNING",
     description: `Suspense charge ${command.suspense_posting_id} written off as bad debt (${amount} ${posting.currency_code})`,
-    newValues: { reason: command.reason ?? null },
+    newValues: { reason_code: reason.reason_code, reason: command.reason ?? null },
   });
   return writeOffRef;
 };

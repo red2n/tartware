@@ -38,6 +38,10 @@
  */
 
 import {
+  recordSupervisorOverride,
+  resolveOpenCashierSession,
+} from "@tartware/command-consumer-utils/cashier";
+import {
   assertOverrideAuthority,
   resolveReasonCode,
 } from "@tartware/command-consumer-utils/command-utils";
@@ -82,6 +86,14 @@ export type CreditLimitGateInput = {
   entityId: string;
   /** What the block found — the numbers, so the refusal is actionable. */
   detail: string;
+  /**
+   * The amount the block was over, for `cashier_sessions.supervisor_overrides`
+   * — whose documented shape is `[{reason, amount, timestamp, supervisor_id}]`.
+   * Optional: `detail` already carries the numbers in prose, and a caller that
+   * has no single figure to name (a utilisation percentage rather than a
+   * tender) should say nothing rather than invent one.
+   */
+  amount?: number | undefined;
 };
 
 /**
@@ -174,6 +186,42 @@ export const recordCreditLimitOverride = async (
     appLogger.warn(
       { approvalErr, commandName: input.commandName, entityId: input.entityId },
       "Credit limit override: failed to record the decision (non-fatal)",
+    );
+  }
+
+  // A09's second half. `cashier_sessions.supervisor_overrides` documents itself
+  // as `[{reason, amount, timestamp, supervisor_id}]` and has had a GIN index
+  // waiting for it since the table was created — and no writer, so a shift's
+  // exceptions could not be reviewed beside its counted variance.
+  //
+  // This is the override that belongs there: it happens at a terminal, during a
+  // shift, over an amount. The `flow_approvals` row above is the record of
+  // record and is written unconditionally; this one is the shift's own copy, so
+  // it is skipped without complaint when no drawer was open. A property that
+  // takes payments over the phone has no session and should not be told
+  // anything is wrong.
+  try {
+    const sessionId = await resolveOpenCashierSession(
+      (sql, params) => query<{ session_id: string }>(sql, params),
+      {
+        tenantId: input.context.tenantId,
+        propertyId: input.propertyId,
+        actorId: resolveActorId(input.context.initiatedBy),
+      },
+    );
+    if (sessionId) {
+      await recordSupervisorOverride((sql, params) => query(sql, params), {
+        tenantId: input.context.tenantId,
+        sessionId,
+        reason: `${reason.reason_code}: ${notes ?? reason.reason_name}`,
+        amount: input.amount ?? null,
+        supervisorId: resolveActorId(input.context.initiatedBy),
+      });
+    }
+  } catch (shiftErr) {
+    appLogger.warn(
+      { shiftErr, commandName: input.commandName, entityId: input.entityId },
+      "Credit limit override: failed to record it against the cashier shift (non-fatal)",
     );
   }
 };

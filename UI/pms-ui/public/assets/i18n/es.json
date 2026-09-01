@@ -4154,5 +4154,6 @@
   "This reason needs {role}. Submitted under your role the command is accepted and then refused.": "Este motivo requiere {role}. Enviado con tu rol, el comando se acepta y luego se rechaza.",
   "No reason codes are configured for this action. Ask an administrator to add one.": "No hay códigos de motivo configurados para esta acción. Pide a un administrador que añada uno.",
   "Could not load reason codes. Retry, or the command will be refused without one.": "No se pudieron cargar los códigos de motivo. Reinténtalo; sin uno, el comando será rechazado.",
-  "Pick a reason code — the override is refused without one.": "Elige un código de motivo: sin él, la excepción se rechaza."
+  "Pick a reason code — the override is refused without one.": "Elige un código de motivo: sin él, la excepción se rechaza.",
+  "What happened (required)": "Qué ocurrió (obligatorio)"
 }

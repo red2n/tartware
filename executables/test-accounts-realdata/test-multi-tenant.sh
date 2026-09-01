@@ -2671,7 +2671,11 @@ else
   else
     pass "A04: token issued for the second approver"
 
-    DC_PAYLOAD="{\"ar_id\":\"$DC_AR_ID\",\"write_off_amount\":1.00,\"reason\":\"A04 dual-control probe\"}"
+    # `reason_code` is mandatory on all three write-offs now (A07's remainder),
+    # resolved against the WRITE_OFF category. WO_SMALL_BALANCE is seeded at
+    # approval_level MANAGER, which every role in this phase clears — the phase
+    # is about dual control, not about the amount ladder.
+    DC_PAYLOAD="{\"ar_id\":\"$DC_AR_ID\",\"write_off_amount\":1.00,\"reason_code\":\"WO_SMALL_BALANCE\",\"reason\":\"A04 dual-control probe\"}"
 
     # ── 1. The command is queued, not run ────────────────────────────────────
     DC_KEY_1=$(gen_uuid)

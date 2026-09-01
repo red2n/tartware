@@ -1,17 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  assertOverrideAuthority,
-  resolveReasonCode,
-} from "@tartware/command-consumer-utils/command-utils";
-import { resolvePolicy } from "@tartware/command-consumer-utils/settings-utils";
 import type { ReasonCodeRow } from "@tartware/schemas";
-import {
-  actorClearsThreshold,
-  DEFAULT_WRITE_OFF_APPROVAL_POLICY,
-  requiredRoleForWriteOff,
-  WRITE_OFF_APPROVAL_SETTING,
-  WriteOffApprovalPolicySchema,
-} from "@tartware/schemas";
 
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
@@ -37,7 +25,6 @@ import {
   BillingCommandError,
   type CommandContext,
   resolveActorId,
-  resolveActorRole,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 import {
@@ -45,6 +32,7 @@ import {
   clearCreditLimitGate,
   recordCreditLimitOverride,
 } from "./credit-limit-gate.js";
+import { clearWriteOffGate, recordWriteOff, type WriteOffGateInput } from "./write-off-gate.js";
 
 // ─── GL constants ─────────────────────────────────────────────────────────────
 const CITY_LEDGER_ACCOUNT = "1300"; // City Ledger / AR
@@ -229,6 +217,7 @@ export const transferToCityLedger = async (
     detail:
       `Transfer of ${transferAmount} exceeds available credit ` +
       `${account.available_credit} on AR account ${command.ar_account_id}.`,
+    amount: transferAmount,
   };
   let creditOverride: ReasonCodeRow | null = null;
   if (Number(account.available_credit) < transferAmount) {
@@ -377,55 +366,6 @@ export const transferToCityLedger = async (
  *
  * GL: DR Bad Debt Expense (5400) / CR City Ledger (1300)
  */
-/**
- * Refuse a write-off larger than the acting role is entitled to forgive.
- *
- * The reason code says *why* a balance was forgiven and the OWNER floor plus
- * dual control say *who* may forgive one. Neither has ever looked at *how
- * much*: a £40 residual and a £40,000 bad debt are the same command, and A07
- * closed with "amount threshold outstanding" for a concrete reason — there was
- * no written policy to read, and `resolveSettings` lived somewhere billing
- * could not call.
- *
- * Both are now true, so this reads `WORKFLOW.FINANCE.WRITE_OFF_APPROVALS`. The
- * shipped ladder deliberately mirrors the six seeded WRITE_OFF reason codes,
- * which already grade themselves MANAGER for a small balance and GM for
- * insolvency: a threshold ladder that disagreed with the codes an operator
- * picks from would be a second opinion rather than a control.
- *
- * In practice this rarely refuses — the command's own floor is OWNER and a
- * second owner has already released it — and that is the point of having it
- * anyway. The day the dual-control set is narrowed, or a property grants this
- * command to an ADMIN through `user_tenant_associations.permissions`, the
- * amount is still governed. A control that only holds because a stricter one
- * happens to sit above it is not a control.
- */
-const assertWriteOffWithinAuthority = async (
-  tenantId: string,
-  amount: number,
-  actorRole: string | null | undefined,
-): Promise<void> => {
-  const policy = await resolvePolicy(
-    (sql, params) => query<{ code: string; value: unknown }>(sql, params),
-    {
-      tenantId,
-      code: WRITE_OFF_APPROVAL_SETTING,
-      parse: (raw) => WriteOffApprovalPolicySchema.parse(raw),
-      fallback: DEFAULT_WRITE_OFF_APPROVAL_POLICY,
-    },
-  );
-
-  const requiredRole = requiredRoleForWriteOff(policy, amount);
-  if (actorClearsThreshold(actorRole, requiredRole)) return;
-
-  throw new BillingCommandError(
-    "WRITE_OFF_EXCEEDS_AUTHORITY",
-    `Writing off ${amount} needs ${requiredRole}; this command was initiated by ` +
-      `${actorRole ?? "an unidentified actor"}. The reason code authorises forgiving a ` +
-      `balance — it does not authorise this size of one.`,
-  );
-};
-
 export const writeOffCityLedger = async (
   payload: unknown,
   context: CommandContext,
@@ -467,33 +407,23 @@ export const writeOffCityLedger = async (
   const writeOffAmount = command.amount ?? Number(entry.outstanding_balance);
 
   // A07: forgiving a debt states why, in the vocabulary the rest of the product
-  // uses. `reason` — free text, min 10 characters — was the entire record, so a
-  // year of write-offs could not be grouped into bad debt, goodwill and small
-  // balances, which is the first question asked of them. Dual control (A04)
-  // settled who may do this; the code settles what was decided.
-  const reason = await resolveReasonCode<ReasonCodeRow>(
-    (sql, params) => query<ReasonCodeRow>(sql, params),
-    {
-      tenantId,
-      propertyId: command.property_id,
-      reasonCode: command.reason_code,
-      category: "WRITE_OFF",
-    },
-  );
-
-  // The floor for this command is OWNER and a second owner has already released
-  // it, so this rarely refuses — but a code seeded at GM should mean GM even
-  // when the ladder above it happens to agree today.
-  assertOverrideAuthority(reason, resolveActorRole(context.initiatedBy), {
+  // uses, and is authorised both by whose decision it is and by how large it
+  // is. All three checks live in one place now — `write-off-gate.ts` — because
+  // the other two write-off commands need the same ones, and three copies would
+  // have become three different controls.
+  const gate: WriteOffGateInput = {
+    context,
+    propertyId: command.property_id,
     commandName: "ar.city_ledger.write_off",
-    gateName: "write_off",
-  });
-
-  await assertWriteOffWithinAuthority(
-    tenantId,
-    writeOffAmount,
-    resolveActorRole(context.initiatedBy),
-  );
+    flowName: "ledger_control",
+    entityType: "ar_city_ledger",
+    entityId: command.city_ledger_id,
+    amount: writeOffAmount,
+    reasonCode: command.reason_code,
+    narrative: command.reason,
+    currency: entry.currency,
+  };
+  const reason = await clearWriteOffGate(gate);
 
   await withTransaction(async (client) => {
     const { rows: dateRows } = await queryWithClient<{ today: string }>(
@@ -543,33 +473,9 @@ export const writeOffCityLedger = async (
   });
 
   // A record, not a gate: nothing here was bypassed, so `forced` stays false.
-  // The row is what makes a write-off answerable — which code, which amount,
-  // which actor, in one place a report can group.
-  try {
-    const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
-    await recordFlowApproval({
-      tenant_id: tenantId,
-      property_id: command.property_id,
-      flow_name: "ledger_control",
-      gate_name: "write_off",
-      entity_type: "ar_city_ledger",
-      entity_id: command.city_ledger_id,
-      approved_by: actorId,
-      role_at_approval: resolveActorRole(context.initiatedBy),
-      forced: false,
-      reason_code: reason.reason_code,
-      reason_notes: `${reason.reason_name}: ${writeOffAmount} ${entry.currency} written off — ${command.reason}`,
-      correlation_id: context.correlationId ?? null,
-    });
-  } catch (approvalErr) {
-    // Fail-open on the record, like every other writer in the product: the
-    // ledger has already moved, and failing here would report a write-off that
-    // did happen as one that did not.
-    appLogger.warn(
-      { approvalErr, entryId: command.city_ledger_id },
-      "City ledger write-off: failed to record the decision (non-fatal)",
-    );
-  }
+  // Written after the ledger moves — the row's meaning is that money left the
+  // books, so one per retry attempt would be worse than none.
+  await recordWriteOff(gate, reason);
 
   appLogger.info(
     {

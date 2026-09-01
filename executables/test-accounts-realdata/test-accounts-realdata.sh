@@ -1850,7 +1850,7 @@ if [[ -n "${AR1_ID:-}" ]]; then
   if [[ -n "${REMAINING:-}" ]] && (( $(echo "$REMAINING > 0" | bc -l 2>/dev/null || echo "0") )); then
     send_command "CMD ar.write_off: remaining balance" \
       "billing.ar.write_off" \
-      "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
+      "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason_code\":\"WO_BAD_DEBT\",\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
 
     wait_kafka 8
 

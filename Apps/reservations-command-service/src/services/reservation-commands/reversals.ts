@@ -18,7 +18,10 @@
  * the folio balance is what it was before the check-in, to the cent.
  */
 
-import { SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
+import {
+  assertForcedOverrideAuthority,
+  SYSTEM_ACTOR_ROLE,
+} from "@tartware/command-consumer-utils/command-utils";
 import type {
   ReasonCodeRow,
   ReservationReinstateCommand,
@@ -446,6 +449,39 @@ const recordReversal = async (input: {
  * no-show is a financial decision with its own command, not a side effect of
  * undoing a keystroke.
  */
+/**
+ * Refuse a *forced* reversal the acting operator is not entitled to make (A08).
+ *
+ * All three reversals already resolve a REVERSAL reason code and already write
+ * a `flow_approvals` row carrying the operator's real role. What none of them
+ * checked was whether that role was entitled to the `force` it was exercising —
+ * and `force` here is not a small thing. It reverses a check-in over a folio
+ * carrying charges this reversal did not post (a guest's bar tab left
+ * standing), reopens a departed guest's folio with AR already raised, or
+ * reinstates a booking the availability guard could not vouch for.
+ *
+ * A code's `approval_level` and its `requires_approval` flag say who may make
+ * that call, and `forcedOverrideMinRole` takes the higher of the two. An
+ * *unforced* reversal is untouched: those are refused outright when they would
+ * be unsafe, so there is nothing there to authorize.
+ *
+ * The gate name is passed in rather than invented here. `checkNoUndeclaredControls`
+ * holds `flow_approvals.gate_name` to a closed vocabulary, and each of these
+ * three already declares its own control — a shared "reversal_force" would have
+ * been a fourth name the registry had never heard of, which is exactly the
+ * drift that check exists to catch.
+ */
+const assertForcedReversalAuthority = (
+  input: { force?: boolean | undefined },
+  reason: ReasonCodeRow,
+  actorRole: string | undefined,
+  commandName: string,
+  gateName: string,
+): void => {
+  if (!input.force) return;
+  assertForcedOverrideAuthority(reason, actorRole, { commandName, gateName });
+};
+
 export const reverseCheckIn = async (
   tenantId: string,
   rawCommand: ReservationReverseCheckInCommand,
@@ -465,6 +501,13 @@ export const reverseCheckIn = async (
 
   const propertyId = reservation.property_id ?? input.property_id ?? null;
   const reason = await resolveReasonCode(tenantId, propertyId, input.reason_code, "REVERSAL");
+  assertForcedReversalAuthority(
+    input,
+    reason,
+    options.actorRole,
+    "reservation.reverse_check_in",
+    "reverse_check_in",
+  );
 
   const outcome = await reverseFolioSideEffects({
     tenantId,
@@ -573,6 +616,13 @@ export const reverseCheckOut = async (
 
   const propertyId = reservation.property_id ?? input.property_id ?? null;
   const reason = await resolveReasonCode(tenantId, propertyId, input.reason_code, "REVERSAL");
+  assertForcedReversalAuthority(
+    input,
+    reason,
+    options.actorRole,
+    "reservation.reverse_check_out",
+    "reverse_check_out",
+  );
 
   const openArResult = await query<{ ar_id: string; ar_number: string }>(
     `SELECT ar_id, ar_number
@@ -694,6 +744,13 @@ export const reinstateReservation = async (
 
   const propertyId = reservation.property_id ?? input.property_id ?? null;
   const reason = await resolveReasonCode(tenantId, propertyId, input.reason_code, "REVERSAL");
+  assertForcedReversalAuthority(
+    input,
+    reason,
+    options.actorRole,
+    "reservation.reinstate",
+    "reinstate_reservation",
+  );
 
   // Inventory first. Everything below this point assumes the nights are held.
   if (propertyId && reservation.room_type_id) {

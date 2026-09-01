@@ -14,7 +14,9 @@ import {
   actorClearsApprovalLevel,
   approvalLevelMinRole,
   type ReasonCodeRow,
+  type TenantRole,
   TenantRoleEnum,
+  tenantRoleAtLeast,
 } from "@tartware/schemas";
 
 /**
@@ -236,6 +238,76 @@ export const resolveReasonCode = async <TRow extends ReasonCodeRow>(
  * burning 1s/5s/30s on a decision that cannot come out differently is finding
  * 02 all over again.
  */
+/**
+ * The role a *forced* override under this reason code takes.
+ *
+ * Two demands, and the higher wins:
+ *
+ * - `approval_level`, as {@link assertOverrideAuthority} enforces it. A code
+ *   seeded at GM is an owner's decision whether or not it is forced.
+ * - `requires_approval`, which A08 found resolving to nothing. A code flagged
+ *   as needing a sign-off was refused unless the caller passed `force` — and
+ *   `force` was granted on "the authority of the caller", who under the
+ *   single-`MANAGER` model was every caller. The flag said "someone senior has
+ *   to agree" and the escape hatch was a boolean the same person set.
+ *
+ * `MANAGER` is the floor for that second demand rather than something higher,
+ * because it is the lowest membership above the shift floor — the same
+ * reasoning `override-authority.ts` uses when it rounds SUPERVISOR up. A code
+ * that wants more says so in `approval_level`, and then that wins.
+ *
+ * Returning `null` means the force needs nothing beyond the command's own
+ * floor, which is the ordinary case: most seeded ROOM_MOVE codes are
+ * `approval_level: NONE` and `requires_approval: false`, and overriding a
+ * housekeeping status on one of those is a night manager's routine call.
+ */
+export const forcedOverrideMinRole = (reason: ReasonCodeRow): TenantRole | null => {
+  const fromLevel = approvalLevelMinRole(reason.approval_level);
+  if (!reason.requires_approval) return fromLevel;
+  if (fromLevel === null) return "MANAGER";
+  return tenantRoleAtLeast(fromLevel, "MANAGER") ? fromLevel : "MANAGER";
+};
+
+/**
+ * Refuse a forced override the acting operator is not entitled to make.
+ *
+ * The counterpart to {@link assertOverrideAuthority} for the commands whose
+ * control is a `force` flag rather than an explicit override field. Room move
+ * is the case A08 named: it resolves its reason code, checks the category, and
+ * refuses a code flagged `requires_approval` — then offers `force` to proceed
+ * "on the authority of the caller", which was never checked against anything.
+ *
+ * Fails closed on an unreadable `approval_level`, like its sibling: a column
+ * behind a CHECK constraint is one migration from holding anything, and a value
+ * nobody understands must not be the cheapest way past a control.
+ */
+export const assertForcedOverrideAuthority = (
+  reason: ReasonCodeRow,
+  actorRole: string | null | undefined,
+  context: { commandName: string; gateName: string },
+): void => {
+  let required: TenantRole | null;
+  try {
+    required = forcedOverrideMinRole(reason);
+  } catch {
+    throw new CommandError(
+      "OVERRIDE_AUTHORITY_UNKNOWN",
+      `Reason code "${reason.reason_code}" carries approval_level ` +
+        `"${reason.approval_level}", which is not a level this product can ` +
+        `enforce. Refusing the override rather than guessing at it.`,
+    );
+  }
+
+  if (required === null || tenantRoleAtLeast(actorRole ?? "", required)) return;
+
+  throw new CommandError(
+    "OVERRIDE_AUTHORITY_INSUFFICIENT",
+    `Forcing ${context.gateName} under reason code "${reason.reason_code}" ` +
+      `requires ${required}; this command was initiated by ${actorRole ?? "an unidentified actor"}. ` +
+      `${context.commandName} refuses rather than recording an override nobody was entitled to make.`,
+  );
+};
+
 export const assertOverrideAuthority = (
   reason: ReasonCodeRow,
   actorRole: string | null | undefined,
