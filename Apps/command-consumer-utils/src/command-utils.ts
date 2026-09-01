@@ -67,6 +67,26 @@ export const resolveActorRole = (initiatedBy?: { role?: string } | null): string
  * consumer's retry predicate reads `retryable` off it, so an error that does
  * not carry the field is treated as an unknown failure and retried.
  */
+/**
+ * Marks an object as a CommandError without relying on `instanceof`.
+ *
+ * `instanceof` compares class identity, and a monorepo can hold two identities
+ * of one class at once: services run from source through tsx while resolving
+ * their siblings through the package `exports` map to `dist`, so a subpath the
+ * tsconfig wildcard happens to miss returns a *second* copy of this module. That
+ * is not hypothetical — `/lifecycle`, `/idempotency` and `/batch` all missed it,
+ * because their file names differ from their export names, and the consequence
+ * was silent: `isRetryableByDefault` stopped recognising these errors and
+ * retried every deterministic rejection through the full backoff ladder,
+ * stalling the partition behind it. Findings 02 and 03 were void at runtime
+ * while every unit test — which imports one copy — passed.
+ *
+ * A brand is checked by value, so it survives the split. The paths are fixed
+ * too, but a control this repo relies on should not depend on getting module
+ * resolution right forever.
+ */
+export const COMMAND_ERROR_BRAND = "tartware.CommandError";
+
 export class CommandError extends Error {
   readonly code: string;
 
@@ -82,6 +102,9 @@ export class CommandError extends Error {
    */
   readonly retryable: boolean;
 
+  /** See {@link COMMAND_ERROR_BRAND}. Read by `isCommandError`, never by name. */
+  readonly [Symbol.toStringTag] = COMMAND_ERROR_BRAND;
+
   constructor(code: string, message: string, retryable = false) {
     super(message);
     // Report the concrete subclass name so a DLQ entry says which service and
@@ -95,6 +118,19 @@ export class CommandError extends Error {
     return { name: this.name, code: this.code, message: this.message, retryable: this.retryable };
   }
 }
+
+/**
+ * Whether `error` is a CommandError, whichever copy of this module made it.
+ *
+ * Structural on purpose — see {@link COMMAND_ERROR_BRAND}. It asks for the
+ * brand plus the two fields the retry policy actually reads, so a plain object
+ * that happens to carry a `code` is not mistaken for one.
+ */
+export const isCommandError = (error: unknown): error is CommandError =>
+  error instanceof Error &&
+  (error as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag] === COMMAND_ERROR_BRAND &&
+  typeof (error as { code?: unknown }).code === "string" &&
+  typeof (error as { retryable?: unknown }).retryable === "boolean";
 
 // ─── Reason codes ────────────────────────────────────────────────────────────
 

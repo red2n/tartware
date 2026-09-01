@@ -241,3 +241,46 @@ export const CommandApprovalDecisionSchema = z.object({
 export type CommandApprovalDecision = z.infer<
 	typeof CommandApprovalDecisionSchema
 >;
+
+/**
+ * An approval request as `approval_requests` stores it.
+ *
+ * Declared here rather than in the repository that reads it: the row was typed
+ * in `Apps/command-center-shared` and used from three files, so billing's own
+ * queue — which reads the same table through its own service — had no way to
+ * share it. Two readers of one table with two private shapes is how the column
+ * that means "who may release this" ends up spelled differently in each.
+ *
+ * The timestamp columns are `Date | string` because they arrive as either
+ * depending on the driver's type parsers, and the narrowing belongs at the
+ * boundary that reads them, not here. `command_name`, `request_id`,
+ * `requested_by_role` and `dispatched_command_id` are nullable because the
+ * REST-raised billing requests predate the deferred-command columns (migration
+ * `005`) and name their operation in `operation_type` alone.
+ */
+export type CommandApprovalRow = {
+	approval_id: string;
+	tenant_id: string;
+	property_id: string | null;
+	command_name: string;
+	request_id: string;
+	operation_type: string;
+	entity_type: string;
+	entity_id: string;
+	operation_payload: Record<string, unknown>;
+	description: string | null;
+	requested_by: string;
+	requested_by_name: string | null;
+	requested_by_role: string | null;
+	requested_at: Date | string;
+	status: string;
+	required_role: string;
+	expires_at: Date | string;
+	actioned_by: string | null;
+	actioned_by_name: string | null;
+	actioned_at: Date | string | null;
+	action_reason: string | null;
+	dispatched_command_id: string | null;
+	created_at: Date | string;
+	updated_at: Date | string | null;
+};

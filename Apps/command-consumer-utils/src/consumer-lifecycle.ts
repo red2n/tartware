@@ -5,7 +5,7 @@
 
 import { processWithRetry, RetryExhaustedError } from "@tartware/config/retry";
 import type { Consumer, Kafka } from "kafkajs";
-import { CommandError } from "./command-utils.js";
+import { isCommandError } from "./command-utils.js";
 import { buildDlqPayload } from "./dlq.js";
 import {
   type CommandEnvelope,
@@ -133,9 +133,16 @@ export type CreateConsumerLifecycleInput = {
  *
  * Applied by {@link createConsumerLifecycle} unless a consumer passes its own,
  * so a new consumer gets the safe behaviour without having to know about it.
+ *
+ * It asks `isCommandError` rather than `instanceof`, and that is the whole
+ * reason the brand exists: this module and `command-utils` were reached through
+ * different specifiers by every service — one via a tsconfig path to `src`, one
+ * via the exports map to `dist` — so `instanceof` was false for errors this file
+ * was written to recognise, and every deterministic failure burned four attempts
+ * before the DLQ. Nothing failed loudly; the ladder just ran.
  */
 export const isRetryableByDefault = (error: unknown): boolean =>
-  !(error instanceof CommandError) || error.retryable;
+  !isCommandError(error) || error.retryable;
 
 /**
  * Creates start/shutdown functions for a command-center Kafka consumer.

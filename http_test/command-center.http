@@ -346,9 +346,9 @@ X-Idempotency-Key: res-rate-{{$timestamp}}
   "tenant_id": "{{tenantId}}",
   "payload": {
     "reservation_id": "{{reservationId}}",
-    "new_rate": 179.00,
-    "reason": "Price match guarantee",
-    "authorization": "MGR-APPROVAL-001"
+    "total_amount": 179.00,
+    "reason_code": "RO_MATCH",
+    "reason": "Price match guarantee"
   }
 }
 

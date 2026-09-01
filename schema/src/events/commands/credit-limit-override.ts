@@ -54,8 +54,11 @@ export const hasCreditLimitOverrideReason = (
 	Boolean(value.credit_limit_override_reason_code);
 
 /** The message and path every command's refinement reports. */
-export const CREDIT_LIMIT_OVERRIDE_REFINEMENT = {
+export const CREDIT_LIMIT_OVERRIDE_REFINEMENT: {
+	message: string;
+	path: (string | number)[];
+} = {
 	message:
 		"credit_limit_override_reason_code is required when credit_limit_override is true — an override with no stated reason is the control this gate exists to provide",
 	path: ["credit_limit_override_reason_code"],
-} as const;
+};

@@ -34,6 +34,17 @@ export const authorizePayment = async (
     context.tenantId,
     command.guest_id,
     command.amount,
+    {
+      context,
+      propertyId: command.property_id,
+      commandName: "billing.payment.authorize",
+      flowName: "check_in",
+      override: {
+        requested: command.credit_limit_override,
+        reasonCode: command.credit_limit_override_reason_code,
+        notes: command.credit_limit_override_notes,
+      },
+    },
   );
   if (creditWarning) {
     appLogger.warn(

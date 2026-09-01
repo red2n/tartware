@@ -22,6 +22,13 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         { commandName: "billing.folio.create", description: "Create folio on check-in" },
         { commandName: "billing.payment.authorize", description: "Pre-auth deposit on check-in" },
       ],
+      gates: [
+        {
+          gateName: "credit_limit_check",
+          guardsCommand: "billing.payment.authorize",
+          description: "Refuses a pre-auth past the guest's credit block threshold",
+        },
+      ],
     },
 
     [FlowId.IN_HOUSE]: {
@@ -30,6 +37,14 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         { commandName: "billing.payment.apply", description: "Apply payment to folio" },
         { commandName: "billing.folio.transfer", description: "Transfer folio window" },
         { commandName: "billing.charge.transfer", description: "Transfer charge between folios" },
+        { commandName: "billing.payment.capture", description: "Capture a payment onto a folio" },
+      ],
+      gates: [
+        {
+          gateName: "credit_limit_check",
+          guardsCommand: "billing.payment.capture",
+          description: "Refuses a capture past the guest's credit block threshold",
+        },
       ],
     },
 
@@ -121,6 +136,13 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           description: "Unapply a payment from an invoice",
         },
       ],
+      gates: [
+        {
+          gateName: "write_off",
+          guardsCommand: "ar.city_ledger.write_off",
+          description: "Records what was decided, under a resolved WRITE_OFF reason code",
+        },
+      ],
     },
 
     [FlowId.AR_COLLECTIONS]: {
@@ -129,6 +151,17 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
         { commandName: "billing.ar.apply_payment", description: "Apply AR payment" },
         { commandName: "billing.ar.age", description: "Run AR aging" },
         { commandName: "billing.ar.write_off", description: "Write off AR balance" },
+        {
+          commandName: "ar.city_ledger.transfer",
+          description: "Transfer a folio balance to the city ledger",
+        },
+      ],
+      gates: [
+        {
+          gateName: "credit_limit_check",
+          guardsCommand: "ar.city_ledger.transfer",
+          description: "Refuses a transfer beyond the AR account's available credit",
+        },
       ],
     },
   },

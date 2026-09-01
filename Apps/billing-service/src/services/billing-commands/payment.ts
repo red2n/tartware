@@ -18,6 +18,7 @@ import {
   resolveFolioId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import { type CreditLimitGateContext, clearCreditLimitGate } from "./credit-limit-gate.js";
 
 /**
  * Enforce credit limit for a guest/account before allowing a charge.
@@ -29,6 +30,7 @@ export async function enforceCreditLimit(
   tenantId: string,
   guestId: string | undefined | null,
   chargeAmount: number,
+  gate: CreditLimitGateContext,
 ): Promise<string | null> {
   if (!guestId) return null;
 
@@ -66,10 +68,21 @@ export async function enforceCreditLimit(
 
   const blockPct = Number(limit.block_threshold_percent);
   if (utilizationPct >= blockPct) {
-    throw new BillingCommandError(
-      "CREDIT_LIMIT_EXCEEDED",
-      `Payment of ${chargeAmount} would push utilization to ${utilizationPct.toFixed(1)}% (block threshold: ${blockPct}%). Available credit: ${(effectiveLimit - currentBalance).toFixed(2)}`,
+    // Refuses unless the caller asked for the override, named a CREDIT_LIMIT
+    // reason code, and holds the role that code's approval_level demands — at
+    // which point the decision is recorded against the guest whose limit it is.
+    const reason = await clearCreditLimitGate(
+      {
+        ...gate,
+        entityType: "guest",
+        entityId: guestId,
+        detail:
+          `Payment of ${chargeAmount} would push utilization to ${utilizationPct.toFixed(1)}% ` +
+          `(block threshold: ${blockPct}%). Available credit: ${(effectiveLimit - currentBalance).toFixed(2)}.`,
+      },
+      gate.override,
     );
+    return `Credit limit block overridden under reason code ${reason.reason_code}`;
   }
 
   const warningPct = Number(limit.warning_threshold_percent);
@@ -104,6 +117,17 @@ const capturePayment = async (
     context.tenantId,
     command.guest_id,
     command.amount,
+    {
+      context,
+      propertyId: command.property_id,
+      commandName: "billing.payment.capture",
+      flowName: "in_house",
+      override: {
+        requested: command.credit_limit_override,
+        reasonCode: command.credit_limit_override_reason_code,
+        notes: command.credit_limit_override_notes,
+      },
+    },
   );
   if (creditWarning) {
     appLogger.warn({ guestId: command.guest_id, creditWarning }, "Credit limit warning on capture");

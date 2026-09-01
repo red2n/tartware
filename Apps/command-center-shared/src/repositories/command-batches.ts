@@ -1,4 +1,17 @@
-import type { BatchCommandResult, QueryExecutor } from "@tartware/schemas";
+import type {
+  BatchCommandResult,
+  CommandBatchDetail,
+  CommandBatchItemRow,
+  CommandBatchRow,
+  QueryExecutor,
+} from "@tartware/schemas";
+
+// The three row shapes above used to be declared in this file and read from
+// two others, which is a domain type living in Apps/ — see
+// schema/src/api/command-batch-rows.ts for why they moved. Re-exported so the
+// callers that already import them from this repository keep working; new
+// readers should take them from @tartware/schemas directly.
+export type { CommandBatchDetail, CommandBatchItemRow, CommandBatchRow };
 
 /**
  * Read side of the batch result tables.
@@ -41,37 +54,6 @@ const LIST_BATCHES_SQL = `
    ORDER BY started_at DESC
    LIMIT $4
 `;
-
-export type CommandBatchRow = {
-  batch_id: string;
-  command_name: string;
-  status: "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED";
-  total: number;
-  succeeded: number;
-  failed: number;
-  skipped: number;
-  dry_run: boolean;
-  property_id: string | null;
-  correlation_id: string | null;
-  error_code: string | null;
-  error_message: string | null;
-  started_at: Date;
-  completed_at: Date | null;
-};
-
-export type CommandBatchItemRow = {
-  item_index: number;
-  target_id: string | null;
-  outcome: "SUCCEEDED" | "FAILED" | "SKIPPED";
-  event_id: string | null;
-  error_code: string | null;
-  error_message: string | null;
-  duration_ms: number | null;
-};
-
-export type CommandBatchDetail = CommandBatchRow & {
-  items: CommandBatchItemRow[];
-};
 
 export type ListCommandBatchesInput = {
   tenantId: string;

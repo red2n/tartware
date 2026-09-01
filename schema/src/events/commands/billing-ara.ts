@@ -11,6 +11,12 @@
 
 import { z } from "zod";
 
+import {
+	CREDIT_LIMIT_OVERRIDE_FIELDS,
+	CREDIT_LIMIT_OVERRIDE_REFINEMENT,
+	hasCreditLimitOverrideReason,
+} from "./credit-limit-override.js";
+
 // ─── AR Account management ────────────────────────────────────────────────────
 
 const PaymentTermsEnum = z.enum(["NET30", "NET45", "NET60", "DUE_ON_RECEIPT"]);
@@ -101,6 +107,16 @@ export const ArCityLedgerWriteOffCommandSchema = z.object({
 	city_ledger_id: z.string().uuid(),
 	/** Amount to write off. Defaults to full outstanding_amount. */
 	amount: z.coerce.number().positive().optional(),
+	/**
+	 * Mandatory, and resolved against the WRITE_OFF category (A07).
+	 *
+	 * Forgiving a debt was the one irreversible accounting act in the product
+	 * whose record was a sentence of free text. Dual control (A04) settled *who*
+	 * may do it — two owners — but not *why*, so a year of write-offs could not
+	 * be grouped into bad debt, goodwill and small balances, which is the first
+	 * question an auditor asks of them.
+	 */
+	reason_code: z.string().min(2).max(50),
 	reason: z.string().min(10).max(2000),
 	approved_by: z.string().uuid().optional(),
 	idempotency_key: z.string().max(120).optional(),

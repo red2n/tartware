@@ -178,6 +178,26 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				],
 			},
 			{
+				gateName: "credit_limit_check",
+				guardsCommand: "billing.payment.authorize",
+				description:
+					"A guest past their credit block threshold cannot be pre-authorised; an override needs a CREDIT_LIMIT reason code whose approval level the caller's role clears",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/payment-authorize.ts",
+						token: "enforceCreditLimit",
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/credit-limit-gate.ts",
+						token: 'gate_name: "credit_limit_check"',
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/credit-limit-gate.ts",
+						token: "assertOverrideAuthority",
+					},
+				],
+			},
+			{
 				gateName: "reverse_check_in",
 				guardsCommand: "reservation.reverse_check_in",
 				kind: "record",
@@ -193,6 +213,10 @@ export const FLOW_REGISTRY: FlowRegistry = {
 		requiredCommands: [
 			"billing.charge.post",
 			"billing.payment.apply",
+			// Named here because A05 gave it a control: taking a payment past a
+			// guest's credit block is a decision someone has to be entitled to make,
+			// and a gate cannot guard a command no flow claims.
+			"billing.payment.capture",
 			"billing.folio.transfer",
 			"billing.charge.transfer",
 			"reservation.extend_stay",
@@ -203,6 +227,43 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"rooms.move",
 		],
 		requiredGates: [
+			{
+				gateName: "credit_limit_check",
+				guardsCommand: "billing.payment.capture",
+				description:
+					"The same block on the capture: a payment that would push the guest past their threshold needs an authorised, recorded override",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/payment.ts",
+						token: "clearCreditLimitGate",
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/credit-limit-gate.ts",
+						token: 'gate_name: "credit_limit_check"',
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/credit-limit-gate.ts",
+						token: "assertOverrideAuthority",
+					},
+				],
+			},
+			{
+				gateName: "rate_override",
+				guardsCommand: "reservation.rate_override",
+				kind: "record",
+				description:
+					"Every rate override lands a row under a RATE_OVERRIDE code the caller's role clears — the most common way money leaves a hotel, and the last one with no record",
+				evidence: [
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/financial-ops.ts",
+						token: 'gateName: "rate_override"',
+					},
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/financial-ops.ts",
+						token: "assertOverrideAuthority",
+					},
+				],
+			},
 			{
 				gateName: "room_move",
 				guardsCommand: "reservation.room_move",
@@ -334,6 +395,31 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"billing.ar.apply_payment",
 			"billing.ar.age",
 			"billing.ar.write_off",
+			// The move that puts a guest's balance on a company's account, and the
+			// only one of these four with a control in front of it.
+			"ar.city_ledger.transfer",
+		],
+		requiredGates: [
+			{
+				gateName: "credit_limit_check",
+				guardsCommand: "ar.city_ledger.transfer",
+				description:
+					"A transfer beyond the AR account's available credit is refused; the same CREDIT_LIMIT override applies, recorded against the folio",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/ara.ts",
+						token: "clearCreditLimitGate",
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/credit-limit-gate.ts",
+						token: 'gate_name: "credit_limit_check"',
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/credit-limit-gate.ts",
+						token: "assertOverrideAuthority",
+					},
+				],
+			},
 		],
 		dependsOn: [FlowId.CHECK_OUT],
 	},
@@ -382,6 +468,23 @@ export const FLOW_REGISTRY: FlowRegistry = {
 			"ar.payment.unapply",
 		],
 		requiredGates: [
+			{
+				gateName: "write_off",
+				guardsCommand: "ar.city_ledger.write_off",
+				kind: "record",
+				description:
+					"The decision itself: a WRITE_OFF reason code, resolved and authorised, recorded with the amount that left the books — dual control says who, this says what was decided",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/ara.ts",
+						token: 'gate_name: "write_off"',
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/ara.ts",
+						token: "assertOverrideAuthority",
+					},
+				],
+			},
 			// The five commands under dual control (COMMAND_DUAL_CONTROL in
 			// schema/src/api/command-approvals.ts). `billing.ar.write_off` and
 			// `billing.date_roll.manual` are required by AR_COLLECTIONS and

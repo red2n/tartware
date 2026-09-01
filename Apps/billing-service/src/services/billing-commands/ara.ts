@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  assertOverrideAuthority,
+  resolveReasonCode,
+} from "@tartware/command-consumer-utils/command-utils";
+import type { ReasonCodeRow } from "@tartware/schemas";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { postGlPair } from "../../lib/gl-posting.js";
@@ -24,8 +30,10 @@ import {
   BillingCommandError,
   type CommandContext,
   resolveActorId,
+  resolveActorRole,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import { clearCreditLimitGate } from "./credit-limit-gate.js";
 
 // ─── GL constants ─────────────────────────────────────────────────────────────
 const CITY_LEDGER_ACCOUNT = "1300"; // City Ledger / AR
@@ -197,11 +205,27 @@ export const transferToCityLedger = async (
     );
   }
 
-  // Credit limit check
+  // Credit limit check. The AR account's own available credit, not a guest's —
+  // same refusal, same override, different entity, which is why the gate takes
+  // the entity rather than assuming one.
   if (Number(account.available_credit) < transferAmount) {
-    throw new BillingCommandError(
-      "CREDIT_LIMIT_EXCEEDED",
-      `Transfer of ${transferAmount} exceeds available credit ${account.available_credit}.`,
+    await clearCreditLimitGate(
+      {
+        context,
+        propertyId: command.property_id,
+        commandName: "ar.city_ledger.transfer",
+        flowName: "ar_collections",
+        entityType: "folio",
+        entityId: command.folio_id,
+        detail:
+          `Transfer of ${transferAmount} exceeds available credit ` +
+          `${account.available_credit} on AR account ${command.ar_account_id}.`,
+      },
+      {
+        requested: command.credit_limit_override,
+        reasonCode: command.credit_limit_override_reason_code,
+        notes: command.credit_limit_override_notes,
+      },
     );
   }
 
@@ -361,6 +385,29 @@ export const writeOffCityLedger = async (
 
   const writeOffAmount = command.amount ?? Number(entry.outstanding_balance);
 
+  // A07: forgiving a debt states why, in the vocabulary the rest of the product
+  // uses. `reason` — free text, min 10 characters — was the entire record, so a
+  // year of write-offs could not be grouped into bad debt, goodwill and small
+  // balances, which is the first question asked of them. Dual control (A04)
+  // settled who may do this; the code settles what was decided.
+  const reason = await resolveReasonCode<ReasonCodeRow>(
+    (sql, params) => query<ReasonCodeRow>(sql, params),
+    {
+      tenantId,
+      propertyId: command.property_id,
+      reasonCode: command.reason_code,
+      category: "WRITE_OFF",
+    },
+  );
+
+  // The floor for this command is OWNER and a second owner has already released
+  // it, so this rarely refuses — but a code seeded at GM should mean GM even
+  // when the ladder above it happens to agree today.
+  assertOverrideAuthority(reason, resolveActorRole(context.initiatedBy), {
+    commandName: "ar.city_ledger.write_off",
+    gateName: "write_off",
+  });
+
   await withTransaction(async (client) => {
     const { rows: dateRows } = await queryWithClient<{ today: string }>(
       client,
@@ -379,7 +426,7 @@ export const writeOffCityLedger = async (
               written_off_by = $2::uuid,
               updated_at = NOW()
         WHERE entry_id = $3::uuid AND tenant_id = $4::uuid`,
-      [command.reason, actorId, command.city_ledger_id, tenantId],
+      [`${reason.reason_code}: ${command.reason}`, actorId, command.city_ledger_id, tenantId],
     );
 
     await queryWithClient(
@@ -408,8 +455,41 @@ export const writeOffCityLedger = async (
     });
   });
 
+  // A record, not a gate: nothing here was bypassed, so `forced` stays false.
+  // The row is what makes a write-off answerable — which code, which amount,
+  // which actor, in one place a report can group.
+  try {
+    const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
+    await recordFlowApproval({
+      tenant_id: tenantId,
+      property_id: command.property_id,
+      flow_name: "ledger_control",
+      gate_name: "write_off",
+      entity_type: "ar_city_ledger",
+      entity_id: command.city_ledger_id,
+      approved_by: actorId,
+      role_at_approval: resolveActorRole(context.initiatedBy),
+      forced: false,
+      reason_code: reason.reason_code,
+      reason_notes: `${reason.reason_name}: ${writeOffAmount} ${entry.currency} written off — ${command.reason}`,
+      correlation_id: context.correlationId ?? null,
+    });
+  } catch (approvalErr) {
+    // Fail-open on the record, like every other writer in the product: the
+    // ledger has already moved, and failing here would report a write-off that
+    // did happen as one that did not.
+    appLogger.warn(
+      { approvalErr, entryId: command.city_ledger_id },
+      "City ledger write-off: failed to record the decision (non-fatal)",
+    );
+  }
+
   appLogger.info(
-    { entryId: command.city_ledger_id, amount: writeOffAmount },
+    {
+      entryId: command.city_ledger_id,
+      amount: writeOffAmount,
+      reasonCode: reason.reason_code,
+    },
     "City ledger entry written off",
   );
   return command.city_ledger_id;

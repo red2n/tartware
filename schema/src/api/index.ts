@@ -24,6 +24,7 @@ export * from "./calculations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./cashier-rows.js";
 export * from "./command-approvals.js";
+export * from "./command-batch-rows.js";
 export * from "./command-center.js";
 export * from "./command-permissions.js";
 export * from "./compliance-utils.js";

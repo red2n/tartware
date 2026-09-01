@@ -22,6 +22,7 @@
 #   PHASE 5c  Per-command authority — role tiers, grants and denies (A02)
 #   PHASE 5d  Dual control — the five commands one person may not run (A04)
 #   PHASE 5e  Night audit precondition bypass — a reason code that has to exist
+#   PHASE 5f  Credit limit override — resolved, authorised, recorded (A05)
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -2521,7 +2522,7 @@ else
     assert_denied "A02: STAFF refused an ADMIN-tier command" "$code"
 
     code=$(auth_cmd "$TOKEN_STAFF" "ar.city_ledger.write_off" \
-      "{\"property_id\":\"$PID_B1\",\"city_ledger_id\":\"$(gen_uuid)\",\"amount\":10,\"reason\":\"A02 authority probe\"}")
+      "{\"property_id\":\"$PID_B1\",\"city_ledger_id\":\"$(gen_uuid)\",\"amount\":10,\"reason_code\":\"WO_SMALL_BALANCE\",\"reason\":\"A02 authority probe\"}")
     assert_denied "A02: STAFF refused an OWNER-tier command" "$code"
 
     # ── the grant admits one command, without promoting anyone ───────────────
@@ -2837,6 +2838,129 @@ else
     pass "Bypass records a real role, not a literal (role=$ROLE)"
   else
     fail "Bypass records a real role" "role_at_approval=$ROLE"
+  fi
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5f — CREDIT LIMIT OVERRIDE (A05)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# `CREDIT_LIMIT_EXCEEDED` was a hard throw with no way past it. The AR account's
+# available credit is the reachable half of that block — a city-ledger transfer
+# beyond it refuses, and the only way through used to be raising the limit,
+# which rewrites the control rather than recording that it was overridden.
+#
+#   A transfer over the limit, no override      refused, no city ledger entry
+#   An override citing a code that is not real  refused, no bypass row
+#   A code from the wrong category              refused — the trail would lie
+#   A real CREDIT_LIMIT code the role clears    accepted, one credit_limit_check
+#                                               row carrying the resolved code
+#                                               and the operator's real role
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5f: Credit Limit Override                                     ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# `|| true` is not defensive clutter: the suite runs under `set -euo pipefail`,
+# so a query naming a column that does not exist kills the whole run at the
+# phase that asked it — which is exactly what `companies.id` (it is
+# `company_id`) did the first time this phase ran.
+cl_sql() {
+  PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+    -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" \
+    -d "${DB_NAME:-tartware}" -tAc "$1" 2>/dev/null | head -1 | tr -d '[:space:]' || true
+}
+
+CL_PROP=$(cl_sql "select id from properties where tenant_id='$TID_A' limit 1")
+# A folio with something on it — the transfer refuses a zero balance before it
+# ever reaches the credit check, which would prove nothing.
+CL_FOLIO=$(cl_sql "select folio_id from folios where tenant_id='$TID_A' and COALESCE(balance,0) > 1 order by balance desc limit 1")
+CL_COMPANY=$(cl_sql "select company_id from companies where tenant_id='$TID_A' limit 1")
+
+if [[ -z "$CL_PROP" || -z "$CL_FOLIO" || -z "$CL_COMPANY" ]]; then
+  skip "Credit limit override fixture" "no property/folio-with-balance/company for tenant A"
+else
+  CUR_TID="$TID_A"
+  # An account whose credit is a dollar — every transfer of a real folio
+  # balance exceeds it, which is the situation the override exists for.
+  send_command "CMD ar: account with a one-dollar limit" \
+    "ar.account.create" \
+    "{\"property_id\":\"$CL_PROP\",\"company_id\":\"$CL_COMPANY\",\"company_name\":\"Tight Credit Ltd $RUN_TAG\",\"credit_limit\":1,\"payment_terms\":\"NET30\",\"currency\":\"USD\"}"
+  wait_kafka 6
+
+  CL_ACCT=$(cl_sql "select ar_account_id from ar_accounts where tenant_id='$TID_A' and credit_limit = 1 order by created_at desc limit 1")
+
+  if [[ -z "$CL_ACCT" ]]; then
+    skip "Credit limit override" "AR account with the test limit was not created"
+  else
+    cl_cmd() {
+      local payload="$1"
+      curl -s -o "$RESP_FILE" -w "%{http_code}" \
+        -X POST "$GW/v1/commands/ar.city_ledger.transfer/execute" \
+        -H "Authorization: Bearer $TOKEN_A" \
+        -H "Content-Type: application/json" \
+        -H "Idempotency-Key: $(gen_uuid)" \
+        -d "{\"tenant_id\":\"$TID_A\",\"payload\":$payload}"
+    }
+    cl_base="\"property_id\":\"$CL_PROP\",\"folio_id\":\"$CL_FOLIO\",\"ar_account_id\":\"$CL_ACCT\",\"amount\":500"
+    CL_BEFORE=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check'")
+
+    # 1. No override at all — the refusal the product always had. Async, so what
+    #    proves it is that no entry and no bypass row appear.
+    code=$(cl_cmd "{$cl_base}")
+    assert_http "Transfer over the limit is accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    LEDGERED=$(cl_sql "select count(*) from ar_city_ledger where tenant_id='$TID_A' and ar_account_id='$CL_ACCT'")
+    assert_eq "No override means no city ledger entry" "0" "$LEDGERED"
+
+    # 2. An override with no reason code at all — refused at validation, before
+    #    the command is accepted.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true}")
+    assert_http "Override with no reason code is refused" "4" "$code"
+
+    # 3. A code that does not resolve.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true,\"credit_limit_override_reason_code\":\"NOT_A_REAL_CODE\"}")
+    assert_http "Override citing an unknown code accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    AFTER=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check'")
+    assert_eq "Unknown reason code records no override" "$CL_BEFORE" "$AFTER"
+
+    # 4. A real code from another category — a room-move reason on a credit
+    #    decision produces a trail that reads as a lie.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true,\"credit_limit_override_reason_code\":\"RM_MAINT\"}")
+    assert_http "Override citing the wrong category accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    AFTER=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check'")
+    assert_eq "Wrong-category reason code records no override" "$CL_BEFORE" "$AFTER"
+
+    # 5. The real thing — a CREDIT_LIMIT code this operator's role clears.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true,\"credit_limit_override_reason_code\":\"CL_COMPANY_GUARANTEED\",\"credit_limit_override_notes\":\"multi-tenant suite $RUN_TAG\"}")
+    assert_http "Override with a seeded CREDIT_LIMIT code accepted" "20[02]" "$code"
+    sleep 8
+
+    ROWS=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check' and reason_code='CL_COMPANY_GUARANTEED'")
+    assert_eq "The authorised override records one row" "1" "$ROWS"
+
+    LEDGERED=$(cl_sql "select count(*) from ar_city_ledger where tenant_id='$TID_A' and ar_account_id='$CL_ACCT'")
+    assert_eq "…and the transfer it authorised actually happened" "1" "$LEDGERED"
+
+    ROLE=$(cl_sql "select role_at_approval from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check' and reason_code='CL_COMPANY_GUARANTEED' limit 1")
+    if [[ -n "$ROLE" && "$ROLE" != "GM_OVERRIDE" && "$ROLE" != "FORCE_OVERRIDE" ]]; then
+      pass "Override records a real role, not a literal (role=$ROLE)"
+    else
+      fail "Override records a real role" "role_at_approval=$ROLE"
+    fi
+
+    NOTES=$(PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+      -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" \
+      -tAc "select reason_notes from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check' and reason_code='CL_COMPANY_GUARANTEED' limit 1" 2>/dev/null | head -1)
+    case "$NOTES" in
+      FORCED:*) pass "Override row is marked forced" ;;
+      *)        fail "Override row is marked forced" "reason_notes=$NOTES" ;;
+    esac
   fi
 fi
 

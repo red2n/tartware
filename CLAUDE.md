@@ -279,9 +279,9 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A02 | Critical | No per-command permission, so no way to express an override as a distinct right. Everything is `MANAGER`. | **done 29 Aug** |
 | A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | **done 28 Aug** |
 | A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | **done 30 Aug** |
-| A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | open |
-| A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | open |
-| A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | open |
+| A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | **done 1 Sep** — blacklist landed with `assertOverrideAuthority`; the credit-limit half was schema-only (fields on three commands, read by nothing) and now enforces on payment authorize, capture and city-ledger transfer. |
+| A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | **partly done 1 Sep** — mandatory RATE_OVERRIDE code, authority check, `flow_approvals` record. The **thresholds are still read by nothing**: that needs `resolveSettings` moved out of core-service to a shared entry point. |
+| A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | **partly done 1 Sep** — mandatory WRITE_OFF code (6 seeded), authority check, `write_off` record row. Amount threshold outstanding, with A06. The other two write-offs (`billing.ar.write_off`, `billing.suspense.write_off`) still take free text; both have UI callers, so a reason picker comes with them. |
 | A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | open |
 | A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
 | A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | **done 30 Aug** |
@@ -508,6 +508,63 @@ name who acted. `required_role` is enforced inside the same transaction that rea
 unrecognised string scoring 0 would have admitted everyone. Approval is gated; rejection is not,
 since declining needs no more authority than seeing the request. 8 tests in
 `Apps/billing-service/tests/approval-service.test.ts`.
+
+### Two things the E2E found that no unit test could (1 Sep 2026)
+
+**`CommandError.retryable` was void at runtime, in every consumer.** Services run from source
+through tsx and reach siblings by specifier, so a tsconfig path of the form
+`"@tartware/pkg/*": ["../../pkg/src/*"]` silently misses any export whose *file* name differs from
+its *export* name. Three did — `/lifecycle` (consumer-lifecycle.ts), `/idempotency`
+(idempotency-repository.ts), `/batch` (batch-runner.ts) — and fell through the exports map to
+`dist` while their neighbours resolved to `src`. Two copies of the module, two `CommandError`
+classes, and `error instanceof CommandError` false for exactly the errors `isRetryableByDefault`
+exists to recognise. Every deterministic rejection burned the full 4-attempt ladder (~36s) and
+stalled its partition before landing in the DLQ anyway — with a DLQ entry whose own JSON read
+`"retryable": false`. Findings 02 and 03 were not enforced by anything for as long as this existed.
+
+The fix is a **value brand**: `COMMAND_ERROR_BRAND` plus `isCommandError`, which checks the brand
+and the two fields the policy reads. `instanceof` is not used, because a monorepo in this shape can
+always produce two identities and a safety default must not depend on getting resolution right
+forever. The three subpaths also got explicit tsconfig paths in all six service tsconfigs, so the
+split is gone as well as survivable. Guarded three ways: cross-copy tests in `retry-policy.test.ts`
+(a `ForeignCommandError` — same shape and brand, unrelated identity — because every existing test
+imported one copy and so could never see this), and a guardrail in
+`check-shared-framework-usage.mjs` that fails any tsconfig mapping a package's `/*` to `src` while
+an exported subpath has no source file of that name.
+
+**Reference reason codes were invisible to every tenant but the demo one.** `resolveReasonCode`
+resolves property → tenant → the all-zero **system** tenant, and 17 codes — every REVERSAL,
+NIGHT_AUDIT, BLACKLIST and CREDIT_LIMIT one — were seeded under tenant `1111…` in
+`default_seed.json`. So a night audit could not state why it skipped a precondition and no blacklist
+override could name a code, on every property except the sample. All 17 moved into
+`scripts/tables/09-reference-data/08_reason_codes.sql` beside the 23 that were always there;
+reference data the handlers require ships with the schema. `checkOverrideReasonCodes` in
+`flow:integrity` reads the categories out of the handlers themselves (both call shapes) and fails
+any with no system-tenant row. 88 → 100 checks.
+
+**Also: `pnpm run build` is not a clean build.** Deleting `dist/` leaves `tsconfig.tsbuildinfo`,
+and tsc then believes declarations are current — emitting `.js` and `.d.ts.map` but no `.d.ts`, which
+surfaces far away as `TS7016 … implicitly has an 'any' type` in whichever service imports the
+subpath. A real clean is `nx reset` + `rm -rf */dist` + `rm **/*.tsbuildinfo`.
+
+### Schema-first, now enforced (1 Sep 2026)
+
+`pnpm run check:schema-first` (`scripts/check-schema-first-tables.mjs`, wired into `check`, so
+`build` runs it) reads every `CREATE TABLE` and fails any without a declared shape in `schema/` —
+`<Name>Schema`, `<Name>RowSchema` or `<Name>Row`, singular or plural. **253 tables, 241 typed, 12
+known untyped.** The rule was the repo's first non-negotiable and the only one nothing checked.
+
+Two tables had their row shapes in `Apps/` — the exact prohibition: `command_batches` /
+`command_batch_items` (`CommandBatchRow`, `CommandBatchItemRow`, `CommandBatchDetail`, read from two
+files) and `approval_requests` (`CommandApprovalRow`, read from three, while billing's own queue
+reads the same table through a private shape). Both now live in `schema/src/api/`.
+
+`KNOWN_UNTYPED` holds the remaining 12 with a note each, and **the check also fails when an entry
+becomes stale**, so the list can only shrink. Nine are the AR ledger — `ar_accounts`,
+`ar_city_ledger`, `ar_disputes`, `ar_aging_snapshots`, `ar_cash_applications`, `ar_dunning_events`,
+`folio_windows`, `invoice_sequences`, `payment_gateway_webhooks` — all read through inline
+`query<{ … }>` generics, every caller re-deriving the shape. That is the paydown queue, and it is
+the corner that moves money.
 
 ### Throughput (20K ops/sec target)
 

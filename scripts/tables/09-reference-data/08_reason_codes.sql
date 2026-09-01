@@ -141,4 +141,54 @@ VALUES
     ('00000000-0000-0000-0000-000000000000', 'CX_DUPLICATE',   'Duplicate Booking',            'CANCELLATION', FALSE, 'NONE', FALSE, 6)
 ON CONFLICT DO NOTHING;
 
+-- =====================================================
+-- SEED DATA: Override reason codes the handlers resolve
+-- =====================================================
+--
+-- These are seeded here, under the all-zero system tenant, for the same reason
+-- the block above is: `resolveReasonCode` resolves property → tenant → system
+-- defaults, and the system level is the only one a tenant nobody has configured
+-- can see. They spent a release under the demo tenant in
+-- scripts/data/defaults/default_seed.json instead, where no other tenant could
+-- resolve them — so a night audit could not state why it skipped a
+-- precondition, and a blacklisted guest could not be booked under any code, on
+-- every property except the sample one. Reference data the handlers require
+-- ships with the schema.
+
+INSERT INTO reason_codes (tenant_id, reason_code, reason_name, reason_description, reason_category, requires_approval, approval_level, has_financial_impact, display_order)
+VALUES
+    -- Reversal Reasons
+    ('00000000-0000-0000-0000-000000000000', 'KEYED_IN_ERROR', 'Keyed in error', 'Operator selected the wrong reservation or pressed the wrong action.', 'REVERSAL', FALSE, 'NONE', FALSE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'GUEST_DID_NOT_ARRIVE', 'Guest did not arrive', 'Check-in was recorded but the guest never took occupancy.', 'REVERSAL', FALSE, 'NONE', FALSE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'ROOM_UNSUITABLE', 'Room unsuitable', 'Guest refused the room at arrival; check-in undone pending reassignment.', 'REVERSAL', FALSE, 'NONE', FALSE, 3),
+    ('00000000-0000-0000-0000-000000000000', 'SYSTEM_ERROR', 'System or interface error', 'Status was set by a failed integration or duplicate message.', 'REVERSAL', FALSE, 'NONE', FALSE, 4),
+    ('00000000-0000-0000-0000-000000000000', 'EARLY_DEPARTURE_REVERSED', 'Departure recorded in error', 'Guest is still in house; check-out undone and folio reopened.', 'REVERSAL', TRUE, 'NONE', TRUE, 5),
+    ('00000000-0000-0000-0000-000000000000', 'CANCELLED_IN_ERROR', 'Cancelled in error', 'Cancellation was not authorised by the guest; booking reinstated.', 'REVERSAL', TRUE, 'NONE', TRUE, 6),
+    ('00000000-0000-0000-0000-000000000000', 'GUEST_REQUEST', 'Guest requested reversal', 'Guest asked for the change after the fact.', 'REVERSAL', TRUE, 'NONE', TRUE, 7),
+
+    -- Night Audit Reasons
+    ('00000000-0000-0000-0000-000000000000', 'NA_ARRIVALS_PENDING', 'Arrivals unresolved at roll', 'Audit run with arrivals still due in; they are carried to the next business date.', 'NIGHT_AUDIT', TRUE, 'NONE', TRUE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'NA_DEPARTURES_PENDING', 'Departures unresolved at roll', 'Audit run with in-house guests past their departure date.', 'NIGHT_AUDIT', TRUE, 'NONE', TRUE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'NA_FOLIOS_UNBALANCED', 'Folios unbalanced at roll', 'Audit run over open folios that do not balance; variance is carried forward.', 'NIGHT_AUDIT', TRUE, 'NONE', TRUE, 3),
+    ('00000000-0000-0000-0000-000000000000', 'NA_SYSTEM_RECOVERY', 'System recovery', 'Audit re-run after an outage or failed run; preconditions already assessed.', 'NIGHT_AUDIT', TRUE, 'NONE', FALSE, 4),
+
+    -- Blacklist Reasons
+    ('00000000-0000-0000-0000-000000000000', 'BL_GM_CLEARED', 'Blacklist cleared by the GM', 'The general manager has personally authorised this booking despite the listing.', 'BLACKLIST', TRUE, 'GM', FALSE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'BL_LISTING_DISPUTED', 'Listing disputed, under review', 'The guest contests the listing and it is being reviewed; the booking is taken meanwhile.', 'BLACKLIST', TRUE, 'MANAGER', FALSE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'BL_WRONG_PROFILE', 'Listing belongs to another profile', 'A duplicate or mismatched guest profile carries the listing; merge is pending.', 'BLACKLIST', TRUE, 'MANAGER', FALSE, 3),
+
+    -- Credit Limit Reasons
+    ('00000000-0000-0000-0000-000000000000', 'CL_COMPANY_GUARANTEED', 'Guaranteed by the company account', 'The balance is guaranteed by a corporate account in good standing.', 'CREDIT_LIMIT', TRUE, 'MANAGER', TRUE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'CL_LIMIT_UNDER_REVIEW', 'Limit under review', 'A credit review is in progress and the configured limit is known to be stale.', 'CREDIT_LIMIT', TRUE, 'MANAGER', TRUE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'CL_DIRECTOR_AUTHORIZED', 'Authorised by the director of finance', 'Exposure beyond the configured limit accepted on the finance director''s authority.', 'CREDIT_LIMIT', TRUE, 'DIRECTOR', TRUE, 3),
+
+    -- Write-Off Reasons
+    ('00000000-0000-0000-0000-000000000000', 'WO_BAD_DEBT', 'Uncollectable bad debt', 'Collection attempts are exhausted and the balance is written off to bad debt expense.', 'WRITE_OFF', TRUE, 'DIRECTOR', TRUE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'WO_SMALL_BALANCE', 'Small balance below the collection floor', 'The residual costs more to pursue than it is worth; cleared to keep the ledger honest.', 'WRITE_OFF', TRUE, 'MANAGER', TRUE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'WO_DISPUTE_SETTLED', 'Settled dispute', 'The guest or company disputed the charge and a settlement was agreed below the balance.', 'WRITE_OFF', TRUE, 'MANAGER', TRUE, 3),
+    ('00000000-0000-0000-0000-000000000000', 'WO_GOODWILL', 'Goodwill', 'Balance forgiven to keep a relationship the property values more than the amount.', 'WRITE_OFF', TRUE, 'DIRECTOR', TRUE, 4),
+    ('00000000-0000-0000-0000-000000000000', 'WO_INSOLVENCY', 'Debtor insolvent', 'The debtor has entered administration or bankruptcy and the claim will not be met.', 'WRITE_OFF', TRUE, 'GM', TRUE, 5),
+    ('00000000-0000-0000-0000-000000000000', 'WO_BILLING_ERROR', 'Billing error', 'The balance should never have been raised; written off rather than pursued.', 'WRITE_OFF', TRUE, 'MANAGER', TRUE, 6)
+ON CONFLICT DO NOTHING;
+
 \echo 'reason_codes table created successfully!'

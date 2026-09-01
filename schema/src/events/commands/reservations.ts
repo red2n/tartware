@@ -340,6 +340,18 @@ export const ReservationRateOverrideCommandSchema = z
 		rate_code: RateCodeSchema.optional(),
 		total_amount: z.coerce.number().nonnegative().optional(),
 		currency: z.string().length(3).optional(),
+		/**
+		 * Mandatory, and resolved against the RATE_OVERRIDE category (A06).
+		 *
+		 * `reason` below was the whole record of why a rate moved: optional free
+		 * text, written into `internal_notes`. Six RATE_OVERRIDE codes have been
+		 * seeded since the table was created — a manager's discount, a competitor
+		 * match, service recovery — each carrying the `approval_level` the
+		 * decision takes, and nothing resolved any of them. A rate override is
+		 * the most common way money leaves a hotel; it should be as answerable as
+		 * a room move already is.
+		 */
+		reason_code: z.string().min(2).max(50),
 		reason: z.string().max(500).optional(),
 		metadata: z.record(z.unknown()).optional(),
 		idempotency_key: z.string().max(120).optional(),

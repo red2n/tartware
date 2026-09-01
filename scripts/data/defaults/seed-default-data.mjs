@@ -595,14 +595,20 @@ const upsertMarketSegments = async (client, segments = []) => {
 };
 
 /**
- * Reason codes for lifecycle reversals (WS-04).
+ * Reason codes a deployment adds for itself.
  *
- * `reason_codes` has existed as a table with no rows and no reader since it was
- * created. The reversal commands are the first thing that requires one, and a
- * reversal cannot be performed without a code — so an unseeded install would
- * have a check-in nobody can undo, which is the gap this closes.
+ * The product's own codes are **not** seeded here any more. They were, under
+ * this file's demo tenant, and that made them invisible: `resolveReasonCode`
+ * resolves property → tenant → the all-zero system tenant, so a code filed
+ * against one tenant cannot be resolved by any other. Every reference code the
+ * handlers require now ships with the schema, in
+ * scripts/tables/09-reference-data/08_reason_codes.sql, alongside the 23 that
+ * were always there.
  *
- * Seeded tenant-wide (`property_id IS NULL`) so every property inherits them.
+ * This stays because a dataset may legitimately carry codes of its own; it does
+ * nothing when the dataset names none. Anything added here must state its
+ * `tenantId` deliberately — the system tenant for a code every tenant should
+ * see, its own tenant for one only that deployment wants.
  */
 const upsertReasonCodes = async (client, reasonCodes = []) => {
   for (const reason of reasonCodes) {

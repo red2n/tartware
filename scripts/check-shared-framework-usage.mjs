@@ -12,7 +12,7 @@
  * Add a rule here whenever a shared entry point becomes the only right way to
  * do something. Keep `allow` lists tight and justified.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 /**
@@ -234,6 +234,79 @@ for (const file of tracked) {
       }
     });
   }
+}
+
+// Every subpath a workspace package exports must resolve to the *same* copy of
+// that package as every other subpath, or a class crosses a module boundary and
+// stops being itself.
+//
+// This is not theoretical. Services run from source through tsx and reach their
+// siblings by specifier, so a tsconfig path of the form
+// "@tartware/pkg/*": ["../../pkg/src/*"] silently misses any export whose file
+// name differs from its export name — `/lifecycle` for consumer-lifecycle.ts,
+// `/idempotency` for idempotency-repository.ts, `/batch` for batch-runner.ts.
+// Those three fell through to dist while their neighbours resolved to src, which
+// gave every consumer two CommandError classes and made
+// `error instanceof CommandError` false for errors the retry policy was written
+// to recognise. Deterministic failures then burned the full backoff ladder and
+// stalled their partition — with a DLQ entry whose own JSON read
+// "retryable": false. Nothing failed loudly and every unit test passed.
+const unmappedSubpaths = [];
+for (const pkgJson of readdirSync("Apps", { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => `Apps/${entry.name}/package.json`)
+  .filter((file) => existsSync(file))) {
+  let meta;
+  try {
+    meta = JSON.parse(readFileSync(pkgJson, "utf8"));
+  } catch {
+    continue;
+  }
+  const pkgDir = pkgJson.replace(/\/package\.json$/, "");
+  for (const [subpath, target] of Object.entries(meta.exports ?? {})) {
+    if (subpath === ".") continue;
+    const importTarget = typeof target === "string" ? target : target?.import;
+    if (typeof importTarget !== "string") continue;
+    const sub = subpath.replace(/^\.\//, "");
+    // What the `/*` wildcard in a consumer's tsconfig would resolve to.
+    if (!existsSync(`${pkgDir}/src/${sub}.ts`)) {
+      unmappedSubpaths.push({ pkg: meta.name, subpath, file: importTarget });
+    }
+  }
+}
+
+// `tracked` is source files only, so the tsconfigs are read directly — the
+// first version of this check filtered them out of `tracked` and asserted
+// nothing at all, which is the failure mode it exists to catch.
+const consumersWithWildcard = readdirSync("Apps", { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => `Apps/${entry.name}/tsconfig.json`)
+  .filter((file) => existsSync(file))
+  .map((file) => ({ file, text: readFileSync(file, "utf8") }));
+
+const missingExplicitPath = [];
+for (const { pkg, subpath } of unmappedSubpaths) {
+  for (const { file, text } of consumersWithWildcard) {
+    if (!text.includes(`"${pkg}/*"`)) continue;
+    const sub = subpath.replace(/^\.\//, "");
+    if (!text.includes(`"${pkg}/${sub}"`)) {
+      missingExplicitPath.push({ file, pkg, subpath: sub });
+    }
+  }
+}
+
+if (missingExplicitPath.length > 0) {
+  console.error("\nWorkspace subpath resolves to a second copy of its package:\n");
+  for (const { file, pkg, subpath } of missingExplicitPath) {
+    console.error(`  ${file}  maps ${pkg}/* to src/, but ${pkg}/${subpath} has no source file of that name`);
+  }
+  console.error(
+    `\nAdd an explicit tsconfig path for each one, pointing at the real file, so the\n` +
+      `subpath resolves to src like its neighbours instead of falling through the\n` +
+      `package exports map to dist. Two copies of a module means two identities for\n` +
+      `every class in it, and \`instanceof\` between them is false.\n`,
+  );
+  process.exit(1);
 }
 
 // A workspace import that the package does not declare resolves locally through

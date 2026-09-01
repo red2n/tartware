@@ -656,6 +656,95 @@ function checkNoUndeclaredControls() {
 	}
 }
 
+/**
+ * Every reason-code category a handler resolves has reference rows it can find.
+ *
+ * `resolveReasonCode` resolves property → tenant → the all-zero **system**
+ * tenant, and that last level is the only one a freshly created tenant can see.
+ * Seventeen codes — every REVERSAL, NIGHT_AUDIT, BLACKLIST and CREDIT_LIMIT one
+ * — spent a release seeded against the demo tenant in default_seed.json
+ * instead, so on any other tenant the night audit could not state why it
+ * skipped a precondition and no blacklist override could name a code. The
+ * commands were correct; the data they resolve against was unreachable, which
+ * no test asserted because every unit test mocks the lookup.
+ *
+ * The categories come from the handlers themselves rather than a list here: a
+ * new override that resolves a category nobody seeded fails this check on the
+ * day it is written.
+ */
+function checkOverrideReasonCodes() {
+	const flow = "Cross-Flow";
+	const SYSTEM_TENANT = "00000000-0000-0000-0000-000000000000";
+
+	const seed = join(SCRIPTS, "09-reference-data", "08_reason_codes.sql");
+	if (!existsSync(seed)) {
+		fail(flow, "Reason code reference seed", `missing ${relative(ROOT, seed)}`);
+		return;
+	}
+	const sql = readFileSync(seed, "utf-8");
+	const seeded = new Set<string>();
+	for (const line of sql.split("\n")) {
+		if (!line.includes(SYSTEM_TENANT)) continue;
+		for (const match of line.matchAll(/'([A-Z][A-Z_]{2,})'/g)) {
+			seeded.add(match[1]!);
+		}
+	}
+
+	// `category: "X"` is how every call site names what it is resolving.
+	const wanted = new Map<string, string>();
+	const walk = (dir: string): void => {
+		if (!existsSync(dir)) return;
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) walk(full);
+			else if (entry.name.endsWith(".ts")) {
+				const content = readFileSync(full, "utf-8");
+				if (!content.includes("resolveReasonCode")) continue;
+				// Two call shapes: the shared helper takes a named `category`,
+				// reservations' older wrapper takes it as the last positional
+				// argument. Both are read rather than one being normalised away,
+				// because a check that only understands one of them is how the
+				// category it does not understand goes unseeded.
+				for (const match of content.matchAll(
+					/resolveReasonCode(?:<[^>]*>)?\s*\(([\s\S]{0,400}?)\)\s*;/g,
+				)) {
+					const call = match[1]!;
+					const named = call.match(/category:\s*"([A-Z][A-Z_]+)"/);
+					const positional = [...call.matchAll(/"([A-Z][A-Z_]{2,})"/g)].pop();
+					const category = named?.[1] ?? positional?.[1];
+					if (category && !wanted.has(category)) {
+						wanted.set(category, relative(ROOT, full));
+					}
+				}
+			}
+		}
+	};
+	for (const service of readdirSync(APPS, { withFileTypes: true })) {
+		if (service.isDirectory()) walk(join(APPS, service.name, "src"));
+	}
+
+	if (wanted.size === 0) {
+		fail(
+			flow,
+			"Reason code categories resolved",
+			"no `category: \"…\"` found beside a resolveReasonCode call — scan is vacuous",
+		);
+		return;
+	}
+
+	for (const [category, file] of wanted) {
+		if (seeded.has(category)) {
+			pass(flow, `Reason codes: ${category}`, `seeded under the system tenant`);
+		} else {
+			fail(
+				flow,
+				`Reason codes: ${category}`,
+				`resolved by ${file} but no system-tenant row seeds it — every tenant but the seed one refuses the override`,
+			);
+		}
+	}
+}
+
 function checkManifestCompliance() {
   const manifestPaths = [
     join(APPS, "billing-service", "src", "flow-manifest.ts"),
@@ -706,6 +795,7 @@ function checkManifestCompliance() {
 
 checkDeclaredControls();
 checkNoUndeclaredControls();
+checkOverrideReasonCodes();
 checkManifestCompliance();
 
 // ─── Report ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,9 @@
-import type { CommandApprovalTicket, QueryExecutor } from "@tartware/schemas";
+import type { CommandApprovalRow, CommandApprovalTicket, QueryExecutor } from "@tartware/schemas";
+
+// Declared in schema/src/api/command-approvals.ts beside the dual-control map
+// that decides which commands land in this table. Re-exported for the callers
+// that already take it from here.
+export type { CommandApprovalRow };
 
 /**
  * The approval queue, as the command pipeline uses it.
@@ -147,34 +152,6 @@ const REJECT_SQL = `
      AND status = 'PENDING'
   RETURNING ${APPROVAL_COLUMNS}
 `;
-
-/** A deferred command's approval row, as stored. */
-export type CommandApprovalRow = {
-  approval_id: string;
-  tenant_id: string;
-  property_id: string | null;
-  command_name: string;
-  request_id: string;
-  operation_type: string;
-  entity_type: string;
-  entity_id: string;
-  operation_payload: Record<string, unknown>;
-  description: string | null;
-  requested_by: string;
-  requested_by_name: string | null;
-  requested_by_role: string | null;
-  requested_at: Date | string;
-  status: string;
-  required_role: string;
-  expires_at: Date | string;
-  actioned_by: string | null;
-  actioned_by_name: string | null;
-  actioned_at: Date | string | null;
-  action_reason: string | null;
-  dispatched_command_id: string | null;
-  created_at: Date | string;
-  updated_at: Date | string | null;
-};
 
 export type RaiseCommandApprovalInput = {
   tenantId: string;

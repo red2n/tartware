@@ -108,6 +108,12 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
       ],
       gates: [
         {
+          gateName: "rate_override",
+          guardsCommand: "reservation.rate_override",
+          description:
+            "Records every rate override, under a RATE_OVERRIDE code the caller's role clears",
+        },
+        {
           gateName: "room_move",
           guardsCommand: "reservation.room_move",
           description: "Records every move, with the reason code and whether a gate was forced",

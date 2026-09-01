@@ -101,7 +101,7 @@ export const approvalLevelMinRole = (
 			`Unknown reason code approval_level "${level}" — expected one of ${APPROVAL_LEVELS.join(", ")}`,
 		);
 	}
-	return APPROVAL_LEVEL_MIN_ROLE[normalised as ApprovalLevel];
+	return APPROVAL_LEVEL_MIN_ROLE[normalised];
 };
 
 /**

@@ -51,6 +51,9 @@
       "@tartware/command-consumer-utils": [
         "../../command-consumer-utils/src/index.ts"
       ],
+      "@tartware/command-consumer-utils/lifecycle": ["../../command-consumer-utils/src/consumer-lifecycle.ts"],
+      "@tartware/command-consumer-utils/idempotency": ["../../command-consumer-utils/src/idempotency-repository.ts"],
+      "@tartware/command-consumer-utils/batch": ["../../command-consumer-utils/src/batch-runner.ts"],
       "@tartware/command-consumer-utils/*": [
         "../../command-consumer-utils/src/*"
       ],
