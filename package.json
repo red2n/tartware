@@ -32,7 +32,7 @@
     "build:ui": "npx nx run @tartware/schemas:build && node scripts/stamp-ui-version.mjs && npx nx run @tartware/pms-ui:build",
     "clean": "npx nx run-many -t clean",
     "clean:all": "node ./scripts/clean-all.mjs",
-    "check": "pnpm run check:guardrails && pnpm run check:frameworks && pnpm run check:schema-first && pnpm run check:command-coverage && pnpm run check:loadtest && pnpm run flow:integrity && pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast && pnpm run check:i18n",
+    "check": "pnpm run check:guardrails && pnpm run check:frameworks && pnpm run check:schema-first && pnpm run check:command-coverage && pnpm run check:loadtest && pnpm run sql:contracts && pnpm run flow:integrity && pnpm run lint && pnpm run biome && pnpm run knip && pnpm run check:contrast && pnpm run check:i18n",
     "check:contrast": "node UI/shared-styles/check-contrast.mjs",
     "check:i18n": "node UI/pms-ui/check-i18n.mjs",
     "lint": "npx nx run-many -t lint",

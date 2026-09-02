@@ -286,7 +286,21 @@ function extractTemplateLiterals(source: string): { sql: string; offset: number 
       literal += source[i];
       i++;
     }
-    if (/\b(SELECT|INSERT|UPDATE|DELETE)\b/i.test(literal)) out.push({ sql: literal, offset: start });
+    // `DELETE` alone is not enough to call a literal SQL. Postgres has exactly
+    // one delete syntax — `DELETE FROM` — while English has "delete them from
+    // KNOWN_UNREACHABLE", which is an assertion message in
+    // flow-command-catalog.test.ts and parsed here as a query against a table
+    // named `known_unreachable`. That single false positive failed
+    // `sql:contracts` on every CI run for five days.
+    //
+    // The comment above says restricting the scan to template literals keeps
+    // prose out. It does not: an assertion message is a template literal too.
+    // Only DELETE is tightened, because the other three keywords are already
+    // unambiguous enough in practice and narrowing them drops real statements —
+    // `UPDATE public.rooms r SET …` does not match a naive `UPDATE <table> SET`.
+    if (/\b(SELECT|INSERT|UPDATE)\b|\bDELETE\s+FROM\b/i.test(literal)) {
+      out.push({ sql: literal, offset: start });
+    }
     i++;
   }
   return out;
