@@ -1,5 +1,8 @@
-import { SYSTEM_ACTOR_ROLE } from "@tartware/command-consumer-utils/command-utils";
-import type { ReservationStatus } from "@tartware/schemas";
+import {
+  assertForcedOverrideAuthority,
+  SYSTEM_ACTOR_ROLE,
+} from "@tartware/command-consumer-utils/command-utils";
+import type { ReasonCodeRow, ReservationStatus } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import {
@@ -32,6 +35,7 @@ import {
   findBestAvailableRoom,
   ReservationCommandError,
   type ReservationUpdatePayload,
+  resolveReasonCode,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -81,6 +85,31 @@ export const checkInReservation = async (
   // CHECKED_IN (already in-house), CHECKED_OUT (stay is over) or CANCELLED
   // (needs an explicit reinstatement, not a side effect of check-in), and the
   // table is what says so rather than a literal array here.
+  // A08. Check-in declares two gates — reservation_status_check below and
+  // deposit_required_check further down — and both were written inside
+  // `if (command.force)` with nothing checking who was forcing. They were the
+  // last two of the repo's three `kind: "gate"` controls to be left that way.
+  //
+  // Resolved before either refusal, on room move's reasoning: one forced
+  // check-in is one decision by one person, whether it goes past the lifecycle
+  // guard, the deposit schedule, or both. The schema makes reason_code
+  // mandatory whenever force is set, so this cannot be reached without one.
+  const overrideReason: ReasonCodeRow | null = command.force
+    ? await resolveReasonCode(
+        tenantId,
+        reservation.property_id ?? null,
+        command.reason_code as string,
+        "CHECK_IN_OVERRIDE",
+      )
+    : null;
+
+  if (overrideReason) {
+    assertForcedOverrideAuthority(overrideReason, options.actorRole, {
+      commandName: "reservation.check_in",
+      gateName: "reservation_status_check",
+    });
+  }
+
   const { forced: isForcedReinstatement } = assertReservationTransition(
     "reservation.check_in",
     reservation.status as ReservationStatus,
@@ -88,7 +117,7 @@ export const checkInReservation = async (
     { code: "INVALID_STATUS_FOR_CHECKIN", force: Boolean(command.force) },
   );
 
-  if (isForcedReinstatement) {
+  if (isForcedReinstatement && overrideReason) {
     // Overriding a lifecycle guard is a financial/operational control bypass —
     // log it the same way the deposit gate below does.
     await recordFlowApproval({
@@ -101,7 +130,7 @@ export const checkInReservation = async (
       approvedBy: options.actorId ?? null,
       roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
       forced: true,
-      reasonCode: "FORCE_CHECK_IN_REINSTATE",
+      reasonCode: overrideReason.reason_code,
       reasonNotes:
         command.notes ??
         `Check-in forced from status ${reservation.status}; reservation reinstated`,
@@ -202,7 +231,7 @@ export const checkInReservation = async (
   // 3. S26: Enforce blocking deposit schedules before check-in.
   // force=true is an operator override of a financial control, so it is logged
   // to flow_approvals the same way night audit logs skip_preconditions.
-  if (command.force) {
+  if (command.force && overrideReason) {
     await recordFlowApproval({
       tenantId,
       propertyId: reservation?.property_id ?? null,
@@ -213,7 +242,7 @@ export const checkInReservation = async (
       approvedBy: options.actorId ?? null,
       roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
       forced: true,
-      reasonCode: "FORCE_CHECK_IN",
+      reasonCode: overrideReason.reason_code,
       reasonNotes: command.notes ?? "Check-in forced with force=true; deposit gate bypassed",
       correlationId: options.correlationId ?? null,
     });
@@ -460,6 +489,30 @@ export const checkOutReservation = async (
     );
   }
 
+  // A08, check-out's half. `folio_settlement_check` is the third of the three
+  // controls the registry declares as a real gate, and forcing it does not
+  // waive the balance — it moves it to city-ledger AR. That is a credit
+  // decision, so it is measured against the code's approval_level like every
+  // other override, rather than proceeding on the caller's own authority.
+  //
+  // `express` is deliberately not treated as an override: it *settles* the
+  // folio rather than bypassing the check, so it needs no code and no role.
+  const checkOutReason: ReasonCodeRow | null = command.force
+    ? await resolveReasonCode(
+        tenantId,
+        reservation.property_id ?? null,
+        command.reason_code as string,
+        "CHECK_OUT_OVERRIDE",
+      )
+    : null;
+
+  if (checkOutReason) {
+    assertForcedOverrideAuthority(checkOutReason, options.actorRole, {
+      commandName: "reservation.check_out",
+      gateName: "folio_settlement_check",
+    });
+  }
+
   assertReservationTransition(
     "reservation.check_out",
     reservation.status as ReservationStatus,
@@ -502,7 +555,7 @@ export const checkOutReservation = async (
             "Express checkout: failed to auto-settle folio, proceeding anyway",
           );
         }
-      } else if (command.force) {
+      } else if (command.force && checkOutReason) {
         // Forcing check-out over an unsettled balance is an override of a
         // financial control — record it before moving the money to AR.
         await recordFlowApproval({
@@ -515,7 +568,7 @@ export const checkOutReservation = async (
           approvedBy: options.actorId ?? null,
           roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
           forced: true,
-          reasonCode: "FORCE_CHECK_OUT",
+          reasonCode: checkOutReason.reason_code,
           reasonNotes:
             command.notes ??
             `Check-out forced with unsettled balance ${folio.balance}; transferred to city-ledger AR`,

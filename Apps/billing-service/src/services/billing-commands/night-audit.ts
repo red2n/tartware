@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { resolveReasonCode } from "@tartware/command-consumer-utils/command-utils";
+import {
+  assertForcedOverrideAuthority,
+  resolveReasonCode,
+} from "@tartware/command-consumer-utils/command-utils";
 import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
 import type { NightAuditCheckpointStatus, ReasonCodeRow } from "@tartware/schemas";
 import { FlowId, flowControlNames, roundToCurrency } from "@tartware/schemas";
@@ -184,6 +187,26 @@ export const executeNightAudit = async (
         category: "NIGHT_AUDIT",
       },
     );
+
+    // A08. The code was resolved but never measured against — night audit had
+    // the input every other gate uses and did not read it. Skipping the roll's
+    // preconditions closes a business date over unresolved arrivals, departures
+    // or unbalanced folios, so the code's approval_level is what the operator
+    // has to clear, exactly as on a forced check-in or a room move.
+    //
+    // Before the write, not after: the record below is deliberately fail-open,
+    // so an authority check that ran after it could be skipped by the same
+    // failure that swallows the row.
+    // Named per declared gate rather than as one invented "skip_preconditions"
+    // control: the skip bypasses all three, and the registry's vocabulary is
+    // closed — flow:integrity refuses a gate_name no flow declares, which is
+    // what it did to the first version of this line.
+    for (const gateName of NIGHT_AUDIT_PRECONDITION_GATES) {
+      assertForcedOverrideAuthority(skipReason, resolveActorRole(context.initiatedBy), {
+        commandName: "billing.night_audit.run",
+        gateName,
+      });
+    }
 
     try {
       const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");

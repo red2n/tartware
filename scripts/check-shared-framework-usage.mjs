@@ -236,6 +236,62 @@ for (const file of tracked) {
   }
 }
 
+// A `force` flag that waives a control must cost something. Every site that
+// records a bypass — `forced: true` on a flow_approvals write — has to have
+// asked whether the acting role is entitled to make it, which is
+// `assertForcedOverrideAuthority` (a force flag) or `assertOverrideAuthority`
+// (an explicit override field). Both read the reason code's `approval_level`.
+//
+// This is a file-level check on purpose. The assertion runs *before* the
+// refusals it authorises — room move resolves its code first so one check
+// covers three gates — so it is never inside the recordFlowApproval call and a
+// line-scoped rule with a forward-reading `satisfied` cannot see it.
+//
+// It is written because the sweep was missed once already. A08 put the check on
+// room move and the three reversals and stopped, leaving check-in and check-out
+// — `reservation_status_check`, `deposit_required_check` and
+// `folio_settlement_check`, the only three controls the flow registry declares
+// as `kind: "gate"` rather than "record" — writing a forced row on nobody's
+// authority, each with a hardcoded reason code that had no row in the table.
+// Nothing failed, no test noticed, and the register read as closed.
+const FORCED_WRITE = /\bforced\s*:\s*(true|Boolean\()/;
+const AUTHORITY_ASSERT = /\bassert(Forced)?OverrideAuthority\s*\(/;
+
+const unauthorizedForcedWrites = [];
+for (const file of tracked) {
+  let source;
+  try {
+    source = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
+  // Only files that actually write the row; a type declaring `forced` is not one.
+  if (!source.includes("recordFlowApproval")) continue;
+  const lines = source
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("*") && !line.trimStart().startsWith("//"));
+  if (!lines.some((line) => FORCED_WRITE.test(line))) continue;
+  if (AUTHORITY_ASSERT.test(source)) continue;
+  unauthorizedForcedWrites.push(file);
+}
+
+if (unauthorizedForcedWrites.length > 0) {
+  console.error("\nA bypass is recorded without being authorized:\n");
+  for (const file of unauthorizedForcedWrites) {
+    console.error(`  ${file}  writes forced: true to flow_approvals and asserts no authority`);
+  }
+  console.error(
+    `\nCall assertForcedOverrideAuthority(reason, actorRole, { commandName, gateName })\n` +
+      `from "@tartware/command-consumer-utils/command-utils" before the refusal the\n` +
+      `force waives — or assertOverrideAuthority for an explicit override field.\n` +
+      `Resolve the reason code first, once per command, so one check covers every\n` +
+      `gate that command can force past.\n\n` +
+      `Logging a bypass is not controlling it: flow_approvals records that someone\n` +
+      `forced something, and without this it cannot say they were allowed to.\n`,
+  );
+  process.exit(1);
+}
+
 // Every subpath a workspace package exports must resolve to the *same* copy of
 // that package as every other subpath, or a class crosses a module boundary and
 // stops being itself.

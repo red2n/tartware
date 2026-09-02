@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS reason_codes (
             'NIGHT_AUDIT',          -- Overriding a night-audit precondition (skip_preconditions)
             'BLACKLIST',            -- Booking a guest the property has blacklisted
             'CREDIT_LIMIT',         -- Taking a balance past a configured credit limit
+            'CHECK_IN_OVERRIDE',    -- Forcing check-in past its deposit or lifecycle gate
+            'CHECK_OUT_OVERRIDE',   -- Checking out over an unsettled folio (balance goes to AR)
             'OTHER'                 -- Uncategorized
         )
     ),                                                      -- Category grouping for filtering
@@ -96,7 +98,7 @@ COMMENT ON TABLE reason_codes IS 'Configurable reason codes for operational acti
 COMMENT ON COLUMN reason_codes.reason_id IS 'Unique reason code identifier (UUID)';
 COMMENT ON COLUMN reason_codes.reason_code IS 'Short code used in dropdowns and reports (e.g., RM_UPGRADE)';
 COMMENT ON COLUMN reason_codes.reason_name IS 'Human-readable display name';
-COMMENT ON COLUMN reason_codes.reason_category IS 'Category grouping: ROOM_MOVE, RATE_OVERRIDE, DEPOSIT_OVERRIDE, CANCELLATION, COMP, etc.';
+COMMENT ON COLUMN reason_codes.reason_category IS 'Category grouping: ROOM_MOVE, RATE_OVERRIDE, DEPOSIT_OVERRIDE, CANCELLATION, COMP, NIGHT_AUDIT, BLACKLIST, CREDIT_LIMIT, CHECK_IN_OVERRIDE, CHECK_OUT_OVERRIDE, etc.';
 COMMENT ON COLUMN reason_codes.requires_approval IS 'TRUE if selecting this reason triggers an approval workflow';
 COMMENT ON COLUMN reason_codes.approval_level IS 'Minimum role required to approve: NONE, SUPERVISOR, MANAGER, DIRECTOR, GM';
 COMMENT ON COLUMN reason_codes.has_financial_impact IS 'TRUE if this reason triggers financial adjustments on the folio';
@@ -188,7 +190,23 @@ VALUES
     ('00000000-0000-0000-0000-000000000000', 'WO_DISPUTE_SETTLED', 'Settled dispute', 'The guest or company disputed the charge and a settlement was agreed below the balance.', 'WRITE_OFF', TRUE, 'MANAGER', TRUE, 3),
     ('00000000-0000-0000-0000-000000000000', 'WO_GOODWILL', 'Goodwill', 'Balance forgiven to keep a relationship the property values more than the amount.', 'WRITE_OFF', TRUE, 'DIRECTOR', TRUE, 4),
     ('00000000-0000-0000-0000-000000000000', 'WO_INSOLVENCY', 'Debtor insolvent', 'The debtor has entered administration or bankruptcy and the claim will not be met.', 'WRITE_OFF', TRUE, 'GM', TRUE, 5),
-    ('00000000-0000-0000-0000-000000000000', 'WO_BILLING_ERROR', 'Billing error', 'The balance should never have been raised; written off rather than pursued.', 'WRITE_OFF', TRUE, 'MANAGER', TRUE, 6)
+    ('00000000-0000-0000-0000-000000000000', 'WO_BILLING_ERROR', 'Billing error', 'The balance should never have been raised; written off rather than pursued.', 'WRITE_OFF', TRUE, 'MANAGER', TRUE, 6),
+
+    -- Check-in overrides. A forced reservation.check_in bypasses two declared
+    -- gates -- reservation_status_check and deposit_required_check -- and the
+    -- payload carries one code, so the category is per command, not per gate.
+    ('00000000-0000-0000-0000-000000000000', 'CI_CORP_ACCOUNT',   'Corporate account',      'The stay is guaranteed by a corporate account in good standing.',            'CHECK_IN_OVERRIDE',  FALSE, 'NONE',       FALSE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'CI_PAYMENT_PENDING','Payment not yet posted', 'Payment was taken but has not settled against the deposit schedule.',       'CHECK_IN_OVERRIDE',  FALSE, 'SUPERVISOR', FALSE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'CI_GUEST_ARRIVED',  'Guest arrived late',     'The guest arrived after a no-show was recorded; the booking is reinstated.', 'CHECK_IN_OVERRIDE',  FALSE, 'SUPERVISOR', FALSE, 3),
+    ('00000000-0000-0000-0000-000000000000', 'CI_DEPOSIT_WAIVED', 'Deposit waived',         'The front office manager waived the deposit for this arrival.',             'CHECK_IN_OVERRIDE',  TRUE,  'MANAGER',    TRUE,  4),
+    ('00000000-0000-0000-0000-000000000000', 'CI_VIP',            'VIP arrival',            'Arrival cleared by management despite the outstanding requirement.',        'CHECK_IN_OVERRIDE',  TRUE,  'DIRECTOR',   TRUE,  5),
+
+    -- Check-out overrides. Forcing check-out leaves the folio unsettled and
+    -- transfers the balance to city-ledger AR, so it is a credit decision.
+    ('00000000-0000-0000-0000-000000000000', 'CO_TO_CITY_LEDGER', 'Billed to company',      'The balance is billed to an approved company account.',                     'CHECK_OUT_OVERRIDE', FALSE, 'NONE',       TRUE,  1),
+    ('00000000-0000-0000-0000-000000000000', 'CO_LATE_DEPARTURE', 'Departed before settle', 'The guest departed before the folio could be settled at the desk.',         'CHECK_OUT_OVERRIDE', FALSE, 'SUPERVISOR', TRUE,  2),
+    ('00000000-0000-0000-0000-000000000000', 'CO_DISPUTE_OPEN',   'Charge disputed',        'A charge is disputed and the balance is held pending review.',              'CHECK_OUT_OVERRIDE', TRUE,  'MANAGER',    TRUE,  3),
+    ('00000000-0000-0000-0000-000000000000', 'CO_GOODWILL',       'Carried as goodwill',    'Management carried the balance rather than pursue it at departure.',        'CHECK_OUT_OVERRIDE', TRUE,  'DIRECTOR',   TRUE,  4)
 ON CONFLICT DO NOTHING;
 
 \echo 'reason_codes table created successfully!'

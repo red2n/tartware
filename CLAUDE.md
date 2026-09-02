@@ -285,7 +285,7 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | **done 1 Sep** — blacklist landed with `assertOverrideAuthority`; the credit-limit half was schema-only (fields on three commands, read by nothing) and now enforces on payment authorize, capture and city-ledger transfer. |
 | A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | **done 2 Sep** — mandatory RATE_OVERRIDE code, authority check, `flow_approvals` record, and the thresholds now read: `resolveSettings` left core-service for `settings-utils` in `@tartware/command-consumer-utils`, and `schema/src/api/override-thresholds.ts` turns the catalogue's rungs into an enforced demand. |
 | A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | **done 2 Sep** — all three write-offs (`ar.city_ledger.write_off`, `billing.ar.write_off`, `billing.suspense.write_off`) enter one `write-off-gate.ts`: mandatory WRITE_OFF code, the acting role clearing its `approval_level`, the amount clearing the ladder, and a `flow_approvals` record written after the ledger moves. The reason-code picker its UI callers needed shipped with it. |
-| A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | **done 2 Sep** — `forcedOverrideMinRole` + `assertForcedOverrideAuthority` in `command-utils`, applied to room move and all three reversals, each under its own declared gate name. |
+| A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | **done 2 Sep** — `forcedOverrideMinRole` + `assertForcedOverrideAuthority` in `command-utils`, at **8 sites**: room move, the three reversals, check-in, check-out and night audit. The first sweep stopped at four and left the only three controls the registry calls `kind: "gate"` unauthorized; the `forced-override-authority` guardrail is what found that, and is what keeps a ninth from being written without one. |
 | A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | **done 2 Sep** — `charge_postings.cashier_session_id` (migration `008`), written by `resolveOpenCashierSession`, which matches on the cashier and never on "the property's only open session". |
 | A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | **done 30 Aug** |
 | A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | **done 30 Aug** |
@@ -311,13 +311,35 @@ everywhere that moves money — the same shape of defect that had all seventeen 
 invisible outside the demo tenant. So the defaults in that file apply until a tenant states
 otherwise, and the catalogue imports them rather than restating them.
 
-**A08 was three lines once `approval_level` was readable.** `forcedOverrideMinRole` takes the higher
-of the reason code's `approval_level` and `MANAGER` when the code says `requires_approval` — the flag
-that had been read by nothing — and `assertForcedOverrideAuthority` refuses the force otherwise,
-failing closed with `OVERRIDE_AUTHORITY_UNKNOWN` on a level this product cannot enforce (the column
-sits behind a CHECK constraint, which is one migration from holding anything). Applied to room move
-and all three reversals, each under its own declared gate name so the registry's closed vocabulary
-stays closed. An **unforced** move or reversal is untouched: A02's floor already governs who may run
+**A08 was three lines once `approval_level` was readable — per site.** `forcedOverrideMinRole` takes
+the higher of the reason code's `approval_level` and `MANAGER` when the code says
+`requires_approval` — the flag that had been read by nothing — and `assertForcedOverrideAuthority`
+refuses the force otherwise, failing closed with `OVERRIDE_AUTHORITY_UNKNOWN` on a level this product
+cannot enforce (the column sits behind a CHECK constraint, which is one migration from holding
+anything). Each call names its own declared gate, so the registry's closed vocabulary stays closed.
+
+**The first sweep stopped at four, and missed the three that mattered most.** Room move and the
+reversals got the check; check-in, check-out and night audit did not — and check-in/check-out hold
+`reservation_status_check`, `deposit_required_check` and `folio_settlement_check`, the **only three
+controls the registry declares `kind: "gate"` rather than "record"**. Each sat inside
+`if (command.force)`, wrote its `flow_approvals` row, and asked nobody. Each also passed a hardcoded
+reason code — `"FORCE_CHECK_IN"`, `"FORCE_CHECK_IN_REINSTATE"`, `"FORCE_CHECK_OUT"` — with no row in
+`reason_codes`, the defect the night-audit work removed when it replaced `"SKIP_PRECONDITIONS"`.
+That is *why* they were skipped: no real code means no `approval_level`, so there was nothing for an
+authority check to measure. The halves are coupled, so both landed together — migration `009` adds
+`CHECK_IN_OVERRIDE` / `CHECK_OUT_OVERRIDE` with nine system-tenant codes, and `reason_code` is now
+mandatory whenever `force` is set (a `.refine`, like `skip_reason_code`). One category per
+**command**, not per gate: a forced check-in can trip both its gates and the payload carries one
+code. `express` is exempt on check-out — it settles the folio rather than bypassing the check.
+Night audit was the fourth: it resolved its code correctly and never read it.
+
+**Nothing caught that for four days, which is the actual lesson.** Guardrail rule
+`forced-override-authority` in `check-shared-framework-usage.mjs` fails any file that writes
+`forced: true` to `flow_approvals` without calling one of the two authority helpers. It is
+file-level rather than a `RULES` entry on purpose: the assertion runs *before* the refusals it
+authorises — room move resolves its code first so one check covers three gates — so it is never
+inside the `recordFlowApproval` call, and a line rule with a forward-reading `satisfied` cannot
+see it. Verified by deleting both asserts and watching it fire. An **unforced** move or reversal is untouched: A02's floor already governs who may run
 the command, and gating a night manager's routine call would be theatre.
 
 **Room move resolves its reason code before the three force-gated refusals**, so one authority check

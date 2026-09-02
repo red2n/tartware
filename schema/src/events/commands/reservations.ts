@@ -177,30 +177,63 @@ export type ReservationCancelCommand = z.infer<
 	typeof ReservationCancelCommandSchema
 >;
 
-export const ReservationCheckInCommandSchema = z.object({
-	reservation_id: z.string().uuid(),
-	room_id: z.string().uuid().optional(),
-	checked_in_at: z.coerce.date().optional(),
-	/** When true, bypass blocking deposit enforcement. */
-	force: z.boolean().optional(),
-	notes: z.string().max(2000).optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
+export const ReservationCheckInCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid(),
+		room_id: z.string().uuid().optional(),
+		checked_in_at: z.coerce.date().optional(),
+		/**
+		 * Bypass the two gates check-in declares: the lifecycle guard
+		 * (`reservation_status_check`) and the blocking deposit schedule
+		 * (`deposit_required_check`).
+		 */
+		force: z.boolean().optional(),
+		/**
+		 * Why this check-in was forced. Required with `force`, resolved against
+		 * the CHECK_IN_OVERRIDE category, and its `approval_level` is what the
+		 * acting role has to clear (A08).
+		 */
+		reason_code: z.string().min(2).max(50).optional(),
+		notes: z.string().max(2000).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine((value) => value.force !== true || Boolean(value.reason_code), {
+		message:
+			"reason_code is required when force is true — forcing a check-in past its deposit or status gate is an override, and an override with no stated reason is what the gate exists to prevent",
+		path: ["reason_code"],
+	});
 
 export type ReservationCheckInCommand = z.infer<
 	typeof ReservationCheckInCommandSchema
 >;
 
-export const ReservationCheckOutCommandSchema = z.object({
-	reservation_id: z.string().uuid(),
-	checked_out_at: z.coerce.date().optional(),
-	force: z.boolean().optional(),
-	express: z.boolean().optional(),
-	notes: z.string().max(2000).optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
+export const ReservationCheckOutCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid(),
+		checked_out_at: z.coerce.date().optional(),
+		/**
+		 * Check out over an unsettled folio (`folio_settlement_check`). The
+		 * balance is transferred to city-ledger AR, so this is a credit decision
+		 * rather than a formality.
+		 */
+		force: z.boolean().optional(),
+		express: z.boolean().optional(),
+		/**
+		 * Why this check-out was forced. Required with `force`, resolved against
+		 * the CHECK_OUT_OVERRIDE category. `express` is not an override — it
+		 * settles the folio rather than bypassing the check — so it needs none.
+		 */
+		reason_code: z.string().min(2).max(50).optional(),
+		notes: z.string().max(2000).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine((value) => value.force !== true || Boolean(value.reason_code), {
+		message:
+			"reason_code is required when force is true — leaving with an unsettled balance moves it to the city ledger, and that decision has to name itself",
+		path: ["reason_code"],
+	});
 
 export type ReservationCheckOutCommand = z.infer<
 	typeof ReservationCheckOutCommandSchema
