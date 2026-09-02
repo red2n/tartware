@@ -319,34 +319,24 @@ Two industry-standard behaviours exist and the choice must be an explicit config
 
 ## 6. How an Offer Applies to a PMS Reservation
 
-``` mermide
+```mermaid
 flowchart LR
-2
-A["Configure<br/>Offer defined,<br/>linked to rates"]
-3
-B["Shop / Quote<br/>Availability + rate query;<br/>qualification + pricing"]
-4
-C["Book<br/>Offer frozen onto the<br/>reservation as a snapshot"]
-5
-D["Stay<br/>Nightly posting at<br/>night audit"]
-6
-E["Settle<br/>Redemption finalised;<br/>ledgers balanced"]
-7
- 
-8
-A --> B
-9
-B --> C
-10
-C --> D
-11
-D --> E
-12
- 
-13
-C -.-> F["Inventory/Coupon decremented;<br/>hold applied"]
-14
-E -.-> G["Release on<br/>cancel / no-show"]
+    CONFIGURE["<b>CONFIGURE</b><br/>Offer defined,<br/>linked to rates"]
+    QUOTE["<b>SHOP / QUOTE</b><br/>Availability + rate query;<br/>qualification + pricing"]
+    BOOK["<b>BOOK</b><br/>Offer frozen onto the<br/>reservation as a snapshot"]
+    STAY["<b>STAY</b><br/>Nightly posting<br/>at night audit"]
+    SETTLE["<b>SETTLE</b><br/>Redemption finalised;<br/>ledgers balanced"]
+
+    CONFIGURE --> QUOTE --> BOOK --> STAY --> SETTLE
+
+    HOLD["Inventory / coupon<br/>decremented; hold placed"]
+    RELEASE["Release on<br/>cancel / no-show"]
+
+    BOOK -.-> HOLD
+    SETTLE -.-> RELEASE
+
+    classDef side fill:#f6f6f6,stroke:#999,stroke-dasharray:3 3;
+    class HOLD,RELEASE side;
 ```
 
 ### 6.1 Lifecycle touchpoints
@@ -920,59 +910,150 @@ US ADA regulations require that reservation systems allow guests to identify and
 
 ## 13. Reference Data Model
 
-```
-┌──────────────────┐        ┌────────────────────┐        ┌──────────────────┐
-│ PROMOTION_GROUP  │1──────*│ OFFER              │*──────*│ RATE_CODE        │
-│ code, type       │        │ offerCode (PK)     │        │ rateCode (PK)    │
-│ description      │        │ name, description  │        │ transactionCode  │
-└──────────────────┘        │ offerType          │        └────────┬─────────┘
-                            │ discountType/value │                 │
-┌──────────────────┐        │ applicationBasis   │        ┌────────▼─────────┐
-│ COUPON           │*──────1│ scope, currency    │        │ RATE_DETAIL      │
-│ couponCode (PK)  │        │ active             │        │ date, roomType   │
-│ status, expiry   │        └───┬──────┬─────┬───┘        │ amount           │
-│ redeemedBy       │            │      │     │            └──────────────────┘
-└──────────────────┘            │      │     │
-                                │      │     │
-        ┌───────────────────────┘      │     └──────────────────────┐
-        │                              │                            │
-┌───────▼────────────┐   ┌─────────────▼──────────┐   ┌─────────────▼────────┐
-│ OFFER_RESTRICTION  │   │ PACKAGE_ELEMENT        │   │ COMP_ROUTING          │
-│ bookingWindow      │   │ packageCode (PK)       │   │ templateId (PK)       │
-│ stayWindow         │   │ postingType            │   │ splitType             │
-│ minLOS / maxLOS    │   │ calculationRule        │   │ destinations[]        │
-│ min/maxAdvancePur. │   │ postingRhythm          │   │ includedItems[]       │
-│ arrivalDaysOfWeek  │   │ itemPrice              │   │ excludedItems[]       │
-│ blackoutDates[]    │   │ allowanceAmount        │   │ authorizerId          │
-│ blackoutDays[]     │   │ overageTxnCode         │   │ limitType, amounts    │
-│ eligibleRoomTypes  │   │ profitTxnCode          │   └───────────┬───────────┘
-│ eligibleChannels   │   │ lossTxnCode            │               │
-│ eligibleMemberships│   │ alternateTxnCodes[]    │   ┌───────────▼───────────┐
-└────────────────────┘   └────────────────────────┘   │ COMP_AUTHORIZER       │
-                                                       │ authorizerId (PK)     │
-┌──────────────────────────────────────────┐          │ name, department      │
-│ RESERVATION                              │          │ perDayLimit           │
-│ confirmationNumber (PK)                  │          │ perStayLimit          │
-│ arrival, departure, roomType, rateCode   │          │ balances{date→amount} │
-│ adults, children, channel, profileId     │          └───────────────────────┘
-└───────────────┬──────────────────────────┘
-                │ 1
-                │
-                │ *
-┌───────────────▼──────────────────────────┐        ┌───────────────────────┐
-│ OFFER_SNAPSHOT                           │*──────1│ FOLIO_WINDOW          │
-│ snapshotId (PK)                          │        │ windowNumber          │
-│ offerCode, offerVersion                  │        │ payeeType             │
-│ appliedDates[]                           │        │ balance               │
-│ perNightAmounts{date→amount}             │        └───────────┬───────────┘
-│ applicableBase{date→amount}              │                    │
-│ couponCode, voucherIds[]                 │        ┌───────────▼───────────┐
-│ playerId, authorizerId, routingTemplateId│        │ FOLIO_LINE            │
-│ sourceSystemTransactionId                │        │ date, txnCode, amount │
-│ status {QUOTED|APPLIED|REDEEMED|         │        │ offerSnapshotId       │
-│         CANCELLED|REVERSED}              │        │ reasonCode, actor     │
-│ capturedAt, capturedBy                   │        └───────────────────────┘
-└──────────────────────────────────────────┘
+```mermaid
+erDiagram
+    PROMOTION_GROUP ||--o{ OFFER : groups
+    OFFER }o--o{ RATE_CODE : "linked to"
+    RATE_CODE ||--o{ RATE_DETAIL : prices
+    OFFER ||--o{ COUPON : issues
+    OFFER ||--o{ OFFER_RESTRICTION : restricted_by
+    OFFER ||--o{ PACKAGE_ELEMENT : includes
+    OFFER ||--o{ COMP_ROUTING : routes_via
+    COMP_AUTHORIZER ||--o{ COMP_ROUTING : authorizes
+    RESERVATION ||--o{ OFFER_SNAPSHOT : captures
+    FOLIO_WINDOW ||--o{ OFFER_SNAPSHOT : billed_to
+    FOLIO_WINDOW ||--o{ FOLIO_LINE : contains
+    OFFER_SNAPSHOT ||--o{ FOLIO_LINE : justifies
+
+    PROMOTION_GROUP {
+        string code PK
+        string type
+        string description
+    }
+
+    OFFER {
+        string offerCode PK
+        string name
+        string description
+        string offerType
+        string discountType
+        decimal discountValue
+        string applicationBasis
+        string scope
+        string currency
+        boolean active
+    }
+
+    RATE_CODE {
+        string rateCode PK
+        string transactionCode
+    }
+
+    RATE_DETAIL {
+        date date
+        string roomType
+        decimal amount
+    }
+
+    COUPON {
+        string couponCode PK
+        string status
+        date expiry
+        string redeemedBy
+    }
+
+    OFFER_RESTRICTION {
+        daterange bookingWindow
+        daterange stayWindow
+        int minLOS
+        int maxLOS
+        int minAdvancePurchase
+        int maxAdvancePurchase
+        set arrivalDaysOfWeek
+        list blackoutDates
+        set blackoutDaysOfWeek
+        set eligibleRoomTypes
+        set eligibleChannels
+        set eligibleMemberships
+    }
+
+    PACKAGE_ELEMENT {
+        string packageCode PK
+        string postingType
+        string calculationRule
+        string postingRhythm
+        decimal itemPrice
+        decimal allowanceAmount
+        string overageTxnCode
+        string profitTxnCode
+        string lossTxnCode
+        set alternateTxnCodes
+    }
+
+    COMP_ROUTING {
+        string templateId PK
+        string splitType
+        list destinations
+        set includedItems
+        set excludedItems
+        string authorizerId FK
+        string limitType
+        decimal authorizedAmount
+    }
+
+    COMP_AUTHORIZER {
+        string authorizerId PK
+        string name
+        string department
+        decimal perDayLimit
+        decimal perStayLimit
+        map balances "businessDate to amount"
+    }
+
+    RESERVATION {
+        string confirmationNumber PK
+        date arrival
+        date departure
+        string roomType
+        string rateCode FK
+        int adults
+        int children
+        string channel
+        string profileId
+    }
+
+    OFFER_SNAPSHOT {
+        string snapshotId PK
+        string offerCode FK
+        int offerVersion
+        list appliedDates
+        map perNightAmounts "date to amount"
+        map applicableBase "date to amount"
+        string couponCode
+        list voucherIds
+        string playerId
+        string authorizerId
+        string routingTemplateId
+        string sourceSystemTransactionId
+        string status "QUOTED APPLIED REDEEMED CANCELLED REVERSED"
+        datetime capturedAt
+        string capturedBy
+    }
+
+    FOLIO_WINDOW {
+        int windowNumber PK
+        string payeeType
+        decimal balance
+    }
+
+    FOLIO_LINE {
+        date date
+        string txnCode
+        decimal amount
+        string offerSnapshotId FK
+        string reasonCode
+        string actor
+    }
 ```
 
 ### 13.1 Indexing guidance
