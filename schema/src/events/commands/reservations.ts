@@ -9,6 +9,10 @@
 
 import { z } from "zod";
 
+import { StayPlanInputSchema } from "../../api/stay-plan.js";
+
+import { buildBatchCommandSchema } from "./batch.js";
+
 const RateCodeSchema = z
 	.string()
 	.min(2)
@@ -79,7 +83,39 @@ export const ReservationCreateCommandSchema = z.object({
 	 * bookings report as UNCLASSIFIED rather than being forced into a segment.
 	 */
 	market_segment_id: z.string().uuid().optional(),
-});
+	/**
+	 * Rooms held by this booking, each with its own nights. Omit it and the
+	 * booking is one room of `room_type_id` for the whole window, priced at an
+	 * even split of `total_amount` — the behaviour that existed before the
+	 * stay tables. See `expandStayPlan` in @tartware/schemas for what each
+	 * omitted field falls back to.
+	 */
+	rooms: StayPlanInputSchema.optional(),
+	/**
+	 * Book a guest the property has blacklisted (A05).
+	 *
+	 * The blacklist gate used to be a hard throw whose message told the
+	 * operator that "a GM override with documented reason is required" — an
+	 * authority the product did not define and no code path offered, so the
+	 * only way past it was to edit `guests.is_blacklisted` and lose the fact
+	 * that a decision had been made. This is that override, and it is not a
+	 * bare `force`: the reason code is mandatory, resolved against the
+	 * BLACKLIST category, and its `approval_level` is checked against the role
+	 * on the command envelope before the booking is taken.
+	 */
+	blacklist_override: z.boolean().optional(),
+	blacklist_override_reason_code: z.string().min(2).max(50).optional(),
+	blacklist_override_notes: z.string().max(500).optional(),
+}).refine(
+	(value) =>
+		value.blacklist_override !== true ||
+		Boolean(value.blacklist_override_reason_code),
+	{
+		message:
+			"blacklist_override_reason_code is required when blacklist_override is true — an override with no stated reason is the control this gate exists to provide",
+		path: ["blacklist_override_reason_code"],
+	},
+);
 
 export type ReservationCreateCommand = z.infer<
 	typeof ReservationCreateCommandSchema
@@ -141,33 +177,158 @@ export type ReservationCancelCommand = z.infer<
 	typeof ReservationCancelCommandSchema
 >;
 
-export const ReservationCheckInCommandSchema = z.object({
-	reservation_id: z.string().uuid(),
-	room_id: z.string().uuid().optional(),
-	checked_in_at: z.coerce.date().optional(),
-	/** When true, bypass blocking deposit enforcement. */
-	force: z.boolean().optional(),
-	notes: z.string().max(2000).optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
+export const ReservationCheckInCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid(),
+		room_id: z.string().uuid().optional(),
+		checked_in_at: z.coerce.date().optional(),
+		/**
+		 * Bypass the two gates check-in declares: the lifecycle guard
+		 * (`reservation_status_check`) and the blocking deposit schedule
+		 * (`deposit_required_check`).
+		 */
+		force: z.boolean().optional(),
+		/**
+		 * Why this check-in was forced. Required with `force`, resolved against
+		 * the CHECK_IN_OVERRIDE category, and its `approval_level` is what the
+		 * acting role has to clear (A08).
+		 */
+		reason_code: z.string().min(2).max(50).optional(),
+		notes: z.string().max(2000).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine((value) => value.force !== true || Boolean(value.reason_code), {
+		message:
+			"reason_code is required when force is true — forcing a check-in past its deposit or status gate is an override, and an override with no stated reason is what the gate exists to prevent",
+		path: ["reason_code"],
+	});
 
 export type ReservationCheckInCommand = z.infer<
 	typeof ReservationCheckInCommandSchema
 >;
 
-export const ReservationCheckOutCommandSchema = z.object({
-	reservation_id: z.string().uuid(),
-	checked_out_at: z.coerce.date().optional(),
-	force: z.boolean().optional(),
-	express: z.boolean().optional(),
-	notes: z.string().max(2000).optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-});
+export const ReservationCheckOutCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid(),
+		checked_out_at: z.coerce.date().optional(),
+		/**
+		 * Check out over an unsettled folio (`folio_settlement_check`). The
+		 * balance is transferred to city-ledger AR, so this is a credit decision
+		 * rather than a formality.
+		 */
+		force: z.boolean().optional(),
+		express: z.boolean().optional(),
+		/**
+		 * Why this check-out was forced. Required with `force`, resolved against
+		 * the CHECK_OUT_OVERRIDE category. `express` is not an override — it
+		 * settles the folio rather than bypassing the check — so it needs none.
+		 */
+		reason_code: z.string().min(2).max(50).optional(),
+		notes: z.string().max(2000).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine((value) => value.force !== true || Boolean(value.reason_code), {
+		message:
+			"reason_code is required when force is true — leaving with an unsettled balance moves it to the city ledger, and that decision has to name itself",
+		path: ["reason_code"],
+	});
 
 export type ReservationCheckOutCommand = z.infer<
 	typeof ReservationCheckOutCommandSchema
+>;
+
+// ---------------------------------------------------------------------------
+// Lifecycle reversals (WS-04)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a reversal does to the room the guest was in.
+ *
+ * `DIRTY` is the default and the safe one: a check-in that got as far as a key
+ * card means someone may have been in the room, and a room returned straight to
+ * AVAILABLE can be sold to the next arrival uninspected. `AVAILABLE` is for the
+ * mis-key corrected thirty seconds later, and is a deliberate choice the
+ * operator makes, not a default they inherit.
+ */
+export const ReversalRoomStatusEnum = z.enum(["DIRTY", "AVAILABLE", "INSPECTED"]);
+
+export type ReversalRoomStatus = z.infer<typeof ReversalRoomStatusEnum>;
+
+/**
+ * Fields every reversal carries.
+ *
+ * `reason_code` is required and not free text. A reversal is an operator
+ * undoing a financial event, and "why" is the first thing asked in an audit —
+ * so it resolves against the `reason_codes` reference table rather than
+ * accepting whatever was typed.
+ */
+const reversalBase = {
+	reservation_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	/** Must match an active `reason_codes.reason_code` for the tenant. */
+	reason_code: z.string().trim().min(1).max(50),
+	/** Free-text detail recorded alongside the code; never replaces it. */
+	reason_notes: z.string().max(2000).optional(),
+	/**
+	 * Proceed when the reversal would leave charges it did not post.
+	 *
+	 * Without this a reversal refuses rather than guessing. Voiding a guest's
+	 * restaurant bill because someone undid a check-in is worse than refusing.
+	 */
+	force: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+};
+
+/**
+ * Undo a check-in (PMS-02-01).
+ *
+ * Returns the reservation to CONFIRMED, clears `actual_check_in` and the room
+ * assignment, and voids exactly the postings check-in created — so the folio
+ * balance returns to what it was before.
+ */
+export const ReservationReverseCheckInCommandSchema = z.object({
+	...reversalBase,
+	room_status_after: ReversalRoomStatusEnum.default("DIRTY"),
+});
+
+export type ReservationReverseCheckInCommand = z.infer<
+	typeof ReservationReverseCheckInCommandSchema
+>;
+
+/**
+ * Undo a check-out (PMS-02-14).
+ *
+ * Returns the reservation to CHECKED_IN, clears `actual_check_out`, reopens the
+ * folio if check-out settled it, and voids the late-checkout fee.
+ */
+export const ReservationReverseCheckOutCommandSchema = z.object({
+	...reversalBase,
+	/** The guest is back in-house, so the room goes back to OCCUPIED by default. */
+	room_status_after: z.enum(["OCCUPIED", "DIRTY"]).default("OCCUPIED"),
+});
+
+export type ReservationReverseCheckOutCommand = z.infer<
+	typeof ReservationReverseCheckOutCommandSchema
+>;
+
+/**
+ * Reinstate a cancelled reservation (PMS-01-20).
+ *
+ * Unlike the other two this can legitimately fail on inventory: the nights were
+ * released when the booking was cancelled and may have been sold since. It
+ * re-acquires the availability hold first and refuses if it cannot.
+ */
+export const ReservationReinstateCommandSchema = z.object({
+	...reversalBase,
+	/** Status to return to. A cancelled booking normally comes back CONFIRMED. */
+	restore_status: z.enum(["CONFIRMED", "PENDING"]).default("CONFIRMED"),
+});
+
+export type ReservationReinstateCommand = z.infer<
+	typeof ReservationReinstateCommandSchema
 >;
 
 export const ReservationAssignRoomCommandSchema = z.object({
@@ -212,6 +373,18 @@ export const ReservationRateOverrideCommandSchema = z
 		rate_code: RateCodeSchema.optional(),
 		total_amount: z.coerce.number().nonnegative().optional(),
 		currency: z.string().length(3).optional(),
+		/**
+		 * Mandatory, and resolved against the RATE_OVERRIDE category (A06).
+		 *
+		 * `reason` below was the whole record of why a rate moved: optional free
+		 * text, written into `internal_notes`. Six RATE_OVERRIDE codes have been
+		 * seeded since the table was created — a manager's discount, a competitor
+		 * match, service recovery — each carrying the `approval_level` the
+		 * decision takes, and nothing resolved any of them. A rate override is
+		 * the most common way money leaves a hotel; it should be as answerable as
+		 * a room move already is.
+		 */
+		reason_code: z.string().min(2).max(50),
 		reason: z.string().max(500).optional(),
 		metadata: z.record(z.unknown()).optional(),
 		idempotency_key: z.string().max(120).optional(),
@@ -633,4 +806,174 @@ export const ReservationMobileCheckinCompleteCommandSchema = z.object({
 
 export type ReservationMobileCheckinCompleteCommand = z.infer<
 	typeof ReservationMobileCheckinCompleteCommandSchema
+>;
+
+// ---------------------------------------------------------------------------
+// Room move (WS-04 / PMS-02-02)
+// ---------------------------------------------------------------------------
+
+/**
+ * What happens to the money when a guest changes room mid-stay.
+ *
+ * `KEEP_RATE` is the default because the common room move is the property's
+ * doing — a maintenance fault, a noise complaint, an upgrade offered at the
+ * desk — and billing the guest for the property's problem is the exception.
+ * `REPRICE` is the deliberate choice, and it re-rates only the nights not yet
+ * slept: a guest moved on night 3 of 5 pays the old rate for nights 1-2,
+ * whatever happens next.
+ */
+export const RoomMoveRateActionEnum = z.enum(["KEEP_RATE", "REPRICE"]);
+
+export type RoomMoveRateAction = z.infer<typeof RoomMoveRateActionEnum>;
+
+/**
+ * Move an in-house guest to a different room (PMS-02-02).
+ *
+ * This moves one `reservation_rooms` row, not a reservation. A booking can hold
+ * several rooms since WS-01, so "move the reservation" has no meaning for a
+ * three-room group — the command names the room being moved and refuses to
+ * guess when the booking holds more than one.
+ *
+ * Distinct from `reservation.assign_room`, which fills an empty assignment
+ * before arrival. This one has a guest in the bed: it must vacate a room that
+ * has been slept in, carry the charges, and leave housekeeping something to do.
+ */
+export const ReservationRoomMoveCommandSchema = z.object({
+	reservation_id: z.string().uuid(),
+	/**
+	 * Which room of the booking to move. Optional only when the booking holds
+	 * exactly one room; with more than one the command refuses rather than
+	 * picking for you.
+	 */
+	reservation_room_id: z.string().uuid().optional(),
+	/** The room the guest is moving into. */
+	to_room_id: z.string().uuid(),
+	property_id: z.string().uuid().optional(),
+	/** Must match an active `reason_codes` entry in the ROOM_MOVE category. */
+	reason_code: z.string().trim().min(1).max(50),
+	reason_notes: z.string().max(2000).optional(),
+	rate_action: RoomMoveRateActionEnum.default("KEEP_RATE"),
+	/**
+	 * Nightly amount for the nights not yet slept. Required by `REPRICE`.
+	 *
+	 * Deliberately not derived here. A nightly price comes from the rate engine
+	 * reading `rate_calendar`, and re-deriving one inside a room move would be a
+	 * second pricing path that quietly disagrees with the first. The desk agent
+	 * moving a guest into a suite knows the rate that was agreed; the command
+	 * takes that number rather than inventing one.
+	 */
+	new_rate_amount: z.coerce.number().nonnegative().optional(),
+	/** Rate code to stamp on the repriced nights, when it changes with the room. */
+	new_rate_code: RateCodeSchema.optional(),
+	/**
+	 * Housekeeping status for the room being vacated. `DIRTY` is the default and
+	 * the only safe one: someone has slept there. `INSPECTED` exists for the
+	 * move corrected within a minute of a mis-key, and is a choice the operator
+	 * makes rather than one they inherit.
+	 */
+	from_room_status_after: z.enum(["DIRTY", "INSPECTED"]).default("DIRTY"),
+	/**
+	 * Proceed past a `do_not_move` room, or past a reason code whose
+	 * configuration requires an approval this command cannot produce.
+	 *
+	 * Both refusals exist because someone deliberately set them. Overriding is
+	 * allowed, on the record — the override is written into the audit row.
+	 */
+	force: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
+	idempotency_key: z.string().max(120).optional(),
+});
+
+export type ReservationRoomMoveCommand = z.infer<
+	typeof ReservationRoomMoveCommandSchema
+>;
+
+// ---------------------------------------------------------------------------
+// Mass operations (WS-04) — all three stamped from the one batch envelope
+// ---------------------------------------------------------------------------
+
+/**
+ * Mass cancel (PMS-01-22).
+ *
+ * The reason sits on the envelope, not the item: a mass cancel is one
+ * operational decision applied to many bookings, and letting each item carry
+ * its own reason invites a batch whose rows cannot be explained as a group
+ * afterwards. An item may still override it for the one booking that differs.
+ *
+ * The fields are exactly `reservation.cancel`'s, on purpose. A batch that could
+ * express something its single command cannot is a second implementation of
+ * cancellation waiting to drift — including the cancellation fee, which stays
+ * the rate policy's decision here just as it is there.
+ */
+export const ReservationMassCancelCommandSchema = buildBatchCommandSchema(
+	z.object({
+		reservation_id: z.string().uuid(),
+		/** Overrides the envelope reason for this one booking. */
+		reason: z.string().max(500).optional(),
+	}),
+	{
+		reason: z.string().max(500).optional(),
+	},
+);
+
+export type ReservationMassCancelCommand = z.infer<
+	typeof ReservationMassCancelCommandSchema
+>;
+
+/**
+ * Mass check-in (PMS-02-05).
+ *
+ * Distinct from `group.check_in`, which allocates rooms by proximity for one
+ * group booking. This one checks in an arbitrary set of reservations that are
+ * already assigned, or auto-assigns each from its own room type.
+ */
+export const ReservationMassCheckInCommandSchema = buildBatchCommandSchema(
+	z.object({
+		reservation_id: z.string().uuid(),
+		/** Pre-chosen room. Omit to let the handler assign from the room type. */
+		room_id: z.string().uuid().optional(),
+	}),
+	{
+		checked_in_at: z.coerce.date().optional(),
+		/** Bypass blocking deposit enforcement for every item in the batch. */
+		force: z.boolean().default(false),
+		notes: z.string().max(2000).optional(),
+	},
+);
+
+export type ReservationMassCheckInCommand = z.infer<
+	typeof ReservationMassCheckInCommandSchema
+>;
+
+/**
+ * Mass update (PMS-01-21).
+ *
+ * `changes` is the whole point: one set of field changes applied to every
+ * target. It reuses the modify command's field vocabulary minus `reservation_id`
+ * — the targets come from `items` — so a mass update can never do something a
+ * single modify could not, and the two cannot drift apart.
+ */
+export const ReservationMassUpdateChangesSchema = z
+	.object({
+		room_type_id: z.string().uuid().optional(),
+		check_in_date: z.coerce.date().optional(),
+		check_out_date: z.coerce.date().optional(),
+		status: ReservationStatusEnum.optional(),
+		rate_code: RateCodeSchema.optional(),
+		allow_rate_fallback: z.boolean().optional(),
+		notes: z.string().max(2000).optional(),
+		market_segment_id: z.string().uuid().optional(),
+	})
+	.refine(
+		(value) => Object.values(value).some((field) => field !== undefined),
+		"At least one field must be provided in changes",
+	);
+
+export const ReservationMassUpdateCommandSchema = buildBatchCommandSchema(
+	z.object({ reservation_id: z.string().uuid() }),
+	{ changes: ReservationMassUpdateChangesSchema },
+);
+
+export type ReservationMassUpdateCommand = z.infer<
+	typeof ReservationMassUpdateCommandSchema
 >;

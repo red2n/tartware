@@ -1,12 +1,14 @@
-import { Kafka, logLevel, type ProducerRecord } from "kafkajs";
+import { createKafkaClient } from "@tartware/command-consumer-utils/producer";
+import type { TopicMessages } from "kafkajs";
 
 import { kafkaConfig } from "../config.js";
 import { gatewayLogger } from "../logger.js";
 
-const kafka = new Kafka({
+const kafka = createKafkaClient({
   clientId: kafkaConfig.clientId,
   brokers: kafkaConfig.brokers,
-  logLevel: logLevel.NOTHING,
+  logger: gatewayLogger,
+  component: "command-producer",
 });
 
 const logger = gatewayLogger.child({ module: "command-producer" });
@@ -28,6 +30,18 @@ export const shutdownProducer = async (): Promise<void> => {
   logger.info("kafka producer disconnected");
 };
 
-export const publishRecord = async (record: ProducerRecord): Promise<void> => {
-  await producer.send(record);
+/**
+ * Publish many records — across however many topics — in one broker request.
+ *
+ * `send()` awaits an acknowledgement per call, so publishing a claimed outbox
+ * batch one row at a time serialises the dispatcher behind a round trip per
+ * command. `sendBatch` pays that latency once for the whole batch, which is
+ * what lets a single dispatcher keep up with a fleet of gateways accepting
+ * commands.
+ */
+export const publishRecordBatch = async (topicMessages: TopicMessages[]): Promise<void> => {
+  if (topicMessages.length === 0) {
+    return;
+  }
+  await producer.sendBatch({ topicMessages });
 };

@@ -32,9 +32,49 @@ docker compose up -d influxdb grafana
 docker compose run --rm k6 run /scripts/scenarios/smoke.js
 ```
 
-> **Note:** The k6 scenarios (including `smoke.js`) query the availability endpoint.
-> On a fresh installation this endpoint may not yet be implemented, so availability
-> checks are expected to fail until that endpoint is provided by the API.
+> **Two things will make a fresh run look broken when it is not.** Read the next
+> section before concluding anything from a red result.
+
+## Before your first run
+
+**1. Enable the command feature flags.** All 195 commands ship `disabled` in the
+default seed, so every write returns **409 FEATURE_DISABLED** until they are
+turned on — a full run of red that looks like a broken pipeline and is a
+configuration default. `run-full-test.sh` calls `enable-via-api.sh` for you; if
+you are driving k6 by hand, run it yourself first:
+
+```
+./loadtest/enable-via-api.sh /tmp/tartware-tenant-tokens.tsv http://localhost:8085
+```
+
+`executables/test-accounts-realdata/test-multi-tenant.sh` calls this the
+"FEATURE_DISABLED trap", and it is the single most common reason a first run
+reports nothing working.
+
+**2. A command answers 202, not 200.** `POST /v1/commands/:name/execute` records
+the command and returns **202 Accepted**; the consumer applies it afterwards. A
+check asserting 200 or 201 reports a healthy pipeline as failing. Two scripts
+did exactly that until 2 Sep.
+
+> **Historical note.** This file used to say the availability endpoint "may not
+> yet be implemented". It was implemented — the scripts were calling
+> `/v1/availability`, which the gateway declares and proxies to a service that
+> registers nothing by that name. The real route is `/v1/rooms/availability`,
+> and `ENDPOINTS.availability` now points at it. A note that explains a failure
+> away is worse than no note: it is why this went unexamined for months.
+
+## Keeping the harness honest
+
+`pnpm run check:loadtest` (part of `pnpm run check`, so `pnpm run build` runs it)
+parses every script and verifies that each `import` resolves and each
+`ENDPOINTS.*` key exists. Nothing else in the repo compiles or lints these
+files, and they had drifted badly: eight of them imported `TENANT_ID`,
+`generateGuest` and four other names that no module exported, so they threw on
+their first iteration and had never reached the HTTP layer at all.
+
+Twenty-two `ENDPOINTS` keys are still undefined and listed in
+`KNOWN_UNDEFINED_ENDPOINTS` in that script. The list may only shrink — defining
+one and leaving it listed is reported as stale.
 
 3) Run baseline workload:
 

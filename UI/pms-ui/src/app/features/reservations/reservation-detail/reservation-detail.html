@@ -895,15 +895,20 @@
         <input type="number" min="0" step="0.01" class="field-input" [ngModel]="rateOverrideForm().new_rate"
           (ngModelChange)="rateOverrideForm.set({ ...rateOverrideForm(), new_rate: $event ?? '' })" />
       </div>
+      <app-reason-code-picker
+        category="RATE_OVERRIDE"
+        [propertyId]="reservation()?.property_id ?? ''"
+        [value]="rateOverrideForm().reason_code"
+        (valueChange)="rateOverrideForm.set({ ...rateOverrideForm(), reason_code: $event })" />
       <div class="form-group">
-        <label class="field-label">{{ 'Reason' | translate }} *</label>
+        <label class="field-label">{{ 'Notes' | translate }}</label>
         <input type="text" class="field-input" [ngModel]="rateOverrideForm().reason"
           (ngModelChange)="rateOverrideForm.set({ ...rateOverrideForm(), reason: $event ?? '' })" />
       </div>
     </div>
     <div class="confirm-actions">
       <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
-      <button class="btn btn-primary btn-sm" (click)="overrideRate()" [disabled]="actionLoading()">{{ 'Override' | translate }}</button>
+      <button class="btn btn-primary btn-sm" (click)="overrideRate()" [disabled]="actionLoading() || !rateOverrideForm().reason_code">{{ 'Override' | translate }}</button>
     </div>
   </div>
 }

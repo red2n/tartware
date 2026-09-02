@@ -11,8 +11,10 @@
     "lint": "eslint --ext .ts src",
     "biome": "biome check src",
     "knip": "knip --tsConfig tsconfig.json",
-    "clean": "rm -rf dist *.tsbuildinfo",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "clean": "rm -rf dist dist-tests *.tsbuildinfo",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "build:tests": "tsc --project tsconfig.tests.json",
+    "test": "npm run build:tests && node --test dist-tests/tests/*.js"
   },
   "dependencies": {
     "pg": "^8.11.3"

@@ -6,7 +6,7 @@
  */
 
 /**
- * The 12 canonical PMS flows that compose the guest lifecycle.
+ * The canonical PMS flows that compose the guest lifecycle.
  * These form a DAG (directed acyclic graph), not a linear sequence.
  */
 export const FlowId = {
@@ -20,7 +20,9 @@ export const FlowId = {
 	NIGHT_AUDIT: "flow.night_audit",
 	CHECK_OUT: "flow.check_out",
 	HOUSEKEEPING: "flow.housekeeping",
+	CASHIER_SHIFT: "flow.cashier_shift",
 	AR_COLLECTIONS: "flow.ar_collections",
+	LEDGER_CONTROL: "flow.ledger_control",
 	CHANNEL_DISTRIBUTION: "flow.channel_distribution",
 } as const;
 

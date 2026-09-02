@@ -1,5 +1,22 @@
-import type { CreateReservationResult, ReservationUpdatedEvent } from "@tartware/schemas";
-import { ReservationUpdatedEventSchema } from "@tartware/schemas";
+import {
+  CommandError,
+  resolveReasonCode as resolveSharedReasonCode,
+  SYSTEM_ACTOR_ID,
+} from "@tartware/command-consumer-utils/command-utils";
+import type {
+  CreateReservationResult,
+  ReasonCodeRow,
+  ReservationStatus,
+  ReservationUpdatedEvent,
+} from "@tartware/schemas";
+import {
+  classifyReservationCommandTransition,
+  classifyReservationTransition,
+  describeReservationStatuses,
+  RESERVATION_UNCLAIMED_TRANSITIONS,
+  ReservationUpdatedEventSchema,
+  reservationStatusesFor,
+} from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../../config.js";
@@ -9,40 +26,107 @@ import { recordLifecyclePersisted } from "../../repositories/lifecycle-repositor
 import type { ReservationModifyCommand } from "../../schemas/reservation-command.js";
 import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 
-export class ReservationCommandError extends Error {
-  code: string;
-  /**
-   * When true the command consumer will retry this error rather than routing
-   * immediately to the DLQ. Set to true only for transient failures (e.g.
-   * unexpected DB write failures) that may succeed on a subsequent attempt.
-   * Business-logic validation errors (wrong status, missing FK) should leave
-   * this false — retrying them wastes attempts and delays DLQ diagnosis.
-   *
-   * These commands are consumed in partition order, so a retried error also
-   * stalls every command queued behind it for the length of the backoff
-   * ladder. Defaulting to false keeps a deterministic rejection from blocking
-   * unrelated work.
-   */
-  retryable: boolean;
-
-  constructor(code: string, message: string, retryable = false) {
-    super(message);
-    this.code = code;
-    this.retryable = retryable;
-  }
-
-  toJSON() {
-    return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
-  }
-}
+/**
+ * Reservation command failure. `retryable` defaults to false — see
+ * {@link CommandError} for why a retried business rejection is worse than an
+ * immediate DLQ routing.
+ */
+export class ReservationCommandError extends CommandError {}
 
 export type { CreateReservationResult };
 
 export const DEFAULT_CURRENCY = "USD";
+
+/**
+ * Human-readable label recorded inside event `metadata` JSON (not an actor id —
+ * never write this to a `created_by` / `updated_by` column).
+ */
 export const APP_ACTOR = "COMMAND_CENTER";
-export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+
+export { SYSTEM_ACTOR_ID };
 
 export type ReservationUpdatePayload = ReservationUpdatedEvent["payload"];
+
+/**
+ * Refuse a status change this command is not the one to make.
+ *
+ * Every reservation command that moves a status routes through here, so
+ * `RESERVATION_COMMAND_TRANSITIONS` is the only place the ordering is written
+ * down. Before this each handler carried its own literal array and the UI
+ * carried a second set, which is how the reservation screen came to offer
+ * Cancel on a WAITLISTED booking that the service refused.
+ *
+ * Gated on the command, not just on the lifecycle: CHECKED_OUT → CHECKED_IN is
+ * a perfectly legal move, but it belongs to `reservation.reverse_check_out`,
+ * which reopens the folio and refuses once the balance has gone to city ledger.
+ * Checking only that the edge exists would have let a caller undo a check-out
+ * by pressing Check In.
+ *
+ * `force` only opens the moves declared in `RESERVATION_FORCED_TRANSITIONS`; it
+ * is not a skeleton key. A caller who forces an ordinary illegal move is still
+ * refused, and the caller who forces a declared one gets `true` back so the
+ * handler knows to write the `flow_approvals` row — the override has to leave a
+ * record, and only the handler knows what to put in it.
+ */
+export const assertReservationTransition = (
+  commandName: string,
+  from: ReservationStatus,
+  to: ReservationStatus,
+  options: { code: string; force?: boolean } = { code: "INVALID_STATUS_TRANSITION" },
+): { forced: boolean } => {
+  // No `from === to` shortcut. A command's `from` list is the whole authority:
+  // reverse_check_in claims CHECKED_IN → CONFIRMED, so a reservation that is
+  // already CONFIRMED has nothing to reverse and must be refused, not waved
+  // through as a no-op. That shortcut belongs to the general editor below,
+  // where "leave the status alone" is a legitimate payload.
+  const verdict = classifyReservationCommandTransition(commandName, from, to);
+  if (verdict === "LEGAL") {
+    return { forced: false };
+  }
+  if (verdict === "REQUIRES_OVERRIDE" && options.force === true) {
+    return { forced: true };
+  }
+
+  const permitted = reservationStatusesFor(commandName, {
+    includeForced: options.force === true,
+  });
+  throw new ReservationCommandError(
+    options.code,
+    `Cannot move reservation from ${from} to ${to} via ${commandName}; must be ${describeReservationStatuses(permitted)}`,
+  );
+};
+
+/**
+ * Refuse a status change on `reservation.modify`, the general editor.
+ *
+ * Separate from the command guard above because modify claims no edge of its
+ * own. What it may do is the leftovers — the legal moves no dedicated command
+ * owns, chiefly PENDING → CONFIRMED when a deposit lands. Anything a real
+ * command claims has to go through that command, with its reason code, its
+ * availability hold and its folio work.
+ *
+ * `force` is not consulted at all: an override has to leave a `flow_approvals`
+ * row, and the command that writes one is the specific command.
+ */
+export const assertModifiableStatusChange = (
+  from: ReservationStatus,
+  to: ReservationStatus,
+): void => {
+  if (from === to) {
+    return;
+  }
+  if (RESERVATION_UNCLAIMED_TRANSITIONS[from]?.includes(to)) {
+    return;
+  }
+  const reason =
+    classifyReservationTransition(from, to) === "ILLEGAL"
+      ? `${to} is not reachable from ${from}`
+      : `that move belongs to a dedicated command`;
+  throw new ReservationCommandError(
+    "INVALID_STATUS_TRANSITION",
+    `reservation.modify cannot move a reservation from ${from} to ${to}: ${reason}`,
+  );
+};
 
 /**
  * Fill in the reservation identity fields that downstream consumers need but
@@ -101,7 +185,7 @@ export const enqueueReservationUpdate = async (
   tenantId: string,
   commandName: string,
   rawPayload: ReservationUpdatePayload,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const payload = await hydrateReservationIdentity(tenantId, rawPayload);
   const eventId = uuid();
@@ -320,3 +404,25 @@ export const hasStayCriticalChanges = (
 
   return roomTypeChanged || checkInChanged || checkOutChanged;
 };
+
+/**
+ * Resolve the reason code, or refuse.
+ *
+ * The implementation moved to `@tartware/command-consumer-utils/command-utils`
+ * when night audit needed the same thing: billing had no resolver at all, so
+ * `skip_preconditions` recorded a hardcoded literal that never had to exist as
+ * a row. This wrapper keeps the call sites here reading the same and binds the
+ * service's own pool.
+ */
+export const resolveReasonCode = (
+  tenantId: string,
+  propertyId: string | null,
+  reasonCode: string,
+  category: string,
+): Promise<ReasonCodeRow> =>
+  resolveSharedReasonCode<ReasonCodeRow>((sql, params) => query<ReasonCodeRow>(sql, params), {
+    tenantId,
+    propertyId,
+    reasonCode,
+    category,
+  });

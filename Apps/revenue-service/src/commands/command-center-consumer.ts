@@ -1,7 +1,8 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
-import { enterTenantScope } from "@tartware/config/db";
+import { runWithTenantScope } from "@tartware/config/db";
 import { createServiceLogger } from "@tartware/telemetry";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -26,7 +27,6 @@ import {
   handleForecastAdjust,
   handleForecastCompute,
   handleForecastEvaluate,
-  resolveActorId,
 } from "./handlers/forecast-handlers.js";
 import {
   handleGoalCreate,
@@ -375,7 +375,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeRevenueCommand,
   publishDlqEvent,
-  onTenantResolved: enterTenantScope,
+  withTenantScope: runWithTenantScope,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
   metrics: {

@@ -26,7 +26,7 @@
   "dependencies": {
     "@fastify/helmet": "^13.0.2",
     "@fastify/sensible": "^6.0.4",
-    "@grpc/grpc-js": "^1.11.3",
+    "@grpc/grpc-js": "^1.14.4",
     "@grpc/proto-loader": "^0.7.10",
     "@tartware/command-consumer-utils": "workspace:*",
     "@tartware/proto-types": "workspace:*",
@@ -50,7 +50,7 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "esbuild": "^0.27.2",
     "eslint": "8.57.0",
     "eslint-config-prettier": "^9.1.0",
@@ -58,7 +58,7 @@
     "knip": "^5.67.0",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "engines": {
     "node": ">=22.0.0",

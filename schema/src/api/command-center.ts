@@ -10,6 +10,8 @@ import { z } from "zod";
 import { uuid } from "../shared/base-schemas.js";
 import { CommandFeatureStatusEnum } from "../shared/enums.js";
 
+import type { CommandAuthorityReason } from "./command-permissions.js";
+
 // =====================================================
 // IDEMPOTENCY — envelope-level deduplication contract
 // =====================================================
@@ -214,8 +216,13 @@ export type CommandFeatureUpdateRow = {
 export type CommandContext = {
 	/** Tenant ID the command is scoped to */
 	tenantId: string;
-	/** Identity that initiated the command (may be null for system-generated commands) */
-	initiatedBy?: { userId?: string } | null;
+	/**
+	 * Identity that initiated the command (may be null for system-generated
+	 * commands). `role` is the caller's tenant membership role at accept time —
+	 * the gateway stamps it onto every envelope, and an override record that
+	 * omits it cannot say what authority the bypass was made under.
+	 */
+	initiatedBy?: { userId?: string; role?: string } | null;
 	/** Raw command payload (present when the handler destructures context for the full envelope) */
 	payload?: unknown;
 	/** Correlation ID from the Kafka message (for distributed tracing) */
@@ -307,6 +314,17 @@ export type CommandResolution<Membership = unknown> =
 	| { status: "NOT_FOUND" }
 	| { status: "MODULES_MISSING"; missingModules: string[] }
 	| { status: "DISABLED"; reason: string }
+	/**
+	 * The caller holds the tenant and the module but not the authority for this
+	 * particular command. Resolved here rather than at the route because this is
+	 * the one point every accepted command passes through, and it is the first
+	 * point that knows both the command name and the membership.
+	 */
+	| {
+			status: "PERMISSION_DENIED";
+			reason: CommandAuthorityReason;
+			requiredRole: string | null;
+	  }
 	| {
 			status: "RESOLVED";
 			route: CommandRouteInfo;
@@ -314,6 +332,21 @@ export type CommandResolution<Membership = unknown> =
 			template?: unknown;
 			membership?: Membership;
 	  };
+
+/**
+ * The second signature a deferred command was released on.
+ *
+ * Present only on the dispatch the approval path performs, and never settable
+ * from a request body: it is the proof that the dual-control gate in
+ * `acceptCommand` has already been satisfied, so a caller who could supply it
+ * would be able to waive their own control.
+ */
+export type CommandApprovalGrant = {
+	approvalId: string;
+	approverId: string;
+	approverRole: string | null;
+	approvedAt: string;
+};
 
 /** Input to the command acceptance pipeline. */
 export interface AcceptCommandInput<Membership = unknown> {
@@ -324,7 +357,28 @@ export interface AcceptCommandInput<Membership = unknown> {
 	requestId: string;
 	initiatedBy: Initiator;
 	membership: Membership;
+	/** Set only by the approval path. See {@link CommandApprovalGrant}. */
+	approvalGrant?: CommandApprovalGrant;
 }
+
+/**
+ * An approval row as the dispatch path needs to see it.
+ *
+ * Returned whatever state the row is in, because a resubmitted idempotency key
+ * has to be answered from the request it already raised rather than raise a
+ * second one — including when that request has since been approved, rejected
+ * or left to expire.
+ */
+export type CommandApprovalTicket = {
+	approvalId: string;
+	status: string;
+	requiredRole: string;
+	requestedBy: string;
+	requestedAt: string;
+	expiresAt: string;
+	/** The command id this approval dispatched, once it has been released. */
+	dispatchedCommandId: string | null;
+};
 
 /** Outbox record written to the DB before Kafka publish (transactional outbox pattern). */
 export interface CommandOutboxRecord {
@@ -340,24 +394,85 @@ export interface CommandOutboxRecord {
 	metadata?: Record<string, unknown>;
 }
 
+/**
+ * The reads and writes that accepting a command performs, as one unit.
+ *
+ * `command_dispatches.outbox_event_id` is `NOT NULL REFERENCES
+ * transactional_outbox (event_id)`, so the outbox row has to exist before the
+ * dispatch row and the two only make sense together: an outbox row without its
+ * dispatch row still publishes, and the command executes with no audit record.
+ * Binding all three operations to one transaction is what stops a crash between
+ * them from producing that orphan.
+ */
+export interface CommandDispatchWriter {
+	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
+	/**
+	 * Returns `false` when a dispatch for this (tenant, command, request) already
+	 * exists — two identical requests racing, which a prior lookup cannot rule
+	 * out. Callers treat `false` as "replay" rather than letting the unique
+	 * index surface as a 500.
+	 */
+	insertCommandDispatch: (
+		input: InsertCommandDispatchInput,
+	) => Promise<boolean>;
+	findCommandDispatchByRequest: (
+		tenantId: string,
+		commandName: string,
+		requestId: string,
+	) => Promise<CommandDispatchLookup | null>;
+}
+
 /** Dependency injection contract for the command dispatch service factory. */
 export interface CommandDispatchDependencies<Membership = unknown> {
 	resolveCommandForTenant: (
 		args: Omit<AcceptCommandInput<Membership>, "payload" | "initiatedBy">,
 	) => CommandResolution<Membership>;
 	enqueueOutboxRecord: (record: CommandOutboxRecord) => Promise<void>;
-	insertCommandDispatch: (input: InsertCommandDispatchInput) => Promise<void>;
+	/** See {@link CommandDispatchWriter.insertCommandDispatch} for the `false` case. */
+	insertCommandDispatch: (
+		input: InsertCommandDispatchInput,
+	) => Promise<boolean>;
 	findCommandDispatchByRequest: (
 		tenantId: string,
 		commandName: string,
 		requestId: string,
 	) => Promise<CommandDispatchLookup | null>;
+	/**
+	 * Runs the accept-command reads and writes inside one transaction.
+	 *
+	 * Supplying it also collapses the per-statement cost: with an RLS tenant
+	 * scope active, every standalone `query()` pays its own connect / BEGIN /
+	 * `set_config` / COMMIT, so three separate statements cost fifteen round
+	 * trips where one transaction costs six. Omit it and the individual
+	 * dependencies above are used unchanged, without atomicity.
+	 */
+	withDispatchTransaction?: <T>(
+		fn: (writer: CommandDispatchWriter) => Promise<T>,
+	) => Promise<T>;
 	throttleCommand?: (input: {
 		commandName: string;
 		tenantId: string;
 		requestId: string;
 		feature: CommandFeatureInfo | null;
 	}) => Promise<boolean>;
+	/**
+	 * Raise (or re-read) the approval request standing between this command and
+	 * the outbox.
+	 *
+	 * Optional in the type and mandatory in effect: a command declared in
+	 * `COMMAND_DUAL_CONTROL` is refused outright when this is not wired, because
+	 * the alternative — dispatching it because the control could not run — is
+	 * the failure mode dual control exists to prevent.
+	 */
+	requireCommandApproval?: (input: {
+		commandName: string;
+		tenantId: string;
+		payload: Record<string, unknown>;
+		requestId: string;
+		correlationId?: string;
+		initiatedBy: Initiator;
+		approverRole: string;
+	}) => Promise<CommandApprovalTicket>;
 }
 
 /** Full result returned internally after successfully accepting a command. */
@@ -383,6 +498,27 @@ export type CommandAcceptanceResult = {
 	};
 };
 
+/**
+ * A command that was recorded as an approval request instead of dispatched.
+ *
+ * It is not a rejection and not an acceptance: the request is durable, the
+ * command has not run, and whether it ever does is now someone else's
+ * decision. The ticket is returned in whatever state it is in so a replayed
+ * idempotency key reports the fate of the request it already raised.
+ */
+export type CommandDeferredForApproval = {
+	status: "pending_approval";
+	commandName: string;
+	tenantId: string;
+	correlationId?: string;
+	approval: CommandApprovalTicket;
+};
+
+/** What `acceptCommand` can answer: dispatched, or waiting on a second person. */
+export type CommandAcceptanceOutcome =
+	| CommandAcceptanceResult
+	| CommandDeferredForApproval;
+
 /** Slim command acceptance response returned by the API gateway to callers. */
 export type AcceptedCommand = {
 	status: "accepted";
@@ -400,6 +536,61 @@ export type AcceptedCommand = {
 		targetTopic: string;
 	};
 };
+
+/**
+ * A timestamp on the way out of the API, always ISO 8601.
+ *
+ * `pg` hands back a `Date`, and `z.coerce.string()` on one yields
+ * `String(date)` — "Fri Aug 28 2026 12:19:05 GMT+0000 (Coordinated Universal
+ * Time)". Every other timestamp this API returns is ISO, and a client parsing
+ * the rest with `new Date(...)` has no reason to expect this field to be
+ * different.
+ */
+export const IsoTimestampSchema = z
+	.union([z.string(), z.date()])
+	.transform((value) => (value instanceof Date ? value.toISOString() : value));
+
+/** One target's outcome inside a batch run, as the API returns it. */
+export const CommandBatchItemViewSchema = z.object({
+	item_index: z.number().int().nonnegative(),
+	target_id: z.string().nullable(),
+	outcome: z.enum(["SUCCEEDED", "FAILED", "SKIPPED"]),
+	event_id: z.string().nullable(),
+	error_code: z.string().nullable(),
+	error_message: z.string().nullable(),
+	duration_ms: z.number().int().nullable(),
+});
+export type CommandBatchItemView = z.infer<typeof CommandBatchItemViewSchema>;
+
+/** Summary row for a batch run, without its items. */
+export const CommandBatchSummarySchema = z.object({
+	batch_id: z.string(),
+	command_name: z.string(),
+	status: z.enum(["RUNNING", "COMPLETED", "PARTIAL", "FAILED"]),
+	total: z.number().int().nonnegative(),
+	succeeded: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	skipped: z.number().int().nonnegative(),
+	dry_run: z.boolean(),
+	property_id: z.string().nullable(),
+	correlation_id: z.string().nullable(),
+	error_code: z.string().nullable(),
+	error_message: z.string().nullable(),
+	started_at: IsoTimestampSchema,
+	completed_at: IsoTimestampSchema.nullable(),
+});
+export type CommandBatchSummary = z.infer<typeof CommandBatchSummarySchema>;
+
+/**
+ * A batch run with every requested item.
+ *
+ * This is what an operator reads after a mass operation: the aggregate says how
+ * many did not go through, and `items` says which ones and why.
+ */
+export const CommandBatchDetailSchema = CommandBatchSummarySchema.extend({
+	items: z.array(CommandBatchItemViewSchema),
+});
+export type CommandBatchDetailView = z.infer<typeof CommandBatchDetailSchema>;
 
 /** Public view of a command definition for API/UI consumers. */
 export type CommandDefinitionView = {

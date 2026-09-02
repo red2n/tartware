@@ -1,3 +1,9 @@
+export type {
+	OutboxDispatcherDeps,
+	OutboxDispatcherSettings,
+	OutboxTopicMessages,
+} from "./dispatcher.js";
+export { createOutboxDispatcher, groupRecordsByTopic } from "./dispatcher.js";
 export { createOutboxRepository } from "./repository.js";
 export type {
 	TenantThrottler,

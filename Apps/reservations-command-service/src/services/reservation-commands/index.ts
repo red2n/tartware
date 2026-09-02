@@ -5,6 +5,9 @@
  *
  *  ├─ Core          — create, modify, cancel, no-show, walk
  *  ├─ Checkin       — check-in, check-out, walk-in
+ *  ├─ Reversals     — reverse check-in, reverse check-out, reinstate
+ *  ├─ Mass          — mass cancel, mass check-in, mass update (batch envelope)
+ *  ├─ Room move     — in-house guest relocation with charge follow-through
  *  ├─ Room          — assign, unassign, extend stay
  *  ├─ Financial     — rate override, deposits
  *  ├─ Group         — group bookings, rooming lists, cutoffs
@@ -41,6 +44,11 @@ export {
   uploadGroupRoomingList,
 } from "./group-booking.js";
 export {
+  massCancelReservations,
+  massCheckInReservations,
+  massUpdateReservations,
+} from "./mass-operations.js";
+export {
   createMetasearchConfig,
   recordMetasearchClick,
   updateMetasearchConfig,
@@ -60,10 +68,16 @@ export {
   sendQuote,
 } from "./quote-management.js";
 export {
+  reinstateReservation,
+  reverseCheckIn,
+  reverseCheckOut,
+} from "./reversals.js";
+export {
   assignRoom,
   extendStay,
   unassignRoom,
 } from "./room-assignment.js";
+export { moveRoom } from "./room-move.js";
 export {
   waitlistAdd,
   waitlistConvert,

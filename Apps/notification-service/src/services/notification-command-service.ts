@@ -1,6 +1,6 @@
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { appLogger } from "../lib/logger.js";
-
 import {
   createAutomatedMessage,
   deleteAutomatedMessage,
@@ -10,12 +10,6 @@ import { sendNotification } from "./notification-dispatch-service.js";
 import { createTemplate, deleteTemplate, updateTemplate } from "./template-service.js";
 
 const logger = appLogger.child({ module: "notification-command-service" });
-
-const SYSTEM_ACTOR = "NOTIFICATION_SERVICE";
-
-/** Extract a scalar actor id from the initiatedBy envelope field. */
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? SYSTEM_ACTOR;
 
 /**
  * Handle notification.send command — render template and dispatch notification.
@@ -35,7 +29,10 @@ export const handleSendNotification = async (
   const context = (payload.context as Record<string, string>) ?? {};
 
   if (!guestId || !propertyId || !templateCode) {
-    throw new Error("Missing required fields: guest_id, property_id, template_code");
+    throw new CommandError(
+      "MISSING_REQUIRED_FIELDS",
+      "Missing required fields: guest_id, property_id, template_code",
+    );
   }
 
   const result = await sendNotification({
@@ -117,7 +114,7 @@ export const handleUpdateTemplate = async (
 ): Promise<void> => {
   const templateId = payload.template_id as string;
   if (!templateId) {
-    throw new Error("Missing required field: template_id");
+    throw new CommandError("MISSING_TEMPLATE_ID", "Missing required field: template_id");
   }
 
   const result = await updateTemplate(
@@ -165,7 +162,7 @@ export const handleDeleteTemplate = async (
 ): Promise<void> => {
   const templateId = payload.template_id as string;
   if (!templateId) {
-    throw new Error("Missing required field: template_id");
+    throw new CommandError("MISSING_TEMPLATE_ID", "Missing required field: template_id");
   }
 
   const deleted = await deleteTemplate(ctx.tenantId, templateId, resolveActorId(ctx.initiatedBy));
@@ -244,7 +241,7 @@ export const handleUpdateAutomatedMessage = async (
 ): Promise<void> => {
   const messageId = payload.message_id as string;
   if (!messageId) {
-    throw new Error("Missing required field: message_id");
+    throw new CommandError("MISSING_MESSAGE_ID", "Missing required field: message_id");
   }
 
   const result = await updateAutomatedMessage(
@@ -330,7 +327,7 @@ export const handleDeleteAutomatedMessage = async (
 ): Promise<void> => {
   const messageId = payload.message_id as string;
   if (!messageId) {
-    throw new Error("Missing required field: message_id");
+    throw new CommandError("MISSING_MESSAGE_ID", "Missing required field: message_id");
   }
 
   const deleted = await deleteAutomatedMessage(

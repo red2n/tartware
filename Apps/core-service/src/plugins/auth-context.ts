@@ -1,5 +1,5 @@
 import { enterTenantScope } from "@tartware/config/db";
-import { TenantRoleEnum } from "@tartware/schemas";
+import { TENANT_ROLE_PRIORITY, TenantRoleEnum } from "@tartware/schemas";
 import type {
   FastifyPluginAsync,
   FastifyReply,
@@ -16,19 +16,10 @@ import {
 } from "../services/user-cache-service.js";
 import type {
   AuthContext,
-  RolePriorityMap,
   TenantMembership,
   TenantScopeDecorator,
   TenantScopeOptions,
 } from "../types/auth.js";
-
-const ROLE_PRIORITY: RolePriorityMap = {
-  OWNER: 500,
-  ADMIN: 400,
-  MANAGER: 300,
-  STAFF: 200,
-  VIEWER: 100,
-};
 
 const createAuthContext = (userId: string | null, memberships: TenantMembership[]): AuthContext => {
   const membershipMap = new Map(memberships.map((item) => [item.tenantId, item]));
@@ -38,8 +29,8 @@ const createAuthContext = (userId: string | null, memberships: TenantMembership[
     if (!membership) {
       return false;
     }
-    const currentPriority = ROLE_PRIORITY[membership.role] ?? 0;
-    const requiredPriority = ROLE_PRIORITY[minimumRole] ?? 0;
+    const currentPriority = TENANT_ROLE_PRIORITY[membership.role] ?? 0;
+    const requiredPriority = TENANT_ROLE_PRIORITY[minimumRole] ?? 0;
     return currentPriority >= requiredPriority;
   };
 
@@ -93,8 +84,8 @@ const buildTenantScopeGuard = (options: TenantScopeOptions = {}): preHandlerHook
           if (requireActiveMembership && !membership.isActive) {
             return false;
           }
-          const currentPriority = ROLE_PRIORITY[membership.role] ?? 0;
-          const requiredPriority = ROLE_PRIORITY[requireAnyTenantWithRole] ?? 0;
+          const currentPriority = TENANT_ROLE_PRIORITY[membership.role] ?? 0;
+          const requiredPriority = TENANT_ROLE_PRIORITY[requireAnyTenantWithRole] ?? 0;
           return currentPriority >= requiredPriority;
         });
         if (!hasRequiredRole) {

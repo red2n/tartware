@@ -1,48 +1,47 @@
-import { performance } from "node:perf_hooks";
+/**
+ * Composition root for this service's outbox dispatcher.
+ *
+ * The loop is `createOutboxDispatcher` in `@tartware/outbox`, shared with the
+ * gateway. This module supplies the concrete producer, config, and the parts
+ * specific to reservation events: lifecycle bookkeeping and DLQ routing.
+ *
+ * It used to be a bespoke serial loop — one `send()` per record, awaiting a
+ * broker acknowledgement each time, on a fixed 2 s poll with a 25-row batch.
+ * Measured under load that moved 7 rows/sec and fell hours behind while the
+ * gateway's batched dispatcher drained 470K rows to zero on the same box. The
+ * reservation events stuck in that backlog were why reservations never
+ * appeared under load, so the fix is to share the design rather than keep two.
+ */
 
-import { enterTenantScope } from "@tartware/config/db";
-import { createTenantThrottler, type OutboxRecord } from "@tartware/outbox";
+import { createOutboxDispatcher, type OutboxRecord } from "@tartware/outbox";
 
 import { kafkaConfig, outboxConfig } from "../config.js";
-import { publishDlqEvent, publishEvent } from "../kafka/producer.js";
-import {
-  observeOutboxPublishDuration,
-  observeOutboxThrottleWait,
-  setOutboxQueueSize,
-} from "../lib/metrics.js";
+import { publishDlqEvent, publishRecordBatch } from "../kafka/producer.js";
+import { observeOutboxPublishDuration, setOutboxQueueSize } from "../lib/metrics.js";
 import { reservationsLogger } from "../logger.js";
 import {
   type ReservationCommandLifecycleState,
-  updateLifecycleState,
+  updateLifecycleStateBatch,
 } from "../repositories/lifecycle-repository.js";
 
 import {
   claimOutboxBatch,
   countPendingOutboxRows,
-  markOutboxDelivered,
+  markOutboxDeliveredBatch,
   markOutboxFailed,
   releaseExpiredLocks,
 } from "./repository.js";
-
-let dispatcherTimer: NodeJS.Timeout | null = null;
-let isDispatcherRunning = false;
-let currentCycle: Promise<void> | null = null;
-
-const throttleTenant = createTenantThrottler({
-  minSpacingMs: outboxConfig.tenantThrottleMs,
-  maxJitterMs: outboxConfig.tenantJitterMs,
-  cleanupIntervalMs: outboxConfig.tenantThrottleCleanupMs,
-});
 
 /**
  * Every aggregate type this service enqueues, all of which belong on
  * `reservations.events`.
  *
- * This list used to be the single literal `"reservation"`, so the other four were
- * written inside the command transaction and then claimed by nobody — `group.created`
- * and `group.rooms_added` (which notification-service maps to GROUP_BOOKING_CONFIRMED)
- * and the four `integration.*` events sat PENDING indefinitely. Anything added to an
- * `enqueueOutboxRecord*` call in this service has to be added here too.
+ * This list used to be the single literal `"reservation"`, so the other four
+ * were written inside the command transaction and then claimed by nobody —
+ * `group.created` and `group.rooms_added` (which notification-service maps to
+ * GROUP_BOOKING_CONFIRMED) and the `integration.*` events sat PENDING
+ * indefinitely. Anything added to an `enqueueOutboxRecord*` call in this
+ * service has to be added here too.
  */
 const DISPATCHED_AGGREGATE_TYPES = [
   "reservation",
@@ -53,179 +52,92 @@ const DISPATCHED_AGGREGATE_TYPES = [
 ] as const;
 
 /**
- * Boots the outbox dispatcher loop which continuously flushes
- * transactional outbox rows into Kafka.
+ * `reservation_command_lifecycle` only ever holds rows for reservation events,
+ * so filtering here keeps the batch update from touching aggregate types that
+ * never had a lifecycle row.
  */
-export const startOutboxDispatcher = (): void => {
-  if (isDispatcherRunning) {
-    return;
-  }
-  isDispatcherRunning = true;
-  scheduleNextCycle();
-  reservationsLogger.info({ workerId: outboxConfig.workerId }, "Outbox dispatcher started");
-};
+const lifecycleEventIds = (records: OutboxRecord[]): string[] =>
+  records
+    .filter((record) => record.aggregateType === "reservation")
+    .map((record) => record.eventId);
 
-/**
- * Stops the dispatcher loop and waits for any in-flight batch to finish.
- */
-export const shutdownOutboxDispatcher = async (): Promise<void> => {
-  isDispatcherRunning = false;
-  if (dispatcherTimer) {
-    clearTimeout(dispatcherTimer);
-    dispatcherTimer = null;
-  }
-  try {
-    await currentCycle;
-  } catch {
-    // ignore shutdown errors
-  }
-  reservationsLogger.info("Outbox dispatcher stopped");
-};
-
-const scheduleNextCycle = () => {
-  // Guard: pollIntervalMs must be a positive finite value. A zero or negative
-  // delay coerces to 1ms and spin-loops (TimeoutNegativeWarning / CPU burn).
-  const delayMs = Math.max(1, outboxConfig.pollIntervalMs);
-  dispatcherTimer = setTimeout(runCycle, delayMs);
-};
-
-const runCycle = async () => {
-  currentCycle = processOutboxBatch().catch((error) => {
-    reservationsLogger.error(error, "Outbox dispatcher cycle failed");
-  });
-
-  await currentCycle;
-
-  if (isDispatcherRunning) {
-    scheduleNextCycle();
-  }
-};
-
-const processOutboxBatch = async (): Promise<void> => {
-  await releaseExpiredLocks(outboxConfig.lockTimeoutMs);
-
-  const pending = await countPendingOutboxRows();
-  setOutboxQueueSize(pending);
-
-  if (pending === 0) {
-    return;
-  }
-
-  const records = await claimOutboxBatch(
-    outboxConfig.batchSize,
-    outboxConfig.workerId,
-    DISPATCHED_AGGREGATE_TYPES,
-  );
-
-  for (const record of records) {
-    const throttledAt = performance.now();
-    await throttleTenant(record.tenantId);
-    observeOutboxThrottleWait(secondsSince(throttledAt));
-    enterTenantScope(record.tenantId);
-    await handleOutboxRecord(record);
-  }
-};
-
-const handleOutboxRecord = async (record: OutboxRecord): Promise<void> => {
-  const startedAt = performance.now();
-
-  await updateLifecycleStateSafe(record, "IN_PROGRESS", {
-    workerId: outboxConfig.workerId,
-    aggregateId: record.aggregateId,
-  });
-
-  try {
-    await publishEvent({
-      key: record.partitionKey ?? record.aggregateId,
-      value: JSON.stringify(record.payload),
-      headers: normalizeHeaders(record.headers),
-    });
-    await markOutboxDelivered(record.id);
-    await updateLifecycleStateSafe(record, "PUBLISHED", {
-      topic: kafkaConfig.topic,
-      partitionKey: record.partitionKey ?? record.aggregateId,
-    });
-    observeOutboxPublishDuration(secondsSince(startedAt));
-  } catch (error) {
-    const status = await markOutboxFailed(
-      record.id,
-      error,
-      outboxConfig.retryBackoffMs,
-      outboxConfig.maxRetries,
-    );
-    await updateLifecycleStateSafe(record, status === "DLQ" ? "DLQ" : "FAILED", {
-      error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
-      workerId: outboxConfig.workerId,
-    });
-    observeOutboxPublishDuration(secondsSince(startedAt));
-    reservationsLogger.error(
-      { err: error, recordId: record.id, status },
-      "Failed to publish outbox record",
-    );
-
-    if (status === "DLQ") {
-      await publishDlqEvent({
-        key: record.partitionKey ?? record.aggregateId,
-        value: JSON.stringify({
-          failureReason: "OUTBOX_DISPATCH_FAILURE",
-          failedAt: new Date().toISOString(),
-          topic: kafkaConfig.topic,
-          record,
-          error:
-            error instanceof Error
-              ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
-              : String(error),
-        }),
-        headers: {
-          "x-tartware-dlq": "reservations-command-service:outbox",
-        },
+const dispatcher = createOutboxDispatcher({
+  settings: outboxConfig,
+  logger: reservationsLogger.child({ module: "outbox-dispatcher" }),
+  aggregateTypes: DISPATCHED_AGGREGATE_TYPES,
+  resolveTopic: () => kafkaConfig.topic,
+  // Preserves the previous keying: the stored partition key when present,
+  // falling back to the aggregate id.
+  resolveKey: (record) => record.partitionKey ?? record.aggregateId,
+  claimOutboxBatch,
+  publishRecordBatch,
+  markOutboxDeliveredBatch,
+  markOutboxFailed,
+  releaseExpiredLocks,
+  observeBatch: ({ durationSeconds }) => observeOutboxPublishDuration(durationSeconds),
+  // Queue depth is a COUNT over the pending rows, so it rides the slow cadence
+  // rather than running on every poll.
+  onSlowSample: async () => {
+    setOutboxQueueSize(await countPendingOutboxRows());
+  },
+  afterDelivered: async (records) => {
+    try {
+      await updateLifecycleStateBatch(lifecycleEventIds(records), "PUBLISHED", {
+        topic: kafkaConfig.topic,
+        workerId: outboxConfig.workerId,
+      });
+    } catch (error) {
+      // Lifecycle is observability, not delivery. The batch is already
+      // published and marked, so a failure here must not unwind that.
+      reservationsLogger.warn(
+        { err: error, batchSize: records.length },
+        "failed to update lifecycle state for published batch",
+      );
+    }
+  },
+  onRecordFailed: async (record, error, status) => {
+    const state: ReservationCommandLifecycleState = status === "DLQ" ? "DLQ" : "FAILED";
+    if (record.aggregateType === "reservation") {
+      await updateLifecycleStateBatch([record.eventId], state, {
+        error:
+          error instanceof Error ? { name: error.name, message: error.message } : String(error),
+        workerId: outboxConfig.workerId,
+      }).catch((lifecycleError) => {
+        reservationsLogger.warn(
+          { err: lifecycleError, eventId: record.eventId, state },
+          "failed to update lifecycle state",
+        );
       });
     }
-  }
-};
 
-const normalizeHeaders = (headers: Record<string, string>): Record<string, string> => {
-  const normalized: Record<string, string> = {};
-  for (const [key, value] of Object.entries(headers ?? {})) {
-    if (value !== undefined && value !== null) {
-      normalized[key] = String(value);
+    if (status !== "DLQ") {
+      return;
     }
-  }
-  return normalized;
-};
 
-const secondsSince = (startedAt: number): number => {
-  return (performance.now() - startedAt) / 1000;
-};
-
-/**
- * `reservation_command_lifecycle` only ever holds rows for reservation events, so
- * every other aggregate type this dispatcher now drains would warn twice per record
- * about a row that is not supposed to exist. Skipping them keeps the warning
- * meaningful: if it fires, a reservation event really has lost its lifecycle row.
- */
-const tracksLifecycle = (record: OutboxRecord): boolean => record.aggregateType === "reservation";
-
-const updateLifecycleStateSafe = async (
-  record: OutboxRecord,
-  state: ReservationCommandLifecycleState,
-  details: Record<string, unknown>,
-): Promise<void> => {
-  if (!tracksLifecycle(record)) {
-    return;
-  }
-  const { eventId } = record;
-  try {
-    await updateLifecycleState({
-      eventId,
-      state,
-      details,
+    await publishDlqEvent({
+      key: record.partitionKey ?? record.aggregateId,
+      value: JSON.stringify({
+        failureReason: "OUTBOX_DISPATCH_FAILURE",
+        failedAt: new Date().toISOString(),
+        topic: kafkaConfig.topic,
+        record,
+        error:
+          error instanceof Error
+            ? { name: error.name, message: error.message, stack: error.stack }
+            : String(error),
+      }),
+      headers: { "x-tartware-dlq": "reservations-command-service:outbox" },
+    }).catch((dlqError) => {
+      reservationsLogger.error(
+        { err: dlqError, eventId: record.eventId },
+        "failed to publish outbox DLQ event",
+      );
     });
-  } catch (error) {
-    reservationsLogger.warn({ err: error, eventId, state }, "Failed to update lifecycle state");
-  }
-};
+  },
+});
+
+/** Boots the dispatcher loop which flushes outbox rows into Kafka. */
+export const startOutboxDispatcher = (): void => dispatcher.start();
+
+/** Stops the loop and waits for any in-flight batch to finish. */
+export const shutdownOutboxDispatcher = (): Promise<void> => dispatcher.shutdown();

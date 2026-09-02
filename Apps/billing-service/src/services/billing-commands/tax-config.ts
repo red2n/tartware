@@ -26,7 +26,7 @@ export const createTaxConfig = async (payload: unknown, context: CommandContext)
     `INSERT INTO tax_configurations (
 			tenant_id, property_id, tax_code, tax_name, tax_description,
 			tax_type, country_code, state_province, city,
-			jurisdiction_name, jurisdiction_level,
+			jurisdiction_name, jurisdiction_level, tax_registration_number,
 			tax_rate, is_percentage, fixed_amount,
 			effective_from, effective_to, is_active,
 			applies_to, excluded_items,
@@ -36,7 +36,7 @@ export const createTaxConfig = async (payload: unknown, context: CommandContext)
 		) VALUES (
 			$1::uuid, $2::uuid, $3, $4, $5,
 			$6, $7, $8, $9,
-			$10, $11,
+			$10, $11, $26,
 			$12, $13, $14,
 			$15, $16, $17,
 			$18, $19,
@@ -70,6 +70,7 @@ export const createTaxConfig = async (payload: unknown, context: CommandContext)
       command.calculation_method ?? "exclusive",
       command.rounding_method ?? "standard",
       asUuid(actorId),
+      command.tax_registration_number ?? null,
     ],
   );
 
@@ -101,6 +102,7 @@ export const updateTaxConfig = async (payload: unknown, context: CommandContext)
     { column: "tax_name", value: command.tax_name },
     { column: "tax_description", value: command.tax_description },
     { column: "tax_type", value: command.tax_type },
+    { column: "tax_registration_number", value: command.tax_registration_number },
     { column: "tax_rate", value: command.tax_rate },
     { column: "is_percentage", value: command.is_percentage },
     { column: "fixed_amount", value: command.fixed_amount },

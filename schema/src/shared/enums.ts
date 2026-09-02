@@ -60,6 +60,41 @@ export const TenantRoleEnum = z.enum([
 ]);
 export type TenantRole = z.infer<typeof TenantRoleEnum>;
 
+/**
+ * The role ladder, highest authority first.
+ *
+ * Every `minRole` check in the product is a comparison against this ordering,
+ * so it belongs next to the enum rather than beside each consumer: the same
+ * five numbers were copied into api-gateway, core-service and tenant-auth, and
+ * a fourth copy was about to be written for approval `required_role`. Three
+ * copies of a security ordering is three chances for them to disagree.
+ */
+export const TENANT_ROLE_PRIORITY: Readonly<Record<TenantRole, number>> = {
+	OWNER: 500,
+	ADMIN: 400,
+	MANAGER: 300,
+	STAFF: 200,
+	VIEWER: 100,
+};
+
+/**
+ * Whether `actual` carries at least the authority of `required`.
+ *
+ * Fails closed on anything that is not a known role. A caller comparing a
+ * value read back from the database — `approval_requests.required_role` is a
+ * free-form VARCHAR — must not have an unrecognised string silently score 0
+ * and admit everyone.
+ */
+export const tenantRoleAtLeast = (
+	actual: string | null | undefined,
+	required: string | null | undefined,
+): boolean => {
+	const actualRank = TENANT_ROLE_PRIORITY[actual as TenantRole];
+	const requiredRank = TENANT_ROLE_PRIORITY[required as TenantRole];
+	if (actualRank === undefined || requiredRank === undefined) return false;
+	return actualRank >= requiredRank;
+};
+
 // =====================================================
 // PLATFORM ADMIN ENUMS
 // =====================================================

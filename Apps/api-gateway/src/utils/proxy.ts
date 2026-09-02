@@ -133,6 +133,8 @@ export const proxyRequest = async (
   request: FastifyRequest,
   reply: FastifyReply,
   targetBaseUrl: string,
+  /** Observes a successful upstream response, so a caller may cache it. */
+  onResponse?: (result: UpstreamResponse) => void,
 ): Promise<FastifyReply> => {
   if (request.method.toUpperCase() === "OPTIONS") {
     return reply.status(204).send();
@@ -181,23 +183,19 @@ export const proxyRequest = async (
       }
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
-
     try {
       response = await fetch(targetUrl, {
         method: request.method,
         headers,
         body,
-        signal: controller.signal,
+        // A fresh deadline per attempt, so a retry is not charged the time the
+        // previous attempt already burned.
+        signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
       });
     } catch (error) {
       lastError = error;
       await breaker.recordFailure();
-      clearTimeout(timeoutId);
       continue;
-    } finally {
-      clearTimeout(timeoutId);
     }
 
     if (response.status >= 500) {
@@ -241,10 +239,10 @@ export const proxyRequest = async (
     return reply;
   }
 
-  reply.status(response.status);
+  const headersToForward: Array<[string, string]> = [];
   response.headers.forEach((value, key) => {
     if (!hopByHopHeaders.has(key.toLowerCase())) {
-      reply.header(key, value);
+      headersToForward.push([key, value]);
     }
   });
 
@@ -253,5 +251,33 @@ export const proxyRequest = async (
     { target: targetLabel, method, status: String(response.status) },
     (performance.now() - proxyStart) / 1000,
   );
-  return reply.send(buffer);
+
+  const result: UpstreamResponse = {
+    status: response.status,
+    headers: headersToForward,
+    body: buffer,
+  };
+  onResponse?.(result);
+  return sendUpstream(reply, result);
+};
+
+/**
+ * A fetched upstream response, in the form the gateway forwards it.
+ *
+ * Separated out so a cached read can replay one without going upstream — the
+ * proxy itself is unchanged, it just reports what it received.
+ */
+export type UpstreamResponse = {
+  status: number;
+  headers: Array<[string, string]>;
+  body: Buffer;
+};
+
+/** Write an upstream response to the reply, cached or freshly fetched. */
+export const sendUpstream = (reply: FastifyReply, result: UpstreamResponse): FastifyReply => {
+  reply.status(result.status);
+  for (const [key, value] of result.headers) {
+    reply.header(key, value);
+  }
+  return reply.send(result.body);
 };

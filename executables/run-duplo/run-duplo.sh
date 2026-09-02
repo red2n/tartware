@@ -80,6 +80,11 @@ fi
 EXCLUDES=(
   -not -path '*/node_modules/*'
   -not -path '*/dist/*'
+  # The node:test packages (config, telemetry, outbox, tenant-auth) compile their
+  # suites to dist-tests. Scanning it reports every test file as a duplicate of
+  # itself, which is the only thing this scan ever found — a permanent exit 1
+  # that trains people to ignore the report.
+  -not -path '*/dist-tests/*'
   -not -path '*/build/*'
   -not -path '*/coverage/*'
   -not -path '*/.next/*'

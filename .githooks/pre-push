@@ -11,7 +11,14 @@
 
 set -e
 
-echo "pre-push: biome + knip (skip with --no-verify)"
+echo "pre-push: frameworks + biome + knip (skip with --no-verify)"
+
+if ! pnpm run check:frameworks; then
+	echo ""
+	echo "pre-push: a shared framework was bypassed. Use the entry point named above,"
+	echo "or justify the call site in scripts/check-shared-framework-usage.mjs."
+	exit 1
+fi
 
 if ! pnpm run biome; then
 	echo ""

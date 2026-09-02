@@ -1,0 +1,182 @@
+# PgBouncer — connection pooler between the services and Postgres.
+#
+# Every service defaults `DB_PORT` to 5433, which is PgBouncer, not Postgres.
+# Without this deployment that name does not resolve in-cluster and services
+# either fail to connect or are pointed straight at Postgres, where each pod's
+# `DB_POOL_MAX` becomes a real backend and the fleet exhausts `max_connections`
+# long before it reaches its throughput target.
+#
+# Pool mode is `transaction`: a server connection is held only for the duration
+# of a transaction. The application depends on that being safe —
+# `SET LOCAL app.current_tenant_id` for RLS is transaction-scoped, and the
+# folio/ledger locks use `pg_advisory_xact_lock` rather than the session-scoped
+# variant. Switching this to `session` would waste the pooling; switching the
+# application to session-scoped state would break correctness under it.
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: tartware-system
+  labels:
+    app: pgbouncer
+    app.kubernetes.io/part-of: tartware
+data:
+  # `DEFAULT_POOL_SIZE` is the throughput-limiting number for the whole stack:
+  # server connections per (database, user) pair, and every service shares one
+  # pair. It caps how many statements Postgres runs at once regardless of how
+  # many replicas are running or how large their client pools are.
+  #
+  # It is not free to raise. Past roughly 2-4x the database's core count, extra
+  # concurrency costs more in context switching and lock contention than it
+  # returns. Tune it against `loadtest/k6` on the real hardware.
+  #
+  # Invariant to preserve when changing these:
+  #   pods x DB_POOL_MAX  <  MAX_CLIENT_CONN
+  #   DEFAULT_POOL_SIZE   <  MAX_DB_CONNECTIONS  <  Postgres max_connections
+  PGBOUNCER_POOL_MODE: "transaction"
+  PGBOUNCER_MAX_CLIENT_CONN: "2000"
+  PGBOUNCER_DEFAULT_POOL_SIZE: "60"
+  PGBOUNCER_MIN_POOL_SIZE: "10"
+  PGBOUNCER_RESERVE_POOL_SIZE: "15"
+  PGBOUNCER_RESERVE_POOL_TIMEOUT: "3"
+  PGBOUNCER_MAX_DB_CONNECTIONS: "250"
+  PGBOUNCER_SERVER_LIFETIME: "3600"
+  PGBOUNCER_SERVER_IDLE_TIMEOUT: "300"
+  PGBOUNCER_CLIENT_IDLE_TIMEOUT: "0"
+  PGBOUNCER_SERVER_CONNECT_TIMEOUT: "5"
+  PGBOUNCER_QUERY_TIMEOUT: "30"
+  PGBOUNCER_APPLICATION_NAME_ADD_HOST: "1"
+  # node-pg sends `extra_float_digits`; PgBouncer rejects unknown startup
+  # parameters in transaction mode unless they are ignored here.
+  PGBOUNCER_IGNORE_STARTUP_PARAMETERS: "extra_float_digits,options"
+  DATABASES_PORT: "5432"
+  DATABASES_DBNAME: "tartware"
+  DATABASES_HOST: "postgres"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: tartware-system
+  labels:
+    app: pgbouncer
+    app.kubernetes.io/part-of: tartware
+spec:
+  type: ClusterIP
+  selector:
+    app: pgbouncer
+  ports:
+    - name: postgres
+      port: 5433
+      targetPort: 6432
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: tartware-system
+  labels:
+    app: pgbouncer
+    app.kubernetes.io/part-of: tartware
+spec:
+  # More than one replica multiplies the server-side pool: each replica opens
+  # up to DEFAULT_POOL_SIZE connections of its own, so N replicas must satisfy
+  # N x DEFAULT_POOL_SIZE < Postgres max_connections. Scale the pool size down
+  # when scaling this up.
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+        app.kubernetes.io/part-of: tartware
+        tier: data
+      annotations:
+        sidecar.istio.io/inject: "true"
+        proxy.istio.io/config: |
+          holdApplicationUntilProxyStarts: true
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1100
+        fsGroup: 1100
+      containers:
+        - name: pgbouncer
+          image: pgbouncer/pgbouncer:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: postgres
+              containerPort: 6432
+          envFrom:
+            - configMapRef:
+                name: pgbouncer-config
+            # Supplies DATABASES_USER / DATABASES_PASSWORD, and PGBOUNCER_AUTH_*
+            # if the deployment authenticates rather than trusting. Created out
+            # of band, matching the `<service>-secrets` convention the other
+            # deployments here use.
+            - secretRef:
+                name: pgbouncer-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          readinessProbe:
+            tcpSocket:
+              port: 6432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 6432
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # readOnlyRootFilesystem is on, but PgBouncer writes its pid/socket.
+        - name: tmp
+          emptyDir: {}
+
+---
+# PgBouncer sits between the services and Postgres, so it needs to be reachable
+# from every service pod. Without this, the default-deny policy in
+# network-policies.yaml blocks the connection the whole fleet depends on.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pgbouncer-allow-services
+  namespace: tartware-system
+  labels:
+    app: pgbouncer
+    app.kubernetes.io/part-of: tartware
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: tartware
+      ports:
+        - protocol: TCP
+          port: 6432

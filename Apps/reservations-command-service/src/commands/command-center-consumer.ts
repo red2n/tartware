@@ -1,7 +1,8 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
+import { resolveActorRole } from "@tartware/command-consumer-utils/command-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
-import { enterTenantScope } from "@tartware/config/db";
+import { runWithTenantScope } from "@tartware/config/db";
 
 import { commandCenterConfig, serviceConfig } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -40,9 +41,16 @@ import {
   ReservationExpireCommandSchema,
   ReservationExtendStayCommandSchema,
   ReservationGenerateRegCardCommandSchema,
+  ReservationMassCancelCommandSchema,
+  ReservationMassCheckInCommandSchema,
+  ReservationMassUpdateCommandSchema,
   ReservationModifyCommandSchema,
   ReservationNoShowCommandSchema,
   ReservationRateOverrideCommandSchema,
+  ReservationReinstateCommandSchema,
+  ReservationReverseCheckInCommandSchema,
+  ReservationReverseCheckOutCommandSchema,
+  ReservationRoomMoveCommandSchema,
   ReservationSendQuoteCommandSchema,
   ReservationUnassignRoomCommandSchema,
   ReservationWaitlistAddCommandSchema,
@@ -70,14 +78,21 @@ import {
   generateRegistrationCard,
   groupCheckIn,
   markNoShow,
+  massCancelReservations,
+  massCheckInReservations,
+  massUpdateReservations,
   modifyReservation,
+  moveRoom,
   otaContentSync,
   otaRatePush,
   otaSyncRequest,
   overrideRate,
   processOtaReservationQueue,
   recordMetasearchClick,
+  reinstateReservation,
   releaseDeposit,
+  reverseCheckIn,
+  reverseCheckOut,
   sendQuote,
   setupGroupBilling,
   unassignRoom,
@@ -92,7 +107,6 @@ import {
   walkInCheckIn,
   webhookRetry,
 } from "../services/reservation-command-service.js";
-import { ReservationCommandError } from "../services/reservation-commands/common.js";
 
 const logger = reservationsLogger.child({ module: "command-center-consumer" });
 
@@ -108,6 +122,10 @@ const routeReservationCommand = async (
   const context = {
     correlationId: rawCorrelation && UUID_RE.test(rawCorrelation) ? rawCorrelation : undefined,
     actorId: metadata.initiatedBy?.userId,
+    // The gateway stamps the caller's membership role onto every envelope and
+    // this line used to stop at `.userId`, so an override could name who acted
+    // but never with what authority.
+    actorRole: resolveActorRole(metadata.initiatedBy),
   };
 
   switch (metadata.commandName) {
@@ -134,6 +152,41 @@ const routeReservationCommand = async (
     case "reservation.check_out": {
       const commandPayload = ReservationCheckOutCommandSchema.parse(envelope.payload);
       await checkOutReservation(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.reverse_check_in": {
+      const commandPayload = ReservationReverseCheckInCommandSchema.parse(envelope.payload);
+      await reverseCheckIn(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.reverse_check_out": {
+      const commandPayload = ReservationReverseCheckOutCommandSchema.parse(envelope.payload);
+      await reverseCheckOut(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.reinstate": {
+      const commandPayload = ReservationReinstateCommandSchema.parse(envelope.payload);
+      await reinstateReservation(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mass_cancel": {
+      const commandPayload = ReservationMassCancelCommandSchema.parse(envelope.payload);
+      await massCancelReservations(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mass_check_in": {
+      const commandPayload = ReservationMassCheckInCommandSchema.parse(envelope.payload);
+      await massCheckInReservations(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.mass_update": {
+      const commandPayload = ReservationMassUpdateCommandSchema.parse(envelope.payload);
+      await massUpdateReservations(metadata.tenantId, commandPayload, context);
+      break;
+    }
+    case "reservation.room_move": {
+      const commandPayload = ReservationRoomMoveCommandSchema.parse(envelope.payload);
+      await moveRoom(metadata.tenantId, commandPayload, context);
       break;
     }
     case "reservation.assign_room": {
@@ -317,8 +370,7 @@ const { start, shutdown } = createConsumerLifecycle({
   publishDlqEvent: publishCommandDlqEvent,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
-  isRetryable: (error) => !(error instanceof ReservationCommandError) || error.retryable,
-  onTenantResolved: enterTenantScope,
+  withTenantScope: runWithTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

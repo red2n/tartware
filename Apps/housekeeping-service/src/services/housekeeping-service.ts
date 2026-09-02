@@ -21,6 +21,11 @@ import {
 
 import { query } from "../lib/db.js";
 import {
+  insertIncident,
+  setIncidentStatus,
+  updateIncident,
+} from "../repositories/incident-repository.js";
+import {
   DEEP_CLEAN_DUE_SQL,
   HOUSEKEEPING_INSPECTION_LIST_SQL,
   HOUSEKEEPING_SCHEDULE_LIST_SQL,
@@ -527,55 +532,7 @@ export const createIncidentReport = async (
   input: IncidentWriteInput,
   actorId: string,
 ): Promise<IncidentReportDetail | null> => {
-  const { rows } = await query<{ incident_id: string }>(
-    `
-      INSERT INTO public.incident_reports (
-        tenant_id, property_id, incident_number,
-        incident_title, incident_type, incident_category, severity, severity_score,
-        incident_date, incident_time, incident_datetime,
-        incident_location, room_number, area_name,
-        incident_description, immediate_actions_taken,
-        incident_status,
-        guest_involved, staff_involved, injury_severity, police_notified,
-        discovered_by, discovered_by_name,
-        created_by, updated_by
-      ) VALUES (
-        $1::uuid, $2::uuid, $3,
-        $4, $5, $6, $7, $8,
-        $9::date, $10::time, ($9::date + $10::time) AT TIME ZONE 'UTC',
-        $11, $12, $13,
-        $14, $15,
-        'reported',
-        COALESCE($16, false), COALESCE($17, false), $18, COALESCE($19, false),
-        $20::uuid, $21,
-        $20::uuid, $20::uuid
-      )
-      RETURNING incident_id
-    `,
-    [
-      tenantId,
-      input.propertyId,
-      buildIncidentNumber(),
-      input.incidentTitle,
-      input.incidentType,
-      input.incidentCategory ?? null,
-      input.severity,
-      input.severityScore ?? null,
-      input.incidentDate,
-      input.incidentTime,
-      input.incidentLocation,
-      input.roomNumber ?? null,
-      input.areaName ?? null,
-      input.incidentDescription,
-      input.immediateActionsTaken,
-      input.guestInvolved ?? null,
-      input.staffInvolved ?? null,
-      input.injurySeverity ?? null,
-      input.policeNotified ?? null,
-      actorId,
-      input.discoveredByName ?? null,
-    ],
-  );
+  const { rows } = await insertIncident(tenantId, input, buildIncidentNumber(), actorId);
 
   const incidentId = rows[0]?.incident_id;
   if (!incidentId) return null;
@@ -589,50 +546,7 @@ export const updateIncidentReport = async (
   input: Partial<IncidentWriteInput>,
   actorId: string,
 ): Promise<IncidentReportDetail | null> => {
-  const { rowCount } = await query(
-    `
-      UPDATE public.incident_reports
-      SET
-        incident_title = COALESCE($3, incident_title),
-        incident_type = COALESCE($4, incident_type),
-        incident_category = COALESCE($5, incident_category),
-        severity = COALESCE($6, severity),
-        severity_score = COALESCE($7, severity_score),
-        incident_location = COALESCE($8, incident_location),
-        room_number = COALESCE($9, room_number),
-        area_name = COALESCE($10, area_name),
-        incident_description = COALESCE($11, incident_description),
-        immediate_actions_taken = COALESCE($12, immediate_actions_taken),
-        guest_involved = COALESCE($13, guest_involved),
-        staff_involved = COALESCE($14, staff_involved),
-        injury_severity = COALESCE($15, injury_severity),
-        police_notified = COALESCE($16, police_notified),
-        updated_at = NOW(),
-        updated_by = $17::uuid
-      WHERE tenant_id = $1::uuid
-        AND incident_id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      tenantId,
-      incidentId,
-      input.incidentTitle ?? null,
-      input.incidentType ?? null,
-      input.incidentCategory ?? null,
-      input.severity ?? null,
-      input.severityScore ?? null,
-      input.incidentLocation ?? null,
-      input.roomNumber ?? null,
-      input.areaName ?? null,
-      input.incidentDescription ?? null,
-      input.immediateActionsTaken ?? null,
-      input.guestInvolved ?? null,
-      input.staffInvolved ?? null,
-      input.injurySeverity ?? null,
-      input.policeNotified ?? null,
-      actorId,
-    ],
-  );
+  const { rowCount } = await updateIncident(tenantId, incidentId, input, actorId);
 
   if (!rowCount) return null;
   return getIncidentReportById({ incidentId, tenantId });
@@ -650,32 +564,7 @@ export const updateIncidentStatus = async (
   input: IncidentStatusInput,
   actorId: string,
 ): Promise<IncidentReportDetail | null> => {
-  const { rowCount } = await query(
-    `
-      UPDATE public.incident_reports
-      SET
-        incident_status = $3::text,
-        closure_notes = COALESCE($4, closure_notes),
-        -- The table models closure as closed/closed_at/closed_by rather than a
-        -- resolved_at timestamp, so a terminal status stamps all three. Verified
-        -- against the live columns: there is no resolution_notes or resolved_at.
-        closed = CASE WHEN $3::text IN ('resolved', 'closed') THEN true ELSE closed END,
-        closed_at = CASE
-          WHEN $3::text IN ('resolved', 'closed') THEN COALESCE(closed_at, NOW())
-          ELSE closed_at
-        END,
-        closed_by = CASE
-          WHEN $3::text IN ('resolved', 'closed') THEN COALESCE(closed_by, $5::uuid)
-          ELSE closed_by
-        END,
-        updated_at = NOW(),
-        updated_by = $5::uuid
-      WHERE tenant_id = $1::uuid
-        AND incident_id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [tenantId, incidentId, input.incidentStatus, input.closureNotes ?? null, actorId],
-  );
+  const { rowCount } = await setIncidentStatus(tenantId, incidentId, input, actorId);
 
   if (!rowCount) return null;
   return getIncidentReportById({ incidentId, tenantId });

@@ -90,8 +90,10 @@ const handleReservationCreated = async (
   checkOut: string,
 ): Promise<void> => {
   const dates = stayDates(checkIn, checkOut);
-  for (const date of dates) {
-    await query(DEMAND_CALENDAR_INCREMENT_OTB_SQL, [tenantId, propertyId, date]);
+  // One statement for the whole stay: a 30-night booking was 30 round trips.
+  // A same-day stay yields no dates, so skip the round trip entirely.
+  if (dates.length > 0) {
+    await query(DEMAND_CALENDAR_INCREMENT_OTB_SQL, [tenantId, propertyId, dates]);
   }
   logger.debug("OTB incremented for new reservation");
 
@@ -119,8 +121,10 @@ const handleReservationCancelled = async (
   checkOut: string,
 ): Promise<void> => {
   const dates = stayDates(checkIn, checkOut);
-  for (const date of dates) {
-    await query(DEMAND_CALENDAR_DECREMENT_OTB_SQL, [tenantId, propertyId, date]);
+  // One statement for the whole stay: a 30-night booking was 30 round trips.
+  // A same-day stay yields no dates, so skip the round trip entirely.
+  if (dates.length > 0) {
+    await query(DEMAND_CALENDAR_DECREMENT_OTB_SQL, [tenantId, propertyId, dates]);
   }
   logger.debug(
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },
@@ -151,8 +155,10 @@ const handleReservationCheckedOut = async (
   checkOut: string,
 ): Promise<void> => {
   const dates = stayDates(checkIn, checkOut);
-  for (const date of dates) {
-    await query(DEMAND_CALENDAR_CHECKOUT_SQL, [tenantId, propertyId, date]);
+  // One statement for the whole stay: a 30-night booking was 30 round trips.
+  // A same-day stay yields no dates, so skip the round trip entirely.
+  if (dates.length > 0) {
+    await query(DEMAND_CALENDAR_CHECKOUT_SQL, [tenantId, propertyId, dates]);
   }
   logger.debug(
     { tenantId, propertyId, checkIn, checkOut, nights: dates.length },

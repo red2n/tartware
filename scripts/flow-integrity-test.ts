@@ -13,8 +13,14 @@
  * Exit code 0 = all checks pass, non-zero = failures detected
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+
+// Imported from source, not from "@tartware/schemas": this script runs inside
+// `pnpm run check`, which happens *before* the build, so a workspace import
+// would resolve to a dist that may not exist yet. That is the same trap the
+// eslint type-aware rules hit — green locally, red in CI.
+import { FLOW_REGISTRY } from "../schema/src/flows/flow-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -131,16 +137,8 @@ function checkFlow3() {
     }
   }
 
-  // Blacklist gate on reservation.create
-  const coreTs = join(
-    APPS,
-    "reservations-command-service/src/services/reservation-commands/core.ts",
-  );
-  if (fileContains(coreTs, "is_blacklisted")) {
-    pass(flow, "Gate: blacklist check on reservation.create", "Implemented");
-  } else {
-    fail(flow, "Gate: blacklist check on reservation.create", "NOT implemented");
-  }
+  // The blacklist gate is verified by checkDeclaredControls, from the evidence
+  // on its registry declaration — not hand-written here any more.
 }
 
 // ─── Flow 4: Reservation Lifecycle ──────────────────────────────────────────
@@ -300,11 +298,37 @@ function checkFlow9() {
     fail(flow, "Handler: rooms.out_of_order", "NOT found");
   }
 
-  const hkConsumer = join(APPS, "housekeeping-service/src/commands/command-center-consumer.ts");
-  if (fileContains(hkConsumer, "operations.maintenance")) {
-    pass(flow, "Handler: operations.maintenance.*", "Registered in housekeeping-service");
+  // Maintenance is REST on housekeeping-service, not a command.
+  //
+  // This asserted a handler for `operations.maintenance.*` in the housekeeping
+  // consumer. There is no such command: not in the catalogue, not in the
+  // validator map, not in any consumer — a work order is raised over
+  // `/v1/maintenance/requests` and moved with assign / complete / escalate.
+  // So the check failed against a handler nobody ever built, which is the whole
+  // argument for putting this script in `pnpm run check`: it had been red for
+  // long enough that nobody knew.
+  //
+  // The commands were in fact retired on 2026-08-18 along with `inventory.*`,
+  // because plain HTTP was already the live path — see
+  // ui-gaps/17-command-reachability.md, and the note in
+  // flow-command-catalog.test.ts that records the same removal. Everything was
+  // updated except this file. Same resolution as `reservation.mobile_checkin.*`
+  // in the flow registry: when a capability is REST, assert the REST surface
+  // rather than invent a command for it.
+  const maintenanceRoutes = join(APPS, "housekeeping-service/src/routes/maintenance.ts");
+  const maintenanceVerbs = [
+    "/v1/maintenance/requests",
+    "/v1/maintenance/requests/:requestId/assign",
+    "/v1/maintenance/requests/:requestId/complete",
+    "/v1/maintenance/requests/:requestId/escalate",
+  ];
+  const missingVerbs = maintenanceVerbs.filter(
+    (route) => !fileContains(maintenanceRoutes, route),
+  );
+  if (missingVerbs.length === 0) {
+    pass(flow, "REST: maintenance work orders", "raise / assign / complete / escalate on housekeeping-service");
   } else {
-    fail(flow, "Handler: operations.maintenance.*", "NOT found");
+    fail(flow, "REST: maintenance work orders", `missing ${missingVerbs.join(", ")}`);
   }
 }
 
@@ -429,6 +453,42 @@ function checkFlow12() {
   }
 }
 
+// ─── Flow 13: Ledger Control ────────────────────────────────────────────────
+
+/**
+ * The commands that reverse, forgive or reopen a posted entry, and the control
+ * in front of the five that undo a completed accounting control.
+ *
+ * The registry can require a gate and a manifest can claim it; neither knows
+ * whether the code still enforces one. That matters more here than anywhere
+ * else, because removing dual control breaks nothing observable — a write-off
+ * still writes off, and every test of its behaviour stays green. This asserts
+ * the three pieces that have to be present for the claim to be true: the
+ * declaration, the deferral inside the accept path, and a way for the second
+ * person to release what was deferred.
+ */
+function checkFlow13() {
+  const flow = "Flow 13: Ledger Control";
+
+  // The five declarations, the deferral inside acceptCommand and the release
+  // path are all verified by checkDeclaredControls now — they are the evidence
+  // on the five dual_control entries in the registry. Hand-writing them here
+  // was how three of nine declared gates ended up verified by nothing: the
+  // check had to be remembered separately from the declaration.
+
+  // Where the deferred command waits.
+  const approvalsSql = join(SCRIPTS, "04-financial/80_approval_requests.sql");
+  if (fileContains(approvalsSql, "command_name") && fileContains(approvalsSql, "dispatched_command_id")) {
+    pass(flow, "Table: approval_requests carries the deferred command", "command_name + dispatched_command_id");
+  } else {
+    fail(
+      flow,
+      "Table: approval_requests carries the deferred command",
+      "columns missing — a released approval cannot say what it dispatched",
+    );
+  }
+}
+
 // ─── Cross-Flow Structural Checks ───────────────────────────────────────────
 
 function checkCrossFlow() {
@@ -473,11 +533,217 @@ checkFlow9();
 checkFlow10();
 checkFlow11();
 checkFlow12();
+checkFlow13();
 checkCrossFlow();
 
 // ─── Cross-validation: manifest compliance ──────────────────────────────────
 // Bridge the file-pattern checks above with the registry-based contract system.
 // Import all service flow manifests and run the system-wide validateFlowCompliance.
+
+/**
+ * Every control the registry declares, verified against the code that enforces it.
+ *
+ * This replaces the two hand-written gate checks that used to live inside
+ * `checkFlow3` and `checkFlow13`. Hand-writing them is why only 2 of 9 declared
+ * gates were verified: the check had to be remembered separately from the
+ * declaration, and for the three night-audit gates nobody did. Now the
+ * declaration carries its own evidence and this loop reads all of it, so adding
+ * a gate to the registry cannot leave it unverified — `evidence` is a required
+ * field, so a new declaration will not compile without one.
+ *
+ * One result per control rather than per token: a control is enforced or it is
+ * not, and the failure detail names the token that went missing.
+ */
+function checkDeclaredControls() {
+	const flow = "Cross-Flow";
+
+	for (const requirement of Object.values(FLOW_REGISTRY)) {
+		for (const control of requirement.requiredGates ?? []) {
+			const kind = control.kind ?? "gate";
+			const label = `${kind === "record" ? "Record" : "Gate"}: ${control.gateName} on ${control.guardsCommand}`;
+			const missing: string[] = [];
+
+			for (const evidence of control.evidence) {
+				const full = join(ROOT, evidence.file);
+				if (!existsSync(full)) {
+					missing.push(`${evidence.file} (file not found)`);
+				} else if (!fileContains(full, evidence.token)) {
+					missing.push(`${evidence.token} in ${evidence.file}`);
+				}
+			}
+
+			if (missing.length === 0) {
+				pass(
+					flow,
+					label,
+					`${control.evidence.length} evidence token(s) present`,
+				);
+			} else {
+				fail(
+					flow,
+					label,
+					`declared but NOT enforced — missing ${missing.join("; ")}`,
+				);
+			}
+		}
+	}
+}
+
+/**
+ * The inverse: no control may be enforced without being declared.
+ *
+ * `flow_approvals.gate_name` is a free-text column, so before this the only
+ * thing deciding its vocabulary was whatever string a handler happened to pass.
+ * Seven names were written by the reservation service and none of them appeared
+ * in the registry, which meant the audit trail recorded controls the system had
+ * no declared knowledge of.
+ *
+ * Manifests are excluded because a *claim* is not enforcement — the same reason
+ * the dispatchability scan excludes them.
+ */
+function checkNoUndeclaredControls() {
+	const flow = "Cross-Flow";
+
+	const declared = new Set<string>();
+	for (const requirement of Object.values(FLOW_REGISTRY)) {
+		for (const control of requirement.requiredGates ?? []) {
+			declared.add(control.gateName);
+		}
+	}
+
+	const found = new Map<string, string>();
+	const walk = (dir: string): void => {
+		if (!existsSync(dir)) return;
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(full);
+			} else if (
+				entry.name.endsWith(".ts") &&
+				entry.name !== "flow-manifest.ts"
+			) {
+				const content = readFileSync(full, "utf-8");
+				for (const match of content.matchAll(
+					/gate_?[Nn]ame:\s*"([a-z0-9_]+)"/g,
+				)) {
+					const name = match[1];
+					if (name && !found.has(name)) found.set(name, relative(ROOT, full));
+				}
+			}
+		}
+	};
+	for (const service of readdirSync(APPS, { withFileTypes: true })) {
+		if (service.isDirectory()) walk(join(APPS, service.name, "src"));
+	}
+
+	const undeclared = [...found.entries()].filter(
+		([name]) => !declared.has(name),
+	);
+	if (undeclared.length === 0) {
+		pass(
+			flow,
+			"Every enforced control is declared",
+			`${found.size} gate name(s) in Apps/, all in FLOW_REGISTRY`,
+		);
+	} else {
+		for (const [name, file] of undeclared) {
+			fail(
+				flow,
+				`Undeclared control: ${name}`,
+				`written to flow_approvals by ${file}, declared by no flow`,
+			);
+		}
+	}
+}
+
+/**
+ * Every reason-code category a handler resolves has reference rows it can find.
+ *
+ * `resolveReasonCode` resolves property → tenant → the all-zero **system**
+ * tenant, and that last level is the only one a freshly created tenant can see.
+ * Seventeen codes — every REVERSAL, NIGHT_AUDIT, BLACKLIST and CREDIT_LIMIT one
+ * — spent a release seeded against the demo tenant in default_seed.json
+ * instead, so on any other tenant the night audit could not state why it
+ * skipped a precondition and no blacklist override could name a code. The
+ * commands were correct; the data they resolve against was unreachable, which
+ * no test asserted because every unit test mocks the lookup.
+ *
+ * The categories come from the handlers themselves rather than a list here: a
+ * new override that resolves a category nobody seeded fails this check on the
+ * day it is written.
+ */
+function checkOverrideReasonCodes() {
+	const flow = "Cross-Flow";
+	const SYSTEM_TENANT = "00000000-0000-0000-0000-000000000000";
+
+	const seed = join(SCRIPTS, "09-reference-data", "08_reason_codes.sql");
+	if (!existsSync(seed)) {
+		fail(flow, "Reason code reference seed", `missing ${relative(ROOT, seed)}`);
+		return;
+	}
+	const sql = readFileSync(seed, "utf-8");
+	const seeded = new Set<string>();
+	for (const line of sql.split("\n")) {
+		if (!line.includes(SYSTEM_TENANT)) continue;
+		for (const match of line.matchAll(/'([A-Z][A-Z_]{2,})'/g)) {
+			seeded.add(match[1]!);
+		}
+	}
+
+	// `category: "X"` is how every call site names what it is resolving.
+	const wanted = new Map<string, string>();
+	const walk = (dir: string): void => {
+		if (!existsSync(dir)) return;
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) walk(full);
+			else if (entry.name.endsWith(".ts")) {
+				const content = readFileSync(full, "utf-8");
+				if (!content.includes("resolveReasonCode")) continue;
+				// Two call shapes: the shared helper takes a named `category`,
+				// reservations' older wrapper takes it as the last positional
+				// argument. Both are read rather than one being normalised away,
+				// because a check that only understands one of them is how the
+				// category it does not understand goes unseeded.
+				for (const match of content.matchAll(
+					/resolveReasonCode(?:<[^>]*>)?\s*\(([\s\S]{0,400}?)\)\s*;/g,
+				)) {
+					const call = match[1]!;
+					const named = call.match(/category:\s*"([A-Z][A-Z_]+)"/);
+					const positional = [...call.matchAll(/"([A-Z][A-Z_]{2,})"/g)].pop();
+					const category = named?.[1] ?? positional?.[1];
+					if (category && !wanted.has(category)) {
+						wanted.set(category, relative(ROOT, full));
+					}
+				}
+			}
+		}
+	};
+	for (const service of readdirSync(APPS, { withFileTypes: true })) {
+		if (service.isDirectory()) walk(join(APPS, service.name, "src"));
+	}
+
+	if (wanted.size === 0) {
+		fail(
+			flow,
+			"Reason code categories resolved",
+			"no `category: \"…\"` found beside a resolveReasonCode call — scan is vacuous",
+		);
+		return;
+	}
+
+	for (const [category, file] of wanted) {
+		if (seeded.has(category)) {
+			pass(flow, `Reason codes: ${category}`, `seeded under the system tenant`);
+		} else {
+			fail(
+				flow,
+				`Reason codes: ${category}`,
+				`resolved by ${file} but no system-tenant row seeds it — every tenant but the seed one refuses the override`,
+			);
+		}
+	}
+}
 
 function checkManifestCompliance() {
   const manifestPaths = [
@@ -527,6 +793,9 @@ function checkManifestCompliance() {
   }
 }
 
+checkDeclaredControls();
+checkNoUndeclaredControls();
+checkOverrideReasonCodes();
 checkManifestCompliance();
 
 // ─── Report ─────────────────────────────────────────────────────────────────

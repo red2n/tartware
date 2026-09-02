@@ -4,6 +4,7 @@ import { acquireFolioLock } from "../../lib/folio-lock.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingLateCheckoutChargeCommandSchema } from "../../schemas/billing-commands.js";
+import { lastNightTotalSql } from "../../sql/stay-night-basis.js";
 import {
   asUuid,
   BillingCommandError,
@@ -38,11 +39,14 @@ export const chargeLateCheckout = async (
     property_id: string;
     status: string;
     room_rate: string | null;
+    last_night_total: string | null;
     currency_code: string | null;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency AS currency_code
-     FROM public.reservations
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
+    `SELECT r.id AS reservation_id, r.property_id, r.status, r.room_rate,
+            r.currency AS currency_code,
+            ${lastNightTotalSql("r")} AS last_night_total
+     FROM public.reservations r
+     WHERE r.tenant_id = $1::uuid AND r.id = $2::uuid
      LIMIT 1`,
     [context.tenantId, command.reservation_id],
   );
@@ -66,11 +70,18 @@ export const chargeLateCheckout = async (
   if (command.override_amount) {
     chargeAmount = command.override_amount;
   } else {
-    const roomRate = reservation.room_rate ? Number(reservation.room_rate) : null;
+    // A late-checkout fee is a proportion of the night being overstayed, so
+    // the basis is the stay's last night across every room — not an averaged
+    // scalar that may belong to a different night at a different rate.
+    const roomRate = reservation.last_night_total
+      ? Number(reservation.last_night_total)
+      : reservation.room_rate
+        ? Number(reservation.room_rate)
+        : null;
     if (!roomRate) {
       throw new BillingCommandError(
         "LATE_CHECKOUT_AMOUNT_MISSING",
-        "Cannot calculate late checkout fee: no room_rate on reservation. Use override_amount.",
+        "Cannot calculate late checkout fee: the reservation has no priced nights. Use override_amount.",
       );
     }
 

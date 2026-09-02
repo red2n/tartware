@@ -5,8 +5,6 @@ import type { ModuleId } from "../modules/module-registry.js";
 
 type TenantScopeResolver = (request: FastifyRequest) => string | null | undefined;
 
-export type RolePriorityMap = Record<TenantRole, number>;
-
 // ─── Settings auth compatibility ───────────────────────────────────────────
 // Minimal JWT+tenant shape used by the absorbed settings-service routes.
 export type AuthScope = string | string[];

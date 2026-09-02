@@ -10,13 +10,18 @@
  * @module reservation-routes
  */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { COMMAND_AUTHORITY_FLOOR } from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { submitCommand } from "../utils/command-publisher.js";
 import { proxyRequest } from "../utils/proxy.js";
 
-import { forwardCommandWithParamId, forwardReservationCommand } from "./command-helpers.js";
+import {
+  forwardCommandWithParamId,
+  forwardReservationCommand,
+  forwardTenantCommand,
+} from "./command-helpers.js";
 import {
   checkInBriefResponse,
   reservationDetailResponse,
@@ -50,10 +55,17 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
     requiredModules: "core",
   });
 
-  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  /**
+   * Write scope for the command routes below.
+   *
+   * `COMMAND_AUTHORITY_FLOOR` is the lowest role any command declares, not a
+   * blanket relaxation: the command's own floor in `COMMAND_MIN_ROLE` decides
+   * the outcome inside `acceptCommand`. Holding this at MANAGER, as it was,
+   * refused a clerk their own routine work before that check could run.
+   */
   const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "MANAGER",
+    minRole: COMMAND_AUTHORITY_FLOOR,
     requiredModules: "core",
   });
 
@@ -242,6 +254,183 @@ export const registerReservationRoutes = (app: FastifyInstance): void => {
         request,
         reply,
         commandName: "reservation.check_out",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  // ── Lifecycle reversals (WS-04) ────────────────────────────────────────────
+  // Separate routes rather than a flag on check-in/check-out: undoing a
+  // financial event is a different permission and a different audit record from
+  // performing one, and collapsing them would make the two indistinguishable in
+  // the command log.
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/room-move",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Move an in-house guest to a different room via Command Center.",
+        description:
+          "Takes the hold on the new room before releasing the old and fails closed, so a " +
+          "guest is never moved into a room that has been sold. Requires a ROOM_MOVE reason " +
+          "code. Nights already slept keep their rate; only remaining nights can be repriced.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.room_move",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  // ─── Mass operations (WS-04 batch envelope) ───────────────────────────────
+  //
+  // The targets are in the body, not the path — a batch names many of them —
+  // so these take the whole body as the command payload. Each returns 202 with
+  // the batch_id; the outcome of each item is read back from
+  // GET /v1/tenants/:tenantId/commands/batches/:batchId once the run completes.
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/mass-cancel",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Cancel many reservations in one batch via Command Center.",
+        description:
+          "Each cancellation is its own transaction, so a refused item leaves the rest " +
+          "applied. Send dry_run to resolve the targets without changing anything.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardTenantCommand({ request, reply, commandName: "reservation.mass_cancel" }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/mass-check-in",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Check in many reservations in one batch via Command Center.",
+        description:
+          "Unlike group check-in, the targets need not share a group booking. Each item " +
+          "may name a room, or be auto-assigned from its reservation's room type.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardTenantCommand({ request, reply, commandName: "reservation.mass_check_in" }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/mass-update",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Apply one set of changes to many reservations via Command Center.",
+        description:
+          "`changes` is applied to every target through the same path a single modify " +
+          "takes, so rate re-quote and availability re-checks run per reservation.",
+        params: reservationParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardTenantCommand({ request, reply, commandName: "reservation.mass_update" }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/reverse-check-in",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Undo a check-in via Command Center.",
+        description:
+          "Returns the reservation to CONFIRMED, clears the room assignment and voids " +
+          "the postings check-in created. Requires a reason_code from reason_codes.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.reverse_check_in",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/reverse-check-out",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Undo a check-out via Command Center.",
+        description:
+          "Returns the reservation to CHECKED_IN and reopens the folio so charges can " +
+          "post again. Requires a reason_code from reason_codes.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.reverse_check_out",
+        paramKey: "reservationId",
+        payloadKey: "reservation_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/reservations/:reservationId/reinstate",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: RESERVATION_PROXY_TAG,
+        summary: "Reinstate a cancelled reservation via Command Center.",
+        description:
+          "Re-acquires the availability hold before restoring the booking, and refuses " +
+          "if the released nights have since been sold. Requires a reason_code.",
+        params: tenantReservationParamsSchema,
+        body: jsonObjectSchema,
+        response: {
+          202: commandAcceptedSchema,
+        },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "reservation.reinstate",
         paramKey: "reservationId",
         payloadKey: "reservation_id",
       }),

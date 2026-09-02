@@ -7,7 +7,7 @@
  */
 
 /**
- * Increment rooms_reserved for a single date when a new reservation is created.
+ * Increment rooms_reserved across every night of a new reservation's stay.
  * Also updates booking_pace to 'ahead' if rooms_reserved increased.
  * Uses UPSERT: creates the calendar row if it does not yet exist.
  * rooms_available defaults to 0 on insert — the periodic inventory sync
@@ -18,11 +18,11 @@ export const DEMAND_CALENDAR_INCREMENT_OTB_SQL = `
     tenant_id, property_id, calendar_date, day_of_week,
     demand_level, rooms_available, rooms_reserved, updated_at
   )
-  VALUES (
-    $1::uuid, $2::uuid, $3::date,
-    trim(to_char($3::date, 'Day')),
+  SELECT
+    $1::uuid, $2::uuid, stay_date,
+    trim(to_char(stay_date, 'Day')),
     'moderate', 0, 1, CURRENT_TIMESTAMP
-  )
+  FROM UNNEST($3::date[]) AS stay_date
   ON CONFLICT (tenant_id, property_id, calendar_date)
   DO UPDATE SET
     rooms_reserved = COALESCE(demand_calendar.rooms_reserved, 0) + 1,
@@ -30,7 +30,7 @@ export const DEMAND_CALENDAR_INCREMENT_OTB_SQL = `
 `;
 
 /**
- * Decrement rooms_reserved for a single date when a reservation is cancelled.
+ * Decrement rooms_reserved across every night of a cancelled stay.
  * Ensures rooms_reserved does not go below zero.
  */
 export const DEMAND_CALENDAR_DECREMENT_OTB_SQL = `
@@ -39,13 +39,13 @@ export const DEMAND_CALENDAR_DECREMENT_OTB_SQL = `
     rooms_reserved = GREATEST(COALESCE(rooms_reserved, 0) - 1, 0),
     updated_at = CURRENT_TIMESTAMP
   WHERE property_id = $2::uuid
-    AND calendar_date = $3::date
+    AND calendar_date = ANY($3::date[])
     AND tenant_id = $1::uuid
 `;
 
 /**
- * Update demand calendar with actual occupancy data after checkout.
- * Increments rooms_occupied and decrements rooms_reserved for the stay dates.
+ * Update demand calendar with actual occupancy after checkout, across every
+ * night of the stay: rooms_occupied up, rooms_reserved down.
  */
 export const DEMAND_CALENDAR_CHECKOUT_SQL = `
   UPDATE public.demand_calendar
@@ -54,6 +54,6 @@ export const DEMAND_CALENDAR_CHECKOUT_SQL = `
     rooms_reserved = GREATEST(COALESCE(rooms_reserved, 0) - 1, 0),
     updated_at = CURRENT_TIMESTAMP
   WHERE property_id = $2::uuid
-    AND calendar_date = $3::date
+    AND calendar_date = ANY($3::date[])
     AND tenant_id = $1::uuid
 `;

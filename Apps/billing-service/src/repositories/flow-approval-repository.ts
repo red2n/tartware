@@ -79,7 +79,9 @@ const GET_ACTIVE_APPROVAL_SQL = `
  * Record a gate bypass approval. Append-only — no updates.
  * @returns The generated approval record ID.
  */
-export async function recordFlowApproval(input: CreateFlowApproval): Promise<string> {
+export async function recordFlowApproval(
+  input: CreateFlowApproval & { forced?: boolean },
+): Promise<string> {
   const result = await query<{ id: string }>(INSERT_FLOW_APPROVAL_SQL, [
     input.tenant_id,
     input.property_id ?? null,
@@ -90,7 +92,11 @@ export async function recordFlowApproval(input: CreateFlowApproval): Promise<str
     input.approved_by,
     input.role_at_approval,
     input.reason_code,
-    input.reason_notes ?? null,
+    // Same `FORCED:` prefix the shared writer in @tartware/config applies, so a
+    // reader filtering override records sees both services the same way.
+    input.forced
+      ? `FORCED: ${input.reason_notes ?? "gate bypassed"}`
+      : (input.reason_notes ?? null),
     input.approved_at ?? null,
     input.expires_at ?? null,
     input.correlation_id ?? null,

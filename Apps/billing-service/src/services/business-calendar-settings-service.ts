@@ -9,6 +9,9 @@ type BusinessCalendarSettings = {
   dayStartTime: string; // HH:MM
 };
 
+/** Cap on the startup settings fetch; billing falls back to defaults past it. */
+const SETTINGS_FETCH_TIMEOUT_MS = 5_000;
+
 export class BusinessCalendarSettingsService {
   /** Map<propertyId, settings> */
   private propertyCache = new Map<string, BusinessCalendarSettings>();
@@ -46,6 +49,9 @@ export class BusinessCalendarSettingsService {
         headers: {
           "x-internal-service": "billing-service",
         },
+        // This runs from the onReady hook, so an unresponsive core-service used
+        // to hang billing's startup rather than let it come up on defaults.
+        signal: AbortSignal.timeout(SETTINGS_FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {

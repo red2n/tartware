@@ -1,19 +1,27 @@
 import process from "node:process";
 
+import { validateServiceManifest } from "@tartware/command-consumer-utils/flow-compliance";
 import { ensureDependencies, parseHostPort, resolveOtelDependency } from "@tartware/config";
 import { initTelemetry } from "@tartware/telemetry";
-
-import { shutdownCommandRegistry, startCommandRegistry } from "./command-center/index.js";
+import {
+  drainCommandBatcher,
+  shutdownCommandRegistry,
+  startCommandRegistry,
+} from "./command-center/index.js";
+import {
+  shutdownCommandOutboxDispatcher,
+  startCommandOutboxDispatcher,
+} from "./command-center/outbox-dispatcher.js";
 import { dbConfig, gatewayConfig, kafkaConfig } from "./config.js";
+import { FLOW_MANIFEST } from "./flow-manifest.js";
 import { shutdownProducer, startProducer } from "./kafka/producer.js";
 import { buildServer } from "./server.js";
 
 const telemetry = await initTelemetry({
   serviceName: gatewayConfig.serviceId ?? "api-gateway",
   instrumentationOptions: {
-    "@opentelemetry/instrumentation-fastify": {
-      enabled: true,
-    },
+    // Fastify is registered directly by initTelemetry — it left the
+    // auto-instrumentations config map in 0.79.
     "@opentelemetry/instrumentation-http": {
       enabled: true,
     },
@@ -48,8 +56,17 @@ const start = async () => {
         return;
       }
     }
+    // Every other service validates its manifest through `bootstrapService`;
+    // the gateway builds its own server, so it makes the same call itself.
+    // `mode: "throw"` for the same reason as the rest: a gate this service
+    // claims to enforce and no longer does is worth failing to start over.
+    validateServiceManifest(FLOW_MANIFEST, { mode: "throw", logger: app.log });
+
     await startCommandRegistry();
     await startProducer();
+    // After the producer connects: the dispatcher publishes as soon as it claims
+    // a batch, so it must not run before it has somewhere to publish to.
+    startCommandOutboxDispatcher();
     await app.listen({ port: gatewayConfig.port, host: gatewayConfig.host });
     app.log.info(
       {
@@ -62,6 +79,9 @@ const start = async () => {
   } catch (error) {
     app.log.error(error, "Failed to start API gateway");
     await app.close();
+    await shutdownCommandOutboxDispatcher().catch((dispatcherError: unknown) =>
+      app.log.error(dispatcherError, "Failed to stop command outbox dispatcher"),
+    );
     await shutdownProducer().catch((producerError: unknown) =>
       app.log.error(producerError, "Failed to shutdown Kafka producer"),
     );
@@ -89,6 +109,12 @@ if (proc && "on" in proc && typeof proc.on === "function") {
       .close()
       .catch((error: unknown) => app.log.error(error, "Error while shutting down server (SIGTERM)"))
       .finally(async () => {
+        await drainCommandBatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while draining queued commands"),
+        );
+        await shutdownCommandOutboxDispatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while stopping command outbox dispatcher"),
+        );
         await Promise.allSettled([
           shutdownProducer().catch((error: unknown) =>
             app.log.error(error, "Error while shutting down Kafka producer"),
@@ -114,6 +140,12 @@ if (proc && "on" in proc && typeof proc.on === "function") {
       .close()
       .catch((error: unknown) => app.log.error(error, "Error while shutting down server (SIGINT)"))
       .finally(async () => {
+        await drainCommandBatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while draining queued commands"),
+        );
+        await shutdownCommandOutboxDispatcher().catch((error: unknown) =>
+          app.log.error(error, "Error while stopping command outbox dispatcher"),
+        );
         await Promise.allSettled([
           shutdownProducer().catch((error: unknown) =>
             app.log.error(error, "Error while shutting down Kafka producer"),

@@ -4147,5 +4147,13 @@
   "{amount} vs base": "{amount}（相對基本房價）",
   "{hours}h remaining": "剩餘 {hours} 小時",
   "{modules} aren't switched on": "{modules} 尚未啟用",
-  "{modules} isn't switched on": "{modules} 尚未啟用"
+  "{modules} isn't switched on": "{modules} 尚未啟用",
+  "Sent for a second approval — it runs when another owner releases it.": "已送出第二人核准：待另一位擁有者放行後才會執行。",
+  "Select a reason…": "選擇原因…",
+  "{name} — needs {role}": "{name} — 需要 {role}",
+  "This reason needs {role}. Submitted under your role the command is accepted and then refused.": "此原因需要 {role}。以您目前的角色送出，指令會先被接受、隨後遭到拒絕。",
+  "No reason codes are configured for this action. Ask an administrator to add one.": "此動作尚未設定原因代碼。請管理員新增一組。",
+  "Could not load reason codes. Retry, or the command will be refused without one.": "無法載入原因代碼。請重試；沒有代碼，指令將被拒絕。",
+  "Pick a reason code — the override is refused without one.": "請選擇原因代碼；沒有代碼，此例外將被拒絕。",
+  "What happened (required)": "發生了什麼事（必填）"
 }

@@ -118,6 +118,19 @@ export function buildCommandCenterConfig(serviceId: string) {
     maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
     retryBackoffMs: parseNumberEnv(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
     retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
+    // Per-service override first: a consumer whose handlers are slow or
+    // pool-hungry may need a lower ceiling than the fleet default.
+    partitionsConsumedConcurrently: parseNumberEnv(
+      process.env[`${envPrefix}_KAFKA_PARTITION_CONCURRENCY`] ??
+        process.env.KAFKA_PARTITION_CONCURRENCY,
+      4,
+    ),
+    // Commands are keyed by aggregate, so unrelated aggregates inside one batch
+    // are safe to overlap; same-aggregate commands stay ordered regardless.
+    batchConcurrency: parseNumberEnv(
+      process.env[`${envPrefix}_KAFKA_BATCH_CONCURRENCY`] ?? process.env.KAFKA_BATCH_CONCURRENCY,
+      16,
+    ),
   };
 }
 

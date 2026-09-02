@@ -13,6 +13,9 @@ const producer = createKafkaProducer(kafka, {
 
 export const { publishEvent, publishDlqEvent, shutdown: shutdownProducer } = producer;
 
+/** One broker request for a whole claimed outbox batch. */
+export const publishRecordBatch = producer.publishBatch;
+
 /** Publishes a payload to the command-center dead-letter topic. */
 export const publishCommandDlqEvent = (message: Omit<KafkaEventMessage, "topic">) =>
   producer.publishEvent({ ...message, topic: commandCenterConfig.dlqTopic });

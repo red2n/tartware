@@ -23,6 +23,98 @@ type LoggerLike = {
 };
 
 /**
+ * The open cashier session this actor holds at this property, or `null`.
+ *
+ * **The gap this closes (A09).** `cashier_sessions` could open a shift, hand it
+ * over and close it with a counted variance since it was written, and
+ * `charge_postings` carried `cashier_name VARCHAR(100)` — free text, with no
+ * key to the session, and written by no code path in the repository. So a
+ * drawer that closed forty pounds down could be counted and could not be
+ * reconciled: nothing knew which forty pounds.
+ *
+ * Resolution is deliberately narrow. It matches on `cashier_id = actor` and
+ * `session_status = 'open'`, at one property. It does **not** fall back to "the
+ * property's only open session", which was the tempting shortcut: attributing a
+ * posting to a drawer its operator was not standing at produces a reconciliation
+ * that balances and is wrong, which is worse than one that does not balance.
+ *
+ * Returns `null` freely, and callers treat that as "no drawer was involved"
+ * rather than as an error. Most postings genuinely have none — a night audit's
+ * room-and-tax run, a routed charge, an automated deposit — and refusing them
+ * for want of a shift would stop the property working.
+ */
+export const resolveOpenCashierSession = async (
+  queryFn: (sql: string, params: unknown[]) => Promise<{ rows: { session_id: string }[] }>,
+  input: { tenantId: string; propertyId: string; actorId: string | null | undefined },
+): Promise<string | null> => {
+  const actorId = asUuid(input.actorId);
+  if (!actorId || actorId === SYSTEM_ACTOR_ID || !input.propertyId) return null;
+
+  const result = await queryFn(
+    `SELECT session_id
+       FROM cashier_sessions
+      WHERE tenant_id = $1::uuid
+        AND property_id = $2::uuid
+        AND cashier_id = $3::uuid
+        AND session_status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1`,
+    [input.tenantId, input.propertyId, actorId],
+  );
+
+  return result.rows[0]?.session_id ?? null;
+};
+
+/**
+ * Record a supervisor override against the shift it happened on.
+ *
+ * `cashier_sessions.supervisor_overrides` documents itself as
+ * `[{reason, amount, timestamp, supervisor_id}]` and has had a GIN index built
+ * for it in `96_performance_tuning.sql` since the table existed. Nothing ever
+ * wrote to it — the second half of A09, and the reason a shift's exceptions
+ * could not be reviewed alongside its variance.
+ *
+ * Appends rather than replaces, and does so in one statement, so two overrides
+ * on the same drawer at the same moment cannot lose each other to a
+ * read-modify-write. A session that is not open is skipped silently: an
+ * override recorded after the drawer closed would change a reconciled total,
+ * and the `flow_approvals` row that every override also writes is the record of
+ * record either way.
+ */
+export const recordSupervisorOverride = async (
+  queryFn: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }>,
+  input: {
+    tenantId: string;
+    sessionId: string;
+    reason: string;
+    amount: number | null;
+    supervisorId: string | null;
+  },
+): Promise<void> => {
+  await queryFn(
+    `UPDATE cashier_sessions
+        SET supervisor_overrides =
+              COALESCE(supervisor_overrides, '[]'::jsonb) || $3::jsonb,
+            updated_at = NOW()
+      WHERE tenant_id = $1::uuid
+        AND session_id = $2::uuid
+        AND session_status = 'open'`,
+    [
+      input.tenantId,
+      input.sessionId,
+      JSON.stringify([
+        {
+          reason: input.reason,
+          amount: input.amount,
+          timestamp: new Date().toISOString(),
+          supervisor_id: input.supervisorId,
+        },
+      ]),
+    ],
+  );
+};
+
+/**
  * Generate a human-readable cashier session number from a business date and UUID.
  * Format: CS-YYYYMMDD-XXXXXXXX
  */

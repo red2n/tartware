@@ -45,7 +45,6 @@ export const forwardGuestRegisterCommand = async (
     commandName: "guest.register",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -78,7 +77,6 @@ export const forwardGuestMergeCommand = async (
     commandName: "guest.merge",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -116,7 +114,6 @@ export const forwardCommandWithTenant = async ({
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
   });
 };
 
@@ -156,7 +153,37 @@ export const forwardCommandWithParamId = async ({
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
+  });
+};
+
+/**
+ * Forward the request body as one named command, scoped to `tenantId` from the
+ * path.
+ *
+ * For commands whose target is inside the body rather than the URL — a batch
+ * names its targets in `items`, so there is no single resource id to lift out
+ * of the path the way {@link forwardCommandWithParamId} does.
+ */
+export const forwardTenantCommand = async ({
+  request,
+  reply,
+  commandName,
+}: {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  commandName: string;
+}): Promise<FastifyReply> => {
+  const tenantId = getParamValue(request, "tenantId");
+  if (!tenantId) {
+    reply.badRequest("TENANT_ID_REQUIRED");
+    return reply;
+  }
+  return submitCommand({
+    request,
+    reply,
+    commandName,
+    tenantId,
+    payload: normalizePayloadObject(request.body),
   });
 };
 
@@ -183,7 +210,6 @@ export const forwardGenericCommand = async (
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
   });
 };
 
@@ -247,7 +273,6 @@ export const forwardReservationCommand = async (
     commandName,
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -307,7 +332,6 @@ export const forwardHousekeepingAssignCommand = async (
     commandName: "housekeeping.task.assign",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -331,7 +355,6 @@ export const forwardHousekeepingCompleteCommand = async (
     commandName: "housekeeping.task.complete",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -373,7 +396,6 @@ export const forwardRoomInventoryCommand = async ({
     commandName: action === "release" ? "rooms.inventory.release" : "rooms.inventory.block",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -401,7 +423,6 @@ export const forwardBillingCaptureCommand = async (
     commandName: "billing.payment.capture",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };
@@ -426,7 +447,6 @@ export const forwardBillingRefundCommand = async (
     commandName: "billing.payment.refund",
     tenantId,
     payload,
-    requiredRole: "MANAGER",
     requiredModules: "core",
   });
 };

@@ -8,6 +8,12 @@ import { z } from "zod";
 
 import { PaymentMethodEnum } from "../../shared/enums.js";
 
+import {
+	CREDIT_LIMIT_OVERRIDE_FIELDS,
+	CREDIT_LIMIT_OVERRIDE_REFINEMENT,
+	hasCreditLimitOverrideReason,
+} from "./credit-limit-override.js";
+
 export const BillingPaymentCaptureCommandSchema = z
 	.object({
 		payment_reference: z.string().trim().min(3).max(100),
@@ -41,11 +47,13 @@ export const BillingPaymentCaptureCommandSchema = z
 			.optional(),
 		metadata: z.record(z.unknown()).optional(),
 		idempotency_key: z.string().max(120).optional(),
+		...CREDIT_LIMIT_OVERRIDE_FIELDS,
 	})
 	.refine(
 		(v) => Boolean(v.folio_id || v.reservation_id),
 		"folio_id or reservation_id is required",
-	);
+	)
+	.refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
 
 export type BillingPaymentCaptureCommand = z.infer<
 	typeof BillingPaymentCaptureCommandSchema
@@ -113,7 +121,8 @@ export const BillingPaymentAuthorizeCommandSchema = z.object({
 		.optional(),
 	metadata: z.record(z.unknown()).optional(),
 	idempotency_key: z.string().max(120).optional(),
-});
+	...CREDIT_LIMIT_OVERRIDE_FIELDS,
+}).refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
 
 export type BillingPaymentAuthorizeCommand = z.infer<
 	typeof BillingPaymentAuthorizeCommandSchema

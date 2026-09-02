@@ -1,3 +1,4 @@
+import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
 import type { PoolClient } from "pg";
 
 /**
@@ -109,50 +110,68 @@ export const copyReferenceDataForTenant = async (
   });
 
   return await withTenantScope(client, newTenantId, async () => {
-    for (const row of source.chargeCodes) {
+    // One statement per reference row turned seeding a tenant into hundreds of
+    // round trips. Batched, with ON CONFLICT DO NOTHING keeping a re-run a no-op.
+    for (const batch of chunkForBatch(source.chargeCodes, 8, 1)) {
       await client.query(
         `INSERT INTO charge_codes
            (tenant_id, code, description, department_code, department_name,
             revenue_group, is_taxable, is_active, display_order)
-         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)
+         VALUES ${buildValuesRows({
+           rowCount: batch.length,
+           columnsPerRow: 8,
+           scalarCount: 1,
+           render: (p) =>
+             `($1::uuid, ${p(1)}, ${p(2)}, ${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, ${p(7)}, ${p(8)})`,
+         })}
          ON CONFLICT DO NOTHING`,
         [
           newTenantId,
-          row.code,
-          row.description,
-          row.department_code,
-          row.department_name,
-          row.revenue_group,
-          row.is_taxable,
-          row.is_active,
-          row.display_order,
+          ...batch.flatMap((row) => [
+            row.code,
+            row.description,
+            row.department_code,
+            row.department_name,
+            row.revenue_group,
+            row.is_taxable,
+            row.is_active,
+            row.display_order,
+          ]),
         ],
       );
     }
 
-    for (const row of source.glMappings) {
+    for (const batch of chunkForBatch(source.glMappings, 6, 2)) {
       await client.query(
         `INSERT INTO charge_code_gl_mapping
            (tenant_id, charge_code, debit_account, credit_account,
             usali_category, department_code, is_active, created_by, updated_by)
-         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid, $8::uuid)
+         VALUES ${buildValuesRows({
+           rowCount: batch.length,
+           columnsPerRow: 6,
+           scalarCount: 2,
+           render: (p) =>
+             `($1::uuid, ${p(1)}, ${p(2)}, ${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, $2::uuid, $2::uuid)`,
+         })}
          ON CONFLICT DO NOTHING`,
         [
           newTenantId,
-          row.charge_code,
-          row.debit_account,
-          row.credit_account,
-          row.usali_category,
-          row.department_code,
-          row.is_active,
           actorId,
+          ...batch.flatMap((row) => [
+            row.charge_code,
+            row.debit_account,
+            row.credit_account,
+            row.usali_category,
+            row.department_code,
+            row.is_active,
+          ]),
         ],
       );
     }
 
-    for (const row of source.marketSegments) {
-      // property_id is remapped to the tenant's own first property; copying the
-      // template's would point the segment at another tenant's property.
+    // property_id is remapped to the tenant's own first property; copying the
+    // template's would point the segment at another tenant's property.
+    for (const batch of chunkForBatch(source.marketSegments, 20, 3)) {
       await client.query(
         `INSERT INTO market_segments
            (tenant_id, property_id, segment_code, segment_name, segment_type,
@@ -161,33 +180,42 @@ export const copyReferenceDataForTenant = async (
             commission_percentage, marketing_priority, is_target_segment,
             description, color_code, icon, ranking, requires_approval,
             tax_exempt, notes, created_by, updated_by)
-         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                 $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23::uuid, $23::uuid)
+         VALUES ${buildValuesRows({
+           rowCount: batch.length,
+           columnsPerRow: 20,
+           scalarCount: 3,
+           render: (p) =>
+             `($1::uuid, $2::uuid, ${p(1)}, ${p(2)}, ${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, ` +
+             `${p(7)}, ${p(8)}, ${p(9)}, ${p(10)}, ${p(11)}, ${p(12)}, ${p(13)}, ${p(14)}, ` +
+             `${p(15)}, ${p(16)}, ${p(17)}, ${p(18)}, ${p(19)}, ${p(20)}, $3::uuid, $3::uuid)`,
+         })}
          ON CONFLICT DO NOTHING`,
         [
           newTenantId,
           newPropertyId,
-          row.segment_code,
-          row.segment_name,
-          row.segment_type,
-          row.is_active,
-          row.is_bookable,
-          row.segment_level,
-          row.rate_multiplier,
-          row.discount_percentage,
-          row.premium_percentage,
-          row.pays_commission,
-          row.commission_percentage,
-          row.marketing_priority,
-          row.is_target_segment,
-          row.description,
-          row.color_code,
-          row.icon,
-          row.ranking,
-          row.requires_approval,
-          row.tax_exempt,
-          row.notes,
           actorId,
+          ...batch.flatMap((row) => [
+            row.segment_code,
+            row.segment_name,
+            row.segment_type,
+            row.is_active,
+            row.is_bookable,
+            row.segment_level,
+            row.rate_multiplier,
+            row.discount_percentage,
+            row.premium_percentage,
+            row.pays_commission,
+            row.commission_percentage,
+            row.marketing_priority,
+            row.is_target_segment,
+            row.description,
+            row.color_code,
+            row.icon,
+            row.ranking,
+            row.requires_approval,
+            row.tax_exempt,
+            row.notes,
+          ]),
         ],
       );
     }

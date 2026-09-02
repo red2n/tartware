@@ -23,12 +23,17 @@ export * from "./buildings.js";
 export * from "./calculations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./cashier-rows.js";
+export * from "./command-approvals.js";
+export * from "./command-batch-rows.js";
 export * from "./command-center.js";
+export * from "./command-permissions.js";
 export * from "./compliance-utils.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./core-rows.js";
 export * from "./currency.js";
 export * from "./display-utils.js";
+export * from "./document-render.js";
+export * from "./documents.js";
 export * from "./errors.js";
 export * from "./events.js";
 export * from "./gl-postings.js";
@@ -47,6 +52,8 @@ export * from "./notifications.js";
 export * from "./operations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./operations-rows.js";
+export * from "./override-authority.js";
+export * from "./override-thresholds.js";
 export * from "./payment-gateway.js";
 export * from "./properties.js";
 export * from "./rate-calendar.js";
@@ -54,7 +61,10 @@ export * from "./rates.js";
 export * from "./recommendations.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./report-rows.js";
+// eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
+export * from "./reservation-rows.js";
 export * from "./reservations.js";
+export * from "./restrictions.js";
 export * from "./revenue.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./revenue-rows.js";
@@ -63,6 +73,7 @@ export * from "./rooms.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./rooms-rows.js";
 export * from "./settings.js";
+export * from "./stay-plan.js";
 export * from "./system-admin.js";
 export * from "./system-session.js";
 export * from "./tenants.js";

@@ -36,6 +36,15 @@ export const BillingTaxConfigCreateCommandSchema = z.object({
 	jurisdiction_level: z
 		.enum(["federal", "state", "county", "city", "local", "special"])
 		.optional(),
+	/**
+	 * The issuer's registration number for this tax, printed on any document
+	 * that functions as an invoice (PMS-15-17).
+	 *
+	 * The column has always existed; the create command had no field for it, so
+	 * there was no way to record the number a folio is legally required to show
+	 * in most EU jurisdictions.
+	 */
+	tax_registration_number: z.string().trim().max(100).optional(),
 	tax_rate: z.coerce.number().min(0).max(100),
 	is_percentage: z.boolean().default(true),
 	fixed_amount: z.coerce.number().nonnegative().optional(),
@@ -97,6 +106,8 @@ export const BillingTaxConfigUpdateCommandSchema = z.object({
 			"other",
 		])
 		.optional(),
+	/** See the create command — the registration number printed on documents. */
+	tax_registration_number: z.string().trim().max(100).optional(),
 	tax_rate: z.coerce.number().min(0).max(100).optional(),
 	is_percentage: z.boolean().optional(),
 	fixed_amount: z.coerce.number().nonnegative().optional(),

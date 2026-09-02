@@ -5,7 +5,7 @@ import { upsertDemandCalendarEntry } from "../../services/demand-calendar-servic
 export const handleDemandUpdate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ count: number }> => {
   const dates = payload.dates as string[];
   const demandLevel = payload.demand_level as string;
@@ -26,7 +26,7 @@ export const handleDemandUpdate = async (
 export const handleDemandImportEvents = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ events: number; upserted: number }> => {
   const events = payload.events as Array<{
     event_name: string;

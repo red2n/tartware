@@ -17,6 +17,7 @@ import {
   resolveActorId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import { clearWriteOffGate, recordWriteOff, type WriteOffGateInput } from "./write-off-gate.js";
 
 /** Map textual payment_terms to number of days. */
 const paymentTermsToDays = (terms: string): number => {
@@ -309,6 +310,26 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
   const newOutstanding = subtractMoney(outstanding, writeOffAmount);
   const newStatus = newOutstanding <= 0.005 ? "written_off" : "partial";
 
+  // A07's remainder. This command and the suspense write-off were left on free
+  // text when the city-ledger one was hardened, because both have UI callers
+  // and demanding a reason code from a screen with no picker would have broken
+  // them. The picker exists now. Same gate as the other two: the code resolves
+  // in the WRITE_OFF category, the acting role clears the level that code
+  // demands, and the amount clears the ladder.
+  const gate: WriteOffGateInput = {
+    context,
+    propertyId: ar.property_id,
+    commandName: "billing.ar.write_off",
+    flowName: "ar_collections",
+    entityType: "accounts_receivable",
+    entityId: command.ar_id,
+    amount: writeOffAmount,
+    reasonCode: command.reason_code,
+    narrative: command.reason,
+    currency: (ar.currency ?? "USD").toUpperCase(),
+  };
+  const reason = await clearWriteOffGate(gate);
+
   await withTransaction(async (client) => {
     await queryWithClient(
       client,
@@ -328,7 +349,7 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
         command.ar_id,
         tenantId,
         writeOffAmount,
-        command.reason,
+        `${reason.reason_code}: ${command.reason}`,
         actorId,
         command.approved_by ?? null,
         newOutstanding,
@@ -355,8 +376,18 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
     });
   });
 
+  // A record, not a gate — written after the ledger moves, so a retried
+  // failure cannot leave three rows claiming one balance left the books.
+  await recordWriteOff(gate, reason);
+
   appLogger.info(
-    { arId: command.ar_id, writeOffAmount, newOutstanding, newStatus },
+    {
+      arId: command.ar_id,
+      writeOffAmount,
+      newOutstanding,
+      newStatus,
+      reasonCode: reason.reason_code,
+    },
     "AR entry written off",
   );
 
@@ -368,7 +399,7 @@ export const writeOffAr = async (payload: unknown, context: CommandContext): Pro
     entityType: "accounts_receivable",
     entityId: command.ar_id,
     severity: "CRITICAL",
-    description: `AR bad debt write-off: ${writeOffAmount} on entry ${command.ar_id} reason=${command.reason}`,
+    description: `AR bad debt write-off: ${writeOffAmount} on entry ${command.ar_id} reason=${reason.reason_code} ${command.reason}`,
     oldValues: { outstanding_balance: outstanding, ar_status: ar.ar_status ?? "open" },
     newValues: {
       write_off_amount: writeOffAmount,

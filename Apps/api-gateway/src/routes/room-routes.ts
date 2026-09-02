@@ -11,10 +11,12 @@
  * @module room-routes
  */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { COMMAND_AUTHORITY_FLOOR } from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
+import { availabilityRead, invalidateFunnelReads, ratesRead } from "../utils/read-caches.js";
 
 import { forwardCommandWithParamId, forwardRoomInventoryCommand } from "./command-helpers.js";
 import {
@@ -37,10 +39,35 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
   const proxyRooms = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
 
-  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  /**
+   * Writing a rate makes this tenant's cached rate lookups wrong immediately,
+   * and can change what a search should show, so both are dropped rather than
+   * left to expire.
+   *
+   * The caches themselves moved to `utils/read-caches.ts`: they were created
+   * here, so only this file could invalidate them, and allotment writes — which
+   * take rooms out of sale — had no way to reach them.
+   */
+  const proxyRoomsInvalidating = async (request: FastifyRequest, reply: FastifyReply) => {
+    const result = await proxyRequest(request, reply, serviceTargets.roomsServiceUrl);
+    invalidateFunnelReads(
+      (request.query as { tenant_id?: string } | undefined)?.tenant_id ??
+        (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    );
+    return result;
+  };
+
+  /**
+   * Write scope for the command routes below.
+   *
+   * `COMMAND_AUTHORITY_FLOOR` is the lowest role any command declares, not a
+   * blanket relaxation: the command's own floor in `COMMAND_MIN_ROLE` decides
+   * the outcome inside `acceptCommand`. Holding this at MANAGER, as it was,
+   * refused a clerk their own routine work before that check could run.
+   */
   const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "MANAGER",
+    minRole: COMMAND_AUTHORITY_FLOOR,
     requiredModules: "core",
   });
 
@@ -333,7 +360,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         },
       }),
     },
-    proxyRooms,
+    ratesRead.handler,
   );
 
   app.post(
@@ -349,7 +376,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         },
       }),
     },
-    proxyRooms,
+    proxyRoomsInvalidating,
   );
 
   app.all(
@@ -439,7 +466,7 @@ export const registerRoomRoutes = (app: FastifyInstance): void => {
         response: { 200: jsonObjectSchema },
       }),
     },
-    proxyRooms,
+    availabilityRead.handler,
   );
 
   // Room command routes

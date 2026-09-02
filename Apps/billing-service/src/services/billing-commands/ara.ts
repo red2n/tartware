@@ -1,4 +1,11 @@
 import { randomUUID } from "node:crypto";
+import type {
+  ArAccountRow,
+  ArCashApplicationRow,
+  ArCityLedgerRow,
+  ArDisputeRow,
+  ReasonCodeRow,
+} from "@tartware/schemas";
 
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
@@ -26,6 +33,12 @@ import {
   resolveActorId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import {
+  type CreditLimitGateInput,
+  clearCreditLimitGate,
+  recordCreditLimitOverride,
+} from "./credit-limit-gate.js";
+import { clearWriteOffGate, recordWriteOff, type WriteOffGateInput } from "./write-off-gate.js";
 
 // ─── GL constants ─────────────────────────────────────────────────────────────
 const CITY_LEDGER_ACCOUNT = "1300"; // City Ledger / AR
@@ -147,14 +160,17 @@ export const transferToCityLedger = async (
   const { tenantId } = context;
 
   // Load AR account + credit check
-  const { rows: accountRows } = await query<{
-    ar_account_id: string;
-    credit_limit: string;
-    outstanding_balance: string;
-    available_credit: string;
-    account_status: string;
-    payment_terms: string;
-  }>(
+  const { rows: accountRows } = await query<
+    Pick<
+      ArAccountRow,
+      | "ar_account_id"
+      | "credit_limit"
+      | "outstanding_balance"
+      | "available_credit"
+      | "account_status"
+      | "payment_terms"
+    >
+  >(
     `SELECT ar_account_id, credit_limit, outstanding_balance, available_credit, account_status, payment_terms
        FROM ar_accounts
       WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid AND is_deleted = FALSE`,
@@ -197,12 +213,28 @@ export const transferToCityLedger = async (
     );
   }
 
-  // Credit limit check
+  // Credit limit check. The AR account's own available credit, not a guest's —
+  // same refusal, same override, different entity, which is why the gate takes
+  // the entity rather than assuming one.
+  const creditGate: CreditLimitGateInput = {
+    context,
+    propertyId: command.property_id,
+    commandName: "ar.city_ledger.transfer",
+    flowName: "ar_collections",
+    entityType: "folio",
+    entityId: command.folio_id,
+    detail:
+      `Transfer of ${transferAmount} exceeds available credit ` +
+      `${account.available_credit} on AR account ${command.ar_account_id}.`,
+    amount: transferAmount,
+  };
+  let creditOverride: ReasonCodeRow | null = null;
   if (Number(account.available_credit) < transferAmount) {
-    throw new BillingCommandError(
-      "CREDIT_LIMIT_EXCEEDED",
-      `Transfer of ${transferAmount} exceeds available credit ${account.available_credit}.`,
-    );
+    creditOverride = await clearCreditLimitGate(creditGate, {
+      requested: command.credit_limit_override,
+      reasonCode: command.credit_limit_override_reason_code,
+      notes: command.credit_limit_override_notes,
+    });
   }
 
   // Compute due date from payment terms
@@ -226,7 +258,7 @@ export const transferToCityLedger = async (
     const today = dateRows[0]?.today ?? new Date().toISOString().slice(0, 10);
 
     // Insert city ledger entry
-    const inserted = await queryWithClient<{ entry_id: string }>(
+    const inserted = await queryWithClient<Pick<ArCityLedgerRow, "entry_id">>(
       client,
       `INSERT INTO ar_city_ledger (
           tenant_id, property_id, ar_account_id,
@@ -241,8 +273,17 @@ export const transferToCityLedger = async (
           $10, $10, UPPER($11),
           $12, $13::uuid
         )
+        -- The inference predicate has to *imply* the index predicate, and
+        -- ar_city_ledger_folio_account_ux is partial on
+        -- (folio_id IS NOT NULL AND entry_status NOT IN (…)). Omitting the
+        -- null test left Postgres unable to match any index, so every transfer
+        -- failed with 42P10 — "no unique or exclusion constraint matching the
+        -- ON CONFLICT specification" — and then burned the retry ladder. The
+        -- command had no route until A11 and no test ever drove it, so it had
+        -- never once succeeded.
         ON CONFLICT (tenant_id, folio_id, ar_account_id)
-          WHERE entry_status NOT IN ('CANCELLED', 'WRITTEN_OFF')
+          WHERE folio_id IS NOT NULL
+            AND entry_status NOT IN ('CANCELLED', 'WRITTEN_OFF')
         DO NOTHING
         RETURNING entry_id`,
       [
@@ -265,7 +306,7 @@ export const transferToCityLedger = async (
     const entryId = inserted.rows[0]?.entry_id;
     if (!entryId) {
       // Idempotent — entry already exists for this folio+account
-      const existingResult = await queryWithClient<{ entry_id: string }>(
+      const existingResult = await queryWithClient<Pick<ArCityLedgerRow, "entry_id">>(
         client,
         `SELECT entry_id FROM ar_city_ledger
           WHERE tenant_id = $1::uuid AND folio_id = $2::uuid AND ar_account_id = $3::uuid
@@ -309,6 +350,19 @@ export const transferToCityLedger = async (
   });
 
   const entryId = rows[0]?.entry_id ?? entryNumber;
+
+  // Recorded here rather than at the gate: the transfer has committed, so the
+  // row documents an override that actually moved money. Recording at the gate
+  // wrote one per attempt, and this command spent its whole life failing after
+  // the gate on a 42P10 — three rows for one decision.
+  if (creditOverride) {
+    await recordCreditLimitOverride(
+      { ...creditGate, entityId: command.folio_id },
+      creditOverride,
+      command.credit_limit_override_notes,
+    );
+  }
+
   appLogger.info(
     { entryId, entryNumber, arAccountId: command.ar_account_id, amount: transferAmount },
     "City ledger transfer complete",
@@ -329,13 +383,12 @@ export const writeOffCityLedger = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: entryRows } = await query<{
-    entry_id: string;
-    ar_account_id: string;
-    outstanding_balance: string;
-    currency: string;
-    entry_status: string;
-  }>(
+  const { rows: entryRows } = await query<
+    Pick<
+      ArCityLedgerRow,
+      "entry_id" | "ar_account_id" | "outstanding_balance" | "currency" | "entry_status"
+    >
+  >(
     `SELECT entry_id, ar_account_id, outstanding_balance, currency, entry_status
        FROM ar_city_ledger
       WHERE entry_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -361,6 +414,25 @@ export const writeOffCityLedger = async (
 
   const writeOffAmount = command.amount ?? Number(entry.outstanding_balance);
 
+  // A07: forgiving a debt states why, in the vocabulary the rest of the product
+  // uses, and is authorised both by whose decision it is and by how large it
+  // is. All three checks live in one place now — `write-off-gate.ts` — because
+  // the other two write-off commands need the same ones, and three copies would
+  // have become three different controls.
+  const gate: WriteOffGateInput = {
+    context,
+    propertyId: command.property_id,
+    commandName: "ar.city_ledger.write_off",
+    flowName: "ledger_control",
+    entityType: "ar_city_ledger",
+    entityId: command.city_ledger_id,
+    amount: writeOffAmount,
+    reasonCode: command.reason_code,
+    narrative: command.reason,
+    currency: entry.currency,
+  };
+  const reason = await clearWriteOffGate(gate);
+
   await withTransaction(async (client) => {
     const { rows: dateRows } = await queryWithClient<{ today: string }>(
       client,
@@ -379,7 +451,7 @@ export const writeOffCityLedger = async (
               written_off_by = $2::uuid,
               updated_at = NOW()
         WHERE entry_id = $3::uuid AND tenant_id = $4::uuid`,
-      [command.reason, actorId, command.city_ledger_id, tenantId],
+      [`${reason.reason_code}: ${command.reason}`, actorId, command.city_ledger_id, tenantId],
     );
 
     await queryWithClient(
@@ -408,8 +480,17 @@ export const writeOffCityLedger = async (
     });
   });
 
+  // A record, not a gate: nothing here was bypassed, so `forced` stays false.
+  // Written after the ledger moves — the row's meaning is that money left the
+  // books, so one per retry attempt would be worse than none.
+  await recordWriteOff(gate, reason);
+
   appLogger.info(
-    { entryId: command.city_ledger_id, amount: writeOffAmount },
+    {
+      entryId: command.city_ledger_id,
+      amount: writeOffAmount,
+      reasonCode: reason.reason_code,
+    },
     "City ledger entry written off",
   );
   return command.city_ledger_id;
@@ -554,7 +635,7 @@ export const escalateDunning = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: accountRows } = await query<{ dunning_level: number; account_status: string }>(
+  const { rows: accountRows } = await query<Pick<ArAccountRow, "dunning_level" | "account_status">>(
     `SELECT dunning_level, account_status FROM ar_accounts
       WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid AND is_deleted = FALSE`,
     [command.ar_account_id, tenantId],
@@ -688,10 +769,9 @@ export const applyArCashPayment = async (
     }));
   } else {
     // FIFO: oldest open entries first
-    const { rows: openEntries } = await query<{
-      entry_id: string;
-      outstanding_balance: string;
-    }>(
+    const { rows: openEntries } = await query<
+      Pick<ArCityLedgerRow, "entry_id" | "outstanding_balance">
+    >(
       `SELECT entry_id, outstanding_balance
          FROM ar_city_ledger
         WHERE tenant_id = $1::uuid AND ar_account_id = $2::uuid
@@ -801,13 +881,12 @@ export const unapplyArCashPayment = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: appRows } = await query<{
-    application_id: string;
-    entry_id: string;
-    ar_account_id: string;
-    applied_amount: string;
-    application_status: string;
-  }>(
+  const { rows: appRows } = await query<
+    Pick<
+      ArCashApplicationRow,
+      "application_id" | "entry_id" | "ar_account_id" | "applied_amount" | "application_status"
+    >
+  >(
     `SELECT application_id, entry_id, ar_account_id, applied_amount, application_status
        FROM ar_cash_applications
       WHERE application_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -878,12 +957,9 @@ export const raiseArDispute = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: entryRows } = await query<{
-    entry_id: string;
-    ar_account_id: string;
-    outstanding_balance: string;
-    entry_status: string;
-  }>(
+  const { rows: entryRows } = await query<
+    Pick<ArCityLedgerRow, "entry_id" | "ar_account_id" | "outstanding_balance" | "entry_status">
+  >(
     `SELECT entry_id, ar_account_id, outstanding_balance, entry_status
        FROM ar_city_ledger
       WHERE entry_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -955,12 +1031,9 @@ export const resolveArDispute = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: disputeRows } = await query<{
-    dispute_id: string;
-    entry_id: string;
-    dispute_amount: string;
-    dispute_status: string;
-  }>(
+  const { rows: disputeRows } = await query<
+    Pick<ArDisputeRow, "dispute_id" | "entry_id" | "dispute_amount" | "dispute_status">
+  >(
     `SELECT dispute_id, entry_id, dispute_amount, dispute_status
        FROM ar_disputes WHERE dispute_id = $1::uuid AND tenant_id = $2::uuid`,
     [command.dispute_id, tenantId],

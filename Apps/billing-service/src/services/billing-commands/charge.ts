@@ -1,7 +1,7 @@
+import { resolveOpenCashierSession } from "@tartware/command-consumer-utils/cashier";
 import { convertCurrency, roundToCurrency } from "@tartware/schemas";
-
 import { auditAsync } from "../../lib/audit-logger.js";
-import { queryWithClient, withTransaction } from "../../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
 import {
   getPropertyBaseCurrency,
@@ -20,6 +20,7 @@ import {
 } from "../../schemas/billing-commands.js";
 import { addMoney, parseDbMoneyOrZero } from "../../utils/money.js";
 import { evaluateRoutingRules } from "../routing-rule-service.js";
+
 import {
   asUuid,
   BillingCommandError,
@@ -504,6 +505,15 @@ const applyChargePost = async (
   }
 
   // Evaluate routing rules for the source folio
+  // A09. Which drawer this posting belongs to, if any. Resolved before the
+  // transaction because it is a plain read and because `null` — the common
+  // case — must not cost the write anything: a night audit run, a routed
+  // charge and an OTA deposit all post without a cashier.
+  const cashierSessionId = await resolveOpenCashierSession(
+    (sql, params) => query<{ session_id: string }>(sql, params),
+    { tenantId: context.tenantId, propertyId: command.property_id, actorId: actor },
+  );
+
   const routing = await evaluateRoutingRules({
     tenantId: context.tenantId,
     propertyId: command.property_id,
@@ -685,6 +695,7 @@ const applyChargePost = async (
             charge_description, quantity, unit_price, subtotal, total_amount,
             currency_code, exchange_rate, base_amount, base_currency,
             posting_time, business_date, notes,
+            cashier_session_id,
             created_by, updated_by
           ) VALUES (
             $1::uuid, $2::uuid, $3::uuid, $4::uuid,
@@ -692,6 +703,7 @@ const applyChargePost = async (
             $8, $9, $10, $11, $11,
             UPPER($12), $16, $17, UPPER($18),
             COALESCE($13::timestamptz, NOW()), CURRENT_DATE, $14,
+            $19::uuid,
             $15::uuid, $15::uuid
           )
           RETURNING posting_id
@@ -715,6 +727,7 @@ const applyChargePost = async (
           fxLock.rate, // $16
           fxLock.baseAmount, // $17
           baseCurrency, // $18
+          cashierSessionId, // $19 — null unless a drawer was open for this actor
         ],
       );
 

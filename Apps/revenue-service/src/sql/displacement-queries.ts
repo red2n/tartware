@@ -7,40 +7,57 @@
  * for the same period.
  */
 export const DISPLACEMENT_ANALYSIS_SQL = `
+  -- Displacement is an argument about room-nights, so every figure here is
+  -- counted on reservation_nights. Group revenue used to be SUM(room_rate) —
+  -- one night's price per reservation regardless of how long the block ran or
+  -- how many rooms it held — which understated every block of more than one
+  -- night and made the comparison against transient ADR meaningless.
   WITH group_blocks AS (
     SELECT
       r.property_id,
       r.group_booking_id,
       g.group_name,
-      COUNT(DISTINCT r.id) AS group_rooms_booked,
-      SUM(r.room_rate) AS group_total_revenue,
-      AVG(r.room_rate) AS group_adr,
-      MIN(r.check_in_date) AS block_start,
-      MAX(r.check_out_date) AS block_end,
-      SUM(EXTRACT(DAY FROM (r.check_out_date::timestamp - r.check_in_date::timestamp))) AS group_room_nights
-    FROM reservations r
+      COUNT(DISTINCT n.reservation_room_id) AS group_rooms_booked,
+      SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary) AS group_total_revenue,
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+        THEN SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+             / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary)
+        END AS group_adr,
+      MIN(n.stay_date) AS block_start,
+      MAX(n.stay_date) + 1 AS block_end,
+      COUNT(n.reservation_night_id) AS group_room_nights
+    FROM reservation_nights n
+    INNER JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
     INNER JOIN group_bookings g ON g.group_booking_id = r.group_booking_id AND g.tenant_id = r.tenant_id
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND COALESCE(n.is_deleted, false) = false
+      AND n.stay_date >= $3::date
+      AND n.stay_date < $4::date
       AND r.group_booking_id IS NOT NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-      AND r.check_in_date >= $3::date
-      AND r.check_out_date <= $4::date
     GROUP BY r.property_id, r.group_booking_id, g.group_name
   ),
   transient_avg AS (
     SELECT
-      AVG(r.room_rate) AS avg_transient_adr,
-      COUNT(DISTINCT r.id) AS transient_count
-    FROM reservations r
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+        THEN SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+             / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary)
+        END AS avg_transient_adr,
+      COUNT(DISTINCT n.reservation_id) AS transient_count
+    FROM reservation_nights n
+    INNER JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND COALESCE(n.is_deleted, false) = false
+      AND n.stay_date >= $3::date
+      AND n.stay_date < $4::date
       AND r.group_booking_id IS NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-      AND r.check_in_date >= $3::date
-      AND r.check_out_date <= $4::date
   )
   SELECT
     gb.group_booking_id AS group_id,
@@ -79,17 +96,22 @@ export const GROUP_EVALUATE_SQL = `
     SELECT
       r.group_booking_id,
       g.group_name,
-      COUNT(DISTINCT r.id)          AS group_rooms_booked,
-      SUM(r.room_rate)              AS group_room_revenue,
-      AVG(r.room_rate)              AS group_adr,
-      MIN(r.check_in_date)          AS block_start,
-      MAX(r.check_out_date)         AS block_end,
-      SUM(EXTRACT(DAY FROM (r.check_out_date::timestamp - r.check_in_date::timestamp)))
-                                    AS group_room_nights
-    FROM reservations r
+      COUNT(DISTINCT n.reservation_room_id) AS group_rooms_booked,
+      SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary) AS group_room_revenue,
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+        THEN SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+             / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary)
+        END AS group_adr,
+      MIN(n.stay_date)              AS block_start,
+      MAX(n.stay_date) + 1          AS block_end,
+      COUNT(n.reservation_night_id) AS group_room_nights
+    FROM reservation_nights n
+    INNER JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
     INNER JOIN group_bookings g ON g.group_booking_id = r.group_booking_id AND g.tenant_id = r.tenant_id
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND COALESCE(n.is_deleted, false) = false
       AND r.group_booking_id = $3::uuid
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
@@ -100,16 +122,23 @@ export const GROUP_EVALUATE_SQL = `
   ),
   transient_baseline AS (
     SELECT
-      AVG(r.room_rate)              AS avg_transient_adr,
-      COUNT(DISTINCT r.id)          AS transient_bookings
-    FROM reservations r, block_dates bd
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+        THEN SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+             / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary)
+        END AS avg_transient_adr,
+      COUNT(DISTINCT n.reservation_id) AS transient_bookings
+    FROM reservation_nights n
+    INNER JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+    CROSS JOIN block_dates bd
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND COALESCE(n.is_deleted, false) = false
+      AND n.stay_date >= bd.block_start
+      AND n.stay_date < bd.block_end
       AND r.group_booking_id IS NULL
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-      AND r.check_in_date >= bd.block_start
-      AND r.check_out_date <= bd.block_end
   ),
   denied_demand AS (
     SELECT COUNT(r.id) AS denied_bookings

@@ -25,7 +25,7 @@ const ACTIVE_GOALS_FOR_DATE_SQL = `
 export const handleDailyCloseProcess = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ goalsUpdated: number; forecastRun: boolean }> => {
   const propertyId = payload.property_id as string;
   const businessDate = payload.business_date as string;
@@ -46,7 +46,7 @@ export const handleDailyCloseProcess = async (
       propertyId,
       metadata.tenantId,
       businessDate,
-      actorId ?? metadata.tenantId,
+      actorId,
     ]);
     goalsUpdated = goals.length;
   }
@@ -61,7 +61,7 @@ export const handleDailyCloseProcess = async (
       horizonDays: 30,
       trainingDays: 90,
       scenarios: ["base", "optimistic", "pessimistic"],
-      actorId: actorId ?? "system",
+      actorId,
     });
     forecastRun = true;
   }

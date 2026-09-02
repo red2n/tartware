@@ -1,5 +1,10 @@
-import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  countForecastableRooms,
+  fetchDemandFactors,
+  fetchTrainingHistory,
+  insertForecast,
+} from "../repositories/forecast-repository.js";
 
 const logger = appLogger.child({ module: "forecast-engine" });
 
@@ -26,47 +31,23 @@ export async function computeForecasts(params: {
   trainingStart.setDate(trainingStart.getDate() - params.trainingDays);
 
   // Get total rooms for occupancy calculations
-  const roomCountResult = await query<{ total_rooms: string }>(
-    `SELECT COUNT(id) AS total_rooms FROM rooms
-     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND status NOT IN ('OUT_OF_ORDER')
-       AND is_deleted = false`,
-    [params.tenantId, params.propertyId],
-  );
-  const totalRooms = Number(roomCountResult.rows[0]?.total_rooms ?? 1);
+  const totalRooms = await countForecastableRooms(params.tenantId, params.propertyId);
 
   // Gather historical daily aggregates
-  const historyResult = await query<{
-    business_date: string;
-    occupied: string;
-    room_revenue: string;
-    adr: string;
-  }>(
-    `SELECT
-       d.dt::date AS business_date,
-       COUNT(DISTINCT r.id) AS occupied,
-       COALESCE(SUM(r.room_rate), 0) AS room_revenue,
-       CASE WHEN COUNT(r.id) > 0
-         THEN ROUND(AVG(r.room_rate)::numeric, 2) ELSE 0 END AS adr
-     FROM generate_series($3::date, CURRENT_DATE - 1, '1 day') AS d(dt)
-     LEFT JOIN reservations r
-       ON r.tenant_id = $1::uuid AND r.property_id = $2::uuid
-       AND r.status IN ('CHECKED_IN', 'CHECKED_OUT')
-       AND r.is_deleted = false
-       AND r.check_in_date <= d.dt AND r.check_out_date > d.dt
-     GROUP BY d.dt
-     ORDER BY d.dt`,
-    [params.tenantId, params.propertyId, trainingStart.toISOString().slice(0, 10)],
+  const historyRows = await fetchTrainingHistory(
+    params.tenantId,
+    params.propertyId,
+    trainingStart.toISOString().slice(0, 10),
   );
 
-  if (historyResult.rows.length === 0) {
+  if (historyRows.length === 0) {
     logger.warn({ propertyId: params.propertyId }, "No historical data for forecast computation");
     return { forecastsGenerated: 0, forecastDate };
   }
 
   // Compute exponential moving averages (decay factor: 0.97/day — recent data weighted ~3x more)
   const decay = 0.97;
-  const n = historyResult.rows.length;
+  const n = historyRows.length;
   let weightedOcc = 0;
   let weightedAdr = 0;
   let weightedRev = 0;
@@ -74,7 +55,7 @@ export async function computeForecasts(params: {
 
   for (let i = 0; i < n; i++) {
     const weight = decay ** (n - 1 - i);
-    const row = historyResult.rows[i];
+    const row = historyRows[i];
     if (!row) continue;
     weightedOcc += (Number(row.occupied) / totalRooms) * weight;
     weightedAdr += Number(row.adr) * weight;
@@ -98,22 +79,14 @@ export async function computeForecasts(params: {
   // Load demand calendar event/season data for the forecast horizon
   const horizonEnd = new Date();
   horizonEnd.setDate(horizonEnd.getDate() + params.horizonDays);
-  const eventDataResult = await query<{
-    calendar_date: string;
-    event_impact_score: string | null;
-    season_factor: string | null;
-    events: unknown;
-  }>(
-    `SELECT calendar_date::text, event_impact_score, season_factor, events
-     FROM demand_calendar
-     WHERE tenant_id = $1::uuid AND property_id = $2::uuid
-       AND calendar_date >= CURRENT_DATE
-       AND calendar_date < $3::date`,
-    [params.tenantId, params.propertyId, horizonEnd.toISOString().slice(0, 10)],
+  const demandFactorRows = await fetchDemandFactors(
+    params.tenantId,
+    params.propertyId,
+    horizonEnd.toISOString().slice(0, 10),
   );
 
   const eventDataByDate = new Map<string, { eventFactor: number; seasonFactor: number }>();
-  for (const row of eventDataResult.rows) {
+  for (const row of demandFactorRows) {
     const impact = row.event_impact_score ? Number(row.event_impact_score) : 0;
     const season = row.season_factor ? Number(row.season_factor) : 1.0;
     // event_impact_score 0-100 maps to 1.0-1.5 multiplier (50 = 1.25x boost)
@@ -122,27 +95,6 @@ export async function computeForecasts(params: {
   }
 
   let forecastsGenerated = 0;
-
-  const FORECAST_INSERT_SQL = `INSERT INTO revenue_forecasts (
-       tenant_id, property_id, forecast_date, forecast_period,
-       period_start_date, period_end_date,
-       forecast_type, forecast_scenario,
-       forecasted_value, confidence_level,
-       room_revenue_forecast, total_revenue_forecast,
-       forecasted_occupancy_percent, forecasted_adr, forecasted_revpar,
-       model_algorithm, model_version,
-       created_by, updated_by
-     ) VALUES (
-       $1::uuid, $2::uuid, $3::date, $4,
-       $5::date, $6::date,
-       'revenue', $7,
-       $8, $9,
-       $10, $11,
-       $12, $13, $14,
-       'ema-demand-aware', '1.1',
-       $15::uuid, $15::uuid
-     )
-     ON CONFLICT DO NOTHING`;
 
   const insertForecastPeriod = async (period: {
     start: Date;
@@ -154,23 +106,23 @@ export async function computeForecasts(params: {
     adr: number;
     revpar: number;
   }) => {
-    await query(FORECAST_INSERT_SQL, [
-      params.tenantId,
-      params.propertyId,
+    await insertForecast({
+      tenantId: params.tenantId,
+      propertyId: params.propertyId,
       forecastDate,
-      params.forecastPeriod,
-      period.start.toISOString().slice(0, 10),
-      period.end.toISOString().slice(0, 10),
-      period.scenario,
-      period.roomRev,
-      period.confidence,
-      period.roomRev,
-      period.roomRev * 1.15,
-      Math.round(period.occPct * 100) / 100,
-      Math.round(period.adr * 100) / 100,
-      Math.round(period.revpar * 100) / 100,
-      params.actorId,
-    ]);
+      forecastPeriod: params.forecastPeriod,
+      periodStart: period.start.toISOString().slice(0, 10),
+      periodEnd: period.end.toISOString().slice(0, 10),
+      scenario: period.scenario,
+      roomRevenue: period.roomRev,
+      // Room revenue plus a flat 15% ancillary assumption.
+      totalRevenue: period.roomRev * 1.15,
+      confidence: period.confidence,
+      occupancyPercent: Math.round(period.occPct * 100) / 100,
+      adr: Math.round(period.adr * 100) / 100,
+      revpar: Math.round(period.revpar * 100) / 100,
+      actorId: params.actorId,
+    });
     forecastsGenerated++;
   };
 

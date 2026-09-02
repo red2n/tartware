@@ -1,4 +1,4 @@
-import { roundToCurrency } from "@tartware/schemas";
+import { type ReasonCodeRow, roundToCurrency } from "@tartware/schemas";
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
@@ -18,6 +18,12 @@ import {
   resolveFolioId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
+import {
+  type CreditLimitGateContext,
+  type CreditLimitGateInput,
+  clearCreditLimitGate,
+  recordCreditLimitOverride,
+} from "./credit-limit-gate.js";
 
 /**
  * Enforce credit limit for a guest/account before allowing a charge.
@@ -25,12 +31,26 @@ import {
  * against the effective limit (including any temporary increase).
  * Returns a warning string if warning threshold is reached, or throws if blocked.
  */
+/**
+ * What the limit check found, and what the caller still owes the audit trail.
+ *
+ * `override` is set only when the block was lifted, and carries what
+ * `recordCreditLimitOverride` needs — the caller writes it **after** the
+ * payment commits. Recording at the gate wrote one row per retry attempt for an
+ * operation that had not happened yet.
+ */
+export type CreditLimitOutcome = {
+  warning: string | null;
+  override: { gate: CreditLimitGateInput; reason: ReasonCodeRow } | null;
+};
+
 export async function enforceCreditLimit(
   tenantId: string,
   guestId: string | undefined | null,
   chargeAmount: number,
-): Promise<string | null> {
-  if (!guestId) return null;
+  gate: CreditLimitGateContext,
+): Promise<CreditLimitOutcome> {
+  if (!guestId) return { warning: null, override: null };
 
   const { rows } = await query<{
     credit_limit_id: string;
@@ -55,7 +75,8 @@ export async function enforceCreditLimit(
   );
 
   const limit = rows[0];
-  if (!limit) return null; // No credit limit configured — allow
+  // No credit limit configured — allow.
+  if (!limit) return { warning: null, override: null };
 
   const effectiveLimit =
     Number(limit.credit_limit_amount) +
@@ -66,18 +87,35 @@ export async function enforceCreditLimit(
 
   const blockPct = Number(limit.block_threshold_percent);
   if (utilizationPct >= blockPct) {
-    throw new BillingCommandError(
-      "CREDIT_LIMIT_EXCEEDED",
-      `Payment of ${chargeAmount} would push utilization to ${utilizationPct.toFixed(1)}% (block threshold: ${blockPct}%). Available credit: ${(effectiveLimit - currentBalance).toFixed(2)}`,
-    );
+    // Refuses unless the caller asked for the override, named a CREDIT_LIMIT
+    // reason code, and holds the role that code's approval_level demands — at
+    // which point the decision is recorded against the guest whose limit it is.
+    const gateInput: CreditLimitGateInput = {
+      ...gate,
+      entityType: "guest",
+      entityId: guestId,
+      detail:
+        `Payment of ${chargeAmount} would push utilization to ${utilizationPct.toFixed(1)}% ` +
+        `(block threshold: ${blockPct}%). Available credit: ${(effectiveLimit - currentBalance).toFixed(2)}.`,
+      // The tender itself — what a shift's supervisor_overrides entry names.
+      amount: chargeAmount,
+    };
+    const reason = await clearCreditLimitGate(gateInput, gate.override);
+    return {
+      warning: `Credit limit block overridden under reason code ${reason.reason_code}`,
+      override: { gate: gateInput, reason },
+    };
   }
 
   const warningPct = Number(limit.warning_threshold_percent);
   if (utilizationPct >= warningPct) {
-    return `Credit utilization at ${utilizationPct.toFixed(1)}% (warning threshold: ${warningPct}%)`;
+    return {
+      warning: `Credit utilization at ${utilizationPct.toFixed(1)}% (warning threshold: ${warningPct}%)`,
+      override: null,
+    };
   }
 
-  return null;
+  return { warning: null, override: null };
 }
 
 /**
@@ -100,13 +138,22 @@ const capturePayment = async (
   const gatewayResponse = command.gateway?.response ?? {};
 
   // Enforce credit limit before capturing
-  const creditWarning = await enforceCreditLimit(
-    context.tenantId,
-    command.guest_id,
-    command.amount,
-  );
-  if (creditWarning) {
-    appLogger.warn({ guestId: command.guest_id, creditWarning }, "Credit limit warning on capture");
+  const creditLimit = await enforceCreditLimit(context.tenantId, command.guest_id, command.amount, {
+    context,
+    propertyId: command.property_id,
+    commandName: "billing.payment.capture",
+    flowName: "in_house",
+    override: {
+      requested: command.credit_limit_override,
+      reasonCode: command.credit_limit_override_reason_code,
+      notes: command.credit_limit_override_notes,
+    },
+  });
+  if (creditLimit.warning) {
+    appLogger.warn(
+      { guestId: command.guest_id, creditWarning: creditLimit.warning },
+      "Credit limit warning on capture",
+    );
   }
 
   // Resolve folio before the transaction so we know whether to update it
@@ -383,6 +430,14 @@ const capturePayment = async (
     );
   } catch {
     // Non-fatal — AR cash application can be done manually.
+  }
+
+  if (creditLimit.override) {
+    await recordCreditLimitOverride(
+      creditLimit.override.gate,
+      creditLimit.override.reason,
+      command.credit_limit_override_notes,
+    );
   }
 
   return paymentId.paymentId;

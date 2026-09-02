@@ -30,6 +30,11 @@ export const ChargePostingsSchema = z.object({
 	property_id: uuid,
 	folio_id: uuid,
 	reservation_id: uuid.optional(),
+	/**
+	 * Which room of a multi-room booking this line belongs to. Room charges post
+	 * per room per night, so `reservation_id` alone no longer identifies a line.
+	 */
+	reservation_room_id: uuid.optional(),
 	guest_id: uuid.optional(),
 	posting_date: z.coerce.date(),
 	posting_time: z.coerce.date(),
@@ -78,6 +83,20 @@ export const ChargePostingsSchema = z.object({
 	audit_run_id: uuid.optional(),
 	server_name: z.string().optional(),
 	cashier_name: z.string().optional(),
+	/**
+	 * The cashier session this posting was taken at (A09).
+	 *
+	 * `cashier_name` above is free text with no key to `cashier_sessions`, and
+	 * no code path in the repository ever wrote it — so a shift that closed
+	 * short could be counted but not reconciled, because no posting knew which
+	 * drawer it belonged to.
+	 *
+	 * Nullable permanently, not pending backfill: most postings have no drawer.
+	 * A night audit's room-and-tax run, a routed charge landing on a master
+	 * folio and an OTA deposit all post without a cashier, and NULL says so
+	 * truthfully rather than standing for missing data.
+	 */
+	cashier_session_id: z.string().uuid().optional(),
 	notes: z.string().optional(),
 	internal_notes: z.string().optional(),
 	is_reconciled: z.boolean().optional(),

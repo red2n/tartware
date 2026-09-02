@@ -1,5 +1,6 @@
 import { buildRouteSchema, schemaFromZod } from "@tartware/openapi";
-import type { FastifyInstance } from "fastify";
+import { type TenantRole, TenantRoleEnum } from "@tartware/schemas";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import {
@@ -33,8 +34,7 @@ const ApprovalRequestBodySchema = z.object({
   entity_id: z.string().uuid(),
   operation_payload: z.record(z.unknown()).optional(),
   description: z.string().max(500).optional(),
-  required_role: z.string().max(60).optional(),
-  requested_by: z.string().min(1).max(100),
+  required_role: TenantRoleEnum.optional(),
   requested_by_name: z.string().max(200).optional(),
 });
 type ApprovalRequestBody = z.infer<typeof ApprovalRequestBodySchema>;
@@ -44,7 +44,6 @@ const ApprovalRequestBodyJsonSchema = schemaFromZod(
 );
 
 const ApprovalActionBodySchema = z.object({
-  actioned_by: z.string().min(1).max(100),
   actioned_by_name: z.string().max(200).optional(),
   reason: z.string().max(500).optional(),
 });
@@ -52,7 +51,6 @@ type ApprovalActionBody = z.infer<typeof ApprovalActionBodySchema>;
 const ApprovalActionBodyJsonSchema = schemaFromZod(ApprovalActionBodySchema, "ApprovalActionBody");
 
 const ApprovalRejectBodySchema = z.object({
-  actioned_by: z.string().min(1).max(100),
   actioned_by_name: z.string().max(200).optional(),
   reason: z.string().min(1).max(500),
 });
@@ -60,13 +58,30 @@ type ApprovalRejectBody = z.infer<typeof ApprovalRejectBodySchema>;
 const ApprovalRejectBodyJsonSchema = schemaFromZod(ApprovalRejectBodySchema, "ApprovalRejectBody");
 
 const ApprovalCancelBodySchema = z.object({
-  cancelled_by: z.string().min(1).max(100),
   reason: z.string().max(500).optional(),
 });
 type ApprovalCancelBody = z.infer<typeof ApprovalCancelBodySchema>;
 const ApprovalCancelBodyJsonSchema = schemaFromZod(ApprovalCancelBodySchema, "ApprovalCancelBody");
 
 export const registerApprovalRoutes = (app: FastifyInstance): void => {
+  /**
+   * The acting user, taken from the verified token rather than the body.
+   *
+   * Every identity on an approval row used to arrive as a caller-supplied
+   * string, which made the four-eyes check a comparison of two values the same
+   * person chose. `withTenantScope` has already rejected an unauthenticated
+   * request by the time a handler runs, so a missing id here means the route
+   * was wired without that guard — refuse rather than fall back to a default.
+   */
+  const actor = (
+    request: FastifyRequest,
+    tenantId: string,
+  ): { id: string; role: TenantRole | undefined } | null => {
+    const id = request.auth.userId;
+    if (!id) return null;
+    return { id, role: request.auth.getMembership(tenantId)?.role };
+  };
+
   // ─── GET /v1/billing/approvals/pending ─────────────────────────────────────
   app.get<{ Querystring: ApprovalListQuery }>(
     "/v1/billing/approvals/pending",
@@ -164,7 +179,14 @@ export const registerApprovalRoutes = (app: FastifyInstance): void => {
     },
     async (request, reply) => {
       const body = ApprovalRequestBodySchema.parse(request.body);
-      const approvalId = await createApprovalRequest(body, body.tenant_id);
+      const who = actor(request, body.tenant_id);
+      if (!who) {
+        return reply.unauthorized("An authenticated user is required to request an approval.");
+      }
+      const approvalId = await createApprovalRequest(
+        { ...body, requested_by: who.id },
+        body.tenant_id,
+      );
       return reply.code(202).send({
         approval_id: approvalId,
         message: "Approval request created. Awaiting second authorisation (four-eyes principle).",
@@ -200,8 +222,17 @@ export const registerApprovalRoutes = (app: FastifyInstance): void => {
       if (!extBody.tenant_id) {
         return reply.code(400).send({ error: "tenant_id required in body." });
       }
+      const who = actor(request, extBody.tenant_id);
+      if (!who) {
+        return reply.unauthorized("An authenticated user is required to approve a request.");
+      }
       const row = await approveRequest(
-        { approval_id: request.params.id, ...body },
+        {
+          approval_id: request.params.id,
+          ...body,
+          actioned_by: who.id,
+          actioned_by_role: who.role,
+        },
         extBody.tenant_id,
       );
       return { data: row, message: "Approval granted." };
@@ -233,8 +264,12 @@ export const registerApprovalRoutes = (app: FastifyInstance): void => {
       if (!extBody.tenant_id) {
         return reply.code(400).send({ error: "tenant_id required in body." });
       }
+      const who = actor(request, extBody.tenant_id);
+      if (!who) {
+        return reply.unauthorized("An authenticated user is required to reject a request.");
+      }
       const row = await rejectRequest(
-        { approval_id: request.params.id, ...body },
+        { approval_id: request.params.id, ...body, actioned_by: who.id },
         extBody.tenant_id,
       );
       return { data: row, message: "Approval rejected." };
@@ -267,8 +302,12 @@ export const registerApprovalRoutes = (app: FastifyInstance): void => {
       if (!extBody.tenant_id) {
         return reply.code(400).send({ error: "tenant_id required in body." });
       }
+      const who = actor(request, extBody.tenant_id);
+      if (!who) {
+        return reply.unauthorized("An authenticated user is required to cancel a request.");
+      }
       const approvalId = await cancelApprovalRequest(
-        { approval_id: request.params.id, ...body },
+        { approval_id: request.params.id, ...body, cancelled_by: who.id },
         extBody.tenant_id,
       );
       return { approval_id: approvalId, message: "Approval request cancelled." };

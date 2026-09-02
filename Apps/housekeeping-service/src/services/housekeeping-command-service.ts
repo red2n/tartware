@@ -1,5 +1,15 @@
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
-import { query } from "../lib/db.js";
+import {
+  appendTaskNote,
+  assignTask,
+  bulkUpdateTaskStatus,
+  completeTask,
+  createTask,
+  findRoomNumber,
+  markTaskDirty,
+  reassignTask,
+} from "../repositories/housekeeping-task-repository.js";
 import {
   type HousekeepingAssignCommand,
   HousekeepingAssignCommandSchema,
@@ -17,19 +27,11 @@ import {
   HousekeepingTaskReopenCommandSchema,
 } from "../schemas/housekeeping-commands.js";
 
-class HousekeepingCommandError extends Error {
-  code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
-
-const APP_ACTOR = "COMMAND_CENTER";
-
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? APP_ACTOR;
+/**
+ * HousekeepingCommandError — see {@link CommandError} for the `retryable` contract the
+ * command consumer reads when deciding retry vs DLQ.
+ */
+class HousekeepingCommandError extends CommandError {}
 
 /**
  * Assign a housekeeping task to a staff member.
@@ -115,36 +117,13 @@ const applyAssignment = async (
   const actor = resolveActorId(context.initiatedBy);
   // MED-004: Preserve completed statuses (CLEAN/INSPECTED) when assigning staff
   // Only transition to IN_PROGRESS if task is not already completed
-  const { rowCount } = await query(
-    `
-      UPDATE public.housekeeping_tasks
-      SET
-        assigned_to = $3::uuid,
-        assigned_at = NOW(),
-        status = CASE
-          WHEN status IN ('CLEAN', 'INSPECTED') THEN status
-          ELSE 'IN_PROGRESS'
-        END,
-        priority = COALESCE($4, priority),
-        notes = CASE
-          WHEN $5::text IS NULL THEN notes
-          WHEN notes IS NULL THEN $5::text
-          ELSE CONCAT_WS(E'\\n', notes, $5::text)
-        END,
-        updated_at = NOW(),
-        updated_by = $6
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      context.tenantId,
-      command.task_id,
-      command.assigned_to,
-      command.priority ?? null,
-      command.notes ?? null,
-      actor,
-    ],
+  const { rowCount } = await assignTask(
+    context.tenantId,
+    command.task_id,
+    command.assigned_to,
+    command.priority ?? null,
+    command.notes ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -165,39 +144,16 @@ const applyCompletion = async (
   const inspectedBy = command.inspection?.inspected_by ?? null;
   const inspectionNotes = command.inspection?.notes ?? null;
 
-  const { rowCount } = await query(
-    `
-      UPDATE public.housekeeping_tasks
-      SET
-        status = $4::housekeeping_status,
-        completed_by = $3::uuid,
-        completed_at = NOW(),
-        notes = CASE
-          WHEN $5::text IS NULL THEN notes
-          WHEN notes IS NULL THEN $5::text
-          ELSE CONCAT_WS(E'\\n', notes, $5::text)
-        END,
-        inspection_passed = $6,
-        inspected_by = $7::uuid,
-        inspected_at = CASE WHEN $7 IS NOT NULL THEN NOW() ELSE inspected_at END,
-        inspection_notes = COALESCE($8, inspection_notes),
-        updated_at = NOW(),
-        updated_by = $9
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [
-      context.tenantId,
-      command.task_id,
-      command.completed_by ?? actor,
-      inspectedStatus,
-      command.notes ?? null,
-      inspectionPassed,
-      inspectedBy,
-      inspectionNotes ?? null,
-      actor,
-    ],
+  const { rowCount } = await completeTask(
+    context.tenantId,
+    command.task_id,
+    command.completed_by ?? actor,
+    inspectedStatus,
+    command.notes ?? null,
+    inspectionPassed,
+    inspectedBy,
+    inspectionNotes ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -212,17 +168,7 @@ const lookupRoomNumber = async (
   tenantId: string,
   roomId: string,
 ): Promise<{ exists: boolean; roomNumber: string | null }> => {
-  const { rows } = await query<{ room_number: string | null }>(
-    `
-      SELECT room_number
-      FROM public.rooms
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-      LIMIT 1
-    `,
-    [tenantId, roomId],
-  );
+  const { rows } = await findRoomNumber(tenantId, roomId);
   if (!rows[0]) {
     return { exists: false, roomNumber: null };
   }
@@ -254,55 +200,17 @@ const applyCreate = async (
     );
   }
 
-  const { rows } = await query<{ id: string }>(
-    `
-      INSERT INTO public.housekeeping_tasks (
-        tenant_id,
-        property_id,
-        room_number,
-        task_type,
-        priority,
-        status,
-        assigned_to,
-        assigned_at,
-        scheduled_date,
-        notes,
-        metadata,
-        created_at,
-        updated_at,
-        created_by,
-        updated_by
-      ) VALUES (
-        $1::uuid,
-        $2::uuid,
-        $3,
-        $4,
-        COALESCE($5, 'normal'),
-        'DIRTY',
-        $6::uuid,
-        CASE WHEN $6::uuid IS NULL THEN NULL ELSE NOW() END,
-        COALESCE($7::date, CURRENT_DATE),
-        $8,
-        $9::jsonb,
-        NOW(),
-        NOW(),
-        $10,
-        $10
-      )
-      RETURNING id
-    `,
-    [
-      context.tenantId,
-      command.property_id,
-      roomNumber,
-      command.task_type,
-      command.priority ?? null,
-      command.assigned_to ?? null,
-      command.scheduled_date ?? null,
-      command.notes ?? null,
-      JSON.stringify(command.metadata ?? {}),
-      actor,
-    ],
+  const { rows } = await createTask(
+    context.tenantId,
+    command.property_id,
+    roomNumber,
+    command.task_type,
+    command.priority ?? null,
+    command.assigned_to ?? null,
+    command.scheduled_date ?? null,
+    command.notes ?? null,
+    JSON.stringify(command.metadata ?? {}),
+    actor,
   );
 
   const taskId = rows[0]?.id;
@@ -322,28 +230,12 @@ const applyReassign = async (
   const actor = resolveActorId(context.initiatedBy);
   // MED-004: Preserve completed statuses (CLEAN/INSPECTED) when reassigning staff
   // Only transition to IN_PROGRESS if task is not already completed
-  const { rowCount } = await query(
-    `
-      UPDATE public.housekeeping_tasks
-      SET
-        assigned_to = $3::uuid,
-        assigned_at = NOW(),
-        status = CASE
-          WHEN status IN ('CLEAN', 'INSPECTED') THEN status
-          ELSE 'IN_PROGRESS'
-        END,
-        notes = CASE
-          WHEN $4::text IS NULL THEN notes
-          WHEN notes IS NULL THEN $4::text
-          ELSE CONCAT_WS(E'\\n', notes, $4::text)
-        END,
-        updated_at = NOW(),
-        updated_by = $5
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [context.tenantId, command.task_id, command.assigned_to, command.reason ?? null, actor],
+  const { rowCount } = await reassignTask(
+    context.tenantId,
+    command.task_id,
+    command.assigned_to,
+    command.reason ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -359,28 +251,11 @@ const applyReopen = async (
   context: CommandContext,
 ): Promise<void> => {
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.housekeeping_tasks
-      SET
-        status = 'DIRTY',
-        completed_at = NULL,
-        inspection_passed = NULL,
-        inspected_by = NULL,
-        inspected_at = NULL,
-        inspection_notes = NULL,
-        notes = CASE
-          WHEN $3::text IS NULL THEN notes
-          WHEN notes IS NULL THEN $3::text
-          ELSE CONCAT_WS(E'\\n', notes, $3::text)
-        END,
-        updated_at = NOW(),
-        updated_by = $4
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [context.tenantId, command.task_id, command.reason ?? null, actor],
+  const { rowCount } = await markTaskDirty(
+    context.tenantId,
+    command.task_id,
+    command.reason ?? null,
+    actor,
   );
 
   if (!rowCount || rowCount === 0) {
@@ -396,22 +271,7 @@ const applyAddNote = async (
   context: CommandContext,
 ): Promise<void> => {
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.housekeeping_tasks
-      SET
-        notes = CASE
-          WHEN notes IS NULL THEN $3::text
-          ELSE CONCAT_WS(E'\\n', notes, $3::text)
-        END,
-        updated_at = NOW(),
-        updated_by = $4
-      WHERE tenant_id = $1::uuid
-        AND id = $2::uuid
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [context.tenantId, command.task_id, command.note, actor],
-  );
+  const { rowCount } = await appendTaskNote(context.tenantId, command.task_id, command.note, actor);
 
   if (!rowCount || rowCount === 0) {
     throw new HousekeepingCommandError(
@@ -426,23 +286,12 @@ const applyBulkStatus = async (
   context: CommandContext,
 ): Promise<void> => {
   const actor = resolveActorId(context.initiatedBy);
-  const { rowCount } = await query(
-    `
-      UPDATE public.housekeeping_tasks
-      SET
-        status = $2::housekeeping_status,
-        notes = CASE
-          WHEN $3::text IS NULL THEN notes
-          WHEN notes IS NULL THEN $3::text
-          ELSE CONCAT_WS(E'\\n', notes, $3::text)
-        END,
-        updated_at = NOW(),
-        updated_by = $4
-      WHERE tenant_id = $1::uuid
-        AND id = ANY($5::uuid[])
-        AND COALESCE(is_deleted, false) = false
-    `,
-    [context.tenantId, command.status, command.notes ?? null, actor, command.task_ids],
+  const { rowCount } = await bulkUpdateTaskStatus(
+    context.tenantId,
+    command.status,
+    command.notes ?? null,
+    actor,
+    command.task_ids,
   );
 
   if (!rowCount || rowCount === 0) {

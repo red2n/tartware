@@ -1,4 +1,5 @@
 import type { CommandMetadata } from "@tartware/command-consumer-utils";
+import { CommandError } from "@tartware/command-consumer-utils/command-utils";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { generateRecommendations } from "../../services/recommendation-engine.js";
@@ -17,7 +18,7 @@ const logger = appLogger.child({ module: "recommendation-handlers" });
 export const handleRecommendationGenerate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ generated: number; autoApplied: number }> => {
   const result = await generateRecommendations({
     tenantId: metadata.tenantId,
@@ -41,7 +42,7 @@ export const handleRecommendationGenerate = async (
 export const handleRecommendationApprove = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ recommendationId: string; approved: boolean }> => {
   const recommendationId = payload.recommendation_id as string;
   const reviewNotes = (payload.review_notes as string) ?? null;
@@ -52,7 +53,10 @@ export const handleRecommendationApprove = async (
   ]);
 
   if (rows.length === 0) {
-    throw new Error(`Recommendation ${recommendationId} not found`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_FOUND",
+      `Recommendation ${recommendationId} not found`,
+    );
   }
 
   const rec = rows[0];
@@ -60,7 +64,10 @@ export const handleRecommendationApprove = async (
     (rec as Record<string, unknown>).status !== "pending" &&
     (rec as Record<string, unknown>).status !== "reviewed"
   ) {
-    throw new Error(`Recommendation ${recommendationId} is not in pending/reviewed status`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_ACTIONABLE",
+      `Recommendation ${recommendationId} is not in pending/reviewed status`,
+    );
   }
 
   await query(APPROVE_RECOMMENDATION_SQL, [
@@ -79,7 +86,7 @@ export const handleRecommendationApprove = async (
 export const handleRecommendationReject = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ recommendationId: string; rejected: boolean }> => {
   const recommendationId = payload.recommendation_id as string;
   const rejectionReason = payload.rejection_reason as string;
@@ -90,7 +97,10 @@ export const handleRecommendationReject = async (
   ]);
 
   if (rows.length === 0) {
-    throw new Error(`Recommendation ${recommendationId} not found`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_FOUND",
+      `Recommendation ${recommendationId} not found`,
+    );
   }
 
   const rec = rows[0];
@@ -98,7 +108,10 @@ export const handleRecommendationReject = async (
     (rec as Record<string, unknown>).status !== "pending" &&
     (rec as Record<string, unknown>).status !== "reviewed"
   ) {
-    throw new Error(`Recommendation ${recommendationId} is not in pending/reviewed status`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_ACTIONABLE",
+      `Recommendation ${recommendationId} is not in pending/reviewed status`,
+    );
   }
 
   await query(REJECT_RECOMMENDATION_SQL, [
@@ -117,7 +130,7 @@ export const handleRecommendationReject = async (
 export const handleRecommendationApply = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ recommendationId: string; implementedRate: number }> => {
   const recommendationId = payload.recommendation_id as string;
   const implementationNotes = (payload.implementation_notes as string) ?? null;
@@ -130,11 +143,15 @@ export const handleRecommendationApply = async (
 
   const rec = rows[0];
   if (!rec) {
-    throw new Error(`Recommendation ${recommendationId} not found`);
+    throw new CommandError(
+      "RECOMMENDATION_NOT_FOUND",
+      `Recommendation ${recommendationId} not found`,
+    );
   }
 
   if (rec.status !== "accepted") {
-    throw new Error(
+    throw new CommandError(
+      "RECOMMENDATION_NOT_ACCEPTED",
       `Recommendation ${recommendationId} must be accepted before applying (current: ${rec.status})`,
     );
   }
@@ -161,7 +178,7 @@ export const handleRecommendationApply = async (
 export const handleRecommendationBulkApprove = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ approved: number }> => {
   const recommendationIds = payload.recommendation_ids as string[];
   const reviewNotes = (payload.review_notes as string) ?? null;

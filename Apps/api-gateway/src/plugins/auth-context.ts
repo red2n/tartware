@@ -1,5 +1,5 @@
 import { enterTenantScope } from "@tartware/config/db";
-import type { TenantMembership } from "@tartware/schemas";
+import { TENANT_ROLE_PRIORITY, type TenantMembership } from "@tartware/schemas";
 import {
   type AuthContext,
   createTenantAuthPlugin,
@@ -20,19 +20,11 @@ declare module "fastify" {
   }
 }
 
-const ROLE_PRIORITY: Record<string, number> = {
-  OWNER: 500,
-  ADMIN: 400,
-  MANAGER: 300,
-  STAFF: 200,
-  VIEWER: 100,
-};
-
 const authContextPlugin = createTenantAuthPlugin<TenantMembership>({
   getUserMemberships,
   extractBearerToken,
   verifyAccessToken,
-  rolePriority: ROLE_PRIORITY,
+  rolePriority: TENANT_ROLE_PRIORITY,
   onTenantResolved: enterTenantScope,
   shouldBypassAuth: (request: FastifyRequest) => {
     // Health and readiness endpoints should stay unauthenticated for infra probes.

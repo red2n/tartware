@@ -12,7 +12,7 @@ type RestrictionSource = UpsertRateRestrictionInput["source"];
 export const handleRestrictionSet = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ upserted: number; restrictionType: unknown }> => {
   const upserted = await forEachDateInRange(
     payload.start_date as string,
@@ -42,7 +42,7 @@ export const handleRestrictionSet = async (
 export const handleRestrictionRemove = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ removed: number; restrictionType: unknown }> => {
   let removed = 0;
   await forEachDateInRange(
@@ -67,7 +67,7 @@ export const handleRestrictionRemove = async (
 export const handleRestrictionBulkSet = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ restrictions: number; totalUpserted: number }> => {
   const restrictions = payload.restrictions as Array<{
     room_type_id?: string;

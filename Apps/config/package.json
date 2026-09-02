@@ -20,6 +20,10 @@
     "./test-helpers": {
       "types": "./dist/test-helpers.d.ts",
       "import": "./dist/test-helpers.js"
+    },
+    "./sql-batch": {
+      "types": "./dist/sql-batch.d.ts",
+      "import": "./dist/sql-batch.js"
     }
   },
   "main": "dist/index.js",
@@ -32,7 +36,9 @@
     "biome:fix": "biome format src --write",
     "knip": "knip --tsConfig tsconfig.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist dist-tests *.tsbuildinfo",
+    "build:tests": "tsc --project tsconfig.tests.json",
+    "test": "npm run build:tests && node --test dist-tests/tests/*.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
@@ -44,7 +50,7 @@
     "@types/node": "^20.11.19",
     "@types/pg": "^8.15.4",
     "typescript": "^5.3.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.6"
   },
   "engines": {
     "node": ">=22.0.0",

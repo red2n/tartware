@@ -118,21 +118,27 @@ export const REVENUE_KPI_SQL = `
   period_days AS (
     SELECT ($4::date - $3::date + 1) AS days
   ),
+  -- Room revenue is the sum of the nights that fall inside the window, and
+  -- rooms sold is how many of them there are. The previous form multiplied the
+  -- flat room_rate by a hand-rolled clamp of the stay against the window —
+  -- correct only while every night of every stay cost the same, and blind to a
+  -- booking that held more than one room. ADR downstream is room_rev divided
+  -- by rooms_sold, so both halves have to be counted at the same grain.
   room_revenue AS (
     SELECT
-      COALESCE(SUM(r.room_rate * ($4::date - $3::date + 1 -
-        GREATEST(0, $3::date - r.check_in_date) -
-        GREATEST(0, r.check_out_date - $4::date - 1)
-      )), 0) AS room_rev,
-      COUNT(DISTINCT r.id) AS rooms_sold
-    FROM public.reservations r
-    WHERE r.check_in_date <= $4::date
-      AND r.check_out_date > $3::date
+      COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS room_rev,
+      COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) AS rooms_sold
+    FROM public.reservation_nights n
+    JOIN public.reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+    WHERE n.stay_date >= $3::date
+      AND n.stay_date <= $4::date
+      AND COALESCE(n.is_deleted, false) = false
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND COALESCE(r.is_deleted, false) = false
       AND r.deleted_at IS NULL
-      AND r.tenant_id = $1::uuid
-      AND ($2::uuid IS NULL OR r.property_id = $2::uuid)
+      AND n.tenant_id = $1::uuid
+      AND ($2::uuid IS NULL OR n.property_id = $2::uuid)
   ),
   total_rev AS (
     SELECT COALESCE(SUM(p.amount), 0) AS total

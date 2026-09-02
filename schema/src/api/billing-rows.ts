@@ -514,3 +514,98 @@ export type FolioRoutingRuleRow = {
 	effective_from: string | null;
 	effective_until: string | null;
 };
+
+// =====================================================
+// FOLIO DOCUMENT ROWS
+// =====================================================
+
+/**
+ * Header row for a printable folio — the folio, its property, its guest and
+ * its stay in one read.
+ *
+ * NUMERIC columns arrive as strings from `pg`; the assembler converts them once
+ * on the way into the document payload rather than letting each caller guess.
+ */
+export type FolioDocumentHeaderRow = {
+	folio_id: string;
+	folio_number: string;
+	folio_type: string;
+	folio_status: string;
+	currency_code: string | null;
+	opened_at: Date | string;
+	closed_at: Date | string | null;
+	reference_number: string | null;
+	total_charges: string | null;
+	total_payments: string | null;
+	total_credits: string | null;
+	balance: string | null;
+	folio_guest_name: string | null;
+	company_name: string | null;
+	folio_tax_id: string | null;
+	billing_address_line1: string | null;
+	billing_address_line2: string | null;
+	billing_city: string | null;
+	billing_state: string | null;
+	billing_postal_code: string | null;
+	billing_country: string | null;
+	property_id: string;
+	property_name: string;
+	property_address: Record<string, unknown> | null;
+	property_phone: string | null;
+	property_email: string | null;
+	property_website: string | null;
+	property_tax_id: string | null;
+	property_timezone: string | null;
+	guest_first_name: string | null;
+	guest_last_name: string | null;
+	guest_email: string | null;
+	guest_phone: string | null;
+	reservation_id: string | null;
+	confirmation_number: string | null;
+	arrival_date: Date | string | null;
+	departure_date: Date | string | null;
+	nights: number | string | null;
+	adults: number | string | null;
+	children: number | string | null;
+	room_numbers: string | null;
+	room_type_name: string | null;
+	rate_plan_name: string | null;
+};
+
+/** One charge line destined for a folio document. */
+export type FolioDocumentChargeRow = {
+	posting_id: string;
+	posting_date: Date | string;
+	charge_code: string;
+	charge_description: string;
+	quantity: string | null;
+	unit_price: string | null;
+	subtotal: string | null;
+	tax_amount: string | null;
+	total_amount: string;
+	room_number: string | null;
+};
+
+/** One payment or credit destined for a folio document. */
+export type FolioDocumentPaymentRow = {
+	payment_id: string;
+	payment_date: Date | string;
+	payment_method: string;
+	payment_reference: string | null;
+	amount: string;
+};
+
+/** One tax-summary line destined for a folio document. */
+export type FolioDocumentTaxRow = {
+	tax_code: string;
+	tax_name: string;
+	tax_rate: string | null;
+	taxable_amount: string | null;
+	tax_amount: string;
+};
+
+/** A property tax registration line, as printed on an invoice-like document. */
+export type PropertyTaxRegistrationRow = {
+	label: string;
+	value: string;
+};

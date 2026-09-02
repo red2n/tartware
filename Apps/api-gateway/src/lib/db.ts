@@ -5,4 +5,4 @@ import { gatewayLogger } from "../logger.js";
 
 const db = createDbPool(dbConfig, gatewayLogger);
 
-export const { query, withTransaction } = db;
+export const { query, queryWithClient, withTransaction } = db;

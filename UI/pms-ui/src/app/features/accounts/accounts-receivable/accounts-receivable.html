@@ -379,13 +379,20 @@
                          [ngModel]="writeOffForm().write_off_amount" (ngModelChange)="updateWriteOffForm({ write_off_amount: +$event })" />
                 </div>
                 <div class="form-field">
-                  <label>{{ 'Reason' | translate }}</label>
-                  <input type="text" class="field-input" [placeholder]="'Reason for write-off (required)' | translate"
+                  <app-reason-code-picker
+                    category="WRITE_OFF"
+                    [propertyId]="selectedAr()?.property_id ?? ''"
+                    [value]="writeOffForm().reason_code"
+                    (valueChange)="updateWriteOffForm({ reason_code: $event })" />
+                </div>
+                <div class="form-field">
+                  <label>{{ 'Notes' | translate }}</label>
+                  <input type="text" class="field-input" [placeholder]="'What happened (required)' | translate"
                          [ngModel]="writeOffForm().reason" (ngModelChange)="updateWriteOffForm({ reason: $event })" />
                 </div>
               </div>
               <div class="form-actions">
-                <button class="btn btn-danger btn-sm" (click)="writeOff()" [disabled]="writingOff() || !writeOffForm().reason">
+                <button class="btn btn-danger btn-sm" (click)="writeOff()" [disabled]="writingOff() || !writeOffForm().reason || !writeOffForm().reason_code">
                   @if (writingOff()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                   {{ 'Write Off' | translate }}
                 </button>

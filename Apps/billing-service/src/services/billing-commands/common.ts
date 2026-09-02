@@ -1,38 +1,25 @@
+import {
+  asUuid,
+  CommandError,
+  resolveActorId,
+  resolveActorRole,
+  SYSTEM_ACTOR_ID,
+} from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
 import { query } from "../../lib/db.js";
 
 export type { CommandContext };
 
-export class BillingCommandError extends Error {
-  code: string;
-  /**
-   * When true the command consumer will retry this error rather than routing
-   * immediately to the DLQ. Set to true only for transient failures (e.g.
-   * unexpected DB write failures) that may succeed on a subsequent attempt.
-   * Business-logic validation errors (wrong status, missing FK) should leave
-   * this false — retrying them wastes attempts and delays DLQ diagnosis.
-   */
-  retryable: boolean;
+// Actor resolution is shared infrastructure — re-exported here so billing's
+// command modules keep importing it from one place.
+export { asUuid, resolveActorId, resolveActorRole, SYSTEM_ACTOR_ID };
 
-  constructor(code: string, message: string, retryable = false) {
-    super(message);
-    this.code = code;
-    this.retryable = retryable;
-  }
-
-  toJSON() {
-    return { code: this.code, message: this.message, name: this.name, retryable: this.retryable };
-  }
-}
-
-export const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export const asUuid = (value: string | undefined | null): string | null =>
-  value && UUID_REGEX.test(value) ? value : null;
-
-export const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  asUuid(initiatedBy?.userId) ?? SYSTEM_ACTOR_ID;
+/**
+ * Billing command failure. `retryable` defaults to false — see
+ * {@link CommandError} for why a retried business rejection is worse than an
+ * immediate DLQ routing.
+ */
+export class BillingCommandError extends CommandError {}
 
 /**
  * Resolves the folio a charge for this reservation should post to.

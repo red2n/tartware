@@ -9,9 +9,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-
+import {
+	registeredCommandNames,
+	validateCommandPayload,
+} from "../src/command-validators.js";
 import { GuestConsentUpdateCommandSchema } from "../src/events/commands/guests.js";
-import { registeredCommandNames, validateCommandPayload } from "../src/command-validators.js";
 
 const GUEST_ID = "3f8c1d9e-4b2a-4c6d-8e7f-1a2b3c4d5e6f";
 
@@ -43,13 +45,20 @@ describe("guest.consent.update payload", () => {
 	});
 
 	it("rejects a decision with no toggle — there would be nothing to record", () => {
-		expect(() => GuestConsentUpdateCommandSchema.parse({ guest_id: GUEST_ID })).toThrow();
+		expect(() =>
+			GuestConsentUpdateCommandSchema.parse({ guest_id: GUEST_ID }),
+		).toThrow();
 	});
 
 	it("rejects a missing or malformed guest id", () => {
-		expect(() => GuestConsentUpdateCommandSchema.parse({ analytics: true })).toThrow();
 		expect(() =>
-			GuestConsentUpdateCommandSchema.parse({ guest_id: "not-a-uuid", analytics: true }),
+			GuestConsentUpdateCommandSchema.parse({ analytics: true }),
+		).toThrow();
+		expect(() =>
+			GuestConsentUpdateCommandSchema.parse({
+				guest_id: "not-a-uuid",
+				analytics: true,
+			}),
 		).toThrow();
 	});
 
@@ -65,8 +74,13 @@ describe("guest.consent.update payload", () => {
 
 	it("validates through the shared dispatch validator", () => {
 		expect(() =>
-			validateCommandPayload("guest.consent.update", { guest_id: GUEST_ID, marketing_sms: true }),
+			validateCommandPayload("guest.consent.update", {
+				guest_id: GUEST_ID,
+				marketing_sms: true,
+			}),
 		).not.toThrow();
-		expect(() => validateCommandPayload("guest.consent.update", { guest_id: GUEST_ID })).toThrow();
+		expect(() =>
+			validateCommandPayload("guest.consent.update", { guest_id: GUEST_ID }),
+		).toThrow();
 	});
 });

@@ -1,4 +1,8 @@
-import { type ReservationUpdatedEvent, ReservationUpdatedEventSchema } from "@tartware/schemas";
+import {
+  type ReservationStatus,
+  type ReservationUpdatedEvent,
+  ReservationUpdatedEventSchema,
+} from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import {
@@ -21,7 +25,11 @@ import type {
   ReservationSendQuoteCommand,
 } from "../../schemas/reservation-command.js";
 
-import { type CreateReservationResult, ReservationCommandError } from "./common.js";
+import {
+  assertReservationTransition,
+  type CreateReservationResult,
+  ReservationCommandError,
+} from "./common.js";
 
 // ---------------------------------------------------------------------------
 // S8: INQUIRY → QUOTED → PENDING lifecycle handlers
@@ -60,12 +68,12 @@ export const sendQuote = async (
       `Reservation ${command.reservation_id} not found`,
     );
   }
-  if (reservation.status !== "INQUIRY") {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_QUOTE",
-      `Cannot send quote for reservation with status ${reservation.status}; must be INQUIRY`,
-    );
-  }
+  assertReservationTransition(
+    "reservation.send_quote",
+    reservation.status as ReservationStatus,
+    "QUOTED",
+    { code: "INVALID_STATUS_FOR_QUOTE" },
+  );
 
   const updatePayload = {
     metadata: {
@@ -147,12 +155,12 @@ export const convertQuote = async (
       `Reservation ${command.reservation_id} not found`,
     );
   }
-  if (reservation.status !== "QUOTED") {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_CONVERT",
-      `Cannot convert reservation with status ${reservation.status}; must be QUOTED`,
-    );
-  }
+  assertReservationTransition(
+    "reservation.convert_quote",
+    reservation.status as ReservationStatus,
+    "PENDING",
+    { code: "INVALID_STATUS_FOR_CONVERT" },
+  );
 
   // Lock availability for the stay dates
   let lockResult: AvailabilityGuardMetadata | null = null;
@@ -290,13 +298,12 @@ export const expireReservation = async (
     );
   }
 
-  const expirableStatuses = ["INQUIRY", "QUOTED", "PENDING"];
-  if (!expirableStatuses.includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_EXPIRE",
-      `Cannot expire reservation with status ${reservation.status}; must be INQUIRY, QUOTED, or PENDING`,
-    );
-  }
+  assertReservationTransition(
+    "reservation.expire",
+    reservation.status as ReservationStatus,
+    "EXPIRED",
+    { code: "INVALID_STATUS_FOR_EXPIRE" },
+  );
 
   // Release availability guard if one exists
   const guardMeta = await getReservationGuardMetadata(tenantId, command.reservation_id);

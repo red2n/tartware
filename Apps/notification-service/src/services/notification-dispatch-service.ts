@@ -6,6 +6,11 @@ import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { observeDispatchDuration, recordDispatch } from "../lib/metrics.js";
 import { resolveThirdPartyProvider } from "../providers/third-party-provider-resolver.js";
+import {
+  findCommunicationByIdempotencyKey,
+  findGuestCommunication,
+  selectGuestCommunications,
+} from "../repositories/guest-communication-repository.js";
 import { renderTemplateByCode } from "./template-service.js";
 
 const logger: PinoLogger = appLogger.child({ module: "notification-dispatch" });
@@ -61,15 +66,9 @@ export const sendNotification = async (
 
   // 1b. Check for existing record if idempotencyKey is provided
   if (params.idempotencyKey) {
-    const { rows: existingRows } = await query<{ id: string; status: string }>(
-      `
-        SELECT id, status
-        FROM guest_communications
-        WHERE tenant_id = $1::uuid
-          AND metadata @> jsonb_build_object('idempotencyKey', $2::text)
-        LIMIT 1
-      `,
-      [params.tenantId, params.idempotencyKey],
+    const { rows: existingRows } = await findCommunicationByIdempotencyKey(
+      params.tenantId,
+      params.idempotencyKey,
     );
 
     if (existingRows.length > 0 && existingRows[0]) {
@@ -218,17 +217,7 @@ export const listGuestCommunications = async (
   offset = 0,
 ): Promise<unknown[]> => {
   const cappedLimit = Math.min(limit, 200);
-  const { rows } = await query(
-    `SELECT id, tenant_id, property_id, guest_id, reservation_id,
-            communication_type, direction, subject, status,
-            sent_at, delivered_at, opened_at,
-            external_message_id, created_at
-     FROM guest_communications
-     WHERE tenant_id = $1::uuid AND guest_id = $2::uuid
-     ORDER BY created_at DESC
-     LIMIT $3 OFFSET $4`,
-    [tenantId, guestId, cappedLimit, offset],
-  );
+  const { rows } = await selectGuestCommunications(tenantId, guestId, cappedLimit, offset);
   return rows;
 };
 
@@ -239,17 +228,6 @@ export const getCommunication = async (
   tenantId: string,
   communicationId: string,
 ): Promise<unknown | null> => {
-  const { rows } = await query(
-    `SELECT id, tenant_id, property_id, guest_id, reservation_id,
-            template_id, communication_type, direction, subject, message,
-            sender_name, sender_email, recipient_name, recipient_email,
-            recipient_phone, status, external_message_id,
-            sent_at, delivered_at, opened_at, clicked_at,
-            failed_at, failure_reason, attachments, metadata,
-            created_by, created_at, updated_at
-     FROM guest_communications
-     WHERE tenant_id = $1::uuid AND id = $2::uuid`,
-    [tenantId, communicationId],
-  );
+  const { rows } = await findGuestCommunication(tenantId, communicationId);
   return rows[0] ?? null;
 };

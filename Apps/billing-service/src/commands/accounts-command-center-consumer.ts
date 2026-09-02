@@ -8,7 +8,7 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
-import { enterTenantScope } from "@tartware/config/db";
+import { runWithTenantScope } from "@tartware/config/db";
 
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
@@ -41,7 +41,6 @@ import {
   updateArAccountTerms,
   writeOffCityLedger,
 } from "../services/billing-commands/ara.js";
-import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   recordDeposit,
   refundDeposit,
@@ -180,8 +179,7 @@ const { start, shutdown } = createConsumerLifecycle({
   logger,
   routeCommand: routeAccountsCommand,
   publishDlqEvent,
-  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
-  onTenantResolved: enterTenantScope,
+  withTenantScope: runWithTenantScope,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
   metrics: {

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { publishCommand } from "../kafka/producer.js";
-import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import { findReservationByConfirmationCode } from "../repositories/checkout-repository.js";
 
 const logger = appLogger.child({ module: "checkout-service" });
 
@@ -31,34 +31,7 @@ export async function lookupCheckedInReservation(
   status: string;
   folio_balance: number;
 } | null> {
-  const result = await query<{
-    id: string;
-    tenant_id: string;
-    guest_id: string;
-    property_id: string;
-    room_number: string | null;
-    check_out_date: string;
-    status: string;
-    folio_balance: string;
-  }>(
-    `SELECT r.id, r.tenant_id, r.guest_id, r.property_id, r.room_number,
-            r.check_out_date::text,
-            r.status,
-            COALESCE(f.balance, 0) AS folio_balance
-     FROM reservations r
-     LEFT JOIN LATERAL (
-       SELECT balance FROM folios
-       WHERE reservation_id = r.id AND tenant_id = r.tenant_id
-         AND COALESCE(is_deleted, false) = false
-       ORDER BY created_at DESC LIMIT 1
-     ) f ON true
-     WHERE r.confirmation_number = $1
-       AND r.tenant_id = $2
-       AND r.status = 'CHECKED_IN'
-       AND r.is_deleted = false
-     LIMIT 1`,
-    [confirmationCode, tenantId],
-  );
+  const result = await findReservationByConfirmationCode(confirmationCode, tenantId);
 
   const row = result.rows[0];
   if (!row) return null;

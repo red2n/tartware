@@ -16,34 +16,12 @@
  *
  * @module settings-resolver-service
  */
-import { query } from "../lib/db.js";
+import {
+  resolveSettingValues,
+  type SettingValueRow,
+} from "@tartware/command-consumer-utils/settings-utils";
 
-/**
- * Resolves one row per requested code: the active tenant-scoped value if one
- * exists and is in its effective window, otherwise the definition default.
- */
-const RESOLVE_SETTINGS_SQL = `
-  SELECT sd.code,
-         COALESCE(
-           (
-             SELECT sv.value
-             FROM settings_values sv
-             WHERE sv.setting_id = sd.id
-               AND sv.tenant_id = sd.tenant_id
-               AND sv.scope_level = 'TENANT'
-               AND sv.status = 'ACTIVE'
-               AND (sv.effective_from IS NULL OR sv.effective_from <= CURRENT_DATE)
-               AND (sv.effective_to IS NULL OR sv.effective_to >= CURRENT_DATE)
-             ORDER BY sv.updated_at DESC NULLS LAST
-             LIMIT 1
-           ),
-           sd.default_value
-         ) AS value
-  FROM settings_definitions sd
-  WHERE sd.tenant_id = $1::uuid
-    AND sd.code = ANY($2::text[])
-    AND COALESCE(sd.is_deleted, false) = false
-`;
+import { query } from "../lib/db.js";
 
 /** Values are read on hot paths (login, user create), so cache them briefly. */
 const CACHE_TTL_MS = 30_000;
@@ -76,15 +54,14 @@ export const resolveSettings = async (
     return hit.values;
   }
 
-  const { rows } = await query<{ code: string; value: unknown }>(RESOLVE_SETTINGS_SQL, [
+  // The statement itself moved to `@tartware/command-consumer-utils`, so
+  // billing and reservations can read a tenant's approval thresholds — they
+  // apply the overrides those thresholds govern, and could not previously ask.
+  // The caching, and every caller, stay here.
+  const values = await resolveSettingValues((sql, params) => query<SettingValueRow>(sql, params), {
     tenantId,
-    [...codes],
-  ]);
-
-  const values = new Map<string, unknown>();
-  for (const row of rows) {
-    values.set(row.code, row.value);
-  }
+    codes,
+  });
 
   cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, values });
   return values;

@@ -9,12 +9,17 @@ import { check, sleep, group } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 import {
 	GATEWAY_URL,
-	TENANT_ID,
+	TENANT_IDS,
 	VUS,
 	DURATION,
 	getHeaders,
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
+
+// One property per run, so the first of each parsed list. These were
+// imported as TENANT_ID / PROPERTY_ID — names config.js has never exported,
+// so every request below sent `undefined` until this line existed.
+const TENANT_ID = TENANT_IDS[0];
 import { sleepWithJitter, isSuccess, pickRandom } from "../lib/utils.js";
 
 const settingsLatency = new Trend("settings_service_latency");

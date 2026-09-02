@@ -241,6 +241,79 @@ assert_http() {
   fi
 }
 
+# ─── Dual control: playing the second person (A04) ───────────────────────────
+#
+# The five commands that undo a completed accounting control — the three
+# write-offs, a fiscal period reopen and a manual date roll (COMMAND_DUAL_CONTROL
+# in schema/src/api/command-approvals.ts) — are no longer dispatched on one
+# login's authority. The gateway records an approval request and returns
+# `pending_approval`; the command runs when a *different* user holding the
+# approver role releases it, and the release is what dispatches the stored
+# payload.
+#
+# This suite runs as one user, so it needs a second one to be the other pair of
+# eyes. The account is created on first use and reused for the rest of the run;
+# nothing here bypasses the control, it satisfies it.
+APPROVER_TOKEN=""
+APPROVER_READY=0
+
+setup_approver() {
+  [[ $APPROVER_READY -eq 1 ]] && return 0
+  APPROVER_READY=1
+
+  local user="approver.${UNIQUE:-e2e}" pass="ApproverPass123!" code
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID\",
+    \"username\": \"$user\",
+    \"email\": \"${user}@tartware.demo\",
+    \"password\": \"$pass\",
+    \"first_name\": \"Second\", \"last_name\": \"Approver\",
+    \"role\": \"OWNER\"
+  }")
+  if [[ ! "$code" =~ ^2 ]]; then
+    APPROVER_TOKEN=""
+    return 1
+  fi
+
+  # POST /v1/users writes the association without `modules`, so it defaults to
+  # ["core"] and the approver's own dispatch would be refused by the module
+  # gate. Writing the tenant's list back re-syncs it onto every association.
+  get "$GW/v1/tenants/$TID/modules" >/dev/null
+  local mods; mods=$(jq -c '.modules // ["core"]' "$RESP_FILE" 2>/dev/null || echo '["core"]')
+  put "$GW/v1/tenants/$TID/modules" "{\"modules\":$mods}" >/dev/null
+
+  APPROVER_TOKEN=$(curl -s -X POST "$GW/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$user\",\"password\":\"$pass\"}" \
+    | jq -r '.access_token // .token // .data.access_token // empty')
+  [[ -n "$APPROVER_TOKEN" ]]
+}
+
+# approve_if_deferred <label> — release a command the gateway queued instead of
+# dispatching. Answers 0 when the command was not deferred at all.
+approve_if_deferred() {
+  local label="$1" status approval_id code
+  status=$(jq -r '.status // empty' "$RESP_FILE" 2>/dev/null)
+  [[ "$status" != "pending_approval" ]] && return 0
+
+  approval_id=$(jq -r '.approval_id // empty' "$RESP_FILE" 2>/dev/null)
+  if ! setup_approver || [[ -z "$approval_id" ]]; then
+    fail "$label → second approver" "approval_id=${approval_id:-none} approver=${APPROVER_TOKEN:0:6}"
+    return 1
+  fi
+
+  code=$(curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/tenants/$TID/commands/approvals/$approval_id/approve" \
+    -H "Authorization: Bearer $APPROVER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"reason":"E2E: second authorisation"}')
+  if [[ "$code" == "200" && -n "$(jq -r '.command_id // empty' "$RESP_FILE" 2>/dev/null)" ]]; then
+    pass "$label → released by a second approver"
+  else
+    fail "$label → second approver" "HTTP $code"
+  fi
+}
+
 send_command() {
   local label="$1" cmd_name="$2" payload="$3" idem_key="${4:-}"
   local body code
@@ -255,7 +328,11 @@ send_command() {
   else
     code=$(post "$GW/v1/commands/$cmd_name/execute" "$body")
   fi
-  if [[ "$code" == "202" ]]; then pass "$label → 202 accepted"
+  if [[ "$code" == "202" ]]; then
+    pass "$label → 202 accepted"
+    # 202 now means one of two things: recorded in the outbox, or recorded as an
+    # approval request. Only the second needs anything more.
+    approve_if_deferred "$label"
   else fail "$label" "HTTP $code"; fi
 }
 
@@ -1773,7 +1850,7 @@ if [[ -n "${AR1_ID:-}" ]]; then
   if [[ -n "${REMAINING:-}" ]] && (( $(echo "$REMAINING > 0" | bc -l 2>/dev/null || echo "0") )); then
     send_command "CMD ar.write_off: remaining balance" \
       "billing.ar.write_off" \
-      "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
+      "{\"ar_id\":\"$AR1_ID\",\"write_off_amount\":$REMAINING,\"reason_code\":\"WO_BAD_DEBT\",\"reason\":\"Uncollectable after 90 days — approved by finance manager\"}"
 
     wait_kafka 8
 
@@ -3551,8 +3628,18 @@ else
       return
     fi
     out=$(bash "$REPO_ROOT/$script" 2>&1) && rc=0 || rc=$?
-    # Both suites end with "  N passed, M failed".
+    # Two summary shapes: the smoke scripts print "N passed, M failed", the
+    # lifecycle suites go through lib/harness.sh and print
+    # "TITLE: P/T passed, F FAILED, S skipped" — normalised to the first here so
+    # one runner can take both. Without this the lifecycle suites report "no
+    # summary line" and look broken when they are merely different.
     line=$(printf '%s\n' "$out" | grep -oE "[0-9]+ passed, [0-9]+ failed" | tail -1)
+    if [[ -z "$line" ]]; then
+      local hp hf
+      hp=$(printf '%s\n' "$out" | grep -oE "[0-9]+/[0-9]+ passed" | tail -1 | grep -oE "^[0-9]+")
+      hf=$(printf '%s\n' "$out" | grep -oE "[0-9]+ FAILED" | tail -1 | grep -oE "^[0-9]+")
+      [[ -n "$hp" ]] && line="$hp passed, ${hf:-0} failed"
+    fi
     if [[ -z "$line" ]]; then
       fail "$label" "suite produced no summary line (exit $rc)"
       printf '%s\n' "$out" | tail -15
@@ -3571,6 +3658,15 @@ else
 
   run_domain_suite "Function space, BEOs and event billing" "http_test/smoke-events.sh"
   run_domain_suite "Operations write paths and room-block holds" "http_test/smoke-operations.sh"
+  # The two lifecycle suites existed for weeks and were invoked by nothing —
+  # not by this file, not by test-multi-tenant.sh, not by package.json. Between
+  # them they are the only coverage of nine commands (assign_room, extend_stay,
+  # room_move, reverse_check_in, modify and the three mass operations), and a
+  # suite nobody runs proves nothing. Same decay `flow:integrity` had before A11.
+  run_domain_suite "Stay lifecycle: shop → book → arrive → in-house → depart" \
+    "executables/test-accounts-realdata/test-stay-lifecycle.sh"
+  run_domain_suite "WS-04 lifecycle: reversals, transitions and mass operations" \
+    "executables/test-accounts-realdata/test-ws04-lifecycle.sh"
   echo ""
 fi
 

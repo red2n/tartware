@@ -1,9 +1,17 @@
+import {
+  classifyReservationCommandTransition,
+  describeReservationStatuses,
+  type ReservationStatus,
+  reservationStatusesFor,
+} from "@tartware/schemas";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { getPropertyBaseCurrency, lockFxRate } from "../../lib/fx-rate-lookup.js";
 import { lookupChargeCodeMapping, postGlPair } from "../../lib/gl-posting.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNoShowChargeCommandSchema } from "../../schemas/billing-commands.js";
+import { firstNightTotalSql } from "../../sql/stay-night-basis.js";
 import {
   asUuid,
   BillingCommandError,
@@ -33,12 +41,14 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     property_id: string;
     status: string;
     room_rate: string | null;
+    first_night_total: string | null;
     currency: string | null;
     version: number;
   }>(
-    `SELECT id AS reservation_id, property_id, status, room_rate, currency, version
-     FROM public.reservations
-     WHERE tenant_id = $1::uuid AND id = $2::uuid
+    `SELECT r.id AS reservation_id, r.property_id, r.status, r.room_rate, r.currency, r.version,
+            ${firstNightTotalSql("r")} AS first_night_total
+     FROM public.reservations r
+     WHERE r.tenant_id = $1::uuid AND r.id = $2::uuid
      LIMIT 1`,
     [context.tenantId, command.reservation_id],
   );
@@ -51,19 +61,39 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
     );
   }
 
-  if (!["CONFIRMED", "NO_SHOW"].includes(reservation.status)) {
+  // This command posts the penalty *and* marks the booking NO_SHOW below, so it
+  // is a lifecycle move made from outside the reservation aggregate — the only
+  // one in the repo. It reads the same table `reservation.no_show` does rather
+  // than its own list, which is what stops the two disagreeing: they used to,
+  // and a PENDING booking whose guest never arrived could be marked no-show by
+  // one route and refused a no-show charge by the other.
+  const reservationStatus = reservation.status as ReservationStatus;
+  const alreadyNoShow = reservationStatus === "NO_SHOW";
+  const mayBecomeNoShow =
+    classifyReservationCommandTransition("reservation.no_show", reservationStatus, "NO_SHOW") ===
+    "LEGAL";
+
+  if (!alreadyNoShow && !mayBecomeNoShow) {
     throw new BillingCommandError(
       "INVALID_RESERVATION_STATUS",
-      `No-show charge requires CONFIRMED or NO_SHOW status. Current: ${reservation.status}.`,
+      `No-show charge requires NO_SHOW status, or ${describeReservationStatuses(
+        reservationStatusesFor("reservation.no_show"),
+      )}. Current: ${reservation.status}.`,
     );
   }
 
+  // The forfeit is the stay's first night across every room held — a two-room
+  // booking that never arrived forfeits two rooms. `room_rate` is the fallback
+  // for a reservation written before the nights table existed.
+  const firstNight = reservation.first_night_total ? Number(reservation.first_night_total) : null;
   const chargeAmount =
-    command.charge_amount ?? (reservation.room_rate ? Number(reservation.room_rate) : null);
+    command.charge_amount ??
+    firstNight ??
+    (reservation.room_rate ? Number(reservation.room_rate) : null);
   if (!chargeAmount || chargeAmount <= 0) {
     throw new BillingCommandError(
       "NO_SHOW_CHARGE_AMOUNT_MISSING",
-      "Cannot determine no-show charge amount. Provide charge_amount or ensure room_rate is set on the reservation.",
+      "Cannot determine no-show charge amount. Provide charge_amount, or price the reservation's first night.",
     );
   }
 
@@ -169,8 +199,10 @@ export const chargeNoShow = async (payload: unknown, context: CommandContext): P
       created_by: actorId,
     });
 
-    // Mark reservation as NO_SHOW if still CONFIRMED
-    if (reservation.status === "CONFIRMED") {
+    // Mark the reservation NO_SHOW if it has not been already. Gated on the
+    // transition table above, so this raw UPDATE cannot make a move
+    // `reservation.no_show` itself would refuse.
+    if (mayBecomeNoShow) {
       const { rowCount } = await queryWithClient(
         client,
         `UPDATE public.reservations

@@ -16,6 +16,7 @@ import type {
 	GuestWithStats,
 	ReservationDetail,
 } from "@tartware/schemas";
+import { reservationStatusesFor } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
 import { ApiService } from "../../../core/api/api.service";
@@ -27,6 +28,7 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { reservationStatusClass } from "../../../shared/badge-utils";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
+import { ReasonCodePickerComponent } from "../../../shared/components/reason-code-picker/reason-code-picker";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
@@ -35,12 +37,22 @@ import { CHARGE_CODE_OPTIONS } from "../../billing/billing-constants";
 
 type DetailRow = { label: string; value: string; badge?: string; icon?: string; hint?: string };
 
-/** Statuses that allow front-desk check-in per PMS industry standard. */
-const CHECKIN_ALLOWED = new Set(["PENDING", "CONFIRMED"]);
-/** Statuses that allow check-out. */
-const CHECKOUT_ALLOWED = new Set(["CHECKED_IN"]);
-/** Statuses that allow cancellation. */
-const CANCEL_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
+/**
+ * Which buttons a reservation's current status earns.
+ *
+ * Read from `RESERVATION_COMMAND_TRANSITIONS` rather than restated here, because
+ * restating them is what went wrong: this file used to declare cancellation as
+ * PENDING/CONFIRMED/WAITLISTED while the service accepted
+ * INQUIRY/QUOTED/PENDING/CONFIRMED, so the screen showed Cancel on a waiting
+ * booking that always failed and hid it on the two the service would have taken.
+ * One table, both ends.
+ *
+ * The forced moves are deliberately excluded: NO_SHOW → CHECKED_IN needs an
+ * override the operator has not been asked for at the point a button is drawn.
+ */
+const CHECKIN_ALLOWED = new Set<string>(reservationStatusesFor("reservation.check_in"));
+const CHECKOUT_ALLOWED = new Set<string>(reservationStatusesFor("reservation.check_out"));
+const CANCEL_ALLOWED = new Set<string>(reservationStatusesFor("reservation.cancel"));
 /** Statuses that allow a no-show charge. */
 const NO_SHOW_CHARGE_ALLOWED = new Set(["CONFIRMED", "NO_SHOW"]);
 /** Statuses that allow a late checkout fee. */
@@ -72,6 +84,7 @@ const MODIFY_DATES_ALLOWED = new Set(["PENDING", "CONFIRMED", "WAITLISTED"]);
 		PaginationComponent,
 		TranslatePipe,
 		UnsavedGuardDirective,
+		ReasonCodePickerComponent,
 
 		SubmitOnEnterDirective,
 	],
@@ -140,7 +153,13 @@ export class ReservationDetailComponent implements OnInit {
 	readonly confirmingAddDeposit = signal(false);
 	readonly confirmingReleaseDeposit = signal(false);
 	readonly extendForm = signal({ new_check_out_date: "", reason: "" });
-	readonly rateOverrideForm = signal({ new_rate: "", reason: "" });
+	/**
+	 * `reason_code` is mandatory on the command (A06) and `total_amount` is what
+	 * the payload calls the amount. This form said `new_rate` and free text — a
+	 * field the command has never had and a code it now requires — so the button
+	 * returned 400 on both counts.
+	 */
+	readonly rateOverrideForm = signal({ new_rate: "", reason_code: "", reason: "" });
 	readonly addDepositForm = signal({ amount: "", method: "CARD", reference: "" });
 	readonly releaseDepositForm = signal({ amount: "", reason: "" });
 	readonly assignRoomForm = signal({ room_id: "" });
@@ -1064,6 +1083,7 @@ export class ReservationDetailComponent implements OnInit {
 		const r = this.reservation();
 		this.rateOverrideForm.set({
 			new_rate: r ? String(r.room_rate) : "",
+			reason_code: "",
 			reason: "",
 		});
 		this.confirmingRateOverride.set(true);
@@ -1161,15 +1181,19 @@ export class ReservationDetailComponent implements OnInit {
 			this.toast.error(this.i18n.t("Enter a valid rate."));
 			return;
 		}
-		if (!f.reason.trim()) {
-			this.toast.error(this.i18n.t("Reason is required for rate override."));
+		if (!f.reason_code) {
+			this.toast.error(this.i18n.t("Pick a reason code — the override is refused without one."));
 			return;
 		}
 		this.actionLoading.set(true);
 		try {
+			// `total_amount`, not `new_rate`: the command has never had a field by
+			// that name, so this call failed the payload's own refinement long
+			// before A06 made the reason code mandatory as well.
 			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/rate-override`, {
-				new_rate: rate,
-				reason: f.reason.trim(),
+				total_amount: rate,
+				reason_code: f.reason_code,
+				...(f.reason.trim() ? { reason: f.reason.trim() } : {}),
 			});
 			this.toast.success(this.i18n.t("Rate overridden."));
 			this.confirmingRateOverride.set(false);

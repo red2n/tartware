@@ -4147,5 +4147,13 @@
   "{amount} vs base": "{amount} frente a la base",
   "{hours}h remaining": "Quedan {hours} h",
   "{modules} aren't switched on": "{modules} no están activados",
-  "{modules} isn't switched on": "{modules} no está activado"
+  "{modules} isn't switched on": "{modules} no está activado",
+  "Sent for a second approval — it runs when another owner releases it.": "Enviado para una segunda aprobación: se ejecutará cuando otro propietario lo autorice.",
+  "Select a reason…": "Selecciona un motivo…",
+  "{name} — needs {role}": "{name} — requiere {role}",
+  "This reason needs {role}. Submitted under your role the command is accepted and then refused.": "Este motivo requiere {role}. Enviado con tu rol, el comando se acepta y luego se rechaza.",
+  "No reason codes are configured for this action. Ask an administrator to add one.": "No hay códigos de motivo configurados para esta acción. Pide a un administrador que añada uno.",
+  "Could not load reason codes. Retry, or the command will be refused without one.": "No se pudieron cargar los códigos de motivo. Reinténtalo; sin uno, el comando será rechazado.",
+  "Pick a reason code — the override is refused without one.": "Elige un código de motivo: sin él, la excepción se rechaza.",
+  "What happened (required)": "Qué ocurrió (obligatorio)"
 }

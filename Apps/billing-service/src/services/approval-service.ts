@@ -6,11 +6,37 @@ import {
   type BillingApprovalRejectCommand,
   BillingApprovalRejectCommandSchema,
   BillingApprovalRequestCommandSchema,
+  evaluateApprovalAction,
 } from "@tartware/schemas";
 import { auditAsync } from "../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { BillingCommandError } from "./billing-commands/common.js";
+
+/**
+ * The operations approval queue.
+ *
+ * `approval_requests` holds two populations, and this file owns exactly one of
+ * them. A row raised here is an **operation**: something a person described in
+ * free text, approved through billing's routes, and then carried out by
+ * whoever asked for it. A row raised by `acceptCommand` is a **deferred
+ * command**: it carries `command_name`, its payload is a validated command
+ * envelope, and releasing it *dispatches* that payload (A04).
+ *
+ * `command_name IS NULL` is the line between them, and every statement below
+ * carries it. Without it this service could see and action the gateway's rows
+ * — and its approve path flips the status and never dispatches, so releasing a
+ * deferred write-off here would mark the request APPROVED for a command that
+ * never ran, then leave the gateway refusing it as no longer PENDING. A
+ * silently killed write-off is precisely the failure the dual-control work
+ * exists to prevent, so the two queues do not overlap at all rather than
+ * overlapping carefully.
+ *
+ * The mirror of this filter is `command_name IS NOT NULL` in
+ * `@tartware/command-center-shared`'s `command-approvals` repository. Neither
+ * side may be relaxed on its own.
+ */
+const OPERATIONS_QUEUE_ONLY = "AND command_name IS NULL";
 
 // ─── Create Approval Request ─────────────────────────────────────────────────
 
@@ -131,7 +157,7 @@ const _resolveRequest = async (
          actioned_by, actioned_by_name, actioned_at, action_reason,
          expires_at, created_at, updated_at, updated_by
        FROM public.approval_requests
-       WHERE approval_id = $1::uuid AND tenant_id = $2::uuid
+       WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY}
        FOR UPDATE`,
       [command.approval_id, tenantId],
     );
@@ -141,32 +167,36 @@ const _resolveRequest = async (
       throw new BillingCommandError("APPROVAL_NOT_FOUND", "Approval request not found.");
     }
 
-    if (request.status !== "PENDING") {
-      throw new BillingCommandError(
-        "APPROVAL_NOT_PENDING",
-        `Approval is ${request.status} — only PENDING requests can be actioned.`,
-      );
-    }
+    // Pending, unexpired, a different person, and a person senior enough — the
+    // four rules of a four-eyes decision, evaluated by the one function both
+    // queues share. The gateway runs the same call over deferred commands
+    // (`command-approvals.ts` in `schema/`); a second copy here is how one of
+    // the two ends up missing a rule.
+    //
+    // Both identities in it now come from tokens: while `actioned_by` arrived
+    // in the request body this compared two caller-supplied strings, and the
+    // control was defeated by typing a colleague's id into the field.
+    const decision = evaluateApprovalAction({
+      action: newStatus === "APPROVED" ? "APPROVE" : "REJECT",
+      status: request.status,
+      expiresAt: request.expires_at,
+      requestedBy: request.requested_by,
+      requiredRole: request.required_role,
+      actorId: command.actioned_by,
+      actorRole: "actioned_by_role" in command ? command.actioned_by_role : undefined,
+    });
 
-    // Check expiry
-    if (new Date(request.expires_at) < new Date()) {
-      await queryWithClient(
-        client,
-        `UPDATE public.approval_requests SET status = 'EXPIRED', updated_at = NOW() WHERE approval_id = $1::uuid`,
-        [command.approval_id],
-      );
-      throw new BillingCommandError(
-        "APPROVAL_EXPIRED",
-        "Approval request has expired. Please submit a new request.",
-      );
-    }
-
-    // ★ Four-Eyes Principle: approver must NOT be the same user as the requester
-    if (request.requested_by === command.actioned_by) {
-      throw new BillingCommandError(
-        "SELF_APPROVAL_FORBIDDEN",
-        "The approver must be a different user than the requester (four-eyes principle).",
-      );
+    if (!decision.ok) {
+      if (decision.code === "APPROVAL_EXPIRED") {
+        // Recorded, not just refused: the row is dead and should read that way
+        // to everyone who lists the queue afterwards.
+        await queryWithClient(
+          client,
+          `UPDATE public.approval_requests SET status = 'EXPIRED', updated_at = NOW() WHERE approval_id = $1::uuid`,
+          [command.approval_id],
+        );
+      }
+      throw new BillingCommandError(decision.code, decision.message);
     }
 
     // Persist the decision
@@ -239,12 +269,32 @@ export const cancelApprovalRequest = async (
          actioned_by = $4,
          actioned_at = NOW(),
          updated_at  = NOW()
-     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid AND status = 'PENDING'
+     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY}
+       AND status = 'PENDING'
+       AND requested_by = $4
      RETURNING approval_id, status, requested_by`,
     [command.approval_id, tenantId, command.reason ?? null, command.cancelled_by],
   );
 
   if (!rows[0]?.approval_id) {
+    // The predicate above covers three different situations and the caller
+    // deserves to know which. "Withdrawn by the original requester" was only
+    // ever a doc comment — the statement returned `requested_by` and never
+    // compared it, so anyone who could reach the route could retract someone
+    // else's pending request and quietly kill the approval.
+    const { rows: existing } = await query<{ status: string; requested_by: string }>(
+      `SELECT status, requested_by
+         FROM public.approval_requests
+        WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY}`,
+      [command.approval_id, tenantId],
+    );
+    const found = existing[0];
+    if (found && found.status === "PENDING" && found.requested_by !== command.cancelled_by) {
+      throw new BillingCommandError(
+        "APPROVAL_NOT_REQUESTER",
+        "Only the user who raised an approval request may withdraw it.",
+      );
+    }
     throw new BillingCommandError(
       "APPROVAL_CANCEL_FAILED",
       "Approval not found or is not in PENDING state.",
@@ -275,7 +325,7 @@ export const listPendingApprovals = async (input: {
        actioned_by, actioned_by_name, actioned_at, action_reason,
        expires_at, created_at, updated_at, updated_by
      FROM public.approval_requests
-     WHERE tenant_id = $1::uuid
+     WHERE tenant_id = $1::uuid ${OPERATIONS_QUEUE_ONLY}
        AND status = 'PENDING'
        AND expires_at > NOW()
        AND ($2::uuid IS NULL OR property_id = $2::uuid)
@@ -309,7 +359,7 @@ export const getApprovalRequest = async (
        actioned_by, actioned_by_name, actioned_at, action_reason,
        expires_at, created_at, updated_at, updated_by
      FROM public.approval_requests
-     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
+     WHERE approval_id = $1::uuid AND tenant_id = $2::uuid ${OPERATIONS_QUEUE_ONLY} LIMIT 1`,
     [approvalId, tenantId],
   );
   return rows[0] ?? null;

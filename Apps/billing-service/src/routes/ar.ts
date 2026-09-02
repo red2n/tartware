@@ -8,7 +8,9 @@
  *   - Suspense folio items
  *   - Group billing summaries
  */
+
 import { buildRouteSchema } from "@tartware/openapi";
+import type { ArAccountRow, ArAgingSnapshotRow } from "@tartware/schemas";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -271,7 +273,7 @@ export const registerArRoutes = (app: FastifyInstance): void => {
     async (request) => {
       const q = DsoQuerySchema.parse(request.query);
       // total_outstanding from latest aging snapshot
-      const { rows: balanceRows } = await query<{ total_outstanding: string }>(
+      const { rows: balanceRows } = await query<{ total_outstanding: string | null }>(
         `SELECT SUM(total_outstanding) AS total_outstanding
            FROM ar_aging_snapshots
           WHERE tenant_id = $1::uuid AND property_id = $2::uuid
@@ -446,12 +448,12 @@ export const registerArRoutes = (app: FastifyInstance): void => {
       const { accountId } = request.params;
 
       // Fetch account summary
-      const { rows: accountRows } = await query<{
-        company_name: string;
-        outstanding_balance: string;
-        dunning_level: number;
-        account_status: string;
-      }>(
+      const { rows: accountRows } = await query<
+        Pick<
+          ArAccountRow,
+          "company_name" | "outstanding_balance" | "dunning_level" | "account_status"
+        >
+      >(
         `SELECT company_name, outstanding_balance, dunning_level, account_status
            FROM ar_accounts
           WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid AND is_deleted = FALSE`,
@@ -465,11 +467,9 @@ export const registerArRoutes = (app: FastifyInstance): void => {
       }
 
       // Aging from latest snapshot
-      const { rows: agingRows } = await query<{
-        bucket_over_120: string;
-        bucket_91_120: string;
-        total_outstanding: string;
-      }>(
+      const { rows: agingRows } = await query<
+        Pick<ArAgingSnapshotRow, "bucket_over_120" | "bucket_91_120" | "total_outstanding">
+      >(
         `SELECT bucket_over_120, bucket_91_120, total_outstanding
            FROM ar_aging_snapshots
           WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid

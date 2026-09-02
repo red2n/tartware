@@ -27,27 +27,47 @@ export const ROOM_TYPES_FOR_PROPERTY_SQL = `
 
 /**
  * Current occupancy snapshot per room type for a given date.
- * Counts active reservations (CHECKED_IN, CONFIRMED, PENDING) that overlap the date.
+ * Counts the room-nights held for that date (CHECKED_IN, CONFIRMED, PENDING).
+ *
+ * Counted per room-night rather than per reservation: a booking holding three
+ * rooms occupies three. The room type comes off `reservation_rooms`, since a
+ * multi-room booking can mix types.
+ *
+ * The aggregate is a LATERAL rather than a join onto `rooms`. Joining every
+ * physical room of a type to every overlapping reservation and then averaging
+ * weighted the rate by how many rooms of that type the property happens to
+ * have, which is not what an average rate means.
  */
 export const OCCUPANCY_BY_ROOM_TYPE_SQL = `
   SELECT
-    r.room_type_id,
-    COUNT(DISTINCT res.id) AS occupied_rooms,
-    COALESCE(AVG(res.room_rate), 0) AS avg_current_rate
-  FROM public.rooms r
-  LEFT JOIN public.reservations res
-    ON res.room_type_id = r.room_type_id
-    AND res.tenant_id = r.tenant_id
-    AND res.property_id = r.property_id
-    AND res.check_in_date <= $3::date
-    AND res.check_out_date > $3::date
-    AND res.status IN ('CHECKED_IN', 'CONFIRMED', 'PENDING')
-    AND COALESCE(res.is_deleted, false) = false
-  WHERE r.tenant_id = $1::uuid
-    AND r.property_id = $2::uuid
-    AND r.status NOT IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
-    AND COALESCE(r.is_deleted, false) = false
-  GROUP BY r.room_type_id
+    rt.room_type_id,
+    COALESCE(occ.occupied_rooms, 0) AS occupied_rooms,
+    COALESCE(occ.avg_current_rate, 0) AS avg_current_rate
+  FROM (
+    SELECT DISTINCT r.room_type_id
+    FROM public.rooms r
+    WHERE r.tenant_id = $1::uuid
+      AND r.property_id = $2::uuid
+      AND r.status NOT IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
+      AND COALESCE(r.is_deleted, false) = false
+  ) rt
+  LEFT JOIN LATERAL (
+    SELECT
+      COUNT(n.reservation_night_id) AS occupied_rooms,
+      AVG(n.rate_amount) FILTER (WHERE NOT n.is_complimentary) AS avg_current_rate
+    FROM public.reservation_nights n
+    JOIN public.reservation_rooms rr
+      ON rr.reservation_room_id = n.reservation_room_id
+    JOIN public.reservations res
+      ON res.id = n.reservation_id AND res.tenant_id = n.tenant_id
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND n.stay_date = $3::date
+      AND COALESCE(n.is_deleted, false) = false
+      AND rr.room_type_id = rt.room_type_id
+      AND res.status IN ('CHECKED_IN', 'CONFIRMED', 'PENDING')
+      AND COALESCE(res.is_deleted, false) = false
+  ) occ ON TRUE
 `;
 
 /**
@@ -121,11 +141,14 @@ export const ACTIVE_PRICING_RULES_SQL = `
  * Revenue forecasts for the date range (latest forecast per date).
  */
 export const FORECAST_FOR_RANGE_SQL = `
+  -- The columns are forecasted_*; the bare names selected here do not exist,
+  -- so this statement failed with 42703 on every call. Aliased back to the
+  -- names the row type and the callers already use.
   SELECT DISTINCT ON (forecast_date)
     forecast_date,
-    occupancy_percent,
-    adr,
-    room_revenue,
+    forecasted_occupancy_percent AS occupancy_percent,
+    forecasted_adr AS adr,
+    room_revenue_forecast AS room_revenue,
     forecast_scenario
   FROM public.revenue_forecasts
   WHERE tenant_id = $1::uuid

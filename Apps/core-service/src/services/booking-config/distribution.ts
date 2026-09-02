@@ -16,6 +16,7 @@ import {
   MarketSegmentListItemSchema,
   type MarketSegmentRow,
   type MarketSegmentWriteInput,
+  type ReasonCodeListItem,
 } from "@tartware/schemas";
 
 import { query } from "../../lib/db.js";
@@ -334,6 +335,71 @@ export const listMarketSegments = async (
     options.offset ?? 0,
   ]);
   return rows.map(mapMarketSegmentRow);
+};
+
+/**
+ * List the reason codes an operator may choose from.
+ *
+ * Property-scoped codes and tenant-wide ones come back together, ordered so a
+ * picker shows the property's own overrides alongside the chain defaults.
+ * The reversal commands resolve the chosen code again server-side — this list
+ * is for discovery, not authorisation.
+ */
+/** The all-zero tenant the product's own reference codes are seeded under. */
+const SYSTEM_REASON_TENANT = "00000000-0000-0000-0000-000000000000";
+
+/**
+ * List the reason codes an operator may pick, as the handlers will read them.
+ *
+ * **The resolution has to match `resolveReasonCode`, and for a long time it did
+ * not.** That helper — in `@tartware/command-consumer-utils` — resolves a code
+ * across three levels, most specific first: the property's own, then the
+ * tenant's, then the system defaults under the all-zero tenant. This listing
+ * read `tenant_id = $1` alone. Since every one of the forty-six codes the
+ * product ships is seeded under the system tenant, the route returned an empty
+ * array to every tenant that had not written its own, while every command
+ * handler accepted all forty-six. An operator could not see a code that would
+ * have worked, and could not tell that from there being none.
+ *
+ * `DISTINCT ON (reason_code)` with the same ordering the resolver uses collapses
+ * the levels the same way, so a tenant that overrides `WO_GOODWILL` sees its own
+ * row and not both. Ordering the *output* then needs a second pass, because
+ * `DISTINCT ON` fixes the sort of the inner query.
+ */
+export const listReasonCodes = async (options: {
+  tenantId: string;
+  propertyId?: string;
+  category?: string;
+  limit?: number;
+}): Promise<ReasonCodeListItem[]> => {
+  const { rows } = await query<ReasonCodeListItem>(
+    `SELECT * FROM (
+       SELECT DISTINCT ON (UPPER(reason_code))
+              reason_id, reason_code, reason_name, reason_description,
+              reason_category, property_id, requires_approval, approval_level,
+              has_financial_impact, display_order, is_active,
+              (tenant_id = $5::uuid) AS is_system_default
+         FROM public.reason_codes
+        WHERE tenant_id IN ($1::uuid, $5::uuid)
+          AND COALESCE(is_active, true) = true
+          AND COALESCE(is_deleted, false) = false
+          AND (property_id IS NULL OR $2::uuid IS NULL OR property_id = $2::uuid)
+          AND ($3::text IS NULL OR UPPER(reason_category) = UPPER($3::text))
+        ORDER BY UPPER(reason_code),
+                 (tenant_id = $1::uuid) DESC,
+                 property_id NULLS LAST
+     ) resolved
+     ORDER BY reason_category, display_order, reason_code
+     LIMIT $4`,
+    [
+      options.tenantId,
+      options.propertyId ?? null,
+      options.category ?? null,
+      options.limit ?? 200,
+      SYSTEM_REASON_TENANT,
+    ],
+  );
+  return rows;
 };
 
 export const getMarketSegmentById = async (

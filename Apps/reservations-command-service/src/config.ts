@@ -40,15 +40,20 @@ export const kafkaConfig = {
 
 export const outboxConfig = {
   workerId: process.env.OUTBOX_WORKER_ID ?? `${serviceConfig.serviceId}-outbox`,
-  // Enforce a 100ms floor so a mis-set OUTBOX_POLL_INTERVAL_MS=0 never spin-loops.
-  pollIntervalMs: Math.max(100, parseNumberEnv(process.env.OUTBOX_POLL_INTERVAL_MS, 2000)),
-  batchSize: parseNumberEnv(process.env.OUTBOX_BATCH_SIZE, 25),
+  // Delay after an *empty* cycle only; a full batch reschedules immediately, so
+  // a backlog drains at the speed of the database and broker, not the poll rate.
+  // The old 2s fixed poll paired with a 25-row batch capped this dispatcher at
+  // ~12 rows/sec and it fell hours behind under load.
+  idlePollIntervalMs: Math.max(10, parseNumberEnv(process.env.OUTBOX_IDLE_POLL_MS, 50)),
+  batchSize: parseNumberEnv(process.env.OUTBOX_BATCH_SIZE, 500),
   lockTimeoutMs: parseNumberEnv(process.env.OUTBOX_LOCK_TIMEOUT_MS, 30000),
+  lockSweepEveryCycles: Math.max(1, parseNumberEnv(process.env.OUTBOX_LOCK_SWEEP_CYCLES, 200)),
   maxRetries: parseNumberEnv(process.env.OUTBOX_MAX_RETRIES, 5),
   retryBackoffMs: parseNumberEnv(process.env.OUTBOX_RETRY_BACKOFF_MS, 5000),
-  tenantThrottleMs: parseNumberEnv(process.env.OUTBOX_TENANT_THROTTLE_MS, 0),
-  tenantJitterMs: parseNumberEnv(process.env.OUTBOX_TENANT_JITTER_MS, 0),
-  tenantThrottleCleanupMs: parseNumberEnv(process.env.OUTBOX_TENANT_THROTTLE_CLEANUP_MS, 60_000),
+  // The per-tenant publish throttle was removed with the serial loop it paced.
+  // It defaulted to 0 ms (disabled), so nothing was relying on it; batching
+  // makes per-record spacing meaningless anyway. Fairness between tenants now
+  // belongs at the partition level, not the publish loop.
 };
 
 export const reliabilityConfig = {
@@ -72,6 +77,14 @@ export const commandCenterConfig = {
   maxRetries: parseNumberEnv(process.env.KAFKA_MAX_RETRIES, 3),
   retryBackoffMs: parseNumberEnv(process.env.KAFKA_RETRY_BACKOFF_MS, 1000),
   retryScheduleMs: parseNumberList(process.env.KAFKA_RETRY_SCHEDULE_MS),
+  // This is the one service that assembles this config by hand instead of
+  // calling `buildCommandCenterConfig`, so every field the shared builder gains
+  // has to be mirrored here or this consumer silently diverges from the fleet.
+  partitionsConsumedConcurrently: parseNumberEnv(
+    process.env.RESERVATIONS_COMMAND_SERVICE_KAFKA_PARTITION_CONCURRENCY ??
+      process.env.KAFKA_PARTITION_CONCURRENCY,
+    4,
+  ),
 };
 
 export const availabilityGuardConfig = {

@@ -13,6 +13,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
 import { proxyRequest } from "../utils/proxy.js";
+import { invalidateFunnelReads } from "../utils/read-caches.js";
 
 import { forwardCommandWithTenant } from "./command-helpers.js";
 import {
@@ -27,6 +28,24 @@ import { BOOKING_CONFIG_TAG, commandAcceptedSchema, reservationParamsSchema } fr
 export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
   const proxyCore = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+
+  /**
+   * For allotment writes, which change what an availability search should say
+   * the moment they land.
+   *
+   * A contracted block takes rooms out of sale; without this the funnel went on
+   * offering them until the cached search expired. Rate writes have always done
+   * this — the caches simply lived in `room-routes.ts`, out of reach of every
+   * other route family that moves inventory.
+   */
+  const proxyCoreInvalidating = async (request: FastifyRequest, reply: FastifyReply) => {
+    const result = await proxyRequest(request, reply, serviceTargets.coreServiceUrl);
+    invalidateFunnelReads(
+      (request.query as { tenant_id?: string } | undefined)?.tenant_id ??
+        (request.body as { tenant_id?: string } | undefined)?.tenant_id,
+    );
+    return result;
+  };
 
   const proxyBilling = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
@@ -81,7 +100,7 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         response: { 201: jsonObjectSchema },
       }),
     },
-    proxyCore,
+    proxyCoreInvalidating,
   );
 
   /** `app.all`, not `app.get`: PUT /:id and POST /:id/status live under here. */
@@ -95,7 +114,10 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         response: { 200: jsonObjectSchema },
       }),
     },
-    proxyCore,
+    // PUT /:id (pickup, cutoff) and POST /:id/status (cancel) all change how
+    // many rooms the block holds, so the read side has to be dropped for every
+    // verb here, not just the create above.
+    proxyCoreInvalidating,
   );
 
   app.get(
@@ -148,6 +170,19 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
         tag: BOOKING_CONFIG_TAG,
         summary: "List market segments for guest categorization.",
         response: { 200: marketSegmentListResponse },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.get(
+    "/v1/reason-codes",
+    {
+      preHandler: tenantScopeFromQuery,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "List reason codes an operator can pick when reversing a lifecycle event.",
+        response: { 200: jsonObjectSchema },
       }),
     },
     proxyCore,

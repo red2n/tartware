@@ -39,10 +39,9 @@ interface ServiceHealthResult {
 async function checkServiceHealth(name: string, baseUrl: string): Promise<ServiceHealthResult> {
   const start = performance.now();
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
-    const response = await fetch(`${baseUrl}/health`, { signal: controller.signal });
-    clearTimeout(timer);
+    const response = await fetch(`${baseUrl}/health`, {
+      signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS),
+    });
     return {
       service: name,
       status: response.ok ? "ok" : "error",
@@ -236,6 +235,7 @@ export const registerHealthRoutes = (app: FastifyInstance): void => {
         { name: "rooms-service", url: serviceTargets.roomsServiceUrl },
         { name: "reservations-command-service", url: serviceTargets.reservationCommandServiceUrl },
         { name: "billing-service", url: serviceTargets.billingServiceUrl },
+        { name: "document-service", url: serviceTargets.documentServiceUrl },
         { name: "housekeeping-service", url: serviceTargets.housekeepingServiceUrl },
         { name: "notification-service", url: serviceTargets.notificationServiceUrl },
       ];

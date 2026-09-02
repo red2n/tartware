@@ -3,39 +3,59 @@
  *
  * Breaks down reservations by reservation_type (market segment) with
  * revenue, ADR, room nights, and optional last-year comparison.
+ *
+ * Counted over `reservation_nights`, so the period covers the nights that fall
+ * inside it rather than only the stays wholly contained by it — a stay
+ * straddling the month end now contributes its nights to each month instead of
+ * to neither. Revenue is the sum of those nights' rates, which is what makes
+ * ADR (revenue ÷ room-nights) come out right for a split-rate stay.
  */
 export const SEGMENT_ANALYSIS_SQL = `
   WITH current_period AS (
     SELECT
       COALESCE(r.reservation_type, 'TRANSIENT') AS segment,
-      COUNT(DISTINCT r.id)                       AS rooms_sold,
-      SUM(EXTRACT(DAY FROM (r.check_out_date::timestamp - r.check_in_date::timestamp)))::int AS room_nights,
-      COALESCE(SUM(r.total_amount), 0)           AS revenue,
-      CASE WHEN COUNT(r.id) > 0
-           THEN ROUND(AVG(r.room_rate)::numeric, 2) ELSE 0 END AS adr
-    FROM reservations r
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
+      COUNT(DISTINCT n.reservation_room_id)      AS rooms_sold,
+      COUNT(n.reservation_night_id)::int         AS room_nights,
+      COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS revenue,
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+           THEN ROUND(
+             (SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+              / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary))::numeric,
+             2)
+           ELSE 0 END AS adr
+    FROM reservation_nights n
+    JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND n.stay_date >= $3::date
+      AND n.stay_date < $4::date
+      AND COALESCE(n.is_deleted, false) = false
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-      AND r.check_in_date >= $3::date
-      AND r.check_out_date <= $4::date
     GROUP BY COALESCE(r.reservation_type, 'TRANSIENT')
   ),
   last_year AS (
     SELECT
       COALESCE(r.reservation_type, 'TRANSIENT') AS segment,
-      COUNT(DISTINCT r.id)                       AS ly_rooms_sold,
-      COALESCE(SUM(r.total_amount), 0)           AS ly_revenue,
-      CASE WHEN COUNT(r.id) > 0
-           THEN ROUND(AVG(r.room_rate)::numeric, 2) ELSE 0 END AS ly_adr
-    FROM reservations r
-    WHERE r.tenant_id = $1::uuid
-      AND r.property_id = $2::uuid
+      COUNT(DISTINCT n.reservation_room_id)      AS ly_rooms_sold,
+      COALESCE(SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary), 0) AS ly_revenue,
+      CASE WHEN COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary) > 0
+           THEN ROUND(
+             (SUM(n.rate_amount) FILTER (WHERE NOT n.is_complimentary)
+              / COUNT(n.reservation_night_id) FILTER (WHERE NOT n.is_complimentary))::numeric,
+             2)
+           ELSE 0 END AS ly_adr
+    FROM reservation_nights n
+    JOIN reservations r
+      ON r.id = n.reservation_id AND r.tenant_id = n.tenant_id
+    WHERE n.tenant_id = $1::uuid
+      AND n.property_id = $2::uuid
+      AND n.stay_date >= ($3::date - INTERVAL '1 year')
+      AND n.stay_date < ($4::date - INTERVAL '1 year')
+      AND COALESCE(n.is_deleted, false) = false
       AND r.status IN ('CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT')
       AND r.is_deleted = false
-      AND r.check_in_date >= ($3::date - INTERVAL '1 year')
-      AND r.check_out_date <= ($4::date - INTERVAL '1 year')
     GROUP BY COALESCE(r.reservation_type, 'TRANSIENT')
   ),
   totals AS (

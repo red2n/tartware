@@ -35,9 +35,6 @@ export class WebhookNotificationProvider implements NotificationProvider {
       };
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-
     try {
       const response = await fetch(this.webhookUrl, {
         method: "POST",
@@ -58,7 +55,7 @@ export class WebhookNotificationProvider implements NotificationProvider {
           metadata: payload.metadata,
           sentAt: new Date().toISOString(),
         }),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
 
       if (!response.ok) {
@@ -88,8 +85,6 @@ export class WebhookNotificationProvider implements NotificationProvider {
         error: message,
         provider: this.name,
       };
-    } finally {
-      clearTimeout(timeout);
     }
   }
 }

@@ -121,6 +121,7 @@ export const serviceTargets = {
   housekeepingServiceUrl: env.HOUSEKEEPING_SERVICE_URL ?? "http://localhost:3030",
   notificationServiceUrl: env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3055",
   revenueServiceUrl: env.REVENUE_SERVICE_URL ?? "http://localhost:3060",
+  documentServiceUrl: env.DOCUMENT_SERVICE_URL ?? "http://localhost:3080",
   // calculationServiceUrl removed — calculation absorbed into billing-service (Phase 6)
   // serviceRegistryUrl removed — registry absorbed into core-service (Phase 5)
   // accountsServiceUrl removed — accounts absorbed into billing-service (Phase 6)
@@ -171,6 +172,63 @@ export const kafkaConfig = {
     defaultPrimaryBroker: "localhost:29092",
   }),
   commandTopic: process.env.COMMAND_CENTER_TOPIC ?? "commands.primary",
+};
+
+/**
+ * Short-lived caching for the booking funnel's two hot reads.
+ *
+ * `availabilityTtlMs` is deliberately small: overbooking is prevented by
+ * availability-guard when the reservation command is applied, not by the search,
+ * so a slightly stale search is a UX concern rather than a correctness one — but
+ * only slightly stale. Rates change on an operator's timescale and are also
+ * invalidated on write, so they hold longer.
+ */
+export const cachedReadConfig = {
+  enabled: (process.env.GATEWAY_READ_CACHE_ENABLED ?? "true") !== "false",
+  availabilityTtlMs: Math.max(0, parseNumberEnv(process.env.GATEWAY_AVAILABILITY_TTL_MS, 2000)),
+  ratesTtlMs: Math.max(0, parseNumberEnv(process.env.GATEWAY_RATES_TTL_MS, 30000)),
+  maxEntries: Math.max(64, parseNumberEnv(process.env.GATEWAY_READ_CACHE_MAX, 5000)),
+};
+
+/**
+ * Group-commit ingestion for accepted commands.
+ *
+ * `maxDelayMs` is the latency this trades for throughput: a command waits at
+ * most this long for its batch to commit, and gets a database cost of a few
+ * extra rows in an existing statement instead of six round trips of its own.
+ * Keep it small — the point is to coalesce the commands already arriving in the
+ * same millisecond, not to hold anyone up.
+ */
+export const commandBatchConfig = {
+  enabled: (process.env.COMMAND_BATCH_ENABLED ?? "true") !== "false",
+  maxDelayMs: Math.max(1, parseNumberEnv(process.env.COMMAND_BATCH_MAX_DELAY_MS, 5)),
+  maxBatchSize: Math.max(1, parseNumberEnv(process.env.COMMAND_BATCH_MAX_SIZE, 256)),
+};
+
+/**
+ * Command outbox dispatcher.
+ *
+ * `idlePollIntervalMs` is the delay only when a cycle came back empty; a cycle
+ * that filled its batch reschedules immediately, so a backlog drains at the
+ * speed of the database and broker rather than at the poll rate. That is why
+ * the idle value can stay low without becoming a busy loop — it governs how
+ * quickly the first command after a quiet spell is picked up, which is the
+ * latency a caller actually perceives now that publishing is asynchronous.
+ */
+export const commandOutboxConfig = {
+  enabled: (process.env.COMMAND_OUTBOX_DISPATCHER_ENABLED ?? "true") !== "false",
+  batchSize: parseNumberEnv(process.env.COMMAND_OUTBOX_BATCH_SIZE, 500),
+  idlePollIntervalMs: Math.max(10, parseNumberEnv(process.env.COMMAND_OUTBOX_IDLE_POLL_MS, 50)),
+  lockTimeoutMs: parseNumberEnv(process.env.COMMAND_OUTBOX_LOCK_TIMEOUT_MS, 30_000),
+  /** How many cycles between sweeps for locks left behind by a crashed worker. */
+  lockSweepEveryCycles: Math.max(
+    1,
+    parseNumberEnv(process.env.COMMAND_OUTBOX_LOCK_SWEEP_CYCLES, 200),
+  ),
+  maxRetries: parseNumberEnv(process.env.COMMAND_OUTBOX_MAX_RETRIES, 5),
+  retryBackoffMs: parseNumberEnv(process.env.COMMAND_OUTBOX_RETRY_BACKOFF_MS, 1000),
+  workerId:
+    process.env.COMMAND_OUTBOX_WORKER_ID ?? `api-gateway-${process.env.HOSTNAME ?? process.pid}`,
 };
 
 export const commandRegistryConfig = {

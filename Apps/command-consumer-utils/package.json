@@ -33,6 +33,14 @@
       "types": "./dist/command-utils.d.ts",
       "import": "./dist/command-utils.js"
     },
+    "./batch": {
+      "types": "./dist/batch-runner.d.ts",
+      "import": "./dist/batch-runner.js"
+    },
+    "./batch-repository": {
+      "types": "./dist/batch-repository.d.ts",
+      "import": "./dist/batch-repository.js"
+    },
     "./cashier": {
       "types": "./dist/cashier.d.ts",
       "import": "./dist/cashier.js"
@@ -40,6 +48,10 @@
     "./flow-compliance": {
       "types": "./dist/flow-compliance.d.ts",
       "import": "./dist/flow-compliance.js"
+    },
+    "./settings-utils": {
+      "types": "./dist/settings-utils.d.ts",
+      "import": "./dist/settings-utils.js"
     }
   },
   "main": "dist/index.js",
@@ -60,6 +72,7 @@
   "dependencies": {
     "@tartware/config": "workspace:*",
     "@tartware/schemas": "workspace:*",
+    "@tartware/telemetry": "workspace:*",
     "kafkajs": "^2.2.4",
     "pg": "^8.13.3",
     "prom-client": "^15.1.3"
@@ -69,7 +82,7 @@
     "npm": ">=10.0.0"
   },
   "devDependencies": {
-    "vitest": "^4.0.18",
-    "@vitest/coverage-v8": "^4.0.18"
+    "vitest": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.0"
   }
 }

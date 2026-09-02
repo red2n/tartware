@@ -19,6 +19,11 @@
 #   PHASE 4   USALI property-level isolation assertions
 #   PHASE 5   Cross-tenant isolation assertions (DB + API)
 #   PHASE 5b  Module access requests (raise → review → module toggled)
+#   PHASE 5c  Per-command authority — role tiers, grants and denies (A02)
+#   PHASE 5d  Dual control — the five commands one person may not run (A04)
+#   PHASE 5e  Night audit precondition bypass — a reason code that has to exist
+#   PHASE 5f  Credit limit override — resolved, authorised, recorded (A05)
+#   PHASE 5g  Blacklist override — the other half of A05, on real reference data
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -2369,6 +2374,748 @@ else
 fi
 
 TOKEN="$TOKEN_A"
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5c — PER-COMMAND AUTHORITY (A02)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Every command used to require MANAGER, so the clerk who checks a guest in held
+# the same authority as the one who writes off bad debt. Each command now
+# declares its own floor (COMMAND_MIN_ROLE, schema/src/api/command-permissions.ts)
+# and one membership can be granted or denied a single command on top of that
+# (user_tenant_associations.permissions).
+#
+# Four behaviours, all through the gateway:
+#
+#   STAFF runs a STAFF-tier command                      202  — not locked out
+#   STAFF is refused MANAGER / ADMIN / OWNER tiers       403  — tiers discriminate
+#   A grant admits one command without promoting anyone  202  — the escape hatch
+#   A deny beats the role that would otherwise pass      403  — separation of duties
+#
+# Runs against Tenant B: it creates two users and dispatches one guest VIP
+# update, none of which should land on the long-lived seeded Tenant A. The
+# grants are cleared at the end so a re-run starts from the same place.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5c: Per-Command Authority                                    ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+AUTH_STAFF_USER="clerk.${RUN_TAG}"
+AUTH_STAFF_PASS="ClerkPass123!"
+AUTH_ADMIN_USER="controller.${RUN_TAG}"
+AUTH_ADMIN_PASS="ControllerPass123!"
+
+# Log in and echo the token, or an empty string. Used for the two users this
+# phase creates; the shared get-token.sh assumes the seeded credentials.
+auth_login() {
+  curl -s -X POST "$GW/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$1\",\"password\":\"$2\"}" \
+    | jq -r '.access_token // .token // .data.access_token // empty'
+}
+
+# Assert a command was refused *for lack of authority*.
+#
+# `assert_http ... 403` alone is not enough and quietly cost this phase three
+# real assertions: the module gate (COMMAND_MODULES_NOT_ENABLED) also answers
+# 403 and is checked first, so a probe aimed at a module the membership does
+# not hold passes while never reaching the authority code at all.
+assert_denied() {
+  local label="$1" code="$2"
+  local body_code; body_code=$(jq -r '.code // empty' "$RESP_FILE" 2>/dev/null)
+  if [[ "$code" == "403" && "$body_code" == "COMMAND_PERMISSION_DENIED" ]]; then
+    pass "$label"
+  else
+    fail "$label" "http=$code code=${body_code:-none}"
+  fi
+}
+
+# Submit a command as an explicit token and echo only the status code. The
+# shared post() helper reads $TOKEN, and this phase needs three different ones
+# interleaved.
+auth_cmd() {
+  local tok="$1" name="$2" payload="$3"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/commands/$name/execute" \
+    -H "Authorization: Bearer $tok" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $(gen_uuid)" \
+    -d "{\"tenant_id\":\"$TID_B\",\"payload\":$payload}"
+}
+
+TOKEN="$TOKEN_B"
+
+# A room and a guest in Tenant B to aim the two accepted commands at.
+# The rooms list keys its identifier `room_id`, the guests list `id`; take
+# either from either so a shape change here degrades to a SKIP, not a wrong id.
+get "$GW/v1/rooms?tenant_id=$TID_B&property_id=$PID_B1&limit=5" >/dev/null
+AUTH_ROOM_ID=$(resp_first "room_id"); [[ -z "$AUTH_ROOM_ID" ]] && AUTH_ROOM_ID=$(resp_first "id")
+get "$GW/v1/guests?tenant_id=$TID_B&limit=5" >/dev/null
+AUTH_GUEST_ID=$(resp_first "id"); [[ -z "$AUTH_GUEST_ID" ]] && AUTH_GUEST_ID=$(resp_first "guest_id")
+
+if [[ -z "$AUTH_ROOM_ID" || -z "$AUTH_GUEST_ID" ]]; then
+  skip "Per-command authority" "no room/guest available on Tenant B"
+else
+  # ── The two users ──────────────────────────────────────────────────────────
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID_B\",
+    \"username\": \"$AUTH_STAFF_USER\",
+    \"email\": \"${AUTH_STAFF_USER}@beaconhotels.test\",
+    \"password\": \"$AUTH_STAFF_PASS\",
+    \"first_name\": \"Dana\", \"last_name\": \"Okafor\",
+    \"role\": \"STAFF\"
+  }")
+  assert_http "A02: STAFF user created on Tenant B" "2" "$code"
+  AUTH_STAFF_UID=$(resp_field "id")
+
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID_B\",
+    \"username\": \"$AUTH_ADMIN_USER\",
+    \"email\": \"${AUTH_ADMIN_USER}@beaconhotels.test\",
+    \"password\": \"$AUTH_ADMIN_PASS\",
+    \"first_name\": \"Ines\", \"last_name\": \"Varga\",
+    \"role\": \"ADMIN\"
+  }")
+  assert_http "A02: ADMIN user created on Tenant B" "2" "$code"
+
+  # POST /v1/users inserts the association without `modules`, so it defaults to
+  # ["core"] and every billing/AR probe below would be refused by the module
+  # gate before the authority check ever ran. Writing the tenant's current list
+  # back re-syncs it onto every association, these two included.
+  TOKEN="$TOKEN_B"
+  get "$GW/v1/tenants/$TID_B/modules" >/dev/null
+  AUTH_MODS=$(jq -c '.modules // ["core"]' "$RESP_FILE" 2>/dev/null || echo '["core"]')
+  code=$(put "$GW/v1/tenants/$TID_B/modules" "{\"modules\":$AUTH_MODS}")
+  assert_http "A02: modules re-synced onto the new memberships" "200" "$code"
+
+  TOKEN_STAFF=$(auth_login "$AUTH_STAFF_USER" "$AUTH_STAFF_PASS")
+  TOKEN_ADMIN=$(auth_login "$AUTH_ADMIN_USER" "$AUTH_ADMIN_PASS")
+
+  if [[ -z "$TOKEN_STAFF" || -z "$TOKEN_ADMIN" ]]; then
+    fail "A02: tokens for the new users" "staff=[${TOKEN_STAFF:0:6}] admin=[${TOKEN_ADMIN:0:6}]"
+  else
+    pass "A02: tokens issued for the STAFF and ADMIN users"
+
+    # ── STAFF reaches its own tier ───────────────────────────────────────────
+    # The route gate used to be MANAGER, so this was a 403 before A02 — a clerk
+    # could not mark a room clean without a manager's login.
+    code=$(auth_cmd "$TOKEN_STAFF" "rooms.status.update" \
+      "{\"room_id\":\"$AUTH_ROOM_ID\",\"status\":\"AVAILABLE\"}")
+    assert_http "A02: STAFF may run a STAFF-tier command" "202" "$code"
+
+    # ── and is refused each tier above it ────────────────────────────────────
+    code=$(auth_cmd "$TOKEN_STAFF" "guest.set_vip" \
+      "{\"guest_id\":\"$AUTH_GUEST_ID\",\"vip_level\":\"VIP2\"}")
+    assert_denied "A02: STAFF refused a MANAGER-tier command" "$code"
+    # The response must not name the role it wanted, or a failed caller can map
+    # the whole model by walking the catalogue.
+    if grep -qiE "OWNER|ADMIN|MANAGER|STAFF" "$RESP_FILE"; then
+      fail "A02: refusal does not disclose the required role" "$(cat "$RESP_FILE")"
+    else
+      pass "A02: refusal does not disclose the required role"
+    fi
+
+    code=$(auth_cmd "$TOKEN_STAFF" "billing.comp.post" \
+      "{\"property_id\":\"$PID_B1\",\"folio_id\":\"$(gen_uuid)\",\"comp_type\":\"MISCELLANEOUS\",\"amount\":10}")
+    assert_denied "A02: STAFF refused an ADMIN-tier command" "$code"
+
+    code=$(auth_cmd "$TOKEN_STAFF" "ar.city_ledger.write_off" \
+      "{\"property_id\":\"$PID_B1\",\"city_ledger_id\":\"$(gen_uuid)\",\"amount\":10,\"reason_code\":\"WO_SMALL_BALANCE\",\"reason\":\"A02 authority probe\"}")
+    assert_denied "A02: STAFF refused an OWNER-tier command" "$code"
+
+    # ── the grant admits one command, without promoting anyone ───────────────
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [\"guest.set_vip\"], \"deny\": []
+    }")
+    assert_http "A02: grant recorded on the membership" "200" "$code"
+
+    code=$(auth_cmd "$TOKEN_STAFF" "guest.set_vip" \
+      "{\"guest_id\":\"$AUTH_GUEST_ID\",\"vip_level\":\"VIP2\"}")
+    assert_http "A02: granted command now accepted for the same STAFF user" "202" "$code"
+
+    # The grant is one command, not a promotion.
+    code=$(auth_cmd "$TOKEN_STAFF" "billing.comp.post" \
+      "{\"property_id\":\"$PID_B1\",\"folio_id\":\"$(gen_uuid)\",\"comp_type\":\"MISCELLANEOUS\",\"amount\":10}")
+    assert_denied "A02: grant does not carry to its neighbours" "$code"
+
+    # ── a deny beats the role that would otherwise pass ──────────────────────
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [], \"deny\": [\"rooms.status.update\"]
+    }")
+    assert_http "A02: deny recorded on the membership" "200" "$code"
+
+    code=$(auth_cmd "$TOKEN_STAFF" "rooms.status.update" \
+      "{\"room_id\":\"$AUTH_ROOM_ID\",\"status\":\"AVAILABLE\"}")
+    assert_denied "A02: denied command refused although the role reaches it" "$code"
+
+    # ── no granting upward past yourself ─────────────────────────────────────
+    TOKEN="$TOKEN_ADMIN"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [\"ar.city_ledger.write_off\"], \"deny\": []
+    }")
+    assert_http "A02: ADMIN cannot grant an OWNER-tier command" "403" "$code"
+    assert_eq "A02: escalation refusal names the rule" "true" \
+      "$(grep -qi "GRANT_EXCEEDS_GRANTOR_AUTHORITY" "$RESP_FILE" && echo true || echo false)"
+
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [\"billing.charge.viod\"], \"deny\": []
+    }")
+    assert_http "A02: a mistyped command name is rejected, not stored" "400" "$code"
+
+    # ── leave the membership as it was found ─────────────────────────────────
+    TOKEN="$TOKEN_B"
+    code=$(post "$GW/v1/user-tenant-associations/command-permissions" "{
+      \"tenant_id\": \"$TID_B\", \"user_id\": \"$AUTH_STAFF_UID\",
+      \"allow\": [], \"deny\": []
+    }")
+    assert_http "A02: grants cleared" "200" "$code"
+  fi
+  echo ""
+fi
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5d — DUAL CONTROL ON THE FIVE IRREVERSIBLE COMMANDS (A04)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# approval_requests has existed since 2025 with the four-eyes rationale in its
+# DDL header and a full service layer behind it. Nothing ever entered it, and
+# approving flipped a status without executing anything, so approval and
+# execution were unrelated events.
+#
+# Now the five commands that undo a completed accounting control — the three
+# write-offs, a fiscal period reopen, a manual date roll (COMMAND_DUAL_CONTROL,
+# schema/src/api/command-approvals.ts) — are recorded as approval requests by
+# acceptCommand instead of dispatched, and releasing one dispatches the stored
+# payload. Six behaviours, end to end on a real AR balance:
+#
+#   The command is queued, not run                202 pending_approval, no command_id
+#   The requester cannot release their own        403 SELF_APPROVAL_FORBIDDEN
+#   Nor can someone below the approver role       403
+#   A refusal is final for that idempotency key   409 COMMAND_APPROVAL_REJECTED
+#   A second OWNER releases it                    200 + command_id
+#   …and the balance actually moves               the operation happened
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5d: Dual Control (four-eyes on the irreversible five)         ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+DC_USER="approver.${RUN_TAG}"
+DC_PASS="ApproverPass123!"
+
+# Submit a command as an explicit token, echoing only the status code.
+dc_cmd() {
+  local tok="$1" name="$2" payload="$3" idem="${4:-$(gen_uuid)}"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/commands/$name/execute" \
+    -H "Authorization: Bearer $tok" \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem" \
+    -d "{\"tenant_id\":\"$TID_B\",\"payload\":$payload}"
+}
+
+# Act on an approval request as an explicit token.
+dc_decide() {
+  local tok="$1" approval_id="$2" action="$3" reason="$4"
+  curl -s -o "$RESP_FILE" -w "%{http_code}" \
+    -X POST "$GW/v1/tenants/$TID_B/commands/approvals/$approval_id/$action" \
+    -H "Authorization: Bearer $tok" \
+    -H "Content-Type: application/json" \
+    -d "{\"reason\":\"$reason\"}"
+}
+
+TOKEN="$TOKEN_B"
+get "$GW/v1/billing/accounts-receivable?tenant_id=$TID_B&limit=20" >/dev/null
+DC_AR_ID=$(resp_ffirst '.ar_status == "open" or .ar_status == "partial"' "ar_id")
+DC_AR_BEFORE=$(resp_ffirst ".ar_id == \"${DC_AR_ID:-none}\"" "outstanding_balance")
+
+if [[ -z "$DC_AR_ID" ]]; then
+  skip "A04: dual control" "no open AR account on Tenant B to write off"
+else
+  # ── The second pair of eyes ────────────────────────────────────────────────
+  # A write-off asks for OWNER, so the approver must be a second OWNER. One
+  # OWNER login cannot write anything off, which is the control working.
+  code=$(post "$GW/v1/users" "{
+    \"tenant_id\": \"$TID_B\",
+    \"username\": \"$DC_USER\",
+    \"email\": \"${DC_USER}@beaconhotels.test\",
+    \"password\": \"$DC_PASS\",
+    \"first_name\": \"Rafael\", \"last_name\": \"Mendes\",
+    \"role\": \"OWNER\"
+  }")
+  assert_http "A04: second OWNER created on Tenant B" "2" "$code"
+
+  # POST /v1/users defaults the association's modules to ["core"]; the approver
+  # dispatches the command, so it needs the tenant's billing modules too.
+  get "$GW/v1/tenants/$TID_B/modules" >/dev/null
+  DC_MODS=$(jq -c '.modules // ["core"]' "$RESP_FILE" 2>/dev/null || echo '["core"]')
+  code=$(put "$GW/v1/tenants/$TID_B/modules" "{\"modules\":$DC_MODS}")
+  assert_http "A04: modules re-synced onto the approver's membership" "200" "$code"
+
+  TOKEN_APPROVER=$(auth_login "$DC_USER" "$DC_PASS")
+
+  if [[ -z "$TOKEN_APPROVER" ]]; then
+    fail "A04: token for the second approver" "login returned nothing"
+  else
+    pass "A04: token issued for the second approver"
+
+    # `reason_code` is mandatory on all three write-offs now (A07's remainder),
+    # resolved against the WRITE_OFF category. WO_SMALL_BALANCE is seeded at
+    # approval_level MANAGER, which every role in this phase clears — the phase
+    # is about dual control, not about the amount ladder.
+    DC_PAYLOAD="{\"ar_id\":\"$DC_AR_ID\",\"write_off_amount\":1.00,\"reason_code\":\"WO_SMALL_BALANCE\",\"reason\":\"A04 dual-control probe\"}"
+
+    # ── 1. The command is queued, not run ────────────────────────────────────
+    DC_KEY_1=$(gen_uuid)
+    code=$(dc_cmd "$TOKEN_B" "billing.ar.write_off" "$DC_PAYLOAD" "$DC_KEY_1")
+    assert_http "A04: write-off accepted for review" "202" "$code"
+    DC_STATUS=$(jq -r '.status // empty' "$RESP_FILE")
+    DC_APPROVAL=$(jq -r '.approval_id // empty' "$RESP_FILE")
+    assert_eq "A04: it was queued rather than dispatched" "pending_approval" "$DC_STATUS"
+    assert_eq "A04: no command id, because no command ran" "true" \
+      "$([[ -z "$(jq -r '.command_id // empty' "$RESP_FILE")" ]] && echo true || echo false)"
+
+    if [[ -z "$DC_APPROVAL" ]]; then
+      fail "A04: approval request id returned" "none"
+    else
+      pass "A04: approval request id returned"
+
+      # ── 2. It is visible in the queue, with what it would run ──────────────
+      TOKEN="$TOKEN_B"
+      code=$(get "$GW/v1/tenants/$TID_B/commands/approvals?limit=50")
+      assert_http "A04: pending approvals listed" "200" "$code"
+      assert_eq "A04: the request is in the queue" "1" \
+        "$(resp_fcount ".approval_id == \"$DC_APPROVAL\"")"
+      assert_eq "A04: the approver can see the payload they would release" "$DC_AR_ID" \
+        "$(resp_ffirst ".approval_id == \"$DC_APPROVAL\"" "operation_payload.ar_id")"
+
+      # ── 3. The requester cannot release their own request ──────────────────
+      code=$(dc_decide "$TOKEN_B" "$DC_APPROVAL" "approve" "approving my own write-off")
+      assert_http "A04: requester refused their own approval" "403" "$code"
+      assert_eq "A04: refusal names the four-eyes rule" "SELF_APPROVAL_FORBIDDEN" \
+        "$(jq -r '.code // empty' "$RESP_FILE")"
+
+      # ── 4. Nor can someone below the approver role ─────────────────────────
+      if [[ -n "${TOKEN_STAFF:-}" ]]; then
+        code=$(dc_decide "$TOKEN_STAFF" "$DC_APPROVAL" "approve" "clerk approving a write-off")
+        assert_http "A04: a clerk cannot release a write-off" "403" "$code"
+      else
+        skip "A04: a clerk cannot release a write-off" "no STAFF token from Phase 5c"
+      fi
+
+      # ── 5. A refusal is final for that idempotency key ─────────────────────
+      code=$(dc_decide "$TOKEN_APPROVER" "$DC_APPROVAL" "reject" "the debt is disputed, not uncollectable")
+      assert_http "A04: second OWNER may refuse it" "200" "$code"
+      assert_eq "A04: the request reads REJECTED" "REJECTED" \
+        "$(jq -r '.status // empty' "$RESP_FILE")"
+
+      code=$(dc_cmd "$TOKEN_B" "billing.ar.write_off" "$DC_PAYLOAD" "$DC_KEY_1")
+      assert_http "A04: resubmitting the refused key is refused" "409" "$code"
+      assert_eq "A04: and says why" "COMMAND_APPROVAL_REJECTED" \
+        "$(jq -r '.code // empty' "$RESP_FILE")"
+
+      # ── 6. A second OWNER releases it, and the operation happens ───────────
+      code=$(dc_cmd "$TOKEN_B" "billing.ar.write_off" "$DC_PAYLOAD" "$(gen_uuid)")
+      assert_http "A04: the write-off is raised again" "202" "$code"
+      DC_APPROVAL_2=$(jq -r '.approval_id // empty' "$RESP_FILE")
+
+      code=$(dc_decide "$TOKEN_APPROVER" "$DC_APPROVAL_2" "approve" "reviewed the ledger, write it off")
+      assert_http "A04: second OWNER releases it" "200" "$code"
+      DC_COMMAND_ID=$(jq -r '.command_id // empty' "$RESP_FILE")
+      assert_eq "A04: approving dispatched the stored payload" "true" \
+        "$([[ -n "$DC_COMMAND_ID" ]] && echo true || echo false)"
+      assert_eq "A04: the approval records the command it caused" "$DC_COMMAND_ID" \
+        "$(jq -r '.approval.dispatched_command_id // empty' "$RESP_FILE")"
+
+      wait_kafka 8
+      TOKEN="$TOKEN_B"
+      get "$GW/v1/billing/accounts-receivable/$DC_AR_ID?tenant_id=$TID_B" >/dev/null
+      DC_AR_AFTER=$(resp_field "outstanding_balance")
+      if [[ -n "$DC_AR_BEFORE" && -n "$DC_AR_AFTER" ]] &&
+         (( $(echo "$DC_AR_AFTER < $DC_AR_BEFORE" | bc -l 2>/dev/null || echo 0) )); then
+        pass "A04: the balance moved — the approval caused the write-off"
+      else
+        fail "A04: the balance moved — the approval caused the write-off" \
+          "before=${DC_AR_BEFORE:-?} after=${DC_AR_AFTER:-?}"
+      fi
+    fi
+  fi
+  echo ""
+fi
+
+TOKEN="$TOKEN_A"
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5e — NIGHT AUDIT PRECONDITION BYPASS (flow-guard gates)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# The NIGHT_AUDIT flow declares three gates — open arrivals, open departures,
+# unbalanced folios — and `skip_preconditions: true` bypasses all three. The
+# bypass always wrote a flow_approvals row, so it was never silent. What it
+# lacked was a reason anyone could act on: the row carried the hardcoded
+# literal "SKIP_PRECONDITIONS", a code that did not have to exist in
+# reason_codes, could not be grouped, and carried neither requires_approval nor
+# approval_level. Every other override in the product resolves its code.
+#
+#   A skip with no reason at all           refused at validation
+#   A skip citing a code that is not real  refused, no audit runs
+#   A code from the wrong category         refused — the trail would read as a lie
+#   A skip with a real NIGHT_AUDIT code    accepted
+#   …and it records one row per gate       three rows, the resolved code, forced
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5e: Night Audit Precondition Bypass                          ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# This suite drives everything over HTTP and keeps no psql helper, so the two
+# reads below get a local one. They check `flow_approvals`, which has no API.
+na_sql() {
+  PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+    -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" \
+    -d "${DB_NAME:-tartware}" -tAc "$1" 2>/dev/null | head -1 | tr -d '[:space:]'
+}
+
+NA_PROP=$(na_sql "select id from properties where tenant_id='$TID_A' limit 1")
+
+if [[ -z "$NA_PROP" ]]; then
+  skip "Night audit bypass fixture" "no property for tenant A"
+else
+  na_cmd() {
+    local payload="$1"
+    curl -s -o "$RESP_FILE" -w "%{http_code}" \
+      -X POST "$GW/v1/commands/billing.night_audit.execute/execute" \
+      -H "Authorization: Bearer $TOKEN_A" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: $(gen_uuid)" \
+      -d "{\"tenant_id\":\"$TID_A\",\"payload\":$payload}"
+  }
+
+  # 1. No reason at all — refused by the schema, before anything is skipped.
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true}")
+  assert_http "Skip with no reason code is refused" "4" "$code"
+
+  # 2. A code that does not exist. This one is only caught when the handler
+  #    resolves it, so it is 202-accepted and refused on apply — what proves it
+  #    is that no bypass row appears for it.
+  BEFORE=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit'")
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true,\"skip_reason_code\":\"NOT_A_REAL_CODE\"}")
+  assert_http "Skip citing an unknown code is accepted for async refusal" "20[02]|4" "$code"
+  sleep 6
+  AFTER=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit'")
+  assert_eq "Unknown reason code records no bypass" "$BEFORE" "$AFTER"
+
+  # 3. A real code from the wrong category — a room-move reason on a night
+  #    audit produces an audit trail that reads as a lie.
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true,\"skip_reason_code\":\"RM_MAINT\"}")
+  assert_http "Skip citing the wrong category is accepted for async refusal" "20[02]|4" "$code"
+  sleep 6
+  AFTER=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit'")
+  assert_eq "Wrong-category reason code records no bypass" "$BEFORE" "$AFTER"
+
+  # 4. The real thing.
+  code=$(na_cmd "{\"property_id\":\"$NA_PROP\",\"skip_preconditions\":true,\"skip_reason_code\":\"NA_SYSTEM_RECOVERY\",\"skip_reason_notes\":\"multi-tenant suite $RUN_TAG\",\"advance_date\":false}")
+  assert_http "Skip with a seeded NIGHT_AUDIT code accepted" "20[02]" "$code"
+  sleep 10
+
+  GATES=$(na_sql "select count(distinct gate_name) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit' and reason_code='NA_SYSTEM_RECOVERY'")
+  assert_eq "One bypass row per declared gate" "3" "$GATES"
+
+  RESOLVED=$(na_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit' and reason_code='NA_SYSTEM_RECOVERY' and gate_name in ('open_arrivals_check','open_departures_check','unbalanced_folios_check')")
+  assert_eq "Rows name the gates the registry declares" "3" "$RESOLVED"
+
+  ROLE=$(na_sql "select distinct role_at_approval from flow_approvals where tenant_id='$TID_A' and flow_name='night_audit' and reason_code='NA_SYSTEM_RECOVERY' limit 1")
+  if [[ -n "$ROLE" && "$ROLE" != "GM_OVERRIDE" && "$ROLE" != "SKIP_PRECONDITIONS" ]]; then
+    pass "Bypass records a real role, not a literal (role=$ROLE)"
+  else
+    fail "Bypass records a real role" "role_at_approval=$ROLE"
+  fi
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5f — CREDIT LIMIT OVERRIDE (A05)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# `CREDIT_LIMIT_EXCEEDED` was a hard throw with no way past it. The AR account's
+# available credit is the reachable half of that block — a city-ledger transfer
+# beyond it refuses, and the only way through used to be raising the limit,
+# which rewrites the control rather than recording that it was overridden.
+#
+#   A transfer over the limit, no override      refused, no city ledger entry
+#   An override citing a code that is not real  refused, no bypass row
+#   A code from the wrong category              refused — the trail would lie
+#   A real CREDIT_LIMIT code the role clears    accepted, one credit_limit_check
+#                                               row carrying the resolved code
+#                                               and the operator's real role
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5f: Credit Limit Override                                     ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# `|| true` is not defensive clutter: the suite runs under `set -euo pipefail`,
+# so a query naming a column that does not exist kills the whole run at the
+# phase that asked it — which is exactly what `companies.id` (it is
+# `company_id`) did the first time this phase ran.
+cl_sql() {
+  PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+    -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" \
+    -d "${DB_NAME:-tartware}" -tAc "$1" 2>/dev/null | head -1 | tr -d '[:space:]' || true
+}
+
+CL_PROP=$(cl_sql "select id from properties where tenant_id='$TID_A' limit 1")
+# A folio with something on it — the transfer refuses a zero balance before it
+# ever reaches the credit check, which would prove nothing.
+CL_FOLIO=$(cl_sql "select folio_id from folios where tenant_id='$TID_A' and COALESCE(balance,0) > 1 order by balance desc limit 1")
+CL_COMPANY=$(cl_sql "select company_id from companies where tenant_id='$TID_A' limit 1")
+
+# An AR account hangs off a company, and `companies` is empty on a fresh
+# database — nothing in the setup seeds one, which is why this phase skipped
+# silently on every run before this one and the credit-limit gate went unproven
+# on real data. Create one rather than skip: a corporate account is the exact
+# situation the override exists for.
+if [[ -z "$CL_COMPANY" ]]; then
+  seed_rest "Corporate account for the credit test" "$GW/v1/companies" \
+    "{\"tenant_id\":\"$TID_A\",\"company_name\":\"Tight Credit Ltd $RUN_TAG\",\"company_type\":\"corporate\"}"
+  CL_COMPANY=$(cl_sql "select company_id from companies where tenant_id='$TID_A' order by created_at desc limit 1")
+fi
+
+if [[ -z "$CL_PROP" || -z "$CL_FOLIO" || -z "$CL_COMPANY" ]]; then
+  skip "Credit limit override fixture" "no property/folio-with-balance/company for tenant A"
+else
+  CUR_TID="$TID_A"
+  # An account whose credit is a dollar — every transfer of a real folio
+  # balance exceeds it, which is the situation the override exists for.
+  send_command "CMD ar: account with a one-dollar limit" \
+    "ar.account.create" \
+    "{\"property_id\":\"$CL_PROP\",\"company_id\":\"$CL_COMPANY\",\"company_name\":\"Tight Credit Ltd $RUN_TAG\",\"credit_limit\":1,\"payment_terms\":\"NET30\",\"currency\":\"USD\"}"
+  wait_kafka 6
+
+  CL_ACCT=$(cl_sql "select ar_account_id from ar_accounts where tenant_id='$TID_A' and credit_limit = 1 order by created_at desc limit 1")
+
+  if [[ -z "$CL_ACCT" ]]; then
+    skip "Credit limit override" "AR account with the test limit was not created"
+  else
+    cl_cmd() {
+      local payload="$1"
+      curl -s -o "$RESP_FILE" -w "%{http_code}" \
+        -X POST "$GW/v1/commands/ar.city_ledger.transfer/execute" \
+        -H "Authorization: Bearer $TOKEN_A" \
+        -H "Content-Type: application/json" \
+        -H "Idempotency-Key: $(gen_uuid)" \
+        -d "{\"tenant_id\":\"$TID_A\",\"payload\":$payload}"
+    }
+    cl_base="\"property_id\":\"$CL_PROP\",\"folio_id\":\"$CL_FOLIO\",\"ar_account_id\":\"$CL_ACCT\",\"amount\":500"
+    CL_BEFORE=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check'")
+
+    # 1. No override at all — the refusal the product always had. Async, so what
+    #    proves it is that no entry and no bypass row appear.
+    code=$(cl_cmd "{$cl_base}")
+    assert_http "Transfer over the limit is accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    LEDGERED=$(cl_sql "select count(*) from ar_city_ledger where tenant_id='$TID_A' and ar_account_id='$CL_ACCT'")
+    assert_eq "No override means no city ledger entry" "0" "$LEDGERED"
+
+    # 2. An override with no reason code at all — refused at validation, before
+    #    the command is accepted.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true}")
+    assert_http "Override with no reason code is refused" "4" "$code"
+
+    # 3. A code that does not resolve.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true,\"credit_limit_override_reason_code\":\"NOT_A_REAL_CODE\"}")
+    assert_http "Override citing an unknown code accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    AFTER=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check'")
+    assert_eq "Unknown reason code records no override" "$CL_BEFORE" "$AFTER"
+
+    # 4. A real code from another category — a room-move reason on a credit
+    #    decision produces a trail that reads as a lie.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true,\"credit_limit_override_reason_code\":\"RM_MAINT\"}")
+    assert_http "Override citing the wrong category accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    AFTER=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check'")
+    assert_eq "Wrong-category reason code records no override" "$CL_BEFORE" "$AFTER"
+
+    # 5. The real thing — a CREDIT_LIMIT code this operator's role clears.
+    code=$(cl_cmd "{$cl_base,\"credit_limit_override\":true,\"credit_limit_override_reason_code\":\"CL_COMPANY_GUARANTEED\",\"credit_limit_override_notes\":\"multi-tenant suite $RUN_TAG\"}")
+    assert_http "Override with a seeded CREDIT_LIMIT code accepted" "20[02]" "$code"
+    sleep 8
+
+    ROWS=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check' and reason_code='CL_COMPANY_GUARANTEED'")
+    assert_eq "The authorised override records one row" "1" "$ROWS"
+
+    LEDGERED=$(cl_sql "select count(*) from ar_city_ledger where tenant_id='$TID_A' and ar_account_id='$CL_ACCT'")
+    assert_eq "…and the transfer it authorised actually happened" "1" "$LEDGERED"
+
+    ROLE=$(cl_sql "select role_at_approval from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check' and reason_code='CL_COMPANY_GUARANTEED' limit 1")
+    if [[ -n "$ROLE" && "$ROLE" != "GM_OVERRIDE" && "$ROLE" != "FORCE_OVERRIDE" ]]; then
+      pass "Override records a real role, not a literal (role=$ROLE)"
+    else
+      fail "Override records a real role" "role_at_approval=$ROLE"
+    fi
+
+    NOTES=$(PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+      -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" \
+      -tAc "select reason_notes from flow_approvals where tenant_id='$TID_A' and gate_name='credit_limit_check' and reason_code='CL_COMPANY_GUARANTEED' limit 1" 2>/dev/null | head -1)
+    case "$NOTES" in
+      FORCED:*) pass "Override row is marked forced" ;;
+      *)        fail "Override row is marked forced" "reason_notes=$NOTES" ;;
+    esac
+  fi
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5g — BLACKLIST OVERRIDE (A05, the other half)
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# `GUEST_BLACKLISTED` refused every booking and its own message promised "a GM
+# override with documented reason" that existed nowhere. The override exists
+# now — and shipped with no test of any kind, while the credit-limit half of the
+# same finding got fourteen and Phase 5f. This is that phase.
+#
+# It is worth having on real data for a specific reason: the seeded BLACKLIST
+# codes are reference data, and the last defect in this area was that all
+# seventeen override codes lived under the demo tenant and resolved to nothing
+# for every real property. No unit test can see that; a phase that resolves a
+# code against a live database is the only thing that can.
+#
+#   Blacklisted guest, no override              refused — no reservation, no row
+#   Override with no reason code                refused at validation (4xx)
+#   Override citing a code that is not real     refused — no bypass row
+#   Override citing a ROOM_MOVE code            refused — the trail would lie
+#   A real BLACKLIST code the role clears       booked, one blacklist_check row
+#                                               carrying the code, the operator's
+#                                               real role, and FORCED:
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5g: Blacklist Override                                        ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# `cl_sql` is defined above Phase 5f's guard, so it is in scope even when that
+# phase skipped its fixture.
+TOKEN="$TOKEN_A"
+CUR_TID="$TID_A"
+
+BL_PROP=$(cl_sql "select id from properties where tenant_id='$TID_A' limit 1")
+BL_RT=$(cl_sql "select id from room_types where tenant_id='$TID_A' and property_id='$BL_PROP' limit 1")
+
+# A guest of this phase's own, blacklisted here rather than borrowed from the
+# Phase 6c cohort — that runs later, and a guest shared with the reservation
+# cohort would be a booking this gate is supposed to refuse.
+BL_EMAIL="bl-override-${RUN_TAG}@tartware-test.local"
+post "$GW/v1/guests" \
+  "{\"tenant_id\":\"$TID_A\",\"first_name\":\"Listed\",\"last_name\":\"Override-$RUN_TAG\",\"email\":\"$BL_EMAIL\",\"phone\":\"+1-555-901-$(printf '%04d' $((RANDOM % 10000)))\",\"nationality\":\"US\"}" >/dev/null
+BL_GUEST=$(jq -r '.id // .data.id // .guest_id // empty' "$RESP_FILE" 2>/dev/null)
+if [[ -z "$BL_GUEST" ]]; then
+  get "$GW/v1/guests?tenant_id=$TID_A&email=$BL_EMAIL" >/dev/null
+  BL_GUEST=$(resp_first "id")
+fi
+
+if [[ -z "$BL_PROP" || -z "$BL_RT" || -z "$BL_GUEST" ]]; then
+  skip "Blacklist override fixture" "property=[$BL_PROP] room_type=[$BL_RT] guest=[$BL_GUEST]"
+else
+  send_command "CMD guest: blacklist the override subject" \
+    "guest.set_blacklist" \
+    "{\"guest_id\":\"$BL_GUEST\",\"is_blacklisted\":true,\"reason\":\"Phase 5g — repeated chargebacks\"}"
+  wait_kafka 6
+
+  LISTED=$(cl_sql "select COALESCE(is_blacklisted,false) from guests where id='$BL_GUEST'")
+  if [[ "$LISTED" != "t" && "$LISTED" != "true" ]]; then
+    skip "Blacklist override" "guest $BL_GUEST did not end up blacklisted (is_blacklisted=$LISTED)"
+  else
+    bl_cmd() {
+      local payload="$1"
+      curl -s -o "$RESP_FILE" -w "%{http_code}" \
+        -X POST "$GW/v1/commands/reservation.create/execute" \
+        -H "Authorization: Bearer $TOKEN_A" \
+        -H "Content-Type: application/json" \
+        -H "Idempotency-Key: $(gen_uuid)" \
+        -d "{\"tenant_id\":\"$TID_A\",\"payload\":$payload}"
+    }
+    bl_base="\"property_id\":\"$BL_PROP\",\"guest_id\":\"$BL_GUEST\",\"room_type_id\":\"$BL_RT\",\"check_in_date\":\"$TODAY\",\"check_out_date\":\"$IN3DAYS\",\"total_amount\":410.00,\"currency\":\"USD\",\"source\":\"DIRECT\""
+    bl_rows() { cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check'"; }
+    bl_booked() { cl_sql "select count(*) from reservations where tenant_id='$TID_A' and guest_id='$BL_GUEST'"; }
+
+    BL_BEFORE=$(bl_rows)
+
+    # 1. The refusal the product always had. Accepted at the gateway and refused
+    #    at apply, so what proves it is that no booking and no row appear.
+    code=$(bl_cmd "{$bl_base}")
+    assert_http "Blacklisted guest with no override accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "No override means no reservation" "0" "$(bl_booked)"
+    assert_eq "No override means no bypass row" "$BL_BEFORE" "$(bl_rows)"
+
+    # 2. An override with no reason code — refused at payload validation, before
+    #    the command is ever accepted. This is the schema `.refine`, not the
+    #    handler: an override with no stated reason is the control itself.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true}")
+    assert_http "Override with no reason code is refused outright" "4" "$code"
+
+    # 3. A code that resolves to nothing. This is the assertion that would have
+    #    caught the codes being seeded under the demo tenant — it passes only
+    #    because a real code exists to contrast with in step 5.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true,\"blacklist_override_reason_code\":\"NOT_A_REAL_CODE\"}")
+    assert_http "Override citing an unknown code accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Unknown reason code books nothing" "0" "$(bl_booked)"
+    assert_eq "Unknown reason code records no override" "$BL_BEFORE" "$(bl_rows)"
+
+    # 4. A real code from the wrong category — a booking taken under a room-move
+    #    reason produces a trail that reads as a lie.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true,\"blacklist_override_reason_code\":\"RM_MAINT\"}")
+    assert_http "Override citing the wrong category accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Wrong-category reason code books nothing" "0" "$(bl_booked)"
+    assert_eq "Wrong-category reason code records no override" "$BL_BEFORE" "$(bl_rows)"
+
+    # 5. The real thing. BL_GM_CLEARED is seeded at approval_level GM, which
+    #    `approvalLevelMinRole` maps to OWNER — so this also proves the level is
+    #    read and met, not merely stored.
+    code=$(bl_cmd "{$bl_base,\"blacklist_override\":true,\"blacklist_override_reason_code\":\"BL_GM_CLEARED\",\"blacklist_override_notes\":\"multi-tenant suite $RUN_TAG\"}")
+    assert_http "Override with a seeded BLACKLIST code accepted" "20[02]" "$code"
+    sleep 8
+
+    assert_eq "…and the booking it authorised actually happened" "1" "$(bl_booked)"
+
+    ROWS=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check' and reason_code='BL_GM_CLEARED'")
+    assert_eq "The authorised override records one row" "1" "$ROWS"
+
+    BL_ROLE=$(cl_sql "select role_at_approval from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check' and reason_code='BL_GM_CLEARED' limit 1")
+    if [[ -n "$BL_ROLE" && "$BL_ROLE" != "GM_OVERRIDE" && "$BL_ROLE" != "FORCE_OVERRIDE" ]]; then
+      pass "Blacklist override records a real role, not a literal (role=$BL_ROLE)"
+    else
+      fail "Blacklist override records a real role" "role_at_approval=$BL_ROLE"
+    fi
+
+    BL_NOTES=$(PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+      -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" \
+      -tAc "select reason_notes from flow_approvals where tenant_id='$TID_A' and gate_name='blacklist_check' and reason_code='BL_GM_CLEARED' limit 1" 2>/dev/null | head -1)
+    case "$BL_NOTES" in
+      FORCED:*) pass "Blacklist override row is marked forced" ;;
+      *)        fail "Blacklist override row is marked forced" "reason_notes=$BL_NOTES" ;;
+    esac
+  fi
+fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 6 — MULTI-TENANT API READ VALIDATION

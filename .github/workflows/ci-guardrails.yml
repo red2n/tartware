@@ -64,12 +64,30 @@ jobs:
       - name: Guardrail coverage
         run: pnpm run check:guardrails
 
+      # Shared entry points are only worth having if every service goes through
+      # them. `createKafkaClient()` existed while five services still called
+      # `new Kafka(...)` directly, which is how raw KafkaJS JSON ended up
+      # interleaved with the pino output. Asserts the convention instead of
+      # trusting it. Needs no build either.
+      - name: Shared framework usage
+        run: pnpm run check:frameworks
+
+      # eslint's type-aware rules resolve a workspace import through the target
+      # package's dist, so any library whose types cross a package boundary has
+      # to be built before Lint runs. That used to be true by accident — no
+      # service consumed a workspace type — until service code started holding
+      # the return type of createKafkaClient. Without this, lint reports a wall
+      # of no-unsafe-* errors in files that are perfectly fine.
+      #
+      # UI projects are excluded: nothing lints against their output.
+      - name: Build workspace libraries
+        run: npx nx run-many -t build --exclude=@tartware/pms-ui,@tartware/guest-portal
+
       # Lint, formatting and dead-code checks for every project that has them.
       # These lived only in the per-package workflows, which fire on
       # [main, develop, deployment] or a filtered pull_request — so on a feature
       # branch with no PR they ran on nothing, which is the same gap this
-      # workflow exists to close. Verified to need no build: both pass with
-      # schema/dist absent, so they sit above the schemas step deliberately.
+      # workflow exists to close.
       - name: Lint
         run: pnpm run lint
 
@@ -79,29 +97,28 @@ jobs:
       - name: Knip
         run: pnpm run knip
 
-      # The conformance suites import from @tartware/schemas, so its dist has to
-      # exist before they run. Nothing else here needs a build.
-      - name: Build schemas
-        run: npx nx run @tartware/schemas:build
-
       # Binds every SQL string in Apps/ to the DDL in scripts/tables/. Self-tests
       # before it reports: a scanner that has stopped meaning something exits 2
       # rather than printing a verdict.
       - name: SQL contracts
         run: pnpm run sql:contracts
 
-      # Gateway ↔ downstream routing: a proxied path with no handler, a wildcard
-      # advertising writes nothing implements, a route gated on a module id that
-      # is not in MODULE_IDS. Each of these has shipped at least once.
-      - name: Gateway conformance
-        run: npx nx run @tartware/api-gateway:test
+      # 70 checks that each flow is actually wired end to end — handler
+      # registered, table present, gate implemented. It ran in no gate at all
+      # until 30 Aug, and had been failing on an assertion for a command
+      # (`operations.maintenance.*`) that never existed, which is exactly what
+      # a check nobody runs decays into. Also in `pnpm run check`; kept here
+      # because this workflow enumerates its steps rather than calling `check`.
+      - name: Flow integrity
+        run: pnpm run flow:integrity
 
-      # Command catalog ↔ flow registry ↔ payload validators ↔ consumers: a
-      # command missing any one of those links is accepted and silently dropped.
+      # Gateway ↔ downstream routing, command catalog ↔ flow registry ↔ payload
+      # validators ↔ consumers, and outbox enqueue ↔ dispatcher: each of those
+      # links has been broken at least once, and each break is silent — a
+      # command accepted and dropped, a 200 with nothing behind it.
       #
-      # Also outbox enqueue ↔ dispatcher, added after two live instances of the
-      # same shape: an event committed inside a successful transaction whose
-      # aggregate_type no dispatcher claims. The write succeeds, the API returns
-      # 200, and the consumer never hears anything.
-      - name: Command catalog conformance
-        run: npx nx run @tartware/command-consumer-utils:test
+      # This used to run two cherry-picked suites. Every project now has a test
+      # target (asserted by the guardrail coverage step above), so run the lot:
+      # the unit suites are fast and need no database.
+      - name: Tests
+        run: pnpm run test

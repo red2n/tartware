@@ -64,13 +64,6 @@ const outboxPublishDuration = new Histogram({
   registers: [metricsRegistry],
 });
 
-const outboxThrottleWait = new Histogram({
-  name: "reservation_outbox_throttle_wait_seconds",
-  help: "Time spent waiting on tenant throttle + jitter before publishing to Kafka",
-  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1],
-  registers: [metricsRegistry],
-});
-
 const availabilityGuardRequestCounter = new Counter({
   name: "availability_guard_requests_total",
   help: "Total Availability Guard client calls",
@@ -148,14 +141,12 @@ export const setOutboxQueueSize = (size: number): void => {
 };
 
 /**
- * Observes how long it took to publish an outbox record to Kafka.
+ * Observes how long it took to publish a claimed outbox batch to Kafka.
+ * Batch-scoped since the dispatcher publishes with `sendBatch`, so per-record
+ * timing no longer exists to measure.
  */
 export const observeOutboxPublishDuration = (durationSeconds: number): void => {
   outboxPublishDuration.observe(durationSeconds);
-};
-
-export const observeOutboxThrottleWait = (durationSeconds: number): void => {
-  outboxThrottleWait.observe(durationSeconds);
 };
 
 /**

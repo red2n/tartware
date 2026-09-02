@@ -433,30 +433,23 @@ const sendWebhookRequest = async (
   payload: Record<string, unknown>,
   logger: FastifyBaseLogger,
 ): Promise<void> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), channelConfig.timeoutMs);
+  const response = await breakerForWebhook(channelConfig.webhookUrl, logger).exec(() =>
+    fetch(channelConfig.webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(channelConfig.apiKey ? { Authorization: `Bearer ${channelConfig.apiKey}` } : {}),
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(channelConfig.timeoutMs),
+    }),
+  );
 
-  try {
-    const response = await breakerForWebhook(channelConfig.webhookUrl, logger).exec(() =>
-      fetch(channelConfig.webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(channelConfig.apiKey ? { Authorization: `Bearer ${channelConfig.apiKey}` } : {}),
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      }),
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Notification webhook responded with ${response.status} ${response.statusText} ${body}`,
     );
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      throw new Error(
-        `Notification webhook responded with ${response.status} ${response.statusText} ${body}`,
-      );
-    }
-  } finally {
-    clearTimeout(timeout);
   }
 };
 

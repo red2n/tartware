@@ -194,6 +194,50 @@ export const createOutboxRepository = ({
 		);
 	};
 
+	/**
+	 * Mark a whole published batch delivered in one statement.
+	 *
+	 * A dispatcher draining thousands of rows a second cannot afford one UPDATE
+	 * per record: with an RLS tenant scope active each of those carries its own
+	 * connect / BEGIN / `set_config` / COMMIT, so the bookkeeping costs more
+	 * round trips than the publish it is recording.
+	 */
+	const markOutboxDeliveredBatch = async (
+		ids: Array<string | bigint>,
+	): Promise<number> => {
+		if (ids.length === 0) {
+			return 0;
+		}
+		// A BIGINT type parser is registered globally, so `id` arrives as a JS
+		// BigInt. node-pg cannot serialise BigInt into an array parameter — send
+		// the decimal text and let Postgres do the cast.
+		const idText = ids.map((id) => String(id));
+		const result = await query(
+			`
+        UPDATE transactional_outbox
+        SET
+          status = 'DELIVERED',
+          delivered_at = NOW(),
+          locked_at = NULL,
+          locked_by = NULL,
+          last_error = NULL,
+          updated_at = NOW(),
+          metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+            'lifecycleState',
+            'PUBLISHED',
+            'publishedAt',
+            NOW()
+          )
+        -- id is the BIGINT surrogate key, not the UUID event_id. Casting
+        -- this to uuid[] fails with "operator does not exist: bigint = uuid"
+        -- and leaves the whole claimed batch stuck IN_PROGRESS.
+        WHERE id = ANY($1::bigint[])
+      `,
+			[idText],
+		);
+		return result.rowCount ?? 0;
+	};
+
 	const markOutboxDeliveredByEventId = async (
 		eventId: string,
 	): Promise<void> => {
@@ -328,6 +372,7 @@ export const createOutboxRepository = ({
 		releaseExpiredLocks,
 		claimOutboxBatch,
 		markOutboxDelivered,
+		markOutboxDeliveredBatch,
 		markOutboxDeliveredByEventId,
 		markOutboxFailed,
 		markOutboxFailedByEventId,

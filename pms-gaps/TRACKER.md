@@ -8,27 +8,27 @@
 
 | ✓ | ID | Capability | Status | WS | Effort | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | PMS-01-01 | Availability search | PARTIAL | WS-01 | M | |
-| [ ] | PMS-01-02 | Multi-room reservation | MISSING | WS-01 | XL | |
-| [ ] | PMS-01-03 | Multi-segment / split-rate stay | MISSING | WS-01 | XL | |
-| [ ] | PMS-01-04 | Extend and shorten stay | PARTIAL | WS-01 | M | |
+| [ ] | PMS-01-01 | Availability search | PARTIAL | WS-01 | M | occupancy half done — all 5 rooms-service availability reads now exclude on `reservation_rooms`/`reservation_nights` via one shared fragment (was string-matching `reservations.room_number`, which let rooms 2..n of a booking be sold twice). Rate/LOS/restriction awareness is WS-02/WS-03. |
+| [x] | PMS-01-02 | Multi-room reservation | MISSING | WS-01 | XL | `reservation_rooms` + `rooms[]` on the command, one guard lock per room. Verified through the gateway: 3 rooms booked, read back on the detail API, night audit posted one ROOM charge per room. |
+| [x] | PMS-01-03 | Multi-segment / split-rate stay | MISSING | WS-01 | XL | `reservation_nights`. Verified: room 1 booked 200/250/180 and night audit posted the 220 for *that* night on a second stay. Billing fees, night audit, revenue/pace/segment/displacement and the core KPI report all moved off `room_rate`. |
+| [x] | PMS-01-04 | Extend and shorten stay | PARTIAL | WS-01 | M | `resyncStayWindow`. Verified through the gateway: extend 3→4 nights per room (total 1500→1650), shorten to 2 nights (→990), surviving nights kept their booked price. Early-departure *penalty* is WS-04. |
 | [ ] | PMS-01-05 | Guarantee and payment instructions | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-06 | Cancellation policy engine | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-07 | Deposit request and schedule | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-08 | Preferences | PARTIAL | WS-05 | M | |
 | [ ] | PMS-01-09 | Confirmation letters | PARTIAL | WS-05 | M | |
-| [ ] | PMS-02-01 | Check-in reversal | MISSING | WS-04 | M | |
-| [ ] | PMS-02-02 | Room move for in-house guest | PARTIAL | WS-04 | M | |
+| [x] | PMS-02-01 | Check-in reversal | MISSING | WS-04 | M | `reservation.reverse_check_in`. Returns to CONFIRMED, clears `actual_check_in` and the room assignment, voids only what check-in posted. Verified through the gateway: folio 111.40 → 86.40 with the EARLY_CHECKIN 25.00 voided and the guest's FNB 86.40 left intact; room → DIRTY; `actual_check_in` NULL (not the epoch — `ReservationsSchema` now makes it nullable so a reversal can transmit "clear this"). |
+| [x] | PMS-02-02 | Room move for in-house guest | PARTIAL | WS-04 | M | `reservation.room_move` (66413d55). Guarded by reason code, category, `requires_approval`, room sellability and a fresh availability hold — the most complete override implementation in the repo, and the model the authorization audit's findings point at. |
 | [ ] | PMS-02-03 | Credit card pre-authorization | PARTIAL | WS-07 | M | |
-| [ ] | PMS-03-01 | Physical vs sellable inventory | PARTIAL | WS-02 | M | |
-| [ ] | PMS-03-02 | Restrictions engine | PARTIAL | WS-02 | L | |
+| [x] | PMS-03-01 | Physical vs sellable inventory | PARTIAL | WS-02 | M | `rooms_to_sell − rooms_sold` is the ceiling the booking path checks. Verified: with rooms_to_sell=1 and one room sold, a second booking was refused RESTRICTION_SELL_LIMIT although physical rooms were free. |
+| [x] | PMS-03-02 | Restrictions engine | PARTIAL | WS-02 | L | `evaluateRestrictions()` in `schema/src/api/restrictions.ts` (pure, 24 tests) called by createReservation and modifyReservation before the lock, and by the availability search. Verified through the gateway: a 2-night stay on a 3-night minimum is refused RESTRICTION_MIN_LOS, non-retryable, no row and no lock; 3 nights books. |
 | [ ] | PMS-05-01 | Day-of-week pricing | PARTIAL | WS-03 | M | |
 | [ ] | PMS-05-02 | Rate change log | PARTIAL | WS-03 | M | |
 | [ ] | PMS-07-01 | Profile types | PARTIAL | WS-13 | XL | |
 | [ ] | PMS-07-02 | Stay history | PARTIAL | WS-13 | M | |
 | [ ] | PMS-07-03 | Profile search and duplicate detection | PARTIAL | WS-13 | M | |
 | [ ] | PMS-09-01 | Cut-off date and auto-release | PARTIAL | WS-15 | M | |
-| [ ] | PMS-11-01 | Folio generation and printing | PARTIAL | WS-06 | L | |
+| [x] | PMS-11-01 | Folio generation and printing | PARTIAL | WS-06 | L | `document-service` (:3080) renders a typed payload + template id to PDF or HTML; `GET /v1/billing/folios/:id/document` assembles the payload. Verified through the gateway: closed folio F-A1ED69C5 rendered to a valid 1-page PDF and to HTML. |
 | [ ] | PMS-13-01 | Audit report pack | PARTIAL | WS-06 | M | |
 | [ ] | PMS-14-01 | Channel manager connectivity | PARTIAL | WS-09 | XL | |
 | [ ] | PMS-14-02 | Reservation delivery with retry | PARTIAL | WS-09 | M | |
@@ -53,23 +53,23 @@
 | ✓ | ID | Capability | Status | WS | Effort | Notes |
 |---|---|---|---|---|---|---|
 | [ ] | PMS-01-10 | Rate shopping / look-to-book screen | MISSING | WS-05 | M | |
-| [ ] | PMS-01-11 | Share reservations | MISSING | WS-01 | M | |
+| [ ] | PMS-01-11 | Share reservations | MISSING | WS-01 | M | not started — needs a share link across reservation_rooms |
 | [ ] | PMS-01-12 | Linked / connected reservations | MISSING | WS-05 | M | |
-| [ ] | PMS-01-13 | Accompanying guests | MISSING | WS-01 | M | |
+| [ ] | PMS-01-13 | Accompanying guests | MISSING | WS-01 | M | `reservation_occupants` written at booking and returned on the detail API (verified); no route to add/edit occupants after booking |
 | [ ] | PMS-01-14 | Reservation alerts | MISSING | WS-05 | M | |
 | [ ] | PMS-01-15 | Fixed charges | MISSING | WS-05 | M | |
 | [ ] | PMS-01-16 | Packages on the reservation | PARTIAL | WS-05 | S | |
 | [ ] | PMS-01-17 | Item / inventory rentals | MISSING | WS-05 | M | |
 | [ ] | PMS-01-18 | Upsell and upgrade offers | PARTIAL | WS-05 | S | |
 | [ ] | PMS-01-19 | Copy and duplicate reservation | MISSING | WS-04 | M | |
-| [ ] | PMS-01-20 | Reinstate cancelled reservation | MISSING | WS-04 | M | |
-| [ ] | PMS-01-21 | Mass update | MISSING | WS-04 | M | |
-| [ ] | PMS-01-22 | Mass cancellation | MISSING | WS-04 | M | |
+| [x] | PMS-01-20 | Reinstate cancelled reservation | MISSING | WS-04 | M | `reservation.reinstate`. **Re-acquires the availability hold before touching status**, so a reinstatement that cannot get its nights back leaves the booking cancelled rather than creating an overbooking. A guard `ERROR` refuses too — it means "could not answer", not "yes". Verified: CANCELLED → CONFIRMED with cancellation date/reason/fee cleared. |
+| [x] | PMS-01-21 | Mass update | MISSING | WS-04 | M | `reservation.mass_update` on the shared batch envelope (`buildBatchCommandSchema` + `runBatchCommand`). Verified through the gateway: 3 of 5 reservations updated with one `changes` block, the other 2 untouched; batch COMPLETED 3/3. A dry run over the same targets plus one bogus id changed nothing and returned 2 SKIPPED + 1 FAILED `RESERVATION_NOT_FOUND`. |
+| [x] | PMS-01-22 | Mass cancellation | MISSING | WS-04 | M | `reservation.mass_cancel`. Each item is `cancelReservation` verbatim, so the cancellation-fee policy is the one a single cancel uses. Verified through the gateway: a batch of 3 containing a CHECKED_IN guest came back PARTIAL 2/1 — the checked-in booking refused `INVALID_STATUS_FOR_CANCEL` and was left alone while the other two cancelled, one with the envelope reason and one with its own override. Replaying the same `batch_id` re-cancelled nothing. |
 | [ ] | PMS-01-23 | Early departure with penalty | MISSING | WS-04 | M | |
 | [ ] | PMS-01-24 | Do-not-move flag | MISSING | WS-04 | M | |
-| [ ] | PMS-01-25 | Turnaway / denial capture | PARTIAL | WS-04 | S | |
+| [ ] | PMS-01-25 | Turnaway / denial capture | PARTIAL | WS-04 | S | not started |
 | [ ] | PMS-02-04 | Advance check-in | MISSING | WS-04 | M | |
-| [ ] | PMS-02-05 | Mass check-in | MISSING | WS-04 | M | |
+| [x] | PMS-02-05 | Mass check-in | MISSING | WS-04 | M | `reservation.mass_check_in`. Distinct from `group.check_in`: targets need not share a group booking. Verified through the gateway: 2 reservations CONFIRMED → CHECKED_IN in one batch with the named rooms (201, 202) and `actual_check_in` stamped; batch COMPLETED 2/2. |
 | [ ] | PMS-02-06 | ID and passport scanning | MISSING | WS-10 | M | |
 | [ ] | PMS-02-07 | eSignature registration card | PARTIAL | WS-06 | S | |
 | [ ] | PMS-02-08 | Batch registration card printing | MISSING | WS-06 | M | |
@@ -78,18 +78,18 @@
 | [ ] | PMS-02-11 | Rooms on hold | PARTIAL | WS-04 | S | |
 | [ ] | PMS-02-12 | Room swap / shift | MISSING | WS-04 | M | |
 | [ ] | PMS-02-13 | Early check-out | PARTIAL | WS-04 | S | |
-| [ ] | PMS-02-14 | Reinstate checked-out reservation | MISSING | WS-04 | M | |
+| [x] | PMS-02-14 | Reinstate checked-out reservation | MISSING | WS-04 | M | `reservation.reverse_check_out`. Returns to CHECKED_IN, clears `actual_check_out`, reopens the folio so charges can post again. Verified: folio SETTLED → OPEN with `settled_at` cleared, room → OCCUPIED. Refuses when a forced check-out moved the balance to the city ledger — that AR row has its own lifecycle and reversing it from here would leave AR and the folio disagreeing. |
 | [ ] | PMS-02-15 | Guest messages | MISSING | WS-11 | M | |
 | [ ] | PMS-02-16 | Service requests and complaint log | PARTIAL | WS-11 | S | |
 | [ ] | PMS-02-17 | Currency exchange at the desk | PARTIAL | WS-17 | S | |
 | [ ] | PMS-02-18 | Do-not-disturb and privacy flags | PARTIAL | WS-04 | S | |
-| [ ] | PMS-03-03 | Building, wing, floor, section structure | PARTIAL | WS-02 | S | |
-| [ ] | PMS-03-04 | Restriction scoping | MISSING | WS-02 | M | |
-| [ ] | PMS-03-05 | Sell limits | MISSING | WS-02 | M | |
+| [ ] | PMS-03-03 | Building, wing, floor, section structure | PARTIAL | WS-02 | S | not started — unrelated to the evaluator; wing/section columns only |
+| [x] | PMS-03-04 | Restriction scoping | MISSING | WS-02 | M | `rate_restrictions.scope` + `channel_code`; PROPERTY < ROOM_TYPE < RATE < CHANNEL, most specific rule per date and type wins. Backfilled from the targeting columns. |
+| [x] | PMS-03-05 | Sell limits | MISSING | WS-02 | M | `SELL_LIMIT` restriction type, evaluated by the same function and able to override the rate calendar ceiling at any scope. |
 | [ ] | PMS-03-06 | Room condition codes | PARTIAL | WS-12 | S | |
-| [ ] | PMS-03-07 | Room discrepancy detection | PARTIAL | WS-02 | S | |
+| [ ] | PMS-03-07 | Room discrepancy detection | PARTIAL | WS-02 | S | not started — needs its own nightly job |
 | [ ] | PMS-03-08 | Item inventory availability | MISSING | WS-05 | M | |
-| [ ] | PMS-03-09 | Availability rebuild job | MISSING | WS-02 | M | |
+| [x] | PMS-03-09 | Availability rebuild job | MISSING | WS-02 | M | `Apps/rooms-service/src/jobs/availability-rebuild.ts` recomputes `rate_calendar.rooms_sold` from `reservation_nights` — nothing had ever written that column, so the ceiling could never bind. Runs 15s after start and every 10 min; verified repairing 3 rows. |
 | [ ] | PMS-04-01 | Task sheets | MISSING | WS-12 | M | |
 | [ ] | PMS-04-02 | Attendant console | PARTIAL | WS-12 | S | |
 | [ ] | PMS-04-03 | Mobile attendant app | MISSING | WS-12 | M | |
@@ -126,8 +126,8 @@
 | [ ] | PMS-09-07 | Booking code / access exclusion | PARTIAL | WS-15 | S | |
 | [ ] | PMS-09-08 | Block notes, traces, and attachments | PARTIAL | WS-15 | S | |
 | [ ] | PMS-09-09 | Block change log and production changes | PARTIAL | WS-15 | S | |
-| [ ] | PMS-11-02 | Folio styles | MISSING | WS-06 | M | |
-| [ ] | PMS-11-03 | Multi-language and multi-currency folios | PARTIAL | WS-06 | S | |
+| [ ] | PMS-11-02 | Folio styles | MISSING | WS-06 | M | mechanism done, not the feature — templates are data (`DocumentTemplateSchema`), the route takes a `template` param, and a new style is a new object rather than new code. Only `FOLIO_STANDARD` ships, and nothing lets a property pick one. |
+| [x] | PMS-11-03 | Multi-language and multi-currency folios | PARTIAL | WS-06 | S | Locale tables in `document-service/src/locales/`; labels, dates and money formatting all switch together. Verified: same folio in `en` ($330.00, "Aug 27, 2026") and `fr` (330,00 $US, "27 août 2026"). Currency exponent comes from `getCurrencyExponent`, so JPY prints 0 decimals and KWD 3. |
 | [ ] | PMS-11-04 | POS interface postings | PARTIAL | WS-10 | S | |
 | [ ] | PMS-11-05 | Rebates, allowances, and service recovery | PARTIAL | WS-17 | S | |
 | [ ] | PMS-11-06 | Folio history and archive | PARTIAL | WS-17 | S | |
@@ -145,7 +145,7 @@
 | [ ] | PMS-13-03 | Automatic scheduled EOD | PARTIAL | WS-19 | S | |
 | [ ] | PMS-13-04 | Report distribution | MISSING | WS-19 | M | |
 | [ ] | PMS-14-04 | OTA connectivity | PARTIAL | WS-09 | S | |
-| [ ] | PMS-14-05 | Channel-specific restrictions and sell limits | MISSING | WS-02 | M | |
+| [ ] | PMS-14-05 | Channel-specific restrictions and sell limits | MISSING | WS-02 | M | schema + evaluator support CHANNEL scope and the create path passes the booking source; needs a channel-delivery test and a write route |
 | [ ] | PMS-14-06 | Duplicate detection | MISSING | WS-09 | M | |
 | [ ] | PMS-14-07 | OTA virtual credit card handling | MISSING | WS-09 | M | |
 | [ ] | PMS-14-08 | Channel production reporting | PARTIAL | WS-09 | S | |
@@ -164,7 +164,7 @@
 | [ ] | PMS-15-14 | e-Invoicing submission | MISSING | WS-08 | L | |
 | [ ] | PMS-15-15 | Fiscal audit file export | MISSING | WS-08 | L | |
 | [ ] | PMS-15-16 | Failed fiscal payload replay | MISSING | WS-08 | L | |
-| [ ] | PMS-15-17 | Tax registration IDs on documents | PARTIAL | WS-06 | M | |
+| [x] | PMS-15-17 | Tax registration IDs on documents | PARTIAL | WS-06 | M | The letterhead prints `properties.tax_id` plus every `tax_configurations.tax_registration_number`. **The create/update commands had no field for the number at all** — the column existed and nothing could write it; both now carry `tax_registration_number`. Verified end-to-end: created VAT/GB123456789 and a city levy EDI-99881 through the Command Center, both appear on the rendered folio. |
 | [ ] | PMS-16-03 | Statistics by month and year | PARTIAL | WS-20 | S | |
 | [ ] | PMS-16-04 | Scheduled report distribution | MISSING | WS-20 | M | |
 | [ ] | PMS-16-05 | Custom report builder | MISSING | WS-20 | M | |
@@ -184,7 +184,7 @@
 | [ ] | PMS-18-05 | Pre-arrival upsell | PARTIAL | WS-05 | S | |
 | [ ] | PMS-18-06 | Multi-language guest communications | PARTIAL | WS-11 | S | |
 | [ ] | PMS-18-07 | Accessibility to WCAG 2.2 AA | PARTIAL | WS-24 | S | |
-| [ ] | PMS-19-02 | Screen and field-level permissions | PARTIAL | WS-22 | S | |
+| [ ] | PMS-19-02 | Screen and field-level permissions | PARTIAL | WS-22 | S | unchanged — this item is `field_configurations` enforcement. Adjacent and now done: **command**-level authority (audit A02, 29 Aug) — every command declares a role floor in `COMMAND_MIN_ROLE`, and `user_tenant_associations.permissions` grants or denies one command per membership via `POST /v1/user-tenant-associations/command-permissions`. |
 | [ ] | PMS-19-03 | Data-level restrictions | PARTIAL | WS-22 | S | |
 | [ ] | PMS-19-04 | Single sign-on | PARTIAL | WS-22 | S | |
 | [ ] | PMS-19-05 | Template and stationery editor | PARTIAL | WS-22 | S | |

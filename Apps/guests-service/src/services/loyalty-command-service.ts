@@ -4,9 +4,15 @@
  * Maintains the loyalty_point_transactions ledger and updates program balance
  */
 
+import { CommandError, resolveActorId } from "@tartware/command-consumer-utils/command-utils";
 import type { CommandContext } from "@tartware/schemas";
-import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
+import {
+  accruePoints,
+  enrolMember,
+  expirePointsBatch,
+  redeemPoints,
+} from "../repositories/loyalty-repository.js";
 import {
   LoyaltyPointsEarnCommandSchema,
   LoyaltyPointsExpireSweepCommandSchema,
@@ -15,11 +21,6 @@ import {
 } from "../schemas/loyalty-commands.js";
 
 const loyaltyLogger = appLogger.child({ module: "loyalty-command-service" });
-
-const APP_ACTOR = "COMMAND_CENTER";
-
-const resolveActorId = (initiatedBy?: { userId?: string } | null): string =>
-  initiatedBy?.userId ?? APP_ACTOR;
 
 /**
  * Earn points: inserts a ledger row, increments program balance, returns new balance.
@@ -34,54 +35,10 @@ export const earnLoyaltyPoints = async ({
   const actor = resolveActorId(initiatedBy);
 
   // Atomically update balance and insert ledger row
-  const { rows, rowCount } = await query<{
-    transaction_id: string;
-    balance_after: number;
-  }>(
-    `
-      WITH updated AS (
-        UPDATE guest_loyalty_programs
-        SET
-          points_balance = COALESCE(points_balance, 0) + $3,
-          points_earned_lifetime = COALESCE(points_earned_lifetime, 0) + $3,
-          last_points_earned_date = CURRENT_DATE,
-          last_activity_date = CURRENT_DATE,
-          updated_at = NOW(),
-          updated_by = $7
-        WHERE tenant_id = $1::uuid
-          AND program_id = $2::uuid
-          AND COALESCE(is_deleted, false) = false
-        RETURNING points_balance
-      )
-      INSERT INTO loyalty_point_transactions (
-        tenant_id, program_id, guest_id,
-        transaction_type, points, balance_after,
-        reference_type, reference_id, description,
-        expires_at, performed_by
-      )
-      SELECT
-        $1::uuid, $2::uuid, glp.guest_id,
-        'earn', $3, u.points_balance,
-        $4, $5::uuid, $6,
-        $8::timestamptz, $7
-      FROM updated u
-      JOIN guest_loyalty_programs glp ON glp.program_id = $2::uuid
-      RETURNING transaction_id, balance_after
-    `,
-    [
-      tenantId,
-      command.program_id,
-      command.points,
-      command.reference_type ?? null,
-      command.reference_id ?? null,
-      command.description ?? null,
-      actor,
-      command.expires_at?.toISOString() ?? null,
-    ],
-  );
+  const { rows, rowCount } = await accruePoints(tenantId, command, actor);
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("LOYALTY_PROGRAM_NOT_FOUND");
+    throw new CommandError("LOYALTY_PROGRAM_NOT_FOUND", "Loyalty program not found");
   }
 
   loyaltyLogger.info(
@@ -113,54 +70,13 @@ export const redeemLoyaltyPoints = async ({
   const actor = resolveActorId(initiatedBy);
 
   // Check and deduct atomically
-  const { rows, rowCount } = await query<{
-    transaction_id: string;
-    balance_after: number;
-  }>(
-    `
-      WITH updated AS (
-        UPDATE guest_loyalty_programs
-        SET
-          points_balance = COALESCE(points_balance, 0) - $3,
-          points_redeemed_lifetime = COALESCE(points_redeemed_lifetime, 0) + $3,
-          last_points_redeemed_date = CURRENT_DATE,
-          last_activity_date = CURRENT_DATE,
-          updated_at = NOW(),
-          updated_by = $7
-        WHERE tenant_id = $1::uuid
-          AND program_id = $2::uuid
-          AND COALESCE(points_balance, 0) >= $3
-          AND COALESCE(is_deleted, false) = false
-        RETURNING points_balance
-      )
-      INSERT INTO loyalty_point_transactions (
-        tenant_id, program_id, guest_id,
-        transaction_type, points, balance_after,
-        reference_type, reference_id, description,
-        performed_by
-      )
-      SELECT
-        $1::uuid, $2::uuid, glp.guest_id,
-        'redeem', -$3, u.points_balance,
-        $4, $5::uuid, $6,
-        $7
-      FROM updated u
-      JOIN guest_loyalty_programs glp ON glp.program_id = $2::uuid
-      RETURNING transaction_id, balance_after
-    `,
-    [
-      tenantId,
-      command.program_id,
-      command.points,
-      command.reference_type ?? null,
-      command.reference_id ?? null,
-      command.description ?? null,
-      actor,
-    ],
-  );
+  const { rows, rowCount } = await redeemPoints(tenantId, command, actor);
 
   if (!rowCount || rowCount === 0) {
-    throw new Error("INSUFFICIENT_POINTS_OR_PROGRAM_NOT_FOUND");
+    throw new CommandError(
+      "INSUFFICIENT_POINTS_OR_PROGRAM_NOT_FOUND",
+      "Loyalty program not found, or the member has too few points",
+    );
   }
 
   loyaltyLogger.info(
@@ -192,57 +108,7 @@ export const expireLoyaltyPoints = async ({
   const batchSize = command.batch_size ?? 500;
 
   // Atomically: mark expired, insert ledger rows, decrement balances
-  const { rowCount } = await query<{ program_id: string; expired_points: number }>(
-    `
-      WITH expired AS (
-        SELECT transaction_id, tenant_id, program_id, guest_id, points
-        FROM loyalty_point_transactions
-        WHERE tenant_id = $1::uuid
-          AND expired = FALSE
-          AND expires_at IS NOT NULL
-          AND expires_at <= NOW()
-          AND transaction_type IN ('earn', 'bonus', 'adjust', 'transfer_in')
-          AND points > 0
-        ORDER BY expires_at ASC
-        LIMIT $2
-        FOR UPDATE SKIP LOCKED
-      ),
-      mark_expired AS (
-        UPDATE loyalty_point_transactions lpt
-        SET expired = TRUE
-        FROM expired e
-        WHERE lpt.transaction_id = e.transaction_id
-      ),
-      balance_updates AS (
-        UPDATE guest_loyalty_programs glp
-        SET
-          points_balance = GREATEST(COALESCE(glp.points_balance, 0) - agg.total_points, 0),
-          updated_at = NOW()
-        FROM (
-          SELECT program_id, SUM(points) AS total_points
-          FROM expired
-          GROUP BY program_id
-        ) agg
-        WHERE glp.program_id = agg.program_id
-          AND glp.tenant_id = $1::uuid
-        RETURNING glp.program_id, glp.points_balance, agg.total_points
-      )
-      INSERT INTO loyalty_point_transactions (
-        tenant_id, program_id, guest_id,
-        transaction_type, points, balance_after,
-        reference_type, description, performed_by
-      )
-      SELECT
-        e.tenant_id, e.program_id, e.guest_id,
-        'expire', -e.points,
-        COALESCE(bu.points_balance, 0),
-        'sweep', 'Automatic points expiration',
-        'SYSTEM'
-      FROM expired e
-      LEFT JOIN balance_updates bu ON bu.program_id = e.program_id
-    `,
-    [tenantId, batchSize],
-  );
+  const { rowCount } = await expirePointsBatch(tenantId, batchSize);
 
   loyaltyLogger.info(
     {
@@ -272,37 +138,7 @@ export const enrollLoyaltyProgram = async ({
   const command = LoyaltyProgramEnrollCommandSchema.parse(payload);
   const actor = resolveActorId(initiatedBy);
 
-  const { rows } = await query<{ program_id: string }>(
-    `
-      INSERT INTO guest_loyalty_programs (
-        program_id, tenant_id, property_id, guest_id,
-        program_name, program_tier, membership_number,
-        membership_status, points_balance,
-        enrollment_date, enrollment_channel, enrollment_property_id,
-        is_active, last_activity_date, created_by, updated_by
-      ) VALUES (
-        COALESCE($10::uuid, uuid_generate_v4()), $1::uuid, $2::uuid, $3::uuid,
-        $4, $5, COALESCE($6, 'MB-' || SUBSTRING(REPLACE($3::text, '-', '') FROM 1 FOR 10)),
-        'active', COALESCE($7, 0),
-        CURRENT_DATE, $8, $2::uuid,
-        true, CURRENT_DATE, $9, $9
-      )
-      ON CONFLICT (program_id) DO NOTHING
-      RETURNING program_id
-    `,
-    [
-      tenantId,
-      command.property_id ?? null,
-      command.guest_id,
-      command.program_name,
-      command.program_tier ?? null,
-      command.membership_number ?? null,
-      command.points_balance ?? null,
-      command.enrollment_channel ?? "property",
-      actor,
-      command.program_id ?? null,
-    ],
-  );
+  const { rows } = await enrolMember(tenantId, command, actor);
 
   loyaltyLogger.info(
     {

@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_schema_migrations_category ON schema_migrations(c
 
 -- Metadata comment
 COMMENT ON TABLE schema_migrations IS 'Tracks all applied database migrations for version control and audit';
-COMMENT ON COLUMN schema_migrations.version IS 'Migration version (format: YYYY-MM-DD-NNN or semantic version)';
+COMMENT ON COLUMN schema_migrations.version IS 'Migration version (format: NNN sequence; date prefixes are forbidden by AGENTS.md)';
 COMMENT ON COLUMN schema_migrations.checksum IS 'SHA-256 hash of migration file for integrity verification';
 COMMENT ON COLUMN schema_migrations.rollback_sql IS 'SQL to reverse this migration (for planned rollbacks)';
 

@@ -1,14 +1,42 @@
 import { randomUUID } from "node:crypto";
-import type { NightAuditCheckpointStatus } from "@tartware/schemas";
-import { roundToCurrency } from "@tartware/schemas";
+
+import {
+  assertForcedOverrideAuthority,
+  resolveReasonCode,
+} from "@tartware/command-consumer-utils/command-utils";
+import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
+import type { NightAuditCheckpointStatus, ReasonCodeRow } from "@tartware/schemas";
+import { FlowId, flowControlNames, roundToCurrency } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { getPropertyBaseCurrency } from "../../lib/fx-rate-lookup.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingNightAuditCommandSchema } from "../../schemas/billing-commands.js";
-import { asUuid, type CommandContext, resolveActorId, SYSTEM_ACTOR_ID } from "./common.js";
+
+import {
+  asUuid,
+  type CommandContext,
+  resolveActorId,
+  resolveActorRole,
+  SYSTEM_ACTOR_ID,
+} from "./common.js";
 import { buildGlBatchForDate } from "./ledger.js";
+
+/**
+ * The preconditions `skip_preconditions` bypasses, read from the flow registry.
+ *
+ * Not a literal array. These three names already existed in the registry, in
+ * billing's flow manifest and in the checks below; a fourth copy beside the
+ * bypass is where a control quietly stops matching what is declared — and this
+ * one is the copy that decides what the audit trail records, so a drift here
+ * means logging a bypass of a gate that no longer exists, or missing one that
+ * does.
+ */
+const NIGHT_AUDIT_PRECONDITION_GATES = flowControlNames(FlowId.NIGHT_AUDIT, {
+  guardsCommand: "billing.night_audit.execute",
+  kind: "gate",
+});
 
 /**
  * Execute the nightly audit process (industry-standard 8-step sequence):
@@ -140,16 +168,49 @@ export const executeNightAudit = async (
       throw new Error(`NIGHT_AUDIT_PRECONDITIONS_FAILED: ${preconditionFailures.join("; ")}`);
     }
   } else {
-    // Gate bypass: record approval in flow_approvals audit log
-    // skip_preconditions=true is a GM override — must be logged.
+    // Gate bypass: recorded in flow_approvals with the role the operator
+    // actually held (it used to be the literal "GM_OVERRIDE", an authority the
+    // product does not define).
+    //
+    // Resolved first, and an unknown or wrong-category code refuses the audit
+    // before anything is skipped. The row was always written; what it carried
+    // was the hardcoded literal "SKIP_PRECONDITIONS", so the code needed no
+    // row and its requires_approval / approval_level were unreadable. The
+    // schema makes skip_reason_code mandatory alongside skip_preconditions, so
+    // `?? ""` only satisfies the optional type.
+    const skipReason: ReasonCodeRow = await resolveReasonCode<ReasonCodeRow>(
+      (sql, params) => query<ReasonCodeRow>(sql, params),
+      {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        reasonCode: command.skip_reason_code ?? "",
+        category: "NIGHT_AUDIT",
+      },
+    );
+
+    // A08. The code was resolved but never measured against — night audit had
+    // the input every other gate uses and did not read it. Skipping the roll's
+    // preconditions closes a business date over unresolved arrivals, departures
+    // or unbalanced folios, so the code's approval_level is what the operator
+    // has to clear, exactly as on a forced check-in or a room move.
+    //
+    // Before the write, not after: the record below is deliberately fail-open,
+    // so an authority check that ran after it could be skipped by the same
+    // failure that swallows the row.
+    // Named per declared gate rather than as one invented "skip_preconditions"
+    // control: the skip bypasses all three, and the registry's vocabulary is
+    // closed — flow:integrity refuses a gate_name no flow declares, which is
+    // what it did to the first version of this line.
+    for (const gateName of NIGHT_AUDIT_PRECONDITION_GATES) {
+      assertForcedOverrideAuthority(skipReason, resolveActorRole(context.initiatedBy), {
+        commandName: "billing.night_audit.run",
+        gateName,
+      });
+    }
+
     try {
       const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
-      const gatesToLog = [
-        "open_arrivals_check",
-        "open_departures_check",
-        "unbalanced_folios_check",
-      ];
-      for (const gateName of gatesToLog) {
+      for (const gateName of NIGHT_AUDIT_PRECONDITION_GATES) {
         await recordFlowApproval({
           tenant_id: context.tenantId,
           property_id: command.property_id,
@@ -158,13 +219,21 @@ export const executeNightAudit = async (
           entity_type: "property",
           entity_id: command.property_id,
           approved_by: actorId,
-          role_at_approval: "GM_OVERRIDE",
-          reason_code: "SKIP_PRECONDITIONS",
-          reason_notes: `Night audit precondition gates bypassed via skip_preconditions=true for ${auditDate}`,
+          role_at_approval: resolveActorRole(context.initiatedBy),
+          forced: true,
+          reason_code: skipReason.reason_code,
+          reason_notes:
+            command.skip_reason_notes ??
+            `${skipReason.reason_name}: night audit preconditions bypassed for ${auditDate}`,
           correlation_id: context.correlationId ?? null,
         });
       }
     } catch (approvalErr) {
+      // Left fail-open deliberately, matching every other bypass writer: an
+      // override that cannot be logged must not also fail the operation the
+      // operator deliberately forced (see recordFlowApproval in
+      // @tartware/config). The reason-code resolution above is the part that
+      // fails closed, and it runs first.
       appLogger.warn(
         { approvalErr, auditRunId },
         "Night audit: failed to record gate bypass approval (non-fatal)",
@@ -267,11 +336,27 @@ export const executeNightAudit = async (
             for (const ns of noShows) {
               const res = await queryWithClient(
                 client,
-                `UPDATE reservations
+                // The no-show fee is the first night of the stay across every room
+                // held — a two-room booking that never arrived forfeits two rooms,
+                // and a split-rate stay forfeits the rate it was actually booked at
+                // for that night rather than an averaged scalar. Falls back to
+                // room_rate for rows that have no nights yet.
+                `UPDATE reservations r
                  SET status = 'NO_SHOW', is_no_show = true,
-                     no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                     no_show_date = NOW(),
+                     no_show_fee = COALESCE(
+                       (SELECT SUM(n.rate_amount)
+                          FROM reservation_nights n
+                         WHERE n.reservation_id = r.id
+                           AND n.tenant_id = r.tenant_id
+                           AND n.stay_date = r.check_in_date
+                           AND n.is_complimentary = false
+                           AND COALESCE(n.is_deleted, false) = false),
+                       r.room_rate,
+                       0
+                     ),
                      version = version + 1, updated_at = NOW()
-                 WHERE id = $1 AND version = $2`,
+                 WHERE r.id = $1 AND r.version = $2`,
                 [ns.id, ns.version],
               );
               rowCount += res.rowCount ?? 0;
@@ -383,11 +468,27 @@ export const executeNightAudit = async (
         for (const ns of noShows) {
           const res = await queryWithClient(
             client,
-            `UPDATE reservations
+            // The no-show fee is the first night of the stay across every room
+            // held — a two-room booking that never arrived forfeits two rooms,
+            // and a split-rate stay forfeits the rate it was actually booked at
+            // for that night rather than an averaged scalar. Falls back to
+            // room_rate for rows that have no nights yet.
+            `UPDATE reservations r
              SET status = 'NO_SHOW', is_no_show = true,
-                 no_show_date = NOW(), no_show_fee = COALESCE(room_rate, 0),
+                 no_show_date = NOW(),
+                 no_show_fee = COALESCE(
+                   (SELECT SUM(n.rate_amount)
+                      FROM reservation_nights n
+                     WHERE n.reservation_id = r.id
+                       AND n.tenant_id = r.tenant_id
+                       AND n.stay_date = r.check_in_date
+                       AND n.is_complimentary = false
+                       AND COALESCE(n.is_deleted, false) = false),
+                   r.room_rate,
+                   0
+                 ),
                  version = version + 1, updated_at = NOW()
-             WHERE id = $1 AND version = $2`,
+             WHERE r.id = $1 AND r.version = $2`,
             [ns.id, ns.version],
           );
           rowCount += res.rowCount ?? 0;
@@ -634,17 +735,28 @@ export const executeNightAudit = async (
            AND is_deleted = false`,
         [context.tenantId, command.property_id, auditDate],
       );
-      for (const row of staleTentatives) {
+      // One UPDATE for the whole sweep. Each row keeps its own optimistic
+      // version check by joining against a VALUES list, so a block edited since
+      // the SELECT is still skipped rather than overwritten.
+      for (const batch of chunkForBatch(staleTentatives, 2, 1)) {
         await query(
-          `UPDATE group_bookings
+          `UPDATE group_bookings g
            SET block_status = 'cancelled',
                internal_notes = CONCAT_WS(
-                 E'\\n', internal_notes, 'AUTO_DEPOSIT_DEADLINE: cancelled by night audit'
+                 E'\\n', g.internal_notes, 'AUTO_DEPOSIT_DEADLINE: cancelled by night audit'
                ),
-               version = version + 1, updated_at = NOW()
-           WHERE group_booking_id = $1::uuid AND tenant_id = $2::uuid
-             AND block_status = 'tentative' AND version = $3`,
-          [row.group_booking_id, context.tenantId, row.version],
+               version = g.version + 1, updated_at = NOW()
+           FROM (VALUES ${buildValuesRows({
+             rowCount: batch.length,
+             columnsPerRow: 2,
+             scalarCount: 1,
+             render: (p) => `(${p(1)}::uuid, ${p(2)}::int)`,
+           })}) AS stale(group_booking_id, version)
+           WHERE g.group_booking_id = stale.group_booking_id
+             AND g.tenant_id = $1::uuid
+             AND g.block_status = 'tentative'
+             AND g.version = stale.version`,
+          [context.tenantId, ...batch.flatMap((row) => [row.group_booking_id, row.version])],
         );
       }
       tentativesCancelled = staleTentatives.length;
@@ -710,19 +822,50 @@ async function postRoomChargesAndTaxes(
   // once per run rather than per reservation.
   const baseCurrency = await getPropertyBaseCurrency(client, tenantId, propertyId);
 
+  // One row per room per night, not per reservation. The rate comes from
+  // reservation_nights for *this* business date, so a stay whose rate changes
+  // on night 3 posts the night-3 price on night 3 — the flat
+  // `reservations.room_rate` posted the same number every night and silently
+  // lost every split-rate stay. A booking holding three rooms posts three
+  // lines. Complimentary nights occupy the room and post nothing, so they are
+  // filtered out here rather than skipped by the zero-amount guard below.
   const inHouseResult = await queryWithClient<{
     id: string;
+    reservation_room_id: string;
     room_rate: string;
     room_number: string;
+    room_sequence: number;
     total_amount: string;
     guest_id: string;
     folio_id: string | null;
-    version: number | null;
+    /** BIGINT — the driver returns it as bigint, not number. */
+    version: string | number | bigint | null;
   }>(
     client,
-    `SELECT r.id, r.room_rate, r.room_number, r.total_amount, r.guest_id,
+    `SELECT r.id,
+            rr.reservation_room_id,
+            n.rate_amount AS room_rate,
+            -- This room's own number only. Borrowing the reservation's scalar
+            -- labelled every room of a multi-room booking with the one room
+            -- that happened to be assigned; an unassigned room falls back to
+            -- its sequence instead.
+            rr.room_number,
+            rr.room_sequence,
+            r.total_amount,
+            r.guest_id,
             f.folio_id, f.version
      FROM reservations r
+     JOIN reservation_rooms rr
+       ON rr.reservation_id = r.id
+      AND rr.tenant_id = r.tenant_id
+      AND COALESCE(rr.is_deleted, false) = false
+      AND rr.status <> 'CANCELLED'
+     JOIN reservation_nights n
+       ON n.reservation_room_id = rr.reservation_room_id
+      AND n.tenant_id = r.tenant_id
+      AND n.stay_date = $3::date
+      AND COALESCE(n.is_deleted, false) = false
+      AND n.is_complimentary = false
      LEFT JOIN LATERAL (
        SELECT folio_id, version FROM public.folios
        WHERE tenant_id = $1 AND reservation_id = r.id
@@ -730,8 +873,9 @@ async function postRoomChargesAndTaxes(
        ORDER BY created_at DESC LIMIT 1
      ) f ON true
      WHERE r.tenant_id = $1 AND r.property_id = $2 AND r.status = 'CHECKED_IN'
-       AND r.is_deleted = false`,
-    [tenantId, propertyId],
+       AND r.is_deleted = false
+     ORDER BY r.id, rr.room_sequence`,
+    [tenantId, propertyId, auditDate],
   );
 
   // Fetch tax config ONCE: include compound order for cascading tax support
@@ -759,6 +903,12 @@ async function postRoomChargesAndTaxes(
   );
   const taxes = taxResult.rows;
 
+  // Folio version as this run has advanced it, keyed by folio. Seeded from the
+  // snapshot each row carries and bumped on every successful update below.
+  // `folios.version` is BIGINT, which the driver hands back as a bigint, so the
+  // arithmetic has to stay in bigint and bind as a string.
+  const folioVersions = new Map<string, bigint>();
+
   for (const res of inHouseResult.rows) {
     const roomRate = Number(res.room_rate ?? 0);
     if (roomRate <= 0) continue;
@@ -767,19 +917,27 @@ async function postRoomChargesAndTaxes(
     if (!folioId) continue;
 
     // Idempotency: skip if a non-voided room charge already exists for this
-    // reservation on this business date from any prior audit run.
+    // *room* on this business date from any prior audit run. Keying on the
+    // reservation alone would post one room of a multi-room booking and call
+    // the rest done. Rows written before reservation_room_id existed carry
+    // NULL, so they are matched on the reservation instead — a re-run over
+    // historic dates must not double-post them.
     const { rows: existing } = await queryWithClient<{ cnt: string }>(
       client,
       `SELECT COUNT(posting_id) AS cnt FROM charge_postings
-       WHERE tenant_id = $1::uuid AND reservation_id = $2::uuid
+       WHERE tenant_id = $1::uuid
          AND business_date = $3::date AND charge_code = 'ROOM'
          AND audit_run_id IS NOT NULL
-         AND COALESCE(is_voided, false) = false`,
-      [tenantId, res.id, auditDate],
+         AND COALESCE(is_voided, false) = false
+         AND (
+           reservation_room_id = $4::uuid
+           OR (reservation_room_id IS NULL AND reservation_id = $2::uuid)
+         )`,
+      [tenantId, res.id, auditDate, res.reservation_room_id],
     );
     if (Number(existing[0]?.cnt ?? 0) > 0) {
       appLogger.debug(
-        { reservationId: res.id, auditDate },
+        { reservationId: res.id, reservationRoomId: res.reservation_room_id, auditDate },
         "Night audit: room charge already posted, skipping",
       );
       chargesPosted++; // count as posted for metrics
@@ -787,17 +945,18 @@ async function postRoomChargesAndTaxes(
     }
 
     // Post room charge (inside the outer withTransaction — no nested TX needed)
+    const roomLabel = res.room_number ? `Room ${res.room_number}` : `Room ${res.room_sequence}`;
     await queryWithClient(
       client,
       `INSERT INTO public.charge_postings (
-         tenant_id, property_id, folio_id, reservation_id,
+         tenant_id, property_id, folio_id, reservation_id, reservation_room_id,
          transaction_type, posting_type, charge_code, charge_description,
          quantity, unit_price, subtotal, total_amount,
          currency_code, posting_time, business_date,
          notes, audit_run_id, created_by, updated_by
        ) VALUES (
-         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
-         'CHARGE', 'DEBIT', 'ROOM', 'Room charge - night audit',
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $10::uuid,
+         'CHARGE', 'DEBIT', 'ROOM', $11,
          1, $5, $5, $5,
          UPPER($9), NOW(), $6::date,
          'Auto-posted by night audit', $7::uuid, $8::uuid, $8::uuid
@@ -812,6 +971,8 @@ async function postRoomChargesAndTaxes(
         auditRunId,
         actorId,
         baseCurrency,
+        res.reservation_room_id,
+        `Room charge - night audit (${roomLabel})`,
       ],
     );
 
@@ -830,13 +991,13 @@ async function postRoomChargesAndTaxes(
       await queryWithClient(
         client,
         `INSERT INTO public.charge_postings (
-           tenant_id, property_id, folio_id, reservation_id,
+           tenant_id, property_id, folio_id, reservation_id, reservation_room_id,
            transaction_type, posting_type, charge_code, charge_description,
            quantity, unit_price, subtotal, total_amount,
            currency_code, posting_time, business_date,
            department_code, notes, audit_run_id, created_by, updated_by
          ) VALUES (
-           $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+           $1::uuid, $2::uuid, $3::uuid, $4::uuid, $12::uuid,
            'CHARGE', 'DEBIT', 'ROOM_TAX', $5,
            1, $6, $6, $6,
            UPPER($11), NOW(), $7::date,
@@ -854,6 +1015,7 @@ async function postRoomChargesAndTaxes(
           auditRunId,
           actorId,
           baseCurrency,
+          res.reservation_room_id,
         ],
       );
       totalTaxAmount += taxAmount;
@@ -862,8 +1024,15 @@ async function postRoomChargesAndTaxes(
 
     // Update folio balance (room charge + all taxes)
     const chargeTotal = roomRate + totalTaxAmount;
-    const folioVersion = res.version;
-    if (folioVersion === null || folioVersion === undefined) {
+
+    // Every room of a booking posts to the same folio, so the version read at
+    // the top of this function is only right for the first of them. Tracking
+    // our own increments keeps the optimistic check meaningful — it still
+    // catches a writer outside this transaction — without a multi-room booking
+    // failing the audit against itself on its second room.
+    const trackedVersion = folioVersions.get(folioId);
+    const snapshotVersion = trackedVersion ?? (res.version == null ? null : BigInt(res.version));
+    if (snapshotVersion === null) {
       throw new Error(`Night audit: version missing for folio ${folioId} on reservation ${res.id}`);
     }
 
@@ -875,7 +1044,7 @@ async function postRoomChargesAndTaxes(
            version = version + 1,
            updated_at = NOW(), updated_by = $3::uuid
        WHERE tenant_id = $1::uuid AND folio_id = $4::uuid AND version = $5`,
-      [tenantId, chargeTotal, actorId, folioId, folioVersion],
+      [tenantId, chargeTotal, actorId, folioId, snapshotVersion.toString()],
     );
 
     if (rowCount === 0) {
@@ -885,6 +1054,7 @@ async function postRoomChargesAndTaxes(
         `Night audit: concurrent modification on folio ${folioId} for reservation ${res.id}`,
       );
     }
+    folioVersions.set(folioId, snapshotVersion + 1n);
     chargesPosted++;
   }
 

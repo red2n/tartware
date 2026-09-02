@@ -20,7 +20,10 @@ import { stdin as input, stdout as output } from "node:process";
  *   DLQ_REPLAY_FROM_BEGINNING  — "true" to start from earliest offset (default: true)
  */
 import { createInterface } from "node:readline/promises";
-import { type Consumer, Kafka, logLevel as KafkaLogLevel, type Producer } from "kafkajs";
+import { createServiceLogger } from "@tartware/telemetry";
+import type { Consumer, Producer } from "kafkajs";
+
+import { createKafkaClient } from "../producer.js";
 
 type Action = "inspect" | "republish" | "drop" | "quit";
 
@@ -39,10 +42,11 @@ const commandTopic = env("COMMAND_TOPIC", "commands.primary");
 const groupId = env("DLQ_REPLAY_GROUP", "dlq-replay-cli");
 const fromBeginning = env("DLQ_REPLAY_FROM_BEGINNING", "true") === "true";
 
-const kafka = new Kafka({
+const kafka = createKafkaClient({
   clientId: "dlq-replay-cli",
   brokers,
-  logLevel: KafkaLogLevel.ERROR,
+  logger: createServiceLogger({ serviceName: "dlq-replay-cli" }),
+  logLevel: "ERROR",
 });
 
 const rl = createInterface({ input, output });

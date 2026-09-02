@@ -206,9 +206,12 @@ export class ApprovalsComponent {
 		const tenantId = this.auth.tenantId();
 		if (!decision || !tenantId || !this.canSubmitDecision() || this.submitting()) return;
 
+		// The acting identity is no longer sent: the API takes it from the bearer
+		// token, so that a four-eyes approval cannot be attributed to someone the
+		// caller names. The signed-in check stays because an unauthenticated
+		// submit would only fail at the server.
 		const user = this.auth.user();
-		const actorId = user?.id ?? "";
-		if (!actorId) {
+		if (!user?.id) {
 			this.toast.error(this.i18n.t("Cannot action an approval without a signed-in user."));
 			return;
 		}
@@ -222,10 +225,8 @@ export class ApprovalsComponent {
 		try {
 			const body: Record<string, unknown> = { tenant_id: tenantId };
 			if (kind === "cancel") {
-				body["cancelled_by"] = actorId;
 				if (reason) body["reason"] = reason;
 			} else {
-				body["actioned_by"] = actorId;
 				if (actorName) body["actioned_by_name"] = actorName;
 				if (kind === "reject") body["reason"] = reason;
 				else if (reason) body["reason"] = reason;

@@ -1,12 +1,17 @@
 import {
+  describeReservationStatuses,
+  expandStayPlan,
+  RESERVATION_INITIAL_STATUSES,
   type ReservationCancelledEvent,
   ReservationCancelledEventSchema,
   type ReservationCreatedEvent,
   ReservationCreatedEventSchema,
+  type ReservationStatus,
   type ReservationUpdatedEvent,
   ReservationUpdatedEventSchema,
+  StayPlanError,
 } from "@tartware/schemas";
-import { v4 as uuid } from "uuid";
+import { v4 as uuid, v5 as uuidV5 } from "uuid";
 
 import {
   type AvailabilityGuardMetadata,
@@ -20,7 +25,7 @@ import { enqueueOutboxRecordWithClient } from "../../outbox/repository.js";
 import { recordLifecyclePersisted } from "../../repositories/lifecycle-repository.js";
 import { insertRateFallbackRecord } from "../../repositories/rate-fallback-repository.js";
 import {
-  getReservationGuardMetadata,
+  listReservationGuardMetadata,
   type ReservationGuardMetadata as StoredGuardMetadata,
   upsertReservationGuardMetadata,
 } from "../../repositories/reservation-guard-metadata-repository.js";
@@ -29,6 +34,7 @@ import {
   fetchReservationStaySnapshot,
   type ReservationStaySnapshot,
 } from "../../repositories/reservation-repository.js";
+import { resolveBusinessDate } from "../../repositories/restriction-repository.js";
 import type {
   ReservationBatchNoShowCommand,
   ReservationCancelCommand,
@@ -38,10 +44,15 @@ import type {
   ReservationWalkGuestCommand,
 } from "../../schemas/reservation-command.js";
 import { type RatePlanResolution, resolveRatePlan } from "../../services/rate-plan-service.js";
+import { assertStaySellable } from "../../services/restriction-service.js";
 import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit.js";
 import { calculateCancellationFee } from "../cancellation-fee-service.js";
 
+import { clearBlacklistGate } from "./blacklist-gate.js";
+
 import {
+  assertModifiableStatusChange,
+  assertReservationTransition,
   buildReservationUpdatePayload,
   type CreateReservationResult,
   DEFAULT_CURRENCY,
@@ -53,13 +64,72 @@ import {
 } from "./common.js";
 
 /**
+ * Namespace for deriving a room's lock id. Any fixed UUID works; this one is
+ * arbitrary and must never change, or a retry would stop matching the lock the
+ * first attempt took.
+ */
+const ROOM_LOCK_NAMESPACE = "6f6c3c5e-0f7b-4d3f-9d2a-2b1c8e7a4f10";
+
+/**
+ * The idempotency key — and therefore the lock id — for one room of a booking.
+ *
+ * Derived rather than random so a retried create re-uses the lock its first
+ * attempt took instead of stacking a second one, and per-room rather than
+ * per-reservation because the guard keys locks by this value: two rooms
+ * sharing a key means the second overwrites the first.
+ */
+const roomLockKey = (reservationId: string, roomSequence: number): string =>
+  uuidV5(`${reservationId}:${roomSequence}`, ROOM_LOCK_NAMESPACE);
+
+/**
+ * Release every inventory hold a booking is carrying.
+ *
+ * A booking holds one lock per room, so releasing "the" lock is only ever
+ * right for a single-room stay — the rest would stay held until their TTL ran
+ * out, quietly shrinking sellable inventory. Failures are logged rather than
+ * thrown: the reservation has already been cancelled by the time this runs,
+ * and a stranded hold expires on its own, whereas an exception here would
+ * leave the caller thinking the cancel failed.
+ */
+const releaseAllReservationHolds = async (params: {
+  tenantId: string;
+  reservationId: string;
+  records: StoredGuardMetadata[];
+  fallbackLockId: string;
+  reason: string;
+  correlationId?: string;
+}): Promise<void> => {
+  const lockIds =
+    params.records.length > 0
+      ? params.records.map((record) => record.lockId ?? params.fallbackLockId)
+      : [params.fallbackLockId];
+
+  for (const lockId of lockIds) {
+    try {
+      await releaseReservationHold({
+        tenantId: params.tenantId,
+        lockId,
+        reservationId: params.reservationId,
+        reason: params.reason,
+        correlationId: params.correlationId,
+      });
+    } catch (releaseError) {
+      reservationsLogger.warn(
+        { reservationId: params.reservationId, lockId, error: releaseError },
+        "Failed to release availability hold - hold may require manual cleanup",
+      );
+    }
+  }
+};
+
+/**
  * Accepts a reservation create command and enqueues its event payload
  * in the transactional outbox for asynchronous processing.
  */
 export const createReservation = async (
   tenantId: string,
   command: ReservationCreateCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const stayStart = new Date(command.check_in_date);
@@ -68,6 +138,20 @@ export const createReservation = async (
   // Validate check_out_date is after check_in_date
   if (stayEnd <= stayStart) {
     throw new Error("INVALID_DATES: check_out_date must be after check_in_date");
+  }
+
+  // A create with an explicit status is the other way around the transition
+  // table: book the stay directly into CHECKED_OUT and no edge was ever
+  // traversed. Only the states a booking can genuinely begin in are accepted —
+  // CHECKED_IN among them, for the walk-in that has no prior state to move from.
+  if (
+    command.status !== undefined &&
+    !RESERVATION_INITIAL_STATUSES.includes(command.status as ReservationStatus)
+  ) {
+    throw new ReservationCommandError(
+      "INVALID_INITIAL_STATUS",
+      `Cannot create a reservation in ${command.status}; must be ${describeReservationStatuses(RESERVATION_INITIAL_STATUSES)}`,
+    );
   }
 
   // ── Gate: Guest blacklist check (Flow 3 → Flow 4 cross-flow gate) ──────
@@ -98,11 +182,7 @@ export const createReservation = async (
       [command.guest_id, tenantId],
     );
     if (guestRows[0]?.is_blacklisted) {
-      throw new ReservationCommandError(
-        "GUEST_BLACKLISTED",
-        `Guest ${command.guest_id} is blacklisted. Reservation creation blocked. ` +
-          "A GM override with documented reason is required to proceed.",
-      );
+      await clearBlacklistGate(tenantId, command, command.reservation_id ?? eventId, options);
     }
 
     const guest = guestRows[0];
@@ -144,6 +224,32 @@ export const createReservation = async (
 
   const normalizedCurrency = (command.currency ?? DEFAULT_CURRENCY).toUpperCase();
 
+  // Expand the stay here as well as in the consumer. The consumer is what
+  // writes the rows, but a plan that cannot expand — a night outside the
+  // window, a duplicated date — should be refused while the caller is still on
+  // the phone, not accepted with a 202 and dropped into a DLQ. It is also what
+  // says how many rooms to lock.
+  let stayPlan: ReturnType<typeof expandStayPlan>;
+  try {
+    stayPlan = expandStayPlan(
+      {
+        check_in_date: stayStart,
+        check_out_date: stayEnd,
+        room_type_id: command.room_type_id,
+        guest_id: command.guest_id,
+        currency: normalizedCurrency,
+        rate_code: rateResolution.appliedRateCode,
+        total_amount: command.total_amount,
+      },
+      command.rooms,
+    );
+  } catch (error) {
+    if (error instanceof StayPlanError) {
+      throw new ReservationCommandError(error.code, error.message);
+    }
+    throw error;
+  }
+
   const payload: ReservationCreatedEvent = {
     metadata: {
       id: eventId,
@@ -178,19 +284,66 @@ export const createReservation = async (
   const aggregateId = validatedEvent.payload.id ?? eventId;
   const partitionKey = validatedEvent.payload.guest_id ?? tenantId;
 
-  const availabilityGuard: AvailabilityGuardMetadata | undefined = await lockReservationHold({
-    tenantId,
-    propertyId: command.property_id,
-    reservationId: aggregateId,
-    roomTypeId: command.room_type_id,
-    roomId: null,
-    stayStart: new Date(command.check_in_date),
-    stayEnd: new Date(command.check_out_date),
-    reason: "RESERVATION_CREATE",
-    correlationId: options.correlationId ?? eventId,
-  });
+  // Restrictions are checked before any lock is taken. A refusal that has
+  // already locked leaks inventory until the TTL expires, and a booking that
+  // breaks min-LOS or a stop-sell should never have held a room at all.
+  //
+  // Each room is checked for its own type and window, so a multi-room booking
+  // is refused if *any* of its rooms is unsellable — and `rooms_requested`
+  // counts the rooms of that type, which is what a sell limit caps.
+  const businessDate = await resolveBusinessDate(tenantId, command.property_id);
 
-  const guardMetadata = availabilityGuard ?? { status: "SKIPPED" };
+  const roomsByType = new Map<string, number>();
+  for (const room of stayPlan.rooms) {
+    roomsByType.set(room.room_type_id, (roomsByType.get(room.room_type_id) ?? 0) + 1);
+  }
+  for (const room of stayPlan.rooms) {
+    await assertStaySellable({
+      tenantId,
+      propertyId: command.property_id,
+      roomTypeId: room.room_type_id,
+      rateId: rateResolution.rateId,
+      channelCode: command.source ?? null,
+      arrival: room.check_in_date,
+      departure: room.check_out_date,
+      bookingDate: businessDate,
+      roomsRequested: roomsByType.get(room.room_type_id) ?? 1,
+    });
+  }
+
+  // One lock per room held, not one per booking: a three-room reservation that
+  // took a single lock would only ever hold one room's worth of inventory, and
+  // the other two would oversell.
+  //
+  // Two rooms of the *same* type over the same dates come back CONFLICT from
+  // the guard, which treats a room type as one exclusive resource rather than
+  // counting it against rooms_to_sell. That predates this loop and the guard
+  // does not gate a create either way — the status is recorded, not enforced.
+  // Turning it into a real sellable ceiling is WS-02.
+  const roomGuards: { roomSequence: number; guard: AvailabilityGuardMetadata }[] = [];
+  for (const room of stayPlan.rooms) {
+    const guard: AvailabilityGuardMetadata | undefined = await lockReservationHold({
+      tenantId,
+      propertyId: command.property_id,
+      reservationId: aggregateId,
+      roomTypeId: room.room_type_id,
+      roomId: room.room_id ?? null,
+      stayStart: room.check_in_date,
+      stayEnd: room.check_out_date,
+      reason: "RESERVATION_CREATE",
+      correlationId: options.correlationId ?? eventId,
+      idempotencyKey: roomLockKey(aggregateId, room.room_sequence),
+    });
+    roomGuards.push({
+      roomSequence: room.room_sequence,
+      guard: guard ?? { status: "SKIPPED" },
+    });
+  }
+
+  // The reservation-level view stays the first room's, so lifecycle rows and
+  // audit entries read the same as they did before multi-room.
+  const guardMetadata: AvailabilityGuardMetadata =
+    roomGuards[0]?.guard ?? ({ status: "SKIPPED" } as AvailabilityGuardMetadata);
 
   try {
     await withTransaction(async (client) => {
@@ -247,17 +400,20 @@ export const createReservation = async (
         },
       });
 
-      if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
-        await upsertReservationGuardMetadata(
-          {
-            tenantId,
-            reservationId: aggregateId,
-            lockId: guardMetadata.lockId,
-            status: guardMetadata.status,
-            metadata: guardMetadata,
-          },
-          client,
-        );
+      for (const { roomSequence, guard } of roomGuards) {
+        if (guard.status === "LOCKED" && guard.lockId) {
+          await upsertReservationGuardMetadata(
+            {
+              tenantId,
+              reservationId: aggregateId,
+              roomSequence,
+              lockId: guard.lockId,
+              status: guard.status,
+              metadata: guard,
+            },
+            client,
+          );
+        }
       }
 
       await enqueueOutboxRecordWithClient(client, {
@@ -282,23 +438,27 @@ export const createReservation = async (
       });
     });
   } catch (txError) {
-    // P1-2: Release availability lock on transaction failure to prevent lock leak
-    if (guardMetadata.status === "LOCKED" && guardMetadata.lockId) {
+    // P1-2: Release every lock taken above on transaction failure, or a failed
+    // multi-room create leaks one hold per room until their TTLs expire.
+    for (const { guard } of roomGuards) {
+      if (guard.status !== "LOCKED" || !guard.lockId) {
+        continue;
+      }
       try {
         await releaseReservationHold({
           tenantId,
-          lockId: guardMetadata.lockId,
+          lockId: guard.lockId,
           reservationId: aggregateId,
           reason: "TRANSACTION_FAILURE_ROLLBACK",
           correlationId: options.correlationId ?? eventId,
         });
         reservationsLogger.info(
-          { reservationId: aggregateId, lockId: guardMetadata.lockId },
+          { reservationId: aggregateId, lockId: guard.lockId },
           "Released availability lock after transaction failure",
         );
       } catch (releaseError) {
         reservationsLogger.error(
-          { reservationId: aggregateId, lockId: guardMetadata.lockId, err: releaseError },
+          { reservationId: aggregateId, lockId: guard.lockId, err: releaseError },
           "Failed to release availability lock after transaction failure — lock will expire via TTL",
         );
       }
@@ -319,7 +479,7 @@ export const createReservation = async (
 export const modifyReservation = async (
   tenantId: string,
   command: ReservationModifyCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const snapshot: ReservationStaySnapshot | null = await fetchReservationStaySnapshot(
     tenantId,
@@ -327,6 +487,20 @@ export const modifyReservation = async (
   );
   if (!snapshot) {
     throw new Error(`Reservation ${command.reservation_id} not found for tenant ${tenantId}`);
+  }
+
+  // A modify carrying a status is a lifecycle move wearing an edit's clothes,
+  // and until the transition table existed this handler applied whatever it was
+  // given. That made `reservation.modify` a way past every guard the dedicated
+  // commands enforce — CHECKED_OUT straight back to CONFIRMED with no reversal,
+  // CANCELLED to CHECKED_IN with no reinstatement, a folio left behind either
+  // way — and `reservation.mass_update` rides the same handler, so it was that
+  // 500 bookings at a time. The legal moves it still permits are the ones no
+  // command of their own covers, chiefly PENDING → CONFIRMED when a deposit
+  // lands. `force` is not consulted: an override has to leave a flow_approvals
+  // row, and the command that writes one is the specific command.
+  if (command.status !== undefined) {
+    assertModifiableStatusChange(snapshot.status as ReservationStatus, command.status);
   }
 
   const targetPropertyId = command.property_id ?? snapshot.propertyId;
@@ -394,6 +568,28 @@ export const modifyReservation = async (
 
   const validatedEvent = ReservationUpdatedEventSchema.parse(payload);
   const stayChanged = hasStayCriticalChanges(command, snapshot);
+
+  // A modification that moves the stay has to clear the same gate a new
+  // booking does — otherwise the restrictions can be walked around by booking
+  // a legal stay and then editing it into an illegal one. Only when the stay
+  // actually changed: re-checking an unrelated edit would refuse a guest's
+  // name change because the dates they already hold are now closed.
+  if (stayChanged) {
+    await assertStaySellable({
+      tenantId,
+      propertyId: targetPropertyId,
+      roomTypeId: targetRoomTypeId,
+      rateId: rateResolution?.rateId,
+      // The stay snapshot does not carry the booking channel, so a modify is
+      // checked against every scope except CHANNEL. A channel-scoped rule
+      // still bites on the original booking.
+      channelCode: null,
+      arrival: stayStart,
+      departure: stayEnd,
+      bookingDate: await resolveBusinessDate(tenantId, targetPropertyId),
+    });
+  }
+
   const guardMetadata: AvailabilityGuardMetadata = stayChanged
     ? await lockReservationHold({
         tenantId,
@@ -572,13 +768,12 @@ export const markNoShow = async (
     );
   }
 
-  const eligibleStatuses = ["PENDING", "CONFIRMED"];
-  if (!eligibleStatuses.includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_NO_SHOW",
-      `Cannot mark no-show for reservation with status ${reservation.status}; must be PENDING or CONFIRMED`,
-    );
-  }
+  assertReservationTransition(
+    "reservation.no_show",
+    reservation.status as ReservationStatus,
+    "NO_SHOW",
+    { code: "INVALID_STATUS_FOR_NO_SHOW" },
+  );
 
   // 2. Calculate no-show fee (default to 1 night room rate if not specified)
   const noShowFee = command.no_show_fee ?? Number(reservation.room_rate ?? 0);
@@ -742,7 +937,7 @@ export const batchNoShowSweep = async (
 export const cancelReservation = async (
   tenantId: string,
   command: ReservationCancelCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const now = new Date();
@@ -766,13 +961,15 @@ export const cancelReservation = async (
       `Reservation ${command.reservation_id} not found`,
     );
   }
-  const cancelAllowed = ["INQUIRY", "QUOTED", "PENDING", "CONFIRMED"];
-  if (!cancelAllowed.includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS_FOR_CANCEL",
-      `Cannot cancel reservation with status ${reservation.status}; must be INQUIRY, QUOTED, PENDING, or CONFIRMED`,
-    );
-  }
+  // WAITLISTED joined the permitted set with the transition table: the screen
+  // had always offered Cancel on a waiting booking and this handler had always
+  // refused it. A guest who no longer wants to wait cancels.
+  assertReservationTransition(
+    "reservation.cancel",
+    reservation.status as ReservationStatus,
+    "CANCELLED",
+    { code: "INVALID_STATUS_FOR_CANCEL" },
+  );
 
   // Calculate cancellation fee from rate policy
   let cancellationFee = 0;
@@ -826,10 +1023,11 @@ export const cancelReservation = async (
 
   const validatedEvent = ReservationCancelledEventSchema.parse(payload);
 
-  const guardRecord: StoredGuardMetadata | null = await getReservationGuardMetadata(
+  const guardRecords: StoredGuardMetadata[] = await listReservationGuardMetadata(
     tenantId,
     command.reservation_id,
   );
+  const guardRecord: StoredGuardMetadata | null = guardRecords[0] ?? null;
   const releaseLockId = guardRecord?.lockId ?? command.reservation_id;
 
   await withTransaction(async (client) => {
@@ -874,15 +1072,16 @@ export const cancelReservation = async (
       },
     });
 
-    if (guardRecord) {
+    for (const record of guardRecords) {
       await upsertReservationGuardMetadata(
         {
           tenantId,
           reservationId: command.reservation_id,
-          lockId: guardRecord.lockId ?? releaseLockId,
+          roomSequence: record.roomSequence,
+          lockId: record.lockId ?? releaseLockId,
           status: "RELEASE_REQUESTED",
           metadata: {
-            previousStatus: guardRecord.status,
+            previousStatus: record.status,
             reason: command.reason ?? "RESERVATION_CANCEL",
           },
         },
@@ -915,26 +1114,17 @@ export const cancelReservation = async (
     });
   });
 
-  // Release availability hold AFTER transaction succeeds
-  // If this fails, reservation is cancelled but hold remains (safer than reverse)
-  try {
-    await releaseReservationHold({
-      tenantId,
-      lockId: releaseLockId,
-      reservationId: command.reservation_id,
-      reason: command.reason ?? "RESERVATION_CANCEL",
-      correlationId: options.correlationId ?? eventId,
-    });
-  } catch (releaseError) {
-    reservationsLogger.warn(
-      {
-        reservationId: command.reservation_id,
-        lockId: releaseLockId,
-        error: releaseError,
-      },
-      "Failed to release availability hold after cancellation - hold may require manual cleanup",
-    );
-  }
+  // Release availability holds AFTER transaction succeeds — one per room held.
+  // If this fails, the reservation is cancelled but the hold remains (safer
+  // than the reverse).
+  await releaseAllReservationHolds({
+    tenantId,
+    reservationId: command.reservation_id,
+    records: guardRecords,
+    fallbackLockId: releaseLockId,
+    reason: command.reason ?? "RESERVATION_CANCEL",
+    correlationId: options.correlationId ?? eventId,
+  });
 
   return {
     eventId,
@@ -953,7 +1143,7 @@ export const cancelReservation = async (
 export const walkGuest = async (
   tenantId: string,
   command: ReservationWalkGuestCommand,
-  options: { correlationId?: string; actorId?: string } = {},
+  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
 ): Promise<CreateReservationResult> => {
   const actorId = options.actorId ?? SYSTEM_ACTOR_ID;
   const eventId = uuid();
@@ -986,12 +1176,15 @@ export const walkGuest = async (
     );
   }
 
-  if (!["CONFIRMED", "PENDING"].includes(reservation.status)) {
-    throw new ReservationCommandError(
-      "INVALID_STATUS",
-      `Cannot walk a reservation in ${reservation.status} status. Must be CONFIRMED or PENDING.`,
-    );
-  }
+  // Walking a guest cancels their booking here and rebooks them elsewhere, so
+  // it clears the same gate as a cancel — minus INQUIRY/QUOTED/WAITLISTED,
+  // which have no room held to be walked out of.
+  assertReservationTransition(
+    "reservation.walk_guest",
+    reservation.status as ReservationStatus,
+    "CANCELLED",
+    { code: "INVALID_STATUS" },
+  );
 
   // Build the cancelled event envelope (same shape as cancelReservation)
   const payload: ReservationCancelledEvent = {
@@ -1016,10 +1209,11 @@ export const walkGuest = async (
   const validatedEvent = ReservationCancelledEventSchema.parse(payload);
 
   // Look up guard metadata for lock release
-  const guardRecord: StoredGuardMetadata | null = await getReservationGuardMetadata(
+  const guardRecords: StoredGuardMetadata[] = await listReservationGuardMetadata(
     tenantId,
     command.reservation_id,
   );
+  const guardRecord: StoredGuardMetadata | null = guardRecords[0] ?? null;
   const releaseLockId = guardRecord?.lockId ?? command.reservation_id;
 
   await withTransaction(async (client) => {
@@ -1118,16 +1312,17 @@ export const walkGuest = async (
       ],
     );
 
-    // 4. Update guard metadata if exists
-    if (guardRecord) {
+    // 4. Mark every room's hold for release
+    for (const record of guardRecords) {
       await upsertReservationGuardMetadata(
         {
           tenantId,
           reservationId: command.reservation_id,
-          lockId: guardRecord.lockId ?? releaseLockId,
+          roomSequence: record.roomSequence,
+          lockId: record.lockId ?? releaseLockId,
           status: "RELEASE_REQUESTED",
           metadata: {
-            previousStatus: guardRecord.status,
+            previousStatus: record.status,
             reason: "WALK_GUEST",
           },
         },
@@ -1161,21 +1356,15 @@ export const walkGuest = async (
     });
   });
 
-  // 6. Release availability hold (best-effort, outside transaction)
-  try {
-    await releaseReservationHold({
-      tenantId,
-      lockId: releaseLockId,
-      reservationId: command.reservation_id,
-      reason: "WALK_GUEST",
-      correlationId: options.correlationId ?? eventId,
-    });
-  } catch (err) {
-    reservationsLogger.warn(
-      { reservationId: command.reservation_id, error: err },
-      "Failed to release availability hold after walk (non-fatal)",
-    );
-  }
+  // 6. Release every room's hold (best-effort, outside transaction)
+  await releaseAllReservationHolds({
+    tenantId,
+    reservationId: command.reservation_id,
+    records: guardRecords,
+    fallbackLockId: releaseLockId,
+    reason: "WALK_GUEST",
+    correlationId: options.correlationId ?? eventId,
+  });
 
   reservationsLogger.info(
     {

@@ -1,7 +1,7 @@
 import type { CommandEnvelope, CommandMetadata } from "@tartware/command-consumer-utils";
 import { createIdempotencyHandlers } from "@tartware/command-consumer-utils/idempotency";
 import { createConsumerLifecycle } from "@tartware/command-consumer-utils/lifecycle";
-import { enterTenantScope } from "@tartware/config/db";
+import { runWithTenantScope } from "@tartware/config/db";
 import { config } from "../config.js";
 import { kafka } from "../kafka/client.js";
 import { publishDlqEvent } from "../kafka/producer.js";
@@ -44,7 +44,6 @@ import {
   voidPayment,
   writeOffAr,
 } from "../services/billing-command-service.js";
-import { BillingCommandError } from "../services/billing-commands/common.js";
 import {
   applyTaxExemption,
   cashierHandover,
@@ -464,8 +463,7 @@ const { start, shutdown } = createConsumerLifecycle({
   publishDlqEvent,
   ...createIdempotencyHandlers(pool),
   idempotencyFailureMode: "fail-open",
-  isRetryable: (error) => !(error instanceof BillingCommandError) || error.retryable,
-  onTenantResolved: enterTenantScope,
+  withTenantScope: runWithTenantScope,
   metrics: {
     recordOutcome: recordCommandOutcome,
     observeDuration: observeCommandDuration,

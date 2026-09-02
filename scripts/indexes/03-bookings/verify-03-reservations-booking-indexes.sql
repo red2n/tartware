@@ -1,9 +1,9 @@
 -- =====================================================
 -- verify-03-reservations-booking-indexes.sql
 -- Index Verification Script for Reservations & Booking
--- Category: 03-reservations-booking (14 tables)
+-- Category: 03-reservations-booking (17 tables)
 -- Date: 2025-10-19
--- Updated: 2026-02-12
+-- Updated: 2026-08-27
 -- =====================================================
 
 \c tartware
@@ -11,7 +11,7 @@
 \echo ''
 \echo '=============================================='
 \echo '  RESERVATIONS & BOOKING - INDEX VERIFICATION'
-\echo '  Tables: 14'
+\echo '  Tables: 17'
 \echo '=============================================='
 \echo ''
 
@@ -29,6 +29,9 @@ FROM pg_indexes
 WHERE tablename IN (
     'reservations',
     'reservation_status_history',
+    'reservation_rooms',
+    'reservation_nights',
+    'reservation_occupants',
     'deposit_schedules',
     'allotments',
     'booking_sources',
@@ -64,6 +67,9 @@ WITH fk_columns AS (
         AND tc.table_name IN (
             'reservations',
             'reservation_status_history',
+            'reservation_rooms',
+            'reservation_nights',
+            'reservation_occupants',
             'deposit_schedules',
             'allotments',
             'booking_sources',
@@ -127,6 +133,9 @@ FROM pg_indexes
 WHERE tablename IN (
     'reservations',
     'reservation_status_history',
+    'reservation_rooms',
+    'reservation_nights',
+    'reservation_occupants',
     'deposit_schedules',
     'allotments',
     'booking_sources',
@@ -165,6 +174,9 @@ BEGIN
     WHERE tablename IN (
         'reservations',
         'reservation_status_history',
+        'reservation_rooms',
+        'reservation_nights',
+        'reservation_occupants',
         'deposit_schedules',
         'allotments',
         'booking_sources',
@@ -184,7 +196,7 @@ BEGIN
     -- Count tables that have at least one secondary index
     SELECT COUNT(DISTINCT tablename) INTO v_tables_with_indexes
     FROM pg_indexes
-    WHERE tablename IN ('reservations', 'reservation_status_history', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences', 'reservation_traces', 'waitlist_entries', 'reservation_event_offsets', 'reservation_command_lifecycle', 'reservation_rate_fallbacks', 'overbooking_config', 'walk_history')
+    WHERE tablename IN ('reservations', 'reservation_status_history', 'reservation_rooms', 'reservation_nights', 'reservation_occupants', 'deposit_schedules', 'allotments', 'booking_sources', 'market_segments', 'guest_preferences', 'reservation_traces', 'waitlist_entries', 'reservation_event_offsets', 'reservation_command_lifecycle', 'reservation_rate_fallbacks', 'overbooking_config', 'walk_history')
         AND schemaname = 'public'
         AND indexname NOT LIKE '%_pkey';
 

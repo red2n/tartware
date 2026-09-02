@@ -66,6 +66,44 @@ export type AssociationRoleUpdateResponse = z.infer<
 >;
 
 // -----------------------------------------------------------------------------
+// Command Permission Grants
+// -----------------------------------------------------------------------------
+
+/**
+ * Body schema for setting the per-command grants on one membership.
+ *
+ * Both lists are absolute, not deltas: what is sent is what the membership
+ * holds afterwards, so an empty `allow` revokes every grant. A patch semantics
+ * here would make "remove this one grant" a read-modify-write race between two
+ * administrators.
+ */
+export const AssociationCommandGrantsUpdateSchema = z.object({
+	tenant_id: uuid,
+	user_id: uuid,
+	/** Commands this membership may run regardless of its role. */
+	allow: z.array(z.string().min(1)).max(50).default([]),
+	/** Commands this membership may not run even though its role reaches them. */
+	deny: z.array(z.string().min(1)).max(50).default([]),
+});
+
+export type AssociationCommandGrantsUpdate = z.infer<
+	typeof AssociationCommandGrantsUpdateSchema
+>;
+
+/** Response after setting per-command grants. */
+export const AssociationCommandGrantsResponseSchema = z.object({
+	user_id: uuid,
+	tenant_id: uuid,
+	allow: z.array(z.string()),
+	deny: z.array(z.string()),
+	message: z.string(),
+});
+
+export type AssociationCommandGrantsResponse = z.infer<
+	typeof AssociationCommandGrantsResponseSchema
+>;
+
+// -----------------------------------------------------------------------------
 // Status Update
 // -----------------------------------------------------------------------------
 

@@ -42,6 +42,7 @@
 \ir 01-core/22_role_screen_permissions_seed.sql
 \ir 01-core/23_flow_approvals.sql
 \ir 01-core/24_module_access_requests.sql
+\ir 01-core/25_command_batches.sql
 
 -- ============================================================================
 -- CATEGORY 2: INVENTORY (Rooms, rates, availability, revenue management)
@@ -80,6 +81,9 @@
 \echo '>>> Category 3/8: BOOKINGS & GUEST RELATIONS'
 \ir 03-bookings/10_reservations.sql
 \ir 03-bookings/11_reservation_status_history.sql
+\ir 03-bookings/14_reservation_rooms.sql
+\ir 03-bookings/15_reservation_nights.sql
+\ir 03-bookings/16_reservation_occupants.sql
 \ir 03-bookings/30_deposit_schedules.sql
 \ir 03-bookings/31_allotments.sql
 \ir 03-bookings/32_booking_sources.sql

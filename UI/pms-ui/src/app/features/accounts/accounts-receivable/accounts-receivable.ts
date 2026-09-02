@@ -18,6 +18,7 @@ import { SettingsService } from "../../../core/settings/settings.service";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../../shared/components/page-header/page-header";
+import { ReasonCodePickerComponent } from "../../../shared/components/reason-code-picker/reason-code-picker";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
@@ -61,6 +62,7 @@ type AgingFilter =
 	selector: "app-accounts-receivable",
 	standalone: true,
 	imports: [
+		ReasonCodePickerComponent,
 		NgClass,
 		FormsModule,
 		IconComponent,
@@ -115,8 +117,15 @@ export class AccountsReceivableComponent {
 
 	readonly showWriteOffForm = signal(false);
 	readonly writingOff = signal(false);
+	/**
+	 * `reason_code` is mandatory on the command now (A07's remainder). This
+	 * screen was the reason the AR and suspense write-offs stayed on free text
+	 * while the city-ledger one was hardened: demanding a code from a form that
+	 * could not offer one would have broken the only way an operator reaches it.
+	 */
 	readonly writeOffForm = signal({
 		write_off_amount: 0,
+		reason_code: "",
 		reason: "",
 	});
 
@@ -364,6 +373,7 @@ export class AccountsReceivableComponent {
 		if (detail && this.showWriteOffForm()) {
 			this.writeOffForm.set({
 				write_off_amount: Number.parseFloat(detail.outstanding_balance || "0"),
+				reason_code: "",
 				reason: "",
 			});
 		}
@@ -383,12 +393,24 @@ export class AccountsReceivableComponent {
 		this.writingOff.set(true);
 		try {
 			const form = this.writeOffForm();
-			await this.api.post(`/tenants/${tenantId}/commands/billing.ar.write_off`, {
-				ar_id: detail.ar_id,
-				write_off_amount: form.write_off_amount,
-				reason: form.reason,
-			});
-			this.toast.success(this.i18n.t("Write-off submitted. Refreshing AR..."));
+			const outcome = await this.api.post<{ status?: string }>(
+				`/tenants/${tenantId}/commands/billing.ar.write_off`,
+				{
+					ar_id: detail.ar_id,
+					write_off_amount: form.write_off_amount,
+					reason_code: form.reason_code,
+					reason: form.reason,
+				},
+			);
+			// A write-off is one of the five commands one login cannot run on its
+			// own: the gateway records an approval request and a second owner
+			// releases it. Saying "submitted" and refreshing would show the same
+			// balance a moment later, which reads as a failure.
+			this.toast.success(
+				outcome?.status === "pending_approval"
+					? this.i18n.t("Sent for a second approval — it runs when another owner releases it.")
+					: this.i18n.t("Write-off submitted. Refreshing AR..."),
+			);
 			this.showWriteOffForm.set(false);
 			this.closeDetail();
 			await settleCommandReadModel(() => this.loadArData());

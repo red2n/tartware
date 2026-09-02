@@ -141,10 +141,19 @@ export type ManualReleaseNotificationTest = z.infer<
 // AVAILABILITY GUARD SERVICE DOMAIN TYPES
 // =====================================================
 
-/** Metadata stored per-reservation after a successful inventory lock, persisted in the DB. */
+/**
+ * Metadata stored after a successful inventory lock, persisted in the DB.
+ *
+ * One row per room held, not per reservation: a three-room booking takes three
+ * locks, and releasing the booking has to release all three. `roomSequence`
+ * matches `reservation_rooms.room_sequence` — it is the room's position in the
+ * stay plan, which is known at lock time whereas `reservation_room_id` is not
+ * (the rows are written later, by the consumer).
+ */
 export type ReservationGuardMetadata = {
 	lockId: string | null;
 	status: string;
+	roomSequence: number;
 	metadata: Record<string, unknown>;
 	updatedAt: Date;
 };
@@ -160,6 +169,7 @@ export type AvailabilityGuardMetadata = {
 export type GuardMetadataRow = {
 	lock_id: string | null;
 	status: string;
+	room_sequence: number;
 	metadata: Record<string, unknown> | null;
 	updated_at: Date;
 };

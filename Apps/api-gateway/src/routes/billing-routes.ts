@@ -9,6 +9,7 @@
  * @module billing-routes
  */
 import { buildRouteSchema, jsonObjectSchema } from "@tartware/openapi";
+import { COMMAND_AUTHORITY_FLOOR } from "@tartware/schemas";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { serviceTargets } from "../config.js";
@@ -40,6 +41,7 @@ import {
   tenantEventParamsSchema,
   tenantFolioParamsSchema,
   tenantInvoiceParamsSchema,
+  tenantLedgerEntryParamsSchema,
   tenantPaymentParamsSchema,
   tenantRefundParamsSchema,
   tenantReservationParamsSchema,
@@ -60,10 +62,17 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
   const proxyFinanceAdmin = async (request: FastifyRequest, reply: FastifyReply) =>
     proxyRequest(request, reply, serviceTargets.billingServiceUrl);
 
-  /** Write scope — aligned with command publisher's requiredRole: "MANAGER". */
+  /**
+   * Write scope for the command routes below.
+   *
+   * `COMMAND_AUTHORITY_FLOOR` is the lowest role any command declares, not a
+   * blanket relaxation: the command's own floor in `COMMAND_MIN_ROLE` decides
+   * the outcome inside `acceptCommand`. Holding this at MANAGER, as it was,
+   * refused a clerk their own routine work before that check could run.
+   */
   const tenantWriteScopeFromParams = app.withTenantScope({
     resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
-    minRole: "MANAGER",
+    minRole: COMMAND_AUTHORITY_FLOOR,
     requiredModules: "core",
   });
 
@@ -1060,6 +1069,109 @@ export const registerBillingRoutes = (app: FastifyInstance): void => {
         commandName: "billing.invoice.reopen",
         paramKey: "invoiceId",
         payloadKey: "invoice_id",
+      }),
+  );
+
+  // ============================================================================
+  // LEDGER CONTROL COMMANDS (write-off, waive, unapply)
+  // ============================================================================
+  //
+  // Four commands that reverse or forgive a posted entry. Each had a handler, a
+  // catalogue row and a permission floor, and no route — reachable only through
+  // the generic `POST /v1/commands/:name/execute`, which is why no flow named
+  // them and nothing noticed. The two write-offs are under dual control, so
+  // these routes answer 202 `pending_approval` with an approval id rather than
+  // a command id until a second person releases them.
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/city-ledger/:entryId/write-off",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Write off a city ledger balance as bad debt.",
+        description:
+          "Requires a second approver: the command is recorded as an approval request and dispatched when released.",
+        params: tenantLedgerEntryParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "ar.city_ledger.write_off",
+        paramKey: "entryId",
+        payloadKey: "city_ledger_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/suspense/:entryId/write-off",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Write off an unresolved suspense posting.",
+        description:
+          "Requires a second approver: the command is recorded as an approval request and dispatched when released.",
+        params: tenantLedgerEntryParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.suspense.write_off",
+        paramKey: "entryId",
+        payloadKey: "suspense_posting_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/deposits/:entryId/waive",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Waive a scheduled deposit.",
+        params: tenantLedgerEntryParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "billing.deposit.waive",
+        paramKey: "entryId",
+        payloadKey: "schedule_id",
+      }),
+  );
+
+  app.post(
+    "/v1/tenants/:tenantId/billing/cash-applications/:entryId/unapply",
+    {
+      preHandler: tenantWriteScopeFromParams,
+      schema: buildRouteSchema({
+        tag: BILLING_COMMAND_TAG,
+        summary: "Unapply a payment from the invoice it was applied to.",
+        params: tenantLedgerEntryParamsSchema,
+        body: jsonObjectSchema,
+        response: { 202: commandAcceptedSchema },
+      }),
+    },
+    (request, reply) =>
+      forwardCommandWithParamId({
+        request,
+        reply,
+        commandName: "ar.payment.unapply",
+        paramKey: "entryId",
+        payloadKey: "cash_application_id",
       }),
   );
 

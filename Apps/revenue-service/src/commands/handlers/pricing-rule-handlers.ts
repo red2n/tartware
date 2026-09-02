@@ -35,7 +35,7 @@ const extractSharedRuleFields = (payload: Record<string, unknown>) => ({
 export const handlePricingRuleCreate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ ruleId: string }> => {
   const result = await createPricingRule(
     metadata.tenantId,
@@ -64,7 +64,7 @@ export const handlePricingRuleCreate = async (
 export const handlePricingRuleUpdate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ ruleId: string }> => {
   const result = await updatePricingRule(
     payload.rule_id as string,
@@ -91,7 +91,7 @@ export const handlePricingRuleUpdate = async (
 export const handlePricingRuleActivate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ ruleId: string }> => {
   const result = await activatePricingRule(payload.rule_id as string, metadata.tenantId, actorId);
   return { ruleId: result.ruleId };
@@ -100,7 +100,7 @@ export const handlePricingRuleActivate = async (
 export const handlePricingRuleDeactivate = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ ruleId: string }> => {
   const result = await deactivatePricingRule(payload.rule_id as string, metadata.tenantId, actorId);
   return { ruleId: result.ruleId };
@@ -109,7 +109,7 @@ export const handlePricingRuleDeactivate = async (
 export const handlePricingRuleDelete = async (
   payload: Record<string, unknown>,
   metadata: CommandMetadata,
-  actorId: string | null,
+  actorId: string,
 ): Promise<{ ruleId: string }> => {
   const result = await deletePricingRule(payload.rule_id as string, metadata.tenantId, actorId);
   return { ruleId: result.ruleId };

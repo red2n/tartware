@@ -40,8 +40,14 @@ export const ReservationsSchema = z.object({
 	check_in_date: z.coerce.date(),
 	check_out_date: z.coerce.date(),
 	booking_date: z.coerce.date(),
-	actual_check_in: z.coerce.date().optional(),
-	actual_check_out: z.coerce.date().optional(),
+	/**
+	 * Nullable, not merely optional: `undefined` means "leave this alone" on an
+	 * update payload, so a reversal needs `null` to actually clear the stamp.
+	 * Without it `z.coerce.date()` turns a null into 1970-01-01 and a reversed
+	 * check-in reads as having happened at the epoch.
+	 */
+	actual_check_in: z.coerce.date().nullable().optional(),
+	actual_check_out: z.coerce.date().nullable().optional(),
 	room_number: z.string().nullable().optional(),
 	/** Assigned room (rooms.id); NULL until a specific room is allocated. */
 	room_id: uuid.optional(),
