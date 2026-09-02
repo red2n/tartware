@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { ReasonCodeRow } from "@tartware/schemas";
+import type {
+  ArAccountRow,
+  ArCashApplicationRow,
+  ArCityLedgerRow,
+  ArDisputeRow,
+  ReasonCodeRow,
+} from "@tartware/schemas";
 
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
@@ -154,14 +160,17 @@ export const transferToCityLedger = async (
   const { tenantId } = context;
 
   // Load AR account + credit check
-  const { rows: accountRows } = await query<{
-    ar_account_id: string;
-    credit_limit: string;
-    outstanding_balance: string;
-    available_credit: string;
-    account_status: string;
-    payment_terms: string;
-  }>(
+  const { rows: accountRows } = await query<
+    Pick<
+      ArAccountRow,
+      | "ar_account_id"
+      | "credit_limit"
+      | "outstanding_balance"
+      | "available_credit"
+      | "account_status"
+      | "payment_terms"
+    >
+  >(
     `SELECT ar_account_id, credit_limit, outstanding_balance, available_credit, account_status, payment_terms
        FROM ar_accounts
       WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid AND is_deleted = FALSE`,
@@ -249,7 +258,7 @@ export const transferToCityLedger = async (
     const today = dateRows[0]?.today ?? new Date().toISOString().slice(0, 10);
 
     // Insert city ledger entry
-    const inserted = await queryWithClient<{ entry_id: string }>(
+    const inserted = await queryWithClient<Pick<ArCityLedgerRow, "entry_id">>(
       client,
       `INSERT INTO ar_city_ledger (
           tenant_id, property_id, ar_account_id,
@@ -297,7 +306,7 @@ export const transferToCityLedger = async (
     const entryId = inserted.rows[0]?.entry_id;
     if (!entryId) {
       // Idempotent — entry already exists for this folio+account
-      const existingResult = await queryWithClient<{ entry_id: string }>(
+      const existingResult = await queryWithClient<Pick<ArCityLedgerRow, "entry_id">>(
         client,
         `SELECT entry_id FROM ar_city_ledger
           WHERE tenant_id = $1::uuid AND folio_id = $2::uuid AND ar_account_id = $3::uuid
@@ -374,13 +383,12 @@ export const writeOffCityLedger = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: entryRows } = await query<{
-    entry_id: string;
-    ar_account_id: string;
-    outstanding_balance: string;
-    currency: string;
-    entry_status: string;
-  }>(
+  const { rows: entryRows } = await query<
+    Pick<
+      ArCityLedgerRow,
+      "entry_id" | "ar_account_id" | "outstanding_balance" | "currency" | "entry_status"
+    >
+  >(
     `SELECT entry_id, ar_account_id, outstanding_balance, currency, entry_status
        FROM ar_city_ledger
       WHERE entry_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -627,7 +635,7 @@ export const escalateDunning = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: accountRows } = await query<{ dunning_level: number; account_status: string }>(
+  const { rows: accountRows } = await query<Pick<ArAccountRow, "dunning_level" | "account_status">>(
     `SELECT dunning_level, account_status FROM ar_accounts
       WHERE ar_account_id = $1::uuid AND tenant_id = $2::uuid AND is_deleted = FALSE`,
     [command.ar_account_id, tenantId],
@@ -761,10 +769,9 @@ export const applyArCashPayment = async (
     }));
   } else {
     // FIFO: oldest open entries first
-    const { rows: openEntries } = await query<{
-      entry_id: string;
-      outstanding_balance: string;
-    }>(
+    const { rows: openEntries } = await query<
+      Pick<ArCityLedgerRow, "entry_id" | "outstanding_balance">
+    >(
       `SELECT entry_id, outstanding_balance
          FROM ar_city_ledger
         WHERE tenant_id = $1::uuid AND ar_account_id = $2::uuid
@@ -874,13 +881,12 @@ export const unapplyArCashPayment = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: appRows } = await query<{
-    application_id: string;
-    entry_id: string;
-    ar_account_id: string;
-    applied_amount: string;
-    application_status: string;
-  }>(
+  const { rows: appRows } = await query<
+    Pick<
+      ArCashApplicationRow,
+      "application_id" | "entry_id" | "ar_account_id" | "applied_amount" | "application_status"
+    >
+  >(
     `SELECT application_id, entry_id, ar_account_id, applied_amount, application_status
        FROM ar_cash_applications
       WHERE application_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -951,12 +957,9 @@ export const raiseArDispute = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: entryRows } = await query<{
-    entry_id: string;
-    ar_account_id: string;
-    outstanding_balance: string;
-    entry_status: string;
-  }>(
+  const { rows: entryRows } = await query<
+    Pick<ArCityLedgerRow, "entry_id" | "ar_account_id" | "outstanding_balance" | "entry_status">
+  >(
     `SELECT entry_id, ar_account_id, outstanding_balance, entry_status
        FROM ar_city_ledger
       WHERE entry_id = $1::uuid AND tenant_id = $2::uuid`,
@@ -1028,12 +1031,9 @@ export const resolveArDispute = async (
   const actorId = asUuid(resolveActorId(context.initiatedBy)) ?? SYSTEM_ACTOR_ID;
   const { tenantId } = context;
 
-  const { rows: disputeRows } = await query<{
-    dispute_id: string;
-    entry_id: string;
-    dispute_amount: string;
-    dispute_status: string;
-  }>(
+  const { rows: disputeRows } = await query<
+    Pick<ArDisputeRow, "dispute_id" | "entry_id" | "dispute_amount" | "dispute_status">
+  >(
     `SELECT dispute_id, entry_id, dispute_amount, dispute_status
        FROM ar_disputes WHERE dispute_id = $1::uuid AND tenant_id = $2::uuid`,
     [command.dispute_id, tenantId],

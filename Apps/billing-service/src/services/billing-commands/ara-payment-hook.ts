@@ -11,7 +11,9 @@
  *
  * Non-blocking: dispatches to Kafka and returns immediately.
  */
+
 import { randomUUID } from "node:crypto";
+import type { ArCityLedgerRow } from "@tartware/schemas";
 import { config } from "../../config.js";
 import { publishEvent } from "../../kafka/producer.js";
 import { query } from "../../lib/db.js";
@@ -33,7 +35,7 @@ export const dispatchArPaymentApply = async (
   if (!reservationId) return;
 
   // Find any open city ledger entries linked to this reservation's folio
-  const result = await query<{ ar_account_id: string; entry_id: string }>(
+  const result = await query<Pick<ArCityLedgerRow, "ar_account_id" | "entry_id">>(
     `SELECT cl.ar_account_id, cl.entry_id AS entry_id
      FROM public.ar_city_ledger cl
      JOIN public.folios f ON f.folio_id = cl.folio_id AND f.tenant_id = cl.tenant_id

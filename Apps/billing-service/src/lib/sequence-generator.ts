@@ -1,3 +1,4 @@
+import type { InvoiceSequenceRow } from "@tartware/schemas";
 import type { PoolClient } from "pg";
 import { queryWithClient } from "../lib/db.js";
 
@@ -25,7 +26,7 @@ export async function nextDocumentNumber(
   // Atomically upsert the sequence row and increment last_number.
   // The `FOR UPDATE` is implicit because INSERT ... ON CONFLICT UPDATE
   // takes an exclusive row lock before writing.
-  const seqResult = await queryWithClient<{ last_number: number }>(
+  const seqResult = await queryWithClient<Pick<InvoiceSequenceRow, "last_number">>(
     client,
     `INSERT INTO public.invoice_sequences (tenant_id, property_id, document_type, fiscal_year, last_number, updated_at)
      VALUES ($1::uuid, $2::uuid, $3, $4, 1, NOW())

@@ -17,8 +17,7 @@
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-
-import type { CommandContext } from "@tartware/schemas";
+import type { CommandContext, PaymentGatewayWebhookRow } from "@tartware/schemas";
 
 import { auditAsync } from "../lib/audit-logger.js";
 import { query } from "../lib/db.js";
@@ -164,7 +163,7 @@ export async function insertWebhookEvent(
   eventType: string,
   rawPayload: Record<string, unknown>,
 ): Promise<string | null> {
-  const { rows } = await query<{ webhook_id: string }>(INSERT_WEBHOOK_SQL, [
+  const { rows } = await query<Pick<PaymentGatewayWebhookRow, "webhook_id">>(INSERT_WEBHOOK_SQL, [
     tenantId,
     propertyId,
     provider.toUpperCase(),

@@ -44,18 +44,11 @@ const SCHEMA_SRC = "schema/src";
  * counter — say so in the comment beside it.
  */
 const KNOWN_UNTYPED = new Map([
-  // AR ledger — the largest gap, all read through inline row generics.
-  ["ar_accounts", "AR account master; read by ara.ts and the AR routes"],
-  ["ar_city_ledger", "city ledger entries; the write-off and transfer handlers"],
-  ["ar_disputes", "dispute register"],
-  ["ar_aging_snapshots", "aging run output"],
-  ["ar_cash_applications", "payment-to-invoice application"],
-  ["ar_dunning_events", "dunning ladder history"],
-  ["folio_windows", "folio window routing"],
-  ["invoice_sequences", "per-property invoice numbering counter"],
-  // Elsewhere.
+  // The AR ledger — nine tables, and the largest single entry this list ever
+  // held — was paid down on 2 Sep into
+  // schema/src/schemas/04-financial/ar-ledger-rows.ts. What remains is three
+  // tables with no reader and one register.
   ["walk_history", "walked-guest register"],
-  ["payment_gateway_webhooks", "raw gateway callbacks"],
   ["overbooking_config", "no reader yet"],
   ["tenant_access_audit", "partitioned access log; no reader yet"],
 ]);

@@ -1,3 +1,4 @@
+import type { FolioWindowRow } from "@tartware/schemas";
 import { query } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
 import { BillingFolioWindowCreateCommandSchema } from "../../schemas/billing-commands.js";
@@ -31,7 +32,7 @@ export const createFolioWindow = async (
   }
 
   // Check for overlapping windows on the same folio
-  const { rows: overlapRows } = await query<{ id: string }>(
+  const { rows: overlapRows } = await query<Pick<FolioWindowRow, "id">>(
     `SELECT id FROM public.folio_windows
      WHERE tenant_id = $1::uuid AND folio_id = $2::uuid
        AND window_start < $4 AND window_end > $3`,
@@ -45,7 +46,7 @@ export const createFolioWindow = async (
     );
   }
 
-  const { rows } = await query<{ id: string }>(
+  const { rows } = await query<Pick<FolioWindowRow, "id">>(
     `INSERT INTO public.folio_windows (
        tenant_id, property_id, reservation_id, folio_id,
        window_start, window_end, billed_to, billed_to_type,
