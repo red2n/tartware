@@ -2,11 +2,12 @@ import http from "k6/http";
 import { check, group } from "k6";
 import { Counter, Rate, Trend } from "k6/metrics";
 import {
+	commandExecute,
 	ENDPOINTS,
 	getHeaders,
-	TENANT_ID,
-	PROPERTY_ID,
-	ROOM_TYPE_ID,
+	PROPERTY_IDS,
+	ROOM_TYPE_IDS,
+	TENANT_IDS,
 } from "./lib/config.js";
 import {
 	futureDate,
@@ -24,13 +25,14 @@ const commandCount = new Counter("command_requests");
 const readCount = new Counter("read_requests");
 
 const BASE_URL = __ENV.GATEWAY_BASE_URL || "http://localhost:8080";
-const tenantIds = (__ENV.TENANT_IDS || TENANT_ID).split(",").filter(Boolean);
-const propertyIds = (__ENV.PROPERTY_IDS || PROPERTY_ID)
-	.split(",")
-	.filter(Boolean);
-const roomTypeIds = (__ENV.ROOM_TYPE_IDS || ROOM_TYPE_ID)
-	.split(",")
-	.filter(Boolean);
+// config.js already parses these CSVs and supplies defaults. This file used to
+// re-split them itself and fall back to TENANT_ID / PROPERTY_ID / ROOM_TYPE_ID,
+// three names config.js has never exported — so the fallback was
+// `undefined.split(",")` and the script died on load whenever the env vars
+// were absent, which is every run that did not set them.
+const tenantIds = TENANT_IDS;
+const propertyIds = PROPERTY_IDS;
+const roomTypeIds = ROOM_TYPE_IDS;
 
 const commandStartRate = Number(__ENV.COMMAND_START_RATE || 1000);
 const commandTargetRate = Number(__ENV.COMMAND_TARGET_RATE || 30000);
@@ -87,15 +89,15 @@ export const options = {
 const baseHeaders = getHeaders();
 
 function pickTenant() {
-	return pickRandom(tenantIds) || TENANT_ID;
+	return pickRandom(tenantIds);
 }
 
 function pickProperty() {
-	return pickRandom(propertyIds) || PROPERTY_ID;
+	return pickRandom(propertyIds);
 }
 
 function pickRoomType() {
-	return pickRandom(roomTypeIds) || ROOM_TYPE_ID;
+	return pickRandom(roomTypeIds);
 }
 
 export function commandPipeline() {
@@ -109,14 +111,19 @@ export function commandPipeline() {
 			"Idempotency-Key": uuid(),
 		});
 
+		// The command endpoint, not `/v1/reservations` — that route is GET only,
+		// so this POST was a 404 on every iteration it ever got to.
 		const response = http.post(
-			`${BASE_URL}${ENDPOINTS.reservations}`,
+			`${BASE_URL}${commandExecute("reservation.create")}`,
 			JSON.stringify(reservation),
-			{ headers, tags: { pipeline: "command" } },
+			{ headers, tags: { pipeline: "command", path: "command_execute" } },
 		);
 
+		// 202, not 200/201: a command is *recorded* here and applied by its
+		// consumer later. Asserting 2xx-created reported the pipeline broken
+		// even on the runs where it worked.
 		const ok = check(response, {
-			"reservation accepted": (r) => r.status === 200 || r.status === 201,
+			"command accepted (202)": (r) => r.status === 202,
 		});
 
 		commandErrors.add(!ok);

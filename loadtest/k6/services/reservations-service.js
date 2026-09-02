@@ -8,15 +8,22 @@ import http from "k6/http";
 import { check, sleep, group } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 import {
+	commandExecute,
 	GATEWAY_URL,
-	TENANT_ID,
-	PROPERTY_ID,
+	TENANT_IDS,
+	PROPERTY_IDS,
 	VUS,
 	DURATION,
 	getHeaders,
 	ENDPOINTS,
 	DEFAULT_THRESHOLDS,
 } from "../lib/config.js";
+
+// This scenario drives one property, so it takes the first of each. It used to
+// import TENANT_ID / PROPERTY_ID, which config.js does not export and never
+// did: every read below sent `tenant_id=undefined` and every write threw.
+const TENANT_ID = TENANT_IDS[0];
+const PROPERTY_ID = PROPERTY_IDS[0];
 import {
 	uuid,
 	sleepWithJitter,
@@ -200,8 +207,9 @@ function testCreateReservation(roomTypes) {
 			roomTypeId,
 		);
 
+		// `/v1/reservations` is GET only; a booking is a command.
 		const response = http.post(
-			`${GATEWAY_URL}${ENDPOINTS.reservations}`,
+			`${GATEWAY_URL}${commandExecute("reservation.create")}`,
 			JSON.stringify(reservationData),
 			{
 				headers,
@@ -209,10 +217,8 @@ function testCreateReservation(roomTypes) {
 			},
 		);
 
-		const success =
-			response.status === 201 ||
-			response.status === 200 ||
-			response.status === 202;
+		// A command is accepted, not created: 202 is the only success here.
+		const success = response.status === 202;
 
 		reservationsLatency.add(response.timings.duration);
 		reservationsSuccess.add(success);
@@ -224,8 +230,7 @@ function testCreateReservation(roomTypes) {
 		check(
 			response,
 			{
-				"reservation created": (r) =>
-					r.status === 201 || r.status === 200 || r.status === 202,
+				"command accepted (202)": (r) => r.status === 202,
 			},
 			{ endpoint: "reservation-create" },
 		);

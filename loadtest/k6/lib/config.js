@@ -126,6 +126,18 @@ export function getHeaders(token) {
 	};
 }
 
+/**
+ * The one way a write enters the system.
+ *
+ * Every command goes through `POST /v1/commands/:name/execute`, which
+ * validates it, checks the caller's authority and writes the outbox row. It
+ * answers **202** — recorded, not applied — so a check asserting 200 or 201
+ * reports a working pipeline as broken.
+ *
+ * A client-supplied `Idempotency-Key` header is required on every command.
+ */
+export const commandExecute = (commandName) => `/v1/commands/${commandName}/execute`;
+
 export const ENDPOINTS = {
 	health: "/health",
 	login: "/v1/auth/login",
@@ -135,8 +147,18 @@ export const ENDPOINTS = {
 	rooms: "/v1/rooms",
 	roomTypes: "/v1/room-types",
 	guests: "/v1/guests",
+	// GET only. Reservation *writes* do not have a REST route at all — they go
+	// through commandExecute() below, which is the only path into the command
+	// pipeline. Posting here is a 404, which is what two of these scripts did.
 	reservations: "/v1/reservations",
-	availability: "/v1/availability",
+	// `/v1/availability` was declared in the gateway and proxied to rooms-service,
+	// which registers nothing by that name — three documented endpoints that
+	// always 404. Every real caller uses this one. See the note above
+	// `/v1/rooms/availability` in Apps/api-gateway/src/routes/room-routes.ts.
+	availability: "/v1/rooms/availability",
+	// Verified against Apps/api-gateway/src/routes/room-routes.ts:351 and used by
+	// the one scenario that has always worked, scenarios/pms-full-flow.js.
+	rates: "/v1/rates",
 	payments: "/v1/billing/payments",
 	dashboardStats: "/v1/dashboard/stats",
 };

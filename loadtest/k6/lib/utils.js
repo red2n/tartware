@@ -60,6 +60,95 @@ export function safeJson(response) {
 	}
 }
 
+/**
+ * A `reservation.create` command envelope.
+ *
+ * Two scripts imported a function by this name for months and none existed —
+ * `generateReservation` was in nobody's exports, so both threw on their first
+ * iteration and neither had ever reached the HTTP layer they were reported as
+ * failing at. This is that function, written once.
+ *
+ * It returns the **envelope**, not a bare reservation: the command endpoint
+ * takes `{ tenant_id, payload }` and everything about the booking lives under
+ * `payload`. Getting that wrong is a 400 that reads like a schema problem.
+ *
+ * Dates are pushed well into the future and the window is short, because a
+ * long stay consumes more inventory per command and a load run that exhausts
+ * its room types starts measuring refusals instead of throughput.
+ */
+export function generateReservation(tenantId, propertyId, roomTypeId, options = {}) {
+	const leadDays = randomInt(options.minLeadDays ?? 1, options.maxLeadDays ?? 120);
+	const nights = randomInt(options.minNights ?? 1, options.maxNights ?? 3);
+	return {
+		tenant_id: tenantId,
+		payload: {
+			property_id: propertyId,
+			room_type_id: roomTypeId,
+			guest_id: options.guestId ?? uuid(),
+			check_in_date: futureDate(leadDays),
+			check_out_date: futureDate(leadDays + nights),
+			adults: randomInt(1, 2),
+			children: 0,
+			rate_code: options.rateCode ?? "BAR",
+			total_amount: Number((nights * randomInt(120, 400)).toFixed(2)),
+		},
+	};
+}
+
+/**
+ * A `guest.create` command envelope.
+ *
+ * Same envelope shape as {@link generateReservation}: the command endpoint
+ * takes `{ tenant_id, payload }`.
+ */
+export function generateGuest(tenantId, options = {}) {
+	const n = randomInt(1, 1_000_000);
+	return {
+		tenant_id: tenantId,
+		payload: {
+			first_name: options.firstName ?? `Load${n}`,
+			last_name: options.lastName ?? `Test${n}`,
+			email: options.email ?? randomEmail(),
+			phone: options.phone ?? randomPhone(),
+			country: options.country ?? "US",
+		},
+	};
+}
+
+/**
+ * A payment command envelope.
+ *
+ * `amount_minor` rather than a decimal: money crosses this boundary in minor
+ * units, and a float here is the same rounding bug the ledger's NUMERIC
+ * columns exist to avoid.
+ */
+export function generatePayment(tenantId, propertyId, options = {}) {
+	return {
+		tenant_id: tenantId,
+		payload: {
+			property_id: propertyId,
+			folio_id: options.folioId ?? uuid(),
+			amount_minor: options.amountMinor ?? randomInt(5_000, 80_000),
+			currency: options.currency ?? "USD",
+			payment_method: options.paymentMethod ?? pickRandom(["CASH", "CARD", "TRANSFER"]),
+		},
+	};
+}
+
+/** A housekeeping task command envelope. */
+export function generateHousekeepingTask(tenantId, propertyId, options = {}) {
+	return {
+		tenant_id: tenantId,
+		payload: {
+			property_id: propertyId,
+			room_id: options.roomId ?? uuid(),
+			task_type: options.taskType ?? pickRandom(["DEPARTURE_CLEAN", "STAYOVER", "INSPECTION"]),
+			priority: options.priority ?? pickRandom(["LOW", "NORMAL", "HIGH"]),
+			scheduled_date: options.scheduledDate ?? futureDate(0),
+		},
+	};
+}
+
 export default {
 	uuid,
 	randomInt,
@@ -71,4 +160,8 @@ export default {
 	sleepWithJitter,
 	parseList,
 	safeJson,
+	generateReservation,
+	generateGuest,
+	generatePayment,
+	generateHousekeepingTask,
 };
