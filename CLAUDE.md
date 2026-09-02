@@ -246,7 +246,7 @@ reason code, category, `requires_approval`, room sellability and a fresh availab
 It is the most complete override implementation in the repo and the model the findings below
 point at.
 
-### Override & authorization audit (28 Aug 2026)
+### Override & authorization audit (28 Aug 2026 — all 11 findings closed 2 Sep)
 
 Measured against OPERA. **Command breadth is already OPERA-class** — cashier shifts with
 counted variance, fiscal period locking, folio windows and routing, comp accounting, walk,
@@ -259,11 +259,14 @@ Three facts frame everything below:
   required `MANAGER`, so the clerk who checked a guest in had the same authority as the one who
   writes off bad debt, and `user_tenant_associations.permissions` (JSONB) was loaded into every
   request's auth context and read by nothing. Both are now load-bearing — see "A02, as landed".
-- **Overrides are logged, never authorized.** Every bypass writes `flow_approvals`; nothing checks
-  entitlement first. `force: true` on a payload is the whole mechanism — there is no supervisor
-  step-up or re-auth anywhere in the repo. **Partly fixed by A04, 30 Aug:** the five commands that
-  undo a completed accounting control now need a *second actor*, and cannot be run by one login at
-  all. Everything else still bypasses on the caller's own authority.
+- ~~**Overrides are logged, never authorized.**~~ **Fixed by A04–A09, 30 Aug – 2 Sep.** Every bypass
+  wrote `flow_approvals` and nothing checked entitlement first; `force: true` on a payload was the
+  whole mechanism. Now: the five commands that undo a completed accounting control need a *second
+  actor* and cannot be run by one login at all (A04), a `force` costs the higher of the reason code's
+  `approval_level` and `MANAGER` (A08), and a write-off or rate override is authorized by **amount**
+  as well as by command (A06/A07). What is still true is that authority is checked, never
+  re-proven — there is no supervisor step-up or re-auth anywhere in the repo, so the control is the
+  operator's own membership, not a second credential at the terminal.
 - **The flow guard is static.** It proves a command is wired up, not that an operator may run it.
   `dependsOn` is still checked for cycles and never consulted again. **Coverage improved 30 Aug:**
   a `LEDGER_CONTROL` flow took 66/202 to 80/202 and, more to the point, is the first flow whose
@@ -280,12 +283,80 @@ Full report: <https://claude.ai/code/artifact/0f5353d3-94f6-4c71-a2ee-a72a95c0b9
 | A03 | High | `flow_approvals.role_at_approval` is a hardcoded literal at all 5 command-path call sites (`"FORCE_OVERRIDE"`, `"GM_OVERRIDE"`, …). The real role rides the envelope as `initiatedBy.role` all the way to the consumer, where `resolveActorId` reads only `.userId` and drops it. | **done 28 Aug** |
 | A04 | High | `approval_requests` + `approval-service.ts` are a complete dual-control queue that no command handler ever enters, and approving does not dispatch the stored `operation_payload`. | **done 30 Aug** |
 | A05 | High | `GUEST_BLACKLISTED` and `CREDIT_LIMIT_EXCEEDED` are hard throws with **no override path at all** — the blacklist error even cites "a GM override with documented reason", which does not exist. | **done 1 Sep** — blacklist landed with `assertOverrideAuthority`; the credit-limit half was schema-only (fields on three commands, read by nothing) and now enforces on payment authorize, capture and city-ledger transfer. |
-| A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | **partly done 1 Sep** — mandatory RATE_OVERRIDE code, authority check, `flow_approvals` record. The **thresholds are still read by nothing**: that needs `resolveSettings` moved out of core-service to a shared entry point. |
-| A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | **partly done 1 Sep** — mandatory WRITE_OFF code (6 seeded), authority check, `write_off` record row. Amount threshold outstanding, with A06. The other two write-offs (`billing.ar.write_off`, `billing.suspense.write_off`) still take free text; both have UI callers, so a reason picker comes with them. |
-| A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | open |
-| A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | open |
+| A06 | High | `reservation.rate_override` has no reason code (`reason` is `.optional()`), no threshold, no approval record. The settings catalogue already defines `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove` — nothing reads them, and the roles they name are not in `TenantRoleEnum`. | **done 2 Sep** — mandatory RATE_OVERRIDE code, authority check, `flow_approvals` record, and the thresholds now read: `resolveSettings` left core-service for `settings-utils` in `@tartware/command-consumer-utils`, and `schema/src/api/override-thresholds.ts` turns the catalogue's rungs into an enforced demand. |
+| A07 | High | `ar.city_ledger.write_off` takes free text, with no reason code, threshold, approval or `flow_approvals` row. | **done 2 Sep** — all three write-offs (`ar.city_ledger.write_off`, `billing.ar.write_off`, `billing.suspense.write_off`) enter one `write-off-gate.ts`: mandatory WRITE_OFF code, the acting role clearing its `approval_level`, the amount clearing the ladder, and a `flow_approvals` record written after the ledger moves. The reason-code picker its UI callers needed shipped with it. |
+| A08 | High | `requires_approval` is honoured only by room move, and its escape hatch is `force` "on the authority of the caller" — which is the same `MANAGER`. `reason_codes.approval_level` (NONE/SUPERVISOR/MANAGER/DIRECTOR/GM) is read nowhere. | **done 2 Sep** — `forcedOverrideMinRole` + `assertForcedOverrideAuthority` in `command-utils`, applied to room move and all three reversals, each under its own declared gate name. |
+| A09 | Medium | `charge_postings.cashier_name` is free text with no FK to `cashier_sessions`, so a drawer cannot be reconciled against its own postings. `cashier_sessions.supervisor_overrides` has a GIN index and no writer. | **done 2 Sep** — `charge_postings.cashier_session_id` (migration `008`), written by `resolveOpenCashierSession`, which matches on the cashier and never on "the property's only open session". |
 | A10 | Medium | No `RESERVATION_LEGAL_TRANSITIONS`, though `EVENT_BOOKING_LEGAL_TRANSITIONS` and `ALLOTMENT_LEGAL_TRANSITIONS` exist in `schema/` for two peripheral aggregates. Reservation status rules are inline literals across 8 files. | **done 30 Aug** |
 | A11 | Medium | `pnpm run flow:integrity` (12 flow checks) is in neither `check` nor `build` nor CI. | **done 30 Aug** |
+
+**A06–A09, as landed (2 Sep).** The audit is closed — every finding A01–A11 is done. The last
+four had one shape between them: a control that existed, and an escape hatch nobody checked.
+
+**The thresholds finally read.** `schema/src/api/override-thresholds.ts` turns the settings
+catalogue's `discountApprovalThresholds`, `compNightsLimit` and `refundPolicy.requireApprovalAbove`
+— declared since before the audit and read by nothing — into a demand the code enforces, so an
+override is authorized by **amount** and not only by command. Discounting a room 5% and writing 90%
+off it were the same command, cleared by the same role, recorded the same way. Two things had to be
+true first: `resolveSettings` had to leave core-service, where billing and reservations could not
+call it (it is `settings-utils` in `@tartware/command-consumer-utils` now); and the roles the policy
+names — `REVENUE_MANAGER`, `GENERAL_MANAGER` — had to be translatable into `TenantRoleEnum`, on the
+same rule `override-authority.ts` uses for SUPERVISOR and DIRECTOR: where the product has no
+equivalent tier the demand rounds **up**, never down to "anyone".
+
+**The shipped defaults are load-bearing, not a safety net.** The catalogue installer writes
+`settings_definitions` under the demo tenant, so for every real property the policy lookup finds
+nothing. If an absent policy meant "no threshold", this control would be on in sample data and off
+everywhere that moves money — the same shape of defect that had all seventeen override reason codes
+invisible outside the demo tenant. So the defaults in that file apply until a tenant states
+otherwise, and the catalogue imports them rather than restating them.
+
+**A08 was three lines once `approval_level` was readable.** `forcedOverrideMinRole` takes the higher
+of the reason code's `approval_level` and `MANAGER` when the code says `requires_approval` — the flag
+that had been read by nothing — and `assertForcedOverrideAuthority` refuses the force otherwise,
+failing closed with `OVERRIDE_AUTHORITY_UNKNOWN` on a level this product cannot enforce (the column
+sits behind a CHECK constraint, which is one migration from holding anything). Applied to room move
+and all three reversals, each under its own declared gate name so the registry's closed vocabulary
+stays closed. An **unforced** move or reversal is untouched: A02's floor already governs who may run
+the command, and gating a night manager's routine call would be theatre.
+
+**Room move resolves its reason code before the three force-gated refusals**, so one authority check
+covers all of them — forcing past a do-not-move flag, an approval-required code and a dirty room is
+one decision, not three. The visible consequence is that an invalid reason code is now reported ahead
+of a do-not-move refusal.
+
+**A07's remainder: one gate, three commands.** `billing.ar.write_off` and `billing.suspense.write_off`
+stayed on free text when the city-ledger one was hardened, for a stated reason — both have UI callers,
+and demanding a reason code from a screen that could not offer one would have broken them. The picker
+exists now, so all three enter `write-off-gate.ts` and the city-ledger one moved onto the shared gate
+rather than keeping its copy. Four things a write-off owes, in order: a WRITE_OFF code ("which of bad
+debt, goodwill, settled dispute and small balance was this year's £40k" is the first question asked of
+write-offs); the acting role clearing the code's `approval_level`; the acting role clearing the amount
+ladder; and a `flow_approvals` row written **after** the ledger moves — a record, not a gate, so
+`forced` stays false. **Under dual control the ladder measures the requester, not the countersigner.**
+All three are in `COMMAND_DUAL_CONTROL`, so the envelope reaching the handler keeps the requester as
+`initiatedBy` and carries the approver as `metadata.approval`; measuring the approver would let a
+clerk raise any amount so long as an owner rubber-stamped it.
+
+**A09 binds a posting to its drawer.** `charge_postings.cashier_session_id` (migration `008`) is
+permanently nullable — most postings have no drawer, and NULL says so truthfully rather than inventing
+an attribution. `resolveOpenCashierSession` matches on the **cashier**, never on "the property's only
+open session": crediting a posting to a drawer its operator was not holding is worse than leaving it
+unattributed, because it is the reconciliation itself that would then be wrong.
+
+**Three findings fixed rather than filed, all reference data that was invisible where it mattered.**
+The reason-code list route read only the caller's tenant while `resolveReasonCode` also reads the
+system tenant — so the new picker would have shown an empty list on every real property while every
+handler went on accepting all 46 codes. The settings installer's demo-tenant scope is the second (see
+the defaults above). And dual control could be **dispatched around**: `command-dispatch` now throws
+`COMMAND_APPROVAL_UNAVAILABLE` (503) when a caller reaches it without the approval queue wired,
+because dispatching a write-off *because the control could not run* is the exact failure dual control
+exists to prevent.
+
+Tests: 16 `command-utils`, 9 `cashier-attribution`, 10 `settings-utils`, 17 `write-off-reason`,
+13 `blacklist-override`, 13 `rate-override-control`, 26 `room-move`, 36 `reversals` — plus **Phase 5g**
+of `test-multi-tenant.sh`, which walks the blacklist override on a real guest. `flow:integrity` is
+**102 checks, green**.
 
 **A02, as landed.** `COMMAND_MIN_ROLE` in `schema/src/api/command-permissions.ts` declares a floor
 for each of the 202 commands, on the same `TENANT_ROLE_PRIORITY` ladder A01 consolidated — no second
@@ -661,9 +732,9 @@ PgBouncer's `default_pool_size` — which was the hidden ceiling behind all of i
 | T5 | Kafka message keying: commands are keyed by command id, so there is **no ordering guarantee** between two commands on the same reservation or folio. Pre-existing, preserved deliberately through T3. Keying by tenant would fix ordering but hot-partition the largest tenants. Needs a decision. | open |
 | T6 | Nothing was measured. | **done 25 Aug** — numbers above. Three blockers had to be cleared first, all recorded as T8-T10. |
 | T8 | `loadtest/k6/command-pipeline.js` posts to `POST /v1/reservations`, which the gateway does not serve — every write 404s. The real endpoint is `POST /v1/commands/:name/execute`. `scenarios/*.js` also query `/v1/availability`, which 404s too. | open — new `scenarios/command-capacity.js` uses the real endpoint; the older files still need fixing |
-| T9 | All 195 command feature flags ship `disabled` in the default seed, so every write returns 409 until they are enabled. `executables/test-accounts-realdata/test-multi-tenant.sh` bulk-enables them first and calls this the "FEATURE_DISABLED trap"; the load harness does not. | open — document it in `loadtest/README.md` |
+| T9 | All 195 command feature flags ship `disabled` in the default seed, so every write returns 409 until they are enabled. `executables/test-accounts-realdata/test-multi-tenant.sh` bulk-enables them first and calls this the "FEATURE_DISABLED trap"; the load harness did not. | **partly done** — `loadtest/run-full-test.sh` now calls `loadtest/enable-via-api.sh` before traffic, so the harness enables them. Still undocumented: `loadtest/README.md` (75 lines) does not mention the trap, so anyone driving k6 by hand still hits it. |
 | T10 | PgBouncer's resolver fails with `(bad-af)` against the compose DNS name and never connects, so every service falls over on startup with `08P01`. Worked around by pinning `PGBOUNCER_DATABASES_HOST` to the container IP. | open — needs a real fix, the IP changes on recreate |
-| T7 | `reservations-command-service` outbox dispatcher publishes one record per `send()`, serially, on a 2s poll with a per-tenant throttle. | open — **now measured, and it is the top bottleneck**. Same run, same DB, same broker: the gateway's batched dispatcher drained **472,587 command rows to zero**, while this one moved **7 rows/sec** and fell *further* behind (203K PENDING and growing, ~7 hours to drain). That backlog is why `reservations` stays empty under load — the events never reach the consumer that creates the rows. Port the `sendBatch` + batched-marking + adaptive-poll design from `Apps/api-gateway/src/command-center/dispatcher.ts`. |
+| T7 | `reservations-command-service` outbox dispatcher publishes one record per `send()`, serially, on a 2s poll with a per-tenant throttle. | **done 1 Sep** — measured first, and it was the top bottleneck: same run, same DB, same broker, the gateway's batched dispatcher drained **472,587 command rows to zero** while this one moved **7 rows/sec** and fell *further* behind (203K PENDING, ~7 hours to drain), which is why `reservations` stayed empty under load. Rather than port the design, both now share it: the loop is `createOutboxDispatcher` in `@tartware/outbox`, and `Apps/reservations-command-service/src/outbox/dispatcher.ts` is a composition root supplying the producer, config, lifecycle bookkeeping and DLQ routing. Not re-measured under load since. |
 | T11 | `POST /v1/commands/:name/execute` hardcoded `rateLimit: { max: 120, timeWindow: "1 minute" }` — two commands a second on the endpoint every write goes through, unraisable by config, while `self-service-routes` and `misc-routes` already read `gatewayConfig.rateLimit.commandMax`. Capped the first load run at exactly 120 accepted commands. | **done 25 Aug** — now reads the same config, tunable via `API_GATEWAY_RATE_COMMAND_MAX` (default still 60/min; raise it deliberately per environment). |
 
 ---
