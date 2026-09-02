@@ -319,17 +319,34 @@ Two industry-standard behaviours exist and the choice must be an explicit config
 
 ## 6. How an Offer Applies to a PMS Reservation
 
-```
- CONFIGURE          SHOP / QUOTE            BOOK                 STAY                 SETTLE
-┌──────────┐   ┌──────────────────┐   ┌───────────────┐   ┌──────────────┐   ┌────────────────┐
-│ Offer    │   │ Availability +   │   │ Offer frozen  │   │ Nightly      │   │ Redemption     │
-│ defined, │──►│ rate query;      │──►│ onto the      │──►│ posting at   │──►│ finalised;     │
-│ linked   │   │ qualification    │   │ reservation   │   │ night audit  │   │ ledgers        │
-│ to rates │   │ + pricing        │   │ as a snapshot │   │              │   │ balanced       │
-└──────────┘   └──────────────────┘   └───────────────┘   └──────────────┘   └────────────────┘
-                                             │                                       │
-                                       inventory/coupon                        release on
-                                       decremented; hold                       cancel / no-show
+``` mermide
+flowchart LR
+2
+A["Configure<br/>Offer defined,<br/>linked to rates"]
+3
+B["Shop / Quote<br/>Availability + rate query;<br/>qualification + pricing"]
+4
+C["Book<br/>Offer frozen onto the<br/>reservation as a snapshot"]
+5
+D["Stay<br/>Nightly posting at<br/>night audit"]
+6
+E["Settle<br/>Redemption finalised;<br/>ledgers balanced"]
+7
+ 
+8
+A --> B
+9
+B --> C
+10
+C --> D
+11
+D --> E
+12
+ 
+13
+C -.-> F["Inventory/Coupon decremented;<br/>hold applied"]
+14
+E -.-> G["Release on<br/>cancel / no-show"]
 ```
 
 ### 6.1 Lifecycle touchpoints
