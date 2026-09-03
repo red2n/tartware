@@ -54,11 +54,15 @@ describe("resolveDocumentPath", () => {
 	});
 
 	it("returns undefined for a missing segment rather than throwing", () => {
-		expect(resolveDocumentPath(payload, "guest.passport.number")).toBeUndefined();
+		expect(
+			resolveDocumentPath(payload, "guest.passport.number"),
+		).toBeUndefined();
 	});
 
 	it("returns undefined when the path runs into a scalar", () => {
-		expect(resolveDocumentPath(payload, "folio.folio_number.length")).toBeUndefined();
+		expect(
+			resolveDocumentPath(payload, "folio.folio_number.length"),
+		).toBeUndefined();
 	});
 
 	it("returns undefined for a non-integer array index", () => {
@@ -90,9 +94,9 @@ describe("formatDocumentValue — money", () => {
 
 	it("prints a zero-decimal currency with no decimals", () => {
 		// JPY has no minor unit; printing ¥1,234.00 is simply wrong.
-		expect(formatDocumentValue(1234, "MONEY", { ...fmt, currency: "JPY" })).toBe(
-			"¥1,234",
-		);
+		expect(
+			formatDocumentValue(1234, "MONEY", { ...fmt, currency: "JPY" }),
+		).toBe("¥1,234");
 	});
 
 	it("prints a three-decimal currency with three", () => {
@@ -110,9 +114,9 @@ describe("formatDocumentValue — money", () => {
 	it("prints the code verbatim for a well-formed currency Intl does not know", () => {
 		// Intl separates an unknown code from the amount with U+00A0, so this
 		// matches on shape rather than on the exact byte.
-		expect(formatDocumentValue(10, "MONEY", { ...fmt, currency: "ZZZ" })).toMatch(
-			/^ZZZ\s10\.00$/,
-		);
+		expect(
+			formatDocumentValue(10, "MONEY", { ...fmt, currency: "ZZZ" }),
+		).toMatch(/^ZZZ\s10\.00$/);
 	});
 
 	it("falls back to a plain amount when no currency is supplied", () => {
@@ -145,9 +149,9 @@ describe("formatDocumentValue — dates", () => {
 	});
 
 	it("formats an instant with a time", () => {
-		expect(formatDocumentValue("2026-09-10T14:30:00Z", "DATETIME", fmt)).toContain(
-			"2:30",
-		);
+		expect(
+			formatDocumentValue("2026-09-10T14:30:00Z", "DATETIME", fmt),
+		).toContain("2:30");
 	});
 
 	it("returns empty for an unparseable date", () => {
@@ -171,7 +175,13 @@ describe("formatDocumentValue — other formats", () => {
 	});
 
 	it("returns empty for null and undefined in every format", () => {
-		for (const format of ["TEXT", "MONEY", "NUMBER", "DATE", "DATETIME"] as const) {
+		for (const format of [
+			"TEXT",
+			"MONEY",
+			"NUMBER",
+			"DATE",
+			"DATETIME",
+		] as const) {
 			expect(formatDocumentValue(null, format, fmt)).toBe("");
 			expect(formatDocumentValue(undefined, format, fmt)).toBe("");
 		}
@@ -204,7 +214,9 @@ describe("composeDocument — value bindings", () => {
 	it("renders the key itself when a string is missing, so the gap is visible", () => {
 		const result = composeDocument({
 			template: template({
-				sections: [{ kind: "TEXT", text: { from: "STRING", key: "folio.title" } }],
+				sections: [
+					{ kind: "TEXT", text: { from: "STRING", key: "folio.title" } },
+				],
 			}),
 			payload,
 		});
@@ -485,7 +497,8 @@ describe("composeDocument — tables", () => {
 
 describe("composeDocument — empty blocks", () => {
 	const single = (section: Parameters<typeof template>[0]["sections"]) =>
-		composeDocument({ template: template({ sections: section }), payload }).body;
+		composeDocument({ template: template({ sections: section }), payload })
+			.body;
 
 	it("drops a heading whose value is absent", () => {
 		expect(
@@ -496,9 +509,9 @@ describe("composeDocument — empty blocks", () => {
 	});
 
 	it("drops a text block whose value is absent", () => {
-		expect(single([{ kind: "TEXT", text: { from: "PATH", path: "nope" } }])).toEqual(
-			[],
-		);
+		expect(
+			single([{ kind: "TEXT", text: { from: "PATH", path: "nope" } }]),
+		).toEqual([]);
 	});
 
 	it("keeps a spacer, which is how a template asks for blank space", () => {
@@ -524,20 +537,33 @@ describe("composeDocument — document shape", () => {
 		const result = composeDocument({
 			template: template({
 				title: { from: "STRING", key: "folio.title" },
-				header: [{ kind: "HEADING", level: 1, text: { from: "PATH", path: "guest.name" } }],
-				sections: [{ kind: "TOTALS", rows: [
+				header: [
 					{
-						label: { from: "LITERAL", value: "Balance" },
-						value: {
-							from: "PATH",
-							path: "totals.balance",
-							format: "MONEY",
-							currency_path: "folio.currency_code",
-						},
-						emphasis: true,
+						kind: "HEADING",
+						level: 1,
+						text: { from: "PATH", path: "guest.name" },
 					},
-				] }],
-				footer: [{ kind: "TEXT", text: { from: "LITERAL", value: "Thank you" } }],
+				],
+				sections: [
+					{
+						kind: "TOTALS",
+						rows: [
+							{
+								label: { from: "LITERAL", value: "Balance" },
+								value: {
+									from: "PATH",
+									path: "totals.balance",
+									format: "MONEY",
+									currency_path: "folio.currency_code",
+								},
+								emphasis: true,
+							},
+						],
+					},
+				],
+				footer: [
+					{ kind: "TEXT", text: { from: "LITERAL", value: "Thank you" } },
+				],
 			}),
 			payload,
 			strings: { "folio.title": "Guest Folio" },

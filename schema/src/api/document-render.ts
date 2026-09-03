@@ -56,10 +56,7 @@ const ROOT_PREFIX = "$.";
  * a traversable object, or any segment that is missing, yields `undefined` —
  * the composer decides what a missing value prints as, not this function.
  */
-export const resolveDocumentPath = (
-	source: unknown,
-	path: string,
-): unknown => {
+export const resolveDocumentPath = (source: unknown, path: string): unknown => {
 	const segments = path.split(".");
 	let current: unknown = source;
 
@@ -308,7 +305,9 @@ const composeSection = (
 		case "HEADING": {
 			const text = resolveValue(section.text, scope);
 			// A heading with nothing in it is a gap in the payload, not a design.
-			return text === "" ? null : { kind: "HEADING", level: section.level, text };
+			return text === ""
+				? null
+				: { kind: "HEADING", level: section.level, text };
 		}
 
 		case "TEXT": {

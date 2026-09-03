@@ -104,25 +104,27 @@ export type BillingPaymentApplyCommand = z.infer<
  * Pre-authorize a payment hold (AUTHORIZE) without capturing funds.
  * Used for deposit guarantees at check-in.
  */
-export const BillingPaymentAuthorizeCommandSchema = z.object({
-	payment_reference: z.string().trim().min(3).max(100),
-	property_id: z.string().uuid(),
-	reservation_id: z.string().uuid(),
-	guest_id: z.string().uuid(),
-	amount: z.coerce.number().positive(),
-	currency: z.string().length(3).optional(),
-	payment_method: PaymentMethodEnum,
-	gateway: z
-		.object({
-			name: z.string().max(100).optional(),
-			reference: z.string().max(150).optional(),
-			response: z.record(z.unknown()).optional(),
-		})
-		.optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-	...CREDIT_LIMIT_OVERRIDE_FIELDS,
-}).refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
+export const BillingPaymentAuthorizeCommandSchema = z
+	.object({
+		payment_reference: z.string().trim().min(3).max(100),
+		property_id: z.string().uuid(),
+		reservation_id: z.string().uuid(),
+		guest_id: z.string().uuid(),
+		amount: z.coerce.number().positive(),
+		currency: z.string().length(3).optional(),
+		payment_method: PaymentMethodEnum,
+		gateway: z
+			.object({
+				name: z.string().max(100).optional(),
+				reference: z.string().max(150).optional(),
+				response: z.record(z.unknown()).optional(),
+			})
+			.optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+		...CREDIT_LIMIT_OVERRIDE_FIELDS,
+	})
+	.refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
 
 export type BillingPaymentAuthorizeCommand = z.infer<
 	typeof BillingPaymentAuthorizeCommandSchema

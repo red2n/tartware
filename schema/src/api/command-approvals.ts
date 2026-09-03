@@ -23,8 +23,8 @@
 import { z } from "zod";
 
 import {
-	type TenantRole,
 	TENANT_ROLE_PRIORITY,
+	type TenantRole,
 	tenantRoleAtLeast,
 } from "../shared/enums.js";
 
@@ -159,7 +159,9 @@ export const evaluateApprovalAction = (input: {
 	}
 
 	const expiresAt =
-		input.expiresAt instanceof Date ? input.expiresAt : new Date(input.expiresAt);
+		input.expiresAt instanceof Date
+			? input.expiresAt
+			: new Date(input.expiresAt);
 	if (expiresAt.getTime() <= (input.now ?? new Date()).getTime()) {
 		return {
 			ok: false,

@@ -35,8 +35,7 @@ describe("COMMAND_MIN_ROLE — coverage", () => {
 		// A read-only role that can dispatch a write is not a read-only role.
 		const viewable = [...COMMAND_MIN_ROLE.entries()]
 			.filter(
-				([, role]) =>
-					TENANT_ROLE_PRIORITY[role] <= TENANT_ROLE_PRIORITY.VIEWER,
+				([, role]) => TENANT_ROLE_PRIORITY[role] <= TENANT_ROLE_PRIORITY.VIEWER,
 			)
 			.map(([name]) => name);
 		expect(viewable).toEqual([]);
