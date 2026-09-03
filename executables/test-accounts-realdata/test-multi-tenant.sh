@@ -24,6 +24,7 @@
 #   PHASE 5e  Night audit precondition bypass — a reason code that has to exist
 #   PHASE 5f  Credit limit override — resolved, authorised, recorded (A05)
 #   PHASE 5g  Blacklist override — the other half of A05, on real reference data
+#   PHASE 5h  Forced folio close — supervisor step-up, and the FK that could not fire
 #   PHASE 6   API read endpoints cross-validation
 #   PHASE 7   Post-test DB snapshot + final report
 #
@@ -3115,6 +3116,284 @@ else
       *)        fail "Blacklist override row is marked forced" "reason_notes=$BL_NOTES" ;;
     esac
   fi
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5h — FORCED FOLIO CLOSE: STEP-UP, AND THE FK THAT COULD NOT FIRE
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Two things this suite has never exercised, both found after the override
+# register was declared closed.
+#
+# 1. `billing.folio.close` with `force: true` closes a folio that still carries
+#    a balance. The balance is not transferred to the city ledger and not
+#    written off — it simply stops being collectable through the folio. That is
+#    `folio_settlement_check`, the gate `reservation.check_out` has paid a reason
+#    code and an authority for since A08, reached from the side by a STAFF-tier
+#    command with a force checkbox shipped in pms-ui, asking nobody.
+#
+#    The guardrail written for A08 could not see it, and the reason is the point:
+#    `forced-override-authority` fires on files that *write* `forced: true` to
+#    `flow_approvals`, so it trusts a bypass to declare itself. This one recorded
+#    nothing at all.
+#
+# 2. A supervisor step-up. Until now every override measured the session that
+#    happened to be open. This phase is the only place the whole path runs — mint
+#    against a real login, ride the envelope, and clear a demand the operator's
+#    own role does not.
+#
+# Why it has to be on live data rather than in a unit test: FOLIO_CLOSE_OVERRIDE
+# is new reference data, and the last defect in this exact area was seventeen
+# override codes seeded under the demo tenant, resolving to nothing on every real
+# property. `flow:integrity` reads the seed *file*, so it cannot see that. Only a
+# real property calling `resolveReasonCode` can.
+#
+#   Unforced close over a balance          refused, folio still OPEN
+#   Forced, no reason code                 refused at validation (4xx)
+#   Forced, code that does not resolve     refused, folio still OPEN, no row
+#   Forced, a CHECK_OUT_OVERRIDE code      refused — the category split is real
+#   Forced by a clerk, real code           refused for authority, no row
+#   Same call carrying a supervisor grant  closed, one row, named the supervisor
+#
+# Then the foreign keys: deleting a user whose only trace is `audit_logs`
+# succeeds and leaves the trail readable, while deleting one who created a folio
+# is refused. Both were impossible before migration 012 — `NOT NULL` under an
+# `ON DELETE SET NULL` FK fails at runtime, so the constraint could never do what
+# its own comment said.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5h: Forced Folio Close, Step-Up, and the Actor FKs            ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Tenant B, because the two logins this phase needs are Phase 5c's: a STAFF
+# clerk who cannot clear a MANAGER-level code, and an ADMIN who can. Creating a
+# second pair here would prove the same thing twice.
+TOKEN="$TOKEN_B"
+CUR_TID="$TID_B"
+
+FC_PROP="$PID_B1"
+
+if [[ -z "${TOKEN_STAFF:-}" || -z "${AUTH_ADMIN_USER:-}" || -z "$FC_PROP" ]]; then
+  skip "Forced folio close" "needs Phase 5c's logins (staff=[${TOKEN_STAFF:0:6}] admin=[${AUTH_ADMIN_USER:-none}]) and a property"
+else
+  # A folio of this phase's own with something on it. Phase 5f's folio is picked
+  # by "largest balance" and then transferred to the city ledger, so borrowing it
+  # would couple two phases through a balance each of them mutates.
+  send_command "CMD folio.create: the close subject" \
+    "billing.folio.create" \
+    "{\"property_id\":\"$FC_PROP\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Close probe $RUN_TAG\",\"currency\":\"USD\",\"idempotency_key\":\"FCLOSE-$RUN_TAG\"}"
+  wait_kafka 6
+
+  FC_FOLIO=$(cl_sql "select folio_id from folios where tenant_id='$TID_B' and folio_name='Close probe $RUN_TAG' limit 1")
+
+  if [[ -n "$FC_FOLIO" ]]; then
+    send_command "CMD charge: give the folio a balance" \
+      "billing.charge.post" \
+      "{\"property_id\":\"$FC_PROP\",\"folio_id\":\"$FC_FOLIO\",\"amount\":186.40,\"charge_code\":\"MISC\",\"description\":\"Phase 5h — balance to abandon\"}"
+    wait_kafka 6
+  fi
+
+  FC_BAL=$(cl_sql "select COALESCE(balance,0)::numeric > 0 from folios where folio_id='$FC_FOLIO'")
+
+  if [[ -z "$FC_FOLIO" || ( "$FC_BAL" != "t" && "$FC_BAL" != "true" ) ]]; then
+    skip "Forced folio close" "no folio with a balance (folio=[$FC_FOLIO] positive=[$FC_BAL])"
+  else
+    # Submit billing.folio.close as an explicit token, optionally carrying a
+    # step-up grant. The grant travels as a header and never as payload: a value
+    # a caller could put in the body is a value a caller could forge, and this
+    # one waives an authority check.
+    fc_close() {
+      local tok="$1" payload="$2" grant="${3:-}"
+      if [[ -n "$grant" ]]; then
+        curl -s -o "$RESP_FILE" -w "%{http_code}" \
+          -X POST "$GW/v1/commands/billing.folio.close/execute" \
+          -H "Authorization: Bearer $tok" -H "Content-Type: application/json" \
+          -H "Idempotency-Key: $(gen_uuid)" -H "X-Step-Up-Grant: $grant" \
+          -d "{\"tenant_id\":\"$TID_B\",\"payload\":$payload}"
+      else
+        curl -s -o "$RESP_FILE" -w "%{http_code}" \
+          -X POST "$GW/v1/commands/billing.folio.close/execute" \
+          -H "Authorization: Bearer $tok" -H "Content-Type: application/json" \
+          -H "Idempotency-Key: $(gen_uuid)" \
+          -d "{\"tenant_id\":\"$TID_B\",\"payload\":$payload}"
+      fi
+    }
+    fc_base="\"property_id\":\"$FC_PROP\",\"folio_id\":\"$FC_FOLIO\""
+    fc_status() { cl_sql "select folio_status from folios where folio_id='$FC_FOLIO'"; }
+    fc_rows() { cl_sql "select count(*) from flow_approvals where tenant_id='$TID_B' and gate_name='folio_settlement_check' and entity_id='$FC_FOLIO'"; }
+
+    FC_ROWS_BEFORE=$(fc_rows)
+
+    # 1. The refusal that already existed. Proves the gate is a gate before any
+    #    of the override machinery is asked to lift it.
+    code=$(fc_close "$TOKEN_ADMIN" "{$fc_base}")
+    assert_http "Unforced close over a balance accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Unforced close leaves the folio open" "OPEN" "$(fc_status)"
+
+    # 2. No reason code. The schema `.refine`, so this is refused before the
+    #    command is ever accepted — the same shape as the blacklist override.
+    code=$(fc_close "$TOKEN_ADMIN" "{$fc_base,\"force\":true}")
+    assert_http "Forced close with no reason code is refused outright" "4" "$code"
+
+    # 3. A code that resolves to nothing. This is the assertion that would catch
+    #    FOLIO_CLOSE_OVERRIDE having been seeded somewhere only the demo tenant
+    #    can see; it means something only because step 6 succeeds.
+    code=$(fc_close "$TOKEN_ADMIN" "{$fc_base,\"force\":true,\"reason_code\":\"NOT_A_REAL_CODE\"}")
+    assert_http "Forced close citing an unknown code accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Unknown reason code leaves the folio open" "OPEN" "$(fc_status)"
+    assert_eq "Unknown reason code records no bypass" "$FC_ROWS_BEFORE" "$(fc_rows)"
+
+    # 4. A real code from the neighbouring category. CO_TO_CITY_LEDGER asserts a
+    #    transfer that closing a folio never performs, and it is seeded at level
+    #    NONE — so reusing CHECK_OUT_OVERRIDE here would have misdescribed the
+    #    act *and* waived the authority check. This is that decision, asserted.
+    code=$(fc_close "$TOKEN_ADMIN" "{$fc_base,\"force\":true,\"reason_code\":\"CO_TO_CITY_LEDGER\"}")
+    assert_http "Forced close citing a check-out code accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "Wrong-category reason code leaves the folio open" "OPEN" "$(fc_status)"
+    assert_eq "Wrong-category reason code records no bypass" "$FC_ROWS_BEFORE" "$(fc_rows)"
+
+    # 5. A clerk with a real code. FC_DISPUTE_HELD is seeded at approval_level
+    #    MANAGER, and `forcedOverrideMinRole` takes the higher of that and
+    #    MANAGER, so STAFF is refused. Before this work the same call closed the
+    #    folio and left no trace.
+    code=$(fc_close "$TOKEN_STAFF" "{$fc_base,\"force\":true,\"reason_code\":\"FC_DISPUTE_HELD\"}")
+    assert_http "Clerk forcing a close accepted for async refusal" "20[02]|4" "$code"
+    sleep 6
+    assert_eq "A clerk cannot abandon a balance" "OPEN" "$(fc_status)"
+    assert_eq "A refused override records nothing" "$FC_ROWS_BEFORE" "$(fc_rows)"
+
+    # 6. The supervisor steps up at the terminal. The clerk's role has not
+    #    changed; what changed is that an ADMIN entered their own credentials for
+    #    this one command on this one folio.
+    STEP_UP=$(curl -s -X POST "$GW/v1/tenants/$TID_B/commands/step-up" \
+      -H "Authorization: Bearer $TOKEN_STAFF" \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"$AUTH_ADMIN_USER\",\"password\":\"$AUTH_ADMIN_PASS\",\"command_name\":\"billing.folio.close\",\"entity_id\":\"$FC_FOLIO\",\"property_id\":\"$FC_PROP\"}")
+    FC_GRANT=$(echo "$STEP_UP" | jq -r '.grant_id // .data.grant_id // empty')
+    FC_SUP_ROLE=$(echo "$STEP_UP" | jq -r '.supervisor_role // .data.supervisor_role // empty')
+
+    if [[ -z "$FC_GRANT" ]]; then
+      fail "A supervisor can mint a step-up grant" "response=$(echo "$STEP_UP" | head -c 200)"
+    else
+      pass "A supervisor can mint a step-up grant (role=$FC_SUP_ROLE)"
+
+      code=$(fc_close "$TOKEN_STAFF" "{$fc_base,\"force\":true,\"reason_code\":\"FC_DISPUTE_HELD\",\"close_reason\":\"Phase 5h — disputed charge, folio held\"}" "$FC_GRANT")
+      assert_http "The same clerk, carrying the grant, is accepted" "20[02]" "$code"
+      sleep 8
+
+      assert_eq "…and the folio the supervisor authorised is closed" "CLOSED" "$(fc_status)"
+      assert_eq "The authorised bypass records exactly one row" "$((FC_ROWS_BEFORE + 1))" "$(fc_rows)"
+
+      FC_CODE=$(cl_sql "select reason_code from flow_approvals where tenant_id='$TID_B' and gate_name='folio_settlement_check' and entity_id='$FC_FOLIO' limit 1")
+      assert_eq "The row names the reason code that authorised it" "FC_DISPUTE_HELD" "$FC_CODE"
+
+      # The record has to say the supervisor authorised it, not the clerk who
+      # ran it. `initiatedBy` stays the operator; the grant is what raises the
+      # authority, so `role_at_approval` is the supervisor's.
+      FC_ROLE=$(cl_sql "select role_at_approval from flow_approvals where tenant_id='$TID_B' and gate_name='folio_settlement_check' and entity_id='$FC_FOLIO' limit 1")
+      if [[ "$FC_ROLE" == "ADMIN" || "$FC_ROLE" == "OWNER" ]]; then
+        pass "The record names the supervisor's authority, not the clerk's (role=$FC_ROLE)"
+      else
+        fail "The record names the supervisor's authority" "role_at_approval=$FC_ROLE (expected the supervisor's)"
+      fi
+
+      # The row has to carry both facts, and they are different facts: a gate was
+      # bypassed (FORCED:) and a supervisor authorised the bypass at the terminal
+      # (STEP_UP:, naming the operator it was granted for). Either one alone
+      # would misreport what happened — a forced row with no supervisor reads as
+      # the clerk's own authority, which is exactly the state before this work.
+      FC_NOTES=$(PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+        -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" \
+        -tAc "select reason_notes from flow_approvals where tenant_id='$TID_B' and gate_name='folio_settlement_check' and entity_id='$FC_FOLIO' limit 1" 2>/dev/null | head -1)
+      case "$FC_NOTES" in
+        STEP_UP:*FORCED:*) pass "The row says both: a gate forced, and a supervisor who authorised it" ;;
+        FORCED:*)          fail "The row records the step-up" "marked forced but not step-up: $FC_NOTES" ;;
+        *)                 fail "The row is marked forced and stepped up" "reason_notes=$FC_NOTES" ;;
+      esac
+
+      # The sharpest assertion in the phase: `approved_by` is the supervisor's
+      # id, not the clerk's. `initiatedBy` stays the operator all the way down —
+      # the operator ran the command and the supervisor authorised it — so a row
+      # naming the clerk would mean the grant changed nothing it was minted for.
+      FC_SUP_ID=$(cl_sql "select id from users where username='$AUTH_ADMIN_USER' limit 1")
+      FC_APPROVER=$(cl_sql "select approved_by from flow_approvals where tenant_id='$TID_B' and gate_name='folio_settlement_check' and entity_id='$FC_FOLIO' limit 1")
+      if [[ -n "$FC_SUP_ID" && "$FC_APPROVER" == "$FC_SUP_ID" ]]; then
+        pass "The bypass is recorded against the supervisor, not the clerk who ran it"
+      else
+        fail "The bypass is recorded against the supervisor" "approved_by=$FC_APPROVER expected=$FC_SUP_ID"
+      fi
+
+      # A grant is single-use. Replaying it is the difference between "a manager
+      # authorised this" and "a manager was on the property this afternoon".
+      send_command "CMD folio.create: a second close subject" \
+        "billing.folio.create" \
+        "{\"property_id\":\"$FC_PROP\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Close probe 2 $RUN_TAG\",\"currency\":\"USD\",\"idempotency_key\":\"FCLOSE2-$RUN_TAG\"}"
+      wait_kafka 6
+      FC_FOLIO2=$(cl_sql "select folio_id from folios where tenant_id='$TID_B' and folio_name='Close probe 2 $RUN_TAG' limit 1")
+      if [[ -n "$FC_FOLIO2" ]]; then
+        code=$(fc_close "$TOKEN_STAFF" "{\"property_id\":\"$FC_PROP\",\"folio_id\":\"$FC_FOLIO2\",\"force\":true,\"reason_code\":\"FC_DISPUTE_HELD\"}" "$FC_GRANT")
+        sleep 6
+        FC_ROWS2=$(cl_sql "select count(*) from flow_approvals where tenant_id='$TID_B' and gate_name='folio_settlement_check' and entity_id='$FC_FOLIO2'")
+        assert_eq "A spent grant does not authorise a second folio" "0" "$FC_ROWS2"
+      else
+        skip "A spent grant does not authorise a second folio" "second folio not created"
+      fi
+    fi
+  fi
+fi
+
+# ── The actor foreign keys (migration 012) ───────────────────────────────────
+#
+# Eight columns were NOT NULL under an ON DELETE SET NULL foreign key, so every
+# one of those constraints failed at runtime instead of doing what its comment
+# said. Split by whether the row can still say who acted: SET NULL where a
+# denormalised actor survives, RESTRICT where the column is the only record.
+#
+# Asserted in SQL rather than over the API because nothing hard-deletes a user —
+# that is why this stayed latent — and both probes roll back.
+
+FK_TENANT="$TID_B"
+FK_PROP="$PID_B1"
+FK_USER="00000000-dead-4000-8000-00000000e2e1"
+
+fk_probe() {
+  PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST:-127.0.0.1}" \
+    -p "${DB_DIRECT_PORT:-5432}" -U "${DB_USER:-postgres}" -d "${DB_NAME:-tartware}" \
+    -v ON_ERROR_STOP=0 -tA 2>&1 <<SQL
+BEGIN;
+INSERT INTO users (id, tenant_id, username, email, password_hash, first_name, last_name, is_active, is_verified, mfa_enabled)
+VALUES ('$FK_USER', '$FK_TENANT', 'fk_probe_$RUN_TAG', 'fk_probe_$RUN_TAG@tartware-test.local', 'x', 'FK', 'Probe', true, false, false);
+$1
+DELETE FROM users WHERE id = '$FK_USER';
+SELECT 'DELETE_OK';
+ROLLBACK;
+SQL
+}
+
+# An audit row keeps user_email / user_name beside the id, so forgetting the id
+# is safe and the delete is allowed to proceed.
+FK_AUDIT=$(fk_probe "INSERT INTO audit_logs (tenant_id, audit_timestamp, event_type, entity_type, user_id, user_name, action) VALUES ('$FK_TENANT', NOW(), 'UPDATE', 'probe', '$FK_USER', 'FK Probe', 'E2E_PROBE');")
+if echo "$FK_AUDIT" | grep -q "DELETE_OK"; then
+  pass "A user with only an audit trail can be deleted (the FK finally fires)"
+else
+  fail "A user with only an audit trail can be deleted" "$(echo "$FK_AUDIT" | grep -i error | head -1)"
+fi
+
+# A folio carries no copy of its creator's name, so nulling would keep the row
+# and lose its author. RESTRICT refuses instead.
+FK_FOLIO=$(fk_probe "INSERT INTO folios (tenant_id, property_id, folio_number, folio_type, folio_status, created_by, updated_by) VALUES ('$FK_TENANT', '$FK_PROP', 'FOL-FKPROBE-$RUN_TAG', 'GUEST', 'OPEN', '$FK_USER', '$FK_USER');")
+if echo "$FK_FOLIO" | grep -q "fk_folios_created_by"; then
+  pass "A user who created a folio cannot be deleted (attribution is the record)"
+elif echo "$FK_FOLIO" | grep -q "DELETE_OK"; then
+  fail "A user who created a folio cannot be deleted" "the delete succeeded — attribution was silently lost"
+else
+  skip "A user who created a folio cannot be deleted" "fixture failed: $(echo "$FK_FOLIO" | grep -i error | head -1)"
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
