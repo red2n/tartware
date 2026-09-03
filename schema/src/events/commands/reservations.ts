@@ -42,6 +42,15 @@ export const ReservationCreateCommandSchema = z
 		 * nothing to point at until the event handler has inserted the row.
 		 */
 		waitlist_id: z.string().uuid().optional(),
+		/**
+		 * Set when the booking arrived from a channel, so the queue entry that
+		 * carried it can be linked to the reservation once the row exists — the
+		 * same problem `waitlist_id` above solves, for the same reason: this
+		 * command only emits reservation.created, and
+		 * `ota_reservations_queue.reservation_id` has a foreign key with nothing to
+		 * point at until the event handler has inserted the row.
+		 */
+		ota_queue_id: z.string().uuid().optional(),
 		property_id: z.string().uuid(),
 		guest_id: z.string().uuid(),
 		room_type_id: z.string().uuid(),

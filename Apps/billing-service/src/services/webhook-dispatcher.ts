@@ -16,7 +16,7 @@
  * - Secrets are vault references — never logged
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { verifyWebhookSignature } from "@tartware/fastify-server/webhook-signature";
 import type { CommandContext, PaymentGatewayWebhookRow } from "@tartware/schemas";
 
 import { auditAsync } from "../lib/audit-logger.js";
@@ -24,13 +24,6 @@ import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
 import { recordChargeback } from "./billing-commands/chargeback.js";
 import { SYSTEM_ACTOR_ID } from "./billing-commands/common.js";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/** Stripe replay-attack tolerance window (seconds). Per Stripe recommendation. */
-const STRIPE_TOLERANCE_SECONDS = 300;
 
 // ---------------------------------------------------------------------------
 // SQL Statements
@@ -81,55 +74,18 @@ const FIND_PAYMENT_BY_GATEWAY_REF_SQL = `
 `;
 
 // ---------------------------------------------------------------------------
-// HMAC Verification (exported for testing)
+// HMAC Verification
 // ---------------------------------------------------------------------------
 
 /**
- * Constant-time HMAC-SHA256 verification. Supports two formats:
- *   Stripe:  "t=<timestamp>,v1=<hexSig>"  — validates timestamp recency
- *   Generic: "sha256=<hexSig>" or bare "<hexSig>"
- *
- * Returns false on any parse or comparison failure.
+ * Re-exported so the route beside this file and its tests keep one import, but
+ * the implementation is `@tartware/fastify-server/webhook-signature` — shared
+ * with the channel reservation ingress in reservations-command-service. Two
+ * copies of a signature check is how two ingresses come to disagree about what
+ * a valid signature is, and the one that is wrong is wrong in the direction
+ * that accepts a forgery.
  */
-export function verifyWebhookSignature(
-  rawBody: Buffer,
-  signatureHeader: string,
-  secret: string,
-): boolean {
-  try {
-    if (!signatureHeader || !secret) return false;
-
-    // Stripe format: t=<timestamp>,v1=<hexSig>
-    if (signatureHeader.startsWith("t=")) {
-      const map: Record<string, string> = {};
-      for (const part of signatureHeader.split(",")) {
-        const eq = part.indexOf("=");
-        if (eq > 0) map[part.slice(0, eq)] = part.slice(eq + 1);
-      }
-      const timestamp = Number(map.t);
-      const receivedHex = map.v1;
-      if (!timestamp || !receivedHex) return false;
-
-      const ageSeconds = Math.floor(Date.now() / 1000) - timestamp;
-      if (ageSeconds > STRIPE_TOLERANCE_SECONDS || ageSeconds < -60) return false;
-
-      const sigPayload = Buffer.from(`${timestamp}.${rawBody.toString("utf8")}`);
-      const expectedHex = createHmac("sha256", secret).update(sigPayload).digest("hex");
-      if (expectedHex.length !== receivedHex.length) return false;
-      return timingSafeEqual(Buffer.from(expectedHex), Buffer.from(receivedHex));
-    }
-
-    // Generic: "sha256=<hexSig>" or bare "<hexSig>"
-    const receivedHex = signatureHeader.startsWith("sha256=")
-      ? signatureHeader.slice(7)
-      : signatureHeader;
-    const expectedHex = createHmac("sha256", secret).update(rawBody).digest("hex");
-    if (expectedHex.length !== receivedHex.length) return false;
-    return timingSafeEqual(Buffer.from(expectedHex), Buffer.from(receivedHex));
-  } catch {
-    return false;
-  }
-}
+export { verifyWebhookSignature };
 
 // ---------------------------------------------------------------------------
 // Gateway Config Lookup

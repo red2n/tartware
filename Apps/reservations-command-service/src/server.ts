@@ -10,6 +10,7 @@ import { checkDatabaseHealth, checkKafkaHealth } from "./lib/health-checks.js";
 import { metricsRegistry } from "./lib/metrics.js";
 import { reservationsLogger } from "./logger.js";
 import swaggerPlugin from "./plugins/swagger.js";
+import { registerChannelIntakeRoutes } from "./routes/channel-intake.js";
 import type { ReliabilitySnapshot } from "./services/reliability-service.js";
 import { getReliabilitySnapshot } from "./services/reliability-service.js";
 import { listReservationLifecycle } from "./services/reservation-lifecycle-service.js";
@@ -76,6 +77,10 @@ export const buildServer = (): FastifyInstance => {
   });
 
   app.register(swaggerPlugin);
+
+  // The channel ingress runs in its own scope with a raw-body parser, so it is
+  // registered as a plugin rather than inside the `after` block below.
+  registerChannelIntakeRoutes(app);
 
   app.after(() => {
     app.get(

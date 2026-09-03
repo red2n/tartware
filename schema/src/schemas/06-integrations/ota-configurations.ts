@@ -19,6 +19,7 @@
 
 import { z } from "zod";
 
+import { ChannelTransportKindEnum } from "../../api/channel-transport.js";
 import { money, uuid } from "../../shared/base-schemas.js";
 
 /**
@@ -37,6 +38,13 @@ export const OtaConfigurationsSchema = z.object({
 	api_secret: z.string().optional(),
 	hotel_id: z.string().optional(),
 	channel_manager: z.string().optional(),
+	/**
+	 * Which `ChannelTransport` adapter carries a push to this channel. NOT NULL
+	 * with a `NONE` default in the DDL, so it is required here — a config row
+	 * read without it would let a caller default the value that decides whether
+	 * anything is contacted at all.
+	 */
+	transport: ChannelTransportKindEnum,
 	is_active: z.boolean().optional(),
 	sync_enabled: z.boolean().optional(),
 	sync_frequency_minutes: z.number().int().optional(),

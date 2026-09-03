@@ -19,6 +19,7 @@
 
 import { z } from "zod";
 
+import { OtaQueueStatusEnum } from "../../api/channel-intake.js";
 import { money, uuid } from "../../shared/base-schemas.js";
 
 /**
@@ -35,7 +36,13 @@ export const OtaReservationsQueueSchema = z.object({
 	ota_reservation_id: z.string(),
 	ota_booking_reference: z.string().optional(),
 	reservation_id: uuid.optional(),
-	status: z.string().optional(),
+	/**
+	 * Free text until the intake work: the DDL, its default and its three partial
+	 * indexes all said PENDING/PROCESSING/COMPLETED/FAILED/DUPLICATE while the
+	 * only reader queried the lowercase spellings, and a `z.string()` could not
+	 * say they disagreed.
+	 */
+	status: OtaQueueStatusEnum.optional(),
 	processing_attempts: z.number().int().optional(),
 	max_retry_attempts: z.number().int().optional(),
 	guest_name: z.string().optional(),

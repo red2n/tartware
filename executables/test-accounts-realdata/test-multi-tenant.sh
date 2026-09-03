@@ -3397,6 +3397,220 @@ else
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+#  PHASE 5i — CHANNEL INTAKE AND THE PUSH THAT WAS NEVER SENT
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Three OTA commands sit in `check:command-coverage`'s known-unexercised list —
+# `integration.ota.sync_request`, `rate_push`, `content_sync` — and the channel
+# work that rewrote them found that every one had been throwing `23514` on every
+# invocation since it was written. The INSERT wrote
+# `sync_direction = 'outbound'`, a value the column's CHECK rejects, and did so
+# as a raw pg error rather than a `CommandError`: retryable, so the full backoff
+# ladder and then the DLQ, on a failure no retry could fix.
+#
+# It was found by reading. That is the wrong way to find it, and this repo has
+# the receipts: `ar.city_ledger.transfer` had never once succeeded either, and
+# was found only when Phase 5f was finally given the fixture it had always been
+# missing. A command no suite drives is a command whose first real invocation is
+# a customer's.
+#
+# So this phase drives the whole channel path on live data, in both directions.
+#
+# The inbound half is a webhook, which makes it the only route in the product
+# that a stranger can reach. It is verified by HMAC over the raw bytes, so the
+# first assertion is the one that matters most: a booking with a bad signature
+# must be refused *and leave nothing behind*. A queue row written before the
+# signature check would be an unauthenticated write to the reservation pipeline.
+#
+# The outbound half proves the column that made the fix possible.
+# `ota_configurations.transport` defaults to NONE and NONE refuses the push —
+# because before it existed every push recorded `sync_status = 'completed'` with
+# `failed_items = 0` against a channel that had never been contacted, and an
+# operator reading the sync log could not tell the two apart. SIMULATED is still
+# a stub, but a *declared* one, and every row it writes says so.
+#
+#   Bad signature                     refused, and no queue row exists
+#   Good signature                    202, one row, status PENDING (uppercase)
+#   Redelivery of the same booking    duplicate, still one row
+#   Push with transport NONE          refused, and no row claims success
+#   Push with transport SIMULATED     accepted, one sync row, marked simulated
+#   sync_request                      drains the queue; the FK finally resolves
+#
+# The uppercase check is not pedantry. `ota_reservations_queue.status` defaulted
+# to 'PENDING' and carried three partial indexes on 'PENDING'/'PROCESSING'/
+# 'FAILED', while the only reader queried 'pending'/'processing'/'completed'.
+# The indexes could not serve the query that drains the queue, and a row
+# inserted with the documented default would never have been seen by it.
+# ═════════════════════════════════════════════════════════════════════════════
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════════╗"
+echo "║  PHASE 5i: Channel Intake, and the Push That Was Never Sent          ║"
+echo "╚═══════════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# The intake route lives on reservations-command-service, not the gateway: a
+# channel manager posts with an HMAC over the raw body, not a bearer token, so
+# there is no tenant scope for the gateway to resolve. Phase 6b already reaches
+# a service directly for the same reason.
+RESV_SVC="${RESV_SVC:-http://localhost:3020}"
+
+TOKEN="$TOKEN_A"
+CUR_TID="$TID_A"
+CH_PROP=$(cl_sql "select id from properties where tenant_id='$TID_A' limit 1")
+CH_CODE="E2ECHAN"
+CH_SECRET="phase5i-secret-$RUN_TAG"
+CH_RESID="OTA-$RUN_TAG-001"
+# An audit actor for the seeded row: `ota_configurations.created_by` is UUID,
+# so it has to be a real user rather than a label.
+CH_ACTOR=$(cl_sql "select id from users where tenant_id='$TID_A' limit 1")
+
+if [[ -z "$CH_PROP" || -z "$CH_ACTOR" ]]; then
+  skip "Channel intake" "no property or user on tenant A"
+else
+  # A channel of this phase's own. Seeded directly because `ota_configurations`
+  # has no create command — the row is configuration a property's integrator
+  # writes, and inventing a command for it here would test something the product
+  # does not have.
+  cl_sql "INSERT INTO ota_configurations
+            (tenant_id, property_id, ota_name, ota_code, api_secret, transport, created_by, updated_by)
+          VALUES
+            ('$TID_A','$CH_PROP','Phase 5i Channel','$CH_CODE','$CH_SECRET','NONE',
+             '$CH_ACTOR','$CH_ACTOR')
+          ON CONFLICT DO NOTHING" >/dev/null
+
+  CH_CFG=$(cl_sql "select id from ota_configurations where tenant_id='$TID_A' and ota_code='$CH_CODE' limit 1")
+
+  if [[ -z "$CH_CFG" ]]; then
+    skip "Channel intake" "could not seed ota_configurations"
+  else
+    CH_URL="$RESV_SVC/v1/channels/$CH_CODE/reservations?tenant_id=$TID_A"
+    CH_IN=$(date -u -d "+30 days" +%Y-%m-%d 2>/dev/null || date -u -v+30d +%Y-%m-%d)
+    CH_OUT=$(date -u -d "+32 days" +%Y-%m-%d 2>/dev/null || date -u -v+32d +%Y-%m-%d)
+
+    CH_BODY=$(jq -nc --arg p "$CH_PROP" --arg r "$CH_RESID" --arg i "$CH_IN" --arg o "$CH_OUT" \
+      '{property_id:$p,reservations:[{ota_reservation_id:$r,guest_name:"Phase 5i Guest",
+        guest_email:"phase5i@example.test",check_in_date:$i,check_out_date:$o,
+        room_type:"STD",number_of_guests:2,total_amount:412.50,currency_code:"USD"}]}')
+
+    # ── 1. A bad signature must be refused, and must leave nothing behind ──────
+    CH_BAD=$(curl -s -o "$RESP_FILE" -w "%{http_code}" -X POST "$CH_URL" \
+      -H "Content-Type: application/json" \
+      -H "x-channel-signature: sha256=$(printf 'not-the-secret' | openssl dgst -sha256 -hex | awk '{print $NF}')" \
+      -d "$CH_BODY")
+
+    if [[ "$CH_BAD" =~ ^(401|403)$ ]]; then
+      pass "A channel booking with a bad signature is refused ($CH_BAD)"
+    else
+      fail "A channel booking with a bad signature is refused" "got $CH_BAD"
+    fi
+
+    CH_LEAK=$(cl_sql "select count(*) from ota_reservations_queue where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID'")
+    if [[ "$CH_LEAK" == "0" ]]; then
+      pass "A refused delivery writes no queue row (the signature gates the write)"
+    else
+      fail "A refused delivery writes no queue row" "found $CH_LEAK row(s) — unauthenticated write reached the pipeline"
+    fi
+
+    # ── 2. A valid signature is accepted and queued PENDING ───────────────────
+    CH_SIG=$(printf '%s' "$CH_BODY" | openssl dgst -sha256 -hmac "$CH_SECRET" -hex | awk '{print $NF}')
+    CH_OK=$(curl -s -o "$RESP_FILE" -w "%{http_code}" -X POST "$CH_URL" \
+      -H "Content-Type: application/json" \
+      -H "x-channel-signature: sha256=$CH_SIG" \
+      -d "$CH_BODY")
+
+    if [[ "$CH_OK" =~ ^2 ]]; then
+      pass "A signed channel booking is accepted ($CH_OK)"
+    else
+      fail "A signed channel booking is accepted" "got $CH_OK ← $(jq -r '.message // .error // .' "$RESP_FILE" 2>/dev/null | head -c 160)"
+    fi
+
+    CH_STATUS=$(cl_sql "select status from ota_reservations_queue where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID' limit 1")
+    # Uppercase, because the DDL default, the CHECK and the three partial
+    # indexes all say uppercase and the old reader queried lowercase.
+    assert_eq "Queue row lands PENDING, in the case the indexes are built on" "PENDING" "$CH_STATUS"
+
+    # ── 3. Redelivery is deduplicated on the channel's own id ─────────────────
+    curl -s -o "$RESP_FILE" -w "%{http_code}" -X POST "$CH_URL" \
+      -H "Content-Type: application/json" \
+      -H "x-channel-signature: sha256=$CH_SIG" \
+      -d "$CH_BODY" >/dev/null
+
+    CH_COUNT=$(cl_sql "select count(*) from ota_reservations_queue where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID'")
+    assert_eq_num "Redelivery of the same booking does not queue it twice" "1" "$CH_COUNT"
+
+    # ── 4. A push to a channel with no transport is refused ───────────────────
+    # This is the whole reason the column exists: before it, this recorded
+    # `completed` with `failed_items = 0` against a channel never contacted.
+    CH_SYNC_BEFORE=$(cl_sql "select count(*) from ota_inventory_sync where ota_config_id='$CH_CFG'")
+
+    send_command "CMD ota.rate_push: transport is NONE" \
+      "integration.ota.rate_push" \
+      "{\"property_id\":\"$CH_PROP\",\"ota_code\":\"$CH_CODE\"}"
+    wait_kafka 6
+
+    CH_FAKE=$(cl_sql "select count(*) from ota_inventory_sync
+                      where ota_config_id='$CH_CFG' and sync_status='completed' and failed_items=0")
+    if [[ "${CH_FAKE:-0}" == "0" ]]; then
+      pass "A push to an unconfigured channel records no success it did not have"
+    else
+      fail "A push to an unconfigured channel records no success" "$CH_FAKE row(s) claim completed against a channel never contacted"
+    fi
+
+    # ── 5. A declared stub records the attempt, and says it was simulated ─────
+    cl_sql "UPDATE ota_configurations SET transport='SIMULATED' WHERE id='$CH_CFG'" >/dev/null
+
+    send_command "CMD ota.rate_push: transport is SIMULATED" \
+      "integration.ota.rate_push" \
+      "{\"property_id\":\"$CH_PROP\",\"ota_code\":\"$CH_CODE\"}"
+    wait_kafka 8
+
+    # The 23514 proof: any row at all means the INSERT no longer violates the
+    # sync_direction CHECK it used to fail on every single invocation.
+    CH_SYNC_AFTER=$(cl_sql "select count(*) from ota_inventory_sync where ota_config_id='$CH_CFG'")
+    if [[ "${CH_SYNC_AFTER:-0}" -gt "${CH_SYNC_BEFORE:-0}" ]]; then
+      pass "An outbound push writes a sync row (the CHECK violation is gone)"
+    else
+      fail "An outbound push writes a sync row" "no new row — the command still records nothing"
+    fi
+
+    CH_SIM=$(cl_sql "select count(*) from ota_inventory_sync
+                     where ota_config_id='$CH_CFG' and sync_notes ILIKE '%simulated%'")
+    if [[ "${CH_SIM:-0}" -gt 0 ]]; then
+      pass "The stub says so in the log, so the two cases stay distinguishable"
+    else
+      fail "The stub says so in the log" "no row marked simulated — a stub reads as a real push"
+    fi
+
+    # ── 6. sync_request drains the queue, and the FK finally resolves ─────────
+    send_command "CMD ota.sync_request: drain the inbound queue" \
+      "integration.ota.sync_request" \
+      "{\"property_id\":\"$CH_PROP\",\"ota_code\":\"$CH_CODE\"}"
+    wait_kafka 10
+
+    CH_DRAINED=$(cl_sql "select status from ota_reservations_queue where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID' limit 1")
+    if [[ "$CH_DRAINED" != "PENDING" ]]; then
+      pass "The queue drains — the row left PENDING (now $CH_DRAINED)"
+    else
+      fail "The queue drains" "still PENDING; the reader and the writer disagree again"
+    fi
+
+    # `ota_queue_id` on reservation.create exists for exactly this: the queue
+    # row's FK had nothing to point at until the event handler inserted the
+    # reservation, so the link had to be made after the fact.
+    CH_LINKED=$(cl_sql "select count(*) from ota_reservations_queue
+                        where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID'
+                          and reservation_id IS NOT NULL")
+    if [[ "${CH_LINKED:-0}" == "1" ]]; then
+      pass "The queue row points at the reservation it became"
+    else
+      skip "The queue row points at the reservation it became" "status=$CH_DRAINED — no reservation linked yet"
+    fi
+  fi
+fi
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  PHASE 6 — MULTI-TENANT API READ VALIDATION
 # ═════════════════════════════════════════════════════════════════════════════
 

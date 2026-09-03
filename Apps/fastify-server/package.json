@@ -27,6 +27,10 @@
     "./bootstrap": {
       "types": "./dist/bootstrap.d.ts",
       "import": "./dist/bootstrap.js"
+    },
+    "./webhook-signature": {
+      "types": "./dist/webhook-signature.d.ts",
+      "import": "./dist/webhook-signature.js"
     }
   },
   "scripts": {

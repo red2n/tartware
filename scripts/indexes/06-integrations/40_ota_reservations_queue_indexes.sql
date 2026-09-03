@@ -26,8 +26,16 @@ CREATE INDEX idx_ota_queue_reservation_id
     WHERE reservation_id IS NOT NULL;
 
 -- OTA reservation ID lookup (detect duplicates)
-CREATE INDEX idx_ota_queue_ota_reservation_id
-    ON ota_reservations_queue(ota_configuration_id, ota_reservation_id);
+--
+-- UNIQUE, which the comment above always claimed and the index never enforced.
+-- Duplicate detection used to be a SELECT inside the drain loop asking whether
+-- another queue row carried the same ota_reservation_id, which meant the queue
+-- could hold two rows for one booking and stayed correct only because the loop
+-- ran one entry at a time. A channel redelivering a booking is not a race to be
+-- won at drain time; it is a key that already exists, and the database is where
+-- that is decided.
+CREATE UNIQUE INDEX idx_ota_queue_ota_reservation_id
+    ON ota_reservations_queue(tenant_id, ota_configuration_id, ota_reservation_id);
 
 CREATE INDEX idx_ota_queue_booking_reference
     ON ota_reservations_queue(ota_booking_reference)

@@ -332,6 +332,7 @@ const handleReservationCreated = async (event: ReservationCreatedEvent): Promise
     }),
     incrementGuestBookingCount(tenantId, payload.guest_id),
     linkWaitlistEntry(tenantId, reservationId, (payload as { waitlist_id?: string }).waitlist_id),
+    linkOtaQueueEntry(tenantId, reservationId, (payload as { ota_queue_id?: string }).ota_queue_id),
   ]);
 
   return reservationId;
@@ -363,6 +364,43 @@ const linkWaitlistEntry = async (
     reservationsLogger.warn(
       { err: error, waitlistId, reservationId },
       "Reservation created but the waitlist entry could not be linked to it",
+    );
+  }
+};
+
+/**
+ * Complete the channel queue entry that produced this reservation.
+ *
+ * Same shape and same reason as `linkWaitlistEntry` above:
+ * `ota_reservations_queue.reservation_id` carries a foreign key, and the drain
+ * that accepted the command has nothing to point it at until the insert above
+ * has run. So the drain leaves the entry PROCESSING and this closes it.
+ *
+ * Best-effort, like its neighbours — an unlinked entry is a bookkeeping loss,
+ * not a reason to fail a booking a guest has already made. It is recoverable
+ * too: an entry left PROCESSING is exactly what `idx_ota_queue_processing`
+ * exists to find.
+ */
+const linkOtaQueueEntry = async (
+  tenantId: string,
+  reservationId: string,
+  otaQueueId: string | undefined,
+): Promise<void> => {
+  if (!otaQueueId) return;
+  try {
+    await query(
+      `UPDATE ota_reservations_queue
+          SET status = 'COMPLETED',
+              reservation_id = $3,
+              processed_at = NOW(),
+              updated_at = NOW()
+        WHERE id = $1 AND tenant_id = $2`,
+      [otaQueueId, tenantId, reservationId],
+    );
+  } catch (error) {
+    reservationsLogger.warn(
+      { err: error, otaQueueId, reservationId },
+      "Reservation created but the OTA queue entry could not be completed",
     );
   }
 };

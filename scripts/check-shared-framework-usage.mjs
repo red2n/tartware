@@ -361,6 +361,141 @@ if (unauthorizedForceBranches.length > 0) {
   process.exit(1);
 }
 
+// A channel sync row must record what a channel actually said.
+//
+// `ota_inventory_sync` is the log of what Tartware pushed to a channel and what
+// came back. Three handlers wrote it inline, in the same transaction as the
+// outbox enqueue, *before* any transport existed:
+//
+//   sync_status = 'completed', successful_items = total_items, failed_items = 0
+//
+// — a successful push to a channel that was never contacted. The same INSERT
+// also wrote `sync_direction = 'outbound'`, which the column's CHECK constraint
+// rejects, so every outbound OTA command threw 23514 on every invocation and,
+// being a raw pg error rather than a CommandError, did so retryably: the full
+// backoff ladder, then the DLQ, on a failure no retry could fix.
+//
+// So the table is written in one place. `openChannelSync` records the attempt
+// before the push, `closeChannelSync` records the outcome after it, and
+// `failChannelSync` records a push that never arrived. A handler that writes it
+// directly is a handler that can once again describe an outcome it did not
+// observe.
+const CHANNEL_SYNC_WRITE = /\b(INSERT\s+INTO|UPDATE)\s+(public\.)?ota_inventory_sync\b/i;
+const CHANNEL_SYNC_REPOSITORY =
+  "Apps/reservations-command-service/src/repositories/channel-sync-repository.ts";
+
+const inlineChannelSyncWrites = [];
+for (const file of tracked) {
+  if (file === CHANNEL_SYNC_REPOSITORY) continue;
+  let source;
+  try {
+    source = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
+  if (CHANNEL_SYNC_WRITE.test(source)) inlineChannelSyncWrites.push(file);
+}
+
+if (inlineChannelSyncWrites.length > 0) {
+  console.error("\nA channel sync is recorded outside the repository that observes it:\n");
+  for (const file of inlineChannelSyncWrites) {
+    console.error(`  ${file}  writes ota_inventory_sync directly`);
+  }
+  console.error(
+    `\nUse the repository, which writes the row in the order the facts arrive:\n` +
+      `  openChannelSync(...)   before the push\n` +
+      `  closeChannelSync(...)  with the ChannelTransportResult the adapter returned\n` +
+      `  failChannelSync(...)   when the channel could not be reached at all\n\n` +
+      `An inline write is how three handlers came to record 'completed' with\n` +
+      `failed_items = 0 for a push that contacted nothing.\n`,
+  );
+  process.exit(1);
+}
+
+// A reservation is created by the command, or it is created without any of the
+// controls the command carries.
+//
+// `createReservation` is where restrictions are evaluated, the availability
+// hold is taken, the blacklist gate runs and the initial status is checked
+// against `RESERVATION_INITIAL_STATUSES`; the event handler it emits to is the
+// only writer of `reservation_rooms` and `reservation_nights`, the WS-01 stay
+// tables. `assertStaySellable` has exactly two call sites and both are inside
+// that command.
+//
+// So a direct `INSERT INTO reservations` anywhere else is a booking that met
+// none of it. OTA intake was one — the one booking path where the hotel does
+// not control the input, and the only one with no controls at all — and it now
+// goes through the command. Two remain, listed below with what each is missing.
+// The list may only shrink: an entry that no longer inserts fails this check,
+// the same ratchet `KNOWN_UNTYPED` and `UNFOLDED_COLUMNS` use.
+const RESERVATION_INSERT = /\bINSERT\s+INTO\s+(public\.)?reservations\b/i;
+const RESERVATION_WRITER =
+  "Apps/reservations-command-service/src/services/reservation-event-handler.ts";
+const KNOWN_DIRECT_RESERVATION_INSERTS = new Map([
+  [
+    "Apps/reservations-command-service/src/services/reservation-commands/group-booking.ts",
+    "group rooming list: no availability hold (it decrements a block, and creates the booking anyway when no block matches), no restriction check, no stay tables",
+  ],
+  [
+    "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts",
+    "walk-in check-in: takes an availability hold, but evaluates no restriction and writes no stay tables",
+  ],
+]);
+
+const directReservationInserts = [];
+const staleReservationExemptions = new Set(KNOWN_DIRECT_RESERVATION_INSERTS.keys());
+for (const file of tracked) {
+  if (file === RESERVATION_WRITER) continue;
+  let source;
+  try {
+    source = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
+  // Comment lines are stripped first: this rule's own explanation names the
+  // statement it forbids, and a check that cannot tell code from prose about
+  // code fires on the file that documents it.
+  const code = source
+    .split("\n")
+    .filter(
+      (line) => !line.trimStart().startsWith("*") && !line.trimStart().startsWith("//"),
+    )
+    .join("\n");
+  if (!RESERVATION_INSERT.test(code)) continue;
+  if (KNOWN_DIRECT_RESERVATION_INSERTS.has(file)) {
+    staleReservationExemptions.delete(file);
+    continue;
+  }
+  directReservationInserts.push(file);
+}
+
+if (directReservationInserts.length > 0) {
+  console.error("\nA reservation is created outside the command that guards one:\n");
+  for (const file of directReservationInserts) {
+    console.error(`  ${file}  INSERTs into reservations directly`);
+  }
+  console.error(
+    `\nCall createReservation instead. A direct insert skips the restriction\n` +
+      `evaluation, the availability hold, the blacklist gate, the legal initial\n` +
+      `status and both stay tables — every control the command exists to apply.\n\n` +
+      `If a path genuinely cannot use it, add it to KNOWN_DIRECT_RESERVATION_INSERTS\n` +
+      `with what it is missing. That list may only shrink.\n`,
+  );
+  process.exit(1);
+}
+
+if (staleReservationExemptions.size > 0) {
+  console.error("\nA direct-insert exemption is stale:\n");
+  for (const file of staleReservationExemptions) {
+    console.error(`  ${file}  no longer inserts into reservations`);
+  }
+  console.error(
+    `\nRemove it from KNOWN_DIRECT_RESERVATION_INSERTS. An exemption nobody\n` +
+      `removes is how a list of known gaps stops describing the code.\n`,
+  );
+  process.exit(1);
+}
+
 // An authority gate must be able to see a supervisor's step-up.
 //
 // `assertOverrideAuthority` and `assertForcedOverrideAuthority` decide whether
