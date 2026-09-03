@@ -8,7 +8,12 @@
  * The flow_approvals table is append-only — no UPDATE or DELETE.
  */
 
-import type { CreateFlowApproval, FlowApprovalRow } from "@tartware/schemas";
+import {
+  type CreateFlowApproval,
+  type FlowApprovalRow,
+  type OverrideStepUpGrant,
+  resolveOverrideAuthority,
+} from "@tartware/schemas";
 import { auditAsync } from "../lib/audit-logger.js";
 import { query } from "../lib/db.js";
 import { appLogger } from "../lib/logger.js";
@@ -80,8 +85,22 @@ const GET_ACTIVE_APPROVAL_SQL = `
  * @returns The generated approval record ID.
  */
 export async function recordFlowApproval(
-  input: CreateFlowApproval & { forced?: boolean },
+  input: CreateFlowApproval & {
+    forced?: boolean;
+    stepUp?: OverrideStepUpGrant | null;
+  },
 ): Promise<string> {
+  // Resolved exactly as the shared writer in @tartware/config does, through the
+  // same function: two services writing the same table must not disagree about
+  // whose authority a row records.
+  const authority = resolveOverrideAuthority(
+    { id: input.approved_by, role: input.role_at_approval },
+    input.stepUp,
+  );
+  const notes = input.forced
+    ? `FORCED: ${input.reason_notes ?? "gate bypassed"}`
+    : (input.reason_notes ?? null);
+
   const result = await query<{ id: string }>(INSERT_FLOW_APPROVAL_SQL, [
     input.tenant_id,
     input.property_id ?? null,
@@ -89,14 +108,14 @@ export async function recordFlowApproval(
     input.gate_name,
     input.entity_type,
     input.entity_id,
-    input.approved_by,
-    input.role_at_approval,
+    authority.actorId ?? input.approved_by,
+    authority.role ?? input.role_at_approval,
     input.reason_code,
-    // Same `FORCED:` prefix the shared writer in @tartware/config applies, so a
+    // Same `FORCED:` / `STEP_UP:` prefixes the shared writer applies, so a
     // reader filtering override records sees both services the same way.
-    input.forced
-      ? `FORCED: ${input.reason_notes ?? "gate bypassed"}`
-      : (input.reason_notes ?? null),
+    authority.viaStepUp
+      ? `STEP_UP: authorised at the terminal for ${input.approved_by ?? "an unidentified operator"}${notes ? `; ${notes}` : ""}`
+      : notes,
     input.approved_at ?? null,
     input.expires_at ?? null,
     input.correlation_id ?? null,

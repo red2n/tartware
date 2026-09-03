@@ -28,6 +28,7 @@ import {
   type CreateReservationResult,
   enqueueReservationUpdate,
   ReservationCommandError,
+  type ReservationCommandOptions,
   resolveReasonCode,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
@@ -91,7 +92,7 @@ const selectRoomToMove = (
 export const moveRoom = async (
   tenantId: string,
   command: ReservationRoomMoveCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const actorId = resolveActorId({ userId: options.actorId }) ?? SYSTEM_ACTOR_ID;
@@ -193,6 +194,7 @@ export const moveRoom = async (
     assertForcedOverrideAuthority(reason, options.actorRole, {
       commandName: "reservation.room_move",
       gateName: "room_move",
+      stepUp: options.stepUp,
     });
   }
 
@@ -300,6 +302,7 @@ export const moveRoom = async (
       entityId: command.reservation_id,
       approvedBy: actorId,
       roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      stepUp: options.stepUp,
       forced: Boolean(command.force),
       reasonCode: reason.reason_code,
       reasonNotes:

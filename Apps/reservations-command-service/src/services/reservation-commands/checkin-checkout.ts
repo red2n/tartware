@@ -34,6 +34,7 @@ import {
   fetchRoomInfo,
   findBestAvailableRoom,
   ReservationCommandError,
+  type ReservationCommandOptions,
   type ReservationUpdatePayload,
   resolveReasonCode,
   SYSTEM_ACTOR_ID,
@@ -49,7 +50,7 @@ import {
 export const checkInReservation = async (
   tenantId: string,
   command: ReservationCheckInCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and status allows check-in
   const resResult = await query(
@@ -107,6 +108,7 @@ export const checkInReservation = async (
     assertForcedOverrideAuthority(overrideReason, options.actorRole, {
       commandName: "reservation.check_in",
       gateName: "reservation_status_check",
+      stepUp: options.stepUp,
     });
   }
 
@@ -129,6 +131,7 @@ export const checkInReservation = async (
       entityId: command.reservation_id,
       approvedBy: options.actorId ?? null,
       roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      stepUp: options.stepUp,
       forced: true,
       reasonCode: overrideReason.reason_code,
       reasonNotes:
@@ -241,6 +244,7 @@ export const checkInReservation = async (
       entityId: command.reservation_id,
       approvedBy: options.actorId ?? null,
       roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      stepUp: options.stepUp,
       forced: true,
       reasonCode: overrideReason.reason_code,
       reasonNotes: command.notes ?? "Check-in forced with force=true; deposit gate bypassed",
@@ -454,7 +458,7 @@ export const checkInReservation = async (
 export const checkOutReservation = async (
   tenantId: string,
   command: ReservationCheckOutCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   // 1. Validate reservation exists and is CHECKED_IN
   const resResult = await query(
@@ -510,6 +514,7 @@ export const checkOutReservation = async (
     assertForcedOverrideAuthority(checkOutReason, options.actorRole, {
       commandName: "reservation.check_out",
       gateName: "folio_settlement_check",
+      stepUp: options.stepUp,
     });
   }
 
@@ -567,6 +572,7 @@ export const checkOutReservation = async (
           entityId: command.reservation_id,
           approvedBy: options.actorId ?? null,
           roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+          stepUp: options.stepUp,
           forced: true,
           reasonCode: checkOutReason.reason_code,
           reasonNotes:
@@ -1008,7 +1014,7 @@ export const checkOutReservation = async (
 export const walkInCheckIn = async (
   tenantId: string,
   command: ReservationWalkInCheckInCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const reservationId = uuid();

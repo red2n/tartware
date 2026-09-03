@@ -55,7 +55,11 @@ import { reservationsLogger } from "../../logger.js";
 import type { ReservationCreateCommand } from "../../schemas/reservation-command.js";
 import { recordFlowApproval } from "../../utils/audit.js";
 
-import { ReservationCommandError, resolveReasonCode } from "./common.js";
+import {
+  ReservationCommandError,
+  type ReservationCommandOptions,
+  resolveReasonCode,
+} from "./common.js";
 
 /**
  * Who is asking, as every reservation command already carries it.
@@ -65,12 +69,6 @@ import { ReservationCommandError, resolveReasonCode } from "./common.js";
  * consolidation belongs in `schema/`, as one shape every command option bag
  * derives from, and it is not this change.
  */
-type BlacklistGateOptions = {
-  correlationId?: string | undefined;
-  actorId?: string | undefined;
-  actorRole?: string | undefined;
-};
-
 /**
  * Clear the blacklist gate for this create, or throw.
  *
@@ -87,7 +85,7 @@ export const clearBlacklistGate = async (
   tenantId: string,
   command: ReservationCreateCommand,
   reservationId: string,
-  options: BlacklistGateOptions,
+  options: ReservationCommandOptions,
 ): Promise<void> => {
   if (!command.blacklist_override) {
     throw new ReservationCommandError(
@@ -111,6 +109,7 @@ export const clearBlacklistGate = async (
   assertOverrideAuthority(reason, options.actorRole, {
     commandName: "reservation.create",
     gateName: "blacklist_check",
+    stepUp: options.stepUp,
   });
 
   await recordFlowApproval({
@@ -122,6 +121,7 @@ export const clearBlacklistGate = async (
     entityId: reservationId,
     approvedBy: options.actorId ?? null,
     roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+    stepUp: options.stepUp,
     forced: true,
     reasonCode: reason.reason_code,
     reasonNotes:

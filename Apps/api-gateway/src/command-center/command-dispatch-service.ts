@@ -3,6 +3,7 @@ import {
   CommandDispatchError,
   createCommandDispatchRepository,
   createCommandDispatchService,
+  createStepUpGrantRepository,
   resolveCommandPartitionKey,
   type AcceptCommandInput as SharedAcceptCommandInput,
   toApprovalTicket,
@@ -10,7 +11,7 @@ import {
 import type { AcceptedCommand, CommandDeferredForApproval } from "@tartware/schemas";
 
 import { commandBatchConfig } from "../config.js";
-import { queryWithClient, withTransaction } from "../lib/db.js";
+import { query, queryWithClient, withTransaction } from "../lib/db.js";
 import { gatewayLogger } from "../logger.js";
 import type { TenantMembership } from "../services/membership-service.js";
 
@@ -39,11 +40,15 @@ export const drainCommandBatcher = (): Promise<void> => batcher.drain();
  * back as `insertCommandDispatch: false`, which the dispatch service turns into
  * a replay by re-reading the winning row.
  */
+/** The pool-bound claim, for the batched path and the no-transaction fallback. */
+const ambientStepUpGrants = createStepUpGrantRepository((sql, params) => query(sql, params));
+
 const batchedDispatchTransaction = <T>(
   fn: (writer: {
     enqueueOutboxRecord: (record: Parameters<typeof enqueueOutboxRecord>[0]) => Promise<void>;
     insertCommandDispatch: (input: Parameters<typeof insertCommandDispatch>[0]) => Promise<boolean>;
     findCommandDispatchByRequest: typeof findCommandDispatchByRequest;
+    claimStepUpGrant: ReturnType<typeof createStepUpGrantRepository>["claimStepUpGrant"];
   }) => Promise<T>,
 ): Promise<T> => {
   let staged: Parameters<typeof enqueueOutboxRecord>[0] | null = null;
@@ -60,6 +65,12 @@ const batchedDispatchTransaction = <T>(
     // Answering null sends every command down the insert path; duplicates are
     // caught by the batch's own lookup rather than costing a query each.
     findCommandDispatchByRequest: async () => null,
+    // Ambient rather than transactional: this path stages its rows for a batch
+    // and holds no client. The consequence is that a command whose batch fails
+    // after the claim leaves the grant spent, so the supervisor authorises
+    // again — a lost grant refuses, which is the direction a failure here has
+    // to fall.
+    claimStepUpGrant: ambientStepUpGrants.claimStepUpGrant,
   });
 };
 
@@ -78,6 +89,12 @@ const singleDispatchTransaction: typeof batchedDispatchTransaction = (fn) =>
       enqueueOutboxRecord: (record) => enqueueOutboxRecordWithClient(client, record),
       insertCommandDispatch: scoped.insertCommandDispatch,
       findCommandDispatchByRequest: scoped.findCommandDispatchByRequest,
+      // Shares the transaction, so a duplicate request that unwinds puts the
+      // grant back rather than burning a supervisor's authorisation on a
+      // command that was never accepted.
+      claimStepUpGrant: createStepUpGrantRepository((sql, params) =>
+        queryWithClient(client, sql, params),
+      ).claimStepUpGrant,
     });
   });
 
@@ -168,6 +185,7 @@ const { acceptCommand: acceptCommandInternal } = createCommandDispatchService<Te
     ? batchedDispatchTransaction
     : singleDispatchTransaction,
   requireCommandApproval,
+  claimStepUpGrant: ambientStepUpGrants.claimStepUpGrant,
 });
 
 export const acceptCommand = async (

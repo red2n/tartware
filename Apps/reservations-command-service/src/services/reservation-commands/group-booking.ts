@@ -18,6 +18,7 @@ import {
   type CreateReservationResult,
   enqueueReservationUpdate,
   ReservationCommandError,
+  type ReservationCommandOptions,
   type ReservationUpdatePayload,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
@@ -34,7 +35,7 @@ import {
 export const createGroupBooking = async (
   tenantId: string,
   command: GroupCreateCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const groupBookingId = uuid();

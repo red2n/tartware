@@ -104,6 +104,16 @@ export class ReasonCodePickerComponent {
 	readonly label = input<string>("Reason");
 	readonly value = input<string>("");
 	readonly valueChange = output<string>();
+	/**
+	 * The membership role the selected code demands, when the operator does not
+	 * hold it — and `null` when they do (or nothing is selected).
+	 *
+	 * Emitted because the refusal it predicts happens at *apply* time, in the
+	 * consumer, long after the 202: a screen that waits to be told cannot be told
+	 * at all. This is what lets a caller offer a supervisor step-up before the
+	 * command is sent rather than after it has silently failed.
+	 */
+	readonly authorityShortfall = output<string | null>();
 
 	readonly codes = signal<ReasonCodeListItem[]>([]);
 	readonly loading = signal(false);
@@ -123,6 +133,14 @@ export class ReasonCodePickerComponent {
 			const category = this.category();
 			const propertyId = this.propertyId();
 			void this.load(category, propertyId);
+		});
+
+		// Tell the caller what the current selection would cost, so it can offer a
+		// step-up. Same computation the warning above renders — emitted rather than
+		// recomputed by the parent, which would be a second copy of the rule.
+		effect(() => {
+			const picked = this.selected();
+			this.authorityShortfall.emit(picked && !this.clears(picked) ? this.minRole(picked) : null);
 		});
 	}
 

@@ -108,6 +108,11 @@ export const clearWriteOffGate = async (input: WriteOffGateInput): Promise<Reaso
   assertOverrideAuthority(reason, actorRole, {
     commandName: input.commandName,
     gateName: "write_off",
+    // Passed for uniformity, and it is always absent here: all three write-offs
+    // are dual-control, and the mint path refuses to issue a grant for one. The
+    // parameter stays so this site cannot be the one that gets forgotten if
+    // that ever changes.
+    stepUp: input.context.stepUp,
   });
 
   const policy = await resolvePolicy(
@@ -155,6 +160,7 @@ export const recordWriteOff = async (
       entity_id: input.entityId,
       approved_by: resolveActorId(input.context.initiatedBy),
       role_at_approval: resolveActorRole(input.context.initiatedBy),
+      stepUp: input.context.stepUp,
       forced: false,
       reason_code: reason.reason_code,
       reason_notes:

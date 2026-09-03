@@ -475,6 +475,9 @@ importers:
 
   Apps/config:
     dependencies:
+      '@tartware/schemas':
+        specifier: workspace:*
+        version: link:../../schema
       dotenv:
         specifier: ^17.2.3
         version: 17.2.4

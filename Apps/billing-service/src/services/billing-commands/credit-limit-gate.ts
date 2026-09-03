@@ -136,6 +136,7 @@ export const clearCreditLimitGate = async (
   assertOverrideAuthority(reason, resolveActorRole(input.context.initiatedBy), {
     commandName: input.commandName,
     gateName: "credit_limit_check",
+    stepUp: input.context.stepUp,
   });
 
   appLogger.warn(
@@ -177,6 +178,7 @@ export const recordCreditLimitOverride = async (
       entity_id: input.entityId,
       approved_by: resolveActorId(input.context.initiatedBy),
       role_at_approval: resolveActorRole(input.context.initiatedBy),
+      stepUp: input.context.stepUp,
       forced: true,
       reason_code: reason.reason_code,
       reason_notes: notes ?? `${reason.reason_name}: ${input.detail}`,

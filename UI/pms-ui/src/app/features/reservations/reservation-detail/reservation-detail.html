@@ -899,15 +899,38 @@
         category="RATE_OVERRIDE"
         [propertyId]="reservation()?.property_id ?? ''"
         [value]="rateOverrideForm().reason_code"
-        (valueChange)="rateOverrideForm.set({ ...rateOverrideForm(), reason_code: $event })" />
+        (valueChange)="rateOverrideForm.set({ ...rateOverrideForm(), reason_code: $event })"
+        (authorityShortfall)="onRateAuthorityShortfall($event)" />
       <div class="form-group">
         <label class="field-label">{{ 'Notes' | translate }}</label>
         <input type="text" class="field-input" [ngModel]="rateOverrideForm().reason"
           (ngModelChange)="rateOverrideForm.set({ ...rateOverrideForm(), reason: $event ?? '' })" />
       </div>
+
+      <!-- The refusal this predicts happens when the command is applied, not when
+           it is accepted, so a screen that waits to be told is never told. The
+           supervisor authorises here, before it is sent. -->
+      @if (stepUpGrant(); as grant) {
+        <p class="notice">
+          <app-icon class="notice-icon" name="admin_panel_settings" />
+          {{ 'Authorised by {name} ({role}). This covers this one override.'
+              | translate:{ name: grant.supervisor_name, role: grant.supervisor_role } }}
+        </p>
+      } @else if (rateAuthorityShortfall(); as needed) {
+        <p class="notice">
+          <app-icon class="notice-icon" name="lock" />
+          {{ 'This reason code needs {role}. A supervisor can authorise it here without signing you out.'
+              | translate:{ role: needed } }}
+        </p>
+      }
     </div>
     <div class="confirm-actions">
       <button class="btn btn-outline btn-sm" unsavedClose (click)="cancelAction()" [disabled]="actionLoading()">{{ 'Cancel' | translate }}</button>
+      @if (rateAuthorityShortfall() && !stepUpGrant()) {
+        <button class="btn btn-outline btn-sm" (click)="requestRateStepUp()" [disabled]="actionLoading()">
+          <app-icon name="admin_panel_settings" /> {{ 'Get authorisation' | translate }}
+        </button>
+      }
       <button class="btn btn-primary btn-sm" (click)="overrideRate()" [disabled]="actionLoading() || !rateOverrideForm().reason_code">{{ 'Override' | translate }}</button>
     </div>
   </div>

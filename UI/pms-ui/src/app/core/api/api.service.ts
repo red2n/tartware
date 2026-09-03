@@ -98,11 +98,18 @@ export class ApiService {
 	}
 
 	/** Write headers — same as getHeaders() plus a fresh UUID idempotency key. */
-	private getWriteHeaders(): HeadersInit {
-		return {
+	private getWriteHeaders(stepUpGrantId?: string): HeadersInit {
+		const headers: Record<string, string> = {
 			...(this.getHeaders() as Record<string, string>),
 			"Idempotency-Key": generateUUID(),
 		};
+		// A supervisor's authorisation for this one command. A header rather than a
+		// payload field: it is authorization material, not command data, so no
+		// command schema has to learn about it. The gateway verifies and spends it.
+		if (stepUpGrantId) {
+			headers["X-Step-Up-Grant"] = stepUpGrantId;
+		}
+		return headers;
 	}
 
 	async get<T>(path: string, params?: Record<string, string>): Promise<T> {
@@ -116,10 +123,10 @@ export class ApiService {
 		return response.json();
 	}
 
-	async post<T>(path: string, body?: unknown): Promise<T> {
+	async post<T>(path: string, body?: unknown, options?: { stepUpGrantId?: string }): Promise<T> {
 		const response = await fetch(this.buildUrl(path), {
 			method: "POST",
-			headers: this.getWriteHeaders(),
+			headers: this.getWriteHeaders(options?.stepUpGrantId),
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		if (!response.ok) {

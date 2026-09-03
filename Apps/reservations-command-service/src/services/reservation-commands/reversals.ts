@@ -33,6 +33,7 @@ import type {
   ReservationStatus,
 } from "@tartware/schemas";
 import {
+  type OverrideStepUpGrant,
   ReservationReinstateCommandSchema,
   ReservationReverseCheckInCommandSchema,
   ReservationReverseCheckOutCommandSchema,
@@ -49,6 +50,7 @@ import {
   type CreateReservationResult,
   enqueueReservationUpdate,
   ReservationCommandError,
+  type ReservationCommandOptions,
   type ReservationUpdatePayload,
   resolveReasonCode,
   SYSTEM_ACTOR_ID,
@@ -383,6 +385,7 @@ const recordReversal = async (input: {
   reasonNotes?: string;
   actorId?: string;
   actorRole?: string;
+  stepUp?: OverrideStepUpGrant | null;
   correlationId?: string;
   forced: boolean;
   outcome: FolioReversalOutcome;
@@ -398,6 +401,7 @@ const recordReversal = async (input: {
     entityId: input.reservationId,
     approvedBy: input.actorId ?? null,
     roleAtApproval: input.actorRole ?? SYSTEM_ACTOR_ROLE,
+    stepUp: input.stepUp,
     forced: input.forced,
     reasonCode: input.reason.reason_code,
     reasonNotes:
@@ -474,18 +478,25 @@ const recordReversal = async (input: {
 const assertForcedReversalAuthority = (
   input: { force?: boolean | undefined },
   reason: ReasonCodeRow,
-  actorRole: string | undefined,
+  // The whole options object rather than the role alone: the role is not the
+  // only thing an authority check reads any more, and a positional `actorRole`
+  // is how the next field would reach two of these three call sites.
+  options: ReservationCommandOptions,
   commandName: string,
   gateName: string,
 ): void => {
   if (!input.force) return;
-  assertForcedOverrideAuthority(reason, actorRole, { commandName, gateName });
+  assertForcedOverrideAuthority(reason, options.actorRole, {
+    commandName,
+    gateName,
+    stepUp: options.stepUp,
+  });
 };
 
 export const reverseCheckIn = async (
   tenantId: string,
   rawCommand: ReservationReverseCheckInCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   // Parsed here as well as in the consumer: the schema defaults are load-bearing
   // (see `restore_status` / `room_status_after`), and a handler that inherited
@@ -504,7 +515,7 @@ export const reverseCheckIn = async (
   assertForcedReversalAuthority(
     input,
     reason,
-    options.actorRole,
+    options,
     "reservation.reverse_check_in",
     "reverse_check_in",
   );
@@ -562,6 +573,7 @@ export const reverseCheckIn = async (
     reasonNotes: input.reason_notes,
     actorId: options.actorId,
     actorRole: options.actorRole,
+    stepUp: options.stepUp,
     correlationId: options.correlationId,
     forced: Boolean(input.force),
     outcome,
@@ -603,7 +615,7 @@ export const reverseCheckIn = async (
 export const reverseCheckOut = async (
   tenantId: string,
   rawCommand: ReservationReverseCheckOutCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const input = ReservationReverseCheckOutCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
@@ -619,7 +631,7 @@ export const reverseCheckOut = async (
   assertForcedReversalAuthority(
     input,
     reason,
-    options.actorRole,
+    options,
     "reservation.reverse_check_out",
     "reverse_check_out",
   );
@@ -695,6 +707,7 @@ export const reverseCheckOut = async (
     reasonNotes: input.reason_notes,
     actorId: options.actorId,
     actorRole: options.actorRole,
+    stepUp: options.stepUp,
     correlationId: options.correlationId,
     forced: Boolean(input.force),
     outcome,
@@ -731,7 +744,7 @@ export const reverseCheckOut = async (
 export const reinstateReservation = async (
   tenantId: string,
   rawCommand: ReservationReinstateCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const input = ReservationReinstateCommandSchema.parse(rawCommand);
   const reservation = await loadReservation(tenantId, input.reservation_id);
@@ -747,7 +760,7 @@ export const reinstateReservation = async (
   assertForcedReversalAuthority(
     input,
     reason,
-    options.actorRole,
+    options,
     "reservation.reinstate",
     "reinstate_reservation",
   );
@@ -849,6 +862,7 @@ export const reinstateReservation = async (
     reasonNotes: input.reason_notes,
     actorId: options.actorId,
     actorRole: options.actorRole,
+    stepUp: options.stepUp,
     correlationId: options.correlationId,
     forced: Boolean(input.force),
     outcome,

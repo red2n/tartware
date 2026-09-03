@@ -7,6 +7,7 @@ import {
   resolveActorRole,
   SYSTEM_ACTOR_ID,
   SYSTEM_ACTOR_ROLE,
+  assertOverrideAuthority,
 } from "../src/command-utils.js";
 
 const USER = "44444444-4444-4444-4444-444444444444";
@@ -137,6 +138,101 @@ describe("assertForcedOverrideAuthority", () => {
     // A clerk's role will not change between attempt one and attempt four.
     try {
       assertForcedOverrideAuthority(reason(), "STAFF", ctx);
+      throw new Error("expected a refusal");
+    } catch (error) {
+      expect((error as { retryable?: boolean }).retryable).toBe(false);
+    }
+  });
+});
+
+describe("a supervisor's step-up at the gate", () => {
+  const reason = (over: Record<string, unknown> = {}) =>
+    ({
+      reason_id: "11111111-1111-1111-1111-111111111111",
+      reason_code: "RM_VIP",
+      reason_name: "VIP Accommodation",
+      reason_category: "ROOM_MOVE",
+      requires_approval: true,
+      approval_level: "MANAGER",
+      has_financial_impact: false,
+      ...over,
+      // biome-ignore lint/suspicious/noExplicitAny: a reason row fixture.
+    }) as any;
+
+  const grant = (role: string) => ({
+    grantId: "g1",
+    supervisorId: "supervisor-1",
+    supervisorRole: role as "MANAGER",
+    entityId: "bd77c3a1-34dc-4afc-a9a2-122d9bf9d183",
+    grantedAt: "2026-09-02T12:00:00.000Z",
+  });
+
+  const base = { commandName: "reservation.room_move", gateName: "room_move" };
+
+  it("lets a clerk force a gate a manager authorised in person", () => {
+    // The whole point: before this, the answer to "a clerk at the desk with a
+    // guest in front of them" was a queued approval or a manager logging in.
+    expect(() =>
+      assertForcedOverrideAuthority(reason(), "STAFF", {
+        ...base,
+        stepUp: grant("MANAGER"),
+      }),
+    ).not.toThrow();
+  });
+
+  it("still refuses when the supervisor does not clear it either", () => {
+    expect(() =>
+      assertForcedOverrideAuthority(reason({ approval_level: "GM" }), "STAFF", {
+        ...base,
+        stepUp: grant("MANAGER"),
+      }),
+    ).toThrow(/OWNER/);
+  });
+
+  it("says so when a step-up was tried and was not enough", () => {
+    // Otherwise the message reads as though nobody was asked.
+    expect(() =>
+      assertForcedOverrideAuthority(reason({ approval_level: "GM" }), "STAFF", {
+        ...base,
+        stepUp: grant("MANAGER"),
+      }),
+    ).toThrow(/supervisor who stepped up does not clear it/);
+  });
+
+  it("refuses a clerk with no step-up, unchanged", () => {
+    expect(() =>
+      assertForcedOverrideAuthority(reason(), "STAFF", base),
+    ).toThrow(/MANAGER/);
+  });
+
+  it("lets a supervisor clear an explicit override field too", () => {
+    expect(() =>
+      assertOverrideAuthority(reason({ approval_level: "GM" }), "STAFF", {
+        commandName: "reservation.create",
+        gateName: "blacklist_check",
+        stepUp: grant("OWNER"),
+      }),
+    ).not.toThrow();
+  });
+
+  it("does not let a scheduler's envelope be rescued by a stale grant it did not earn", () => {
+    // A grant is spent by the accept path on one command; SYSTEM envelopes are
+    // replays and schedulers, which never carry one. This pins the pairing: with
+    // no grant, SYSTEM still clears nothing.
+    expect(() =>
+      assertOverrideAuthority(reason(), SYSTEM_ACTOR_ROLE, {
+        commandName: "reservation.create",
+        gateName: "blacklist_check",
+      }),
+    ).toThrow();
+  });
+
+  it("keeps a step-up refusal off the retry ladder", () => {
+    try {
+      assertForcedOverrideAuthority(reason({ approval_level: "GM" }), "STAFF", {
+        ...base,
+        stepUp: grant("MANAGER"),
+      });
       throw new Error("expected a refusal");
     } catch (error) {
       expect((error as { retryable?: boolean }).retryable).toBe(false);

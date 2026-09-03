@@ -35,6 +35,8 @@ import {
   CommandDefinitionSchema,
   CommandExecuteRequestSchema,
   CommandFeatureListItemSchema,
+  StepUpGrantResponseSchema,
+  StepUpRequestSchema,
   UpdateCommandFeatureRequestSchema,
   UpdateCommandFeatureResponseSchema,
 } from "@tartware/schemas";
@@ -55,9 +57,10 @@ import {
   listCommandFeatures,
   updateCommandFeatureStatus,
 } from "../command-center/sql/command-features.js";
-import { gatewayConfig } from "../config.js";
+import { gatewayConfig, serviceTargets } from "../config.js";
 import { extractBearerToken, verifyAccessToken, verifySystemAdminToken } from "../lib/jwt.js";
 import { sendCommandProblem, submitCommand } from "../utils/command-publisher.js";
+import { proxyRequest } from "../utils/proxy.js";
 
 import { commandAcceptedSchema } from "./schemas.js";
 
@@ -106,6 +109,8 @@ const ApprovalActionBodyJsonSchema = schemaFromZod(
   "CommandApprovalActionBody",
 );
 const ApprovalViewJsonSchema = schemaFromZod(CommandApprovalViewSchema, "CommandApproval");
+const StepUpRequestJsonSchema = schemaFromZod(StepUpRequestSchema, "StepUpRequest");
+const StepUpGrantResponseJsonSchema = schemaFromZod(StepUpGrantResponseSchema, "StepUpGrant");
 const ApprovalListJsonSchema = schemaFromZod(
   z.array(CommandApprovalViewSchema),
   "CommandApprovalList",
@@ -490,6 +495,39 @@ export const registerCommandCenterRoutes = (app: FastifyInstance): void => {
         throw error;
       }
     },
+  );
+
+  /**
+   * Supervisor step-up, proxied to core-service.
+   *
+   * Proxied rather than handled here because core-service is the only service
+   * that holds password hashes — a second place that verifies a credential is a
+   * second place that can get lockout, throttling or MFA subtly wrong. The
+   * gateway's part is the other end: it claims the resulting grant on the accept
+   * path, from the `X-Step-Up-Grant` header, and never sees the password.
+   *
+   * The route gate is the *operator's* membership at the shift floor. The
+   * authority being asked for is the supervisor's, and it is verified in the
+   * body; gating this endpoint higher would mean only the people who do not
+   * need a step-up could ask for one.
+   */
+  app.post(
+    "/v1/tenants/:tenantId/commands/step-up",
+    {
+      preHandler: app.withTenantScope({
+        resolveTenantId: (request) => (request.params as { tenantId?: string }).tenantId,
+        minRole: "STAFF",
+        requiredModules: "core",
+      }),
+      schema: buildRouteSchema({
+        tag: COMMAND_CENTER_TAG,
+        summary: "Authorise one override with a supervisor's credentials",
+        params: BatchListParamJsonSchema,
+        body: StepUpRequestJsonSchema,
+        response: { 200: StepUpGrantResponseJsonSchema },
+      }),
+    },
+    async (request, reply) => proxyRequest(request, reply, serviceTargets.coreServiceUrl),
   );
 
   // ─── Generic command execution ────────────────────────────────────────────

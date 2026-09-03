@@ -11,6 +11,10 @@ import { uuid } from "../shared/base-schemas.js";
 import { CommandFeatureStatusEnum } from "../shared/enums.js";
 
 import type { CommandAuthorityReason } from "./command-permissions.js";
+import type {
+	OverrideStepUpGrant,
+	OverrideStepUpGrantRow,
+} from "./override-step-up.js";
 
 // =====================================================
 // IDEMPOTENCY — envelope-level deduplication contract
@@ -223,6 +227,17 @@ export type CommandContext = {
 	 * omits it cannot say what authority the bypass was made under.
 	 */
 	initiatedBy?: { userId?: string; role?: string } | null;
+	/**
+	 * The supervisor who authorised this override at the terminal, when one did.
+	 *
+	 * Read by the authority gates, which run here rather than at the gateway
+	 * because only the handler knows which reason code the payload names — and
+	 * therefore what level is being cleared. `initiatedBy` stays the operator:
+	 * the operator ran the command and the supervisor authorised it, and
+	 * collapsing the two would lose which is which on the one record that has to
+	 * say.
+	 */
+	stepUp?: OverrideStepUpGrant | null;
 	/** Raw command payload (present when the handler destructures context for the full envelope) */
 	payload?: unknown;
 	/** Correlation ID from the Kafka message (for distributed tracing) */
@@ -359,6 +374,15 @@ export interface AcceptCommandInput<Membership = unknown> {
 	membership: Membership;
 	/** Set only by the approval path. See {@link CommandApprovalGrant}. */
 	approvalGrant?: CommandApprovalGrant;
+	/**
+	 * A supervisor's step-up grant to spend on this command.
+	 *
+	 * The *id* is caller-supplied and that is safe: it names a row the caller
+	 * cannot have written, and the accept path verifies and claims it. The
+	 * resulting {@link OverrideStepUpGrant} on the envelope is not caller-supplied,
+	 * for the same reason `approvalGrant` is not.
+	 */
+	stepUpGrantId?: string;
 }
 
 /**
@@ -420,6 +444,24 @@ export interface CommandDispatchWriter {
 		commandName: string,
 		requestId: string,
 	) => Promise<CommandDispatchLookup | null>;
+	/**
+	 * Spend a supervisor's step-up grant on this command, once.
+	 *
+	 * Inside the accept transaction on purpose. The grant is consumed by a
+	 * conditional UPDATE, so two commands racing for one cannot both win — and
+	 * because it shares the transaction, a dispatch that unwinds (a duplicate
+	 * request losing the race) puts the grant back rather than burning a
+	 * supervisor's authorisation on a command that was never accepted.
+	 *
+	 * Returns the claimed row, or `null` when there was nothing claimable —
+	 * already spent, expired, or no such grant. The caller turns that into a
+	 * refusal; it never proceeds unauthorised.
+	 */
+	claimStepUpGrant?: (input: {
+		grantId: string;
+		tenantId: string;
+		commandId: string;
+	}) => Promise<{ grant: OverrideStepUpGrantRow; claimed: boolean } | null>;
 }
 
 /** Dependency injection contract for the command dispatch service factory. */
@@ -449,6 +491,20 @@ export interface CommandDispatchDependencies<Membership = unknown> {
 	withDispatchTransaction?: <T>(
 		fn: (writer: CommandDispatchWriter) => Promise<T>,
 	) => Promise<T>;
+	/**
+	 * See {@link CommandDispatchWriter.claimStepUpGrant}.
+	 *
+	 * Optional in the type and mandatory in effect, on the same rule as
+	 * `requireCommandApproval`: a command that arrives carrying a step-up grant
+	 * is refused outright when this is not wired, because the alternative —
+	 * running it on the operator's own authority because the supervisor's could
+	 * not be verified — is the failure step-up exists to prevent.
+	 */
+	claimStepUpGrant?: (input: {
+		grantId: string;
+		tenantId: string;
+		commandId: string;
+	}) => Promise<{ grant: OverrideStepUpGrantRow; claimed: boolean } | null>;
 	throttleCommand?: (input: {
 		commandName: string;
 		tenantId: string;
