@@ -3184,10 +3184,10 @@ else
   # would couple two phases through a balance each of them mutates.
   send_command "CMD folio.create: the close subject" \
     "billing.folio.create" \
-    "{\"property_id\":\"$FC_PROP\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Close probe $RUN_TAG\",\"currency\":\"USD\",\"idempotency_key\":\"FCLOSE-$RUN_TAG\"}"
+    "{\"property_id\":\"$FC_PROP\",\"folio_type\":\"HOUSE_ACCOUNT\",\"notes\":\"Close probe $RUN_TAG\",\"currency\":\"USD\",\"idempotency_key\":\"FCLOSE-$RUN_TAG\"}"
   wait_kafka 6
 
-  FC_FOLIO=$(cl_sql "select folio_id from folios where tenant_id='$TID_B' and folio_name='Close probe $RUN_TAG' limit 1")
+  FC_FOLIO=$(cl_sql "select folio_id from folios where tenant_id='$TID_B' and notes='Close probe $RUN_TAG' limit 1")
 
   if [[ -n "$FC_FOLIO" ]]; then
     send_command "CMD charge: give the folio a balance" \
@@ -3333,9 +3333,9 @@ else
       # authorised this" and "a manager was on the property this afternoon".
       send_command "CMD folio.create: a second close subject" \
         "billing.folio.create" \
-        "{\"property_id\":\"$FC_PROP\",\"folio_type\":\"HOUSE_ACCOUNT\",\"folio_name\":\"Close probe 2 $RUN_TAG\",\"currency\":\"USD\",\"idempotency_key\":\"FCLOSE2-$RUN_TAG\"}"
+        "{\"property_id\":\"$FC_PROP\",\"folio_type\":\"HOUSE_ACCOUNT\",\"notes\":\"Close probe 2 $RUN_TAG\",\"currency\":\"USD\",\"idempotency_key\":\"FCLOSE2-$RUN_TAG\"}"
       wait_kafka 6
-      FC_FOLIO2=$(cl_sql "select folio_id from folios where tenant_id='$TID_B' and folio_name='Close probe 2 $RUN_TAG' limit 1")
+      FC_FOLIO2=$(cl_sql "select folio_id from folios where tenant_id='$TID_B' and notes='Close probe 2 $RUN_TAG' limit 1")
       if [[ -n "$FC_FOLIO2" ]]; then
         code=$(fc_close "$TOKEN_STAFF" "{\"property_id\":\"$FC_PROP\",\"folio_id\":\"$FC_FOLIO2\",\"force\":true,\"reason_code\":\"FC_DISPUTE_HELD\"}" "$FC_GRANT")
         sleep 6

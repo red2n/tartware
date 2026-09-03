@@ -1945,7 +1945,7 @@ echo "  Scenario: Close the house account folio (force close)"
 if [[ -n "${HOUSE_FOLIO_ID:-}" ]]; then
   send_command "CMD folio.close: house account (force)" \
     "billing.folio.close" \
-    "{\"property_id\":\"$PID\",\"folio_id\":\"$HOUSE_FOLIO_ID\",\"close_reason\":\"End-of-stay settlement — industry QA test\",\"force\":true}"
+    "{\"property_id\":\"$PID\",\"folio_id\":\"$HOUSE_FOLIO_ID\",\"close_reason\":\"End-of-stay settlement — industry QA test\",\"force\":true,\"reason_code\":\"FC_MANAGEMENT\"}"
 
   wait_kafka 8
 
@@ -2382,7 +2382,7 @@ if [[ -n "${RES1_ID:-}" ]]; then
   if [[ "${RES1_CURRENT_STATUS,,}" != "checked_in" ]]; then
     send_command "CMD reservation.check_in: res1 for late checkout test" \
       "reservation.check_in" \
-      "{\"reservation_id\":\"$RES1_ID\",\"force\":true}"
+      "{\"reservation_id\":\"$RES1_ID\",\"force\":true,\"reason_code\":\"CI_CORP_ACCOUNT\"}"
     wait_kafka 8
   fi
 

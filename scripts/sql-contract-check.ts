@@ -29,7 +29,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const TABLES_DIR = join(ROOT, "scripts", "tables");
 const MANIFEST = join(TABLES_DIR, "00-create-all-tables.sql");
-const MIGRATIONS_DIR = join(ROOT, "scripts", "migrations");
 const APPS = join(ROOT, "Apps");
 const BASELINE = join(__dirname, "sql-contract-baseline.json");
 
@@ -217,11 +216,18 @@ function buildCatalog(): void {
   // Second pass: an ALTER may target a table created by a later include.
   for (const file of sqlFiles) parseAlterAddColumn(stripSqlComments(readFileSync(file, "utf-8")));
 
-  if (existsSync(MIGRATIONS_DIR)) {
-    for (const name of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql"))) {
-      parseAlterAddColumn(stripSqlComments(readFileSync(join(MIGRATIONS_DIR, name), "utf-8")));
-    }
-  }
+  // `scripts/migrations/` is deliberately NOT read, and its absence is the point.
+  //
+  // This function used to parse it for ALTER TABLE ... ADD COLUMN and count
+  // those columns as existing. `setup-database.sh` never executed that
+  // directory and no `schema_migrations` table ever tracked it, so five columns
+  // this check vouched for had never existed in any database — and three
+  // services queried them, failing 42703 at runtime. A contract check that
+  // reads a second source of truth inherits that source's fiction.
+  //
+  // The directory is gone (PURE DEV mode, see CLAUDE.md 1a) and
+  // `check:schema-discipline` fails if it returns. What a table has is what its
+  // CREATE TABLE says it has.
 }
 
 // ─── Extracting SQL from TypeScript ──────────────────────────────────────────

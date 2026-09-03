@@ -16,6 +16,11 @@ property_id UUID REFERENCES properties (id) ON DELETE CASCADE, -- Optional prope
 
 -- Agent & Reservation
 company_id UUID NOT NULL REFERENCES companies (company_id) ON DELETE RESTRICT, -- Agency/company earning commission
+-- The individual agent within the company, when the booking names one. Nullable
+-- because a commission is owed to the agency and only sometimes attributed to a
+-- person. Lived in a migration nothing executed until 3 Sep 2026, so every
+-- INSERT naming it failed 42703 on any database built the normal way.
+agent_id UUID, -- FK travel_agents(agent_id), constraint added in constraints phase
 reservation_id UUID NOT NULL, -- FK to reservations(id) ON DELETE RESTRICT - constraint added in constraints phase
 
 -- Commission Period
@@ -218,6 +223,9 @@ property_id UUID REFERENCES properties (id) ON DELETE CASCADE, -- Property owner
 
 -- Agent
 company_id UUID NOT NULL REFERENCES companies (company_id) ON DELETE RESTRICT, -- Company ownership
+-- The individual agent this statement is raised for, when there is one. Same
+-- provenance as travel_agent_commissions.agent_id above.
+agent_id UUID, -- FK travel_agents(agent_id), constraint added in constraints phase
 
 -- Statement Details
 statement_number VARCHAR(50) UNIQUE NOT NULL, -- Unique statement identifier

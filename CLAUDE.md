@@ -21,9 +21,76 @@ Three gates. Breaking any of them is the top source of drift in this repo.
 | **Schema-first** | No `z.object`, `interface`, or domain `type` in `Apps/`. Types live in `schema/` (`@tartware/schemas`), created there first, then imported. | Review + `AGENTS.md` § Schema-First |
 | **Shared frameworks** | Never hand-roll what a shared package owns (see §3). | `pnpm run check:frameworks` |
 | **Green build** | A task is done when `pnpm run build` exits 0 — not when typecheck passes. | `AGENTS.md` § Task Completion Gate |
+| **PURE DEV mode** | No migrations, no `ALTER TABLE … ADD COLUMN`. A schema change edits the `CREATE TABLE`; `db setup` rebuilds. | `pnpm run check:schema-discipline` |
 
 Allowed local types: `z.infer` aliases, `.pick()/.omit()` derivations, env/config schemas,
 Fastify decorator augmentation, single-file internal types. Full list in `AGENTS.md`.
+
+---
+
+## 1a. PURE DEV mode — no migrations (3 Sep 2026)
+
+**There is no production deployment, no client, no QA environment, and no data anyone
+could not recreate.** `./executables/tartware.sh db setup` rebuilds the whole schema from
+`scripts/tables/` in under a minute. So the schema has exactly one description, and a
+change to it **edits the `CREATE TABLE`**.
+
+`scripts/migrations/` is **deleted** — 12 files plus an unused tracking-table script.
+They were already dead: `setup-database.sh` never referenced them, no `schema_migrations`
+table was ever created, and nothing in the repo executed them. Verified before deleting
+that all 12 effects were present in a database built from `scripts/tables/` alone, so
+nothing was lost. Their design reasoning was already carried in the base DDL — the
+`FOLIO_CLOSE_OVERRIDE` split, the six RESTRICT / two SET NULL actor FKs,
+`cashier_session_id` being permanently nullable, the step-up grant table's header.
+
+**Why this matters beyond tidiness.** Two descriptions of one schema is the same defect
+as a control correct in one path and absent in the path beside it — the shape this repo
+spent a fortnight removing. They happened to agree on the day they were deleted, and
+establishing *whether* they agreed needed a column-by-column query against a freshly
+built database. Reading them could not settle it.
+
+**Enforced by `check:schema-discipline`** (in `check`, so `build` runs it), which fails
+on two things: `scripts/migrations/` coming back, and any **new**
+`ALTER TABLE … ADD/DROP/ALTER COLUMN`. Verified by reintroducing each.
+
+- `scripts/constraints/` is exempt — 119 files of `ADD CONSTRAINT` is how a schema with
+  circular references gets its foreign keys, and it is not a column mutation.
+- `tables/99_enforce_tenant_soft_delete.sql` is permanently exempt: it applies tenant and
+  soft-delete columns to *every* table dynamically, and folding it would lose the property
+  that makes it correct.
+- **24 files still bolt a column on after their own CREATE TABLE** — inherited, listed in
+  `UNFOLDED_COLUMNS`, and the list **may only shrink**: a stale entry fails the check, the
+  same ratchet `KNOWN_UNTYPED` uses in `check-schema-first-tables.mjs`.
+
+**Deleting them exposed a live bug, which is the argument made concretely.**
+`sql-contract-check` parsed `scripts/migrations/*.sql` for `ALTER TABLE … ADD COLUMN` and
+counted those columns as existing. Nothing executed that directory, so **five columns the
+check vouched for had never existed in any database** — `travel_agent_commissions.agent_id`,
+`commission_statements.agent_id`, `gds_reservation_queue.guest_id`,
+`ota_reservations_queue.guest_id`, `folio_routing_rules.target_account_id` — while three
+services queried four of them and failed `42703` at runtime. The check that exists to prove
+"no query names a missing column" was green because it trusted a file nothing ran.
+**A contract check that reads a second source of truth inherits that source's fiction.**
+
+The four that code reads are now in their `CREATE TABLE` bodies; `target_account_id` was
+left out because nothing reads it and an unused column is its own debt. `sql-contract-check`
+no longer looks at migrations, and says so where the code used to be.
+
+This also corrects something stated too strongly an hour earlier: the "all 12 migrations are
+already in the base DDL" check was a **sample**, not a proof — it tested the tables and
+columns picked by hand and missed these five. The exhaustive check was `sql-contract-check`
+itself, and it only became exhaustive once the directory it trusted was gone.
+
+**Historical references.** Sections below still cite migration numbers — "migration `008`",
+"migration `009`" — because that is how those changes were delivered at the time and the
+sentence is still true about *why* the column exists. The files are gone; the schema they
+describe is in `scripts/tables/`. Don't go looking for them, and don't recreate them.
+
+**When to lift this.** The day there is a real deployment holding data someone would miss:
+cut the base DDL as baseline v1 and start a migration chain from there. That is a
+deliberate decision with a date on it — not something that happens because one file
+quietly reintroduced the pattern. **Until then, do not write a migration or an
+`ALTER TABLE` unless explicitly asked to.**
 
 ---
 
@@ -91,6 +158,7 @@ pnpm run dev:ui              # Angular pms-ui
 pnpm run build               # THE gate: check → build → typecheck. Must exit 0.
 pnpm run check               # guardrails + frameworks + lint + biome + knip + contrast + i18n
 pnpm run check:frameworks    # shared-entry-point guardrail (fast, no build needed)
+pnpm run check:schema-discipline  # no migrations dir, no bolt-on columns (PURE DEV)
 pnpm run test                # nx run-many -t test — also runs as the last step of build
 pnpm run kafka:topics        # bootstrap Kafka topics
 ```

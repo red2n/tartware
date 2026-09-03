@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS ota_reservations_queue (
 
     -- Foreign Keys
     ota_configuration_id UUID NOT NULL,
+    -- The guest profile this queued booking was matched to, once one exists.
+    -- NULL until intake resolves or creates it. Same provenance as
+    -- gds_reservation_queue.guest_id: a migration nothing executed.
+    guest_id UUID, -- FK guests(id), constraint added in constraints phase
 
     -- OTA Reservation Identification
     ota_reservation_id VARCHAR(100) NOT NULL, -- OTA's reservation identifier
