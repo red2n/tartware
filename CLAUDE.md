@@ -772,6 +772,19 @@ record itself. Exemptions are typed out, not inferred: `mass-operations.ts` is t
 it forwards `force` into the single-reservation command that does the asserting. Verified by
 reproducing the original shape (assert *and* record deleted) and watching it fire.
 
+**Phase 5h, 23/23 on real data (3 Sep).** A clerk refused on a MANAGER-level code, an ADMIN
+minting a grant against a real login, the same clerk carrying it accepted, and the row naming the
+*supervisor* — `approved_by` is the ADMIN's id and `reason_notes` carries both `STEP_UP:` and
+`FORCED:`, because a gate was bypassed *and* somebody authorised the bypass. A spent grant then
+authorises nothing on a second folio. Both migration-012 foreign-key probes pass in the same phase.
+
+**Its first run failed, and that is the part worth keeping.** The forced-close half skipped on a
+fixture bug — the phase looked up its folio by `folio_name`, a payload field with no column behind
+it — and it surfaced two regressions in the suite's own seed, both a forced call sending no
+`reason_code`. The folio close was caused by this work. **The forced check-in had been failing since
+A08 landed on 2 September**, in a suite nobody had run since: a payload contract tightened, a caller
+was not updated, and the only thing that would have said so was not executed for a day.
+
 Tests: 18 billing (`forced-settlement-authority`), 7 reservations (`group-forced-arrival-authority`).
 The folio-close ones drive the real transaction rather than a stubbed `withTransaction` — the first
 draft mocked it away and its assertions about what gets recorded passed whatever the code did, which
