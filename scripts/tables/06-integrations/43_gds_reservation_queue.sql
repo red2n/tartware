@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS gds_reservation_queue (
     gds_connection_id UUID NOT NULL,
     tenant_id UUID NOT NULL,
     property_id UUID,
+    -- The guest profile this queued booking was matched to, once one exists.
+    -- NULL until intake resolves or creates it, which is the state most rows in
+    -- this queue are in. Lived in a migration nothing executed until 3 Sep 2026,
+    -- so the lookup that reads it failed 42703 on any normally built database.
+    guest_id UUID, -- FK guests(id), constraint added in constraints phase
 
     -- Reservation Identifiers
     gds_confirmation_number VARCHAR(100) NOT NULL,

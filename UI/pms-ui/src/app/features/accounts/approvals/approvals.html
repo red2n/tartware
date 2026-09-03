@@ -1,12 +1,20 @@
 <app-page-header
   title="Approvals"
-  description="Four-eyes approval queue for high-risk billing operations, and the flow-guard bypass log.">
-  <button class="btn btn-outline btn-sm" (click)="load(); loadBypasses()" [disabled]="loading()">
+  description="Commands held for a second signature, the four-eyes queue for high-risk billing operations, and the flow-guard bypass log.">
+  <button class="btn btn-outline btn-sm" (click)="refreshAll()"
+          [disabled]="loading() || loadingCommands()">
     <app-icon name="refresh" /> {{ 'Refresh' | translate }}
   </button>
 </app-page-header>
 
 <div class="kpi-grid">
+  <div class="kpi-card">
+    <app-icon name="gavel" />
+    <div class="kpi-body">
+      <div class="kpi-value">{{ commands().length }}</div>
+      <div class="kpi-label">{{ 'Commands awaiting release' | translate }}</div>
+    </div>
+  </div>
   <div class="kpi-card">
     <app-icon name="pending_actions" />
     <div class="kpi-body">
@@ -40,29 +48,46 @@
           : '{count} requests expiring within the hour') | translate:{ count: expiringSoon().length } }}</p>
 }
 
+<!-- One confirmation card serves both queues. The decision is the same shape in
+     each — read the payload, give a reason, sign — and only the endpoint differs,
+     so a second card would be two things to keep in step for no gain. -->
 @if (decision(); as d) {
-  <div class="action-confirm-card" appSubmitOnEnter>
+  <div class="action-confirm-card" [class.action-confirm-danger]="d.kind === 'reject'" appSubmitOnEnter>
     <div class="confirm-header">
       <app-icon class="confirm-icon"
+                [class.confirm-icon-cancel]="d.kind !== 'approve'"
                 [name]="d.kind === 'approve' ? 'verified' : d.kind === 'reject' ? 'block' : 'undo'" />
       <h3 class="confirm-title">
-        {{ d.kind === ('approve' | translate) ? ('Approve' | translate) : d.kind === ('reject' | translate) ? ('Reject' | translate) : ('Cancel' | translate) }}
-        — {{ labelFor(d.request.operation_type) | translate }}
+        @switch (d.kind) {
+          @case ('approve') {
+            {{ d.queue === 'command' ? ('Release' | translate) : ('Approve' | translate) }}
+          }
+          @case ('reject') { {{ 'Reject' | translate }} }
+          @default { {{ 'Cancel' | translate }} }
+        }
+        — <span class="mono">{{ decisionSubject() }}</span>
       </h3>
     </div>
     <div class="confirm-body">
-      <p class="confirm-note">
-        {{ 'Requested by {requester} on {entityType} {entityId}.'
-            | translate:{
-                requester: d.request.requested_by_name || d.request.requested_by,
-                entityType: d.request.entity_type,
-                entityId: d.request.entity_id
-              } }}
-        @if (d.request.description) {
-          {{ d.request.description }}
-        }
-      </p>
-      @if (payloadText(d.request); as payload) {
+      @if (d.queue === 'command') {
+        <p class="confirm-note">
+          {{ 'Requested by {requester}, who cannot release it themselves. Approving dispatches the payload below — the command runs.'
+              | translate:{ requester: d.request.requested_by_name || d.request.requested_by } }}
+        </p>
+      } @else {
+        <p class="confirm-note">
+          {{ 'Requested by {requester} on {entityType} {entityId}.'
+              | translate:{
+                  requester: d.request.requested_by_name || d.request.requested_by,
+                  entityType: d.request.entity_type,
+                  entityId: d.request.entity_id
+                } }}
+          @if (d.request.description) {
+            {{ d.request.description }}
+          }
+        </p>
+      }
+      @if (payloadText(d.request.operation_payload); as payload) {
         <!-- What is actually being approved, verbatim — an approval on a summary is
              not an approval. -->
         <pre class="payload-block">{{ payload }}</pre>
@@ -70,7 +95,7 @@
       <div class="form-grid">
         <div class="form-field full-width">
           <label class="field-label" for="ap-reason">
-            {{ d.kind === ('reject' | translate) ? ('Reason (required)' | translate) : ('Note (optional)' | translate) }}
+            {{ d.kind === 'reject' ? ('Reason (required)' | translate) : ('Note (optional)' | translate) }}
           </label>
           <textarea class="field-input" id="ap-reason" rows="3" [ngModel]="reason()"
                     (ngModelChange)="reason.set($event ?? '')"
@@ -88,7 +113,118 @@
   </div>
 }
 
-<h3 class="section-header">{{ 'Pending' | translate }}</h3>
+<h3 class="section-header">{{ 'Commands awaiting release' | translate }}</h3>
+<p class="text-subtle">
+  {{ 'These commands are recorded rather than run when they are submitted. Releasing one dispatches the stored payload; nobody can release their own.' | translate }}
+</p>
+
+@if (!canSeeCommandQueue()) {
+  <!-- Explained rather than hidden: an empty section with no reason reads as a
+       queue that is empty, which is the opposite of what it means here. -->
+  <p class="notice notice-muted">
+    <app-icon class="notice-icon" name="lock" />
+    {{ 'Releasing a deferred command needs {role}. Your role can see that the queue exists but cannot act on it.'
+        | translate:{ role: commandApproverFloor } }}
+  </p>
+} @else if (loadingCommands()) {
+  <div class="table-container" aria-busy="true">
+    <div class="skeleton-table" style="--skeleton-cols: 6">
+      <div class="skeleton-row skeleton-row-head">
+        @for (c of [1,2,3,4,5,6]; track c) { <span class="skeleton" aria-hidden="true"></span> }
+      </div>
+      @for (r of [1,2,3]; track r) {
+        <div class="skeleton-row">
+          @for (c of [1,2,3,4,5,6]; track c) { <span class="skeleton skeleton-text" aria-hidden="true"></span> }
+        </div>
+      }
+    </div>
+  </div>
+} @else if (commands().length === 0) {
+  <div class="empty-state">
+    <app-icon class="empty-icon" name="gavel" />
+    <h3>{{ 'No commands awaiting release' | translate }}</h3>
+    <p class="empty-hint">{{ 'A write-off, a reopened fiscal period or a manual date roll will appear here for a second signature.' | translate }}</p>
+  </div>
+} @else {
+  <div class="table-container">
+    <table class="table data-table">
+      <thead>
+        <tr>
+          <th>{{ 'Command' | translate }}</th>
+          <th>{{ 'Entity' | translate }}</th>
+          <th>{{ 'Requested by' | translate }}</th>
+          <th>{{ 'Requested' | translate }}</th>
+          <th>{{ 'Expires in' | translate }}</th>
+          <th>{{ 'Required role' | translate }}</th>
+          <th class="cell-actions">{{ 'Decision' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of commands(); track c.approval_id) {
+          <tr>
+            <td class="cell-primary">
+              <!-- The dotted name verbatim: it is what was submitted and what the
+                   command log will show, and prettifying it would invent a label. -->
+              <strong class="mono">{{ c.command_name }}</strong>
+              @if (c.description) {
+                <span class="cell-sub">{{ c.description }}</span>
+              }
+            </td>
+            <td>
+              {{ c.entity_id }}
+              @if (c.request_id) {
+                <span class="cell-sub mono">{{ c.request_id }}</span>
+              }
+            </td>
+            <td>
+              {{ c.requested_by_name || c.requested_by }}
+              @if (c.requested_by_role) {
+                <span class="cell-sub">{{ labelFor(c.requested_by_role) | translate }}</span>
+              }
+            </td>
+            <td>{{ c.requested_at | localeDate: 'short' }}</td>
+            <td>
+              @if (hoursToExpiry(c.expires_at) <= 1) {
+                <span class="badge badge-warning badge-sm">{{ expiryLabel(c.expires_at) }}</span>
+              } @else {
+                {{ expiryLabel(c.expires_at) }}
+              }
+            </td>
+            <td>{{ labelFor(c.required_role) | translate }}</td>
+            <td class="cell-actions">
+              @if (isOwnCommand(c)) {
+                <!-- Four-eyes is the whole control: the requester never sees a button. -->
+                <span class="badge badge-muted badge-sm">{{ 'Your request' | translate }}</span>
+              } @else {
+                <button class="btn btn-primary btn-sm" (click)="openCommand('approve', c)"
+                        [disabled]="!canApproveCommand(c)"
+                        [attr.title]="commandBlockedBecause(c) || null">
+                  {{ 'Release' | translate }}
+                </button>
+                <button class="btn btn-outline btn-sm" (click)="openCommand('reject', c)"
+                        [disabled]="!canRejectCommand(c)">
+                  {{ 'Reject' | translate }}
+                </button>
+              }
+            </td>
+          </tr>
+          @if (!isOwnCommand(c) && commandBlockedBecause(c); as blocked) {
+            <!-- The evaluator's own words, so an approver who cannot sign is told
+                 which of the four rules stopped them rather than finding out from
+                 a toast after pressing the button. -->
+            <tr>
+              <td colspan="7" class="text-subtle">
+                <app-icon class="badge-icon" name="info" /> {{ blocked }}
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<h3 class="section-header">{{ 'Billing operations' | translate }}</h3>
 
 @if (loading()) {
   <div class="loading-state">{{ 'Loading…' | translate }}</div>
@@ -122,10 +258,10 @@
             <td>{{ r.requested_by_name || r.requested_by }}</td>
             <td>{{ r.created_at | localeDate: 'short' }}</td>
             <td>
-              @if (hoursToExpiry(r) <= 1) {
-                <span class="badge badge-warning badge-sm">{{ expiryLabel(r) }}</span>
+              @if (hoursToExpiry(r.expires_at) <= 1) {
+                <span class="badge badge-warning badge-sm">{{ expiryLabel(r.expires_at) }}</span>
               } @else {
-                {{ expiryLabel(r) }}
+                {{ expiryLabel(r.expires_at) }}
               }
             </td>
             <td>{{ labelFor(r.required_role) | translate }}</td>

@@ -50,11 +50,15 @@ ALTER TABLE night_audit_log
 COMMENT ON CONSTRAINT fk_night_audit_log_business_date ON night_audit_log IS 'Links to business date being audited';
 
 -- Initiated by user (required)
+-- RESTRICT, not SET NULL: this column is the only record of who acted, and
+-- the row carries no denormalised copy of their name. Nulling it would keep
+-- the entry and lose its author, which is the half that matters. Staff are
+-- soft-deleted (users.is_deleted), so this blocks nothing the app does.
 ALTER TABLE night_audit_log
     ADD CONSTRAINT fk_night_audit_log_initiated_by
     FOREIGN KEY (initiated_by)
     REFERENCES users(id)
-    ON DELETE SET NULL
+    ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
 COMMENT ON CONSTRAINT fk_night_audit_log_initiated_by ON night_audit_log IS 'User who started the audit';

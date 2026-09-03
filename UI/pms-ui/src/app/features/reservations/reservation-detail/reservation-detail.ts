@@ -15,10 +15,12 @@ import type {
 	ChargePostingListItem,
 	GuestWithStats,
 	ReservationDetail,
+	StepUpGrantResponse,
 } from "@tartware/schemas";
 import { reservationStatusesFor } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { firstValueFrom, of } from "rxjs";
 import { ApiService } from "../../../core/api/api.service";
 import { AuthService } from "../../../core/auth/auth.service";
 import { TenantContextService } from "../../../core/context/tenant-context.service";
@@ -29,6 +31,11 @@ import { reservationStatusClass } from "../../../shared/badge-utils";
 import { settleCommandReadModel } from "../../../shared/command-refresh";
 import { IconComponent } from "../../../shared/components/icon/icon";
 import { ReasonCodePickerComponent } from "../../../shared/components/reason-code-picker/reason-code-picker";
+import {
+	StepUpDialogComponent,
+	type StepUpDialogData,
+} from "../../../shared/components/step-up-dialog/step-up-dialog";
+import { AppDialogService } from "../../../shared/dialog/app-dialog.service";
 import { SubmitOnEnterDirective } from "../../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../../shared/pagination/pagination";
@@ -99,6 +106,7 @@ export class ReservationDetailComponent implements OnInit {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly toast = inject(ToastService);
+	private readonly dialogs = inject(AppDialogService);
 	readonly settings = inject(SettingsService);
 
 	readonly reservation = signal<ReservationDetail | null>(null);
@@ -160,6 +168,10 @@ export class ReservationDetailComponent implements OnInit {
 	 * returned 400 on both counts.
 	 */
 	readonly rateOverrideForm = signal({ new_rate: "", reason_code: "", reason: "" });
+	/** The role the picked reason code needs, when this operator does not hold it. */
+	readonly rateAuthorityShortfall = signal<string | null>(null);
+	/** A supervisor's authorisation for this one override, once they have given it. */
+	readonly stepUpGrant = signal<StepUpGrantResponse | null>(null);
 	readonly addDepositForm = signal({ amount: "", method: "CARD", reference: "" });
 	readonly releaseDepositForm = signal({ amount: "", reason: "" });
 	readonly assignRoomForm = signal({ room_id: "" });
@@ -1190,18 +1202,60 @@ export class ReservationDetailComponent implements OnInit {
 			// `total_amount`, not `new_rate`: the command has never had a field by
 			// that name, so this call failed the payload's own refinement long
 			// before A06 made the reason code mandatory as well.
-			await this.api.post(`/tenants/${tenantId}/reservations/${r.id}/rate-override`, {
-				total_amount: rate,
-				reason_code: f.reason_code,
-				...(f.reason.trim() ? { reason: f.reason.trim() } : {}),
-			});
+			await this.api.post(
+				`/tenants/${tenantId}/reservations/${r.id}/rate-override`,
+				{
+					total_amount: rate,
+					reason_code: f.reason_code,
+					...(f.reason.trim() ? { reason: f.reason.trim() } : {}),
+				},
+				// Carried as a header, not in the payload. Absent unless a supervisor
+				// authorised this one override at the terminal.
+				{ stepUpGrantId: this.stepUpGrant()?.grant_id },
+			);
 			this.toast.success(this.i18n.t("Rate overridden."));
 			this.confirmingRateOverride.set(false);
+			this.stepUpGrant.set(null);
 			await this.refreshReservationAfterCommand(r.id);
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to override rate"));
 		} finally {
 			this.actionLoading.set(false);
+		}
+	}
+
+	/** What the picked reason code would cost, straight from the picker. */
+	onRateAuthorityShortfall(needed: string | null): void {
+		this.rateAuthorityShortfall.set(needed);
+		// A grant is bound to the command and the record, not to a reason code —
+		// but the operator picked a different code after being authorised, so the
+		// authority they were granted may no longer be the one they need. Making
+		// them ask again is the honest reading.
+		if (needed === null) this.stepUpGrant.set(null);
+	}
+
+	/**
+	 * Ask a supervisor to authorise this one override.
+	 *
+	 * Opened before the command is sent because the authority check runs at apply
+	 * time: a 202 says the command was recorded, not that it will be allowed, so
+	 * there is no refusal for the screen to react to.
+	 */
+	async requestRateStepUp(): Promise<void> {
+		const r = this.reservation();
+		if (!r) return;
+		const ref = this.dialogs.open(StepUpDialogComponent, {
+			data: {
+				commandName: "reservation.rate_override",
+				entityId: r.id,
+				propertyId: r.property_id ?? null,
+				action: this.i18n.t("override the room rate"),
+			} satisfies StepUpDialogData,
+		});
+		const grant = (await firstValueFrom(ref?.onClose ?? of(null))) as StepUpGrantResponse | null;
+		if (grant) {
+			this.stepUpGrant.set(grant);
+			this.toast.success(this.i18n.t("Authorised by {name}.", { name: grant.supervisor_name }));
 		}
 	}
 

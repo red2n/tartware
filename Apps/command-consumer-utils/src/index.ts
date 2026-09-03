@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 
+import type { OverrideStepUpGrant } from "@tartware/schemas";
 import type { EachBatchPayload, KafkaMessage } from "kafkajs";
 
 export type CommandEnvelope = {
@@ -15,6 +16,15 @@ export type CommandEnvelope = {
       userId?: string;
       role?: string;
     };
+    /**
+     * The supervisor who authorised this override at the terminal, when one did.
+     *
+     * Stamped by the gateway from a grant row it claimed; never settable by a
+     * caller. `initiatedBy` stays the operator — the record has to say which is
+     * which, which is A03's finding and the reason these are two fields rather
+     * than one overwritten one.
+     */
+    stepUp?: OverrideStepUpGrant | null;
   };
   payload?: unknown;
 };

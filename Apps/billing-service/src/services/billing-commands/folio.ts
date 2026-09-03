@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  assertForcedOverrideAuthority,
+  resolveReasonCode,
+} from "@tartware/command-consumer-utils/command-utils";
+import type { ReasonCodeRow } from "@tartware/schemas";
+
 import { auditAsync, auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { acquireFolioLock } from "../../lib/folio-lock.js";
@@ -18,6 +24,7 @@ import {
   BillingCommandError,
   type CommandContext,
   resolveActorId,
+  resolveActorRole,
   resolveFolioId,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
@@ -105,11 +112,42 @@ export const transferFolio = async (payload: unknown, context: CommandContext): 
  * Close/settle a folio. Sets folio_status to SETTLED (if balance=0)
  * or CLOSED (if balance > 0 and force=true). Blocks if balance > 0
  * without force.
+ *
+ * **The forced close is the settlement control reached from the side.**
+ * `folio_settlement_check` refuses a *departure* over an unsettled folio, and
+ * A08 gave that refusal a reason code, an authority check and a record. This
+ * closes the same folio without departing: the balance is not transferred to
+ * the city ledger and not written off, it simply stops being collectable
+ * through the folio. It shipped at the STAFF tier with a `force` checkbox in
+ * the UI and asked nobody, which made it the cheapest way past the control the
+ * check-out gate exists to enforce.
  */
 export const closeFolio = async (payload: unknown, context: CommandContext): Promise<string> => {
   const command = BillingFolioCloseCommandSchema.parse(payload);
   const actor = resolveActorId(context.initiatedBy);
   const actorId = asUuid(actor) ?? SYSTEM_ACTOR_ID;
+
+  // Resolved before the transaction and before the balance is known, on
+  // check-in's reasoning: asking for the override is the decision, and an
+  // operator who cannot make it should be refused before any lock is taken.
+  // The schema makes reason_code mandatory whenever force is set, so this
+  // cannot be reached with force and no code.
+  const overrideReason: ReasonCodeRow | null = command.force
+    ? await resolveReasonCode<ReasonCodeRow>((sql, params) => query<ReasonCodeRow>(sql, params), {
+        tenantId: context.tenantId,
+        propertyId: command.property_id,
+        reasonCode: command.reason_code as string,
+        category: "FOLIO_CLOSE_OVERRIDE",
+      })
+    : null;
+
+  if (overrideReason) {
+    assertForcedOverrideAuthority(overrideReason, resolveActorRole(context.initiatedBy), {
+      commandName: "billing.folio.close",
+      gateName: "folio_settlement_check",
+      stepUp: context.stepUp,
+    });
+  }
 
   // Resolve folio: prefer explicit folio_id, fall back to reservation lookup
   let folioId = command.folio_id ?? null;
@@ -123,7 +161,14 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     );
   }
 
-  return withTransaction(async (client) => {
+  // Set inside the transaction, spent after it commits. The credit-limit gate
+  // learned this the expensive way: recording the override at the decision made
+  // a retried handler write the row once per attempt for a transfer that never
+  // happened. The row's whole meaning is that a balance was abandoned, so it is
+  // written when that is true and not before.
+  let abandonedBalance: number | null = null;
+
+  const closedFolioId = await withTransaction(async (client) => {
     // Acquire advisory lock first, then SELECT FOR UPDATE, to guarantee mutual
     // exclusion with capturePayment / postCharge / expressCheckout which all
     // acquire the same advisory lock before mutating the folio balance.
@@ -159,6 +204,7 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     }
 
     const newStatus = balance === 0 ? "SETTLED" : "CLOSED";
+    if (balance > 0) abandonedBalance = balance;
     const settledAt = newStatus === "SETTLED" ? new Date() : null;
     const settledBy = newStatus === "SETTLED" ? actorId : null;
     const { rowCount } = await queryWithClient(
@@ -197,6 +243,39 @@ export const closeFolio = async (payload: unknown, context: CommandContext): Pro
     });
     return folioId as string;
   });
+
+  // Fail-open on the record itself, like every other bypass writer here: the
+  // folio is closed and the balance is behind it, and throwing now would report
+  // a close that happened as one that did not.
+  if (abandonedBalance !== null && overrideReason) {
+    try {
+      const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
+      await recordFlowApproval({
+        tenant_id: context.tenantId,
+        property_id: command.property_id,
+        flow_name: "check_out",
+        gate_name: "folio_settlement_check",
+        entity_type: "folio",
+        entity_id: closedFolioId,
+        approved_by: actor,
+        role_at_approval: resolveActorRole(context.initiatedBy),
+        stepUp: context.stepUp,
+        forced: true,
+        reason_code: overrideReason.reason_code,
+        reason_notes:
+          command.close_reason ??
+          `${overrideReason.reason_name}: folio closed carrying ${abandonedBalance}`,
+        correlation_id: context.correlationId ?? null,
+      });
+    } catch (approvalErr) {
+      appLogger.warn(
+        { approvalErr, folioId: closedFolioId },
+        "folio closed over a balance but its flow_approvals row could not be written",
+      );
+    }
+  }
+
+  return closedFolioId;
 };
 
 const applyFolioTransfer = async (

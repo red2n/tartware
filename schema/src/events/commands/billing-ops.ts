@@ -11,32 +11,34 @@ import { z } from "zod";
  * Execute night audit: post room charges for in-house guests,
  * mark no-shows, and advance the business date.
  */
-export const BillingNightAuditCommandSchema = z.object({
-	property_id: z.string().uuid(),
-	business_date: z.string().optional(),
-	post_room_charges: z.boolean().optional(),
-	post_package_charges: z.boolean().optional(),
-	post_ota_commissions: z.boolean().optional(),
-	use_compound_taxes: z.boolean().optional(),
-	mark_no_shows: z.boolean().optional(),
-	advance_date: z.boolean().optional(),
-	lock_postings: z.boolean().optional(),
-	generate_trial_balance: z.boolean().optional(),
-	auto_cancel_tentatives: z.boolean().optional(),
-	skip_preconditions: z.boolean().optional(),
-	/**
-	 * Why the preconditions were skipped. Required when `skip_preconditions` is
-	 * set, and resolved against `reason_codes` — the bypass used to record the
-	 * hardcoded literal "SKIP_PRECONDITIONS", a reason code that did not have to
-	 * exist and carried no `requires_approval` or `approval_level`.
-	 */
-	skip_reason_code: z.string().min(2).max(50).optional(),
-	skip_reason_notes: z.string().max(500).optional(),
-	metadata: z.record(z.unknown()).optional(),
-	idempotency_key: z.string().max(120).optional(),
-})
+export const BillingNightAuditCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		business_date: z.string().optional(),
+		post_room_charges: z.boolean().optional(),
+		post_package_charges: z.boolean().optional(),
+		post_ota_commissions: z.boolean().optional(),
+		use_compound_taxes: z.boolean().optional(),
+		mark_no_shows: z.boolean().optional(),
+		advance_date: z.boolean().optional(),
+		lock_postings: z.boolean().optional(),
+		generate_trial_balance: z.boolean().optional(),
+		auto_cancel_tentatives: z.boolean().optional(),
+		skip_preconditions: z.boolean().optional(),
+		/**
+		 * Why the preconditions were skipped. Required when `skip_preconditions` is
+		 * set, and resolved against `reason_codes` — the bypass used to record the
+		 * hardcoded literal "SKIP_PRECONDITIONS", a reason code that did not have to
+		 * exist and carried no `requires_approval` or `approval_level`.
+		 */
+		skip_reason_code: z.string().min(2).max(50).optional(),
+		skip_reason_notes: z.string().max(500).optional(),
+		metadata: z.record(z.unknown()).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
 	.refine(
-		(value) => value.skip_preconditions !== true || Boolean(value.skip_reason_code),
+		(value) =>
+			value.skip_preconditions !== true || Boolean(value.skip_reason_code),
 		{
 			message:
 				"skip_reason_code is required when skip_preconditions is true — an override with no stated reason is the control this gate exists to prevent",

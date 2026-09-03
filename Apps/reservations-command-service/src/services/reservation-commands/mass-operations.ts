@@ -12,7 +12,7 @@ import { v4 as uuid } from "uuid";
 import { pool, query } from "../../lib/db.js";
 import { reservationsLogger } from "../../logger.js";
 import { checkInReservation } from "./checkin-checkout.js";
-import { ReservationCommandError } from "./common.js";
+import { ReservationCommandError, type ReservationCommandOptions } from "./common.js";
 import { cancelReservation, modifyReservation } from "./core.js";
 
 /**
@@ -30,7 +30,7 @@ const logger = reservationsLogger.child({ module: "mass-operations" });
 
 const store = createBatchResultStore(pool);
 
-type CommandOptions = { correlationId?: string; actorId?: string; actorRole?: string };
+type CommandOptions = ReservationCommandOptions;
 
 const buildContext = (
   tenantId: string,

@@ -219,10 +219,27 @@ export const GroupCheckInCommandSchema = z.object({
 	preferred_floor: z.coerce.number().int().positive().optional(),
 	/** Override check-in timestamp (defaults to now). */
 	checked_in_at: z.coerce.date().optional(),
-	/** Bypass blocking deposit enforcement on all reservations. */
+	/**
+	 * Bypass blocking deposit enforcement on all reservations.
+	 *
+	 * This is `deposit_required_check` — the same gate `reservation.check_in`
+	 * declares — bypassed for up to 500 arrivals at once. It carried no reason
+	 * code and no authority check while the single-reservation path had both,
+	 * which made the bulk route the cheaper way past the control.
+	 */
 	force: z.boolean().optional(),
+	/**
+	 * Why this group arrival was forced. Required with `force`, resolved against
+	 * the CHECK_IN_OVERRIDE category — one code for the group, because forcing a
+	 * coach party in over their deposits is one decision by one person.
+	 */
+	reason_code: z.string().min(2).max(50).optional(),
 	notes: z.string().max(2000).optional(),
 	idempotency_key: z.string().max(120).optional(),
+}).refine((value) => value.force !== true || Boolean(value.reason_code), {
+	message:
+		"reason_code is required when force is true — a group arrival forced past its deposit gate is an override, at up to 500 rooms a time",
+	path: ["reason_code"],
 });
 
 export type GroupCheckInCommand = z.infer<typeof GroupCheckInCommandSchema>;

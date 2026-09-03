@@ -35,7 +35,14 @@ export const AuditLogsSchema = z.object({
 	event_type: z.string(),
 	entity_type: z.string(),
 	entity_id: uuid.optional(),
-	user_id: uuid,
+	/**
+	 * Nullable, not optional: the column is NULL once that user is deleted, and
+	 * `fk_audit_logs_user` is ON DELETE SET NULL for exactly that. It was NOT
+	 * NULL under that FK until migration 012, which made the delete fail rather
+	 * than preserve the trail. The three fields below are what keep the row
+	 * readable afterwards.
+	 */
+	user_id: uuid.nullable(),
 	user_email: z.string().optional(),
 	user_name: z.string().optional(),
 	user_role: z.string().optional(),

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	classifyReservationCommandTransition,
 	classifyReservationTransition,
 	describeReservationStatuses,
 	isLegalReservationTransition,
-	RESERVATION_FORCED_TRANSITIONS,
-	classifyReservationCommandTransition,
 	RESERVATION_COMMAND_TRANSITIONS,
+	RESERVATION_FORCED_TRANSITIONS,
 	RESERVATION_INITIAL_STATUSES,
 	RESERVATION_LEGAL_TRANSITIONS,
 	RESERVATION_UNCLAIMED_TRANSITIONS,
@@ -32,9 +32,10 @@ describe("RESERVATION_LEGAL_TRANSITIONS — shape", () => {
 			RESERVATION_LEGAL_TRANSITIONS,
 		)) {
 			for (const to of targets) {
-				expect(ReservationStatusEnum.safeParse(to).success, `${from}→${to}`).toBe(
-					true,
-				);
+				expect(
+					ReservationStatusEnum.safeParse(to).success,
+					`${from}→${to}`,
+				).toBe(true);
 			}
 		}
 	});
@@ -95,19 +96,27 @@ describe("the lifecycle the tables actually declare", () => {
 				ReservationStatus,
 				ReservationStatus,
 			];
-			expect(isLegalReservationTransition(from, to), `${from}→${to}`).toBe(true);
+			expect(isLegalReservationTransition(from, to), `${from}→${to}`).toBe(
+				true,
+			);
 		}
 	});
 
 	it("allows the three WS-04 reversals and nothing adjacent to them", () => {
 		expect(isLegalReservationTransition("CHECKED_IN", "CONFIRMED")).toBe(true);
-		expect(isLegalReservationTransition("CHECKED_OUT", "CHECKED_IN")).toBe(true);
+		expect(isLegalReservationTransition("CHECKED_OUT", "CHECKED_IN")).toBe(
+			true,
+		);
 		expect(isLegalReservationTransition("CANCELLED", "CONFIRMED")).toBe(true);
 		expect(isLegalReservationTransition("CANCELLED", "PENDING")).toBe(true);
 
 		// A reversal undoes one step, not two.
-		expect(isLegalReservationTransition("CHECKED_OUT", "CONFIRMED")).toBe(false);
-		expect(isLegalReservationTransition("CHECKED_OUT", "CANCELLED")).toBe(false);
+		expect(isLegalReservationTransition("CHECKED_OUT", "CONFIRMED")).toBe(
+			false,
+		);
+		expect(isLegalReservationTransition("CHECKED_OUT", "CANCELLED")).toBe(
+			false,
+		);
 		expect(isLegalReservationTransition("CANCELLED", "CHECKED_IN")).toBe(false);
 	});
 
@@ -118,13 +127,19 @@ describe("the lifecycle the tables actually declare", () => {
 		expect(classifyReservationTransition("CANCELLED", "CHECKED_OUT")).toBe(
 			"ILLEGAL",
 		);
-		expect(classifyReservationTransition("NO_SHOW", "CONFIRMED")).toBe("ILLEGAL");
-		expect(classifyReservationTransition("EXPIRED", "CONFIRMED")).toBe("ILLEGAL");
+		expect(classifyReservationTransition("NO_SHOW", "CONFIRMED")).toBe(
+			"ILLEGAL",
+		);
+		expect(classifyReservationTransition("EXPIRED", "CONFIRMED")).toBe(
+			"ILLEGAL",
+		);
 	});
 
 	it("treats a status echoed back unchanged as legal", () => {
 		for (const status of ALL) {
-			expect(classifyReservationTransition(status, status), status).toBe("LEGAL");
+			expect(classifyReservationTransition(status, status), status).toBe(
+				"LEGAL",
+			);
 		}
 	});
 
@@ -158,7 +173,9 @@ describe("RESERVATION_FORCED_TRANSITIONS", () => {
 
 describe("RESERVATION_COMMAND_TRANSITIONS — who owns which edge", () => {
 	it("never claims a move the lifecycle does not allow", () => {
-		for (const [name, claim] of Object.entries(RESERVATION_COMMAND_TRANSITIONS)) {
+		for (const [name, claim] of Object.entries(
+			RESERVATION_COMMAND_TRANSITIONS,
+		)) {
 			for (const from of claim.from) {
 				for (const to of claim.to) {
 					expect(
@@ -171,7 +188,9 @@ describe("RESERVATION_COMMAND_TRANSITIONS — who owns which edge", () => {
 	});
 
 	it("only declares forcedFrom where the forced table agrees", () => {
-		for (const [name, claim] of Object.entries(RESERVATION_COMMAND_TRANSITIONS)) {
+		for (const [name, claim] of Object.entries(
+			RESERVATION_COMMAND_TRANSITIONS,
+		)) {
 			for (const from of claim.forcedFrom ?? []) {
 				for (const to of claim.to) {
 					expect(
@@ -191,13 +210,17 @@ describe("RESERVATION_COMMAND_TRANSITIONS — who owns which edge", () => {
 	});
 
 	it("names only real statuses on both ends", () => {
-		for (const [name, claim] of Object.entries(RESERVATION_COMMAND_TRANSITIONS)) {
+		for (const [name, claim] of Object.entries(
+			RESERVATION_COMMAND_TRANSITIONS,
+		)) {
 			for (const status of [
 				...claim.from,
 				...claim.to,
 				...(claim.forcedFrom ?? []),
 			]) {
-				expect(ReservationStatusEnum.safeParse(status).success, name).toBe(true);
+				expect(ReservationStatusEnum.safeParse(status).success, name).toBe(
+					true,
+				);
 			}
 		}
 	});
@@ -205,7 +228,9 @@ describe("RESERVATION_COMMAND_TRANSITIONS — who owns which edge", () => {
 	it("never lets a command accept a status it also writes", () => {
 		// A command whose from and to overlap would be a no-op for that status,
 		// which is a sign the claim is wrong rather than a useful move.
-		for (const [name, claim] of Object.entries(RESERVATION_COMMAND_TRANSITIONS)) {
+		for (const [name, claim] of Object.entries(
+			RESERVATION_COMMAND_TRANSITIONS,
+		)) {
 			for (const to of claim.to) {
 				expect(claim.from, `${name} → ${to}`).not.toContain(to);
 			}
@@ -341,9 +366,10 @@ describe("RESERVATION_UNCLAIMED_TRANSITIONS — what reservation.modify may do",
 			["CONFIRMED", "CANCELLED"],
 			["NO_SHOW", "CHECKED_IN"],
 		] as const) {
-			expect(RESERVATION_UNCLAIMED_TRANSITIONS[from] ?? [], `${from}→${to}`).not.toContain(
-				to,
-			);
+			expect(
+				RESERVATION_UNCLAIMED_TRANSITIONS[from] ?? [],
+				`${from}→${to}`,
+			).not.toContain(to);
 		}
 	});
 });
@@ -385,9 +411,13 @@ describe("reservationStatusesFor — what each command guards on", () => {
 	});
 
 	it("agrees with the claim map on every command and status", () => {
-		for (const [name, claim] of Object.entries(RESERVATION_COMMAND_TRANSITIONS)) {
+		for (const [name, claim] of Object.entries(
+			RESERVATION_COMMAND_TRANSITIONS,
+		)) {
 			const plain = new Set(reservationStatusesFor(name));
-			const forced = new Set(reservationStatusesFor(name, { includeForced: true }));
+			const forced = new Set(
+				reservationStatusesFor(name, { includeForced: true }),
+			);
 			expect([...plain].sort()).toEqual([...claim.from].sort());
 			expect([...forced].sort()).toEqual(
 				[...claim.from, ...(claim.forcedFrom ?? [])].sort(),
@@ -404,7 +434,9 @@ describe("RESERVATION_INITIAL_STATUSES", () => {
 			"NO_SHOW",
 			"EXPIRED",
 		] as const) {
-			expect(RESERVATION_INITIAL_STATUSES, terminalish).not.toContain(terminalish);
+			expect(RESERVATION_INITIAL_STATUSES, terminalish).not.toContain(
+				terminalish,
+			);
 		}
 	});
 
@@ -414,7 +446,9 @@ describe("RESERVATION_INITIAL_STATUSES", () => {
 
 	it("names only real statuses", () => {
 		for (const status of RESERVATION_INITIAL_STATUSES) {
-			expect(ReservationStatusEnum.safeParse(status).success, status).toBe(true);
+			expect(ReservationStatusEnum.safeParse(status).success, status).toBe(
+				true,
+			);
 		}
 	});
 });

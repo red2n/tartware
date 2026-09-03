@@ -59,6 +59,7 @@ import {
   enqueueReservationUpdate,
   hasStayCriticalChanges,
   ReservationCommandError,
+  type ReservationCommandOptions,
   type ReservationUpdatePayload,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
@@ -129,7 +130,7 @@ const releaseAllReservationHolds = async (params: {
 export const createReservation = async (
   tenantId: string,
   command: ReservationCreateCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const stayStart = new Date(command.check_in_date);
@@ -479,7 +480,7 @@ export const createReservation = async (
 export const modifyReservation = async (
   tenantId: string,
   command: ReservationModifyCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const snapshot: ReservationStaySnapshot | null = await fetchReservationStaySnapshot(
     tenantId,
@@ -937,7 +938,7 @@ export const batchNoShowSweep = async (
 export const cancelReservation = async (
   tenantId: string,
   command: ReservationCancelCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const now = new Date();
@@ -1143,7 +1144,7 @@ export const cancelReservation = async (
 export const walkGuest = async (
   tenantId: string,
   command: ReservationWalkGuestCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const actorId = options.actorId ?? SYSTEM_ACTOR_ID;
   const eventId = uuid();

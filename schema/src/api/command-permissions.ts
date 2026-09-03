@@ -18,8 +18,8 @@
  */
 
 import {
-	type TenantRole,
 	TENANT_ROLE_PRIORITY,
+	type TenantRole,
 	tenantRoleAtLeast,
 } from "../shared/enums.js";
 
@@ -311,9 +311,8 @@ export const COMMAND_AUTHORITY_FLOOR: TenantRole = [
 );
 
 /** The declared floor for `commandName`, or `undefined` if it has none. */
-export const commandMinRole = (
-	commandName: string,
-): TenantRole | undefined => COMMAND_MIN_ROLE.get(commandName);
+export const commandMinRole = (commandName: string): TenantRole | undefined =>
+	COMMAND_MIN_ROLE.get(commandName);
 
 /**
  * Per-membership overrides, read from `user_tenant_associations.permissions`.

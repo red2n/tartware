@@ -73,23 +73,25 @@ export type ArAccountUpdateTermsCommand = z.infer<
  * GL treatment: DR City Ledger (AR) / CR Guest Ledger (folio).
  * Idempotent: deduplicated by (folio_id, ar_account_id).
  */
-export const ArCityLedgerTransferCommandSchema = z.object({
-	property_id: z.string().uuid(),
-	ar_account_id: z.string().uuid(),
-	folio_id: z.string().uuid(),
-	reservation_id: z.string().uuid().optional(),
-	invoice_id: z.string().uuid().optional(),
-	/** Amount to transfer. Defaults to full outstanding folio balance. */
-	amount: z.coerce.number().positive().optional(),
-	currency: z.string().length(3).default("USD"),
-	/** ISO-8601 date the transfer is effective. Defaults to business date. */
-	transfer_date: z.coerce.date().optional(),
-	/** Due date based on AR account payment terms. Computed from payment_terms if omitted. */
-	due_date: z.coerce.date().optional(),
-	notes: z.string().max(2000).optional(),
-	idempotency_key: z.string().max(120).optional(),
-	...CREDIT_LIMIT_OVERRIDE_FIELDS,
-}).refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
+export const ArCityLedgerTransferCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		ar_account_id: z.string().uuid(),
+		folio_id: z.string().uuid(),
+		reservation_id: z.string().uuid().optional(),
+		invoice_id: z.string().uuid().optional(),
+		/** Amount to transfer. Defaults to full outstanding folio balance. */
+		amount: z.coerce.number().positive().optional(),
+		currency: z.string().length(3).default("USD"),
+		/** ISO-8601 date the transfer is effective. Defaults to business date. */
+		transfer_date: z.coerce.date().optional(),
+		/** Due date based on AR account payment terms. Computed from payment_terms if omitted. */
+		due_date: z.coerce.date().optional(),
+		notes: z.string().max(2000).optional(),
+		idempotency_key: z.string().max(120).optional(),
+		...CREDIT_LIMIT_OVERRIDE_FIELDS,
+	})
+	.refine(hasCreditLimitOverrideReason, CREDIT_LIMIT_OVERRIDE_REFINEMENT);
 
 export type ArCityLedgerTransferCommand = z.infer<
 	typeof ArCityLedgerTransferCommandSchema

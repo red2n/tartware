@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from "@angular/core";
 
-import type { ChargePostingListItem, FolioListItem } from "@tartware/schemas";
+import type { ChargePostingListItem, FolioListItem, StepUpGrantResponse } from "@tartware/schemas";
 
 import { ApiService } from "../../core/api/api.service";
 import { AuthService } from "../../core/auth/auth.service";
@@ -63,6 +63,20 @@ export class BillingFoliosService {
 	readonly closingFolioId = signal<string | null>(null);
 	readonly closeFolioReason = signal("");
 	readonly closeFolioForce = signal(false);
+	/**
+	 * A FOLIO_CLOSE_OVERRIDE code, mandatory whenever the close is forced.
+	 *
+	 * Forcing this closes a folio carrying a balance the property is not
+	 * collecting — the same control `folio_settlement_check` refuses a departure
+	 * over, reached from the side. It used to be a bare checkbox on a STAFF-tier
+	 * command, so the screen could ask for a balance to be abandoned and record
+	 * nothing but `force: true` inside an audit blob.
+	 */
+	readonly closeFolioReasonCode = signal("");
+	/** What the picked code demands, when this operator does not hold it. */
+	readonly closeFolioAuthorityShortfall = signal<string | null>(null);
+	/** A supervisor's authorisation for this one close, when one was given. */
+	readonly closeFolioStepUp = signal<StepUpGrantResponse | null>(null);
 	readonly processingFolioClose = signal(false);
 	readonly reopeningFolioId = signal<string | null>(null);
 	readonly reopenFolioReason = signal("");
@@ -276,10 +290,31 @@ export class BillingFoliosService {
 		this.closingFolioId.set(folioId);
 		this.closeFolioReason.set("");
 		this.closeFolioForce.set(false);
+		this.resetCloseFolioAuthority();
 	}
 
 	cancelCloseFolio(): void {
 		this.closingFolioId.set(null);
+		this.resetCloseFolioAuthority();
+	}
+
+	/**
+	 * What the picked code would cost, straight from the picker.
+	 *
+	 * A grant is bound to the command and the folio, not to a reason code — but
+	 * an operator who picks a different code after being authorised may no longer
+	 * need, or hold, the authority they were given. Making them ask again is the
+	 * honest reading.
+	 */
+	onCloseFolioAuthorityShortfall(needed: string | null): void {
+		this.closeFolioAuthorityShortfall.set(needed);
+		if (needed === null) this.closeFolioStepUp.set(null);
+	}
+
+	private resetCloseFolioAuthority(): void {
+		this.closeFolioReasonCode.set("");
+		this.closeFolioAuthorityShortfall.set(null);
+		this.closeFolioStepUp.set(null);
 	}
 
 	async closeFolio(folio: FolioListItem): Promise<void> {
@@ -288,14 +323,24 @@ export class BillingFoliosService {
 		if (!tenantId || !propertyId) return;
 		this.processingFolioClose.set(true);
 		try {
-			await this.api.post(`/tenants/${tenantId}/billing/folios/close`, {
-				property_id: propertyId,
-				folio_id: folio.id,
-				close_reason: this.closeFolioReason() || undefined,
-				force: this.closeFolioForce(),
-			});
+			await this.api.post(
+				`/tenants/${tenantId}/billing/folios/close`,
+				{
+					property_id: propertyId,
+					folio_id: folio.id,
+					close_reason: this.closeFolioReason() || undefined,
+					force: this.closeFolioForce(),
+					// Only on a forced close: the payload refuses one without a
+					// code, and demands none on an ordinary settle.
+					...(this.closeFolioForce() ? { reason_code: this.closeFolioReasonCode() } : {}),
+				},
+				// Carried as a header, not in the payload. Absent unless a
+				// supervisor authorised this one close at the terminal.
+				{ stepUpGrantId: this.closeFolioStepUp()?.grant_id },
+			);
 			this.toast.success(this.i18n.t("Folio close submitted. Refreshing folios..."));
 			this.closingFolioId.set(null);
+			this.resetCloseFolioAuthority();
 			await settleCommandReadModel(() => this.data.loadFolios());
 		} catch (e) {
 			this.toast.error(e instanceof Error ? e.message : this.i18n.t("Failed to close folio"));

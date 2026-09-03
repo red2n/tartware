@@ -13,6 +13,7 @@ import {
   classifyReservationCommandTransition,
   classifyReservationTransition,
   describeReservationStatuses,
+  type OverrideStepUpGrant,
   RESERVATION_UNCLAIMED_TRANSITIONS,
   ReservationUpdatedEventSchema,
   reservationStatusesFor,
@@ -34,6 +35,26 @@ import { hashIdentifier, recordAuditLog, redactPayload } from "../../utils/audit
 export class ReservationCommandError extends CommandError {}
 
 export type { CreateReservationResult };
+
+/**
+ * What every reservation command handler is told about its caller.
+ *
+ * The same three fields were written inline at fifteen signatures; hoisting them
+ * is what makes `stepUp` reach all of them at once. A08's first sweep added an
+ * authority check to four call sites out of eight and reported itself complete,
+ * and the reason it could is that each site had to be edited by hand. One type
+ * removes that possibility for the next field.
+ */
+export type ReservationCommandOptions = {
+  correlationId?: string;
+  actorId?: string;
+  actorRole?: string;
+  /**
+   * The supervisor who authorised this command at the terminal, when one did.
+   * Read by the authority gates; the operator stays the actor of record.
+   */
+  stepUp?: OverrideStepUpGrant | null;
+};
 
 export const DEFAULT_CURRENCY = "USD";
 
@@ -185,7 +206,7 @@ export const enqueueReservationUpdate = async (
   tenantId: string,
   commandName: string,
   rawPayload: ReservationUpdatePayload,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const payload = await hydrateReservationIdentity(tenantId, rawPayload);
   const eventId = uuid();

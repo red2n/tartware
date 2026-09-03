@@ -13,7 +13,10 @@ import { SYSTEM_ACTOR_ID } from "@tartware/config";
 import {
   actorClearsApprovalLevel,
   approvalLevelMinRole,
+  type OverrideAuthority,
+  type OverrideStepUpGrant,
   type ReasonCodeRow,
+  resolveOverrideAuthority,
   type TenantRole,
   TenantRoleEnum,
   tenantRoleAtLeast,
@@ -239,6 +242,37 @@ export const resolveReasonCode = async <TRow extends ReasonCodeRow>(
  * 02 all over again.
  */
 /**
+ * What an authority gate needs to know beyond the reason code.
+ *
+ * `stepUp` is optional and additive on purpose: every existing call site keeps
+ * compiling, and a site that does not pass it simply cannot be satisfied by a
+ * supervisor — which is the safe direction, but is also why the guardrail
+ * `step-up-authority` requires every call site to pass it. A08's first sweep
+ * added an authority check to four of eight places and reported itself
+ * complete; the lesson was that "some call sites" is the defect, not the fix.
+ */
+export type OverrideGateContext = {
+  commandName: string;
+  gateName: string;
+  /** The supervisor's grant from the envelope, when one was given. */
+  stepUp?: OverrideStepUpGrant | null;
+};
+
+/**
+ * Who this override is authorised by, once a step-up is taken into account.
+ *
+ * Call this rather than reading `actorRole` directly when writing the override
+ * record: the whole point of step-up is that the trail names the supervisor,
+ * and a record that still names the clerk would be a worse trail than before,
+ * not a better one — it would assert that a clerk held authority they did not.
+ */
+export const overrideAuthorityFor = (
+  actorId: string | null | undefined,
+  actorRole: string | null | undefined,
+  stepUp?: OverrideStepUpGrant | null,
+): OverrideAuthority => resolveOverrideAuthority({ id: actorId, role: actorRole }, stepUp);
+
+/**
  * The role a *forced* override under this reason code takes.
  *
  * Two demands, and the higher wins:
@@ -284,7 +318,7 @@ export const forcedOverrideMinRole = (reason: ReasonCodeRow): TenantRole | null 
 export const assertForcedOverrideAuthority = (
   reason: ReasonCodeRow,
   actorRole: string | null | undefined,
-  context: { commandName: string; gateName: string },
+  context: OverrideGateContext,
 ): void => {
   let required: TenantRole | null;
   try {
@@ -298,12 +332,19 @@ export const assertForcedOverrideAuthority = (
     );
   }
 
-  if (required === null || tenantRoleAtLeast(actorRole ?? "", required)) return;
+  if (required === null) return;
+
+  // The operator's own role first: a manager forcing a gate they already clear
+  // needs no supervisor, and prompting for one would be theatre. A grant only
+  // ever raises the authority — see `resolveOverrideAuthority`.
+  const authority = overrideAuthorityFor(null, actorRole, context.stepUp);
+  if (tenantRoleAtLeast(authority.role ?? "", required)) return;
 
   throw new CommandError(
     "OVERRIDE_AUTHORITY_INSUFFICIENT",
     `Forcing ${context.gateName} under reason code "${reason.reason_code}" ` +
-      `requires ${required}; this command was initiated by ${actorRole ?? "an unidentified actor"}. ` +
+      `requires ${required}; this command was initiated by ${actorRole ?? "an unidentified actor"}` +
+      `${context.stepUp ? " and the supervisor who stepped up does not clear it either" : ""}. ` +
       `${context.commandName} refuses rather than recording an override nobody was entitled to make.`,
   );
 };
@@ -311,7 +352,7 @@ export const assertForcedOverrideAuthority = (
 export const assertOverrideAuthority = (
   reason: ReasonCodeRow,
   actorRole: string | null | undefined,
-  context: { commandName: string; gateName: string },
+  context: OverrideGateContext,
 ): void => {
   let required: string | null;
   try {
@@ -327,12 +368,15 @@ export const assertOverrideAuthority = (
     );
   }
 
-  if (actorClearsApprovalLevel(actorRole, reason.approval_level)) return;
+  // The operator's own authority first, then the supervisor's if one stepped up.
+  const authority = overrideAuthorityFor(null, actorRole, context.stepUp);
+  if (actorClearsApprovalLevel(authority.role, reason.approval_level)) return;
 
   throw new CommandError(
     "OVERRIDE_AUTHORITY_INSUFFICIENT",
     `Overriding ${context.gateName} under reason code "${reason.reason_code}" ` +
-      `requires ${required}; this command was initiated by ${actorRole ?? "an unidentified actor"}. ` +
+      `requires ${required}; this command was initiated by ${actorRole ?? "an unidentified actor"}` +
+      `${context.stepUp ? " and the supervisor who stepped up does not clear it either" : ""}. ` +
       `${context.commandName} refuses rather than recording an override nobody was entitled to make.`,
   );
 };

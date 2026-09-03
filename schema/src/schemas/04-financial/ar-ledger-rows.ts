@@ -38,11 +38,21 @@
 // against a literal needs the type.
 
 /** `ar_accounts.account_status` — 82_ar_accounts.sql */
-export const AR_ACCOUNT_STATUSES = ["ACTIVE", "SUSPENDED", "COLLECTIONS", "CLOSED"] as const;
+export const AR_ACCOUNT_STATUSES = [
+	"ACTIVE",
+	"SUSPENDED",
+	"COLLECTIONS",
+	"CLOSED",
+] as const;
 export type ArAccountStatus = (typeof AR_ACCOUNT_STATUSES)[number];
 
 /** `ar_accounts.payment_terms` — the contractual terms, not a dunning stage. */
-export const AR_PAYMENT_TERMS = ["NET30", "NET45", "NET60", "DUE_ON_RECEIPT"] as const;
+export const AR_PAYMENT_TERMS = [
+	"NET30",
+	"NET45",
+	"NET60",
+	"DUE_ON_RECEIPT",
+] as const;
 export type ArPaymentTerms = (typeof AR_PAYMENT_TERMS)[number];
 
 /** `ar_city_ledger.entry_status` — 83_ar_city_ledger.sql */
@@ -98,7 +108,12 @@ export const AR_DISPUTE_REASONS = [
 export type ArDisputeReason = (typeof AR_DISPUTE_REASONS)[number];
 
 /** `ar_disputes.resolution_outcome` — null while the dispute is still open. */
-export const AR_DISPUTE_OUTCOMES = ["UPHELD", "REJECTED", "PARTIAL", "WRITE_OFF"] as const;
+export const AR_DISPUTE_OUTCOMES = [
+	"UPHELD",
+	"REJECTED",
+	"PARTIAL",
+	"WRITE_OFF",
+] as const;
 export type ArDisputeOutcome = (typeof AR_DISPUTE_OUTCOMES)[number];
 
 /** `ar_dunning_events.event_type` — a rung of the ladder, or a pause on it. */
@@ -118,7 +133,8 @@ export const FOLIO_WINDOW_BILLED_TO_TYPES = [
 	"TRAVEL_AGENT",
 	"OTHER",
 ] as const;
-export type FolioWindowBilledToType = (typeof FOLIO_WINDOW_BILLED_TO_TYPES)[number];
+export type FolioWindowBilledToType =
+	(typeof FOLIO_WINDOW_BILLED_TO_TYPES)[number];
 
 // =====================================================
 // ROW SHAPES

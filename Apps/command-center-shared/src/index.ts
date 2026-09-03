@@ -26,6 +26,7 @@ export {
   createCommandFeatureRepository,
   createCommandRegistryRepository,
 } from "./repositories/command-registry.js";
+export * from "./repositories/step-up-grants.js";
 export {
   type AcceptCommandInput,
   type CommandAcceptanceOutcome,

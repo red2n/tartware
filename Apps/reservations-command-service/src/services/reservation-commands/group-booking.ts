@@ -1,4 +1,9 @@
+import {
+  assertForcedOverrideAuthority,
+  SYSTEM_ACTOR_ROLE,
+} from "@tartware/command-consumer-utils/command-utils";
 import { buildValuesRows, chunkForBatch } from "@tartware/config/sql-batch";
+import type { ReasonCodeRow } from "@tartware/schemas";
 import { v4 as uuid } from "uuid";
 
 import { serviceConfig } from "../../config.js";
@@ -13,12 +18,15 @@ import type {
   GroupCutoffEnforceCommand,
   GroupUploadRoomingListCommand,
 } from "../../schemas/reservation-command.js";
+import { recordFlowApproval } from "../../utils/audit.js";
 
 import {
   type CreateReservationResult,
   enqueueReservationUpdate,
   ReservationCommandError,
+  type ReservationCommandOptions,
   type ReservationUpdatePayload,
+  resolveReasonCode,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -34,7 +42,7 @@ import {
 export const createGroupBooking = async (
   tenantId: string,
   command: GroupCreateCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   const eventId = uuid();
   const groupBookingId = uuid();
@@ -855,7 +863,7 @@ interface GroupCheckInSummary extends CreateReservationResult {
 export const groupCheckIn = async (
   tenantId: string,
   command: GroupCheckInCommand,
-  options: { correlationId?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<GroupCheckInSummary> => {
   const eventId = uuid();
 
@@ -883,6 +891,32 @@ export const groupCheckIn = async (
       "GROUP_CANCELLED",
       "Cannot check in a cancelled group booking",
     );
+  }
+
+  // Forcing a group arrival bypasses `deposit_required_check` — the gate
+  // `reservation.check_in` declares — for up to 500 rooms at once. The single
+  // arrival has asked for a reason code and an authority since A08; this asked
+  // nobody, which made the group path the cheaper way past the same control.
+  //
+  // Resolved before any room is assigned, on check-in's reasoning: one forced
+  // group arrival is one decision by one person, whatever it turns out to skip.
+  // The schema makes reason_code mandatory with force, so this cannot be
+  // reached without one.
+  const overrideReason: ReasonCodeRow | null = command.force
+    ? await resolveReasonCode(
+        tenantId,
+        group.property_id ?? null,
+        command.reason_code as string,
+        "CHECK_IN_OVERRIDE",
+      )
+    : null;
+
+  if (overrideReason) {
+    assertForcedOverrideAuthority(overrideReason, options.actorRole, {
+      commandName: "group.check_in",
+      gateName: "deposit_required_check",
+      stepUp: options.stepUp,
+    });
   }
 
   // 2. Fetch eligible reservations (PENDING / CONFIRMED) for the group
@@ -993,9 +1027,14 @@ export const groupCheckIn = async (
   // Track rooms consumed during this batch to prevent double-assignment
   const consumedRoomIds = new Set<string>();
 
-  // Preload blocking deposit reservations to avoid N+1 queries
+  // Preload blocking deposit reservations to avoid N+1 queries.
+  //
+  // Loaded even when forcing, which it was not before: under force the set was
+  // never read, so the handler could not say how many deposits the override
+  // actually stepped over — and a record that cannot name what it bypassed is
+  // the free-text `force: true` this change exists to replace.
   const blockingDepositReservationIds = new Set<string>();
-  if (!command.force && targetReservations.length > 0) {
+  if (targetReservations.length > 0) {
     const reservationIds = targetReservations.map((r) => r.id);
     const { rows } = await query<{ reservation_id: string }>(
       `SELECT DISTINCT reservation_id
@@ -1133,6 +1172,32 @@ export const groupCheckIn = async (
       metadata: { source: serviceConfig.serviceId, action: "group.check_in" },
     });
   });
+
+  // Written after the arrivals, and only when the force was actually spent: a
+  // group forced in whose deposits were all paid bypassed nothing, and a row
+  // claiming an override that did not happen is worse than no row.
+  const bypassedDeposits = command.force
+    ? targetReservations.filter((r) => blockingDepositReservationIds.has(r.id)).length
+    : 0;
+  if (overrideReason && bypassedDeposits > 0) {
+    await recordFlowApproval({
+      tenantId,
+      propertyId: group.property_id ?? null,
+      flowName: "check_in",
+      gateName: "deposit_required_check",
+      entityType: "group_booking",
+      entityId: command.group_booking_id,
+      approvedBy: options.actorId ?? null,
+      roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+      stepUp: options.stepUp,
+      forced: true,
+      reasonCode: overrideReason.reason_code,
+      reasonNotes:
+        command.notes ??
+        `${overrideReason.reason_name}: group arrival forced past ${bypassedDeposits} blocking deposit(s)`,
+      correlationId: options.correlationId ?? null,
+    });
+  }
 
   reservationsLogger.info(
     {

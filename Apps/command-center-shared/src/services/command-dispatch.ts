@@ -15,7 +15,11 @@ import type {
   CommandRouteInfo,
   Initiator,
 } from "@tartware/schemas";
-import { commandApproverRole } from "@tartware/schemas";
+import {
+  commandApproverRole,
+  evaluateStepUpGrant,
+  type OverrideStepUpGrant,
+} from "@tartware/schemas";
 
 import { resolveCommandPartitionKey } from "./partition-key.js";
 
@@ -64,6 +68,116 @@ class DuplicateDispatchError extends Error {
     this.name = "DuplicateDispatchError";
   }
 }
+
+/**
+ * Verify and spend a step-up grant, or refuse the command.
+ *
+ * `evaluateStepUpGrant` holds the rules; this only does the claiming and turns
+ * a refusal into the error the caller sees. The claim is conditional in SQL as
+ * well as evaluated here — the evaluation gives a specific, honest message
+ * ("expired", "already used", "given for a different record"), and the
+ * conditional UPDATE is what makes single use true under a race rather than
+ * merely checked.
+ */
+const claimStepUp = async (
+  writer: CommandDispatchWriter,
+  input: AcceptCommandInput<unknown>,
+  commandId: string,
+): Promise<OverrideStepUpGrant> => {
+  const grantId = input.stepUpGrantId as string;
+
+  if (!writer.claimStepUpGrant) {
+    // Fail closed, exactly as the dual-control branch does. Applying the
+    // operator's own authority because the step-up could not be verified is the
+    // failure the step-up exists to prevent.
+    throw new CommandDispatchError(
+      503,
+      "STEP_UP_UNAVAILABLE",
+      "A supervisor authorisation was supplied and cannot be verified here.",
+    );
+  }
+
+  const result = await writer.claimStepUpGrant({
+    grantId,
+    tenantId: input.tenantId,
+    commandId,
+  });
+
+  if (!result) {
+    // No such grant. Says nothing about which ids exist, deliberately.
+    throw new CommandDispatchError(
+      403,
+      "STEP_UP_GRANT_NOT_FOUND",
+      "That supervisor authorisation is no longer usable. Ask for a new one.",
+    );
+  }
+
+  // Evaluated against the row as it stood *before* the claim: an
+  // `UPDATE … RETURNING` would hand back the `consumed_at` this claim just
+  // wrote, and the first legitimate spend would be refused as a replay.
+  const entityId = readEntityId(input.payload);
+  const verdict = evaluateStepUpGrant({
+    grant: result.grant,
+    tenantId: input.tenantId,
+    commandName: input.commandName,
+    entityId,
+  });
+  if (!verdict.ok) {
+    // The claim, if it won one, stays. A grant spent on a command it did not
+    // authorise is burnt rather than returned: re-offering it would let an
+    // operator hunt for the command it happens to fit.
+    throw new CommandDispatchError(403, verdict.code, verdict.message);
+  }
+
+  if (!result.claimed) {
+    // The rules passed but the conditional UPDATE did not win: another command
+    // took this grant between the read and the claim. Single use is decided
+    // there, not here.
+    throw new CommandDispatchError(
+      403,
+      "STEP_UP_GRANT_CONSUMED",
+      "This authorisation has already been used. Ask for a new one.",
+    );
+  }
+
+  const claimed = result.grant;
+
+  return {
+    grantId: claimed.grant_id,
+    supervisorId: claimed.supervisor_id,
+    supervisorRole: claimed.supervisor_role as OverrideStepUpGrant["supervisorRole"],
+    entityId: claimed.entity_id,
+    grantedAt: new Date(claimed.created_at).toISOString(),
+  };
+};
+
+/**
+ * The record a command names, for binding a grant to it.
+ *
+ * Commands name their subject under a handful of conventional keys rather than
+ * one, so this reads the first that is a uuid. A command with none yields
+ * `null`, which only a grant that also named no entity can satisfy.
+ */
+const STEP_UP_ENTITY_KEYS = [
+  "reservation_id",
+  "folio_id",
+  "guest_id",
+  "ar_account_id",
+  "payment_id",
+  "room_id",
+  "entity_id",
+  "id",
+] as const;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const readEntityId = (payload: Record<string, unknown>): string | null => {
+  for (const key of STEP_UP_ENTITY_KEYS) {
+    const value = payload[key];
+    if (typeof value === "string" && UUID_RE.test(value)) return value;
+  }
+  return null;
+};
 
 const readString = (value: unknown, fallback: string): string =>
   typeof value === "string" ? value : fallback;
@@ -153,6 +267,7 @@ export const createCommandDispatchService = <Membership>(
     enqueueOutboxRecord: deps.enqueueOutboxRecord,
     insertCommandDispatch: deps.insertCommandDispatch,
     findCommandDispatchByRequest: deps.findCommandDispatchByRequest,
+    claimStepUpGrant: deps.claimStepUpGrant,
   };
 
   const acceptWithin = async (
@@ -277,6 +392,19 @@ export const createCommandDispatchService = <Membership>(
     }
 
     const commandId = randomUUID();
+
+    // A supervisor's authorisation, spent here and only here.
+    //
+    // After the dual-control branch above, deliberately: a dual-control command
+    // can have no grant to spend (the mint path refuses to issue one), and
+    // checking in this order means that stays true rather than depending on it.
+    //
+    // Refuses rather than proceeding unauthorised. An operator who attached a
+    // grant is telling us the command needs one, so a grant that cannot be spent
+    // is a command that must not run — the alternative is silently applying the
+    // clerk's own authority to an override they asked a manager to authorise.
+    const stepUp = input.stepUpGrantId ? await claimStepUp(writer, input, commandId) : undefined;
+
     const targetService = route.service_id;
     const targetTopic = route.topic;
     const issuedAt = new Date().toISOString();
@@ -314,6 +442,11 @@ export const createCommandDispatchService = <Membership>(
         // approver authorised it, and collapsing the two would lose which is
         // which on the one record that has to say.
         approval: input.approvalGrant ?? undefined,
+        // The supervisor who authorised this override at the terminal. Read at
+        // apply time by the authority gates, which is where the reason code —
+        // and therefore the level being cleared — is known. `initiatedBy` stays
+        // the operator here too.
+        stepUp,
         issuedAt,
         featureStatus,
       },

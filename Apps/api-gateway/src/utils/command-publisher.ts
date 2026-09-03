@@ -214,6 +214,14 @@ export const submitCommand = async ({
 
   const idempotencyKey = idempotencyParse.data;
   const requestId = idempotencyKey;
+
+  // A supervisor's authorisation, carried as a header rather than in the
+  // payload: it is transport-level authorization material, not command data, so
+  // no command schema has to learn about it and none of the 202 payloads grows
+  // a field a caller could set to something meaningful. It names a row the
+  // caller cannot have written; `acceptCommand` verifies and spends it.
+  const rawStepUp = request.headers["x-step-up-grant"];
+  const stepUpGrantId = Array.isArray(rawStepUp) ? rawStepUp[0] : rawStepUp;
   const initiatedBy =
     request.auth.userId && membership
       ? { userId: request.auth.userId, role: membership.role }
@@ -229,6 +237,9 @@ export const submitCommand = async ({
       requestId,
       initiatedBy,
       membership,
+      ...(stepUpGrantId && stepUpGrantId.trim() !== ""
+        ? { stepUpGrantId: stepUpGrantId.trim() }
+        : {}),
     });
   } catch (error) {
     if (error instanceof CommandDispatchError) {

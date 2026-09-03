@@ -69,7 +69,8 @@ export const GuestNotesSchema = z.object({
 	compensation_provided: z.boolean().optional(),
 	compensation_amount: money.optional(),
 	compensation_type: z.string().optional(),
-	created_by: uuid,
+	/** NULL once the author's account is deleted — see `audit_logs.user_id`. */
+	created_by: uuid.nullable(),
 	created_by_name: z.string().optional(),
 	created_by_role: z.string().optional(),
 	created_at: z.coerce.date().optional(),

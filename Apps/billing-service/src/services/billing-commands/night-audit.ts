@@ -205,6 +205,7 @@ export const executeNightAudit = async (
       assertForcedOverrideAuthority(skipReason, resolveActorRole(context.initiatedBy), {
         commandName: "billing.night_audit.run",
         gateName,
+        stepUp: context.stepUp,
       });
     }
 
@@ -220,6 +221,7 @@ export const executeNightAudit = async (
           entity_id: command.property_id,
           approved_by: actorId,
           role_at_approval: resolveActorRole(context.initiatedBy),
+          stepUp: context.stepUp,
           forced: true,
           reason_code: skipReason.reason_code,
           reason_notes:

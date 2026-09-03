@@ -34,7 +34,14 @@ import {
 	FOLIO_WINDOW_BILLED_TO_TYPES,
 } from "../src/schemas/04-financial/ar-ledger-rows.js";
 
-const TABLES = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "scripts", "tables", "04-financial");
+const TABLES = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"..",
+	"scripts",
+	"tables",
+	"04-financial",
+);
 
 /**
  * The values a `CHECK (<column> IN (…))` admits, read out of the DDL.
@@ -55,7 +62,10 @@ const checkValues = (file: string, column: string): string[] => {
 		.split("\n")
 		.map((line) => line.replace(/--.*$/, ""))
 		.join("\n");
-	const match = new RegExp(`CHECK\\s*\\(\\s*${column}\\s+IN\\s*\\(([^)]*)\\)`, "i").exec(sql);
+	const match = new RegExp(
+		`CHECK\\s*\\(\\s*${column}\\s+IN\\s*\\(([^)]*)\\)`,
+		"i",
+	).exec(sql);
 	if (!match) throw new Error(`No CHECK … IN (…) for ${column} in ${file}`);
 	const values = [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
 	expect(values.length).toBeGreaterThan(1);
@@ -64,18 +74,48 @@ const checkValues = (file: string, column: string): string[] => {
 
 describe("every declared status union matches its CHECK constraint", () => {
 	const cases: [string, string, string, readonly string[]][] = [
-		["ar_accounts.account_status", "82_ar_accounts.sql", "account_status", AR_ACCOUNT_STATUSES],
-		["ar_accounts.payment_terms", "82_ar_accounts.sql", "payment_terms", AR_PAYMENT_TERMS],
-		["ar_city_ledger.entry_status", "83_ar_city_ledger.sql", "entry_status", AR_ENTRY_STATUSES],
-		["ar_city_ledger.aging_bucket", "83_ar_city_ledger.sql", "aging_bucket", AR_AGING_BUCKETS],
+		[
+			"ar_accounts.account_status",
+			"82_ar_accounts.sql",
+			"account_status",
+			AR_ACCOUNT_STATUSES,
+		],
+		[
+			"ar_accounts.payment_terms",
+			"82_ar_accounts.sql",
+			"payment_terms",
+			AR_PAYMENT_TERMS,
+		],
+		[
+			"ar_city_ledger.entry_status",
+			"83_ar_city_ledger.sql",
+			"entry_status",
+			AR_ENTRY_STATUSES,
+		],
+		[
+			"ar_city_ledger.aging_bucket",
+			"83_ar_city_ledger.sql",
+			"aging_bucket",
+			AR_AGING_BUCKETS,
+		],
 		[
 			"ar_cash_applications.application_status",
 			"86_ar_cash_applications.sql",
 			"application_status",
 			AR_APPLICATION_STATUSES,
 		],
-		["ar_disputes.dispute_status", "87_ar_disputes.sql", "dispute_status", AR_DISPUTE_STATUSES],
-		["ar_disputes.dispute_reason", "87_ar_disputes.sql", "dispute_reason", AR_DISPUTE_REASONS],
+		[
+			"ar_disputes.dispute_status",
+			"87_ar_disputes.sql",
+			"dispute_status",
+			AR_DISPUTE_STATUSES,
+		],
+		[
+			"ar_disputes.dispute_reason",
+			"87_ar_disputes.sql",
+			"dispute_reason",
+			AR_DISPUTE_REASONS,
+		],
 		[
 			"ar_disputes.resolution_outcome",
 			"87_ar_disputes.sql",
@@ -100,7 +140,9 @@ describe("every declared status union matches its CHECK constraint", () => {
 		it(`${name} — the type admits exactly what the database does`, () => {
 			// Sorted: the DDL orders these for readability and the union orders
 			// them for meaning, and neither order is the thing under test.
-			expect([...declared].sort()).toEqual([...checkValues(file, column)].sort());
+			expect([...declared].sort()).toEqual(
+				[...checkValues(file, column)].sort(),
+			);
 		});
 	}
 });

@@ -90,6 +90,12 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           description: "Refuse an arrival with a blocking deposit outstanding",
         },
         {
+          gateName: "deposit_required_check",
+          guardsCommand: "group.check_in",
+          description:
+            "The same deposit gate for a whole group arrival, which forced past it unauthorised",
+        },
+        {
           gateName: "reverse_check_in",
           guardsCommand: "reservation.reverse_check_in",
           description: "Records every check-in reversal",

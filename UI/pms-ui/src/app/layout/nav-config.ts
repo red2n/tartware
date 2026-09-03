@@ -294,7 +294,8 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
 				icon: "verified",
 				route: "/approvals",
 				screenKey: "billing",
-				description: "Four-eyes approval queue and flow-guard bypass log",
+				description:
+					"Commands awaiting a second signature, the billing approval queue, and the flow-guard bypass log",
 			},
 			{
 				label: "AR Accounts",

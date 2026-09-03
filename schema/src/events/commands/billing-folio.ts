@@ -81,14 +81,43 @@ export const BillingFolioCloseCommandSchema = z
 		/** Resolves to the guest folio for this reservation. */
 		reservation_id: z.string().uuid().optional(),
 		close_reason: z.string().max(500).optional(),
+		/**
+		 * Close a folio that still carries a balance.
+		 *
+		 * This is the settlement control, reached from a different direction:
+		 * `folio_settlement_check` refuses a departure over an unsettled folio,
+		 * and this closes the same folio without departing. The balance does not
+		 * go anywhere — no city-ledger transfer, no write-off entry — it simply
+		 * stops being collectable through the folio, which is why it needs the
+		 * same authority as leaving with one.
+		 */
 		force: z.boolean().optional(),
+		/**
+		 * Why this close was forced. Required with `force`, resolved against the
+		 * FOLIO_CLOSE_OVERRIDE category.
+		 *
+		 * Its own category rather than CHECK_OUT_OVERRIDE, which was the first
+		 * choice and is wrong: those codes describe a balance that *goes*
+		 * somewhere — `CO_TO_CITY_LEDGER` is level NONE precisely because
+		 * billing it to a company account is not a loss. Closing a folio moves
+		 * nothing, so a code asserting a transfer would both misdescribe the
+		 * act and, being level NONE, waive the authority check entirely. Every
+		 * code here sits at SUPERVISOR or above for the same reason: there is no
+		 * such thing as an unremarkable close over a balance.
+		 */
+		reason_code: z.string().min(2).max(50).optional(),
 		metadata: z.record(z.unknown()).optional(),
 		idempotency_key: z.string().max(120).optional(),
 	})
 	.refine(
 		(v) => Boolean(v.folio_id || v.reservation_id),
 		"folio_id or reservation_id is required",
-	);
+	)
+	.refine((value) => value.force !== true || Boolean(value.reason_code), {
+		message:
+			"reason_code is required when force is true — closing a folio over an outstanding balance abandons it at the folio, and that decision has to name itself",
+		path: ["reason_code"],
+	});
 
 export type BillingFolioCloseCommand = z.infer<
 	typeof BillingFolioCloseCommandSchema

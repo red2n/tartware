@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { type OverrideStepUpGrant, resolveOverrideAuthority } from "@tartware/schemas";
+
 /**
  * SHA-256 hashing for sensitive identifiers (tenant_id, reservation_id, guest_id)
  * to allow audit linking without exposing raw UUIDs in plain text.
@@ -160,6 +162,20 @@ export interface FlowApprovalParams {
   reasonCode: string;
   reasonNotes?: string | null;
   correlationId?: string | null;
+  /**
+   * The supervisor who authorised this override at the terminal, when one did.
+   *
+   * Resolved here rather than at each call site so the record cannot name the
+   * clerk on a gate a supervisor cleared. That is the half of OPERA's model
+   * that makes the trail worth keeping — "recorded against the supervisor" —
+   * and a record still naming the operator would be worse than the old one: it
+   * would assert an authority they did not hold.
+   *
+   * The operator is not lost. They stay in `reason_notes` behind a stable
+   * `STEP_UP:` prefix, on the same reasoning as `forced` — a reader can ask who
+   * ran it and who authorised it without a migration.
+   */
+  stepUp?: OverrideStepUpGrant | null;
 }
 
 /**
@@ -189,6 +205,19 @@ export const recordFlowApproval = async (
   params: FlowApprovalParams,
   onError?: (error: unknown) => void,
 ): Promise<void> => {
+  // Whose authority actually cleared this gate. Without a step-up it is the
+  // operator's, unchanged; with one it is the supervisor's, but only when the
+  // supervisor outranks them — a grant never lowers an authority the operator
+  // already held.
+  const authority = resolveOverrideAuthority(
+    { id: params.approvedBy, role: params.roleAtApproval },
+    params.stepUp,
+  );
+
+  const notes = params.forced
+    ? `FORCED: ${params.reasonNotes ?? "gate bypassed"}`
+    : (params.reasonNotes ?? null);
+
   try {
     await queryFn(INSERT_FLOW_APPROVAL_SQL, [
       params.tenantId,
@@ -197,12 +226,12 @@ export const recordFlowApproval = async (
       params.gateName,
       params.entityType,
       params.entityId,
-      params.approvedBy ?? SYSTEM_ACTOR_ID,
-      params.roleAtApproval,
+      authority.actorId ?? params.approvedBy ?? SYSTEM_ACTOR_ID,
+      authority.role ?? params.roleAtApproval,
       params.reasonCode,
-      params.forced
-        ? `FORCED: ${params.reasonNotes ?? "gate bypassed"}`
-        : (params.reasonNotes ?? null),
+      authority.viaStepUp
+        ? `STEP_UP: authorised at the terminal for ${params.approvedBy ?? "an unidentified operator"}${notes ? `; ${notes}` : ""}`
+        : notes,
       params.correlationId ?? null,
     ]);
   } catch (error) {

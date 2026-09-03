@@ -41,6 +41,7 @@
     "test": "npm run build:tests && node --test dist-tests/tests/*.js"
   },
   "dependencies": {
+    "@tartware/schemas": "workspace:*",
     "dotenv": "^17.2.3",
     "fastify": "^5.8.3",
     "pg": "^8.16.0",

@@ -37,6 +37,7 @@ import amenitiesRoutes from "./routes/settings-amenities.js";
 import catalogRoutes from "./routes/settings-catalog.js";
 import packagesRoutes from "./routes/settings-packages.js";
 import screenPermissionsRoutes from "./routes/settings-screen-permissions.js";
+import { registerStepUpRoutes } from "./routes/step-up.js";
 import { registerSystemAuthRoutes } from "./routes/system-auth.js";
 import { registerSystemImpersonationRoutes } from "./routes/system-impersonation.js";
 import { registerSystemTenantRoutes } from "./routes/system-tenants.js";
@@ -82,6 +83,7 @@ export const buildServer = (): FastifyInstance => {
     registerRoutes: (app) => {
       registerHealthRoutes(app);
       registerAuthRoutes(app);
+      registerStepUpRoutes(app);
       registerTenantRoutes(app);
       registerPropertyRoutes(app);
       registerUserRoutes(app);

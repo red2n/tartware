@@ -32,90 +32,100 @@ const ReservationStatusEnum = z.enum([
 	"EXPIRED",
 ]);
 
-export const ReservationCreateCommandSchema = z.object({
-	reservation_id: z.string().uuid().optional(),
-	/**
-	 * Set when the booking came from a waitlist entry, so the entry can be
-	 * linked to the reservation once the row exists. The convert command cannot
-	 * write that link itself: it only emits reservation.created, and the FK has
-	 * nothing to point at until the event handler has inserted the row.
-	 */
-	waitlist_id: z.string().uuid().optional(),
-	property_id: z.string().uuid(),
-	guest_id: z.string().uuid(),
-	room_type_id: z.string().uuid(),
-	check_in_date: z.coerce.date(),
-	check_out_date: z.coerce.date(),
-	booking_date: z.coerce.date().optional(),
-	status: ReservationStatusEnum.optional(),
-	rate_code: RateCodeSchema.optional(),
-	// MED-007: Require explicit opt-in for rate fallback
-	// When requested rate is unavailable, fallback to BAR/RACK only if this is true
-	allow_rate_fallback: z.boolean().optional(),
-	source: z
-		.enum(["DIRECT", "WEBSITE", "PHONE", "WALKIN", "OTA", "CORPORATE", "GROUP"])
-		.optional(),
-	reservation_type: z
-		.enum([
-			"TRANSIENT",
-			"CORPORATE",
-			"GROUP",
-			"WHOLESALE",
-			"PACKAGE",
-			"COMPLIMENTARY",
-			"HOUSE_USE",
-			"DAY_USE",
-			"WAITLIST",
-		])
-		.optional(),
-	total_amount: z.coerce.number().nonnegative(),
-	currency: z.string().length(3).optional(),
-	notes: z.string().max(2000).optional(),
-	eta: z
-		.string()
-		.regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format")
-		.optional(),
-	company_id: z.string().uuid().optional(),
-	travel_agent_id: z.string().uuid().optional(),
-	/**
-	 * USALI market segment this booking is attributed to
-	 * (market_segments.segment_id). Optional: walk-ins and unclassified
-	 * bookings report as UNCLASSIFIED rather than being forced into a segment.
-	 */
-	market_segment_id: z.string().uuid().optional(),
-	/**
-	 * Rooms held by this booking, each with its own nights. Omit it and the
-	 * booking is one room of `room_type_id` for the whole window, priced at an
-	 * even split of `total_amount` — the behaviour that existed before the
-	 * stay tables. See `expandStayPlan` in @tartware/schemas for what each
-	 * omitted field falls back to.
-	 */
-	rooms: StayPlanInputSchema.optional(),
-	/**
-	 * Book a guest the property has blacklisted (A05).
-	 *
-	 * The blacklist gate used to be a hard throw whose message told the
-	 * operator that "a GM override with documented reason is required" — an
-	 * authority the product did not define and no code path offered, so the
-	 * only way past it was to edit `guests.is_blacklisted` and lose the fact
-	 * that a decision had been made. This is that override, and it is not a
-	 * bare `force`: the reason code is mandatory, resolved against the
-	 * BLACKLIST category, and its `approval_level` is checked against the role
-	 * on the command envelope before the booking is taken.
-	 */
-	blacklist_override: z.boolean().optional(),
-	blacklist_override_reason_code: z.string().min(2).max(50).optional(),
-	blacklist_override_notes: z.string().max(500).optional(),
-}).refine(
-	(value) =>
-		value.blacklist_override !== true ||
-		Boolean(value.blacklist_override_reason_code),
-	{
-		message:
-			"blacklist_override_reason_code is required when blacklist_override is true — an override with no stated reason is the control this gate exists to provide",
-		path: ["blacklist_override_reason_code"],
-	},
-);
+export const ReservationCreateCommandSchema = z
+	.object({
+		reservation_id: z.string().uuid().optional(),
+		/**
+		 * Set when the booking came from a waitlist entry, so the entry can be
+		 * linked to the reservation once the row exists. The convert command cannot
+		 * write that link itself: it only emits reservation.created, and the FK has
+		 * nothing to point at until the event handler has inserted the row.
+		 */
+		waitlist_id: z.string().uuid().optional(),
+		property_id: z.string().uuid(),
+		guest_id: z.string().uuid(),
+		room_type_id: z.string().uuid(),
+		check_in_date: z.coerce.date(),
+		check_out_date: z.coerce.date(),
+		booking_date: z.coerce.date().optional(),
+		status: ReservationStatusEnum.optional(),
+		rate_code: RateCodeSchema.optional(),
+		// MED-007: Require explicit opt-in for rate fallback
+		// When requested rate is unavailable, fallback to BAR/RACK only if this is true
+		allow_rate_fallback: z.boolean().optional(),
+		source: z
+			.enum([
+				"DIRECT",
+				"WEBSITE",
+				"PHONE",
+				"WALKIN",
+				"OTA",
+				"CORPORATE",
+				"GROUP",
+			])
+			.optional(),
+		reservation_type: z
+			.enum([
+				"TRANSIENT",
+				"CORPORATE",
+				"GROUP",
+				"WHOLESALE",
+				"PACKAGE",
+				"COMPLIMENTARY",
+				"HOUSE_USE",
+				"DAY_USE",
+				"WAITLIST",
+			])
+			.optional(),
+		total_amount: z.coerce.number().nonnegative(),
+		currency: z.string().length(3).optional(),
+		notes: z.string().max(2000).optional(),
+		eta: z
+			.string()
+			.regex(/^\d{2}:\d{2}$/, "ETA must be HH:MM format")
+			.optional(),
+		company_id: z.string().uuid().optional(),
+		travel_agent_id: z.string().uuid().optional(),
+		/**
+		 * USALI market segment this booking is attributed to
+		 * (market_segments.segment_id). Optional: walk-ins and unclassified
+		 * bookings report as UNCLASSIFIED rather than being forced into a segment.
+		 */
+		market_segment_id: z.string().uuid().optional(),
+		/**
+		 * Rooms held by this booking, each with its own nights. Omit it and the
+		 * booking is one room of `room_type_id` for the whole window, priced at an
+		 * even split of `total_amount` — the behaviour that existed before the
+		 * stay tables. See `expandStayPlan` in @tartware/schemas for what each
+		 * omitted field falls back to.
+		 */
+		rooms: StayPlanInputSchema.optional(),
+		/**
+		 * Book a guest the property has blacklisted (A05).
+		 *
+		 * The blacklist gate used to be a hard throw whose message told the
+		 * operator that "a GM override with documented reason is required" — an
+		 * authority the product did not define and no code path offered, so the
+		 * only way past it was to edit `guests.is_blacklisted` and lose the fact
+		 * that a decision had been made. This is that override, and it is not a
+		 * bare `force`: the reason code is mandatory, resolved against the
+		 * BLACKLIST category, and its `approval_level` is checked against the role
+		 * on the command envelope before the booking is taken.
+		 */
+		blacklist_override: z.boolean().optional(),
+		blacklist_override_reason_code: z.string().min(2).max(50).optional(),
+		blacklist_override_notes: z.string().max(500).optional(),
+	})
+	.refine(
+		(value) =>
+			value.blacklist_override !== true ||
+			Boolean(value.blacklist_override_reason_code),
+		{
+			message:
+				"blacklist_override_reason_code is required when blacklist_override is true — an override with no stated reason is the control this gate exists to provide",
+			path: ["blacklist_override_reason_code"],
+		},
+	);
 
 export type ReservationCreateCommand = z.infer<
 	typeof ReservationCreateCommandSchema
@@ -252,7 +262,11 @@ export type ReservationCheckOutCommand = z.infer<
  * mis-key corrected thirty seconds later, and is a deliberate choice the
  * operator makes, not a default they inherit.
  */
-export const ReversalRoomStatusEnum = z.enum(["DIRTY", "AVAILABLE", "INSPECTED"]);
+export const ReversalRoomStatusEnum = z.enum([
+	"DIRTY",
+	"AVAILABLE",
+	"INSPECTED",
+]);
 
 export type ReversalRoomStatus = z.infer<typeof ReversalRoomStatusEnum>;
 

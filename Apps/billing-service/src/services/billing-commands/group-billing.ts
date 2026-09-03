@@ -1,3 +1,9 @@
+import {
+  assertForcedOverrideAuthority,
+  resolveReasonCode,
+} from "@tartware/command-consumer-utils/command-utils";
+import type { ReasonCodeRow } from "@tartware/schemas";
+
 import { auditAsync } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
@@ -11,6 +17,7 @@ import {
   BillingCommandError,
   type CommandContext,
   resolveActorId,
+  resolveActorRole,
   SYSTEM_ACTOR_ID,
 } from "./common.js";
 
@@ -231,15 +238,39 @@ export const checkoutGroup = async (payload: unknown, context: CommandContext): 
     [tenantId, command.group_booking_id],
   );
 
-  // Guard: unsettled individual folios block checkout unless force=true
+  // Guard: unsettled individual folios block checkout unless force=true.
+  //
+  // This is `folio_settlement_check` — the gate `reservation.check_out` declares
+  // — for every member of the group at once. The single departure has asked for
+  // a reason code and an authority since A08; this asked nobody, so a group
+  // checkout was the cheaper route past the same control.
+  const unsettled = indivFolios.filter((f) => Number(f.balance) !== 0);
   if (!command.force) {
-    const unsettled = indivFolios.filter((f) => Number(f.balance) !== 0);
     if (unsettled.length > 0) {
       throw new BillingCommandError(
         "UNSETTLED_FOLIOS",
         `${unsettled.length} individual folio(s) have non-zero balances. Use force=true to override.`,
       );
     }
+  }
+
+  // Resolved whenever force is set, before anything closes. The schema makes
+  // reason_code mandatory with force, so this cannot be reached without one.
+  const overrideReason: ReasonCodeRow | null = command.force
+    ? await resolveReasonCode<ReasonCodeRow>((sql, params) => query<ReasonCodeRow>(sql, params), {
+        tenantId,
+        propertyId: command.property_id,
+        reasonCode: command.reason_code as string,
+        category: "CHECK_OUT_OVERRIDE",
+      })
+    : null;
+
+  if (overrideReason) {
+    assertForcedOverrideAuthority(overrideReason, resolveActorRole(context.initiatedBy), {
+      commandName: "billing.group.checkout",
+      gateName: "folio_settlement_check",
+      stepUp: context.stepUp,
+    });
   }
 
   await withTransaction(async (client) => {
@@ -269,6 +300,37 @@ export const checkoutGroup = async (payload: unknown, context: CommandContext): 
       [command.group_booking_id, tenantId],
     );
   });
+
+  // Written after the folios close, and only when the force was actually spent:
+  // forcing a group whose folios all happened to be settled bypassed nothing,
+  // and a row claiming otherwise is worse than no row.
+  if (overrideReason && unsettled.length > 0) {
+    try {
+      const { recordFlowApproval } = await import("../../repositories/flow-approval-repository.js");
+      await recordFlowApproval({
+        tenant_id: tenantId,
+        property_id: command.property_id,
+        flow_name: "check_out",
+        gate_name: "folio_settlement_check",
+        entity_type: "group_booking",
+        entity_id: command.group_booking_id,
+        approved_by: resolveActorId(context.initiatedBy),
+        role_at_approval: resolveActorRole(context.initiatedBy),
+        stepUp: context.stepUp,
+        forced: true,
+        reason_code: overrideReason.reason_code,
+        reason_notes:
+          command.notes ??
+          `${overrideReason.reason_name}: group departed over ${unsettled.length} unsettled folio(s)`,
+        correlation_id: context.correlationId ?? null,
+      });
+    } catch (approvalErr) {
+      appLogger.warn(
+        { approvalErr, groupBookingId: command.group_booking_id },
+        "group checked out over unsettled folios but its flow_approvals row could not be written",
+      );
+    }
+  }
 
   appLogger.info(
     { masterFolioId: masterFolio.folio_id, groupBookingId: command.group_booking_id },

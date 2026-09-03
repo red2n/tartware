@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS reason_codes (
             'CREDIT_LIMIT',         -- Taking a balance past a configured credit limit
             'CHECK_IN_OVERRIDE',    -- Forcing check-in past its deposit or lifecycle gate
             'CHECK_OUT_OVERRIDE',   -- Checking out over an unsettled folio (balance goes to AR)
+            'FOLIO_CLOSE_OVERRIDE', -- Closing a folio over a balance (the balance goes nowhere)
             'OTHER'                 -- Uncategorized
         )
     ),                                                      -- Category grouping for filtering
@@ -206,7 +207,18 @@ VALUES
     ('00000000-0000-0000-0000-000000000000', 'CO_TO_CITY_LEDGER', 'Billed to company',      'The balance is billed to an approved company account.',                     'CHECK_OUT_OVERRIDE', FALSE, 'NONE',       TRUE,  1),
     ('00000000-0000-0000-0000-000000000000', 'CO_LATE_DEPARTURE', 'Departed before settle', 'The guest departed before the folio could be settled at the desk.',         'CHECK_OUT_OVERRIDE', FALSE, 'SUPERVISOR', TRUE,  2),
     ('00000000-0000-0000-0000-000000000000', 'CO_DISPUTE_OPEN',   'Charge disputed',        'A charge is disputed and the balance is held pending review.',              'CHECK_OUT_OVERRIDE', TRUE,  'MANAGER',    TRUE,  3),
-    ('00000000-0000-0000-0000-000000000000', 'CO_GOODWILL',       'Carried as goodwill',    'Management carried the balance rather than pursue it at departure.',        'CHECK_OUT_OVERRIDE', TRUE,  'DIRECTOR',   TRUE,  4)
+    ('00000000-0000-0000-0000-000000000000', 'CO_GOODWILL',       'Carried as goodwill',    'Management carried the balance rather than pursue it at departure.',        'CHECK_OUT_OVERRIDE', TRUE,  'DIRECTOR',   TRUE,  4),
+
+    -- Folio close overrides. Separate from CHECK_OUT_OVERRIDE because the
+    -- balance goes nowhere: no city-ledger transfer, no write-off entry, it
+    -- simply stops being collectable through the folio. That is why none of
+    -- these sits at NONE, while CO_TO_CITY_LEDGER above rightly does -- billing
+    -- a company account is not a loss, and closing over a balance always is.
+    ('00000000-0000-0000-0000-000000000000', 'FC_SMALL_BALANCE',  'Residual under tolerance','A rounding residual below the property''s write-off tolerance.',            'FOLIO_CLOSE_OVERRIDE', TRUE, 'SUPERVISOR', TRUE, 1),
+    ('00000000-0000-0000-0000-000000000000', 'FC_DUPLICATE',      'Folio opened in error',  'The folio duplicates another; the balance on it is an artefact.',           'FOLIO_CLOSE_OVERRIDE', TRUE, 'SUPERVISOR', TRUE, 2),
+    ('00000000-0000-0000-0000-000000000000', 'FC_DISPUTE_HELD',   'Charge disputed',        'A charge is disputed and the folio is closed pending the review.',          'FOLIO_CLOSE_OVERRIDE', TRUE, 'MANAGER',    TRUE, 3),
+    ('00000000-0000-0000-0000-000000000000', 'FC_UNCOLLECTABLE',  'Judged uncollectable',   'The balance is not being pursued. Prefer a write-off, which is recorded as one.', 'FOLIO_CLOSE_OVERRIDE', TRUE, 'DIRECTOR', TRUE, 4),
+    ('00000000-0000-0000-0000-000000000000', 'FC_MANAGEMENT',     'Closed by management',   'Closed on management instruction, documented outside the folio.',           'FOLIO_CLOSE_OVERRIDE', TRUE, 'GM',         TRUE, 5)
 ON CONFLICT DO NOTHING;
 
 \echo 'reason_codes table created successfully!'

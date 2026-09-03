@@ -21,9 +21,76 @@ Three gates. Breaking any of them is the top source of drift in this repo.
 | **Schema-first** | No `z.object`, `interface`, or domain `type` in `Apps/`. Types live in `schema/` (`@tartware/schemas`), created there first, then imported. | Review + `AGENTS.md` § Schema-First |
 | **Shared frameworks** | Never hand-roll what a shared package owns (see §3). | `pnpm run check:frameworks` |
 | **Green build** | A task is done when `pnpm run build` exits 0 — not when typecheck passes. | `AGENTS.md` § Task Completion Gate |
+| **PURE DEV mode** | No migrations, no `ALTER TABLE … ADD COLUMN`. A schema change edits the `CREATE TABLE`; `db setup` rebuilds. | `pnpm run check:schema-discipline` |
 
 Allowed local types: `z.infer` aliases, `.pick()/.omit()` derivations, env/config schemas,
 Fastify decorator augmentation, single-file internal types. Full list in `AGENTS.md`.
+
+---
+
+## 1a. PURE DEV mode — no migrations (3 Sep 2026)
+
+**There is no production deployment, no client, no QA environment, and no data anyone
+could not recreate.** `./executables/tartware.sh db setup` rebuilds the whole schema from
+`scripts/tables/` in under a minute. So the schema has exactly one description, and a
+change to it **edits the `CREATE TABLE`**.
+
+`scripts/migrations/` is **deleted** — 12 files plus an unused tracking-table script.
+They were already dead: `setup-database.sh` never referenced them, no `schema_migrations`
+table was ever created, and nothing in the repo executed them. Verified before deleting
+that all 12 effects were present in a database built from `scripts/tables/` alone, so
+nothing was lost. Their design reasoning was already carried in the base DDL — the
+`FOLIO_CLOSE_OVERRIDE` split, the six RESTRICT / two SET NULL actor FKs,
+`cashier_session_id` being permanently nullable, the step-up grant table's header.
+
+**Why this matters beyond tidiness.** Two descriptions of one schema is the same defect
+as a control correct in one path and absent in the path beside it — the shape this repo
+spent a fortnight removing. They happened to agree on the day they were deleted, and
+establishing *whether* they agreed needed a column-by-column query against a freshly
+built database. Reading them could not settle it.
+
+**Enforced by `check:schema-discipline`** (in `check`, so `build` runs it), which fails
+on two things: `scripts/migrations/` coming back, and any **new**
+`ALTER TABLE … ADD/DROP/ALTER COLUMN`. Verified by reintroducing each.
+
+- `scripts/constraints/` is exempt — 119 files of `ADD CONSTRAINT` is how a schema with
+  circular references gets its foreign keys, and it is not a column mutation.
+- `tables/99_enforce_tenant_soft_delete.sql` is permanently exempt: it applies tenant and
+  soft-delete columns to *every* table dynamically, and folding it would lose the property
+  that makes it correct.
+- **24 files still bolt a column on after their own CREATE TABLE** — inherited, listed in
+  `UNFOLDED_COLUMNS`, and the list **may only shrink**: a stale entry fails the check, the
+  same ratchet `KNOWN_UNTYPED` uses in `check-schema-first-tables.mjs`.
+
+**Deleting them exposed a live bug, which is the argument made concretely.**
+`sql-contract-check` parsed `scripts/migrations/*.sql` for `ALTER TABLE … ADD COLUMN` and
+counted those columns as existing. Nothing executed that directory, so **five columns the
+check vouched for had never existed in any database** — `travel_agent_commissions.agent_id`,
+`commission_statements.agent_id`, `gds_reservation_queue.guest_id`,
+`ota_reservations_queue.guest_id`, `folio_routing_rules.target_account_id` — while three
+services queried four of them and failed `42703` at runtime. The check that exists to prove
+"no query names a missing column" was green because it trusted a file nothing ran.
+**A contract check that reads a second source of truth inherits that source's fiction.**
+
+The four that code reads are now in their `CREATE TABLE` bodies; `target_account_id` was
+left out because nothing reads it and an unused column is its own debt. `sql-contract-check`
+no longer looks at migrations, and says so where the code used to be.
+
+This also corrects something stated too strongly an hour earlier: the "all 12 migrations are
+already in the base DDL" check was a **sample**, not a proof — it tested the tables and
+columns picked by hand and missed these five. The exhaustive check was `sql-contract-check`
+itself, and it only became exhaustive once the directory it trusted was gone.
+
+**Historical references.** Sections below still cite migration numbers — "migration `008`",
+"migration `009`" — because that is how those changes were delivered at the time and the
+sentence is still true about *why* the column exists. The files are gone; the schema they
+describe is in `scripts/tables/`. Don't go looking for them, and don't recreate them.
+
+**When to lift this.** The day there is a real deployment holding data someone would miss:
+cut the base DDL as baseline v1 and start a migration chain from there. That is a
+deliberate decision with a date on it — not something that happens because one file
+quietly reintroduced the pattern. **Until then, do not write a migration or an
+`ALTER TABLE` unless explicitly asked to.**
 
 ---
 
@@ -91,6 +158,7 @@ pnpm run dev:ui              # Angular pms-ui
 pnpm run build               # THE gate: check → build → typecheck. Must exit 0.
 pnpm run check               # guardrails + frameworks + lint + biome + knip + contrast + i18n
 pnpm run check:frameworks    # shared-entry-point guardrail (fast, no build needed)
+pnpm run check:schema-discipline  # no migrations dir, no bolt-on columns (PURE DEV)
 pnpm run test                # nx run-many -t test — also runs as the last step of build
 pnpm run kafka:topics        # bootstrap Kafka topics
 ```
@@ -601,6 +669,128 @@ name who acted. `required_role` is enforced inside the same transaction that rea
 unrecognised string scoring 0 would have admitted everyone. Approval is gated; rejection is not,
 since declining needs no more authority than seeing the request. 8 tests in
 `Apps/billing-service/tests/approval-service.test.ts`.
+
+### Eight actor columns whose foreign key could never fire (3 Sep 2026)
+
+Found while cleaning up test data, not by any check. `audit_logs.user_id` is `NOT NULL` and
+`fk_audit_logs_user` is `ON DELETE SET NULL`. Postgres accepts both and then fails the delete at
+runtime, so the constraint could not do what its own comment said:
+
+```sql
+-- Note: SET NULL to preserve audit trail if user is deleted
+... ON DELETE SET NULL
+user_id UUID NOT NULL
+```
+
+**A sweep of every table DDL against every constraint file found eight, not one** — all actor
+attribution columns: `audit_logs.user_id`, `guest_notes.created_by`, `folios.created_by`,
+`incident_reports.created_by`, `maintenance_requests.reported_by`, `night_audit_log.initiated_by`,
+`rate_overrides.requested_by`, `refunds.requested_by`.
+
+It is **latent, not live**: nothing in the application hard-deletes a user (`users.is_deleted` is
+the only path), so it bites on manual cleanup and would bite hard the day an erasure job was written
+against it.
+
+**The eight do not deserve the same answer, and giving them one would be the actual mistake.** What
+separates them is whether the row can still say who acted once the id is gone:
+
+- **SET NULL** (drop `NOT NULL`) for the two that keep a denormalised actor — `audit_logs` has
+  `user_email`/`user_name`/`user_role`, `guest_notes` has `created_by_name`/`created_by_role`. The
+  trail survives the account.
+- **RESTRICT** for the other six, where the column is the only record of who acted. Nulling
+  `refunds.requested_by` or `rate_overrides.requested_by` keeps a financial control record and
+  erases its author, which is the half that makes it a control — a refund nobody requested is not an
+  audit trail, it is a hole in one. Since staff are soft-deleted, RESTRICT blocks nothing the product
+  does; it refuses precisely the operation that would silently destroy attribution.
+
+Migration `012`, matching table DDL, and `user_id`/`created_by` are `.nullable()` in
+`AuditLogsSchema` and `GuestNotesSchema` — nullable rather than optional, because the column is
+present and NULL, not absent.
+
+**Verified on the live database, both directions.** Before: deleting a user with one `audit_logs`
+row failed with `null value in column "user_id" ... violates not-null constraint`, the failing
+statement being the FK's own `UPDATE ... SET user_id = NULL`. After: that delete succeeds with
+`user_id` nulled and `user_name`/`user_email` intact, while deleting a user who created a folio is
+refused by `fk_folios_created_by`. Every probe ran inside a rolled-back transaction; no rows left
+behind.
+
+### Three forces that bypassed a control on nobody's authority (3 Sep 2026)
+
+The override audit closed A01–A11 and the guardrail written with A08 was supposed to keep it
+closed. It could not see these three, because of the shape of the rule: `forced-override-authority`
+fires on files that write `forced: true` to `flow_approvals`, which **trusts a bypass to declare
+itself**. These wrote no row at all.
+
+| Command | `force` bypasses | Was |
+|---|---|---|
+| `billing.folio.close` | an outstanding balance on the folio | STAFF tier, force checkbox shipped in pms-ui, no code, no check, no row |
+| `billing.group.checkout` | unsettled member folios | no code, no check, no row |
+| `group.check_in` | `blocks_check_in` deposit holds, up to 500 at once | no code, no check, no row |
+
+**The last two bypass, in bulk, the controls the registry declares `kind: "gate"` on the
+single-reservation path.** Since A08 a single departure over an unsettled folio has needed a reason
+code and an authority; the *group* departure asked nobody. A control with a cheaper bulk route is
+not a control, and the registry could not say so because a gate is declared per *command* —
+`folio_settlement_check` named only `reservation.check_out`, so it read as enforced.
+
+All three now resolve a reason code, call `assertForcedOverrideAuthority` (step-up included), and
+write a `flow_approvals` row. Three new registry declarations with `evidence`, claimed in both
+service manifests: 104 → **107 flow:integrity checks**.
+
+**The record is written after the bypass, and only when it actually happened.** Forcing a group whose
+deposits were all paid, or a folio that settled at zero, bypassed nothing — a row claiming otherwise
+is worse than no row, being exactly the free-text `force: true` this replaces. `group.check_in` now
+loads its blocking-deposit set **even when forcing**, which it never did: under force the set was
+unread, so the handler could not say how many deposits the override stepped over. Timing follows the
+credit-limit lesson: written after the write commits, so a retried handler does not record one
+operator decision four times.
+
+**`billing.folio.close` needed its own reason-code category, and reusing CHECK_OUT_OVERRIDE would
+have been worse than free text.** Those codes describe a balance that *goes* somewhere —
+`CO_TO_CITY_LEDGER` is level NONE precisely because billing an approved company account is not a
+loss. Closing a folio moves nothing: no city-ledger transfer, no write-off entry, the balance simply
+stops being collectable through the folio. A clerk could therefore have named a transfer that never
+happens **and**, the code being level NONE, waived the authority check while doing it. Migration
+`011` adds `FOLIO_CLOSE_OVERRIDE` with five system-tenant codes, none below SUPERVISOR, because
+there is no unremarkable close over a balance. `FC_UNCOLLECTABLE` names the write-off in its own
+description and sits at DIRECTOR: a balance nobody is pursuing should be written off, where dual
+control and the amount ladder apply, and closing the folio instead reaches the same outcome with
+neither — the code exists so that choice is recorded rather than hidden.
+
+The two group commands **reuse** their single-reservation categories (CHECK_OUT_OVERRIDE,
+CHECK_IN_OVERRIDE): the same decision at a different scale, and `flow_approvals.gate_name` then
+groups the bulk bypass with the single one, which is how an auditor reads it.
+
+**The permission floors are unchanged, deliberately.** `billing.folio.close` stays STAFF: settling a
+folio at zero is the work of a shift, and the floor governs the command while the reason code's
+`approval_level` governs the override. Raising the floor would have gated the ordinary close and
+still left the force measured by nothing.
+
+**The new guardrail inverts the old one's assumption.** `force-branch-authority` fails any file that
+branches on `command.force` without calling an authority helper — no longer waiting for the bypass to
+record itself. Exemptions are typed out, not inferred: `mass-operations.ts` is the one entry, because
+it forwards `force` into the single-reservation command that does the asserting. Verified by
+reproducing the original shape (assert *and* record deleted) and watching it fire.
+
+**Phase 5h, 23/23 on real data (3 Sep).** A clerk refused on a MANAGER-level code, an ADMIN
+minting a grant against a real login, the same clerk carrying it accepted, and the row naming the
+*supervisor* — `approved_by` is the ADMIN's id and `reason_notes` carries both `STEP_UP:` and
+`FORCED:`, because a gate was bypassed *and* somebody authorised the bypass. A spent grant then
+authorises nothing on a second folio. Both migration-012 foreign-key probes pass in the same phase.
+
+**Its first run failed, and that is the part worth keeping.** The forced-close half skipped on a
+fixture bug — the phase looked up its folio by `folio_name`, a payload field with no column behind
+it — and it surfaced two regressions in the suite's own seed, both a forced call sending no
+`reason_code`. The folio close was caused by this work. **The forced check-in had been failing since
+A08 landed on 2 September**, in a suite nobody had run since: a payload contract tightened, a caller
+was not updated, and the only thing that would have said so was not executed for a day.
+
+Tests: 18 billing (`forced-settlement-authority`), 7 reservations (`group-forced-arrival-authority`).
+The folio-close ones drive the real transaction rather than a stubbed `withTransaction` — the first
+draft mocked it away and its assertions about what gets recorded passed whatever the code did, which
+is how a test comes to agree with a bug. pms-ui's force-close checkbox now carries the picker, the
+step-up prompt and a Get authorisation button, so the screen that could ask for a balance to be
+abandoned is the second UI caller of the step-up dialog.
 
 ### Two things the E2E found that no unit test could (1 Sep 2026)
 

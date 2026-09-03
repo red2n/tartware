@@ -28,6 +28,7 @@ import {
   DEFAULT_CURRENCY,
   enqueueReservationUpdate,
   ReservationCommandError,
+  type ReservationCommandOptions,
   type ReservationUpdatePayload,
   resolveReasonCode,
 } from "./common.js";
@@ -112,7 +113,7 @@ const assertDiscountWithinAuthority = async (
 export const overrideRate = async (
   tenantId: string,
   command: ReservationRateOverrideCommand,
-  options: { correlationId?: string; actorId?: string; actorRole?: string } = {},
+  options: ReservationCommandOptions = {},
 ): Promise<CreateReservationResult> => {
   // The reservation's property, so a property-scoped reason code resolves the
   // way it does everywhere else. A booking that is not there cannot be
@@ -135,6 +136,7 @@ export const overrideRate = async (
   assertOverrideAuthority(reason, options.actorRole, {
     commandName: "reservation.rate_override",
     gateName: "rate_override",
+    stepUp: options.stepUp,
   });
 
   await assertDiscountWithinAuthority(tenantId, snapshot.totalAmount, command, options.actorRole);
@@ -168,6 +170,7 @@ export const overrideRate = async (
     entityId: command.reservation_id,
     approvedBy: options.actorId ?? null,
     roleAtApproval: options.actorRole ?? SYSTEM_ACTOR_ROLE,
+    stepUp: options.stepUp,
     forced: false,
     reasonCode: reason.reason_code,
     reasonNotes:

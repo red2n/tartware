@@ -126,6 +126,11 @@ const routeReservationCommand = async (
     // this line used to stop at `.userId`, so an override could name who acted
     // but never with what authority.
     actorRole: resolveActorRole(metadata.initiatedBy),
+    // A supervisor's authorisation for this one command, when one was given at
+    // the terminal. Built here rather than per case so every reservation
+    // command carries it and none can be forgotten — the shape of A08's first
+    // sweep, which added an authority check to four call sites and missed four.
+    stepUp: metadata.stepUp ?? null,
   };
 
   switch (metadata.commandName) {

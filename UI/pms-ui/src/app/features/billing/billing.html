@@ -842,9 +842,45 @@
                             </div>
                           }
                         </div>
+
+                        <!-- Forcing this abandons the balance at the folio: it is not
+                             transferred to the city ledger and not written off, it just
+                             stops being collectable. So it is an override, and it owes a
+                             code and an authority like every other one. -->
+                        @if (fol.balance > 0 && closeFolioForce()) {
+                          <app-reason-code-picker
+                            category="FOLIO_CLOSE_OVERRIDE"
+                            [propertyId]="ctx.propertyId() ?? ''"
+                            [value]="closeFolioReasonCode()"
+                            (valueChange)="closeFolioReasonCode.set($event)"
+                            (authorityShortfall)="onCloseFolioAuthorityShortfall($event)" />
+
+                          @if (closeFolioStepUp(); as grant) {
+                            <p class="notice">
+                              <app-icon class="notice-icon" name="admin_panel_settings" />
+                              {{ 'Authorised by {name} ({role}). This covers this one override.'
+                                  | translate:{ name: grant.supervisor_name, role: grant.supervisor_role } }}
+                            </p>
+                          } @else if (closeFolioAuthorityShortfall(); as needed) {
+                            <p class="notice">
+                              <app-icon class="notice-icon" name="lock" />
+                              {{ 'This reason code needs {role}. A supervisor can authorise it here without signing you out.'
+                                  | translate:{ role: needed } }}
+                            </p>
+                          }
+                        }
+
                         <div class="form-actions">
+                          @if (fol.balance > 0 && closeFolioForce() && closeFolioAuthorityShortfall() && !closeFolioStepUp()) {
+                            <button class="btn btn-outline btn-sm" (click)="requestFolioCloseStepUp(fol)"
+                                    [disabled]="processingFolioClose()">
+                              <app-icon name="admin_panel_settings" /> {{ 'Get authorisation' | translate }}
+                            </button>
+                          }
                           <button class="btn btn-danger btn-sm" (click)="closeFolio(fol)"
-                                  [disabled]="processingFolioClose() || (fol.balance > 0 && !closeFolioForce())">
+                                  [disabled]="processingFolioClose()
+                                              || (fol.balance > 0 && !closeFolioForce())
+                                              || (closeFolioForce() && !closeFolioReasonCode())">
                             @if (processingFolioClose()) { <p-progressSpinner [style]="{ width: '16px', height: '16px' }" /> }
                             {{ 'Close Folio' | translate }}
                           </button>
