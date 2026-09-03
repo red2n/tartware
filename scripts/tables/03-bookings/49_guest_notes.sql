@@ -77,7 +77,10 @@ CREATE TABLE IF NOT EXISTS guest_notes (
     compensation_type VARCHAR(100),
 
     -- Audit Trail
-    created_by UUID NOT NULL,
+    -- Nullable for the same reason as audit_logs.user_id: the FK is ON DELETE
+    -- SET NULL, and created_by_name / created_by_role below keep the authorship
+    -- readable after the account is gone.
+    created_by UUID,
     created_by_name VARCHAR(200),
     created_by_role VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

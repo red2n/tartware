@@ -60,10 +60,14 @@ ALTER TABLE incident_reports
     FOREIGN KEY (closed_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
+-- RESTRICT, not SET NULL: this column is the only record of who acted, and
+-- the row carries no denormalised copy of their name. Nulling it would keep
+-- the entry and lose its author, which is the half that matters. Staff are
+-- soft-deleted (users.is_deleted), so this blocks nothing the app does.
 ALTER TABLE incident_reports
     ADD CONSTRAINT fk_incident_reports_created_by
     FOREIGN KEY (created_by) REFERENCES users(id)
-    ON DELETE SET NULL;
+    ON DELETE RESTRICT;
 
 ALTER TABLE incident_reports
     ADD CONSTRAINT fk_incident_reports_updated_by

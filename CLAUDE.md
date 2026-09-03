@@ -602,6 +602,50 @@ unrecognised string scoring 0 would have admitted everyone. Approval is gated; r
 since declining needs no more authority than seeing the request. 8 tests in
 `Apps/billing-service/tests/approval-service.test.ts`.
 
+### Eight actor columns whose foreign key could never fire (3 Sep 2026)
+
+Found while cleaning up test data, not by any check. `audit_logs.user_id` is `NOT NULL` and
+`fk_audit_logs_user` is `ON DELETE SET NULL`. Postgres accepts both and then fails the delete at
+runtime, so the constraint could not do what its own comment said:
+
+```sql
+-- Note: SET NULL to preserve audit trail if user is deleted
+... ON DELETE SET NULL
+user_id UUID NOT NULL
+```
+
+**A sweep of every table DDL against every constraint file found eight, not one** — all actor
+attribution columns: `audit_logs.user_id`, `guest_notes.created_by`, `folios.created_by`,
+`incident_reports.created_by`, `maintenance_requests.reported_by`, `night_audit_log.initiated_by`,
+`rate_overrides.requested_by`, `refunds.requested_by`.
+
+It is **latent, not live**: nothing in the application hard-deletes a user (`users.is_deleted` is
+the only path), so it bites on manual cleanup and would bite hard the day an erasure job was written
+against it.
+
+**The eight do not deserve the same answer, and giving them one would be the actual mistake.** What
+separates them is whether the row can still say who acted once the id is gone:
+
+- **SET NULL** (drop `NOT NULL`) for the two that keep a denormalised actor — `audit_logs` has
+  `user_email`/`user_name`/`user_role`, `guest_notes` has `created_by_name`/`created_by_role`. The
+  trail survives the account.
+- **RESTRICT** for the other six, where the column is the only record of who acted. Nulling
+  `refunds.requested_by` or `rate_overrides.requested_by` keeps a financial control record and
+  erases its author, which is the half that makes it a control — a refund nobody requested is not an
+  audit trail, it is a hole in one. Since staff are soft-deleted, RESTRICT blocks nothing the product
+  does; it refuses precisely the operation that would silently destroy attribution.
+
+Migration `012`, matching table DDL, and `user_id`/`created_by` are `.nullable()` in
+`AuditLogsSchema` and `GuestNotesSchema` — nullable rather than optional, because the column is
+present and NULL, not absent.
+
+**Verified on the live database, both directions.** Before: deleting a user with one `audit_logs`
+row failed with `null value in column "user_id" ... violates not-null constraint`, the failing
+statement being the FK's own `UPDATE ... SET user_id = NULL`. After: that delete succeeds with
+`user_id` nulled and `user_name`/`user_email` intact, while deleting a user who created a folio is
+refused by `fk_folios_created_by`. Every probe ran inside a rolled-back transaction; no rows left
+behind.
+
 ### Three forces that bypassed a control on nobody's authority (3 Sep 2026)
 
 The override audit closed A01–A11 and the guardrail written with A08 was supposed to keep it

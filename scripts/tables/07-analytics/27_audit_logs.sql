@@ -41,7 +41,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     entity_id UUID, -- ID of the affected record
 
     -- User Information
-    user_id UUID NOT NULL, -- Who performed the action
+    -- Nullable, and the FK is why: fk_audit_logs_user is ON DELETE SET NULL so a
+    -- deleted user leaves the audit trail standing. Declared NOT NULL, those two
+    -- contradicted each other and the delete failed at runtime -- a constraint
+    -- that cannot do what its own comment says. The row still says who acted:
+    -- user_email / user_name / user_role are denormalised beside it for exactly
+    -- this case, which is what makes forgetting the id safe here and not safe on
+    -- refunds.requested_by or rate_overrides.requested_by, which carry no copy.
+    user_id UUID, -- Who performed the action; NULL once that user is deleted
     user_email VARCHAR(255),
     user_name VARCHAR(200),
     user_role VARCHAR(50),

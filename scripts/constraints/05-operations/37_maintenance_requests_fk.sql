@@ -102,11 +102,15 @@ ALTER TABLE maintenance_requests
     ON UPDATE CASCADE;
 
 -- Reported by user
+-- RESTRICT, not SET NULL: this column is the only record of who acted, and
+-- the row carries no denormalised copy of their name. Nulling it would keep
+-- the entry and lose its author, which is the half that matters. Staff are
+-- soft-deleted (users.is_deleted), so this blocks nothing the app does.
 ALTER TABLE maintenance_requests
     ADD CONSTRAINT fk_maintenance_requests_reported_by
     FOREIGN KEY (reported_by)
     REFERENCES users(id)
-    ON DELETE SET NULL
+    ON DELETE RESTRICT
     ON UPDATE CASCADE;
 
 COMMENT ON CONSTRAINT fk_maintenance_requests_reported_by ON maintenance_requests IS 'Staff who reported the issue';
