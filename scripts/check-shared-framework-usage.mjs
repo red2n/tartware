@@ -292,6 +292,75 @@ if (unauthorizedForcedWrites.length > 0) {
   process.exit(1);
 }
 
+// A `force` that bypasses a control must be authorized, whether or not it is
+// recorded.
+//
+// The rule above only sees files that write `forced: true` to flow_approvals,
+// which is exactly the wrong shape: it trusts a bypass to declare itself. Three
+// paths read `command.force` to step over a control and wrote no row at all, so
+// they were invisible to it —
+//
+//   billing.folio.close   closes a folio over an outstanding balance. STAFF
+//                         tier, with a force checkbox shipped in pms-ui. The
+//                         balance is not transferred and not written off; it
+//                         just stops being collectable through the folio.
+//   billing.group.checkout departs a whole group over unsettled member folios.
+//   group.check_in        forces up to 500 arrivals past their blocking
+//                         deposits.
+//
+// The last two bypass, in bulk, the two controls the flow registry declares as
+// `kind: "gate"` on the single-reservation path — `folio_settlement_check` and
+// `deposit_required_check`. The single departure asked for a reason code and an
+// authority; the group departure asked nobody. A control with a cheaper bulk
+// route is not a control.
+//
+// So: any file that branches on a command's `force` has to assert authority
+// somewhere. Exemptions are named, not inferred — a file that forwards `force`
+// into another command rather than acting on it is not bypassing anything
+// itself.
+const FORCE_BRANCH = /\bcommand\.force\b/;
+const FORCE_FORWARDING_ONLY = new Set([
+  // Passes `force: command.force` into the single-reservation command it runs N
+  // times, and that command does the asserting. Checking here as well would
+  // measure the same role twice and make the batch runner look like a control
+  // it is not.
+  "Apps/reservations-command-service/src/services/reservation-commands/mass-operations.ts",
+]);
+
+const unauthorizedForceBranches = [];
+for (const file of tracked) {
+  if (FORCE_FORWARDING_ONLY.has(file)) continue;
+  let source;
+  try {
+    source = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
+  const lines = source
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("*") && !line.trimStart().startsWith("//"));
+  if (!lines.some((line) => FORCE_BRANCH.test(line))) continue;
+  if (AUTHORITY_ASSERT.test(source)) continue;
+  unauthorizedForceBranches.push(file);
+}
+
+if (unauthorizedForceBranches.length > 0) {
+  console.error("\nA force bypasses a control on nobody's authority:\n");
+  for (const file of unauthorizedForceBranches) {
+    console.error(`  ${file}  branches on command.force and asserts no authority`);
+  }
+  console.error(
+    `\nResolve a reason code in the category that names this override, then call\n` +
+      `assertForcedOverrideAuthority(reason, actorRole, { commandName, gateName, stepUp })\n` +
+      `before the refusal the force waives, and record the bypass once it has\n` +
+      `actually happened.\n\n` +
+      `If the file only forwards \`force\` into another command that does its own\n` +
+      `checking, add it to FORCE_FORWARDING_ONLY with the reason — an exemption\n` +
+      `that has to be typed out is one somebody reads.\n`,
+  );
+  process.exit(1);
+}
+
 // An authority gate must be able to see a supervisor's step-up.
 //
 // `assertOverrideAuthority` and `assertForcedOverrideAuthority` decide whether

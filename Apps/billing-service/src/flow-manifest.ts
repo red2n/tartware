@@ -90,6 +90,20 @@ export const FLOW_MANIFEST: ServiceFlowManifest = {
           description: "Trigger AR city-ledger transfer on checkout if direct-bill routing exists",
         },
       ],
+      gates: [
+        {
+          gateName: "folio_settlement_check",
+          guardsCommand: "billing.folio.close",
+          description:
+            "The settlement control reached from the side — closing a folio over a balance, which shipped at STAFF tier with a force checkbox and asked nobody",
+        },
+        {
+          gateName: "folio_settlement_check",
+          guardsCommand: "billing.group.checkout",
+          description:
+            "The same control for a whole group's departure, which bypassed every member folio at once",
+        },
+      ],
     },
 
     [FlowId.CASHIER_SHIFT]: {

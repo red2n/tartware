@@ -196,6 +196,28 @@ export const FLOW_REGISTRY: FlowRegistry = {
 				],
 			},
 			{
+				// The same control, reached in bulk. It is declared separately
+				// rather than folded into the entry above because the registry's
+				// unit is the control *on a command*: `group.check_in` forced the
+				// deposit gate for up to 500 arrivals while asking nobody, and a
+				// single declaration naming only `reservation.check_in` is what
+				// let that sit unnoticed — the gate looked enforced.
+				gateName: "deposit_required_check",
+				guardsCommand: "group.check_in",
+				description:
+					"A group arrival forced past its members' blocking deposits needs a CHECK_IN_OVERRIDE code whose approval level the acting role clears",
+				evidence: [
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/group-booking.ts",
+						token: 'gateName: "deposit_required_check"',
+					},
+					{
+						file: "Apps/reservations-command-service/src/services/reservation-commands/group-booking.ts",
+						token: "assertForcedOverrideAuthority",
+					},
+				],
+			},
+			{
 				gateName: "credit_limit_check",
 				guardsCommand: "billing.payment.authorize",
 				description:
@@ -394,6 +416,43 @@ export const FLOW_REGISTRY: FlowRegistry = {
 					{
 						file: "Apps/reservations-command-service/src/services/reservation-commands/checkin-checkout.ts",
 						token: 'gateName: "folio_settlement_check"',
+					},
+				],
+			},
+			{
+				// The settlement control reached from the side. Closing a folio
+				// over a balance moves it nowhere — no city-ledger transfer, no
+				// write-off entry — it just stops being collectable through the
+				// folio. The command is STAFF-tier and shipped a `force`
+				// checkbox, which made it the cheapest way past the gate above.
+				gateName: "folio_settlement_check",
+				guardsCommand: "billing.folio.close",
+				description:
+					"Closing a folio over an outstanding balance needs a CHECK_OUT_OVERRIDE code whose approval level the acting role clears",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/folio.ts",
+						token: 'gateName: "folio_settlement_check"',
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/folio.ts",
+						token: "assertForcedOverrideAuthority",
+					},
+				],
+			},
+			{
+				gateName: "folio_settlement_check",
+				guardsCommand: "billing.group.checkout",
+				description:
+					"Departing a whole group over unsettled member folios needs a CHECK_OUT_OVERRIDE code whose approval level the acting role clears",
+				evidence: [
+					{
+						file: "Apps/billing-service/src/services/billing-commands/group-billing.ts",
+						token: 'gateName: "folio_settlement_check"',
+					},
+					{
+						file: "Apps/billing-service/src/services/billing-commands/group-billing.ts",
+						token: "assertForcedOverrideAuthority",
 					},
 				],
 			},

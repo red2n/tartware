@@ -1,16 +1,24 @@
 import { NgClass, NgTemplateOutlet } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import type { FolioListItem } from "@tartware/schemas";
+import type { FolioListItem, StepUpGrantResponse } from "@tartware/schemas";
 import { ProgressSpinnerModule } from "primeng/progressspinner";
 import { TooltipModule } from "primeng/tooltip";
+import { firstValueFrom, of } from "rxjs";
 import { AuthService } from "../../core/auth/auth.service";
 import { TenantContextService } from "../../core/context/tenant-context.service";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { TranslatePipe } from "../../core/i18n/translate.pipe";
 import { GlobalSearchService } from "../../core/search/global-search.service";
 import { SettingsService } from "../../core/settings/settings.service";
 import { IconComponent } from "../../shared/components/icon/icon";
 import { PageHeaderComponent } from "../../shared/components/page-header/page-header";
+import { ReasonCodePickerComponent } from "../../shared/components/reason-code-picker/reason-code-picker";
+import {
+	StepUpDialogComponent,
+	type StepUpDialogData,
+} from "../../shared/components/step-up-dialog/step-up-dialog";
+import { AppDialogService } from "../../shared/dialog/app-dialog.service";
 import { SubmitOnEnterDirective } from "../../shared/forms/submit-on-enter.directive";
 import { UnsavedGuardDirective } from "../../shared/forms/unsaved-guard.directive";
 import { PaginationComponent } from "../../shared/pagination/pagination";
@@ -64,6 +72,7 @@ import {
 		TooltipModule,
 		PaginationComponent,
 		PageHeaderComponent,
+		ReasonCodePickerComponent,
 		TranslatePipe,
 		UnsavedGuardDirective,
 
@@ -81,13 +90,17 @@ import {
 })
 export class BillingComponent {
 	private readonly auth = inject(AuthService);
-	private readonly ctx = inject(TenantContextService);
+	// Public because the close-folio reason-code picker narrows to the property's
+	// own codes alongside the tenant-wide ones, and the template supplies it.
+	readonly ctx = inject(TenantContextService);
 	readonly data = inject(BillingDataService);
 	readonly globalSearch = inject(GlobalSearchService);
 	readonly settings = inject(SettingsService);
 	private readonly paymentActions = inject(BillingPaymentsService);
 	private readonly invoiceActions = inject(BillingInvoicesService);
 	private readonly folioActions = inject(BillingFoliosService);
+	private readonly dialogs = inject(AppDialogService);
+	private readonly i18n = inject(I18nService);
 	private readonly routingActions = inject(BillingRoutingService);
 
 	readonly chargeCodeOptions = CHARGE_CODE_OPTIONS;
@@ -379,6 +392,9 @@ export class BillingComponent {
 	readonly closingFolioId = this.folioActions.closingFolioId;
 	readonly closeFolioReason = this.folioActions.closeFolioReason;
 	readonly closeFolioForce = this.folioActions.closeFolioForce;
+	readonly closeFolioReasonCode = this.folioActions.closeFolioReasonCode;
+	readonly closeFolioAuthorityShortfall = this.folioActions.closeFolioAuthorityShortfall;
+	readonly closeFolioStepUp = this.folioActions.closeFolioStepUp;
 	readonly processingFolioClose = this.folioActions.processingFolioClose;
 	readonly reopeningFolioId = this.folioActions.reopeningFolioId;
 	readonly reopenFolioReason = this.folioActions.reopenFolioReason;
@@ -416,6 +432,29 @@ export class BillingComponent {
 	readonly showCloseFolio = this.folioActions.showCloseFolio.bind(this.folioActions);
 	readonly cancelCloseFolio = this.folioActions.cancelCloseFolio.bind(this.folioActions);
 	readonly closeFolio = this.folioActions.closeFolio.bind(this.folioActions);
+	readonly onCloseFolioAuthorityShortfall = this.folioActions.onCloseFolioAuthorityShortfall.bind(
+		this.folioActions,
+	);
+
+	/**
+	 * Ask a supervisor to authorise this one forced close.
+	 *
+	 * Opened before the command is sent, because the authority check runs at
+	 * apply time: a 202 says the close was recorded, not that it will be allowed,
+	 * so there is no refusal for the screen to react to afterwards.
+	 */
+	async requestFolioCloseStepUp(folio: FolioListItem): Promise<void> {
+		const ref = this.dialogs.open(StepUpDialogComponent, {
+			data: {
+				commandName: "billing.folio.close",
+				entityId: folio.id,
+				propertyId: this.ctx.propertyId(),
+				action: this.i18n.t("close a folio that still has a balance"),
+			} satisfies StepUpDialogData,
+		});
+		const grant = (await firstValueFrom(ref?.onClose ?? of(null))) as StepUpGrantResponse | null;
+		if (grant) this.closeFolioStepUp.set(grant);
+	}
 	readonly showReopenFolio = this.folioActions.showReopenFolio.bind(this.folioActions);
 	readonly cancelReopenFolio = this.folioActions.cancelReopenFolio.bind(this.folioActions);
 	readonly reopenFolio = this.folioActions.reopenFolio.bind(this.folioActions);

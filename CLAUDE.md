@@ -602,6 +602,71 @@ unrecognised string scoring 0 would have admitted everyone. Approval is gated; r
 since declining needs no more authority than seeing the request. 8 tests in
 `Apps/billing-service/tests/approval-service.test.ts`.
 
+### Three forces that bypassed a control on nobody's authority (3 Sep 2026)
+
+The override audit closed A01–A11 and the guardrail written with A08 was supposed to keep it
+closed. It could not see these three, because of the shape of the rule: `forced-override-authority`
+fires on files that write `forced: true` to `flow_approvals`, which **trusts a bypass to declare
+itself**. These wrote no row at all.
+
+| Command | `force` bypasses | Was |
+|---|---|---|
+| `billing.folio.close` | an outstanding balance on the folio | STAFF tier, force checkbox shipped in pms-ui, no code, no check, no row |
+| `billing.group.checkout` | unsettled member folios | no code, no check, no row |
+| `group.check_in` | `blocks_check_in` deposit holds, up to 500 at once | no code, no check, no row |
+
+**The last two bypass, in bulk, the controls the registry declares `kind: "gate"` on the
+single-reservation path.** Since A08 a single departure over an unsettled folio has needed a reason
+code and an authority; the *group* departure asked nobody. A control with a cheaper bulk route is
+not a control, and the registry could not say so because a gate is declared per *command* —
+`folio_settlement_check` named only `reservation.check_out`, so it read as enforced.
+
+All three now resolve a reason code, call `assertForcedOverrideAuthority` (step-up included), and
+write a `flow_approvals` row. Three new registry declarations with `evidence`, claimed in both
+service manifests: 104 → **107 flow:integrity checks**.
+
+**The record is written after the bypass, and only when it actually happened.** Forcing a group whose
+deposits were all paid, or a folio that settled at zero, bypassed nothing — a row claiming otherwise
+is worse than no row, being exactly the free-text `force: true` this replaces. `group.check_in` now
+loads its blocking-deposit set **even when forcing**, which it never did: under force the set was
+unread, so the handler could not say how many deposits the override stepped over. Timing follows the
+credit-limit lesson: written after the write commits, so a retried handler does not record one
+operator decision four times.
+
+**`billing.folio.close` needed its own reason-code category, and reusing CHECK_OUT_OVERRIDE would
+have been worse than free text.** Those codes describe a balance that *goes* somewhere —
+`CO_TO_CITY_LEDGER` is level NONE precisely because billing an approved company account is not a
+loss. Closing a folio moves nothing: no city-ledger transfer, no write-off entry, the balance simply
+stops being collectable through the folio. A clerk could therefore have named a transfer that never
+happens **and**, the code being level NONE, waived the authority check while doing it. Migration
+`011` adds `FOLIO_CLOSE_OVERRIDE` with five system-tenant codes, none below SUPERVISOR, because
+there is no unremarkable close over a balance. `FC_UNCOLLECTABLE` names the write-off in its own
+description and sits at DIRECTOR: a balance nobody is pursuing should be written off, where dual
+control and the amount ladder apply, and closing the folio instead reaches the same outcome with
+neither — the code exists so that choice is recorded rather than hidden.
+
+The two group commands **reuse** their single-reservation categories (CHECK_OUT_OVERRIDE,
+CHECK_IN_OVERRIDE): the same decision at a different scale, and `flow_approvals.gate_name` then
+groups the bulk bypass with the single one, which is how an auditor reads it.
+
+**The permission floors are unchanged, deliberately.** `billing.folio.close` stays STAFF: settling a
+folio at zero is the work of a shift, and the floor governs the command while the reason code's
+`approval_level` governs the override. Raising the floor would have gated the ordinary close and
+still left the force measured by nothing.
+
+**The new guardrail inverts the old one's assumption.** `force-branch-authority` fails any file that
+branches on `command.force` without calling an authority helper — no longer waiting for the bypass to
+record itself. Exemptions are typed out, not inferred: `mass-operations.ts` is the one entry, because
+it forwards `force` into the single-reservation command that does the asserting. Verified by
+reproducing the original shape (assert *and* record deleted) and watching it fire.
+
+Tests: 18 billing (`forced-settlement-authority`), 7 reservations (`group-forced-arrival-authority`).
+The folio-close ones drive the real transaction rather than a stubbed `withTransaction` — the first
+draft mocked it away and its assertions about what gets recorded passed whatever the code did, which
+is how a test comes to agree with a bug. pms-ui's force-close checkbox now carries the picker, the
+step-up prompt and a Get authorisation button, so the screen that could ask for a balance to be
+abandoned is the second UI caller of the step-up dialog.
+
 ### Two things the E2E found that no unit test could (1 Sep 2026)
 
 **`CommandError.retryable` was void at runtime, in every consumer.** Services run from source
