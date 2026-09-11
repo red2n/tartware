@@ -535,6 +535,71 @@ export const registerBookingConfigRoutes = (app: FastifyInstance): void => {
     proxyCore,
   );
 
+  /**
+   * The write half of channel onboarding.
+   *
+   * Every route in this family was `app.get` until now, and no command created
+   * one either — so the push handlers refused with CHANNEL_MAPPING_MISSING
+   * against configuration nothing in the product could write, and a property
+   * could not onboard a channel at all. Found by the end-to-end suite, which is
+   * API-only: a seam with no API is a seam it cannot cross.
+   */
+  app.post(
+    "/v1/ota-configurations",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Onboard a channel connection.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.put(
+    "/v1/ota-configurations/*",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Change a channel connection.",
+        body: jsonObjectSchema,
+        response: { 200: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.post(
+    "/v1/channel-mappings",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Map an entity to the code a channel knows it by.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
+  app.post(
+    "/v1/ota-rate-plans",
+    {
+      preHandler: tenantScopeFromQueryOrBody,
+      schema: buildRouteSchema({
+        tag: BOOKING_CONFIG_TAG,
+        summary: "Map a rate to a channel rate plan.",
+        body: jsonObjectSchema,
+        response: { 201: jsonObjectSchema },
+      }),
+    },
+    proxyCore,
+  );
+
   // OTA/Channel Connections - third-party booking integrations
   app.get(
     "/v1/ota-connections",

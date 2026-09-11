@@ -243,3 +243,116 @@ export interface BillingPaymentGateway {
 		secret: string,
 	): { valid: boolean; reason?: string };
 }
+
+// ---------------------------------------------------------------------------
+// Which processor a property is actually wired to
+// ---------------------------------------------------------------------------
+
+/**
+ * A resolved row of `payment_gateway_configurations`.
+ *
+ * The contract above says what an adapter must be able to do. This says whether
+ * a given property has one at all — a question nothing on the payment path
+ * asked until now, which is why `billing.payment.authorize` could write
+ * `status = 'AUTHORIZED'` from `gateway_name` and `gateway_reference` supplied
+ * in the request body, with no processor contacted.
+ *
+ * `credentialRef` is a pointer into the deployment's secret store, never a
+ * credential. A type that could carry the secret is a type that puts it one
+ * careless log line from disclosure.
+ */
+export type ResolvedGateway = {
+	configId: string;
+	/** Upper-cased at the repository. The column is VARCHAR(50) with no CHECK. */
+	provider: string;
+	label: string;
+	/** `SANDBOX` or `PRODUCTION`, stamped on the payment so the two stay separable. */
+	environment: string;
+	credentialRef: string | null;
+	merchantId: string | null;
+	supportedCurrencies: string[] | null;
+	minAmount: number | null;
+	maxAmount: number | null;
+	requestTimeoutMs: number | null;
+};
+
+/** Why a card operation cannot be performed. */
+export type GatewayRefusalCode =
+	| "PAYMENT_GATEWAY_NOT_CONFIGURED"
+	| "PAYMENT_GATEWAY_NO_ADAPTER"
+	| "PAYMENT_GATEWAY_CURRENCY_UNSUPPORTED"
+	| "PAYMENT_GATEWAY_AMOUNT_OUT_OF_RANGE";
+
+/**
+ * Providers this product can actually talk to today.
+ *
+ * Deliberately narrower than `BillingPaymentGatewayProviderEnum`, and the gap is
+ * the point: that enum lists every PSP the contract is *designed* for, and a
+ * property can already select any of them. Selecting one with no adapter behind
+ * it must refuse rather than fall through to recording a phantom approval —
+ * which is the failure this whole change exists to remove.
+ *
+ * `MANUAL` is here because it is a real answer: an ops-managed offline payment
+ * genuinely contacts no PSP. It is allowed to proceed, and what it must not do
+ * is claim a gateway approved it.
+ *
+ * `SIMULATED` is a stub, and its presence here is the same bargain WS-09 struck
+ * for channel transports: a property has to *choose* it, and every payment it
+ * produces is stamped so the ledger says a processor was not contacted. The
+ * danger was never the stub — it was a stub that looked like a bank approval.
+ */
+export const PROVIDERS_WITH_ADAPTER = new Set<string>(["MANUAL", "SIMULATED"]);
+
+/**
+ * Whether a payment may proceed against this configuration, and why not.
+ *
+ * Pure, so the handler can run it before opening a transaction and a test can
+ * run it without a database. Order is the policy: no configuration at all is a
+ * different fact from a configuration this build cannot drive, and an operator
+ * needs to be told which.
+ */
+export const gatewayRefusal = (
+	gateway: ResolvedGateway | null,
+	amount: number,
+	currency: string,
+): { code: GatewayRefusalCode; message: string } | null => {
+	if (!gateway) {
+		return {
+			code: "PAYMENT_GATEWAY_NOT_CONFIGURED",
+			message:
+				"This property has no active payment processor configured, so a card " +
+				"cannot be authorized. Configure payment_gateway_configurations first.",
+		};
+	}
+	if (!PROVIDERS_WITH_ADAPTER.has(gateway.provider)) {
+		return {
+			code: "PAYMENT_GATEWAY_NO_ADAPTER",
+			message:
+				`Payment provider "${gateway.provider}" is configured on this property ` +
+				"but has no adapter in this build. Refusing rather than recording an " +
+				"authorization no processor performed.",
+		};
+	}
+	if (
+		gateway.supportedCurrencies &&
+		gateway.supportedCurrencies.length > 0 &&
+		!gateway.supportedCurrencies.some((c) => c.toUpperCase() === currency.toUpperCase())
+	) {
+		return {
+			code: "PAYMENT_GATEWAY_CURRENCY_UNSUPPORTED",
+			message: `${gateway.label} does not accept ${currency.toUpperCase()}.`,
+		};
+	}
+	if (
+		(gateway.minAmount !== null && amount < gateway.minAmount) ||
+		(gateway.maxAmount !== null && amount > gateway.maxAmount)
+	) {
+		return {
+			code: "PAYMENT_GATEWAY_AMOUNT_OUT_OF_RANGE",
+			message:
+				`${amount} is outside the transaction limits configured for ` +
+				`${gateway.label}.`,
+		};
+	}
+	return null;
+};

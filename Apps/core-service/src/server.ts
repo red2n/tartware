@@ -15,6 +15,7 @@ import swaggerPlugin from "./plugins/swagger.js";
 import systemAdminAuthPlugin from "./plugins/system-admin-auth.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBookingConfigRoutes } from "./routes/booking-config.js";
+import { registerChannelConfigRoutes } from "./routes/channel-config.js";
 import { registerComplianceRoutes } from "./routes/compliance.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -84,6 +85,7 @@ export const buildServer = (): FastifyInstance => {
       registerHealthRoutes(app);
       registerAuthRoutes(app);
       registerStepUpRoutes(app);
+      registerChannelConfigRoutes(app);
       registerTenantRoutes(app);
       registerPropertyRoutes(app);
       registerUserRoutes(app);

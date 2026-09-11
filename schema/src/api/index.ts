@@ -21,10 +21,11 @@ export * from "./booking-config.js";
 export * from "./booking-config-rows.js";
 export * from "./buildings.js";
 export * from "./calculations.js";
-export * from "./channel-intake.js";
-export * from "./channel-transport.js";
 // eslint-disable-next-line import/export -- type-only re-exports not detected by plugin
 export * from "./cashier-rows.js";
+export * from "./channel-config.js";
+export * from "./channel-intake.js";
+export * from "./channel-transport.js";
 export * from "./command-approvals.js";
 export * from "./command-batch-rows.js";
 export * from "./command-center.js";

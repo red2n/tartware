@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 
+import { gatewayRefusal } from "@tartware/schemas";
+
 import { auditWithClient } from "../../lib/audit-logger.js";
 import { query, queryWithClient, withTransaction } from "../../lib/db.js";
 import { appLogger } from "../../lib/logger.js";
+import { resolveGatewayConfig } from "../../repositories/payment-gateway-repository.js";
 import {
   BillingPaymentAuthorizeCommandSchema,
   BillingPaymentIncrementAuthCommandSchema,
   BillingPaymentVoidCommandSchema,
 } from "../../schemas/billing-commands.js";
 import { parseDbMoneyOrZero } from "../../utils/money.js";
+import { type GatewayCallResult, simulatedAuthorize } from "../payment-gateways/simulated.js";
 import {
   asUuid,
   BillingCommandError,
@@ -50,7 +54,46 @@ export const authorizePayment = async (
   }
 
   const currency = command.currency ?? "USD";
-  const gatewayResponse = command.gateway?.response ?? {};
+
+  // Which processor is this property actually wired to?
+  //
+  // Nothing on the payment path asked before. `gateway.name` and
+  // `gateway.reference` arrive in the request body, so the row this handler
+  // wrote said a processor approved something no processor was asked about —
+  // and a folio settles against it. `payment_gateway_configurations` has held
+  // the answer the whole time with exactly one reader, the webhook dispatcher.
+  //
+  // The refusal is non-retryable by default, which is what it should be: no
+  // amount of backoff configures a processor, and a retried refusal stalls
+  // every command queued behind it on the partition.
+  const gateway = await resolveGatewayConfig(context.tenantId, command.property_id ?? null);
+  const refusal = gatewayRefusal(gateway, command.amount, currency);
+  if (refusal) {
+    throw new BillingCommandError(refusal.code, refusal.message);
+  }
+
+  // What the processor returned — not what the caller sent.
+  //
+  // `command.gateway.name` / `.reference` were the whole mechanism before this:
+  // the request body decided what the ledger recorded about a card operation.
+  // They are now ignored on the authorize path. A MANUAL configuration is the
+  // one case with no call to make, and it records that plainly rather than
+  // borrowing a processor's vocabulary.
+  const outcome: GatewayCallResult =
+    gateway && gateway.provider === "SIMULATED"
+      ? simulatedAuthorize(gateway, command.amount, currency)
+      : {
+          reference: `MANUAL-${command.payment_reference ?? asUuid(randomUUID())}`,
+          name: gateway?.provider ?? "MANUAL",
+          response: {
+            simulated: false,
+            note: "Offline payment recorded by an operator; no processor was contacted.",
+            config_id: gateway?.configId ?? null,
+            environment: gateway?.environment ?? null,
+          },
+        };
+
+  const gatewayResponse = outcome.response;
 
   const result = await query<{ id: string }>(
     `
@@ -111,8 +154,8 @@ export const authorizePayment = async (
       command.payment_method,
       command.amount,
       currency,
-      command.gateway?.name ?? null,
-      command.gateway?.reference ?? null,
+      outcome.name,
+      outcome.reference,
       JSON.stringify(gatewayResponse),
       actor,
       JSON.stringify(command.metadata ?? {}),

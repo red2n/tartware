@@ -110,8 +110,6 @@ const KNOWN_UNEXERCISED = new Set([
   "housekeeping.task.reopen",
   "integration.mapping.update",
   "integration.ota.content_sync",
-  "integration.ota.rate_push",
-  "integration.ota.sync_request",
   "integration.webhook.retry",
   "loyalty.points.expire_sweep",
   "metasearch.click.record",

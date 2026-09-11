@@ -113,6 +113,26 @@ const ReservationCreatePayloadSchema = z.object({
 	 * window at an even split of `total_amount`.
 	 */
 	rooms: StayPlanInputSchema.optional(),
+	/**
+	 * Back-links carried from the command so the event handler can complete the
+	 * row that caused the booking.
+	 *
+	 * Declared here for one reason: `core.ts` builds the event as
+	 * `{ ...command }` and then runs it through `.parse()`, and zod strips what
+	 * a schema does not declare. Undeclared, both reach `linkWaitlistEntry` /
+	 * `linkOtaQueueEntry` as `undefined` and both return early on their own
+	 * `if (!id) return`, so the link silently never happens and the source row
+	 * sits in its intermediate state forever — a waitlist entry never marked
+	 * converted, an OTA queue row left PROCESSING with a NULL `reservation_id`.
+	 *
+	 * `waitlist_id` was already in that state before the channel work:
+	 * `waitlist_entries.reservation_id` had never been populated by the handler.
+	 * `ota_queue_id` was added beside it on the stated reasoning that it solved
+	 * "the same problem `waitlist_id` solves" — which it did, including the part
+	 * that did not work.
+	 */
+	waitlist_id: z.string().uuid().optional(),
+	ota_queue_id: z.string().uuid().optional(),
 });
 
 export const ReservationCreatedEventSchema = z.object({

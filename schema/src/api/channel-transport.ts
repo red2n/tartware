@@ -281,7 +281,10 @@ export const formatChannelMoney = (
 	amount: MoneyInput,
 	currency: string | null | undefined,
 ): string =>
-	formatMinorUnits(toMinorUnits(amount, currency), getCurrencyExponent(currency));
+	formatMinorUnits(
+		toMinorUnits(amount, currency),
+		getCurrencyExponent(currency),
+	);
 
 /**
  * Render whole minor units as a fixed-point decimal string.
@@ -293,7 +296,9 @@ export const formatChannelMoney = (
 const formatMinorUnits = (units: bigint, exponent: number): string => {
 	if (exponent === 0) return units.toString();
 	const negative = units < 0n;
-	const digits = (negative ? -units : units).toString().padStart(exponent + 1, "0");
+	const digits = (negative ? -units : units)
+		.toString()
+		.padStart(exponent + 1, "0");
 	const whole = digits.slice(0, digits.length - exponent);
 	const fraction = digits.slice(digits.length - exponent);
 	return `${negative ? "-" : ""}${whole}.${fraction}`;

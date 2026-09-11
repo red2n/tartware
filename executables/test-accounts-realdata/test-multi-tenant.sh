@@ -658,6 +658,59 @@ fi
 [[ -n "$PID_B2" ]] || { echo "FATAL: Property B2 not resolved"; exit 1; }
 echo ""
 
+# ── 0.3b  Buildings (must precede rooms — a room belongs to a building) ──
+# PROPERTY_SETUP tier. This block used to run at 6c.1 — 3,400 lines after
+# the rooms it is supposed to contain — so every room was created with a
+# NULL building_id and the Buildings screen showed structures no room was
+# ever in. Its own comment already said it must come first.
+echo "── 0.3b  Buildings ──────────────────────────────────────────────────"
+
+seed_buildings() {
+  local tok="$1" tid="$2" pid="$3" lbl="$4"
+  TOKEN="$tok"
+  local n=0 code
+  local -a specs=(
+    "MAIN|Main Tower|TOWER|12|180|true|true"
+    "ANNEX|Garden Annex|ANNEX|4|60|false|false"
+  )
+  local spec bcode bname btype floors rooms haspool hasgym
+  for spec in "${specs[@]}"; do
+    IFS='|' read -r bcode bname btype floors rooms haspool hasgym <<<"$spec"
+    # POST /v1/buildings resolves tenant from the query string, not the body.
+    code=$(post "$GW/v1/buildings?tenant_id=$tid" \
+      "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"building_code\":\"${bcode}-${RUN_TAG}\",\"building_name\":\"$bname\",\"building_type\":\"$btype\",\"floor_count\":$floors,\"total_rooms\":$rooms,\"has_pool\":$haspool,\"has_gym\":$hasgym,\"has_lobby\":true,\"has_parking\":true,\"wheelchair_accessible\":true,\"building_status\":\"OPERATIONAL\",\"is_active\":true}")
+    [[ "$code" =~ ^2 ]] && n=$((n+1))
+  done
+  local total
+  total=$(poll_count "$GW/v1/buildings?tenant_id=$tid&property_id=$pid&limit=50" 2 30)
+  assert_gte "Buildings seeded ($lbl)" "$total" 2
+}
+
+seed_buildings "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
+seed_buildings "$TOKEN_A" "$TID_A" "$PID_A2" "A2"
+seed_buildings "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
+seed_buildings "$TOKEN_B" "$TID_B" "$PID_B2" "B2"
+echo ""
+
+
+# One building per property, held for the room creation below. `create_room`
+# takes it as an argument rather than looking it up per room: a room without
+# a building is legal in this schema (the column is nullable, for a
+# single-structure property) but a fleet of them beside unused buildings is
+# not a modelling choice, it is the ordering bug this move fixes.
+first_building() {
+  local tok="$1" tid="$2" pid="$3"
+  TOKEN="$tok"
+  get "$GW/v1/buildings?tenant_id=$tid&property_id=$pid&limit=5" >/dev/null
+  resp_first "building_id"
+}
+
+BLDG_A1=$(first_building "$TOKEN_A" "$TID_A" "$PID_A1")
+BLDG_A2=$(first_building "$TOKEN_A" "$TID_A" "$PID_A2")
+BLDG_B1=$(first_building "$TOKEN_B" "$TID_B" "$PID_B1")
+BLDG_B2=$(first_building "$TOKEN_B" "$TID_B" "$PID_B2")
+echo "  Buildings: A1=${BLDG_A1:0:8} A2=${BLDG_A2:0:8} B1=${BLDG_B1:0:8} B2=${BLDG_B2:0:8}"
+
 # ── 0.4  Create room types + rooms for new properties ──────────────────
 echo "── 0.4  Create Room Types & Rooms ───────────────────────────────────"
 
@@ -683,14 +736,19 @@ create_room_type() {
 }
 
 create_room() {
-  local tok="$1" tid="$2" pid="$3" rtid="$4" num="$5" floor="$6"
+  local tok="$1" tid="$2" pid="$3" rtid="$4" num="$5" floor="$6" bldg="${7:-}"
   TOKEN="$tok"
   get "$GW/v1/rooms?tenant_id=$tid&property_id=$pid&limit=500" >/dev/null
   local existing
   existing=$(resp_ffirst ".room_number == \"$num\"" "room_id")
   if [[ -n "$existing" ]]; then return 0; fi
+  # `building_id` is omitted rather than sent null when there is no building:
+  # the column is nullable on purpose, and a NULL says "this property has no
+  # building entity" honestly, where a fabricated one would not.
+  local bldg_field=""
+  [[ -n "$bldg" ]] && bldg_field="\"building_id\":\"$bldg\","
   post "$GW/v1/rooms" \
-    "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"room_type_id\":\"$rtid\",\"room_number\":\"$num\",\"floor\":\"$floor\",\"status\":\"available\",\"housekeeping_status\":\"clean\",\"maintenance_status\":\"operational\",\"is_blocked\":false,\"is_out_of_order\":false}" >/dev/null
+    "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"room_type_id\":\"$rtid\",${bldg_field}\"room_number\":\"$num\",\"floor\":\"$floor\",\"status\":\"available\",\"housekeeping_status\":\"clean\",\"maintenance_status\":\"operational\",\"is_blocked\":false,\"is_out_of_order\":false}" >/dev/null
 }
 
 # Property A2 — room type + rooms
@@ -698,7 +756,7 @@ RTID_A2=$(create_room_type "$TOKEN_A" "$TID_A" "$PID_A2" "Beach Standard $RUN_TA
 echo "  Room type A2: ${RTID_A2:-(FAILED)}"
 if [[ -n "$RTID_A2" ]]; then
   for r in 501 502 503 504 505 506 507 508 509 510; do
-    create_room "$TOKEN_A" "$TID_A" "$PID_A2" "$RTID_A2" "$r" "${r:0:1}"
+    create_room "$TOKEN_A" "$TID_A" "$PID_A2" "$RTID_A2" "$r" "${r:0:1}" "$BLDG_A2"
   done
   TOKEN="$TOKEN_A"
   get "$GW/v1/rooms?tenant_id=$TID_A&property_id=$PID_A2&limit=500" >/dev/null
@@ -711,7 +769,7 @@ RTID_B1=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B1" "Harbor King $RUN_TAG" 
 echo "  Room type B1: ${RTID_B1:-(FAILED)}"
 if [[ -n "$RTID_B1" ]]; then
   for r in 101 102 103 104 105 106 107 108 109 110; do
-    create_room "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "$r" "${r:0:1}"
+    create_room "$TOKEN_B" "$TID_B" "$PID_B1" "$RTID_B1" "$r" "${r:0:1}" "$BLDG_B1"
   done
   TOKEN="$TOKEN_B"
   get "$GW/v1/rooms?tenant_id=$TID_B&property_id=$PID_B1&limit=500" >/dev/null
@@ -724,7 +782,7 @@ RTID_B2=$(create_room_type "$TOKEN_B" "$TID_B" "$PID_B2" "Mountain Cabin $RUN_TA
 echo "  Room type B2: ${RTID_B2:-(FAILED)}"
 if [[ -n "$RTID_B2" ]]; then
   for r in 201 202 203 204 205 206 207 208 209 210; do
-    create_room "$TOKEN_B" "$TID_B" "$PID_B2" "$RTID_B2" "$r" "${r:0:1}"
+    create_room "$TOKEN_B" "$TID_B" "$PID_B2" "$RTID_B2" "$r" "${r:0:1}" "$BLDG_B2"
   done
   TOKEN="$TOKEN_B"
   get "$GW/v1/rooms?tenant_id=$TID_B&property_id=$PID_B2&limit=500" >/dev/null
@@ -3468,18 +3526,37 @@ CH_ACTOR=$(cl_sql "select id from users where tenant_id='$TID_A' limit 1")
 if [[ -z "$CH_PROP" || -z "$CH_ACTOR" ]]; then
   skip "Channel intake" "no property or user on tenant A"
 else
-  # A channel of this phase's own. Seeded directly because `ota_configurations`
-  # has no create command — the row is configuration a property's integrator
-  # writes, and inventing a command for it here would test something the product
-  # does not have.
-  cl_sql "INSERT INTO ota_configurations
-            (tenant_id, property_id, ota_name, ota_code, api_secret, transport, created_by, updated_by)
-          VALUES
-            ('$TID_A','$CH_PROP','Phase 5i Channel','$CH_CODE','$CH_SECRET','NONE',
-             '$CH_ACTOR','$CH_ACTOR')
-          ON CONFLICT DO NOTHING" >/dev/null
+  # A channel of this phase's own, onboarded through the API like everything
+  # else in this suite. The first draft of this phase seeded these three tables
+  # with direct INSERTs — and that was not a shortcut, it was the only way,
+  # because every route in the family was `app.get`. A property could not
+  # onboard a channel through the product at all, and the outbound handlers
+  # refused against configuration nothing could create. The write routes exist
+  # now; the SQL is gone.
+  seed_rest "REST ota-configurations: onboard the channel" \
+    "$GW/v1/ota-configurations?tenant_id=$TID_A" \
+    "{\"property_id\":\"$CH_PROP\",\"ota_name\":\"Phase 5i Channel\",\"ota_code\":\"$CH_CODE\",\"api_secret\":\"$CH_SECRET\",\"transport\":\"NONE\"}"
+  CH_CFG=$(resp_field "id")
 
-  CH_CFG=$(cl_sql "select id from ota_configurations where tenant_id='$TID_A' and ota_code='$CH_CODE' limit 1")
+  # The two mappings the outbound handlers refuse without, and correctly so:
+  # `sync_request` reads availability through a `channel_mappings` room-type
+  # join, and `rate_push` reads `ota_rate_plans`. A channel with neither is
+  # configured but not mapped, and pushing to it would push rooms and prices
+  # under codes the channel has never heard of.
+  CH_RT=$(cl_sql "select id from room_types where tenant_id='$TID_A' and property_id='$CH_PROP' and is_deleted=FALSE limit 1")
+  CH_RATE=$(cl_sql "select id from rates where tenant_id='$TID_A' and property_id='$CH_PROP' limit 1")
+
+  if [[ -n "$CH_RT" ]]; then
+    seed_rest "REST channel-mappings: map the room type" \
+      "$GW/v1/channel-mappings?tenant_id=$TID_A" \
+      "{\"property_id\":\"$CH_PROP\",\"channel_code\":\"$CH_CODE\",\"channel_name\":\"Phase 5i Channel\",\"entity_type\":\"room_type\",\"entity_id\":\"$CH_RT\",\"external_id\":\"STD\",\"external_code\":\"STD\"}"
+  fi
+
+  if [[ -n "$CH_RATE" && -n "$CH_CFG" ]]; then
+    seed_rest "REST ota-rate-plans: map the rate" \
+      "$GW/v1/ota-rate-plans?tenant_id=$TID_A" \
+      "{\"property_id\":\"$CH_PROP\",\"ota_configuration_id\":\"$CH_CFG\",\"rate_id\":\"$CH_RATE\",\"ota_rate_plan_id\":\"BAR-E2E\",\"ota_rate_plan_name\":\"Phase 5i BAR\"}"
+  fi
 
   if [[ -z "$CH_CFG" ]]; then
     skip "Channel intake" "could not seed ota_configurations"
@@ -3558,7 +3635,9 @@ else
     fi
 
     # ── 5. A declared stub records the attempt, and says it was simulated ─────
-    cl_sql "UPDATE ota_configurations SET transport='SIMULATED' WHERE id='$CH_CFG'" >/dev/null
+    printf "  \u25b8 %-55s " "REST ota-configurations: transport → SIMULATED"
+    FLIP=$(put "$GW/v1/ota-configurations/$CH_CFG?tenant_id=$TID_A" "{\"transport\":\"SIMULATED\"}")
+    if [[ "$FLIP" =~ ^2 ]]; then printf "\u2713 %s\n" "$FLIP"; else printf "\u2717 %s\n" "$FLIP"; fi
 
     send_command "CMD ota.rate_push: transport is SIMULATED" \
       "integration.ota.rate_push" \
@@ -3588,11 +3667,16 @@ else
       "{\"property_id\":\"$CH_PROP\",\"ota_code\":\"$CH_CODE\"}"
     wait_kafka 10
 
+    # COMPLETED, not merely "not PENDING". The first version of this assertion
+    # accepted anything that moved, so a drain that refused the booking and
+    # wrote FAILED read as a drain that worked — a test agreeing with the bug
+    # it exists to catch.
     CH_DRAINED=$(cl_sql "select status from ota_reservations_queue where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID' limit 1")
-    if [[ "$CH_DRAINED" != "PENDING" ]]; then
-      pass "The queue drains — the row left PENDING (now $CH_DRAINED)"
+    CH_ERR=$(cl_sql "select coalesce(error_message,'') from ota_reservations_queue where tenant_id='$TID_A' and ota_reservation_id='$CH_RESID' limit 1")
+    if [[ "$CH_DRAINED" == "COMPLETED" ]]; then
+      pass "The queue drains into a real booking (COMPLETED)"
     else
-      fail "The queue drains" "still PENDING; the reader and the writer disagree again"
+      fail "The queue drains into a real booking" "status=$CH_DRAINED ${CH_ERR:+← $CH_ERR}"
     fi
 
     # `ota_queue_id` on reservation.create exists for exactly this: the queue
@@ -3968,37 +4052,6 @@ if [[ -d "$SEEDS_DIR" ]]; then
   done
   unset _seed_file
 fi
-
-# ── 6c.1  Buildings (Availability → Buildings) ──────────────────────────
-# PROPERTY_SETUP tier — must precede rate/reservation seeding.
-echo "── 6c.1  Buildings ──────────────────────────────────────────────────"
-
-seed_buildings() {
-  local tok="$1" tid="$2" pid="$3" lbl="$4"
-  TOKEN="$tok"
-  local n=0 code
-  local -a specs=(
-    "MAIN|Main Tower|TOWER|12|180|true|true"
-    "ANNEX|Garden Annex|ANNEX|4|60|false|false"
-  )
-  local spec bcode bname btype floors rooms haspool hasgym
-  for spec in "${specs[@]}"; do
-    IFS='|' read -r bcode bname btype floors rooms haspool hasgym <<<"$spec"
-    # POST /v1/buildings resolves tenant from the query string, not the body.
-    code=$(post "$GW/v1/buildings?tenant_id=$tid" \
-      "{\"tenant_id\":\"$tid\",\"property_id\":\"$pid\",\"building_code\":\"${bcode}-${RUN_TAG}\",\"building_name\":\"$bname\",\"building_type\":\"$btype\",\"floor_count\":$floors,\"total_rooms\":$rooms,\"has_pool\":$haspool,\"has_gym\":$hasgym,\"has_lobby\":true,\"has_parking\":true,\"wheelchair_accessible\":true,\"building_status\":\"OPERATIONAL\",\"is_active\":true}")
-    [[ "$code" =~ ^2 ]] && n=$((n+1))
-  done
-  local total
-  total=$(poll_count "$GW/v1/buildings?tenant_id=$tid&property_id=$pid&limit=50" 2 30)
-  assert_gte "Buildings seeded ($lbl)" "$total" 2
-}
-
-seed_buildings "$TOKEN_A" "$TID_A" "$PID_A1" "A1"
-seed_buildings "$TOKEN_A" "$TID_A" "$PID_A2" "A2"
-seed_buildings "$TOKEN_B" "$TID_B" "$PID_B1" "B1"
-seed_buildings "$TOKEN_B" "$TID_B" "$PID_B2" "B2"
-echo ""
 
 # ── 6c.2  Packages (Revenue → Packages) ─────────────────────────────────
 # RATE_PRICING tier.
@@ -4399,7 +4452,7 @@ seed_reservations() {
     fi
     send_command "reservation.check_in #$((n_in+1)) ($lbl)" \
       "reservation.check_in" \
-      "{\"reservation_id\":\"$rid\"$room_arg,\"force\":true,\"notes\":\"Seeded in-house\"}"
+      "{\"reservation_id\":\"$rid\"$room_arg,\"force\":true,\"reason_code\":\"CI_CORP_ACCOUNT\",\"notes\":\"Seeded in-house\"}"
     n_in=$((n_in + 1)); idx=$((idx + 1))
   done
   wait_kafka 12
@@ -4411,7 +4464,7 @@ seed_reservations() {
   for rid in $in_ids; do
     send_command "reservation.check_out #$((n_out+1)) ($lbl)" \
       "reservation.check_out" \
-      "{\"reservation_id\":\"$rid\",\"force\":true,\"express\":true,\"notes\":\"Seeded departure\"}"
+      "{\"reservation_id\":\"$rid\",\"force\":true,\"reason_code\":\"CO_TO_CITY_LEDGER\",\"express\":true,\"notes\":\"Seeded departure\"}"
     n_out=$((n_out + 1))
   done
   wait_kafka 12
@@ -4704,7 +4757,7 @@ ui_get "13. Revenue → Promo Codes"     "$TOKEN_A" "$GW/v1/promo-codes?tenant_i
 ui_get "14. Housekeeping → Lost&Found" "$TOKEN_A" "$GW/v1/lost-and-found?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 4
 ui_get "15. Housekeeping → Incidents"  "$TOKEN_A" "$GW/v1/incidents?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
 ui_get "16. Housekeeping → Handovers"  "$TOKEN_A" "$GW/v1/shift-handovers?tenant_id=$TID_A&property_id=$PID_A1&limit=200" 3
-ui_get "17. Accounts → Approvals"      "$TOKEN_A" "$GW/v1/billing/approvals?tenant_id=$TID_A&limit=200" 3
+ui_get "17. Accounts → Approvals"      "$TOKEN_A" "$GW/v1/billing/approvals/pending?tenant_id=$TID_A&limit=200" 3
 
 # 18. Accounts → AR Accounts. Unlike the above this table is already written by
 # the AR commands in Phase 1, so it is a read-path check only.

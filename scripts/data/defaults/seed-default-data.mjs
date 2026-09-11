@@ -86,6 +86,46 @@ const upsertTenants = async (client, tenants = []) => {
   }
 };
 
+/**
+ * Give every seeded property a declared stub processor.
+ *
+ * `payment_gateway_configurations` has thirty-odd columns and, until the
+ * payment work, exactly one reader — the webhook dispatcher. Nothing on the
+ * payment path consulted it, which is why `billing.payment.authorize` could
+ * write `status = 'AUTHORIZED'` from `gateway_name` and `gateway_reference`
+ * supplied in the request body: a bank approval for a card no bank was shown.
+ *
+ * Now that authorize resolves a processor and refuses without one, a database
+ * with no configuration cannot take a card at all — correct, and useless for a
+ * demo or an end-to-end run. `SIMULATED` is the same bargain WS-09 struck for
+ * channel transports: a stub, but a *declared* one, stamped on every payment it
+ * produces so the ledger says a processor was not contacted.
+ *
+ * Deliberately SANDBOX and deliberately not `STRIPE`: a seed that quietly
+ * configured a real acquirer would be a seed that could take real money.
+ */
+const upsertPaymentGatewayConfigurations = async (client, properties = []) => {
+  for (const property of properties) {
+    await client.query(
+      `
+        INSERT INTO payment_gateway_configurations (
+          tenant_id, property_id, gateway_provider, gateway_label,
+          gateway_environment, supported_currencies, is_active, is_primary,
+          notes, created_at, updated_at, created_by, updated_by
+        )
+        VALUES (
+          $1, $2, 'SIMULATED', 'Simulated processor (no PSP contacted)',
+          'SANDBOX', ARRAY['USD','EUR','GBP','INR'], TRUE, TRUE,
+          'Seeded so a demo property can take a card. Every payment it produces is stamped simulated.',
+          NOW(), NOW(), $3, $3
+        )
+        ON CONFLICT DO NOTHING
+      `,
+      [property.tenantId, property.id, seedActorId],
+    );
+  }
+};
+
 const upsertProperties = async (client, properties = []) => {
   for (const property of properties) {
     await client.query(
@@ -760,6 +800,7 @@ const seed = async () => {
     await client.query("BEGIN");
     await upsertTenants(client, dataset.tenants);
     await upsertProperties(client, dataset.properties);
+    await upsertPaymentGatewayConfigurations(client, dataset.properties);
     await upsertSystemAdministrators(client, dataset.systemAdministrators);
     await upsertUsers(client, dataset.users);
     await upsertUserTenantAssociations(client, dataset.userTenantAssociations);

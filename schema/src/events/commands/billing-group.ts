@@ -56,29 +56,31 @@ export type BillingGroupSetupCommand = z.infer<
  *   4. If company_id + direct-bill: trigger `ar.city_ledger.transfer`.
  *   5. Update all group reservations to CHECKED_OUT status.
  */
-export const BillingGroupCheckoutCommandSchema = z.object({
-	property_id: z.string().uuid(),
-	group_booking_id: z.string().uuid(),
-	/**
-	 * Force checkout even if some individual folios have non-zero balances.
-	 *
-	 * This is `folio_settlement_check` — the gate `reservation.check_out`
-	 * declares — bypassed for every member of the group at once. The single
-	 * departure asked for a reason code and an authority; this asked nobody.
-	 */
-	force: z.boolean().default(false),
-	/**
-	 * Why this group departure was forced. Required with `force`, resolved
-	 * against the CHECK_OUT_OVERRIDE category.
-	 */
-	reason_code: z.string().min(2).max(50).optional(),
-	notes: z.string().max(2000).optional(),
-	idempotency_key: z.string().max(120).optional(),
-}).refine((value) => value.force !== true || Boolean(value.reason_code), {
-	message:
-		"reason_code is required when force is true — departing a whole group over unsettled folios leaves every one of those balances behind",
-	path: ["reason_code"],
-});
+export const BillingGroupCheckoutCommandSchema = z
+	.object({
+		property_id: z.string().uuid(),
+		group_booking_id: z.string().uuid(),
+		/**
+		 * Force checkout even if some individual folios have non-zero balances.
+		 *
+		 * This is `folio_settlement_check` — the gate `reservation.check_out`
+		 * declares — bypassed for every member of the group at once. The single
+		 * departure asked for a reason code and an authority; this asked nobody.
+		 */
+		force: z.boolean().default(false),
+		/**
+		 * Why this group departure was forced. Required with `force`, resolved
+		 * against the CHECK_OUT_OVERRIDE category.
+		 */
+		reason_code: z.string().min(2).max(50).optional(),
+		notes: z.string().max(2000).optional(),
+		idempotency_key: z.string().max(120).optional(),
+	})
+	.refine((value) => value.force !== true || Boolean(value.reason_code), {
+		message:
+			"reason_code is required when force is true — departing a whole group over unsettled folios leaves every one of those balances behind",
+		path: ["reason_code"],
+	});
 
 export type BillingGroupCheckoutCommand = z.infer<
 	typeof BillingGroupCheckoutCommandSchema
